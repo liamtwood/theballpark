@@ -1,8 +1,7 @@
 {
   "buildCommand": "ng build -c preview",
   "outputDirectory": "dist/client-angular/browser",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
