@@ -76,7 +76,7 @@
                 }
               ]
             },
-            "staging": {
+            "preview": {
               "budgets": [
                 {
                   "type": "initial",

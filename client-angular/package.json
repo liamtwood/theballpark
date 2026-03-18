@@ -6,6 +6,8 @@
     "start": "ng serve --port 4200",
     "dev": "ng serve --port 4200",
     "build": "ng build",
+    "build:preview": "ng build -c preview",
+    "build:prod": "ng build -c production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
