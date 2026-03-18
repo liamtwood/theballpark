@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
   apiUrl: 'https://theballpark-production.up.railway.app/api',
-  version: 'v1.0'
+  version: 'Preview v1.0'
 };
