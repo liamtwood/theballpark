@@ -5,7 +5,7 @@ const cors = require('cors');
 
 const app = express();
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4200', 'https://theballpark.vercel.app'] }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4200', 'https://theballpark.vercel.app', 'https://theballpark.ai', 'https://www.theballpark.ai'] }));
 app.use(express.json());
 
 // Convenience: get the first agency org (acts as "current org")
