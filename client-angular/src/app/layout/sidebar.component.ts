@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { OrgService } from '../core/services/org.service';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-sidebar',
@@ -30,11 +31,12 @@ import { OrgService } from '../core/services/org.service';
           <i [class]="'pi ' + item.icon + ' text-lg'"></i>{{ item.label }}
         </a>
       </nav>
-      <div class="px-6 py-4 border-t border-gray-200"><p class="text-xs text-gray-400">The Ballpark v1.0</p></div>
+      <div class="px-6 py-4 border-t border-gray-200"><p class="text-xs text-gray-400">The Ballpark {{ version }}</p></div>
     </aside>
   `
 })
 export class SidebarComponent implements OnInit {
+  version = environment.version;
   ballsBalance: number | null = null;
   navItems = [
     { label: 'Dashboard', icon: 'pi-th-large', route: '/', exact: true },
