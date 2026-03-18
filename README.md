@@ -4,7 +4,8 @@ Event production cost planning platform for exhibition agencies and their suppli
 
 ## Tech Stack
 
-- **Frontend:** React (Vite) + Tailwind CSS
+- **Frontend (React):** React (Vite) + Tailwind CSS — `client/`
+- **Frontend (Angular):** Angular 17 + PrimeNG + Tailwind CSS — `client-angular/`
 - **Backend:** Node.js + Express
 - **Database:** Supabase (PostgreSQL)
 - **AI:** Anthropic Claude (brief parsing)
@@ -47,7 +48,17 @@ npm run db:seed
 npm run dev
 ```
 
-This starts both the Express API (port 3001) and the React dev server (port 5173).
+This starts the Express API (port 3001) and the React dev server (port 5173).
+
+### Run with Angular frontend instead
+
+```bash
+npm run dev:angular
+```
+
+This starts the Express API (port 3001) and the Angular dev server (port 4200).
+
+Both frontends can run simultaneously since they use different ports.
 
 ## Project Structure
 

@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client-angular\"",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "dev:angular": "concurrently \"npm run dev:server\" \"npm run dev:client-angular\"",
+    "dev:client-angular": "cd client-angular && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install && cd ../client-angular && npm install",
     "db:migrate": "cd server && node src/db/migrate.js",
     "db:seed": "cd server && node src/db/seed.js"
   },
