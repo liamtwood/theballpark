@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "ng build -c preview",
   "outputDirectory": "dist/client-angular/browser",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
