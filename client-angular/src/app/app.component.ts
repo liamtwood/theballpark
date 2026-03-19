@@ -1,18 +1,17 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { SidebarComponent } from './layout/sidebar.component';
+import { TopNavComponent } from './layout/top-nav.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent],
+  imports: [RouterOutlet, TopNavComponent],
   template: `
-    <div class="min-h-screen bg-gray-50">
-      <app-sidebar></app-sidebar>
-      <main class="ml-64 min-h-screen">
-        <div class="p-8"><router-outlet></router-outlet></div>
-      </main>
-    </div>
-  `
+    <app-top-nav></app-top-nav>
+    <main><router-outlet></router-outlet></main>
+  `,
+  styles: [`
+    main { background: var(--color-bg); min-height: calc(100vh - var(--nav-height)); }
+  `]
 })
 export class AppComponent {}
