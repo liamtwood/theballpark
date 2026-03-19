@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, Sun, Moon, Plus, Settings, Home } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, Home } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { environment } from '../../environments/environment';
@@ -26,13 +26,10 @@ import { environment } from '../../environments/environment';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="home" [size]="14"></lucide-icon> Home
         </a>
-        <a routerLink="/projects/new" class="bp-nav-link">
-          <lucide-icon name="plus" [size]="14"></lucide-icon> New {{ projectLabel }}
-        </a>
-        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
+        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
@@ -49,7 +46,7 @@ import { environment } from '../../environments/environment';
       position: sticky; top: 0; z-index: 100;
     }
     .bp-nav-left { display: flex; align-items: center; }
-    .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; }
+    .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; gap: 0; }
     .bp-nav-logo-img { height: 28px; width: auto; object-fit: contain; }
     .bp-logo-text {
       font-family: var(--font-display); font-size: var(--text-lg); font-weight: 400;
@@ -96,13 +93,12 @@ import { environment } from '../../environments/environment';
   `]
 })
 export class TopNavComponent implements OnInit, OnDestroy {
-  readonly icons = { Sun, Moon, Plus, Settings, Home };
+  readonly icons = { Sun, Moon, Settings, Home };
 
   logoFirst = 'The Ball';
   logoSecond = 'park';
   logoUrl = '';
   tagline = 'Exhibition Costing';
-  projectLabel = 'Event';
   creditLabel = 'Ball';
   ballsBalance = 0;
   initials = 'U';
@@ -119,7 +115,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
       this.logoFirst = logo.first;
       this.logoSecond = logo.second;
       this.tagline = this.configService.tagline;
-      this.projectLabel = this.configService.projectLabel;
       this.creditLabel = this.configService.creditLabel;
       this.isDark = this.configService.isDarkMode;
       this.logoUrl = this.configService.logoUrl;

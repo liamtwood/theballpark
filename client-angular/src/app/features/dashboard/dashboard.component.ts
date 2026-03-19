@@ -2,44 +2,44 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { LucideAngularModule, Truck } from 'lucide-angular';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
 import { Project, Org } from '../../core/models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LoadingSpinnerComponent, GbpPipe],
+  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
       <!-- HERO BANNER -->
-      <div class="bp-hero">
-        <div class="bp-hero-pills">
-          <div class="bp-hero-pill" *ngIf="activeProjects.length > 0">
+      <div class="bp-hero" [style.text-align]="heroAlign">
+        <div class="bp-hero-pills" [style.justify-content]="heroAlign === 'center' ? 'center' : 'flex-start'">
+          <div class="bp-hero-pill" *ngIf="showUpcoming && activeProjects.length > 0">
             <div class="bp-hero-pill-dot" style="background:#3B82F6;"></div>
             {{ activeProjects.length }} upcoming {{ activeProjects.length === 1 ? projectLabel.toLowerCase() : projectLabel.toLowerCase() + 's' }}
           </div>
-          <div class="bp-hero-pill" *ngIf="org?.city">
+          <div class="bp-hero-pill" *ngIf="showLocation && org?.city">
             <div class="bp-hero-pill-dot" style="background:#EF4444;"></div>
             {{ org?.city }}
           </div>
         </div>
         <h1 class="bp-hero-org-name">{{ org?.name || 'My Organisation' }}</h1>
-        <p class="bp-hero-sub">{{ org?.type === 'agency' ? 'Agency account' : 'Supplier account' }}</p>
+        <p class="bp-hero-sub" *ngIf="showUserName">{{ userName }} &middot; {{ org?.type === 'agency' ? 'Agency account' : 'Supplier account' }}</p>
       </div>
 
       <!-- STATS BAR -->
-      <div class="bp-stats-bar">
+      <div class="bp-stats-bar" *ngIf="showStats">
         <div class="bp-stat-cell">
           <div class="bp-stat-label themed">{{ creditLabel }}s remaining</div>
           <div class="bp-stat-number">{{ org?.balls_balance ?? 0 }}</div>
-          <div class="bp-stat-sub themed">resets monthly</div>
+          <div class="bp-stat-sub themed">resets in {{ daysUntilReset }} days</div>
         </div>
         <div class="bp-stat-cell">
           <div class="bp-stat-label">Active {{ projectLabel }}s</div>
@@ -53,9 +53,9 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
           <div class="bp-stat-sub">across categories</div>
         </div>
         <div class="bp-stat-cell">
-          <div class="bp-stat-label">Total budget</div>
-          <div class="bp-stat-number">{{ totalBudgetShort }}</div>
-          <div class="bp-stat-sub">all {{ projectLabel.toLowerCase() }}s</div>
+          <div class="bp-stat-label">Quotes in progress</div>
+          <div class="bp-stat-number">0</div>
+          <div class="bp-stat-sub">awaiting response</div>
         </div>
       </div>
 
@@ -75,11 +75,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
             </div>
             <div class="bp-project-meta">
               <div class="bp-project-meta-dot"></div>
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}
-            </div>
-            <div class="bp-project-stats">
-              <span *ngIf="p.project_categories?.length">{{ p.project_categories?.length }} categories</span>
-              <span>{{ p.total_client_cost | gbp }}</span>
+              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) : '' }}
             </div>
           </div>
 
@@ -95,10 +91,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
               <span class="bp-badge bp-badge-closed">{{ p.status_name || 'Closed' }}</span>
             </div>
             <div class="bp-project-meta">
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}
-            </div>
-            <div class="bp-project-stats">
-              <span>{{ p.total_client_cost | gbp }} final</span>
+              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) + ' final' : '' }}
             </div>
           </div>
         </div>
@@ -124,11 +117,14 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
           <div class="bp-saved-suppliers-title">Saved suppliers</div>
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
           <div *ngFor="let s of suppliers.slice(0, 5)" class="bp-supplier-row">
-            <div class="bp-supplier-icon">{{ s.icon || '\uD83C\uDFD7\uFE0F' }}</div>
-            <div>
-              <div class="bp-supplier-name">{{ s.name }}</div>
-              <div class="bp-supplier-meta">{{ s.city || 'Supplier' }}</div>
+            <div class="bp-supplier-icon">
+              <lucide-icon name="truck" [size]="14" style="color:var(--theme-accent);"></lucide-icon>
             </div>
+            <div class="bp-supplier-info">
+              <div class="bp-supplier-name">{{ s.name }}</div>
+              <div class="bp-supplier-meta">{{ s.category || 'Supplier' }} &middot; {{ s.city || 'UK' }}</div>
+            </div>
+            <div class="bp-supplier-price" *ngIf="s.price">from {{ s.price }}</div>
           </div>
         </div>
       </div>
@@ -136,7 +132,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     </ng-container>
   `,
   styles: [`
-    /* HERO */
     .bp-hero {
       background: var(--theme-bg); padding: 32px var(--section-pad) 28px;
       border-bottom: 0.5px solid var(--theme-border);
@@ -146,7 +141,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
       display: flex; align-items: center; gap: 5px;
       font-size: var(--text-sm); color: var(--color-text-secondary);
       background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 20px; padding: 4px 12px; cursor: pointer;
+      border-radius: 20px; padding: 4px 12px;
     }
     .bp-hero-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
     .bp-hero-org-name {
@@ -154,8 +149,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
       color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px;
     }
     .bp-hero-sub { font-size: var(--text-base); color: var(--color-text-muted); }
-
-    /* STATS BAR */
     .bp-stats-bar {
       display: grid; grid-template-columns: repeat(4, 1fr);
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
@@ -170,8 +163,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-stat-number { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1; margin-bottom: 4px; }
     .bp-stat-sub { font-size: 11px; color: var(--color-text-muted); }
     .bp-stat-sub.themed { color: var(--theme-accent); }
-
-    /* TWO-COLUMN BODY */
     .bp-body {
       display: grid; grid-template-columns: 1fr 320px;
       background: var(--color-bg);
@@ -179,8 +170,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     }
     .bp-body-left { padding: var(--section-pad); border-right: 0.5px solid var(--color-border); }
     .bp-body-right { padding: 24px; background: var(--color-surface); }
-
-    /* SECTIONS */
     .bp-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .bp-section-title { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
     .bp-section-action {
@@ -189,8 +178,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     }
     .bp-section-action:hover { text-decoration: underline; }
     .bp-section-spacer { margin-top: 24px; }
-
-    /* PROJECT CARDS */
     .bp-project-card {
       background: var(--color-surface); border: 0.5px solid var(--color-border);
       border-radius: 10px; padding: 16px 18px; margin-bottom: 10px;
@@ -200,28 +187,23 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-project-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .bp-project-name { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
     .bp-project-meta {
-      font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 8px;
+      font-size: var(--text-sm); color: var(--color-text-muted);
       display: flex; align-items: center; gap: 5px;
     }
     .bp-project-meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #00B84A; }
-    .bp-project-stats { display: flex; gap: 16px; font-size: var(--text-sm); color: var(--color-text-secondary); }
-
-    /* BADGES */
     .bp-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; text-transform: capitalize; }
     .bp-badge-active { background: var(--theme-bg); color: var(--theme-text); }
     .bp-badge-closed { background: #F3F4F6; color: #9CA3AF; }
-
-    /* CTA BUTTON */
     .bp-cta-btn {
-      display: block; width: 100%; background: var(--color-black); color: #fff;
-      border: none; padding: 13px; border-radius: 8px;
+      display: block; width: 100%;
+      background: var(--theme-bg); color: var(--theme-text);
+      border: 0.5px solid var(--theme-border);
+      padding: 13px; border-radius: 8px;
       font-size: var(--text-md); font-weight: 600; cursor: pointer;
       font-family: var(--font-body); margin-bottom: 16px;
-      transition: background 0.2s; text-align: center; text-decoration: none;
+      transition: all 0.2s ease; text-align: center; text-decoration: none;
     }
     .bp-cta-btn:hover { background: var(--theme-accent); color: #fff; }
-
-    /* CREDITS CARD */
     .bp-credits-card {
       background: var(--theme-bg); border: 0.5px solid var(--theme-border);
       border-radius: 10px; padding: 18px; margin-bottom: 16px;
@@ -233,8 +215,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-credit-dot.filled { background: var(--theme-accent); }
     .bp-credit-dot.empty { background: var(--theme-empty); }
     .bp-credits-desc { font-size: 11px; color: var(--theme-text); line-height: 1.5; }
-
-    /* SUPPLIERS */
     .bp-saved-suppliers-title {
       font-size: 11px; font-weight: 600; color: var(--color-text-primary);
       text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
@@ -246,16 +226,17 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-supplier-row:last-child { border-bottom: none; }
     .bp-supplier-icon {
       width: 32px; height: 32px; border-radius: 6px; background: var(--theme-bg);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
+    .bp-supplier-info { flex: 1; min-width: 0; }
     .bp-supplier-name { font-size: var(--text-base); font-weight: 500; color: var(--color-text-primary); }
     .bp-supplier-meta { font-size: 11px; color: var(--color-text-muted); }
-
+    .bp-supplier-price { font-size: var(--text-sm); color: var(--color-text-secondary); margin-left: auto; white-space: nowrap; }
     .bp-empty { font-size: var(--text-sm); color: var(--color-text-muted); padding: 16px 0; }
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  readonly icons = { Truck };
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
@@ -264,9 +245,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   suppliers: any[] = [];
   supplierCount = 0;
   creditDots: boolean[] = [];
-  totalBudgetShort = '\u00A30';
   projectLabel = 'Event';
   creditLabel = 'Ball';
+  userName = '';
+  daysUntilReset = 0;
+  heroAlign = 'center';
+  showUserName = true;
+  showLocation = true;
+  showUpcoming = true;
+  showStats = true;
 
   private sub?: Subscription;
 
@@ -277,10 +264,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private configService: ConfigService,
   ) {}
 
+  fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
+
   ngOnInit() {
+    this.daysUntilReset = ConfigService.daysUntilReset();
+
     this.sub = this.configService.config$.subscribe(() => {
       this.projectLabel = this.configService.projectLabel;
       this.creditLabel = this.configService.creditLabel;
+      this.heroAlign = this.configService.heroAlign;
+      this.showUserName = this.configService.showUserName;
+      this.showLocation = this.configService.showLocation;
+      this.showUpcoming = this.configService.showUpcoming;
+      this.showStats = this.configService.showStats;
     });
 
     this.orgService.getCurrentOrg().subscribe({
@@ -288,12 +284,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: () => {},
     });
 
+    this.orgService.getUsers().subscribe({
+      next: (users) => {
+        if (users?.length) this.userName = users[0].name || 'User';
+      },
+      error: () => { this.userName = 'User'; },
+    });
+
     this.projectService.getAll().subscribe({
       next: (data) => {
         this.projects = data;
         this.activeProjects = data.filter(p => p.status_name === 'active' || p.status_name === 'draft');
         this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
-        this.buildBudget();
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -301,7 +303,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.supplierService.getAll().subscribe({
       next: (data) => {
-        this.suppliers = data.map(s => ({ name: s.name, city: s.city || '', icon: '' }));
+        this.suppliers = data.map(s => ({
+          name: s.name,
+          city: s.city || '',
+          category: s.description || '',
+          price: '',
+        }));
         this.supplierCount = data.length;
       },
       error: () => {},
@@ -316,15 +323,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.creditDots = [];
     for (let i = 0; i < total; i++) {
       this.creditDots.push(i < balance);
-    }
-  }
-
-  private buildBudget() {
-    const total = this.projects.reduce((s, p) => s + (+(p.total_client_cost || p.project_budget || 0)), 0);
-    if (total >= 1000) {
-      this.totalBudgetShort = '\u00A3' + Math.round(total / 1000) + 'k';
-    } else {
-      this.totalBudgetShort = '\u00A3' + Math.round(total);
     }
   }
 }
