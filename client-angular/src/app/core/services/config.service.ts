@@ -129,6 +129,14 @@ export class ConfigService {
         this.config = { ...this.config, ...parsed };
       }
     } catch {}
+
+    // Validate theme — fall back to amber if missing or invalid
+    if (!this.config.themeName || !THEME_PRESETS[this.config.themeName]) {
+      this.config.themeName = 'amber';
+    }
+
+    // Notify subscribers with the loaded (and validated) config
+    this.configSubject.next({ ...this.config });
   }
 
   private save(): void {

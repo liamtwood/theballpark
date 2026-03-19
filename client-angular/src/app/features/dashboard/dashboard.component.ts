@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -262,6 +262,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private orgService: OrgService,
     private supplierService: SupplierService,
     private configService: ConfigService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
@@ -277,16 +278,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.showLocation = this.configService.showLocation;
       this.showUpcoming = this.configService.showUpcoming;
       this.showStats = this.configService.showStats;
+      this.cdr.detectChanges();
     });
 
     this.orgService.getCurrentOrg().subscribe({
-      next: (org) => { this.org = org; this.buildCreditDots(); },
+      next: (org) => { this.org = org; this.buildCreditDots(); this.cdr.detectChanges(); },
       error: () => {},
     });
 
     this.orgService.getUsers().subscribe({
       next: (users) => {
         if (users?.length) this.userName = users[0].name || 'User';
+        this.cdr.detectChanges();
       },
       error: () => { this.userName = 'User'; },
     });
@@ -297,8 +300,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.activeProjects = data.filter(p => p.status_name === 'active' || p.status_name === 'draft');
         this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; },
+      error: () => { this.loading = false; this.cdr.detectChanges(); },
     });
 
     this.supplierService.getAll().subscribe({
@@ -310,6 +314,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           price: '',
         }));
         this.supplierCount = data.length;
+        this.cdr.detectChanges();
       },
       error: () => {},
     });

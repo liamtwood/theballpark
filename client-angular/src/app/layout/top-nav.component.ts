@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -107,7 +107,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
-  constructor(private configService: ConfigService, private orgService: OrgService) {}
+  constructor(private configService: ConfigService, private orgService: OrgService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.sub = this.configService.config$.subscribe(() => {
@@ -118,10 +118,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
       this.creditLabel = this.configService.creditLabel;
       this.isDark = this.configService.isDarkMode;
       this.logoUrl = this.configService.logoUrl;
+      this.cdr.detectChanges();
     });
 
     this.orgService.getBallsBalance().subscribe({
-      next: (data) => this.ballsBalance = data.balance ?? 0,
+      next: (data) => { this.ballsBalance = data.balance ?? 0; this.cdr.detectChanges(); },
       error: () => this.ballsBalance = 0,
     });
 
@@ -130,6 +131,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
         if (org?.name) {
           this.initials = org.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
         }
+        this.cdr.detectChanges();
       },
       error: () => {},
     });

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TabViewModule } from 'primeng/tabview';
@@ -279,7 +279,7 @@ export class SettingsComponent implements OnInit {
   previewText = '#92400E';
   logoPreview = '';
 
-  constructor(private orgSvc: OrgService, private catSvc: CategoryService, private configService: ConfigService, private msg: MessageService) {}
+  constructor(private orgSvc: OrgService, private catSvc: CategoryService, private configService: ConfigService, private msg: MessageService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     const current = this.configService.current as any;
@@ -294,7 +294,8 @@ export class SettingsComponent implements OnInit {
         this.users = users || [];
         this.categories = cats || [];
         this.loading = false;
-      }).catch(() => this.loading = false);
+        this.cdr.detectChanges();
+      }).catch(() => { this.loading = false; this.cdr.detectChanges(); });
   }
 
   save() {
