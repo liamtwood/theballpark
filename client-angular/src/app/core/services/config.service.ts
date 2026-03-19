@@ -17,6 +17,11 @@ export interface PlatformConfig {
   creditLabel: string;
   themeName: string;
   mode: 'light' | 'dark' | 'system';
+  heroAlign?: string;
+  showUserName?: boolean;
+  showLocation?: boolean;
+  showUpcoming?: boolean;
+  showStats?: boolean;
 }
 
 const THEME_PRESETS: Record<string, ThemePreset> = {

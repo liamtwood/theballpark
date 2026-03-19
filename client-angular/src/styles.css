@@ -65,19 +65,146 @@ body {
   margin: 0;
 }
 
-/* Override PrimeNG blue accent */
-.p-button { background: var(--color-black) !important; border-color: var(--color-black) !important; }
-.p-button:hover { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
-.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link { color: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
-.p-inputtext:focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
+/* ============================================
+   GLOBAL THEME-AWARE BUTTONS (PrimeNG)
+   Default: theme-bg background, theme-text colour
+   Hover: theme-accent background, white text
+   ============================================ */
+.p-button {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+  border: 0.5px solid var(--theme-border) !important;
+  transition: all 0.2s ease !important;
+}
+.p-button:hover:not(:disabled) {
+  background: var(--theme-accent) !important;
+  color: #ffffff !important;
+  border-color: var(--theme-accent) !important;
+}
+.p-button:disabled, .p-button.p-disabled {
+  background: #F5F5F5 !important;
+  color: #bbb !important;
+  border-color: #eee !important;
+}
+/* Text-only buttons (cancel, icon-only) */
+.p-button.p-button-text {
+  background: transparent !important;
+  border: none !important;
+  color: var(--color-text-secondary) !important;
+}
+.p-button.p-button-text:hover:not(:disabled) {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+/* Outlined buttons */
+.p-button.p-button-outlined {
+  background: transparent !important;
+  color: var(--theme-accent) !important;
+  border: 0.5px solid var(--theme-border) !important;
+}
+.p-button.p-button-outlined:hover:not(:disabled) {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+/* Danger severity */
+.p-button.p-button-danger, .p-button.p-button-danger.p-button-text {
+  color: #EF4444 !important;
+}
 
-/* Dark mode surface overrides */
+/* ============================================
+   GLOBAL PrimeNG THEME OVERRIDES
+   ============================================ */
+/* Tab bars — active tab uses theme accent */
+.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+}
+.p-tabview .p-tabview-nav li .p-tabview-nav-link:focus {
+  box-shadow: 0 0 0 2px var(--theme-bg) !important;
+}
+/* Steps (wizard) — active step uses theme */
+.p-steps .p-steps-item.p-highlight .p-steps-number {
+  background: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+  color: #fff !important;
+}
+.p-steps .p-steps-item.p-highlight .p-steps-title { color: var(--theme-accent) !important; }
+/* Inputs — focus border uses theme accent */
+.p-inputtext:focus, .p-inputtextarea:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent) !important;
+}
+/* Dropdown focus */
+.p-dropdown:not(.p-disabled).p-focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
+/* InputSwitch — on state uses theme */
+.p-inputswitch.p-inputswitch-checked .p-inputswitch-slider {
+  background: var(--theme-accent) !important;
+}
+/* Paginator active */
+.p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+/* Dialog header */
+.p-dialog .p-dialog-header { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
+.p-dialog .p-dialog-content { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
+/* Confirm dialog */
+.p-confirm-dialog .p-dialog-footer { background: var(--color-surface) !important; }
+/* Sort icon */
+.p-sortable-column.p-highlight { color: var(--theme-accent) !important; }
+.p-sortable-column.p-highlight .p-sortable-column-icon { color: var(--theme-accent) !important; }
+
+/* ============================================
+   THEME-AWARE UTILITY CLASSES
+   ============================================ */
+/* Links — replace all text-brand-600 with theme accent */
+.text-brand-600, .text-brand-700, a.text-brand-600, a.text-brand-700 { color: var(--theme-accent) !important; }
+.bg-brand-600 { background-color: var(--theme-accent) !important; }
+.bg-brand-50, .bg-brand-100 { background-color: var(--theme-bg) !important; }
+.text-brand-700 { color: var(--theme-text) !important; }
+.border-brand-600 { border-color: var(--theme-accent) !important; }
+.ring-brand-600 { --tw-ring-color: var(--theme-accent) !important; }
+
+/* Selection/active cards in project-create wizard */
+.border-brand-600.bg-brand-50 {
+  border-color: var(--theme-accent) !important;
+  background-color: var(--theme-bg) !important;
+}
+
+/* ============================================
+   DARK MODE SURFACE OVERRIDES
+   ============================================ */
 [data-mode="dark"] .p-tabview,
 [data-mode="dark"] .p-tabview .p-tabview-panels,
 [data-mode="dark"] .p-tabview .p-tabview-nav { background: var(--color-surface) !important; }
 [data-mode="dark"] .p-tabview .p-tabview-nav-link { color: var(--color-text-secondary) !important; }
 [data-mode="dark"] .p-inputtext,
 [data-mode="dark"] .p-inputtextarea { background: var(--color-bg) !important; color: var(--color-text-primary) !important; border-color: var(--color-border) !important; }
-[data-mode="dark"] .p-datatable .p-datatable-thead > tr > th { background: var(--color-surface) !important; color: var(--color-text-secondary) !important; }
+[data-mode="dark"] .p-datatable .p-datatable-thead > tr > th { background: var(--color-surface) !important; color: var(--color-text-secondary) !important; border-color: var(--color-border) !important; }
 [data-mode="dark"] .p-datatable .p-datatable-tbody > tr { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
 [data-mode="dark"] .p-datatable .p-datatable-tbody > tr:hover { background: var(--color-bg) !important; }
+[data-mode="dark"] .p-dropdown { background: var(--color-bg) !important; color: var(--color-text-primary) !important; border-color: var(--color-border) !important; }
+[data-mode="dark"] .p-dialog .p-dialog-header,
+[data-mode="dark"] .p-dialog .p-dialog-content,
+[data-mode="dark"] .p-dialog .p-dialog-footer { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
+[data-mode="dark"] .p-steps .p-steps-item .p-menuitem-link .p-steps-title { color: var(--color-text-muted) !important; }
+[data-mode="dark"] .bg-white { background-color: var(--color-surface) !important; }
+[data-mode="dark"] .bg-gray-50 { background-color: var(--color-bg) !important; }
+[data-mode="dark"] .bg-gray-100 { background-color: var(--color-border) !important; }
+[data-mode="dark"] .text-gray-900 { color: var(--color-text-primary) !important; }
+[data-mode="dark"] .text-gray-700 { color: var(--color-text-secondary) !important; }
+[data-mode="dark"] .text-gray-600 { color: var(--color-text-secondary) !important; }
+[data-mode="dark"] .text-gray-500 { color: var(--color-text-muted) !important; }
+[data-mode="dark"] .text-gray-400 { color: var(--color-text-muted) !important; }
+[data-mode="dark"] .border-gray-200 { border-color: var(--color-border) !important; }
+[data-mode="dark"] .border-gray-100 { border-color: var(--color-border) !important; }
+[data-mode="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border) !important; }
+[data-mode="dark"] .shadow-sm { box-shadow: none !important; }
+
+/* Dark mode disabled button override */
+[data-mode="dark"] .p-button:disabled, [data-mode="dark"] .p-button.p-disabled {
+  background: var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+  border-color: var(--color-border) !important;
+}
