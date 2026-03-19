@@ -8,7 +8,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, Building, Users, Layers, CreditCard, Palette, Upload, Save } from 'lucide-angular';
+import { LucideAngularModule, Building2, Users, Layers, CreditCard, Palette, Upload, Save } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService, PlatformConfig } from '../../core/services/config.service';
@@ -252,9 +252,9 @@ export class SettingsComponent implements OnInit {
   loading = true;
   saving = false;
   form = { name: '', address: '', vat: 20, margin: 20, contingency: 5 };
-  readonly icons = { Building, Users, Layers, CreditCard, Palette, Upload, Save };
+  readonly icons = { Building2, Users, Layers, CreditCard, Palette, Upload, Save };
   tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
-  tabIcons = ['building', 'users', 'layers', 'credit-card', 'palette'];
+  tabIcons = ['building-2', 'users', 'layers', 'credit-card', 'palette'];
   activeTab = 0;
 
   appearance: PlatformConfig & {

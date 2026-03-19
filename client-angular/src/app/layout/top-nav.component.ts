@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, Sun, Moon, Settings, Home } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { environment } from '../../environments/environment';
@@ -24,7 +24,7 @@ import { environment } from '../../environments/environment';
       </div>
       <div class="bp-nav-right">
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
-          <lucide-icon name="home" [size]="14"></lucide-icon> Home
+          <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
@@ -33,7 +33,7 @@ import { environment } from '../../environments/environment';
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <div class="bp-nav-avatar">{{ initials }}</div>
+        <div class="bp-nav-avatar"><lucide-icon name="user" [size]="14"></lucide-icon></div>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -93,7 +93,7 @@ import { environment } from '../../environments/environment';
   `]
 })
 export class TopNavComponent implements OnInit, OnDestroy {
-  readonly icons = { Sun, Moon, Settings, Home };
+  readonly icons = { Sun, Moon, Settings, House, User };
 
   logoFirst = 'The Ball';
   logoSecond = 'park';

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, Truck, Plus, CircleDot, Calendar, Building, BarChart3 } from 'lucide-angular';
+import { LucideAngularModule, Plus, CircleDot, CircleDashed, CircleCheck, Calendar, MapPin, Volleyball, FolderOpen, Heart, MessageCircle } from 'lucide-angular';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
@@ -22,11 +22,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       <div class="bp-hero" [style.text-align]="heroAlign">
         <div class="bp-hero-pills" [style.justify-content]="heroAlign === 'center' ? 'center' : 'flex-start'">
           <div class="bp-hero-pill" *ngIf="showUpcoming && activeProjects.length > 0">
-            <div class="bp-hero-pill-dot" style="background:#3B82F6;"></div>
+            <lucide-icon name="calendar" [size]="12" style="color:#3B82F6;"></lucide-icon>
             {{ activeProjects.length }} upcoming {{ activeProjects.length === 1 ? projectLabel.toLowerCase() : projectLabel.toLowerCase() + 's' }}
           </div>
           <div class="bp-hero-pill" *ngIf="showLocation && org?.city">
-            <div class="bp-hero-pill-dot" style="background:#EF4444;"></div>
+            <lucide-icon name="map-pin" [size]="12" style="color:#EF4444;"></lucide-icon>
             {{ org?.city }}
           </div>
         </div>
@@ -114,11 +114,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           </div>
 
           <!-- Saved suppliers -->
-          <div class="bp-saved-suppliers-title">Saved suppliers</div>
+          <div class="bp-saved-suppliers-title"><lucide-icon name="heart" [size]="11" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Saved suppliers</div>
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
           <div *ngFor="let s of suppliers.slice(0, 5)" class="bp-supplier-row">
             <div class="bp-supplier-icon">
-              <lucide-icon name="truck" [size]="14" style="color:var(--theme-accent);"></lucide-icon>
+              <lucide-icon name="heart" [size]="14" style="color:var(--theme-accent);"></lucide-icon>
             </div>
             <div class="bp-supplier-info">
               <div class="bp-supplier-name">{{ s.name }}</div>
@@ -236,7 +236,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  readonly icons = { Truck, Plus, CircleDot, Calendar, Building, BarChart3 };
+  readonly icons = { Plus, CircleDot, CircleDashed, CircleCheck, Calendar, MapPin, Volleyball, FolderOpen, Heart, MessageCircle };
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
