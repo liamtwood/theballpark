@@ -10,11 +10,12 @@ import { ConfigService } from '../../core/services/config.service';
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
+import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent, StatCardComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -52,15 +53,18 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
             <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New {{ projectLabel }}</a>
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
-          <div *ngFor="let p of activeProjects" class="bp-project-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-project-card-top">
-              <span class="bp-project-name">{{ p.name }}</span>
-              <span class="bp-badge bp-badge-active">{{ p.status_name || 'Active' }}</span>
+          <div *ngFor="let p of activeProjects" class="bp-card" [routerLink]="['/projects', p.id]">
+            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : ''" [class.bp-card-grad-active]="!p.cover_image_url && (p.status_name === 'active' || p.status_name === 'costing')" [class.bp-card-grad-draft]="!p.cover_image_url && p.status_name === 'draft'">
+              <div class="bp-card-img-hover" (click)="openUploadPanel($event, p)"><lucide-icon name="pencil" [size]="16"></lucide-icon></div>
+              <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
+              <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
             </div>
-            <div class="bp-project-meta">
-              <lucide-icon name="circle-dot" [size]="10" style="color:#00B84A;"></lucide-icon>
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) : '' }}
+            <div class="bp-card-body">
+              <div class="bp-card-row1"><span class="bp-card-name">{{ p.name }}</span><span class="bp-badge-new" [ngClass]="badgeClass(p.status_name)">{{ p.status_name || 'Active' }}</span></div>
+              <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' · ' + p.stand_width_m + '×' + p.stand_depth_m + 'm' : '' }}</div>
+              <div class="bp-card-row3" *ngIf="p.total_client_cost">Est. {{ fmtCurrency(p.total_client_cost) }}</div>
             </div>
+            <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
           </div>
 
           <!-- Completed projects -->
@@ -69,13 +73,15 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
               <span class="bp-section-title">Completed {{ projectLabel }}s</span>
             </div>
           </div>
-          <div *ngFor="let p of completedProjects" class="bp-project-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-project-card-top">
-              <span class="bp-project-name">{{ p.name }}</span>
-              <span class="bp-badge bp-badge-closed">{{ p.status_name || 'Closed' }}</span>
+          <div *ngFor="let p of completedProjects" class="bp-card" [routerLink]="['/projects', p.id]">
+            <div class="bp-card-img bp-card-grad-closed" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : ''">
+              <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
+              <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
             </div>
-            <div class="bp-project-meta">
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) + ' final' : '' }}
+            <div class="bp-card-body">
+              <div class="bp-card-row1"><span class="bp-card-name">{{ p.name }}</span><span class="bp-badge-new bp-badge-closed-new">{{ p.status_name || 'Closed' }}</span></div>
+              <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
+              <div class="bp-card-row3" *ngIf="p.total_client_cost">{{ fmtCurrency(p.total_client_cost) }} final</div>
             </div>
           </div>
         </div>
@@ -153,22 +159,45 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
     }
     .bp-section-action:hover { text-decoration: underline; }
     .bp-section-spacer { margin-top: 24px; }
-    .bp-project-card {
-      background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 10px; padding: 16px 18px; margin-bottom: 10px;
-      cursor: pointer; transition: border-color 0.15s;
+    .bp-card {
+      display: flex; border: 0.5px solid var(--color-border); border-radius: 10px;
+      overflow: hidden; margin-bottom: 10px; cursor: pointer;
+      background: var(--color-surface); transition: border-color 0.15s; position: relative;
     }
-    .bp-project-card:hover { border-color: #ccc; }
-    .bp-project-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .bp-project-name { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
-    .bp-project-meta {
-      font-size: var(--text-sm); color: var(--color-text-muted);
-      display: flex; align-items: center; gap: 5px;
+    .bp-card:hover { border-color: #ccc; }
+    .bp-card-img {
+      width: 160px; flex-shrink: 0; position: relative;
+      background-size: cover; background-position: center;
     }
-    .bp-project-meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #00B84A; }
-    .bp-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; text-transform: capitalize; }
-    .bp-badge-active { background: var(--theme-bg); color: var(--theme-text); }
-    .bp-badge-closed { background: #F3F4F6; color: #9CA3AF; }
+    .bp-card-grad-active { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-card-grad-draft { background: linear-gradient(160deg, #1a4a2e, #0d2b1a); }
+    .bp-card-grad-closed { background: linear-gradient(160deg, #2a2a2a, #1a1a1a); }
+    .bp-card-img-hover {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; opacity: 0; transition: opacity 0.2s; cursor: pointer;
+    }
+    .bp-card:hover .bp-card-img-hover { opacity: 1; }
+    .bp-card-logo {
+      position: absolute; bottom: 8px; left: 8px;
+      width: 28px; height: 28px; border-radius: 5px;
+      background: #fff; background-size: contain; background-position: center; background-repeat: no-repeat;
+      border: 0.5px solid rgba(0,0,0,0.1);
+    }
+    .bp-card-logo-text {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--color-text-secondary);
+    }
+    .bp-card-body { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .bp-card-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
+    .bp-card-name { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-card-row2 { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 2px; }
+    .bp-card-row3 { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .bp-badge-new { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; white-space: nowrap; flex-shrink: 0; }
+    .bp-badge-costing { background: #DBEAFE; color: #1E40AF; }
+    .bp-badge-active-new { background: #D1FAE5; color: #065F46; }
+    .bp-badge-draft-new { background: #FEF3C7; color: #92400E; }
+    .bp-badge-closed-new { background: #F3F4F6; color: #9CA3AF; }
     .bp-cta-btn {
       display: flex; align-items: center; justify-content: center; gap: 6px;
       width: 100%;
@@ -242,7 +271,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
   ) {}
 
+  uploadPanelProjectId = '';
+
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
+
+  clientInitials(name: string): string {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  badgeClass(status: string | undefined): string {
+    switch (status) {
+      case 'costing': return 'bp-badge-costing';
+      case 'active': return 'bp-badge-active-new';
+      case 'draft': return 'bp-badge-draft-new';
+      default: return 'bp-badge-closed-new';
+    }
+  }
+
+  openUploadPanel(event: MouseEvent, project: Project) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.uploadPanelProjectId = this.uploadPanelProjectId === project.id ? '' : project.id;
+  }
+
+  onImagesUpdated(project: Project, urls: { coverUrl: string; logoUrl: string }) {
+    if (urls.coverUrl) project.cover_image_url = urls.coverUrl;
+    if (urls.logoUrl) project.client_logo_url = urls.logoUrl;
+    this.uploadPanelProjectId = '';
+    this.cdr.detectChanges();
+  }
 
   ngOnInit() {
     this.daysUntilReset = ConfigService.daysUntilReset();

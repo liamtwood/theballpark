@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { devOnlyGuard } from './core/guards/dev-only.guard';
 
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
@@ -10,6 +11,6 @@ export const routes: Routes = [
   { path: 'clients/:id', loadComponent: () => import('./features/clients/pages/client-detail/client-detail.component').then(m => m.ClientDetailComponent) },
   { path: 'settings', loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent) },
   { path: 'about', loadComponent: () => import('./features/about/about.component').then(m => m.AboutComponent) },
-  { path: 'test-images', loadComponent: () => import('./shared/components/image-test/image-test.component').then(m => m.ImageTestComponent) },
+  { path: 'test-images', loadComponent: () => import('./shared/components/image-test/image-test.component').then(m => m.ImageTestComponent), canActivate: [devOnlyGuard] },
   { path: '**', redirectTo: '' },
 ];
