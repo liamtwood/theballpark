@@ -21,6 +21,7 @@ import { LucideAngularModule } from 'lucide-angular';
     .bp-stat-label {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;
+      display: flex; align-items: center; gap: 4px;
     }
     .bp-stat-label.themed { color: var(--theme-accent); }
     .bp-stat-number { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1; margin-bottom: 4px; }

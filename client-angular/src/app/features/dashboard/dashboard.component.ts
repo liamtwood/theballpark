@@ -149,6 +149,7 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
     .bp-section-action {
       font-size: var(--text-sm); color: var(--theme-accent); font-weight: 500;
       cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 4px;
     }
     .bp-section-action:hover { text-decoration: underline; }
     .bp-section-spacer { margin-top: 24px; }
@@ -169,13 +170,14 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
     .bp-badge-active { background: var(--theme-bg); color: var(--theme-text); }
     .bp-badge-closed { background: #F3F4F6; color: #9CA3AF; }
     .bp-cta-btn {
-      display: block; width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%;
       background: var(--theme-bg); color: var(--theme-text);
       border: 0.5px solid var(--theme-border);
       padding: 13px; border-radius: 8px;
       font-size: var(--text-md); font-weight: 600; cursor: pointer;
       font-family: var(--font-body); margin-bottom: 16px;
-      transition: all 0.2s ease; text-align: center; text-decoration: none;
+      transition: all 0.2s ease; text-decoration: none;
     }
     .bp-cta-btn:hover { background: var(--theme-accent); color: #fff; }
     .bp-credits-card {
@@ -192,6 +194,7 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
     .bp-saved-suppliers-title {
       font-size: 11px; font-weight: 600; color: var(--color-text-primary);
       text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 4px;
     }
     .bp-supplier-row {
       display: flex; align-items: center; gap: 10px;

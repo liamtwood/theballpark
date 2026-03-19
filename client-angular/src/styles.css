@@ -65,9 +65,18 @@ body {
   margin: 0;
 }
 
-/* Lucide icon custom element — must be inline so it sits
-   beside text in flex rows instead of stacking vertically */
-lucide-icon { display: inline-flex; }
+/* Lucide icon custom element — must be inline-flex so it sits
+   beside text in flex rows instead of stacking vertically.
+   The inner SVG also needs to not be display:block. */
+lucide-icon {
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+lucide-icon svg {
+  display: block;
+}
 
 /* ============================================
    GLOBAL THEME-AWARE BUTTONS (PrimeNG)

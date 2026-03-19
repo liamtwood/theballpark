@@ -209,6 +209,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       padding: 10px 20px; font-size: var(--text-sm); font-weight: 500;
       color: var(--color-text-muted); background: none; border: none;
       border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s;
+      display: inline-flex; align-items: center; gap: 4px;
     }
     .bp-hero-tab:hover { color: var(--color-text-primary); }
     .bp-hero-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
