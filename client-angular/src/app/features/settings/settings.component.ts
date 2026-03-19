@@ -21,23 +21,22 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
   imports: [CommonModule, FormsModule, LucideAngularModule, TabViewModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, ToastModule, LoadingSpinnerComponent],
   providers: [MessageService],
   template: `
-    <app-loading *ngIf="loading"></app-loading>
-    <ng-container *ngIf="!loading">
-
-      <!-- HERO BANNER with tabs inside -->
-      <div class="bp-hero">
-        <h1 class="bp-hero-org-name">{{ org?.name || 'Organisation' }}</h1>
-        <p class="bp-hero-page-label">SETTINGS</p>
-        <div class="bp-hero-tabs">
-          <button *ngFor="let tab of tabs; let i = index"
-            class="bp-hero-tab" [class.active]="activeTab === i"
-            (click)="activeTab = i">
-              <lucide-icon [name]="tabIcons[i]" [size]="12" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon>{{ tab }}
-            </button>
-        </div>
+    <!-- HERO BANNER with tabs — always visible -->
+    <div class="bp-hero">
+      <h1 class="bp-hero-org-name">{{ org?.name || 'Organisation' }}</h1>
+      <p class="bp-hero-page-label">SETTINGS</p>
+      <div class="bp-hero-tabs">
+        <button *ngFor="let tab of tabs; let i = index"
+          class="bp-hero-tab" [class.active]="activeTab === i"
+          (click)="activeTab = i">
+            <lucide-icon [name]="tabIcons[i]" [size]="12" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon>{{ tab }}
+          </button>
       </div>
+    </div>
 
-      <div class="bp-content">
+    <div class="bp-content">
+      <app-loading *ngIf="loading"></app-loading>
+      <ng-container *ngIf="!loading">
 
         <!-- ORGANISATION -->
         <div *ngIf="activeTab === 0" class="max-w-2xl space-y-5">
@@ -187,8 +186,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             </div>
           </div>
         </div>
-      </div>
-    </ng-container>
+      </ng-container>
+    </div>
     <p-toast></p-toast>
   `,
   styles: [`
