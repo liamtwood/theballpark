@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, Truck } from 'lucide-angular';
+import { LucideAngularModule, Truck, Plus, CircleDot, Calendar, Building, BarChart3 } from 'lucide-angular';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
@@ -65,7 +65,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <!-- Active projects -->
           <div class="bp-section-header">
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
-            <a routerLink="/projects/new" class="bp-section-action">+ New {{ projectLabel }}</a>
+            <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New {{ projectLabel }}</a>
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
           <div *ngFor="let p of activeProjects" class="bp-project-card" [routerLink]="['/projects', p.id]">
@@ -74,7 +74,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
               <span class="bp-badge bp-badge-active">{{ p.status_name || 'Active' }}</span>
             </div>
             <div class="bp-project-meta">
-              <div class="bp-project-meta-dot"></div>
+              <lucide-icon name="circle-dot" [size]="10" style="color:#00B84A;"></lucide-icon>
               {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) : '' }}
             </div>
           </div>
@@ -98,7 +98,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
         <!-- RIGHT COLUMN -->
         <div class="bp-body-right">
-          <a routerLink="/projects/new" class="bp-cta-btn">+ Start new {{ projectLabel }}</a>
+          <a routerLink="/projects/new" class="bp-cta-btn"><lucide-icon name="plus" [size]="14" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Start new {{ projectLabel }}</a>
 
           <!-- Credits card -->
           <div class="bp-credits-card">
@@ -236,7 +236,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  readonly icons = { Truck };
+  readonly icons = { Truck, Plus, CircleDot, Calendar, Building, BarChart3 };
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];

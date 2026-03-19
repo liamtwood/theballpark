@@ -8,6 +8,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule, Building, Users, Layers, CreditCard, Palette, Upload, Save } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService, PlatformConfig } from '../../core/services/config.service';
@@ -17,7 +18,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, TabViewModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, ToastModule, LoadingSpinnerComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, TabViewModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, ToastModule, LoadingSpinnerComponent],
   providers: [MessageService],
   template: `
     <app-loading *ngIf="loading"></app-loading>
@@ -30,7 +31,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
         <div class="bp-hero-tabs">
           <button *ngFor="let tab of tabs; let i = index"
             class="bp-hero-tab" [class.active]="activeTab === i"
-            (click)="activeTab = i">{{ tab }}</button>
+            (click)="activeTab = i">
+              <lucide-icon [name]="tabIcons[i]" [size]="12" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon>{{ tab }}
+            </button>
         </div>
       </div>
 
@@ -46,8 +49,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
               </div>
               <div *ngIf="!logoPreview" class="bp-logo-placeholder">No logo</div>
               <div>
-                <label class="bp-theme-btn" style="display:inline-block;cursor:pointer;padding:6px 14px;font-size:var(--text-sm);">
-                  Upload Logo
+                <label class="btn-primary" style="display:inline-flex;cursor:pointer;padding:6px 14px;font-size:var(--text-sm);">
+                  <lucide-icon name="upload" [size]="12"></lucide-icon> Upload Logo
                   <input type="file" accept="image/*" (change)="onLogoUpload($event)" style="display:none;"/>
                 </label>
                 <button *ngIf="logoPreview" (click)="removeLogo()" style="margin-left:8px;font-size:var(--text-sm);color:var(--color-text-muted);background:none;border:none;cursor:pointer;text-decoration:underline;">Remove</button>
@@ -61,7 +64,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <div><label class="bp-label">Default Margin %</label><p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full"></p-inputNumber></div>
             <div><label class="bp-label">Default Contingency %</label><p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full"></p-inputNumber></div>
           </div>
-          <button class="bp-theme-btn" style="width:100%;" [disabled]="saving" (click)="save()">{{ saving ? 'Saving...' : 'Save changes' }}</button>
+          <button class="btn-primary" style="width:100%;" [disabled]="saving" (click)="save()"><lucide-icon name="save" [size]="14"></lucide-icon> {{ saving ? 'Saving...' : 'Save changes' }}</button>
         </div>
 
         <!-- TEAM -->
@@ -151,7 +154,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
                 <div class="bp-toggle-row"><span>Stats bar</span><label class="bp-switch"><input type="checkbox" [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"><span class="bp-switch-slider"></span></label></div>
               </div>
             </div>
-            <button (click)="saveAppearance()" class="bp-theme-btn" style="width:100%;">Save Appearance</button>
+            <button (click)="saveAppearance()" class="btn-primary" style="width:100%;justify-content:center;"><lucide-icon name="save" [size]="14"></lucide-icon> Save Appearance</button>
           </div>
 
           <!-- LIVE PREVIEW -->
@@ -249,7 +252,9 @@ export class SettingsComponent implements OnInit {
   loading = true;
   saving = false;
   form = { name: '', address: '', vat: 20, margin: 20, contingency: 5 };
+  readonly icons = { Building, Users, Layers, CreditCard, Palette, Upload, Save };
   tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
+  tabIcons = ['building', 'users', 'layers', 'credit-card', 'palette'];
   activeTab = 0;
 
   appearance: PlatformConfig & {
