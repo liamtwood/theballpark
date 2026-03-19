@@ -65,6 +65,10 @@ body {
   margin: 0;
 }
 
+/* Lucide icon custom element — must be inline so it sits
+   beside text in flex rows instead of stacking vertically */
+lucide-icon { display: inline-flex; }
+
 /* ============================================
    GLOBAL THEME-AWARE BUTTONS (PrimeNG)
    Default: theme-bg background, theme-text colour
