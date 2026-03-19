@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
+import { LucideAngularModule, ArrowLeft, Sparkles } from 'lucide-angular';
 import { ProjectService } from '../../../../core/services/project.service';
 import { EstimateService } from '../../../../core/services/estimate.service';
 import { MessageService } from '../../../../core/services/message.service';
@@ -21,14 +22,14 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 @Component({
   selector: 'app-project-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TabViewModule, TableModule, ButtonModule, DialogModule, InputTextModule, InputTextareaModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LucideAngularModule, TabViewModule, TableModule, ButtonModule, DialogModule, InputTextModule, InputTextareaModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading && !project" class="text-center py-16"><p class="text-gray-500">Project not found.</p>
-      <a routerLink="/projects" class="text-brand-600 text-sm mt-2 inline-block">Back to Projects</a></div>
+      <a routerLink="/projects" style="color:var(--theme-accent);font-size:var(--text-sm);" class="mt-2 inline-block">Back to Projects</a></div>
     <div *ngIf="!loading && project">
       <div class="mb-6">
-        <a routerLink="/projects" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"><i class="pi pi-arrow-left text-xs"></i> Back to Projects</a>
+        <a routerLink="/projects" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"><lucide-icon name="arrow-left" [size]="12"></lucide-icon> Back to Projects</a>
         <div class="flex items-start justify-between">
           <div><h1 class="text-2xl font-bold text-gray-900">{{project.event_name||project.name}}</h1>
             <div class="flex items-center gap-3 mt-2 text-sm text-gray-500">
@@ -151,6 +152,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   `
 })
 export class ProjectDetailComponent implements OnInit {
+  readonly icons = { ArrowLeft, Sparkles };
   project: Project | null = null;
   cats: ProjectCategory[] = [];
   ests: Estimate[] = [];

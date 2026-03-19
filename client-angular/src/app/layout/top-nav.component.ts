@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { LucideAngularModule, Sun, Moon, Plus, Settings, Home } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { environment } from '../../environments/environment';
@@ -9,22 +10,31 @@ import { environment } from '../../environments/environment';
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule],
   template: `
     <nav class="bp-nav">
       <div class="bp-nav-left">
         <a routerLink="/" class="bp-nav-logo">
-          <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
+          <img *ngIf="logoUrl" [src]="logoUrl" alt="Logo" class="bp-nav-logo-img"/>
+          <ng-container *ngIf="!logoUrl">
+            <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
+          </ng-container>
         </a>
         <span class="bp-nav-tagline">{{ tagline }}</span>
       </div>
       <div class="bp-nav-right">
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">Home</a>
-        <a routerLink="/projects/new" class="bp-nav-link">New {{ projectLabel }}</a>
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
+          <lucide-icon name="home" [size]="14"></lucide-icon> Home
+        </a>
+        <a routerLink="/projects/new" class="bp-nav-link">
+          <lucide-icon name="plus" [size]="14"></lucide-icon> New {{ projectLabel }}
+        </a>
         <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
-        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">Settings</a>
+        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+        </a>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-          {{ isDark ? '\u263E' : '\u2600\uFE0F' }}
+          <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
         <div class="bp-nav-avatar">{{ initials }}</div>
       </div>
@@ -38,8 +48,9 @@ import { environment } from '../../environments/environment';
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
       position: sticky; top: 0; z-index: 100;
     }
-    .bp-nav-left { display: flex; align-items: baseline; }
+    .bp-nav-left { display: flex; align-items: center; }
     .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; }
+    .bp-nav-logo-img { height: 28px; width: auto; object-fit: contain; }
     .bp-logo-text {
       font-family: var(--font-display); font-size: var(--text-lg); font-weight: 400;
       color: var(--color-text-primary); letter-spacing: -0.01em;
@@ -57,6 +68,7 @@ import { environment } from '../../environments/environment';
     .bp-nav-link {
       font-size: var(--text-base); color: var(--color-text-muted);
       cursor: pointer; text-decoration: none; transition: color 0.15s;
+      display: flex; align-items: center; gap: 5px;
     }
     .bp-nav-link:hover { color: var(--color-text-primary); }
     .bp-nav-link.active { color: var(--color-text-primary); font-weight: 500; }
@@ -69,7 +81,7 @@ import { environment } from '../../environments/environment';
       width: 30px; height: 30px; border-radius: 50%;
       border: 0.5px solid var(--color-border); background: var(--color-surface);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
+      color: var(--color-text-secondary);
     }
     .bp-nav-avatar {
       width: 30px; height: 30px; border-radius: 50%;
@@ -84,8 +96,11 @@ import { environment } from '../../environments/environment';
   `]
 })
 export class TopNavComponent implements OnInit, OnDestroy {
+  readonly icons = { Sun, Moon, Plus, Settings, Home };
+
   logoFirst = 'The Ball';
   logoSecond = 'park';
+  logoUrl = '';
   tagline = 'Exhibition Costing';
   projectLabel = 'Event';
   creditLabel = 'Ball';
@@ -107,6 +122,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       this.projectLabel = this.configService.projectLabel;
       this.creditLabel = this.configService.creditLabel;
       this.isDark = this.configService.isDarkMode;
+      this.logoUrl = this.configService.logoUrl;
     });
 
     this.orgService.getBallsBalance().subscribe({

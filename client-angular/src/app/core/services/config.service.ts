@@ -22,6 +22,7 @@ export interface PlatformConfig {
   showLocation?: boolean;
   showUpcoming?: boolean;
   showStats?: boolean;
+  logoUrl?: string;
 }
 
 const THEME_PRESETS: Record<string, ThemePreset> = {
@@ -62,6 +63,7 @@ export class ConfigService {
   get tagline(): string { return this.config.tagline; }
   get projectLabel(): string { return this.config.projectLabel; }
   get creditLabel(): string { return this.config.creditLabel; }
+  get logoUrl(): string { return this.config.logoUrl || ''; }
 
   get isDarkMode(): boolean {
     if (this.config.mode === 'system') {

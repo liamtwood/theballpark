@@ -35,6 +35,24 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
         <!-- ORGANISATION TAB -->
         <p-tabPanel header="Organisation">
           <div class="max-w-2xl mt-4 space-y-5">
+            <div>
+              <label class="bp-label">Marketplace Logo</label>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:4px;">
+                <div *ngIf="logoPreview" style="width:60px;height:60px;border-radius:8px;border:0.5px solid var(--color-border);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                  <img [src]="logoPreview" alt="Logo" style="max-width:100%;max-height:100%;object-fit:contain;"/>
+                </div>
+                <div *ngIf="!logoPreview" style="width:60px;height:60px;border-radius:8px;border:0.5px solid var(--color-border);background:var(--theme-bg);display:flex;align-items:center;justify-content:center;font-size:var(--text-sm);color:var(--color-text-muted);">
+                  No logo
+                </div>
+                <div>
+                  <label class="bp-action-btn" style="display:inline-block;cursor:pointer;padding:6px 14px;font-size:var(--text-sm);">
+                    Upload Logo
+                    <input type="file" accept="image/*" (change)="onLogoUpload($event)" style="display:none;"/>
+                  </label>
+                  <button *ngIf="logoPreview" (click)="removeLogo()" style="margin-left:8px;font-size:var(--text-sm);color:var(--color-text-muted);background:none;border:none;cursor:pointer;text-decoration:underline;">Remove</button>
+                </div>
+              </div>
+            </div>
             <div><label class="bp-label">Organisation Name</label><input pInputText [(ngModel)]="form.name" class="w-full"/></div>
             <div><label class="bp-label">Address</label><textarea pInputTextarea [(ngModel)]="form.address" [rows]="2" class="w-full"></textarea></div>
             <div class="grid grid-cols-3 gap-4">
@@ -388,6 +406,8 @@ export class SettingsComponent implements OnInit {
   previewBg = '#F5F0E8';
   previewText = '#92400E';
 
+  logoPreview = '';
+
   constructor(
     private orgSvc: OrgService,
     private catSvc: CategoryService,
@@ -407,6 +427,7 @@ export class SettingsComponent implements OnInit {
       showUpcoming: current.showUpcoming !== false,
       showStats: current.showStats !== false,
     };
+    this.logoPreview = this.configService.logoUrl;
     this.previewUpdate();
 
     Promise.all([
@@ -461,6 +482,25 @@ export class SettingsComponent implements OnInit {
     else if (spaceBefore > 0) split = spaceBefore;
     this.previewLogoFirst = name.slice(0, split).trimEnd();
     this.previewLogoSecond = name.slice(split).trimStart();
+  }
+
+  onLogoUpload(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      this.logoPreview = base64;
+      this.configService.update({ logoUrl: base64 });
+      this.msg.add({ severity: 'success', summary: 'Logo uploaded' });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeLogo() {
+    this.logoPreview = '';
+    this.configService.update({ logoUrl: '' });
+    this.msg.add({ severity: 'info', summary: 'Logo removed' });
   }
 
   saveAppearance() {

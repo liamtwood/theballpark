@@ -11,6 +11,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { MessageModule } from 'primeng/message';
 import { MenuItem } from 'primeng/api';
+import { LucideAngularModule, Sparkles } from 'lucide-angular';
 import { ProjectService } from '../../../../core/services/project.service';
 import { ClientService } from '../../../../core/services/client.service';
 import { AiService } from '../../../../core/services/ai.service';
@@ -19,7 +20,7 @@ import { Client, ParsedBrief } from '../../../../core/models';
 @Component({
   selector: 'app-project-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, StepsModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, DropdownModule, InputSwitchModule, MessageModule],
+  imports: [CommonModule, FormsModule, RouterModule, LucideAngularModule, StepsModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, DropdownModule, InputSwitchModule, MessageModule],
   template: `
     <div class="max-w-3xl mx-auto">
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Create New Project</h1>
@@ -94,7 +95,7 @@ import { Client, ParsedBrief } from '../../../../core/models';
         <textarea pInputTextarea [(ngModel)]="f.raw_brief_text" [rows]="8" class="w-full mb-4" placeholder="Paste the client's brief here..."></textarea>
         <p-button icon="pi pi-sparkles" label="{{parsing?'Parsing...':'Parse with AI'}}" severity="help" [disabled]="parsing||!f.raw_brief_text" (click)="parseBrief()" [loading]="parsing"></p-button>
         <div *ngIf="parsed" class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-6">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4"><i class="pi pi-sparkles text-purple-600 mr-2"></i>Parsed Results</h3>
+          <h3 class="text-sm font-semibold text-gray-900 mb-4"><lucide-icon name="sparkles" [size]="14" style="color:var(--theme-accent);display:inline;vertical-align:middle;margin-right:6px;"></lucide-icon>Parsed Results</h3>
           <div *ngIf="parsed.suggested_categories?.length" class="mb-3">
             <label class="text-xs font-medium text-gray-500 uppercase">Categories</label>
             <div class="flex flex-wrap gap-2 mt-1">
@@ -131,6 +132,7 @@ import { Client, ParsedBrief } from '../../../../core/models';
   `
 })
 export class ProjectCreateComponent implements OnInit {
+  readonly icons = { Sparkles };
   step = 0;
   submitting = false;
   parsing = false;
