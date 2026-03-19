@@ -37,7 +37,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       <!-- STATS BAR -->
       <div class="bp-stats-bar" *ngIf="showStats">
         <div class="bp-stat-cell">
-          <div class="bp-stat-label themed">{{ creditLabel }}s remaining</div>
+          <div class="bp-stat-label themed"><lucide-icon name="volleyball" [size]="10" style="display:inline;vertical-align:middle;margin-right:3px;"></lucide-icon>{{ creditLabel }}s remaining</div>
           <div class="bp-stat-number">{{ org?.balls_balance ?? 0 }}</div>
           <div class="bp-stat-sub themed">resets in {{ daysUntilReset }} days</div>
         </div>

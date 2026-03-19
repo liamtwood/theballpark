@@ -33,7 +33,7 @@ import { environment } from '../../environments/environment';
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <div class="bp-nav-avatar"><lucide-icon name="user" [size]="14"></lucide-icon></div>
+        <div class="bp-nav-avatar">{{ initials }}</div>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -75,16 +75,16 @@ import { environment } from '../../environments/environment';
       padding: 5px 14px; border-radius: 20px; cursor: pointer; white-space: nowrap;
     }
     .bp-mode-btn {
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 0.5px solid var(--color-border); background: transparent;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       color: var(--color-text-secondary);
     }
     .bp-nav-avatar {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--color-black); color: #fff;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #1E1E1E; color: #ffffff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600; flex-shrink: 0;
+      font-size: 12px; font-weight: 600; flex-shrink: 0;
     }
     .bp-nav-version {
       position: fixed; bottom: 8px; right: 12px;
