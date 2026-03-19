@@ -9,7 +9,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ClientService } from '../../../../core/services/client.service';
-import { Client } from '../../../../core/models';
+import { Client } from '../../../../models';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 

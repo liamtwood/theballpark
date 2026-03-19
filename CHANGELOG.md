@@ -2,6 +2,32 @@
 
 All notable changes to The Ballpark are documented here.
 
+## [1.1.1] - 2026-03-19
+
+### Fixed
+- **Change detection**: ConfigService now emits on BehaviorSubject after loading from localStorage. Injected ChangeDetectorRef in dashboard, settings, and top-nav to force repaint after async data loads. Pages now render immediately on first load.
+- **Amber default theme**: ConfigService validates `themeName` against preset list after loading from localStorage. Falls back to amber if missing or invalid.
+- **Lucide icons**: Registered all icons globally via `LUCIDE_ICONS` injection token and `LucideIconProvider` in `app.config.ts`. Standalone components cannot use `LucideAngularModule.pick()` (returns ModuleWithProviders). Icons now render across all components.
+
+### Added
+- **Avatar component** (`shared/components/avatar/`): Reusable initials avatar with `name` and `size` inputs. Extracts logic previously inline in top-nav.
+- **Stat card component** (`shared/components/stat-card/`): Reusable stats bar cell with `label`, `value`, `sub`, `themed`, and `icon` inputs. Extracts repeating pattern from dashboard.
+- **Models folder** (`models/`): Split single 228-line barrel file into 12 individual model files (org, project, user, client, config, etc.) with barrel re-export.
+- **ARCHITECTURE.md**: Folder structure, key services, design decisions, patterns guide, anti-patterns.
+- **DEPLOYMENT.md**: Local setup, branch strategy, environment variables, Vercel/Railway configuration.
+
+### Changed
+- Moved models from `core/models/` to top-level `models/` folder. Updated all 17 import sites.
+- Moved `ThemePreset` and `PlatformConfig` interfaces from `config.service.ts` to `models/config.model.ts`.
+- Root `package.json` scripts cleaned up: removed stale `client/` references, simplified to `dev:server` and `dev:client`.
+- Avatar in top-nav now uses shared `AvatarComponent` instead of inline div.
+- Stats bar in dashboard now uses shared `StatCardComponent` instead of inline cells.
+
+### Removed
+- Legacy React client (`client/` folder) — superseded by Angular app.
+- Dead `SidebarComponent` — unused PrimeNG-based sidebar from initial scaffolding.
+- Empty `app.component.html` and `app.component.css` (template and styles are inline).
+
 ## [1.1.0] - 2026-03-19
 
 ### Added

@@ -11,8 +11,8 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule, Building2, Users, Layers, CreditCard, Palette, Upload, Save } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
-import { ConfigService, PlatformConfig } from '../../core/services/config.service';
-import { Org, User, Category } from '../../core/models';
+import { ConfigService } from '../../core/services/config.service';
+import { Org, User, Category, PlatformConfig } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({

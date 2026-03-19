@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Org, Item } from '../models';
+import { Org, Item } from '../../models';
 
 @Injectable({ providedIn: 'root' })
 export class SupplierService {

@@ -7,13 +7,14 @@ import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
-import { Project, Org } from '../../core/models';
+import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent, StatCardComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -36,27 +37,10 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
       <!-- STATS BAR -->
       <div class="bp-stats-bar" *ngIf="showStats">
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label themed"><lucide-icon name="volleyball" [size]="10" style="display:inline;vertical-align:middle;margin-right:3px;"></lucide-icon>{{ creditLabel }}s remaining</div>
-          <div class="bp-stat-number">{{ org?.balls_balance ?? 0 }}</div>
-          <div class="bp-stat-sub themed">resets in {{ daysUntilReset }} days</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Active {{ projectLabel }}s</div>
-          <div class="bp-stat-number">{{ activeProjects.length }}</div>
-          <div class="bp-stat-sub" *ngIf="activeProjects.length > 0">{{ activeProjects[0].client_name || activeProjects[0].name }}</div>
-          <div class="bp-stat-sub" *ngIf="activeProjects.length === 0">none yet</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Saved suppliers</div>
-          <div class="bp-stat-number">{{ supplierCount }}</div>
-          <div class="bp-stat-sub">across categories</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Quotes in progress</div>
-          <div class="bp-stat-number">0</div>
-          <div class="bp-stat-sub">awaiting response</div>
-        </div>
+        <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'" [themed]="true" icon="volleyball"></app-stat-card>
+        <app-stat-card [label]="'Active ' + projectLabel + 's'" [value]="activeProjects.length" [sub]="activeProjects.length > 0 ? (activeProjects[0].client_name || activeProjects[0].name) : 'none yet'"></app-stat-card>
+        <app-stat-card label="Saved suppliers" [value]="supplierCount" sub="across categories"></app-stat-card>
+        <app-stat-card label="Quotes in progress" [value]="0" sub="awaiting response"></app-stat-card>
       </div>
 
       <!-- TWO-COLUMN BODY -->
@@ -153,16 +137,6 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       display: grid; grid-template-columns: repeat(4, 1fr);
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
     }
-    .bp-stat-cell { padding: 18px 24px; border-right: 0.5px solid var(--color-border); }
-    .bp-stat-cell:last-child { border-right: none; }
-    .bp-stat-label {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;
-    }
-    .bp-stat-label.themed { color: var(--theme-accent); }
-    .bp-stat-number { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1; margin-bottom: 4px; }
-    .bp-stat-sub { font-size: 11px; color: var(--color-text-muted); }
-    .bp-stat-sub.themed { color: var(--theme-accent); }
     .bp-body {
       display: grid; grid-template-columns: 1fr 320px;
       background: var(--color-bg);

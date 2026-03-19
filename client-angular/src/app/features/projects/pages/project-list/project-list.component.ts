@@ -9,7 +9,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ProjectService } from '../../../../core/services/project.service';
-import { Project } from '../../../../core/models';
+import { Project } from '../../../../models';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';

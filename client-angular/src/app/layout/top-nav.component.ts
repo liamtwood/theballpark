@@ -5,12 +5,13 @@ import { Subscription } from 'rxjs';
 import { LucideAngularModule, Sun, Moon, Settings, House, User } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
+import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, AvatarComponent],
   template: `
     <nav class="bp-nav">
       <div class="bp-nav-left">
@@ -33,7 +34,7 @@ import { environment } from '../../environments/environment';
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <div class="bp-nav-avatar">{{ initials }}</div>
+        <app-avatar [name]="orgName" [size]="32"></app-avatar>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -80,12 +81,6 @@ import { environment } from '../../environments/environment';
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       color: var(--color-text-secondary);
     }
-    .bp-nav-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #1E1E1E; color: #ffffff;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 600; flex-shrink: 0;
-    }
     .bp-nav-version {
       position: fixed; bottom: 8px; right: 12px;
       font-size: 10px; color: var(--color-text-muted); z-index: 50;
@@ -101,7 +96,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   tagline = 'Exhibition Costing';
   creditLabel = 'Ball';
   ballsBalance = 0;
-  initials = 'U';
+  orgName = '';
   isDark = false;
   version = environment.version;
 
@@ -129,7 +124,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.orgService.getCurrentOrg().subscribe({
       next: (org) => {
         if (org?.name) {
-          this.initials = org.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+          this.orgName = org.name;
         }
         this.cdr.detectChanges();
       },

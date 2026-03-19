@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, KeyValuePipe } from '@angular/common';
 import { LucideAngularModule, Truck, ChevronDown, ChevronRight, Package } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
-import { Org, Item } from '../../core/models';
+import { Org, Item } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';

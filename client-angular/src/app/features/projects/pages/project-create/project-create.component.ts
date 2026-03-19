@@ -15,7 +15,7 @@ import { LucideAngularModule, Sparkles } from 'lucide-angular';
 import { ProjectService } from '../../../../core/services/project.service';
 import { ClientService } from '../../../../core/services/client.service';
 import { AiService } from '../../../../core/services/ai.service';
-import { Client, ParsedBrief } from '../../../../core/models';
+import { Client, ParsedBrief } from '../../../../models';
 
 @Component({
   selector: 'app-project-create',
