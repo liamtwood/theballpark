@@ -51,12 +51,26 @@ client-angular/src/app/
 
 server/
   src/
-    index.js           Express entry point, route mounting, CORS
+    index.js           Express entry point, route mounting, CORS, error handler
     db/
-      pool.js          PostgreSQL connection pool
+      pool.js          PostgreSQL connection pool (env-driven SSL)
       migrate.js       Schema creation
       seed.js          Sample data
-    routes/            One file per entity (REST endpoints)
+    services/          Business logic layer (one file per domain)
+      project.service.js        Project CRUD + recalcTotals (single source)
+      org.service.js             Org CRUD + getCurrentAgency + suppliers
+      user.service.js            User CRUD + getByOrg
+      balls.service.js           Transactions with atomic balance updates
+      category.service.js        Category CRUD
+      client.service.js          Client CRUD
+      item.service.js            Item (catalogue) CRUD
+      project-category.service.js  Cost breakdown with derived field calc
+      estimate.service.js        Estimate CRUD + recalcTotal
+      estimate-item.service.js   Estimate items with cascading totals
+      message.service.js         Message CRUD
+      status.service.js          Status CRUD
+      ai.service.js              Claude API brief parsing
+    routes/            Thin controllers (one file per entity)
 ```
 
 ## Key Services

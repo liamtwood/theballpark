@@ -53,7 +53,21 @@ Create a `.env` file in the project root with these variables:
 ```
 DATABASE_URL=           # PostgreSQL connection string
 PORT=                   # Server port (default: 3001)
+NODE_ENV=development    # 'development' or 'production'
 ANTHROPIC_API_KEY=      # Claude API key for AI brief parsing
+ALLOWED_ORIGINS=http://localhost:4200  # Comma-separated CORS origins
+```
+
+### Railway environment variables (production)
+```
+NODE_ENV=production
+ALLOWED_ORIGINS=https://theballpark.ai,https://www.theballpark.ai
+```
+
+### Railway environment variables (preview)
+```
+NODE_ENV=production
+ALLOWED_ORIGINS=https://preview.theballpark.ai,http://localhost:4200
 ```
 
 Frontend environment files are in `client-angular/src/environments/`:
@@ -81,7 +95,7 @@ Environment-specific builds use `--configuration`:
 The Express backend deploys to Railway.
 
 - **Start command**: `cd server && node src/index.js`
-- **Environment variables**: Set `DATABASE_URL`, `PORT`, and `ANTHROPIC_API_KEY` in Railway dashboard
+- **Environment variables**: Set `DATABASE_URL`, `PORT`, `NODE_ENV`, `ANTHROPIC_API_KEY`, and `ALLOWED_ORIGINS` in Railway dashboard
 - **Health check**: `GET /` returns server status
 
 The PostgreSQL database is provisioned as a Railway service. The `DATABASE_URL` is automatically available.
