@@ -1,62 +1,46 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { LucideAngularModule, Plus, CircleDot, CircleDashed, CircleCheck, Calendar, MapPin, Volleyball, FolderOpen, Heart, MessageCircle } from 'lucide-angular';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
-import { Project, Org } from '../../core/models';
+import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { GbpPipe } from '../../shared/pipes/gbp.pipe';
+import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LoadingSpinnerComponent, GbpPipe],
+  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent, StatCardComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
       <!-- HERO BANNER -->
-      <div class="bp-hero">
-        <div class="bp-hero-pills">
-          <div class="bp-hero-pill" *ngIf="activeProjects.length > 0">
-            <div class="bp-hero-pill-dot" style="background:#3B82F6;"></div>
+      <div class="bp-hero" [style.text-align]="heroAlign">
+        <div class="bp-hero-pills" [style.justify-content]="heroAlign === 'center' ? 'center' : 'flex-start'">
+          <div class="bp-hero-pill" *ngIf="showUpcoming && activeProjects.length > 0">
+            <lucide-icon name="calendar" [size]="12" style="color:#3B82F6;"></lucide-icon>
             {{ activeProjects.length }} upcoming {{ activeProjects.length === 1 ? projectLabel.toLowerCase() : projectLabel.toLowerCase() + 's' }}
           </div>
-          <div class="bp-hero-pill" *ngIf="org?.city">
-            <div class="bp-hero-pill-dot" style="background:#EF4444;"></div>
+          <div class="bp-hero-pill" *ngIf="showLocation && org?.city">
+            <lucide-icon name="map-pin" [size]="12" style="color:#EF4444;"></lucide-icon>
             {{ org?.city }}
           </div>
         </div>
         <h1 class="bp-hero-org-name">{{ org?.name || 'My Organisation' }}</h1>
-        <p class="bp-hero-sub">{{ org?.type === 'agency' ? 'Agency account' : 'Supplier account' }}</p>
+        <p class="bp-hero-sub" *ngIf="showUserName">{{ userName }} &middot; {{ org?.type === 'agency' ? 'Agency account' : 'Supplier account' }}</p>
       </div>
 
       <!-- STATS BAR -->
-      <div class="bp-stats-bar">
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label themed">{{ creditLabel }}s remaining</div>
-          <div class="bp-stat-number">{{ org?.balls_balance ?? 0 }}</div>
-          <div class="bp-stat-sub themed">resets monthly</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Active {{ projectLabel }}s</div>
-          <div class="bp-stat-number">{{ activeProjects.length }}</div>
-          <div class="bp-stat-sub" *ngIf="activeProjects.length > 0">{{ activeProjects[0].client_name || activeProjects[0].name }}</div>
-          <div class="bp-stat-sub" *ngIf="activeProjects.length === 0">none yet</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Saved suppliers</div>
-          <div class="bp-stat-number">{{ supplierCount }}</div>
-          <div class="bp-stat-sub">across categories</div>
-        </div>
-        <div class="bp-stat-cell">
-          <div class="bp-stat-label">Total budget</div>
-          <div class="bp-stat-number">{{ totalBudgetShort }}</div>
-          <div class="bp-stat-sub">all {{ projectLabel.toLowerCase() }}s</div>
-        </div>
+      <div class="bp-stats-bar" *ngIf="showStats">
+        <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'" [themed]="true" icon="volleyball"></app-stat-card>
+        <app-stat-card [label]="'Active ' + projectLabel + 's'" [value]="activeProjects.length" [sub]="activeProjects.length > 0 ? (activeProjects[0].client_name || activeProjects[0].name) : 'none yet'"></app-stat-card>
+        <app-stat-card label="Saved suppliers" [value]="supplierCount" sub="across categories"></app-stat-card>
+        <app-stat-card label="Quotes in progress" [value]="0" sub="awaiting response"></app-stat-card>
       </div>
 
       <!-- TWO-COLUMN BODY -->
@@ -65,7 +49,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
           <!-- Active projects -->
           <div class="bp-section-header">
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
-            <a routerLink="/projects/new" class="bp-section-action">+ New {{ projectLabel }}</a>
+            <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New {{ projectLabel }}</a>
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
           <div *ngFor="let p of activeProjects" class="bp-project-card" [routerLink]="['/projects', p.id]">
@@ -74,12 +58,8 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
               <span class="bp-badge bp-badge-active">{{ p.status_name || 'Active' }}</span>
             </div>
             <div class="bp-project-meta">
-              <div class="bp-project-meta-dot"></div>
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}
-            </div>
-            <div class="bp-project-stats">
-              <span *ngIf="p.project_categories?.length">{{ p.project_categories?.length }} categories</span>
-              <span>{{ p.total_client_cost | gbp }}</span>
+              <lucide-icon name="circle-dot" [size]="10" style="color:#00B84A;"></lucide-icon>
+              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' \u00B7 ' + p.stand_width_m + '\u00D7' + p.stand_depth_m + 'm' : '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) : '' }}
             </div>
           </div>
 
@@ -95,17 +75,14 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
               <span class="bp-badge bp-badge-closed">{{ p.status_name || 'Closed' }}</span>
             </div>
             <div class="bp-project-meta">
-              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}
-            </div>
-            <div class="bp-project-stats">
-              <span>{{ p.total_client_cost | gbp }} final</span>
+              {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' \u00B7 ' : '' }}{{ p.event_date || '' }}{{ p.total_client_cost ? ' \u00B7 ' + fmtCurrency(p.total_client_cost) + ' final' : '' }}
             </div>
           </div>
         </div>
 
         <!-- RIGHT COLUMN -->
         <div class="bp-body-right">
-          <a routerLink="/projects/new" class="bp-cta-btn">+ Start new {{ projectLabel }}</a>
+          <a routerLink="/projects/new" class="bp-cta-btn"><lucide-icon name="plus" [size]="14" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Start new {{ projectLabel }}</a>
 
           <!-- Credits card -->
           <div class="bp-credits-card">
@@ -121,14 +98,17 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
           </div>
 
           <!-- Saved suppliers -->
-          <div class="bp-saved-suppliers-title">Saved suppliers</div>
+          <div class="bp-saved-suppliers-title"><lucide-icon name="heart" [size]="11" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Saved suppliers</div>
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
           <div *ngFor="let s of suppliers.slice(0, 5)" class="bp-supplier-row">
-            <div class="bp-supplier-icon">{{ s.icon || '\uD83C\uDFD7\uFE0F' }}</div>
-            <div>
-              <div class="bp-supplier-name">{{ s.name }}</div>
-              <div class="bp-supplier-meta">{{ s.city || 'Supplier' }}</div>
+            <div class="bp-supplier-icon">
+              <lucide-icon name="heart" [size]="14" style="color:var(--theme-accent);"></lucide-icon>
             </div>
+            <div class="bp-supplier-info">
+              <div class="bp-supplier-name">{{ s.name }}</div>
+              <div class="bp-supplier-meta">{{ s.category || 'Supplier' }} &middot; {{ s.city || 'UK' }}</div>
+            </div>
+            <div class="bp-supplier-price" *ngIf="s.price">from {{ s.price }}</div>
           </div>
         </div>
       </div>
@@ -136,7 +116,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     </ng-container>
   `,
   styles: [`
-    /* HERO */
     .bp-hero {
       background: var(--theme-bg); padding: 32px var(--section-pad) 28px;
       border-bottom: 0.5px solid var(--theme-border);
@@ -146,7 +125,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
       display: flex; align-items: center; gap: 5px;
       font-size: var(--text-sm); color: var(--color-text-secondary);
       background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 20px; padding: 4px 12px; cursor: pointer;
+      border-radius: 20px; padding: 4px 12px;
     }
     .bp-hero-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
     .bp-hero-org-name {
@@ -154,24 +133,10 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
       color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px;
     }
     .bp-hero-sub { font-size: var(--text-base); color: var(--color-text-muted); }
-
-    /* STATS BAR */
     .bp-stats-bar {
       display: grid; grid-template-columns: repeat(4, 1fr);
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
     }
-    .bp-stat-cell { padding: 18px 24px; border-right: 0.5px solid var(--color-border); }
-    .bp-stat-cell:last-child { border-right: none; }
-    .bp-stat-label {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;
-    }
-    .bp-stat-label.themed { color: var(--theme-accent); }
-    .bp-stat-number { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1; margin-bottom: 4px; }
-    .bp-stat-sub { font-size: 11px; color: var(--color-text-muted); }
-    .bp-stat-sub.themed { color: var(--theme-accent); }
-
-    /* TWO-COLUMN BODY */
     .bp-body {
       display: grid; grid-template-columns: 1fr 320px;
       background: var(--color-bg);
@@ -179,8 +144,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     }
     .bp-body-left { padding: var(--section-pad); border-right: 0.5px solid var(--color-border); }
     .bp-body-right { padding: 24px; background: var(--color-surface); }
-
-    /* SECTIONS */
     .bp-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .bp-section-title { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
     .bp-section-action {
@@ -189,8 +152,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     }
     .bp-section-action:hover { text-decoration: underline; }
     .bp-section-spacer { margin-top: 24px; }
-
-    /* PROJECT CARDS */
     .bp-project-card {
       background: var(--color-surface); border: 0.5px solid var(--color-border);
       border-radius: 10px; padding: 16px 18px; margin-bottom: 10px;
@@ -200,28 +161,23 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-project-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .bp-project-name { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
     .bp-project-meta {
-      font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 8px;
+      font-size: var(--text-sm); color: var(--color-text-muted);
       display: flex; align-items: center; gap: 5px;
     }
     .bp-project-meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #00B84A; }
-    .bp-project-stats { display: flex; gap: 16px; font-size: var(--text-sm); color: var(--color-text-secondary); }
-
-    /* BADGES */
     .bp-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; text-transform: capitalize; }
     .bp-badge-active { background: var(--theme-bg); color: var(--theme-text); }
     .bp-badge-closed { background: #F3F4F6; color: #9CA3AF; }
-
-    /* CTA BUTTON */
     .bp-cta-btn {
-      display: block; width: 100%; background: var(--color-black); color: #fff;
-      border: none; padding: 13px; border-radius: 8px;
+      display: block; width: 100%;
+      background: var(--theme-bg); color: var(--theme-text);
+      border: 0.5px solid var(--theme-border);
+      padding: 13px; border-radius: 8px;
       font-size: var(--text-md); font-weight: 600; cursor: pointer;
       font-family: var(--font-body); margin-bottom: 16px;
-      transition: background 0.2s; text-align: center; text-decoration: none;
+      transition: all 0.2s ease; text-align: center; text-decoration: none;
     }
     .bp-cta-btn:hover { background: var(--theme-accent); color: #fff; }
-
-    /* CREDITS CARD */
     .bp-credits-card {
       background: var(--theme-bg); border: 0.5px solid var(--theme-border);
       border-radius: 10px; padding: 18px; margin-bottom: 16px;
@@ -233,8 +189,6 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-credit-dot.filled { background: var(--theme-accent); }
     .bp-credit-dot.empty { background: var(--theme-empty); }
     .bp-credits-desc { font-size: 11px; color: var(--theme-text); line-height: 1.5; }
-
-    /* SUPPLIERS */
     .bp-saved-suppliers-title {
       font-size: 11px; font-weight: 600; color: var(--color-text-primary);
       text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
@@ -246,16 +200,17 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-supplier-row:last-child { border-bottom: none; }
     .bp-supplier-icon {
       width: 32px; height: 32px; border-radius: 6px; background: var(--theme-bg);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
+    .bp-supplier-info { flex: 1; min-width: 0; }
     .bp-supplier-name { font-size: var(--text-base); font-weight: 500; color: var(--color-text-primary); }
     .bp-supplier-meta { font-size: 11px; color: var(--color-text-muted); }
-
+    .bp-supplier-price { font-size: var(--text-sm); color: var(--color-text-secondary); margin-left: auto; white-space: nowrap; }
     .bp-empty { font-size: var(--text-sm); color: var(--color-text-muted); padding: 16px 0; }
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  readonly icons = { Plus, CircleDot, CircleDashed, CircleCheck, Calendar, MapPin, Volleyball, FolderOpen, Heart, MessageCircle };
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
@@ -264,9 +219,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   suppliers: any[] = [];
   supplierCount = 0;
   creditDots: boolean[] = [];
-  totalBudgetShort = '\u00A30';
   projectLabel = 'Event';
   creditLabel = 'Ball';
+  userName = '';
+  daysUntilReset = 0;
+  heroAlign = 'center';
+  showUserName = true;
+  showLocation = true;
+  showUpcoming = true;
+  showStats = true;
 
   private sub?: Subscription;
 
@@ -275,17 +236,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private orgService: OrgService,
     private supplierService: SupplierService,
     private configService: ConfigService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
+  fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
+
   ngOnInit() {
+    this.daysUntilReset = ConfigService.daysUntilReset();
+
     this.sub = this.configService.config$.subscribe(() => {
       this.projectLabel = this.configService.projectLabel;
       this.creditLabel = this.configService.creditLabel;
+      this.heroAlign = this.configService.heroAlign;
+      this.showUserName = this.configService.showUserName;
+      this.showLocation = this.configService.showLocation;
+      this.showUpcoming = this.configService.showUpcoming;
+      this.showStats = this.configService.showStats;
+      this.cdr.detectChanges();
     });
 
     this.orgService.getCurrentOrg().subscribe({
-      next: (org) => { this.org = org; this.buildCreditDots(); },
+      next: (org) => { this.org = org; this.buildCreditDots(); this.cdr.detectChanges(); },
       error: () => {},
+    });
+
+    this.orgService.getUsers().subscribe({
+      next: (users) => {
+        if (users?.length) this.userName = users[0].name || 'User';
+        this.cdr.detectChanges();
+      },
+      error: () => { this.userName = 'User'; },
     });
 
     this.projectService.getAll().subscribe({
@@ -293,16 +273,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.projects = data;
         this.activeProjects = data.filter(p => p.status_name === 'active' || p.status_name === 'draft');
         this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
-        this.buildBudget();
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; },
+      error: () => { this.loading = false; this.cdr.detectChanges(); },
     });
 
     this.supplierService.getAll().subscribe({
       next: (data) => {
-        this.suppliers = data.map(s => ({ name: s.name, city: s.city || '', icon: '' }));
+        this.suppliers = data.map(s => ({
+          name: s.name,
+          city: s.city || '',
+          category: s.description || '',
+          price: '',
+        }));
         this.supplierCount = data.length;
+        this.cdr.detectChanges();
       },
       error: () => {},
     });
@@ -316,15 +302,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.creditDots = [];
     for (let i = 0; i < total; i++) {
       this.creditDots.push(i < balance);
-    }
-  }
-
-  private buildBudget() {
-    const total = this.projects.reduce((s, p) => s + (+(p.total_client_cost || p.project_budget || 0)), 0);
-    if (total >= 1000) {
-      this.totalBudgetShort = '\u00A3' + Math.round(total / 1000) + 'k';
-    } else {
-      this.totalBudgetShort = '\u00A3' + Math.round(total);
     }
   }
 }

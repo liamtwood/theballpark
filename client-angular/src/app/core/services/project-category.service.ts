@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { ProjectCategory } from '../models';
+import { ProjectCategory } from '../../models';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectCategoryService {

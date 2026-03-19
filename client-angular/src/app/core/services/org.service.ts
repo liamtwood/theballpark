@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Org, User } from '../models';
+import { Org, User } from '../../models';
 
 @Injectable({ providedIn: 'root' })
 export class OrgService {

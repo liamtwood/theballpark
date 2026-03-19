@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { LucideAngularModule, ArrowLeft, User, Mail, Phone } from 'lucide-angular';
 import { ClientService } from '../../../../core/services/client.service';
-import { Client, Project } from '../../../../core/models';
+import { Client, Project } from '../../../../models';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';

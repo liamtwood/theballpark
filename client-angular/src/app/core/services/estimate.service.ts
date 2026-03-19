@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Estimate } from '../models';
+import { Estimate } from '../../models';
 
 @Injectable({ providedIn: 'root' })
 export class EstimateService {

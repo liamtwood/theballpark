@@ -1,29 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-
-export interface ThemePreset {
-  name: string;
-  accent: string;
-  bg: string;
-  empty: string;
-  text: string;
-  border: string;
-}
-
-export interface PlatformConfig {
-  platformName: string;
-  tagline: string;
-  projectLabel: string;
-  creditLabel: string;
-  themeName: string;
-  mode: 'light' | 'dark' | 'system';
-  heroAlign?: string;
-  showUserName?: boolean;
-  showLocation?: boolean;
-  showUpcoming?: boolean;
-  showStats?: boolean;
-  logoUrl?: string;
-}
+import { ThemePreset, PlatformConfig } from '../../models';
 
 const THEME_PRESETS: Record<string, ThemePreset> = {
   amber:   { name: 'amber',   accent: '#D97706', bg: '#F5F0E8', empty: '#EDD9A3', text: '#92400E', border: '#E8D9C0' },
@@ -46,6 +23,11 @@ export class ConfigService {
     creditLabel: 'Ball',
     themeName: 'amber',
     mode: 'system',
+    heroAlign: 'center',
+    showUserName: true,
+    showLocation: true,
+    showUpcoming: true,
+    showStats: true,
   };
 
   private configSubject = new BehaviorSubject<PlatformConfig>(this.config);
@@ -64,6 +46,11 @@ export class ConfigService {
   get projectLabel(): string { return this.config.projectLabel; }
   get creditLabel(): string { return this.config.creditLabel; }
   get logoUrl(): string { return this.config.logoUrl || ''; }
+  get heroAlign(): string { return this.config.heroAlign || 'center'; }
+  get showUserName(): boolean { return this.config.showUserName !== false; }
+  get showLocation(): boolean { return this.config.showLocation !== false; }
+  get showUpcoming(): boolean { return this.config.showUpcoming !== false; }
+  get showStats(): boolean { return this.config.showStats !== false; }
 
   get isDarkMode(): boolean {
     if (this.config.mode === 'system') {
@@ -72,20 +59,34 @@ export class ConfigService {
     return this.config.mode === 'dark';
   }
 
+  static daysUntilReset(): number {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return lastDay.getDate() - now.getDate();
+  }
+
+  static formatCurrency(value: number | string | null | undefined): string {
+    const num = typeof value === 'number' ? value : parseFloat(value as string) || 0;
+    if (num >= 1000) {
+      return '\u00A3' + (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return '\u00A3' + Math.round(num);
+  }
+
   splitLogoName(): { first: string; second: string } {
     const name = this.config.platformName;
-    const mid = Math.ceil(name.length / 2);
-    const spaceAfter = name.indexOf(' ', mid);
-    const spaceBefore = name.lastIndexOf(' ', mid);
-    let split = mid;
-    if (spaceAfter !== -1 && spaceAfter <= mid + 4) {
-      split = spaceAfter;
-    } else if (spaceBefore > 0) {
-      split = spaceBefore;
+    // For "The Ballpark" specifically, split as "The Ball" + "park"
+    const lastSpace = name.lastIndexOf(' ');
+    if (lastSpace === -1) {
+      const mid = Math.ceil(name.length / 2);
+      return { first: name.slice(0, mid), second: name.slice(mid) };
     }
+    const lastWord = name.slice(lastSpace + 1);
+    const prefix = name.slice(0, lastSpace + 1);
+    const splitAt = Math.ceil(lastWord.length / 2);
     return {
-      first: name.slice(0, split).trimEnd(),
-      second: name.slice(split).trimStart(),
+      first: prefix + lastWord.slice(0, splitAt),
+      second: lastWord.slice(splitAt),
     };
   }
 
@@ -105,6 +106,14 @@ export class ConfigService {
         this.config = { ...this.config, ...parsed };
       }
     } catch {}
+
+    // Validate theme — fall back to amber if missing or invalid
+    if (!this.config.themeName || !THEME_PRESETS[this.config.themeName]) {
+      this.config.themeName = 'amber';
+    }
+
+    // Notify subscribers with the loaded (and validated) config
+    this.configSubject.next({ ...this.config });
   }
 
   private save(): void {
@@ -120,7 +129,6 @@ export class ConfigService {
     root.style.setProperty('--theme-text', t.text);
     root.style.setProperty('--theme-border', t.border);
 
-    // Darken theme-bg for dark mode
     if (this.isDarkMode) {
       root.style.setProperty('--theme-bg', this.darkenForDark(t.accent));
       root.style.setProperty('--theme-border', this.darkenBorderForDark(t.accent));
@@ -133,7 +141,6 @@ export class ConfigService {
   }
 
   private darkenForDark(accent: string): string {
-    // Mix accent with #111111 at ~15% opacity
     const r = parseInt(accent.slice(1, 3), 16);
     const g = parseInt(accent.slice(3, 5), 16);
     const b = parseInt(accent.slice(5, 7), 16);

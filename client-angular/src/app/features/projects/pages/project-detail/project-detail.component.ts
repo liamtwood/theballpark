@@ -13,7 +13,7 @@ import { ProjectService } from '../../../../core/services/project.service';
 import { EstimateService } from '../../../../core/services/estimate.service';
 import { MessageService } from '../../../../core/services/message.service';
 import { ProjectCategoryService } from '../../../../core/services/project-category.service';
-import { Project, ProjectCategory, Estimate, Message } from '../../../../core/models';
+import { Project, ProjectCategory, Estimate, Message } from '../../../../models';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';

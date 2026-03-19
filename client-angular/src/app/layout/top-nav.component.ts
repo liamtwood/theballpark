@@ -1,16 +1,17 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, Sun, Moon, Plus, Settings, Home } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
+import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, AvatarComponent],
   template: `
     <nav class="bp-nav">
       <div class="bp-nav-left">
@@ -24,19 +25,16 @@ import { environment } from '../../environments/environment';
       </div>
       <div class="bp-nav-right">
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
-          <lucide-icon name="home" [size]="14"></lucide-icon> Home
+          <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
-        <a routerLink="/projects/new" class="bp-nav-link">
-          <lucide-icon name="plus" [size]="14"></lucide-icon> New {{ projectLabel }}
-        </a>
-        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
+        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <div class="bp-nav-avatar">{{ initials }}</div>
+        <app-avatar [name]="orgName" [size]="32"></app-avatar>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -49,7 +47,7 @@ import { environment } from '../../environments/environment';
       position: sticky; top: 0; z-index: 100;
     }
     .bp-nav-left { display: flex; align-items: center; }
-    .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; }
+    .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; gap: 0; }
     .bp-nav-logo-img { height: 28px; width: auto; object-fit: contain; }
     .bp-logo-text {
       font-family: var(--font-display); font-size: var(--text-lg); font-weight: 400;
@@ -78,16 +76,10 @@ import { environment } from '../../environments/environment';
       padding: 5px 14px; border-radius: 20px; cursor: pointer; white-space: nowrap;
     }
     .bp-mode-btn {
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 0.5px solid var(--color-border); background: transparent;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       color: var(--color-text-secondary);
-    }
-    .bp-nav-avatar {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--color-black); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600; flex-shrink: 0;
     }
     .bp-nav-version {
       position: fixed; bottom: 8px; right: 12px;
@@ -96,22 +88,21 @@ import { environment } from '../../environments/environment';
   `]
 })
 export class TopNavComponent implements OnInit, OnDestroy {
-  readonly icons = { Sun, Moon, Plus, Settings, Home };
+  readonly icons = { Sun, Moon, Settings, House, User };
 
   logoFirst = 'The Ball';
   logoSecond = 'park';
   logoUrl = '';
   tagline = 'Exhibition Costing';
-  projectLabel = 'Event';
   creditLabel = 'Ball';
   ballsBalance = 0;
-  initials = 'U';
+  orgName = '';
   isDark = false;
   version = environment.version;
 
   private sub?: Subscription;
 
-  constructor(private configService: ConfigService, private orgService: OrgService) {}
+  constructor(private configService: ConfigService, private orgService: OrgService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.sub = this.configService.config$.subscribe(() => {
@@ -119,22 +110,23 @@ export class TopNavComponent implements OnInit, OnDestroy {
       this.logoFirst = logo.first;
       this.logoSecond = logo.second;
       this.tagline = this.configService.tagline;
-      this.projectLabel = this.configService.projectLabel;
       this.creditLabel = this.configService.creditLabel;
       this.isDark = this.configService.isDarkMode;
       this.logoUrl = this.configService.logoUrl;
+      this.cdr.detectChanges();
     });
 
     this.orgService.getBallsBalance().subscribe({
-      next: (data) => this.ballsBalance = data.balance ?? 0,
+      next: (data) => { this.ballsBalance = data.balance ?? 0; this.cdr.detectChanges(); },
       error: () => this.ballsBalance = 0,
     });
 
     this.orgService.getCurrentOrg().subscribe({
       next: (org) => {
         if (org?.name) {
-          this.initials = org.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+          this.orgName = org.name;
         }
+        this.cdr.detectChanges();
       },
       error: () => {},
     });

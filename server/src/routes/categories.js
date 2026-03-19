@@ -1,79 +1,36 @@
 const router = require('express').Router();
-const pool = require('../db/pool');
+const CategoryService = require('../services/category.service');
 
-// GET / - list all categories
-router.get('/', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM categories WHERE is_active = true ORDER BY created_at DESC'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.get('/', async (req, res, next) => {
+  try { res.json(await CategoryService.getAll()); } catch (err) { next(err); }
 });
 
-// GET /:id - get single category
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM categories WHERE id = $1',
-      [req.params.id]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const cat = await CategoryService.getById(req.params.id);
+    if (!cat) return res.status(404).json({ error: 'Not found' });
+    res.json(cat);
+  } catch (err) { next(err); }
 });
 
-// POST / - create category
-router.post('/', async (req, res) => {
-  try {
-    const { name, description, icon, sort_order } = req.body;
-    const result = await pool.query(
-      'INSERT INTO categories (name, description, icon, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, description, icon, sort_order]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.post('/', async (req, res, next) => {
+  try { res.status(201).json(await CategoryService.create(req.body)); } catch (err) { next(err); }
 });
 
-// PUT /:id - update category
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
-    const { name, description, icon, sort_order } = req.body;
-    const result = await pool.query(
-      `UPDATE categories SET
-        name = COALESCE($1, name),
-        description = COALESCE($2, description),
-        icon = COALESCE($3, icon),
-        sort_order = COALESCE($4, sort_order),
-        updated_at = NOW()
-       WHERE id = $5 RETURNING *`,
-      [name, description, icon, sort_order, req.params.id]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const cat = await CategoryService.update(req.params.id, req.body);
+    if (!cat) return res.status(404).json({ error: 'Not found' });
+    res.json(cat);
+  } catch (err) { next(err); }
 });
 
-// DELETE /:id - soft delete
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await pool.query(
-      'UPDATE categories SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING *',
-      [req.params.id]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const cat = await CategoryService.softDelete(req.params.id);
+    if (!cat) return res.status(404).json({ error: 'Not found' });
+    res.json(cat);
+  } catch (err) { next(err); }
 });
 
 module.exports = router;
