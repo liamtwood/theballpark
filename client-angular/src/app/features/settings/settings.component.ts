@@ -219,13 +219,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     .bp-pill { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--theme-bg); color: var(--theme-text); }
     .bp-logo-preview { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .bp-logo-placeholder { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--theme-bg); display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); color: var(--color-text-muted); }
-    .bp-theme-btn {
+    .btn-primary {
       background: var(--theme-bg); color: var(--theme-text); border: 0.5px solid var(--theme-border);
-      padding: 10px 24px; border-radius: 8px; font-size: var(--text-md);
-      font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.2s ease;
+      border-radius: 6px; padding: 10px 20px; font-weight: 600; font-size: var(--text-md);
+      font-family: var(--font-body); cursor: pointer; transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
     }
-    .bp-theme-btn:hover { background: var(--theme-accent); color: #fff; }
-    .bp-theme-btn:disabled { background: #F5F5F5; color: #bbb; border-color: #eee; }
+    .btn-primary:hover { background: var(--theme-accent); color: #ffffff; }
+    .btn-primary:disabled { background: #F5F5F5; color: #bbb; border-color: #eee; cursor: default; }
     .bp-app-section { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 0.5px solid var(--color-border); }
     .bp-app-title { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); margin-bottom: 12px; }
     .bp-field { margin-bottom: 12px; }
