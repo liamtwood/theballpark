@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ImageProcessingService } from '../../services/image-processing.service';
@@ -93,7 +93,7 @@ export class ImageTestComponent {
   padding = 10;
   processing = false;
 
-  constructor(private imageService: ImageProcessingService) {}
+  constructor(private imageService: ImageProcessingService, private cdr: ChangeDetectorRef) {}
 
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -106,6 +106,7 @@ export class ImageTestComponent {
   async process() {
     if (!this.file) return;
     this.processing = true;
+    this.cdr.detectChanges();
     try {
       const blob = await this.imageService.processImage(this.file, {
         removeBg: this.removeBg,
@@ -118,6 +119,7 @@ export class ImageTestComponent {
       console.error('Image processing failed:', err);
     } finally {
       this.processing = false;
+      this.cdr.detectChanges();
     }
   }
 }
