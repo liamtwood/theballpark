@@ -240,8 +240,8 @@ export class ImageProcessingService {
         if (a === 0) continue;
 
         const isContentPixel = isLight
-          ? !(r > 250 && g > 250 && b > 250)
-          : !(r < 10 && g < 10 && b < 10);
+          ? !(r > 240 && g > 240 && b > 240)
+          : !(r < 15 && g < 15 && b < 15);
 
         if (isContentPixel) {
           found = true;
@@ -260,31 +260,58 @@ export class ImageProcessingService {
       const i = (py * width + px) * 4;
       const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
       if (a === 0) return true;
-      return isLight ? (r > 250 && g > 250 && b > 250) : (r < 10 && g < 10 && b < 10);
+      return isLight ? (r > 240 && g > 240 && b > 240) : (r < 15 && g < 15 && b < 15);
     };
 
-    // Refine left
+    // Refine edges — skip columns/rows that are purely background
     refineLeft: for (let x = minX; x <= maxX; x++) {
       for (let y = minY; y <= maxY; y++) {
         if (!isBgPixel(x, y)) { minX = x; break refineLeft; }
       }
     }
-    // Refine right
     refineRight: for (let x = maxX; x >= minX; x--) {
       for (let y = minY; y <= maxY; y++) {
         if (!isBgPixel(x, y)) { maxX = x; break refineRight; }
       }
     }
-    // Refine top
     refineTop: for (let y = minY; y <= maxY; y++) {
       for (let x = minX; x <= maxX; x++) {
         if (!isBgPixel(x, y)) { minY = y; break refineTop; }
       }
     }
-    // Refine bottom
     refineBottom: for (let y = maxY; y >= minY; y--) {
       for (let x = minX; x <= maxX; x++) {
         if (!isBgPixel(x, y)) { maxY = y; break refineBottom; }
+      }
+    }
+
+    // Second tighter pass — scan inward until finding clearly-foreground pixels
+    const isClearlyFg = (px: number, py: number): boolean => {
+      const i = (py * width + px) * 4;
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a === 0) return false;
+      if (isLight) return r < 220 || g < 220 || b < 220;
+      return r > 35 || g > 35 || b > 35;
+    };
+
+    tightLeft: for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        if (isClearlyFg(x, y)) { minX = x; break tightLeft; }
+      }
+    }
+    tightRight: for (let x = maxX; x >= minX; x--) {
+      for (let y = minY; y <= maxY; y++) {
+        if (isClearlyFg(x, y)) { maxX = x; break tightRight; }
+      }
+    }
+    tightTop: for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        if (isClearlyFg(x, y)) { minY = y; break tightTop; }
+      }
+    }
+    tightBottom: for (let y = maxY; y >= minY; y--) {
+      for (let x = minX; x <= maxX; x++) {
+        if (isClearlyFg(x, y)) { maxY = y; break tightBottom; }
       }
     }
 
