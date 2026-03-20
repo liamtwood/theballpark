@@ -166,8 +166,9 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     }
     .bp-card:hover { border-color: #ccc; }
     .bp-card-img {
-      width: 160px; flex-shrink: 0; position: relative;
+      width: 160px; min-height: 100px; flex-shrink: 0; position: relative;
       background-size: cover; background-position: center;
+      align-self: stretch;
     }
     .bp-card-grad-active { background: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-card-grad-draft { background: linear-gradient(160deg, #1a4a2e, #0d2b1a); }
