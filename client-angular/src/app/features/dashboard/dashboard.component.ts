@@ -105,8 +105,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 
           <!-- Saved Suppliers -->
           <div class="bp-saved-hd">
-            <lucide-icon name="heart" [size]="12" style="color:var(--theme-accent)"></lucide-icon>
-            <span>Saved Suppliers</span>
+            SAVED SUPPLIERS
           </div>
 
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
@@ -176,7 +175,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-body-left { padding: var(--section-pad); border-right: 0.5px solid var(--color-border); }
     .bp-body-right { padding: 24px; background: var(--color-surface); }
     .bp-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .bp-section-title { font-size: var(--text-md); font-weight: 600; color: var(--color-text-primary); }
+    .bp-section-title { font-size: 11px; font-weight: 700; color: var(--theme-accent); text-transform: uppercase; letter-spacing: 0.1em; }
     .bp-section-action {
       font-size: var(--text-sm); color: var(--theme-accent); font-weight: 500;
       cursor: pointer; text-decoration: none;
@@ -256,9 +255,8 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-credit-dot.empty { background: var(--theme-empty); }
     .bp-credits-desc { font-size: 11px; color: var(--theme-text); line-height: 1.5; }
     .bp-saved-hd {
-      display: flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600; color: var(--color-text-primary);
-      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;
+      font-size: 11px; font-weight: 700; color: var(--theme-accent);
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px;
     }
     .bp-sup-card {
       border: 0.5px solid var(--color-border); border-radius: var(--border-radius-lg);
