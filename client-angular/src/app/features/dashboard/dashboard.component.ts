@@ -118,22 +118,24 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
               <div class="bp-sup-cat">{{ s.category }}</div>
               <div class="bp-sup-heart">&hearts;</div>
               <div class="bp-sup-price" *ngIf="s.price">from {{ s.price }}</div>
+              <div class="bp-sup-desc">{{ s.description }}</div>
             </div>
             <div class="bp-sup-body">
               <div class="bp-sup-name">{{ s.name }}</div>
               <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
               <div class="bp-sup-footer">
-                <div class="bp-sup-rating" *ngIf="s.rating">
+                <div class="bp-sup-rating">
                   <span class="bp-sup-star">&starf;</span>
-                  {{ s.rating }}
+                  {{ s.rating || '4.8' }}
+                  <span class="bp-sup-count">({{ s.review_count || 24 }})</span>
                 </div>
                 <div class="bp-sup-action">View &rarr;</div>
               </div>
             </div>
           </div>
 
-          <div class="bp-view-all" *ngIf="suppliers.length > 2" routerLink="/suppliers/saved">
-            View all {{ suppliers.length }} saved suppliers &rarr;
+          <div class="bp-view-all" routerLink="/suppliers">
+            View all {{ supplierCount }} saved suppliers &rarr;
           </div>
         </div>
       </div>
@@ -262,8 +264,14 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-sup-img {
       width: 100%; height: 120px; position: relative;
       display: flex; align-items: center; justify-content: center; font-size: 36px;
-      background-size: cover; background-position: center;
+      background-size: cover; background-position: center; overflow: hidden;
     }
+    .bp-sup-desc {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.7);
+      color: #fff; font-size: 11px; line-height: 1.5; padding: 12px;
+      display: flex; align-items: center; opacity: 0; transition: opacity 0.15s;
+    }
+    .bp-sup-img:hover .bp-sup-desc { opacity: 1; }
     .bp-sup-bg-setbuild { background-color: #1a1a2e; background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-sup-bg-av { background-image: linear-gradient(160deg, #0d1b2a, #1b2838); }
     .bp-sup-bg-florist { background-image: linear-gradient(160deg, #2d1b2e, #4a1942); }
@@ -292,6 +300,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-sup-footer { display: flex; align-items: center; justify-content: space-between; }
     .bp-sup-rating { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--color-text-secondary); }
     .bp-sup-star { color: var(--theme-accent); }
+    .bp-sup-count { color: var(--color-text-muted); }
     .bp-sup-action { font-size: 11px; font-weight: 500; color: var(--theme-accent); cursor: pointer; }
     .bp-view-all {
       display: flex; align-items: center; justify-content: center;
