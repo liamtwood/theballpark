@@ -64,12 +64,12 @@ import { environment } from '../../environments/environment';
     }
     .bp-nav-right { display: flex; align-items: center; gap: 24px; }
     .bp-nav-link {
-      font-size: var(--text-base); color: var(--theme-accent);
+      font-size: var(--text-base); color: #9CA3AF;
       cursor: pointer; text-decoration: none; transition: color 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
-    .bp-nav-link:hover { color: var(--color-text-primary); }
-    .bp-nav-link.active { color: var(--color-text-primary); font-weight: 500; }
+    .bp-nav-link:hover { color: #111111; }
+    .bp-nav-link.active { color: var(--theme-accent); font-weight: 500; }
     .bp-credits-pill {
       background: var(--theme-bg); color: var(--theme-text);
       font-size: var(--text-sm); font-weight: 600;
