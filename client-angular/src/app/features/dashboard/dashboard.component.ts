@@ -38,7 +38,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 
       <!-- STATS BAR -->
       <div class="bp-stats-bar" *ngIf="showStats">
-        <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'" [themed]="true" icon="volleyball"></app-stat-card>
+        <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'"></app-stat-card>
         <app-stat-card [label]="'Active ' + projectLabel + 's'" [value]="activeProjects.length" [sub]="activeProjects.length > 0 ? (activeProjects[0].client_name || activeProjects[0].name) : 'none yet'"></app-stat-card>
         <app-stat-card label="Saved suppliers" [value]="supplierCount" sub="across categories"></app-stat-card>
         <app-stat-card label="Quotes in progress" [value]="0" sub="awaiting response"></app-stat-card>
@@ -147,6 +147,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
   styles: [`
     .bp-hero {
       background: var(--theme-bg); padding: 32px var(--section-pad) 28px;
+      border-bottom: 0.5px solid var(--color-border);
     }
     .bp-hero-pills { display: flex; gap: 8px; margin-bottom: 16px; }
     .bp-hero-pill {
