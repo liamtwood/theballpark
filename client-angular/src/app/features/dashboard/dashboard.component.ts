@@ -119,7 +119,11 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
               <div class="bp-sup-heart">&hearts;</div>
               <div class="bp-sup-price" *ngIf="s.price">from {{ s.price }}</div>
               <div class="bp-sup-desc">{{ s.description }}</div>
+              <div class="bp-sup-overlay" (click)="openSupplierUpload($event, s)">
+                <lucide-icon name="pencil" [size]="16" color="white"></lucide-icon>
+              </div>
             </div>
+            <app-image-upload-panel *ngIf="uploadSupplierPanelId === s.id" [projectId]="s.id" (imagesUpdated)="onSupplierImagesUpdated(s, $event)" (closed)="uploadSupplierPanelId = ''"></app-image-upload-panel>
             <div class="bp-sup-body">
               <div class="bp-sup-name">{{ s.name }}</div>
               <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
@@ -272,6 +276,13 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display: flex; align-items: center; opacity: 0; transition: opacity 0.15s;
     }
     .bp-sup-img:hover .bp-sup-desc { opacity: 1; }
+    .bp-sup-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.45);
+      opacity: 0; transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 2;
+    }
+    .bp-sup-img:hover .bp-sup-overlay { opacity: 1; }
     .bp-sup-bg-setbuild { background-color: #1a1a2e; background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-sup-bg-av { background-image: linear-gradient(160deg, #0d1b2a, #1b2838); }
     .bp-sup-bg-florist { background-image: linear-gradient(160deg, #2d1b2e, #4a1942); }
@@ -343,6 +354,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   uploadPanelProjectId = '';
+  uploadSupplierPanelId = '';
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
 
@@ -370,6 +382,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (urls.logoUrl !== undefined) project.client_logo_url = urls.logoUrl || '';
     if (urls.cardColor !== undefined) project.card_color = urls.cardColor || '';
     this.uploadPanelProjectId = '';
+    this.cdr.detectChanges();
+  }
+
+  openSupplierUpload(event: MouseEvent, s: any) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.uploadSupplierPanelId = this.uploadSupplierPanelId === s.id ? '' : s.id;
+  }
+
+  onSupplierImagesUpdated(s: any, urls: { coverUrl: string; logoUrl: string }) {
+    if (urls.coverUrl) s.hero_image_url = urls.coverUrl;
+    this.uploadSupplierPanelId = '';
     this.cdr.detectChanges();
   }
 
@@ -437,11 +461,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.supplierService.getAll().subscribe({
       next: (data) => {
-        this.suppliers = data.map(s => ({
+        this.suppliers = data.map((s: any) => ({
+          id: s.id,
           name: s.name,
           city: s.city || '',
-          category: s.description || '',
-          price: '',
+          category: s.category || s.category_name || '',
+          description: s.description || '',
+          price: s.base_price ? 'from £' + s.base_price : '',
+          rating: s.rating || null,
+          review_count: s.review_count || null,
+          hero_image_url: s.hero_image_url || null,
         }));
         this.supplierCount = data.length;
         this.cdr.detectChanges();
