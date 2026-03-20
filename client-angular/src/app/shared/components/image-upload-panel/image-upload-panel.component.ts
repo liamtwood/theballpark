@@ -81,10 +81,6 @@ import { ModalComponent } from '../modal/modal.component';
             <span *ngIf="selectedColor === c.value" class="iup-swatch-check">✓</span>
           </div>
         </div>
-        <!-- Preview -->
-        <div class="iup-color-preview" [style.background]="getSelectedGradient()">
-          <span class="iup-color-preview-text">Preview</span>
-        </div>
       </div>
 
       <!-- Client logo (project only) -->

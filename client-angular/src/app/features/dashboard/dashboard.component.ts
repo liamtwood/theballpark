@@ -268,6 +268,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       width: 100%; height: 120px; position: relative;
       display: flex; align-items: center; justify-content: center; font-size: 36px;
       background-size: cover; background-position: center; overflow: hidden;
+      border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     }
     .bp-sup-desc {
       position: absolute; inset: 0; background: rgba(0,0,0,0.7);
