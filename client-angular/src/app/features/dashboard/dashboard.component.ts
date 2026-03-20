@@ -184,7 +184,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-card-img:hover .bp-card-img-hover { opacity: 1; }
     .bp-card-logo {
       position: absolute; bottom: 8px; left: 8px;
-      width: 48px; height: 48px; border-radius: 0;
+      width: 64px; height: 64px; border-radius: 0;
       background: transparent; background-size: contain;
       background-repeat: no-repeat; background-position: center;
       border: none;
