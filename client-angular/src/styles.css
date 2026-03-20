@@ -255,8 +255,9 @@ lucide-icon svg {
 
 /* Modal header — parchment */
 .bp-modal .p-dialog-header {
-  background: var(--theme-bg);
-  border-bottom: 0.5px solid var(--theme-border);
+  background: var(--theme-bg) !important;
+  border-bottom: 0.5px solid var(--theme-border) !important;
+  font-family: var(--font-display) !important;
   padding: 24px 28px 20px;
 }
 .bp-modal .p-dialog-header .p-dialog-title {
@@ -268,22 +269,28 @@ lucide-icon svg {
 .bp-modal .p-dialog-content {
   padding: 24px 28px;
 }
+/* Modal footer button gap */
 .bp-modal .p-dialog-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
   padding: 16px 28px 24px;
   border-top: 0.5px solid #F0F0F0;
 }
-/* Modal buttons — parchment default, amber hover */
-.bp-btn-cancel.p-button,
-.bp-btn-save.p-button {
-  background: var(--theme-bg);
-  color: var(--theme-text);
-  border-color: var(--theme-bg);
+/* Modal buttons */
+.bp-modal .p-dialog-footer .p-button {
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+  border: 0.5px solid var(--theme-bg) !important;
+  border-radius: 8px !important;
+  padding: 9px 20px !important;
 }
-.bp-btn-cancel.p-button:hover,
-.bp-btn-save.p-button:hover {
-  background: var(--theme-accent);
-  color: #fff;
-  border-color: var(--theme-accent);
+.bp-modal .p-dialog-footer .p-button:hover {
+  background: var(--theme-accent) !important;
+  color: #fff !important;
 }
 
 /* Dark mode disabled button override */
