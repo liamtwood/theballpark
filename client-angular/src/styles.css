@@ -288,7 +288,7 @@ lucide-icon svg {
   background: var(--theme-bg) !important;
   border-bottom: 0.5px solid var(--theme-border) !important;
   font-family: var(--font-display) !important;
-  padding: 24px 28px 20px;
+  padding: 24px 24px 20px 24px !important;
 }
 .bp-modal .p-dialog-header .p-dialog-title {
   font-family: var(--font-display);
@@ -297,14 +297,14 @@ lucide-icon svg {
   color: #1C1208;
 }
 .bp-modal .p-dialog-content {
-  padding: 24px 28px;
+  padding: 24px !important;
 }
 /* Modal footer button gap */
 .bp-modal .p-dialog-footer {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  padding: 16px 28px 24px;
+  padding: 16px 24px 24px 24px !important;
   border-top: 0.5px solid #F0F0F0;
 }
 /* Dark mode disabled button override */
