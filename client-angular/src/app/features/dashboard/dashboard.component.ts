@@ -261,6 +261,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-sup-card {
       border: 0.5px solid var(--color-border); border-radius: var(--border-radius-lg);
       overflow: hidden; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s;
+      background: var(--color-background-primary);
     }
     .bp-sup-card:hover { border-color: var(--color-border-secondary); }
     .bp-sup-img {

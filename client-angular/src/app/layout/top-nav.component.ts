@@ -58,18 +58,18 @@ import { environment } from '../../environments/environment';
       color: var(--theme-accent); letter-spacing: -0.01em;
     }
     .bp-nav-tagline {
-      font-family: var(--font-body); font-size: 10px; font-weight: 400;
-      color: var(--color-text-muted); margin-left: 10px;
+      font-family: var(--font-body); font-size: 10px; font-weight: 600;
+      color: var(--theme-accent); margin-left: 10px;
       text-transform: uppercase; letter-spacing: 0.07em;
     }
     .bp-nav-right { display: flex; align-items: center; gap: 24px; }
     .bp-nav-link {
-      font-size: var(--text-base); color: var(--color-text-muted);
+      font-size: var(--text-base); color: var(--theme-accent);
       cursor: pointer; text-decoration: none; transition: color 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
-    .bp-nav-link:hover { color: var(--color-text-primary); }
-    .bp-nav-link.active { color: var(--color-text-primary); font-weight: 500; }
+    .bp-nav-link:hover { color: var(--theme-text); }
+    .bp-nav-link.active { color: var(--theme-text); font-weight: 500; }
     .bp-credits-pill {
       background: var(--theme-bg); color: var(--theme-text);
       font-size: var(--text-sm); font-weight: 600;

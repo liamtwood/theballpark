@@ -67,10 +67,10 @@ import { ModalComponent } from '../modal/modal.component';
         </label>
       </div>
 
-      <!-- Card background colour (project only, shown when no cover image) -->
-      <div class="iup-section" *ngIf="type === 'project'">
+      <!-- Card background colour (shown for both project and supplier when no image) -->
+      <div class="iup-section">
         <div class="iup-label">Card background colour</div>
-        <div class="iup-hint-text">Used when no venue photo is uploaded</div>
+        <div class="iup-hint-text">Used when no image is uploaded</div>
         <div class="iup-swatches">
           <div *ngFor="let c of cardColors"
                class="iup-swatch"

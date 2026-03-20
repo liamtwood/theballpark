@@ -7,8 +7,8 @@ import { Component, Input } from '@angular/core';
   styles: [`
     .bp-avatar {
       border-radius: 50%;
-      background: #1E1E1E;
-      color: #ffffff;
+      background: var(--theme-accent);
+      color: #fff;
       font-weight: 600;
       display: flex;
       align-items: center;
