@@ -110,7 +110,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
 
-          <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
+          <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card" style="border-radius:10px;overflow:hidden;">
             <div class="bp-sup-img"
                  [class]="'bp-sup-bg-' + getCategoryClass(s.category)"
                  [style.background-image]="s.hero_image_url ? 'url(' + s.hero_image_url + ')' : null">
