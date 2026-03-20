@@ -123,7 +123,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
                 <lucide-icon name="pencil" [size]="16" color="white"></lucide-icon>
               </div>
             </div>
-            <app-image-upload-panel *ngIf="uploadSupplierPanelId === s.id" [entityId]="s.id" type="supplier" [subtitle]="s.name" (imagesUpdated)="onSupplierImagesUpdated(s, $event)" (closed)="uploadSupplierPanelId = ''"></app-image-upload-panel>
+            <app-image-upload-panel *ngIf="uploadSupplierPanelId === s.id" [entityId]="s.id" type="supplier" [subtitle]="s.name" [existingCoverUrl]="s.hero_image_url || ''" (imagesUpdated)="onSupplierImagesUpdated(s, $event)" (closed)="uploadSupplierPanelId = ''"></app-image-upload-panel>
             <div class="bp-sup-body">
               <div class="bp-sup-name">{{ s.name }}</div>
               <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
