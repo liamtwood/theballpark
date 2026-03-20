@@ -392,7 +392,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   onSupplierImagesUpdated(s: any, urls: { coverUrl: string; logoUrl: string }) {
-    if (urls.coverUrl) s.hero_image_url = urls.coverUrl;
+    s.hero_image_url = urls.coverUrl;
+    this.suppliers = [...this.suppliers];
     this.uploadSupplierPanelId = '';
     this.cdr.detectChanges();
   }
