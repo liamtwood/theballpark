@@ -79,49 +79,79 @@ lucide-icon svg {
 }
 
 /* ============================================
-   GLOBAL THEME-AWARE BUTTONS (PrimeNG)
-   Default: theme-bg background, theme-text colour
-   Hover: theme-accent background, white text
+   BALLPARK BUTTON STANDARDS
+   All p-button variants — theme aware
+   Change here to change everywhere
    ============================================ */
+
+/* Default filled button */
 .p-button {
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
-  border: 0.5px solid var(--theme-border) !important;
-  transition: all 0.2s ease !important;
+  background: var(--theme-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  transition: background 0.15s, color 0.15s !important;
 }
 .p-button:hover:not(:disabled) {
+  background: var(--theme-text) !important;
+  color: #fff !important;
+}
+.p-button:focus {
+  box-shadow: 0 0 0 2px var(--theme-bg) !important;
+}
+.p-button:disabled {
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
+/* Outlined button */
+.p-button.p-button-outlined {
+  background: #fff !important;
+  color: var(--theme-accent) !important;
+  border: 0.5px solid var(--theme-accent) !important;
+}
+.p-button.p-button-outlined:hover:not(:disabled) {
   background: var(--theme-accent) !important;
-  color: #ffffff !important;
-  border-color: var(--theme-accent) !important;
+  color: #fff !important;
 }
-.p-button:disabled, .p-button.p-disabled {
-  background: #F5F5F5 !important;
-  color: #bbb !important;
-  border-color: #eee !important;
-}
-/* Text-only buttons (cancel, icon-only) */
+
+/* Text/ghost button */
 .p-button.p-button-text {
   background: transparent !important;
+  color: var(--theme-accent) !important;
   border: none !important;
-  color: var(--color-text-secondary) !important;
 }
 .p-button.p-button-text:hover:not(:disabled) {
   background: var(--theme-bg) !important;
   color: var(--theme-text) !important;
 }
-/* Outlined buttons */
-.p-button.p-button-outlined {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border: 0.5px solid var(--theme-border) !important;
-}
-.p-button.p-button-outlined:hover:not(:disabled) {
+
+/* Parchment button (modal footer) */
+.p-button.bp-btn-cancel,
+.p-button.bp-btn-save {
   background: var(--theme-bg) !important;
   color: var(--theme-text) !important;
+  border: 0.5px solid var(--theme-bg) !important;
 }
-/* Danger severity */
-.p-button.p-button-danger, .p-button.p-button-danger.p-button-text {
-  color: #EF4444 !important;
+.p-button.bp-btn-cancel:hover,
+.p-button.bp-btn-save:hover {
+  background: var(--theme-accent) !important;
+  color: #fff !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Danger button */
+.p-button.p-button-danger {
+  background: #fff !important;
+  color: #DC2626 !important;
+  border: 0.5px solid #FCA5A5 !important;
+}
+.p-button.p-button-danger:hover:not(:disabled) {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
 }
 
 /* ============================================
@@ -277,22 +307,6 @@ lucide-icon svg {
   padding: 16px 28px 24px;
   border-top: 0.5px solid #F0F0F0;
 }
-/* Modal buttons */
-.bp-modal .p-dialog-footer .p-button {
-  font-family: var(--font-body) !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
-  border: 0.5px solid var(--theme-bg) !important;
-  border-radius: 8px !important;
-  padding: 9px 20px !important;
-}
-.bp-modal .p-dialog-footer .p-button:hover {
-  background: var(--theme-accent) !important;
-  color: #fff !important;
-}
-
 /* Dark mode disabled button override */
 [data-mode="dark"] .p-button:disabled, [data-mode="dark"] .p-button.p-disabled {
   background: var(--color-border) !important;
