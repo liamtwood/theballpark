@@ -68,8 +68,8 @@ import { environment } from '../../environments/environment';
       cursor: pointer; text-decoration: none; transition: color 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
-    .bp-nav-link:hover { color: var(--theme-text); }
-    .bp-nav-link.active { color: var(--theme-text); font-weight: 500; }
+    .bp-nav-link:hover { color: var(--color-text-primary); }
+    .bp-nav-link.active { color: var(--color-text-primary); font-weight: 500; }
     .bp-credits-pill {
       background: var(--theme-bg); color: var(--theme-text);
       font-size: var(--text-sm); font-weight: 600;

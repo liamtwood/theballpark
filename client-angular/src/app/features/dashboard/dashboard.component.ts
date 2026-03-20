@@ -88,7 +88,6 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 
         <!-- RIGHT COLUMN -->
         <div class="bp-body-right">
-          <a routerLink="/projects/new" class="bp-cta-btn"><lucide-icon name="plus" [size]="14" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Start new {{ projectLabel }}</a>
 
           <!-- Credits card -->
           <div class="bp-credits-card">
@@ -180,8 +179,9 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       font-size: var(--text-sm); color: var(--theme-accent); font-weight: 500;
       cursor: pointer; text-decoration: none;
       display: inline-flex; align-items: center; gap: 4px;
+      transition: color 0.15s;
     }
-    .bp-section-action:hover { text-decoration: underline; }
+    .bp-section-action:hover { color: var(--color-text-primary); }
     .bp-section-spacer { margin-top: 24px; }
     .bp-card {
       display: flex; flex-direction: row;
