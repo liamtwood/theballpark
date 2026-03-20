@@ -11,11 +11,12 @@ import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -136,9 +137,11 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
             </div>
           </div>
 
-          <div class="bp-view-all" routerLink="/suppliers">
-            View all {{ supplierCount }} saved suppliers &rarr;
-          </div>
+          <p-button
+            label="View all {{ supplierCount }} saved suppliers →"
+            styleClass="w-full p-button-outlined mt-1"
+            routerLink="/suppliers">
+          </p-button>
         </div>
       </div>
 
