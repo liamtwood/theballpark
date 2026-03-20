@@ -3,19 +3,15 @@ import { Component, Input } from '@angular/core';
 @Component({
   selector: 'app-avatar',
   standalone: true,
-  template: `<div class="bp-avatar" [style.width.px]="size" [style.height.px]="size" [style.font-size.px]="size * 0.375">{{ initials }}</div>`,
-  styles: [`
-    .bp-avatar {
-      border-radius: 50%;
-      background: var(--theme-accent);
-      color: #fff;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-  `]
+  template: `
+    <div class="rounded-full flex items-center justify-center text-white font-semibold select-none flex-shrink-0"
+         [style.width.px]="size"
+         [style.height.px]="size"
+         [style.background]="'var(--theme-accent)'"
+         [style.font-size.px]="size * 0.35">
+      {{ initials }}
+    </div>
+  `,
 })
 export class AvatarComponent {
   @Input() name = '';

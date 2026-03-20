@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnInit } fro
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { CheckboxModule } from 'primeng/checkbox';
 import { firstValueFrom } from 'rxjs';
 import { ImageProcessingService } from '../../services/image-processing.service';
 import { StorageService } from '../../services/storage.service';
@@ -11,7 +12,7 @@ import { ModalComponent } from '../modal/modal.component';
 @Component({
   selector: 'app-image-upload-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, ModalComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, CheckboxModule, ModalComponent],
   template: `
     <app-modal
       title="Edit images"
@@ -60,11 +61,10 @@ import { ModalComponent } from '../modal/modal.component';
                  style="display:none"/>
         </button>
 
-        <label class="iup-check" *ngIf="coverFile">
-          <input type="checkbox" [(ngModel)]="coverRemoveBg"/>
-          Remove background
-          <span>(auto-detects light & dark)</span>
-        </label>
+        <div class="flex items-center gap-2 mt-3" *ngIf="coverFile">
+          <p-checkbox [(ngModel)]="coverRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
+          <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
+        </div>
       </div>
 
       <!-- Card background colour (shown for both project and supplier when no image) -->
@@ -117,11 +117,10 @@ import { ModalComponent } from '../modal/modal.component';
                  style="display:none"/>
         </button>
 
-        <label class="iup-check" *ngIf="logoFile">
-          <input type="checkbox" [(ngModel)]="logoRemoveBg"/>
-          Remove background
-          <span>(auto-detects light & dark)</span>
-        </label>
+        <div class="flex items-center gap-2 mt-3" *ngIf="logoFile">
+          <p-checkbox [(ngModel)]="logoRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
+          <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
+        </div>
       </div>
 
       <!-- Status / error -->
@@ -168,12 +167,6 @@ import { ModalComponent } from '../modal/modal.component';
       cursor: pointer; font-family: inherit; text-align: center; transition: background 0.15s;
     }
     .iup-replace:hover { background: #FFFBEB; }
-    .iup-check {
-      display: flex; align-items: center; gap: 8px; font-size: 12px;
-      color: #6B7280; margin-top: 10px; cursor: pointer;
-    }
-    .iup-check input { accent-color: var(--theme-accent, #D97706); width: 14px; height: 14px; cursor: pointer; }
-    .iup-check span { color: var(--theme-accent, #D97706); font-weight: 500; }
     .iup-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
     .iup-swatch {
       width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
