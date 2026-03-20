@@ -160,41 +160,49 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-section-action:hover { text-decoration: underline; }
     .bp-section-spacer { margin-top: 24px; }
     .bp-card {
-      display: flex; border: 0.5px solid var(--color-border); border-radius: 10px;
-      overflow: hidden; margin-bottom: 10px; cursor: pointer;
-      background: var(--color-surface); transition: border-color 0.15s; position: relative;
+      display: flex; flex-direction: row;
+      border: 0.5px solid var(--color-border); border-radius: 10px;
+      overflow: visible; position: relative;
+      margin-bottom: 10px; background: var(--color-surface);
+      cursor: pointer; transition: border-color 0.15s;
     }
-    .bp-card:hover { border-color: #ccc; }
+    .bp-card:hover { border-color: var(--color-text-muted); }
     .bp-card-img {
-      width: 160px; min-height: 100px; flex-shrink: 0; position: relative;
+      width: 160px; flex-shrink: 0; position: relative;
       background-size: cover; background-position: center;
-      align-self: stretch;
+      border-radius: 10px 0 0 10px; overflow: hidden; min-height: 90px;
     }
-    .bp-card-grad-active { background: linear-gradient(160deg, #1a1a2e, #16213e); }
-    .bp-card-grad-draft { background: linear-gradient(160deg, #1a4a2e, #0d2b1a); }
-    .bp-card-grad-closed { background: linear-gradient(160deg, #2a2a2a, #1a1a1a); }
+    .bp-card-grad-active { background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-card-grad-draft { background-image: linear-gradient(160deg, #1a4a2e, #0d2b1a); }
+    .bp-card-grad-closed { background-image: linear-gradient(160deg, #2a2a2a, #1a1a1a); }
     .bp-card-img-hover {
       position: absolute; inset: 0; background: rgba(0,0,0,0.45);
+      opacity: 0; transition: opacity 0.15s;
       display: flex; align-items: center; justify-content: center;
-      color: #fff; opacity: 0; transition: opacity 0.2s; cursor: pointer;
+      cursor: pointer; color: white;
     }
-    .bp-card:hover .bp-card-img-hover { opacity: 1; }
+    .bp-card-img:hover .bp-card-img-hover { opacity: 1; }
     .bp-card-logo {
       position: absolute; bottom: 8px; left: 8px;
       width: 28px; height: 28px; border-radius: 5px;
-      background: #fff; background-size: contain; background-position: center; background-repeat: no-repeat;
+      background: #fff; background-size: contain;
+      background-repeat: no-repeat; background-position: center;
       border: 0.5px solid rgba(0,0,0,0.1);
     }
     .bp-card-logo-text {
       display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 700; color: var(--color-text-secondary);
+      font-size: 9px; font-weight: 700; color: #111;
     }
-    .bp-card-body { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-    .bp-card-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
-    .bp-card-name { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bp-card-row2 { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 2px; }
-    .bp-card-row3 { font-size: var(--text-sm); color: var(--color-text-muted); }
-    .bp-badge-new { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: capitalize; white-space: nowrap; flex-shrink: 0; }
+    .bp-card-body {
+      flex: 1; padding: 14px 16px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-width: 0;
+    }
+    .bp-card-row1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .bp-card-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); line-height: 1.3; }
+    .bp-card-row2 { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px; }
+    .bp-card-row3 { font-size: 12px; color: var(--color-text-secondary); }
+    .bp-badge-new { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
     .bp-badge-costing { background: #DBEAFE; color: #1E40AF; }
     .bp-badge-active-new { background: #D1FAE5; color: #065F46; }
     .bp-badge-draft-new { background: #FEF3C7; color: #92400E; }
