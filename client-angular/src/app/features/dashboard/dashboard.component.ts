@@ -147,7 +147,6 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
   styles: [`
     .bp-hero {
       background: var(--theme-bg); padding: 32px var(--section-pad) 28px;
-      border-bottom: 0.5px solid var(--theme-border);
     }
     .bp-hero-pills { display: flex; gap: 8px; margin-bottom: 16px; }
     .bp-hero-pill {
