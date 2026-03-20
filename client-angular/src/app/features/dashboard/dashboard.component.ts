@@ -54,7 +54,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
           <div *ngFor="let p of activeProjects" class="bp-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : ''" [class.bp-card-grad-draft]="!p.cover_image_url && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && p.status_name !== 'draft'">
+            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : cardGradient(p)" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color && p.status_name !== 'draft'">
               <div class="bp-card-img-hover" (click)="openUploadPanel($event, p)"><lucide-icon name="pencil" [size]="16"></lucide-icon></div>
               <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
               <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
@@ -64,7 +64,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
               <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' · ' + p.stand_width_m + '×' + p.stand_depth_m + 'm' : '' }}</div>
               <div class="bp-card-row3" *ngIf="p.total_client_cost">Est. {{ fmtCurrency(p.total_client_cost) }}</div>
             </div>
-            <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
+            <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
           </div>
 
           <!-- Completed projects -->
@@ -103,18 +103,37 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
             </p>
           </div>
 
-          <!-- Saved suppliers -->
-          <div class="bp-saved-suppliers-title"><lucide-icon name="heart" [size]="11" style="display:inline;vertical-align:middle;margin-right:4px;"></lucide-icon> Saved suppliers</div>
+          <!-- Saved Suppliers -->
+          <div class="bp-saved-hd">
+            <lucide-icon name="heart" [size]="12" style="color:var(--theme-accent)"></lucide-icon>
+            <span>Saved Suppliers</span>
+          </div>
+
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
-          <div *ngFor="let s of suppliers.slice(0, 5)" class="bp-supplier-row">
-            <div class="bp-supplier-icon">
-              <lucide-icon name="heart" [size]="14" style="color:var(--theme-accent);"></lucide-icon>
+
+          <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
+            <div class="bp-sup-img"
+                 [class]="'bp-sup-bg-' + getCategoryClass(s.category)"
+                 [style.background-image]="s.hero_image_url ? 'url(' + s.hero_image_url + ')' : null">
+              <div class="bp-sup-cat">{{ s.category }}</div>
+              <div class="bp-sup-heart">&hearts;</div>
+              <div class="bp-sup-price" *ngIf="s.price">from {{ s.price }}</div>
             </div>
-            <div class="bp-supplier-info">
-              <div class="bp-supplier-name">{{ s.name }}</div>
-              <div class="bp-supplier-meta">{{ s.category || 'Supplier' }} &middot; {{ s.city || 'UK' }}</div>
+            <div class="bp-sup-body">
+              <div class="bp-sup-name">{{ s.name }}</div>
+              <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
+              <div class="bp-sup-footer">
+                <div class="bp-sup-rating" *ngIf="s.rating">
+                  <span class="bp-sup-star">&starf;</span>
+                  {{ s.rating }}
+                </div>
+                <div class="bp-sup-action">View &rarr;</div>
+              </div>
             </div>
-            <div class="bp-supplier-price" *ngIf="s.price">from {{ s.price }}</div>
+          </div>
+
+          <div class="bp-view-all" *ngIf="suppliers.length > 2" routerLink="/suppliers/saved">
+            View all {{ suppliers.length }} saved suppliers &rarr;
           </div>
         </div>
       </div>
@@ -185,7 +204,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-card-logo {
       position: absolute; bottom: 50%; left: 50%;
       transform: translate(-50%, 50%);
-      width: 64px; height: 64px; border-radius: 0;
+      width: 128px; height: 128px; border-radius: 0;
       background: transparent; background-size: contain;
       background-repeat: no-repeat; background-position: center;
       border: none;
@@ -230,24 +249,57 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-credit-dot.filled { background: var(--theme-accent); }
     .bp-credit-dot.empty { background: var(--theme-empty); }
     .bp-credits-desc { font-size: 11px; color: var(--theme-text); line-height: 1.5; }
-    .bp-saved-suppliers-title {
+    .bp-saved-hd {
+      display: flex; align-items: center; gap: 5px;
       font-size: 11px; font-weight: 600; color: var(--color-text-primary);
-      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
-      display: flex; align-items: center; gap: 4px;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;
     }
-    .bp-supplier-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 0; border-bottom: 0.5px solid var(--color-border);
+    .bp-sup-card {
+      border: 0.5px solid var(--color-border); border-radius: var(--border-radius-lg);
+      overflow: hidden; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s;
     }
-    .bp-supplier-row:last-child { border-bottom: none; }
-    .bp-supplier-icon {
-      width: 32px; height: 32px; border-radius: 6px; background: var(--theme-bg);
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    .bp-sup-card:hover { border-color: var(--color-border-secondary); }
+    .bp-sup-img {
+      width: 100%; height: 120px; position: relative;
+      display: flex; align-items: center; justify-content: center; font-size: 36px;
+      background-size: cover; background-position: center;
     }
-    .bp-supplier-info { flex: 1; min-width: 0; }
-    .bp-supplier-name { font-size: var(--text-base); font-weight: 500; color: var(--color-text-primary); }
-    .bp-supplier-meta { font-size: 11px; color: var(--color-text-muted); }
-    .bp-supplier-price { font-size: var(--text-sm); color: var(--color-text-secondary); margin-left: auto; white-space: nowrap; }
+    .bp-sup-bg-setbuild { background-color: #1a1a2e; background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-sup-bg-av { background-image: linear-gradient(160deg, #0d1b2a, #1b2838); }
+    .bp-sup-bg-florist { background-image: linear-gradient(160deg, #2d1b2e, #4a1942); }
+    .bp-sup-bg-catering { background-image: linear-gradient(160deg, #1a2e1a, #162116); }
+    .bp-sup-bg-default { background-image: linear-gradient(160deg, #1a1a2e, #2e1a2e); }
+    .bp-sup-cat {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+      background: rgba(0,0,0,0.5); color: #fff;
+    }
+    .bp-sup-heart {
+      position: absolute; top: 8px; right: 8px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--theme-accent);
+    }
+    .bp-sup-price {
+      position: absolute; bottom: 8px; right: 8px;
+      font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+      background: rgba(0,0,0,0.5); color: #fff;
+    }
+    .bp-sup-body { padding: 10px 12px 12px; }
+    .bp-sup-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 2px; }
+    .bp-sup-meta { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px; }
+    .bp-sup-footer { display: flex; align-items: center; justify-content: space-between; }
+    .bp-sup-rating { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--color-text-secondary); }
+    .bp-sup-star { color: var(--theme-accent); }
+    .bp-sup-action { font-size: 11px; font-weight: 500; color: var(--theme-accent); cursor: pointer; }
+    .bp-view-all {
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px; font-size: 12px; font-weight: 500; color: var(--theme-accent);
+      cursor: pointer; border: 0.5px solid var(--color-border); border-radius: 8px;
+      margin-top: 2px; transition: all 0.15s;
+    }
+    .bp-view-all:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
     .bp-empty { font-size: var(--text-sm); color: var(--color-text-muted); padding: 16px 0; }
   `]
 })
@@ -304,11 +356,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.uploadPanelProjectId = this.uploadPanelProjectId === project.id ? '' : project.id;
   }
 
-  onImagesUpdated(project: Project, urls: { coverUrl: string; logoUrl: string }) {
-    if (urls.coverUrl) project.cover_image_url = urls.coverUrl;
-    if (urls.logoUrl) project.client_logo_url = urls.logoUrl;
+  onImagesUpdated(project: Project, urls: { coverUrl: string; logoUrl: string; cardColor?: string }) {
+    if (urls.coverUrl !== undefined) project.cover_image_url = urls.coverUrl || '';
+    if (urls.logoUrl !== undefined) project.client_logo_url = urls.logoUrl || '';
+    if (urls.cardColor !== undefined) project.card_color = urls.cardColor || '';
     this.uploadPanelProjectId = '';
     this.cdr.detectChanges();
+  }
+
+  private cardColorMap: Record<string, string> = {
+    slate:  'linear-gradient(160deg, #2a2a2a, #1a1a1a)',
+    navy:   'linear-gradient(160deg, #1a1a2e, #16213e)',
+    wine:   'linear-gradient(160deg, #4a1a2e, #2e0d1a)',
+    sky:    'linear-gradient(160deg, #a8d8ea, #6bb7d4)',
+    peach:  'linear-gradient(160deg, #f5c6aa, #e8a87c)',
+    mint:   'linear-gradient(160deg, #a8e6cf, #6bc4a6)',
+  };
+
+  getCategoryClass(category: string): string {
+    if (!category) return 'default';
+    const c = category.toLowerCase();
+    if (c.includes('build') || c.includes('stand')) return 'setbuild';
+    if (c.includes('av') || c.includes('audio') || c.includes('visual')) return 'av';
+    if (c.includes('flor')) return 'florist';
+    if (c.includes('cater')) return 'catering';
+    return 'default';
+  }
+
+  cardGradient(p: Project): string {
+    if (!p.card_color || !this.cardColorMap[p.card_color]) return '';
+    return this.cardColorMap[p.card_color];
   }
 
   ngOnInit() {
