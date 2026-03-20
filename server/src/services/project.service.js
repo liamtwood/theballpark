@@ -78,7 +78,7 @@ async function update(id, data) {
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
     parsed_brief_json, ai_hints, missing_fields, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-    default_vat_pct, tier, status_id, cover_image_url, client_logo_url
+    default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color
   } = data;
   const result = await pool.query(
     `UPDATE projects SET
@@ -99,15 +99,16 @@ async function update(id, data) {
       tier = COALESCE($25, tier), status_id = COALESCE($26, status_id),
       cover_image_url = COALESCE($27, cover_image_url),
       client_logo_url = COALESCE($28, client_logo_url),
+      card_color = COALESCE($29, card_color),
       updated_at = NOW()
-     WHERE id = $29 RETURNING *`,
+     WHERE id = $30 RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id, cover_image_url, client_logo_url, id
+      default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color, id
     ]
   );
   return result.rows[0] || null;

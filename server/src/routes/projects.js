@@ -40,13 +40,14 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PATCH /:id/images — update project image URLs
+// PATCH /:id/images — update project image URLs and card color
 router.patch('/:id/images', async (req, res, next) => {
   try {
-    const { cover_image_url, client_logo_url } = req.body;
+    const { cover_image_url, client_logo_url, card_color } = req.body;
     const updates = {};
     if (cover_image_url !== undefined) updates.cover_image_url = cover_image_url;
     if (client_logo_url !== undefined) updates.client_logo_url = client_logo_url;
+    if (card_color !== undefined) updates.card_color = card_color;
     const project = await ProjectService.update(req.params.id, updates);
     if (!project) return res.status(404).json({ error: 'Not found' });
     res.json(project);

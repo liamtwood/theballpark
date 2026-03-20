@@ -34,6 +34,7 @@ export interface Project {
   status_color?: string;
   cover_image_url?: string;
   client_logo_url?: string;
+  card_color?: string;
   is_active: boolean;
   project_categories?: ProjectCategory[];
   created_at: string;
