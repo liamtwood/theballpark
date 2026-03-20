@@ -38,7 +38,8 @@ async function update(id, data) {
   const {
     name, description, type, address, city, country, phone, email, website,
     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-    default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct
+    default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
+    cover_image_url
   } = data;
   const result = await pool.query(
     `UPDATE orgs SET
@@ -55,11 +56,13 @@ async function update(id, data) {
       vat_number = COALESCE($16, vat_number),
       default_margin_pct = COALESCE($17, default_margin_pct),
       default_contingency_pct = COALESCE($18, default_contingency_pct),
+      cover_image_url = COALESCE($19, cover_image_url),
       updated_at = NOW()
-     WHERE id = $19 RETURNING *`,
+     WHERE id = $20 RETURNING *`,
     [name, description, type, address, city, country, phone, email, website,
      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct, id]
+     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
+     cover_image_url, id]
   );
   return result.rows[0] || null;
 }

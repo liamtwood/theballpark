@@ -265,6 +265,10 @@ const migrate = async () => {
       -- Add image columns to projects
       ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_logo_url TEXT;
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);
+
+      -- Add cover image column to orgs (suppliers)
+      ALTER TABLE orgs ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
     `);
 
     console.log('All tables created successfully.');

@@ -63,6 +63,16 @@ app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
   try { res.json(await OrgService.getCatalogue(req.params.id)); } catch (err) { next(err); }
 });
 
+// PATCH supplier images
+app.patch('/api/suppliers/:id/images', async (req, res, next) => {
+  try {
+    const { cover_image_url } = req.body;
+    const result = await OrgService.update(req.params.id, { cover_image_url });
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 // Convenience: get projects for a client
 app.get('/api/clients/:id/projects', async (req, res, next) => {
   try { res.json(await ProjectService.getByClient(req.params.id)); } catch (err) { next(err); }
@@ -82,6 +92,7 @@ app.use('/api/estimate-items', require('./routes/estimateItems'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/storage', require('./routes/storage'));
 
 // Centralised error handler
 app.use((err, req, res, next) => {
