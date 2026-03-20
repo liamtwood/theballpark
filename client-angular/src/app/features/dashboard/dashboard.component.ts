@@ -185,9 +185,9 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-card-logo {
       position: absolute; bottom: 8px; left: 8px;
       width: 28px; height: 28px; border-radius: 5px;
-      background: #fff; background-size: contain;
+      background: transparent; background-size: 300%;
       background-repeat: no-repeat; background-position: center;
-      border: 0.5px solid rgba(0,0,0,0.1);
+      border: none;
     }
     .bp-card-logo-text {
       display: flex; align-items: center; justify-content: center;
