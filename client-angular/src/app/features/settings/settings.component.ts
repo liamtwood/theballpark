@@ -21,7 +21,8 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
   selector: 'app-settings',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, LucideAngularModule,
+    CommonModule, FormsModule,
+    LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
     InputSwitchModule, ToastModule, TagModule,
     LoadingSpinnerComponent, AvatarComponent
@@ -557,7 +558,6 @@ export class SettingsComponent implements OnInit {
   private orgSnapshot: typeof this.form | null = null;
   private finSnapshot: typeof this.form | null = null;
 
-  readonly icons = { Building2, Users, Layers, CreditCard, Palette, Pencil, Check, X };
   tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
   tabIcons = ['building-2', 'users', 'layers', 'credit-card', 'palette'];
   activeTab = 0;
