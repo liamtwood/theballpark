@@ -203,25 +203,113 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
         </div>
 
         <!-- ── TEAM TAB ── -->
-        <div *ngIf="activeTab === 1" class="bp-settings-body">
-          <h2 class="bp-page-title">Team</h2>
+        <div *ngIf="activeTab === 1" class="bp-team-page">
 
-          <div class="bp-section">
-            <div class="bp-section-header">
-              <span class="bp-section-title">MEMBERS</span>
-              <p-button label="Invite member" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="inviteMember()"></p-button>
+          <!-- Full-width page title -->
+          <div class="bp-team-title-bar">
+            <h2 class="bp-page-title">Team</h2>
+          </div>
+
+          <div class="bp-team-body">
+
+            <!-- LEFT: sort + filter sidebar -->
+            <div class="bp-team-sidebar">
+
+              <div class="bp-sidebar-heading">Sort by</div>
+              <div *ngFor="let s of sortOptions"
+                class="bp-sidebar-item" [class.active]="teamSort === s.value"
+                (click)="setTeamSort(s.value)">
+                {{ s.label }}
+                <span class="bp-sidebar-arrow">{{ teamSort === s.value ? '↑' : '↕' }}</span>
+              </div>
+
+              <hr class="bp-sidebar-divider"/>
+
+              <div class="bp-sidebar-heading">Filter by</div>
+
+              <div class="bp-team-search">
+                <i class="pi pi-search" style="color:var(--color-text-muted);font-size:12px;"></i>
+                <input pInputText [(ngModel)]="teamSearch" placeholder="Search..."
+                  class="bp-team-search-input" (ngModelChange)="applyFilters()"/>
+              </div>
+
+              <div class="bp-sidebar-sublabel">Role</div>
+              <div *ngFor="let r of roleFilters"
+                class="bp-sidebar-item" [class.active]="teamRoleFilter === r.value"
+                (click)="setRoleFilter(r.value)">
+                {{ r.label }}
+                <span class="bp-sidebar-count">{{ getRoleCount(r.value) }}</span>
+              </div>
+
             </div>
-            <p *ngIf="users.length===0" class="bp-muted-text">No team members yet.</p>
-            <div *ngFor="let u of users; let last = last" class="flex items-center justify-between py-3"
-              [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'">
-              <div class="flex items-center gap-3">
-                <app-avatar [name]="u.name"></app-avatar>
-                <div>
-                  <p class="bp-member-name">{{u.name}}</p>
-                  <p class="bp-muted-text">{{u.email}}</p>
+
+            <!-- RIGHT: members list/card -->
+            <div class="bp-team-main">
+              <div class="bp-section-header">
+                <span class="bp-section-title">MEMBERS</span>
+                <div class="flex items-center gap-2">
+                  <div class="bp-view-toggle">
+                    <button class="bp-view-btn" [class.active]="teamView==='list'" (click)="teamView='list'" title="List view">
+                      <i class="pi pi-bars"></i>
+                    </button>
+                    <button class="bp-view-btn" [class.active]="teamView==='grid'" (click)="teamView='grid'" title="Card view">
+                      <i class="pi pi-th-large"></i>
+                    </button>
+                  </div>
+                  <p-button label="Invite member" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="inviteMember()"></p-button>
                 </div>
               </div>
-              <app-status-badge [status]="u.role"></app-status-badge>
+
+              <p *ngIf="filteredUsers.length===0" class="bp-muted-text">No members found.</p>
+
+              <!-- LIST VIEW -->
+              <ng-container *ngIf="teamView==='list'">
+                <div *ngFor="let u of filteredUsers; let last = last"
+                  class="bp-member-row" [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'">
+                  <div class="flex items-center gap-3">
+                    <app-avatar [name]="u.name"></app-avatar>
+                    <div>
+                      <p class="bp-member-name">{{u.name}}</p>
+                      <p class="bp-muted-text">{{u.email}}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="bp-member-joined">{{u.joined || '—'}}</span>
+                    <app-status-badge [status]="u.role"></app-status-badge>
+                    <button class="bp-icon-btn" title="Edit" (click)="editMember(u)">
+                      <i class="pi pi-pencil"></i>
+                    </button>
+                    <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- CARD VIEW -->
+              <div *ngIf="teamView==='grid'" class="bp-member-grid">
+                <div *ngFor="let u of filteredUsers" class="bp-member-card">
+                  <div class="flex items-center gap-3 mb-3">
+                    <app-avatar [name]="u.name" [size]="44"></app-avatar>
+                    <div>
+                      <p class="bp-member-name">{{u.name}}</p>
+                      <p class="bp-muted-text">{{u.email}}</p>
+                    </div>
+                  </div>
+                  <div class="bp-member-card-footer">
+                    <app-status-badge [status]="u.role"></app-status-badge>
+                    <div class="flex gap-1">
+                      <button class="bp-icon-btn" title="Edit" (click)="editMember(u)">
+                        <i class="pi pi-pencil"></i>
+                      </button>
+                      <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -535,6 +623,43 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       border-color: var(--theme-accent) !important;
     }
 
+    /* ── TEAM TAB ── */
+    .bp-team-page { }
+    .bp-team-title-bar { padding: 20px var(--section-pad) 0; border-bottom: 0.5px solid var(--color-border); }
+    .bp-team-body { display: grid; grid-template-columns: 180px 1fr; min-height: calc(100vh - 300px); }
+    .bp-team-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; }
+    .bp-team-main { padding: 20px 28px; }
+
+    .bp-sidebar-heading { font-size: 14px; font-weight: 500; color: var(--theme-accent); margin-bottom: 8px; }
+    .bp-sidebar-sublabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
+    .bp-sidebar-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; color: var(--color-text-secondary); margin-bottom: 2px;
+      transition: background 0.15s;
+    }
+    .bp-sidebar-item:hover { background: var(--color-surface); }
+    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-text); font-weight: 500; }
+    .bp-sidebar-arrow { font-size: 10px; color: var(--color-text-muted); }
+    .bp-sidebar-item.active .bp-sidebar-arrow { color: var(--theme-accent); }
+    .bp-sidebar-count { font-size: 11px; color: var(--color-text-muted); background: var(--color-surface); padding: 1px 7px; border-radius: 20px; border: 0.5px solid var(--color-border); }
+    .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); color: var(--theme-text); border-color: var(--theme-border); }
+    .bp-sidebar-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 16px 0; }
+
+    .bp-team-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 6px; padding: 5px 10px; margin-bottom: 10px; }
+    .bp-team-search:focus-within { border-color: var(--theme-accent); }
+    :host ::ng-deep .bp-team-search-input.p-inputtext { border: none !important; box-shadow: none !important; padding: 0 !important; font-size: 12px !important; background: transparent !important; }
+
+    .bp-view-toggle { display: flex; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
+    .bp-view-btn { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: var(--color-surface); cursor: pointer; color: var(--color-text-muted); font-size: 13px; transition: all 0.15s; }
+    .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
+
+    .bp-member-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+    .bp-member-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+    .bp-member-card { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
+    .bp-member-card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
+    .bp-member-joined { font-size: 11px; color: var(--color-text-muted); }
+
     /* ── MISC ── */
     .bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
     .bp-member-name { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); margin: 0; }
@@ -647,6 +772,7 @@ export class SettingsComponent implements OnInit {
       }
       this.users = users || [];
       this.categories = cats || [];
+      this.applyFilters();
       this.loading = false;
       this.cdr.detectChanges();
     }).catch(() => { this.loading = false; this.cdr.detectChanges(); });
@@ -685,6 +811,67 @@ export class SettingsComponent implements OnInit {
         this.msg.add({ severity: 'error', summary: 'Error saving changes' });
       }
     });
+  }
+
+  // Team tab
+  teamView: 'list' | 'grid' = 'list';
+  teamSort = 'name';
+  teamSearch = '';
+  teamRoleFilter = 'all';
+  filteredUsers: User[] = [];
+
+  sortOptions = [
+    { label: 'Name', value: 'name' },
+    { label: 'Joined', value: 'joined' },
+    { label: 'Role', value: 'role' }
+  ];
+
+  roleFilters = [
+    { label: 'All members', value: 'all' },
+    { label: 'Owner', value: 'owner' },
+    { label: 'Member', value: 'member' }
+  ];
+
+  getRoleCount(role: string): number {
+    if (role === 'all') return this.users.length;
+    return this.users.filter(u => u.role === role).length;
+  }
+
+  setTeamSort(val: string) {
+    this.teamSort = val;
+    this.applyFilters();
+  }
+
+  setRoleFilter(val: string) {
+    this.teamRoleFilter = val;
+    this.applyFilters();
+  }
+
+  applyFilters() {
+    let list = [...this.users];
+    if (this.teamRoleFilter !== 'all') {
+      list = list.filter(u => u.role === this.teamRoleFilter);
+    }
+    if (this.teamSearch.trim()) {
+      const q = this.teamSearch.toLowerCase();
+      list = list.filter(u => u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
+    }
+    list.sort((a, b) => {
+      if (this.teamSort === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (this.teamSort === 'role') return (a.role || '').localeCompare(b.role || '');
+      if (this.teamSort === 'joined') return (a.joined || '').localeCompare(b.joined || '');
+      return 0;
+    });
+    this.filteredUsers = list;
+    this.cdr.detectChanges();
+  }
+
+  editMember(u: User) {
+    this.msg.add({ severity: 'info', summary: `Edit ${u.name} — coming soon` });
+  }
+
+  removeMember(u: User) {
+    this.msg.add({ severity: 'warn', summary: `Remove ${u.name} — coming soon` });
   }
 
   inviteMember() {
