@@ -53,7 +53,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">ORGANISATION DETAILS</span>
-              <button *ngIf="!editingOrg" class="bp-pencil-btn" (click)="startEdit('org')">
+              <button class="bp-pencil-btn" [style.visibility]="editingOrg ? 'hidden' : 'visible'" (click)="startEdit('org')">
                 <lucide-icon name="pencil" [size]="14"></lucide-icon>
               </button>
             </div>
@@ -143,7 +143,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">FINANCIAL DEFAULTS</span>
-              <button *ngIf="!editingFin" class="bp-pencil-btn" (click)="startEdit('fin')">
+              <button class="bp-pencil-btn" [style.visibility]="editingFin ? 'hidden' : 'visible'" (click)="startEdit('fin')">
                 <lucide-icon name="pencil" [size]="14"></lucide-icon>
               </button>
             </div>
