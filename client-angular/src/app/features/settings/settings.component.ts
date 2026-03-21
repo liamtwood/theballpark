@@ -458,6 +458,12 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       color: var(--color-text-primary);
       font-weight: 400;
       line-height: 1.5;
+      /* Match PrimeNG pInputText padding + border exactly so
+         view→edit transition has no positional jump */
+      padding: 0.75rem;
+      min-height: 42px;
+      border: 1px solid transparent; /* placeholder for border width */
+      box-sizing: border-box;
     }
 
     /* ── EDIT MODE INPUTS — parchment bg + theme accent border ── */
