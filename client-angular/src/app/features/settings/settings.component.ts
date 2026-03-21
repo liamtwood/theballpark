@@ -58,30 +58,30 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
               </button>
             </div>
 
-            <!-- VIEW MODE — uses bp-field-label for consistency with edit mode -->
+            <!-- VIEW MODE — readonly pInputText, same box model as edit mode, no jump -->
             <ng-container *ngIf="!editingOrg">
               <div class="bp-field-grid-2">
                 <div>
-                  <span class="bp-field-label">Organisation name</span>
-                  <span class="bp-field-value">{{ form.name || '—' }}</span>
+                  <label class="bp-field-label">Organisation name</label>
+                  <input pInputText [value]="form.name || '—'" class="w-full bp-field-readonly" readonly/>
                 </div>
                 <div>
-                  <span class="bp-field-label">City</span>
-                  <span class="bp-field-value">{{ form.city || '—' }}</span>
+                  <label class="bp-field-label">City</label>
+                  <input pInputText [value]="form.city || '—'" class="w-full bp-field-readonly" readonly/>
                 </div>
               </div>
               <div class="mt-4">
-                <span class="bp-field-label">Address</span>
-                <span class="bp-field-value">{{ form.address || '—' }}</span>
+                <label class="bp-field-label">Address</label>
+                <input pInputText [value]="form.address || '—'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div class="bp-field-grid-2 mt-4">
                 <div>
-                  <span class="bp-field-label">Email</span>
-                  <span class="bp-field-value">{{ form.email || '—' }}</span>
+                  <label class="bp-field-label">Email</label>
+                  <input pInputText [value]="form.email || '—'" class="w-full bp-field-readonly" readonly/>
                 </div>
                 <div>
-                  <span class="bp-field-label">Phone</span>
-                  <span class="bp-field-value">{{ form.phone || '—' }}</span>
+                  <label class="bp-field-label">Phone</label>
+                  <input pInputText [value]="form.phone || '—'" class="w-full bp-field-readonly" readonly/>
                 </div>
               </div>
             </ng-container>
@@ -148,20 +148,20 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
               </button>
             </div>
 
-            <!-- VIEW MODE -->
+            <!-- VIEW MODE — readonly pInputText -->
             <ng-container *ngIf="!editingFin">
               <div class="bp-field-grid-3">
                 <div>
-                  <span class="bp-field-label">Default VAT</span>
-                  <span class="bp-field-value">{{ form.vat }}%</span>
+                  <label class="bp-field-label">Default VAT</label>
+                  <input pInputText [value]="form.vat + '%'" class="w-full bp-field-readonly" readonly/>
                 </div>
                 <div>
-                  <span class="bp-field-label">Default margin</span>
-                  <span class="bp-field-value">{{ form.margin }}%</span>
+                  <label class="bp-field-label">Default margin</label>
+                  <input pInputText [value]="form.margin + '%'" class="w-full bp-field-readonly" readonly/>
                 </div>
                 <div>
-                  <span class="bp-field-label">Default contingency</span>
-                  <span class="bp-field-value">{{ form.contingency }}%</span>
+                  <label class="bp-field-label">Default contingency</label>
+                  <input pInputText [value]="form.contingency + '%'" class="w-full bp-field-readonly" readonly/>
                 </div>
               </div>
             </ng-container>
@@ -451,19 +451,19 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
     .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
-    /* ── VIEW MODE VALUES ── */
-    .bp-field-value {
-      display: block;
-      font-size: var(--text-md);
-      color: var(--color-text-primary);
-      font-weight: 400;
-      line-height: 1.5;
-      /* Match PrimeNG pInputText padding + border exactly so
-         view→edit transition has no positional jump */
-      padding: 0.75rem;
-      min-height: 42px;
-      border: 1px solid transparent; /* placeholder for border width */
-      box-sizing: border-box;
+    /* ── VIEW MODE — readonly pInputText, transparent so it looks like plain text
+         Same box model as edit input = zero layout shift on toggle ── */
+    :host ::ng-deep .bp-field-readonly.p-inputtext {
+      background: transparent !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+      cursor: default !important;
+      color: var(--color-text-primary) !important;
+      padding-left: 0 !important;
+    }
+    :host ::ng-deep .bp-field-readonly.p-inputtext:focus {
+      box-shadow: none !important;
+      border-color: transparent !important;
     }
 
     /* ── EDIT MODE INPUTS — parchment bg + theme accent border ── */
