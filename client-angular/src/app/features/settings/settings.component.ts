@@ -5,11 +5,10 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToastModule } from 'primeng/toast';
 import { TagModule } from 'primeng/tag';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, Building2, Users, Layers, CreditCard, Palette, Pencil, Check, X } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -22,9 +21,8 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, TagModule,
+    ToggleSwitchModule, ToastModule, TagModule,
     LoadingSpinnerComponent, AvatarComponent
   ],
   providers: [MessageService],
@@ -36,8 +34,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       <div class="bp-hero-tabs">
         <button *ngFor="let tab of tabs; let i = index"
           class="bp-hero-tab" [class.active]="activeTab === i"
-          (click)="activeTab = i">
-          <lucide-icon [name]="tabIcons[i]" [size]="12" class="inline align-middle mr-1"></lucide-icon>{{ tab }}
+          (click)="activeTab = i">{{ tab }}
         </button>
       </div>
     </div>
@@ -49,29 +46,28 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 
         <!-- ── ORGANISATION TAB ── -->
         <div *ngIf="activeTab === 0" class="bp-settings-body">
+          <h2 class="bp-page-title">Organisation Settings</h2>
 
           <!-- SECTION: ORGANISATION DETAILS -->
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">ORGANISATION DETAILS</span>
-              <div class="flex items-center gap-1">
-                <ng-container *ngIf="!editingOrg">
-                  <button class="bp-pencil-btn" (click)="startEdit('org')">
-                    <lucide-icon name="pencil" [size]="14"></lucide-icon>
-                  </button>
-                </ng-container>
+              <div class="bp-section-actions">
+                <button *ngIf="!editingOrg" class="bp-icon-btn" (click)="startEdit('org')" title="Edit">
+                  <i class="pi pi-pencil"></i>
+                </button>
                 <ng-container *ngIf="editingOrg">
-                  <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
-                    <lucide-icon name="check" [size]="18"></lucide-icon>
+                  <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
+                    <i class="pi pi-check"></i>
                   </button>
-                  <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('org')">
-                    <lucide-icon name="x" [size]="18"></lucide-icon>
+                  <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('org')" title="Cancel">
+                    <i class="pi pi-times"></i>
                   </button>
                 </ng-container>
               </div>
             </div>
 
-            <!-- VIEW MODE — readonly pInputText, same box model as edit mode, no jump -->
+            <!-- VIEW MODE -->
             <ng-container *ngIf="!editingOrg">
               <div class="bp-field-grid-2">
                 <div>
@@ -99,7 +95,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
               </div>
             </ng-container>
 
-            <!-- EDIT MODE — same bp-field-label, no jump -->
+            <!-- EDIT MODE -->
             <ng-container *ngIf="editingOrg">
               <div class="bp-field-grid-2">
                 <div>
@@ -152,24 +148,22 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">FINANCIAL DEFAULTS</span>
-              <div class="flex items-center gap-1">
-                <ng-container *ngIf="!editingFin">
-                  <button class="bp-pencil-btn" (click)="startEdit('fin')">
-                    <lucide-icon name="pencil" [size]="14"></lucide-icon>
-                  </button>
-                </ng-container>
+              <div class="bp-section-actions">
+                <button *ngIf="!editingFin" class="bp-icon-btn" (click)="startEdit('fin')" title="Edit">
+                  <i class="pi pi-pencil"></i>
+                </button>
                 <ng-container *ngIf="editingFin">
-                  <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
-                    <lucide-icon name="check" [size]="18"></lucide-icon>
+                  <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
+                    <i class="pi pi-check"></i>
                   </button>
-                  <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('fin')">
-                    <lucide-icon name="x" [size]="18"></lucide-icon>
+                  <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('fin')" title="Cancel">
+                    <i class="pi pi-times"></i>
                   </button>
                 </ng-container>
               </div>
             </div>
 
-            <!-- VIEW MODE — readonly pInputText -->
+            <!-- VIEW MODE -->
             <ng-container *ngIf="!editingFin">
               <div class="bp-field-grid-3">
                 <div>
@@ -210,14 +204,20 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 
         <!-- ── TEAM TAB ── -->
         <div *ngIf="activeTab === 1" class="bp-settings-body">
-          <p *ngIf="users.length===0" class="bp-muted-text">No team members found.</p>
-          <div *ngIf="users.length>0" class="bp-section">
-            <div *ngFor="let u of users" class="flex items-center justify-between py-3"
-              style="border-bottom:0.5px solid var(--color-border);">
+          <h2 class="bp-page-title">Team</h2>
+
+          <div class="bp-section">
+            <div class="bp-section-header">
+              <span class="bp-section-title">MEMBERS</span>
+              <p-button label="Invite member" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="inviteMember()"></p-button>
+            </div>
+            <p *ngIf="users.length===0" class="bp-muted-text">No team members yet.</p>
+            <div *ngFor="let u of users; let last = last" class="flex items-center justify-between py-3"
+              [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'">
               <div class="flex items-center gap-3">
                 <app-avatar [name]="u.name"></app-avatar>
                 <div>
-                  <p class="text-sm font-medium" style="color:var(--color-text-primary);">{{u.name}}</p>
+                  <p class="bp-member-name">{{u.name}}</p>
                   <p class="bp-muted-text">{{u.email}}</p>
                 </div>
               </div>
@@ -228,14 +228,19 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 
         <!-- ── CATEGORIES TAB ── -->
         <div *ngIf="activeTab === 2" class="bp-settings-body">
-          <p *ngIf="categories.length===0" class="bp-muted-text">No categories found.</p>
-          <div class="bp-section" *ngIf="categories.length>0">
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <h2 class="bp-page-title">Categories</h2>
+
+          <div class="bp-section">
+            <div class="bp-section-header">
+              <span class="bp-section-title">ACTIVE CATEGORIES</span>
+            </div>
+            <p *ngIf="categories.length===0" class="bp-muted-text">No categories found.</p>
+            <div *ngIf="categories.length>0" class="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div *ngFor="let c of categories"
                 class="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style="background:var(--color-surface);border:0.5px solid var(--color-border);">
-                <span style="color:var(--color-text-muted);">&#x1F3F7;</span>
-                <span class="text-sm font-medium" style="color:var(--color-text-primary);">{{c.name}}</span>
+                <i class="pi pi-tag" style="color:var(--color-text-muted);font-size:12px;"></i>
+                <span class="bp-category-name">{{c.name}}</span>
               </div>
             </div>
           </div>
@@ -243,19 +248,21 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 
         <!-- ── SUBSCRIPTION TAB ── -->
         <div *ngIf="activeTab === 3 && org" class="bp-settings-body">
-          <div class="bp-section" style="max-width:400px;">
+          <h2 class="bp-page-title">Subscription</h2>
+
+          <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">CURRENT PLAN</span>
             </div>
-            <p-tag [value]="org.subscription_tier" styleClass="capitalize mb-4 inline-block"></p-tag>
-            <div class="mt-3 text-sm" style="color:var(--color-text-secondary);">
-              <div class="flex justify-between py-2" style="border-bottom:0.5px solid var(--color-border);">
-                <span>{{ appearance.creditLabel }}s balance</span>
-                <span class="font-semibold" style="color:var(--color-text-primary);">{{org.balls_balance}}</span>
+            <p-tag [value]="org.subscription_tier" styleClass="capitalize"></p-tag>
+            <div class="mt-4" style="border-top:0.5px solid var(--color-border);">
+              <div class="flex justify-between py-3" style="border-bottom:0.5px solid var(--color-border);">
+                <span class="bp-field-label" style="margin:0;">{{ appearance.creditLabel }}s balance</span>
+                <span class="bp-field-value-inline">{{org.balls_balance}}</span>
               </div>
-              <div class="flex justify-between py-2">
-                <span>Monthly allowance</span>
-                <span class="font-semibold" style="color:var(--color-text-primary);">{{org.balls_monthly_allowance}}</span>
+              <div class="flex justify-between py-3">
+                <span class="bp-field-label" style="margin:0;">Monthly allowance</span>
+                <span class="bp-field-value-inline">{{org.balls_monthly_allowance}}</span>
               </div>
             </div>
           </div>
@@ -266,17 +273,31 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-appearance-grid">
 
             <div>
+              <h2 class="bp-page-title">Appearance</h2>
+
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">PLATFORM</span></div>
-                <div class="mb-3"><label class="bp-field-label">Platform name</label><input pInputText [(ngModel)]="appearance.platformName" class="w-full" (ngModelChange)="liveUpdate()"/></div>
-                <div class="mb-3"><label class="bp-field-label">Tagline</label><input pInputText [(ngModel)]="appearance.tagline" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                <div class="mb-3">
+                  <label class="bp-field-label">Platform name</label>
+                  <input pInputText [(ngModel)]="appearance.platformName" class="w-full" (ngModelChange)="liveUpdate()"/>
+                </div>
+                <div class="mb-3">
+                  <label class="bp-field-label">Tagline</label>
+                  <input pInputText [(ngModel)]="appearance.tagline" class="w-full" (ngModelChange)="liveUpdate()"/>
+                </div>
               </div>
 
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">TERMINOLOGY</span></div>
                 <div class="grid grid-cols-2 gap-4">
-                  <div><label class="bp-field-label">Projects are called</label><input pInputText [(ngModel)]="appearance.projectLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
-                  <div><label class="bp-field-label">Credits are called</label><input pInputText [(ngModel)]="appearance.creditLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                  <div>
+                    <label class="bp-field-label">Projects are called</label>
+                    <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full" (ngModelChange)="liveUpdate()"/>
+                  </div>
+                  <div>
+                    <label class="bp-field-label">Credits are called</label>
+                    <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full" (ngModelChange)="liveUpdate()"/>
+                  </div>
                 </div>
               </div>
 
@@ -286,7 +307,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   <button *ngFor="let t of themeNames" (click)="selectTheme(t)"
                     class="bp-swatch" [style.background]="themePresets[t].accent"
                     [class.bp-swatch-active]="appearance.themeName === t" [title]="t">
-                    <span *ngIf="appearance.themeName === t" class="text-white text-sm">&#10003;</span>
+                    <i *ngIf="appearance.themeName === t" class="pi pi-check" style="color:#fff;font-size:12px;"></i>
                   </button>
                 </div>
               </div>
@@ -294,9 +315,9 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">MODE</span></div>
                 <div class="flex gap-2 mt-2">
-                  <button (click)="selectMode('light')" [class.bp-mode-active]="appearance.mode==='light'" class="bp-mode-option">&#x2600;&#xFE0F; Light</button>
-                  <button (click)="selectMode('dark')" [class.bp-mode-active]="appearance.mode==='dark'" class="bp-mode-option">&#x263E; Dark</button>
-                  <button (click)="selectMode('system')" [class.bp-mode-active]="appearance.mode==='system'" class="bp-mode-option">&#x1F4BB; System</button>
+                  <button (click)="selectMode('light')" [class.bp-mode-active]="appearance.mode==='light'" class="bp-mode-option">Light</button>
+                  <button (click)="selectMode('dark')" [class.bp-mode-active]="appearance.mode==='dark'" class="bp-mode-option">Dark</button>
+                  <button (click)="selectMode('system')" [class.bp-mode-active]="appearance.mode==='system'" class="bp-mode-option">System</button>
                 </div>
               </div>
 
@@ -304,8 +325,8 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                 <div class="bp-section-header"><span class="bp-section-title">HERO BANNER</span></div>
                 <label class="bp-field-label">Alignment</label>
                 <div class="flex gap-2 mt-1 mb-4">
-                  <button (click)="setHeroAlign('left')" [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">&#x2B05; Left</button>
-                  <button (click)="setHeroAlign('center')" [class.bp-mode-active]="appearance.heroAlign==='center'" class="bp-mode-option">&#x2194;&#xFE0F; Centre</button>
+                  <button (click)="setHeroAlign('left')" [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">Left</button>
+                  <button (click)="setHeroAlign('center')" [class.bp-mode-active]="appearance.heroAlign==='center'" class="bp-mode-option">Centre</button>
                 </div>
                 <label class="bp-field-label">Components</label>
                 <div class="bp-toggle-list">
@@ -315,19 +336,19 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                 </div>
               </div>
@@ -420,7 +441,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       transition: all 0.15s;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       font-family: var(--font-body);
     }
     .bp-hero-tab:hover { color: var(--color-text-primary); }
@@ -439,57 +460,54 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       padding: var(--section-pad);
     }
 
+    /* ── PAGE TITLE ── */
+    .bp-page-title {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 400;
+      color: var(--theme-accent);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
     /* ── SECTIONS ── */
-    .bp-section { padding-bottom: 32px; margin-bottom: 8px; position: relative; }
+    .bp-section { padding-bottom: 32px; margin-bottom: 8px; }
     .bp-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .bp-section-title {
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.08em;
-      color: var(--theme-text);
+      color: var(--theme-accent);
       text-transform: uppercase;
     }
+    .bp-section-actions { display: flex; align-items: center; gap: 2px; }
 
-    /* ── PENCIL — always visible ── */
-    .bp-pencil-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--color-text-muted);
-      padding: 4px;
-      border-radius: 4px;
-      transition: color 0.15s;
-      display: flex;
-      align-items: center;
-    }
-    .bp-pencil-btn:hover { color: var(--theme-accent); }
-
-    /* ── TICK / CROSS edit actions — replaces pencil in header ── */
-    .bp-action-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
+    /* ── ICON ACTION BUTTONS (pencil / check / times) ── */
+    .bp-icon-btn {
       width: 28px;
       height: 28px;
       border-radius: 4px;
+      border: none;
+      background: none;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s, color 0.15s;
-      flex-shrink: 0;
+      color: var(--color-text-muted);
+      transition: color 0.15s, background 0.15s;
+      font-size: 13px;
     }
-    .bp-action-save { color: var(--theme-accent); }
-    .bp-action-save:hover:not(:disabled) { background: var(--theme-bg); }
-    .bp-action-save:disabled { opacity: 0.4; cursor: default; }
-    .bp-action-cancel { color: var(--color-text-muted); }
-    .bp-action-cancel:hover { color: var(--color-text-primary); background: #F5F5F5; }
+    .bp-icon-btn:hover { color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-icon-save { color: var(--theme-accent); }
+    .bp-icon-save:hover:not(:disabled) { background: var(--theme-bg); }
+    .bp-icon-save:disabled { opacity: 0.4; cursor: default; }
+    .bp-icon-cancel:hover { color: var(--color-text-primary); background: var(--color-border); }
 
     /* ── FIELD GRIDS ── */
     .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
-    /* ── VIEW MODE — readonly pInputText, transparent so it looks like plain text
-         Same box model as edit input = zero layout shift on toggle ── */
+    /* ── VIEW MODE — readonly pInputText ── */
     :host ::ng-deep .bp-field-readonly.p-inputtext {
       background: transparent !important;
       border-color: transparent !important;
@@ -512,7 +530,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
     :host ::ng-deep input.bp-input-edit:focus {
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
     }
-    /* p-inputNumber inner input */
     :host ::ng-deep .bp-input-edit .p-inputtext {
       background: var(--theme-bg) !important;
       border-color: var(--theme-accent) !important;
@@ -520,10 +537,15 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 
     /* ── MISC ── */
     .bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .bp-member-name { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); margin: 0; }
+    .bp-category-name { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-primary); }
+    .bp-field-value-inline { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); }
+
+    /* ── LOGO ── */
     .bp-logo-preview { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .bp-logo-placeholder { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--theme-bg); display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); color: var(--color-text-muted); }
 
-    /* ── APPEARANCE: unique visuals, no PrimeNG equivalent ── */
+    /* ── APPEARANCE: unique visuals ── */
     .bp-swatch { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
     .bp-swatch-active { border-color: #111 !important; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #111; }
     .bp-mode-option { padding: 6px 14px; border-radius: 6px; font-size: var(--text-sm); font-weight: 500; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
@@ -559,7 +581,6 @@ export class SettingsComponent implements OnInit {
   private finSnapshot: typeof this.form | null = null;
 
   tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
-  tabIcons = ['building-2', 'users', 'layers', 'credit-card', 'palette'];
   activeTab = 0;
 
   appearance: PlatformConfig & {
@@ -664,6 +685,10 @@ export class SettingsComponent implements OnInit {
         this.msg.add({ severity: 'error', summary: 'Error saving changes' });
       }
     });
+  }
+
+  inviteMember() {
+    this.msg.add({ severity: 'info', summary: 'Invite member — coming soon' });
   }
 
   selectTheme(name: string) { this.appearance.themeName = name; this.liveUpdate(); }
