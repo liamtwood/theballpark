@@ -317,6 +317,50 @@ lucide-icon svg {
 }
 
 /* ============================================
+   STATUS PILLS — app-status-badge
+   Single source of truth for all pill colours.
+   Change here to change everywhere.
+   ============================================ */
+
+/* Project statuses */
+.bp-pill-active    { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-active     { background: #16A34A; }
+.bp-pill-draft     { background: #FEF9C3; color: #854D0E; border: 0.5px solid #FDE047; }
+.bp-dot-draft      { background: #CA8A04; }
+.bp-pill-costing   { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-costing    { background: #3B82F6; }
+.bp-pill-closed    { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-closed     { background: #9CA3AF; }
+.bp-pill-completed { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-completed  { background: #9CA3AF; }
+.bp-pill-cancelled { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-cancelled  { background: #9CA3AF; }
+
+/* Lead / Ball statuses */
+.bp-pill-sent      { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+.bp-dot-sent       { background: #7C3AED; }
+.bp-pill-quoted    { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-quoted     { background: #3B82F6; }
+.bp-pill-confirmed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-confirmed  { background: #16A34A; }
+.bp-pill-declined  { background: #FEE2E2; color: #991B1B; border: 0.5px solid #FCA5A5; }
+.bp-dot-declined   { background: #DC2626; }
+.bp-pill-pending   { background: #FEF9C3; color: #854D0E; border: 0.5px solid #FDE047; }
+.bp-dot-pending    { background: #CA8A04; }
+.bp-pill-accepted  { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-accepted   { background: #16A34A; }
+.bp-pill-in_progress { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-in_progress  { background: #3B82F6; }
+
+/* Team roles — no dot */
+.bp-pill-owner  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
+.bp-pill-member { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-pill-admin  { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+
+/* Fallback */
+.bp-pill- { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+
+/* ============================================
    MODAL OVERRIDES — must come last to win
    ============================================ */
 .bp-modal.p-dialog .p-dialog-header,

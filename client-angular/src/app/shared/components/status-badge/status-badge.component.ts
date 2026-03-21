@@ -5,23 +5,56 @@ import { CommonModule } from '@angular/common';
   selector: 'app-status-badge',
   standalone: true,
   imports: [CommonModule],
-  template: `<span *ngIf="displayName" [class]="badgeClass" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">{{ displayName }}</span>`
+  template: `
+    <span *ngIf="displayName" class="bp-pill" [ngClass]="pillClass">
+      <span *ngIf="showDot" class="bp-pill-dot" [ngClass]="dotClass"></span>
+      {{ displayName }}
+    </span>
+  `,
+  styles: [`
+    /* Pill base — sizing and shape only.
+       Colours defined in styles.css as single source of truth. */
+    .bp-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      font-family: var(--font-body);
+    }
+    .bp-pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  `]
 })
 export class StatusBadgeComponent {
   @Input() status: string | null | undefined;
   @Input() statusName: string | null | undefined;
 
-  private colorMap: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-700', active: 'bg-green-100 text-green-700',
-    sent: 'bg-blue-100 text-blue-700', accepted: 'bg-emerald-100 text-emerald-700',
-    declined: 'bg-red-100 text-red-700', completed: 'bg-purple-100 text-purple-700',
-    cancelled: 'bg-gray-200 text-gray-500', pending: 'bg-yellow-100 text-yellow-700',
-    in_progress: 'bg-blue-100 text-blue-700', quoted: 'bg-indigo-100 text-indigo-700',
-    confirmed: 'bg-emerald-100 text-emerald-700', archived: 'bg-gray-200 text-gray-500',
-    unread: 'bg-blue-100 text-blue-700', read: 'bg-gray-100 text-gray-600',
-    replied: 'bg-green-100 text-green-700',
-  };
+  get displayName(): string {
+    return (this.statusName || this.status || '').replace(/_/g, ' ');
+  }
 
-  get displayName(): string { return (this.statusName || this.status || '').replace(/_/g, ' '); }
-  get badgeClass(): string { return this.colorMap[(this.statusName || this.status || '').toLowerCase()] || 'bg-gray-100 text-gray-700'; }
+  get key(): string {
+    return (this.statusName || this.status || '').toLowerCase();
+  }
+
+  get showDot(): boolean {
+    // Role pills (owner, member) don't need a dot
+    return !['owner', 'member', 'admin'].includes(this.key);
+  }
+
+  get pillClass(): string {
+    return `bp-pill-${this.key}`;
+  }
+
+  get dotClass(): string {
+    return `bp-dot-${this.key}`;
+  }
 }
