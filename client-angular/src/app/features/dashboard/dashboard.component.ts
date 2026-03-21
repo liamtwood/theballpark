@@ -11,12 +11,13 @@ import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
+import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent, StatusBadgeComponent],
   template: `
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -61,7 +62,10 @@ import { ButtonModule } from 'primeng/button';
               <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
             </div>
             <div class="bp-card-body">
-              <div class="bp-card-row1"><span class="bp-card-name">{{ p.name }}</span><span class="bp-badge-new" [ngClass]="badgeClass(p.status_name)">{{ p.status_name || 'Active' }}</span></div>
+              <div class="bp-card-row1">
+                <span class="bp-card-name">{{ p.name }}</span>
+                <app-status-badge [status]="p.status_name"></app-status-badge>
+              </div>
               <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}{{ (p.stand_width_m && p.stand_depth_m) ? ' · ' + p.stand_width_m + '×' + p.stand_depth_m + 'm' : '' }}</div>
               <div class="bp-card-row3" *ngIf="p.total_client_cost">Est. {{ fmtCurrency(p.total_client_cost) }}</div>
             </div>
@@ -80,7 +84,10 @@ import { ButtonModule } from 'primeng/button';
               <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
             </div>
             <div class="bp-card-body">
-              <div class="bp-card-row1"><span class="bp-card-name">{{ p.name }}</span><span class="bp-badge-new bp-badge-closed-new">{{ p.status_name || 'Closed' }}</span></div>
+              <div class="bp-card-row1">
+                <span class="bp-card-name">{{ p.name }}</span>
+                <app-status-badge [status]="p.status_name"></app-status-badge>
+              </div>
               <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
               <div class="bp-card-row3" *ngIf="p.total_client_cost">{{ fmtCurrency(p.total_client_cost) }} final</div>
             </div>
@@ -104,9 +111,7 @@ import { ButtonModule } from 'primeng/button';
           </div>
 
           <!-- Saved Suppliers -->
-          <div class="bp-saved-hd">
-            SAVED SUPPLIERS
-          </div>
+          <div class="bp-saved-hd">SAVED SUPPLIERS</div>
 
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
 
@@ -159,7 +164,6 @@ import { ButtonModule } from 'primeng/button';
       background: var(--color-surface); border: 0.5px solid var(--color-border);
       border-radius: 20px; padding: 4px 12px;
     }
-    .bp-hero-pill-dot { width: 7px; height: 7px; border-radius: 50%; }
     .bp-hero-org-name {
       font-family: var(--font-display); font-size: var(--text-hero); font-weight: 400;
       color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px;
@@ -230,22 +234,6 @@ import { ButtonModule } from 'primeng/button';
     .bp-card-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); line-height: 1.3; }
     .bp-card-row2 { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px; }
     .bp-card-row3 { font-size: 12px; color: var(--color-text-secondary); }
-    .bp-badge-new { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
-    .bp-badge-costing { background: #DBEAFE; color: #1E40AF; }
-    .bp-badge-active-new { background: #D1FAE5; color: #065F46; }
-    .bp-badge-draft-new { background: #FEF3C7; color: #92400E; }
-    .bp-badge-closed-new { background: #F3F4F6; color: #9CA3AF; }
-    .bp-cta-btn {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      width: 100%;
-      background: var(--theme-bg); color: var(--theme-text);
-      border: 0.5px solid var(--theme-border);
-      padding: 13px; border-radius: 8px;
-      font-size: var(--text-md); font-weight: 600; cursor: pointer;
-      font-family: var(--font-body); margin-bottom: 16px;
-      transition: all 0.2s ease; text-decoration: none;
-    }
-    .bp-cta-btn:hover { background: var(--theme-accent); color: #fff; }
     .bp-credits-card {
       background: var(--theme-bg); border: 0.5px solid var(--theme-border);
       border-radius: 10px; padding: 18px; margin-bottom: 16px;
@@ -262,16 +250,15 @@ import { ButtonModule } from 'primeng/button';
       text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px;
     }
     .bp-sup-card {
-      border: 0.5px solid var(--color-border); border-radius: var(--border-radius-lg);
+      border: 0.5px solid var(--color-border); border-radius: 10px;
       overflow: hidden; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s;
-      background: var(--color-background-primary);
+      background: var(--color-surface);
     }
-    .bp-sup-card:hover { border-color: var(--color-border-secondary); }
+    .bp-sup-card:hover { border-color: var(--color-text-muted); }
     .bp-sup-img {
       width: 100%; height: 120px; position: relative;
-      display: flex; align-items: center; justify-content: center; font-size: 36px;
+      display: flex; align-items: center; justify-content: center;
       background-size: cover; background-position: center; overflow: hidden;
-      border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     }
     .bp-sup-desc {
       position: absolute; inset: 0; background: rgba(0,0,0,0.7);
@@ -286,7 +273,7 @@ import { ButtonModule } from 'primeng/button';
       cursor: pointer; z-index: 2;
     }
     .bp-sup-img:hover .bp-sup-overlay { opacity: 1; }
-    .bp-sup-bg-setbuild { background-color: #1a1a2e; background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-sup-bg-setbuild { background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-sup-bg-av { background-image: linear-gradient(160deg, #0d1b2a, #1b2838); }
     .bp-sup-bg-florist { background-image: linear-gradient(160deg, #2d1b2e, #4a1942); }
     .bp-sup-bg-catering { background-image: linear-gradient(160deg, #1a2e1a, #162116); }
@@ -316,13 +303,6 @@ import { ButtonModule } from 'primeng/button';
     .bp-sup-star { color: var(--theme-accent); }
     .bp-sup-count { color: var(--color-text-muted); }
     .bp-sup-action { font-size: 11px; font-weight: 500; color: var(--theme-accent); cursor: pointer; }
-    .bp-view-all {
-      display: flex; align-items: center; justify-content: center;
-      padding: 10px; font-size: 12px; font-weight: 500; color: var(--theme-accent);
-      cursor: pointer; border: 0.5px solid var(--color-border); border-radius: 8px;
-      margin-top: 2px; transition: all 0.15s;
-    }
-    .bp-view-all:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
     .bp-empty { font-size: var(--text-sm); color: var(--color-text-muted); padding: 16px 0; }
   `]
 })
@@ -348,6 +328,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
+  uploadPanelProjectId = '';
+  uploadSupplierPanelId = '';
+
   constructor(
     private projectService: ProjectService,
     private orgService: OrgService,
@@ -356,22 +339,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
   ) {}
 
-  uploadPanelProjectId = '';
-  uploadSupplierPanelId = '';
-
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
 
   clientInitials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  }
-
-  badgeClass(status: string | undefined): string {
-    switch (status) {
-      case 'costing': return 'bp-badge-costing';
-      case 'active': return 'bp-badge-active-new';
-      case 'draft': return 'bp-badge-draft-new';
-      default: return 'bp-badge-closed-new';
-    }
   }
 
   openUploadPanel(event: MouseEvent, project: Project) {

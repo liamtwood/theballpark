@@ -7,7 +7,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { ToastModule } from 'primeng/toast';
-import { TagModule } from 'primeng/tag';
 import { MessageService } from 'primeng/api';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -15,6 +14,7 @@ import { ConfigService } from '../../core/services/config.service';
 import { Org, User, Category, PlatformConfig } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-settings',
@@ -22,8 +22,8 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
   imports: [
     CommonModule, FormsModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, TagModule,
-    LoadingSpinnerComponent, AvatarComponent
+    InputSwitchModule, ToastModule,
+    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
   ],
   providers: [MessageService],
   template: `
@@ -221,7 +221,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   <p class="bp-muted-text">{{u.email}}</p>
                 </div>
               </div>
-              <p-tag [value]="u.role" styleClass="uppercase"></p-tag>
+              <app-status-badge [status]="u.role"></app-status-badge>
             </div>
           </div>
         </div>
@@ -254,7 +254,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
             <div class="bp-section-header">
               <span class="bp-section-title">CURRENT PLAN</span>
             </div>
-            <p-tag [value]="org.subscription_tier" styleClass="capitalize"></p-tag>
+            <app-status-badge [status]="org.subscription_tier"></app-status-badge>
             <div class="mt-4" style="border-top:0.5px solid var(--color-border);">
               <div class="flex justify-between py-3" style="border-bottom:0.5px solid var(--color-border);">
                 <span class="bp-field-label" style="margin:0;">{{ appearance.creditLabel }}s balance</span>
