@@ -759,9 +759,9 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     .bp-view-btn { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: var(--color-surface); cursor: pointer; color: var(--color-text-muted); font-size: 13px; transition: all 0.15s; }
     .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
 
-    .bp-member-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
-    .bp-member-row-clickable { cursor: pointer; }
-    .bp-member-row-clickable:hover { background: var(--color-surface); border-radius: 6px; padding-left: 8px; padding-right: 8px; }
+    .bp-member-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }
+    .bp-member-row-clickable { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
+    .bp-member-row-clickable:hover { background: var(--theme-bg); }
     .bp-member-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
     .bp-member-card { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
     .bp-member-card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
