@@ -459,7 +459,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       box-shadow: none !important;
       cursor: default !important;
       color: var(--color-text-primary) !important;
-      padding-left: 0 !important;
     }
     :host ::ng-deep .bp-field-readonly.p-inputtext:focus {
       box-shadow: none !important;
