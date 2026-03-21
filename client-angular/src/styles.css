@@ -79,6 +79,24 @@ lucide-icon svg {
 }
 
 /* ============================================
+   FIELD LABEL STANDARD
+   Single class used in ALL input contexts:
+   settings, drawers, modals, forms.
+   View mode and edit mode use the same class
+   so there is no visual jump when toggling.
+   Change here to change everywhere.
+   ============================================ */
+.bp-field-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);   /* 12px — consistent view + edit */
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+/* ============================================
    BALLPARK BUTTON STANDARDS
    All p-button variants — theme aware
    Change here to change everywhere
@@ -131,7 +149,7 @@ lucide-icon svg {
   color: var(--theme-text) !important;
 }
 
-/* Parchment button (modal footer) */
+/* Parchment button (modal footer only) */
 .p-button.bp-btn-cancel,
 .p-button.bp-btn-save {
   background: var(--theme-bg) !important;
