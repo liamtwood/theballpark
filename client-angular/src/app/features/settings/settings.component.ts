@@ -5,7 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToastModule } from 'primeng/toast';
 import { TagModule } from 'primeng/tag';
 import { MessageService } from 'primeng/api';
@@ -23,7 +23,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
   imports: [
     CommonModule, FormsModule, LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, TagModule,
+    ToggleSwitchModule, ToastModule, TagModule,
     LoadingSpinnerComponent, AvatarComponent
   ],
   providers: [MessageService],
@@ -50,68 +50,66 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
         <div *ngIf="activeTab === 0" class="bp-settings-body">
 
           <!-- SECTION: ORGANISATION DETAILS -->
-          <div class="bp-section" (mouseenter)="hoverSection('org')" (mouseleave)="hoverSection(null)">
+          <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">ORGANISATION DETAILS</span>
-              <button *ngIf="!editingOrg" class="bp-pencil-btn"
-                [class.visible]="hoveredSection === 'org'"
-                (click)="startEdit('org')">
+              <button *ngIf="!editingOrg" class="bp-pencil-btn" (click)="startEdit('org')">
                 <lucide-icon name="pencil" [size]="14"></lucide-icon>
               </button>
             </div>
 
-            <!-- VIEW MODE -->
+            <!-- VIEW MODE — uses bp-field-label for consistency with edit mode -->
             <ng-container *ngIf="!editingOrg">
               <div class="bp-field-grid-2">
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Organisation name</span>
                   <span class="bp-field-value">{{ form.name || '—' }}</span>
                 </div>
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">City</span>
                   <span class="bp-field-value">{{ form.city || '—' }}</span>
                 </div>
               </div>
-              <div class="bp-field-view mt-4">
+              <div class="mt-4">
                 <span class="bp-field-label">Address</span>
                 <span class="bp-field-value">{{ form.address || '—' }}</span>
               </div>
               <div class="bp-field-grid-2 mt-4">
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Email</span>
                   <span class="bp-field-value">{{ form.email || '—' }}</span>
                 </div>
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Phone</span>
                   <span class="bp-field-value">{{ form.phone || '—' }}</span>
                 </div>
               </div>
             </ng-container>
 
-            <!-- EDIT MODE -->
+            <!-- EDIT MODE — same bp-field-label, no jump -->
             <ng-container *ngIf="editingOrg">
               <div class="bp-field-grid-2">
                 <div>
-                  <label class="bp-label">Organisation name</label>
-                  <input pInputText [(ngModel)]="form.name" class="w-full"/>
+                  <label class="bp-field-label">Organisation name</label>
+                  <input pInputText [(ngModel)]="form.name" class="w-full bp-input-edit"/>
                 </div>
                 <div>
-                  <label class="bp-label">City</label>
-                  <input pInputText [(ngModel)]="form.city" class="w-full"/>
+                  <label class="bp-field-label">City</label>
+                  <input pInputText [(ngModel)]="form.city" class="w-full bp-input-edit"/>
                 </div>
               </div>
               <div class="mt-4">
-                <label class="bp-label">Address</label>
-                <input pInputText [(ngModel)]="form.address" class="w-full"/>
+                <label class="bp-field-label">Address</label>
+                <input pInputText [(ngModel)]="form.address" class="w-full bp-input-edit"/>
               </div>
               <div class="bp-field-grid-2 mt-4">
                 <div>
-                  <label class="bp-label">Email</label>
-                  <input pInputText [(ngModel)]="form.email" class="w-full" type="email"/>
+                  <label class="bp-field-label">Email</label>
+                  <input pInputText [(ngModel)]="form.email" class="w-full bp-input-edit" type="email"/>
                 </div>
                 <div>
-                  <label class="bp-label">Phone</label>
-                  <input pInputText [(ngModel)]="form.phone" class="w-full" type="tel"/>
+                  <label class="bp-field-label">Phone</label>
+                  <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-edit" type="tel"/>
                 </div>
               </div>
               <div class="flex justify-end items-center gap-2 mt-5">
@@ -142,12 +140,10 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           </div>
 
           <!-- SECTION: FINANCIAL DEFAULTS -->
-          <div class="bp-section" (mouseenter)="hoverSection('fin')" (mouseleave)="hoverSection(null)">
+          <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">FINANCIAL DEFAULTS</span>
-              <button *ngIf="!editingFin" class="bp-pencil-btn"
-                [class.visible]="hoveredSection === 'fin'"
-                (click)="startEdit('fin')">
+              <button *ngIf="!editingFin" class="bp-pencil-btn" (click)="startEdit('fin')">
                 <lucide-icon name="pencil" [size]="14"></lucide-icon>
               </button>
             </div>
@@ -155,15 +151,15 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
             <!-- VIEW MODE -->
             <ng-container *ngIf="!editingFin">
               <div class="bp-field-grid-3">
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Default VAT</span>
                   <span class="bp-field-value">{{ form.vat }}%</span>
                 </div>
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Default margin</span>
                   <span class="bp-field-value">{{ form.margin }}%</span>
                 </div>
-                <div class="bp-field-view">
+                <div>
                   <span class="bp-field-label">Default contingency</span>
                   <span class="bp-field-value">{{ form.contingency }}%</span>
                 </div>
@@ -174,16 +170,16 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
             <ng-container *ngIf="editingFin">
               <div class="bp-field-grid-3">
                 <div>
-                  <label class="bp-label">Default VAT %</label>
-                  <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full"></p-inputNumber>
+                  <label class="bp-field-label">Default VAT %</label>
+                  <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
                 </div>
                 <div>
-                  <label class="bp-label">Default margin %</label>
-                  <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full"></p-inputNumber>
+                  <label class="bp-field-label">Default margin %</label>
+                  <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
                 </div>
                 <div>
-                  <label class="bp-label">Default contingency %</label>
-                  <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full"></p-inputNumber>
+                  <label class="bp-field-label">Default contingency %</label>
+                  <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
                 </div>
               </div>
               <div class="flex justify-end items-center gap-2 mt-5">
@@ -253,23 +249,20 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-appearance-grid">
 
             <div>
-              <!-- Platform -->
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">PLATFORM</span></div>
-                <div class="mb-3"><label class="bp-label">Platform name</label><input pInputText [(ngModel)]="appearance.platformName" class="w-full" (ngModelChange)="liveUpdate()"/></div>
-                <div class="mb-3"><label class="bp-label">Tagline</label><input pInputText [(ngModel)]="appearance.tagline" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                <div class="mb-3"><label class="bp-field-label">Platform name</label><input pInputText [(ngModel)]="appearance.platformName" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                <div class="mb-3"><label class="bp-field-label">Tagline</label><input pInputText [(ngModel)]="appearance.tagline" class="w-full" (ngModelChange)="liveUpdate()"/></div>
               </div>
 
-              <!-- Terminology -->
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">TERMINOLOGY</span></div>
                 <div class="grid grid-cols-2 gap-4">
-                  <div><label class="bp-label">Projects are called</label><input pInputText [(ngModel)]="appearance.projectLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
-                  <div><label class="bp-label">Credits are called</label><input pInputText [(ngModel)]="appearance.creditLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                  <div><label class="bp-field-label">Projects are called</label><input pInputText [(ngModel)]="appearance.projectLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
+                  <div><label class="bp-field-label">Credits are called</label><input pInputText [(ngModel)]="appearance.creditLabel" class="w-full" (ngModelChange)="liveUpdate()"/></div>
                 </div>
               </div>
 
-              <!-- Colour theme -->
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">COLOUR THEME</span></div>
                 <div class="flex gap-3 mt-2">
@@ -281,7 +274,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                 </div>
               </div>
 
-              <!-- Mode -->
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">MODE</span></div>
                 <div class="flex gap-2 mt-2">
@@ -291,15 +283,14 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                 </div>
               </div>
 
-              <!-- Hero banner -->
               <div class="bp-section">
                 <div class="bp-section-header"><span class="bp-section-title">HERO BANNER</span></div>
-                <label class="bp-label">Alignment</label>
+                <label class="bp-field-label">Alignment</label>
                 <div class="flex gap-2 mt-1 mb-4">
                   <button (click)="setHeroAlign('left')" [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">&#x2B05; Left</button>
                   <button (click)="setHeroAlign('center')" [class.bp-mode-active]="appearance.heroAlign==='center'" class="bp-mode-option">&#x2194;&#xFE0F; Centre</button>
                 </div>
-                <label class="bp-label">Components</label>
+                <label class="bp-field-label">Components</label>
                 <div class="bp-toggle-list">
                   <div class="bp-toggle-row">
                     <span>Org name</span>
@@ -307,19 +298,19 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                 </div>
               </div>
@@ -442,36 +433,51 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       text-transform: uppercase;
     }
 
-    /* ── HOVER PENCIL ── */
+    /* ── PENCIL — always visible ── */
     .bp-pencil-btn {
-      opacity: 0;
       background: none;
       border: none;
       cursor: pointer;
       color: var(--color-text-muted);
       padding: 4px;
       border-radius: 4px;
-      transition: opacity 0.15s, color 0.15s;
+      transition: color 0.15s;
       display: flex;
       align-items: center;
     }
-    .bp-pencil-btn.visible { opacity: 1; }
     .bp-pencil-btn:hover { color: var(--theme-accent); }
 
     /* ── FIELD GRIDS ── */
     .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
-    /* ── VIEW MODE ── */
-    .bp-field-view { display: flex; flex-direction: column; gap: 2px; }
-    .bp-field-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; }
-    .bp-field-value { font-size: var(--text-md); color: var(--color-text-primary); }
+    /* ── VIEW MODE VALUES ── */
+    .bp-field-value {
+      display: block;
+      font-size: var(--text-md);
+      color: var(--color-text-primary);
+      font-weight: 400;
+      line-height: 1.5;
+    }
 
-    /* ── LABELS & MISC ── */
-    .bp-label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px; }
+    /* ── EDIT MODE INPUTS — parchment bg + theme accent border ── */
+    :host ::ng-deep .bp-input-edit.p-inputtext,
+    :host ::ng-deep input.bp-input-edit {
+      background: var(--theme-bg) !important;
+      border-color: var(--theme-accent) !important;
+    }
+    :host ::ng-deep .bp-input-edit.p-inputtext:focus,
+    :host ::ng-deep input.bp-input-edit:focus {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
+    }
+    /* p-inputNumber inner input */
+    :host ::ng-deep .bp-input-edit .p-inputtext {
+      background: var(--theme-bg) !important;
+      border-color: var(--theme-accent) !important;
+    }
+
+    /* ── MISC ── */
     .bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
-
-    /* ── LOGO ── */
     .bp-logo-preview { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .bp-logo-placeholder { width: 60px; height: 60px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--theme-bg); display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); color: var(--color-text-muted); }
 
@@ -506,7 +512,6 @@ export class SettingsComponent implements OnInit {
 
   editingOrg = false;
   editingFin = false;
-  hoveredSection: string | null = null;
 
   private orgSnapshot: typeof this.form | null = null;
   private finSnapshot: typeof this.form | null = null;
@@ -584,8 +589,6 @@ export class SettingsComponent implements OnInit {
       this.cdr.detectChanges();
     }).catch(() => { this.loading = false; this.cdr.detectChanges(); });
   }
-
-  hoverSection(section: string | null) { this.hoveredSection = section; }
 
   startEdit(section: 'org' | 'fin') {
     if (section === 'org') { this.orgSnapshot = { ...this.form }; this.editingOrg = true; }
