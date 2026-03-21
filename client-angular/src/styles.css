@@ -197,6 +197,12 @@ lucide-icon svg {
   border-color: var(--theme-accent) !important;
   box-shadow: 0 0 0 1px var(--theme-accent) !important;
 }
+/* Input padding — equal all sides for consistent breathing room */
+.p-inputtext {
+  padding: 0.5rem !important;
+  font-size: var(--text-md) !important;
+  font-family: var(--font-body) !important;
+}
 /* Dropdown focus */
 .p-dropdown:not(.p-disabled).p-focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
 /* InputSwitch — on state uses theme */
