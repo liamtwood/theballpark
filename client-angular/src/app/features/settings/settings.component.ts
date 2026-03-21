@@ -53,9 +53,21 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">ORGANISATION DETAILS</span>
-              <button class="bp-pencil-btn" [style.visibility]="editingOrg ? 'hidden' : 'visible'" (click)="startEdit('org')">
-                <lucide-icon name="pencil" [size]="14"></lucide-icon>
-              </button>
+              <div class="flex items-center gap-1">
+                <ng-container *ngIf="!editingOrg">
+                  <button class="bp-pencil-btn" (click)="startEdit('org')">
+                    <lucide-icon name="pencil" [size]="14"></lucide-icon>
+                  </button>
+                </ng-container>
+                <ng-container *ngIf="editingOrg">
+                  <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
+                    <lucide-icon name="check" [size]="15"></lucide-icon>
+                  </button>
+                  <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('org')">
+                    <lucide-icon name="x" [size]="15"></lucide-icon>
+                  </button>
+                </ng-container>
+              </div>
             </div>
 
             <!-- VIEW MODE — readonly pInputText, same box model as edit mode, no jump -->
@@ -112,10 +124,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-edit" type="tel"/>
                 </div>
               </div>
-              <div class="flex justify-end items-center gap-2 mt-5">
-                <p-button label="Cancel" styleClass="p-button-text" (onClick)="cancelEdit('org')"></p-button>
-                <p-button label="Save changes" icon="pi pi-save" [loading]="saving" (onClick)="save()"></p-button>
-              </div>
             </ng-container>
           </div>
 
@@ -143,9 +151,21 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
           <div class="bp-section">
             <div class="bp-section-header">
               <span class="bp-section-title">FINANCIAL DEFAULTS</span>
-              <button class="bp-pencil-btn" [style.visibility]="editingFin ? 'hidden' : 'visible'" (click)="startEdit('fin')">
-                <lucide-icon name="pencil" [size]="14"></lucide-icon>
-              </button>
+              <div class="flex items-center gap-1">
+                <ng-container *ngIf="!editingFin">
+                  <button class="bp-pencil-btn" (click)="startEdit('fin')">
+                    <lucide-icon name="pencil" [size]="14"></lucide-icon>
+                  </button>
+                </ng-container>
+                <ng-container *ngIf="editingFin">
+                  <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
+                    <lucide-icon name="check" [size]="15"></lucide-icon>
+                  </button>
+                  <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('fin')">
+                    <lucide-icon name="x" [size]="15"></lucide-icon>
+                  </button>
+                </ng-container>
+              </div>
             </div>
 
             <!-- VIEW MODE — readonly pInputText -->
@@ -181,10 +201,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                   <label class="bp-field-label">Default contingency %</label>
                   <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
                 </div>
-              </div>
-              <div class="flex justify-end items-center gap-2 mt-5">
-                <p-button label="Cancel" styleClass="p-button-text" (onClick)="cancelEdit('fin')"></p-button>
-                <p-button label="Save changes" icon="pi pi-save" [loading]="saving" (onClick)="save()"></p-button>
               </div>
             </ng-container>
           </div>
@@ -446,6 +462,23 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       align-items: center;
     }
     .bp-pencil-btn:hover { color: var(--theme-accent); }
+
+    /* ── TICK / CROSS edit actions — replaces pencil in header ── */
+    .bp-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-action-save { color: var(--theme-accent); }
+    .bp-action-save:hover:not(:disabled) { background: var(--theme-bg); }
+    .bp-action-save:disabled { opacity: 0.4; cursor: default; }
+    .bp-action-cancel { color: var(--color-text-muted); }
+    .bp-action-cancel:hover { color: var(--color-text-primary); background: #F5F5F5; }
 
     /* ── FIELD GRIDS ── */
     .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
