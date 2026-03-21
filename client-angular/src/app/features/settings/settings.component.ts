@@ -1,12 +1,14 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToastModule } from 'primeng/toast';
+import { SidebarModule } from 'primeng/sidebar';
+import { DropdownModule } from 'primeng/dropdown';
 import { MessageService } from 'primeng/api';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -22,7 +24,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
   imports: [
     CommonModule, FormsModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule,
+    ToggleSwitchModule, ToastModule, SidebarModule, DropdownModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
   ],
   providers: [MessageService],
@@ -265,7 +267,9 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
               <!-- LIST VIEW -->
               <ng-container *ngIf="teamView==='list'">
                 <div *ngFor="let u of filteredUsers; let last = last"
-                  class="bp-member-row" [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'">
+                  class="bp-member-row" [class.bp-member-row-clickable]="true"
+                  [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'"
+                  (click)="viewMember(u)">
                   <div class="flex items-center gap-3">
                     <app-avatar [name]="u.name"></app-avatar>
                     <div>
@@ -273,12 +277,9 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                       <p class="bp-muted-text">{{u.email}}</p>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2" (click)="$event.stopPropagation()">
                     <span class="bp-member-joined">{{u.joined || '—'}}</span>
                     <app-status-badge [status]="u.role"></app-status-badge>
-                    <button class="bp-icon-btn" title="Edit" (click)="editMember(u)">
-                      <i class="pi pi-pencil"></i>
-                    </button>
                     <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
                       <i class="pi pi-trash"></i>
                     </button>
@@ -288,7 +289,8 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 
               <!-- CARD VIEW -->
               <div *ngIf="teamView==='grid'" class="bp-member-grid">
-                <div *ngFor="let u of filteredUsers" class="bp-member-card">
+                <div *ngFor="let u of filteredUsers" class="bp-member-card bp-member-row-clickable"
+                  (click)="viewMember(u)">
                   <div class="flex items-center gap-3 mb-3">
                     <app-avatar [name]="u.name" [size]="44"></app-avatar>
                     <div>
@@ -296,16 +298,11 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                       <p class="bp-muted-text">{{u.email}}</p>
                     </div>
                   </div>
-                  <div class="bp-member-card-footer">
+                  <div class="bp-member-card-footer" (click)="$event.stopPropagation()">
                     <app-status-badge [status]="u.role"></app-status-badge>
-                    <div class="flex gap-1">
-                      <button class="bp-icon-btn" title="Edit" (click)="editMember(u)">
-                        <i class="pi pi-pencil"></i>
-                      </button>
-                      <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
-                        <i class="pi pi-trash"></i>
-                      </button>
-                    </div>
+                    <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
+                      <i class="pi pi-trash"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -424,19 +421,19 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                 </div>
               </div>
@@ -488,6 +485,106 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 
       </ng-container>
     </div>
+
+    <!-- ── INVITE MEMBER DRAWER ── -->
+    <p-sidebar [(visible)]="showInviteDrawer" position="right"
+      styleClass="bp-drawer" [style]="{width:'480px'}"
+      (onHide)="closeInviteDrawer()">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header">
+          <span class="bp-drawer-label">TEAM</span>
+          <div class="bp-drawer-title">Invite member</div>
+        </div>
+      </ng-template>
+      <div class="bp-drawer-body">
+        <div class="mb-4">
+          <label class="bp-field-label">Email address</label>
+          <input pInputText [(ngModel)]="inviteForm.email" class="w-full bp-input-edit" type="email" placeholder="colleague@company.com"/>
+        </div>
+        <div>
+          <label class="bp-field-label">Role</label>
+          <p-dropdown [(ngModel)]="inviteForm.role" [options]="roleOptions"
+            optionLabel="label" optionValue="value"
+            styleClass="w-full bp-input-edit" placeholder="Select role">
+          </p-dropdown>
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeInviteDrawer()"></p-button>
+        <p-button label="Send invitation" styleClass="bp-btn-save"
+          [disabled]="!inviteForm.email?.includes('@')"
+          (onClick)="submitInvite()">
+        </p-button>
+      </ng-template>
+    </p-sidebar>
+
+    <!-- ── VIEW/EDIT MEMBER DRAWER ── -->
+    <p-sidebar [(visible)]="showEditDrawer" position="right"
+      styleClass="bp-drawer" [style]="{width:'480px'}"
+      (onHide)="closeEditDrawer()">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">TEAM</span>
+            <div class="bp-drawer-title">{{ editForm.name || 'Member' }}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <ng-container *ngIf="!editingMember">
+              <button class="bp-icon-btn" (click)="startEditMember()" title="Edit">
+                <i class="pi pi-pencil"></i>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editingMember">
+              <button class="bp-icon-btn bp-icon-save" (click)="submitEdit()" [disabled]="!editForm.name?.trim()" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditMember()" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </ng-template>
+
+      <div class="bp-drawer-body">
+
+        <!-- VIEW MODE -->
+        <ng-container *ngIf="!editingMember">
+          <div class="mb-4">
+            <label class="bp-field-label">Name</label>
+            <input pInputText [value]="editForm.name" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Email address</label>
+            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div>
+            <label class="bp-field-label">Role</label>
+            <input pInputText [value]="editForm.role | titlecase" class="w-full bp-field-readonly" readonly/>
+          </div>
+        </ng-container>
+
+        <!-- EDIT MODE -->
+        <ng-container *ngIf="editingMember">
+          <div class="mb-4">
+            <label class="bp-field-label">Name</label>
+            <input pInputText [(ngModel)]="editForm.name" class="w-full bp-input-edit" placeholder="Full name"/>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Email address</label>
+            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div>
+            <label class="bp-field-label">Role</label>
+            <p-dropdown [(ngModel)]="editForm.role" [options]="roleOptions"
+              optionLabel="label" optionValue="value"
+              styleClass="w-full bp-input-edit">
+            </p-dropdown>
+          </div>
+        </ng-container>
+
+      </div>
+    </p-sidebar>
 
     <p-toast></p-toast>
   `,
@@ -622,10 +719,18 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       background: var(--theme-bg) !important;
       border-color: var(--theme-accent) !important;
     }
+    /* p-dropdown with bp-input-edit styleClass */
+    :host ::ng-deep .bp-input-edit.p-dropdown {
+      background: var(--theme-bg) !important;
+      border-color: var(--theme-accent) !important;
+    }
+    :host ::ng-deep .bp-input-edit.p-dropdown:not(.p-disabled).p-focus {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
+    }
 
     /* ── TEAM TAB ── */
     .bp-team-page { }
-    .bp-team-title-bar { padding: 20px var(--section-pad) 0; border-bottom: 0.5px solid var(--color-border); }
+    .bp-team-title-bar { padding: var(--section-pad) var(--section-pad) 0; border-bottom: 0.5px solid var(--color-border); }
     .bp-team-body { display: grid; grid-template-columns: 180px 1fr; min-height: calc(100vh - 300px); }
     .bp-team-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; }
     .bp-team-main { padding: 20px 28px; }
@@ -655,10 +760,33 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
 
     .bp-member-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+    .bp-member-row-clickable { cursor: pointer; }
+    .bp-member-row-clickable:hover { background: var(--color-surface); border-radius: 6px; padding-left: 8px; padding-right: 8px; }
     .bp-member-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
     .bp-member-card { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
     .bp-member-card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
     .bp-member-joined { font-size: 11px; color: var(--color-text-muted); }
+
+    /* ── DRAWERS ── */
+    :host ::ng-deep .bp-drawer.p-sidebar .p-sidebar-header {
+      background: var(--theme-bg) !important;
+      border-bottom: 0.5px solid var(--theme-border) !important;
+      padding: 20px 24px !important;
+    }
+    :host ::ng-deep .bp-drawer.p-sidebar .p-sidebar-content { padding: 0 !important; }
+    :host ::ng-deep .bp-drawer.p-sidebar .p-sidebar-footer {
+      background: #fff !important;
+      border-top: 0.5px solid var(--color-border) !important;
+      padding: 16px 24px !important;
+      display: flex !important;
+      justify-content: flex-end !important;
+      gap: 10px !important;
+    }
+    .bp-drawer-header { display: flex; flex-direction: column; gap: 2px; }
+    .bp-drawer-header-row { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
+    .bp-drawer-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--theme-text); text-transform: uppercase; }
+    .bp-drawer-title { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
+    .bp-drawer-body { padding: 24px; }
 
     /* ── MISC ── */
     .bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
@@ -866,16 +994,81 @@ export class SettingsComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // Drawer state
+  showInviteDrawer = false;
+  showEditDrawer = false;
+  editingMember = false;
+  selectedMember: User | null = null;
+  private memberSnapshot: typeof this.editForm | null = null;
+
+  inviteForm = { email: '', role: 'member' };
+  editForm = { name: '', email: '', role: 'member' };
+
+  roleOptions = [
+    { label: 'Member', value: 'member' },
+    { label: 'Owner', value: 'owner' }
+  ];
+
+  inviteMember() {
+    this.inviteForm = { email: '', role: 'member' };
+    this.showInviteDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  closeInviteDrawer() {
+    this.showInviteDrawer = false;
+    this.cdr.detectChanges();
+  }
+
+  submitInvite() {
+    if (!this.inviteForm.email?.includes('@')) return;
+    this.msg.add({ severity: 'success', summary: `Invitation sent to ${this.inviteForm.email}` });
+    this.closeInviteDrawer();
+  }
+
+  viewMember(u: User) {
+    this.selectedMember = u;
+    this.editForm = { name: u.name || '', email: u.email || '', role: u.role || 'member' };
+    this.editingMember = false;
+    this.showEditDrawer = true;
+    this.cdr.detectChanges();
+  }
+
   editMember(u: User) {
-    this.msg.add({ severity: 'info', summary: `Edit ${u.name} — coming soon` });
+    this.viewMember(u);
+  }
+
+  startEditMember() {
+    this.memberSnapshot = { ...this.editForm };
+    this.editingMember = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelEditMember() {
+    if (this.memberSnapshot) this.editForm = { ...this.memberSnapshot };
+    this.editingMember = false;
+    this.cdr.detectChanges();
+  }
+
+  closeEditDrawer() {
+    this.showEditDrawer = false;
+    this.editingMember = false;
+    this.selectedMember = null;
+    this.cdr.detectChanges();
+  }
+
+  submitEdit() {
+    if (!this.editForm.name?.trim() || !this.selectedMember) return;
+    this.selectedMember.name = this.editForm.name;
+    this.selectedMember.role = this.editForm.role;
+    this.editingMember = false;
+    this.applyFilters();
+    this.msg.add({ severity: 'success', summary: 'Member updated' });
+    this.cdr.detectChanges();
   }
 
   removeMember(u: User) {
     this.msg.add({ severity: 'warn', summary: `Remove ${u.name} — coming soon` });
-  }
-
-  inviteMember() {
-    this.msg.add({ severity: 'info', summary: 'Invite member — coming soon' });
   }
 
   selectTheme(name: string) { this.appearance.themeName = name; this.liveUpdate(); }
