@@ -9,7 +9,7 @@ import { InputSwitchModule } from 'primeng/inputswitch';
 import { ToastModule } from 'primeng/toast';
 import { TagModule } from 'primeng/tag';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, Building2, Users, Layers, CreditCard, Palette, Pencil } from 'lucide-angular';
+import { LucideAngularModule, Building2, Users, Layers, CreditCard, Palette, Pencil, Check, X } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -61,10 +61,10 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                 </ng-container>
                 <ng-container *ngIf="editingOrg">
                   <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
-                    <lucide-icon name="check" [size]="15"></lucide-icon>
+                    <lucide-icon name="check" [size]="18"></lucide-icon>
                   </button>
                   <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('org')">
-                    <lucide-icon name="x" [size]="15"></lucide-icon>
+                    <lucide-icon name="x" [size]="18"></lucide-icon>
                   </button>
                 </ng-container>
               </div>
@@ -159,10 +159,10 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
                 </ng-container>
                 <ng-container *ngIf="editingFin">
                   <button class="bp-action-btn bp-action-save" (click)="save()" [disabled]="saving">
-                    <lucide-icon name="check" [size]="15"></lucide-icon>
+                    <lucide-icon name="check" [size]="18"></lucide-icon>
                   </button>
                   <button class="bp-action-btn bp-action-cancel" (click)="cancelEdit('fin')">
-                    <lucide-icon name="x" [size]="15"></lucide-icon>
+                    <lucide-icon name="x" [size]="18"></lucide-icon>
                   </button>
                 </ng-container>
               </div>
@@ -468,11 +468,14 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
       background: none;
       border: none;
       cursor: pointer;
-      padding: 4px;
+      width: 28px;
+      height: 28px;
       border-radius: 4px;
       display: flex;
       align-items: center;
+      justify-content: center;
       transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
     }
     .bp-action-save { color: var(--theme-accent); }
     .bp-action-save:hover:not(:disabled) { background: var(--theme-bg); }
@@ -554,7 +557,7 @@ export class SettingsComponent implements OnInit {
   private orgSnapshot: typeof this.form | null = null;
   private finSnapshot: typeof this.form | null = null;
 
-  readonly icons = { Building2, Users, Layers, CreditCard, Palette, Pencil };
+  readonly icons = { Building2, Users, Layers, CreditCard, Palette, Pencil, Check, X };
   tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
   tabIcons = ['building-2', 'users', 'layers', 'credit-card', 'palette'];
   activeTab = 0;
