@@ -5,7 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { InputSwitchModule } from 'primeng/inputswitch';
 import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
@@ -24,7 +24,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
   imports: [
     CommonModule, FormsModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    ToggleSwitchModule, ToastModule, SidebarModule, DropdownModule,
+    InputSwitchModule, ToastModule, SidebarModule, DropdownModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
   ],
   providers: [MessageService],
@@ -421,19 +421,19 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                 </div>
               </div>
@@ -1060,7 +1060,7 @@ export class SettingsComponent implements OnInit {
   submitEdit() {
     if (!this.editForm.name?.trim() || !this.selectedMember) return;
     this.selectedMember.name = this.editForm.name;
-    this.selectedMember.role = this.editForm.role;
+    this.selectedMember.role = this.editForm.role as 'admin' | 'member';
     this.editingMember = false;
     this.applyFilters();
     this.msg.add({ severity: 'success', summary: 'Member updated' });
