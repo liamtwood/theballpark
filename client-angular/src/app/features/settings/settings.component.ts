@@ -631,11 +631,13 @@ export class SettingsComponent implements OnInit {
   startEdit(section: 'org' | 'fin') {
     if (section === 'org') { this.orgSnapshot = { ...this.form }; this.editingOrg = true; }
     else { this.finSnapshot = { ...this.form }; this.editingFin = true; }
+    this.cdr.detectChanges();
   }
 
   cancelEdit(section: 'org' | 'fin') {
     if (section === 'org' && this.orgSnapshot) { this.form = { ...this.orgSnapshot }; this.editingOrg = false; }
     else if (section === 'fin' && this.finSnapshot) { this.form = { ...this.finSnapshot }; this.editingFin = false; }
+    this.cdr.detectChanges();
   }
 
   save() {
@@ -652,6 +654,7 @@ export class SettingsComponent implements OnInit {
         this.editingOrg = false;
         this.editingFin = false;
         this.msg.add({ severity: 'success', summary: 'Saved' });
+        this.cdr.detectChanges();
       },
       error: () => {
         this.saving = false;
