@@ -10,6 +10,7 @@ import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule, SquarePen } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -23,6 +24,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
   standalone: true,
   imports: [
     CommonModule, FormsModule,
+    LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
     InputSwitchModule, ToastModule, SidebarModule, DropdownModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
@@ -56,7 +58,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
               <span class="bp-section-title">ORGANISATION DETAILS</span>
               <div class="bp-section-actions">
                 <button *ngIf="!editingOrg" class="bp-icon-btn" (click)="startEdit('org')" title="Edit">
-                  <i class="pi pi-pencil"></i>
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon>
                 </button>
                 <ng-container *ngIf="editingOrg">
                   <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
@@ -152,7 +154,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
               <span class="bp-section-title">FINANCIAL DEFAULTS</span>
               <div class="bp-section-actions">
                 <button *ngIf="!editingFin" class="bp-icon-btn" (click)="startEdit('fin')" title="Edit">
-                  <i class="pi pi-pencil"></i>
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon>
                 </button>
                 <ng-container *ngIf="editingFin">
                   <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
@@ -278,7 +280,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                     </div>
                   </div>
                   <div class="flex items-center gap-2" (click)="$event.stopPropagation()">
-                    <span class="bp-member-joined">{{u.joined || '—'}}</span>
+                    <span class="bp-member-joined" *ngIf="u.joined">{{u.joined}}</span>
                     <app-status-badge [status]="u.role"></app-status-badge>
                     <button class="bp-icon-btn bp-icon-danger" title="Remove" (click)="removeMember(u)">
                       <i class="pi pi-trash"></i>
@@ -523,15 +525,21 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       styleClass="bp-drawer" [style]="{width:'480px'}"
       (onHide)="closeEditDrawer()">
       <ng-template pTemplate="header">
-        <div class="bp-drawer-header-row">
-          <div class="bp-drawer-header">
-            <span class="bp-drawer-label">TEAM</span>
-            <div class="bp-drawer-title">{{ editForm.name || 'Member' }}</div>
-          </div>
+        <div class="bp-drawer-header">
+          <span class="bp-drawer-label">TEAM</span>
+          <div class="bp-drawer-title">{{ editForm.name || 'Member' }}</div>
+        </div>
+      </ng-template>
+
+      <div class="bp-drawer-body">
+
+        <!-- MEMBER section header with edit controls -->
+        <div class="bp-section-header mb-4">
+          <span class="bp-section-title">MEMBER</span>
           <div class="flex items-center gap-1">
             <ng-container *ngIf="!editingMember">
               <button class="bp-icon-btn" (click)="startEditMember()" title="Edit">
-                <i class="pi pi-pencil"></i>
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
             </ng-container>
             <ng-container *ngIf="editingMember">
@@ -544,9 +552,6 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
             </ng-container>
           </div>
         </div>
-      </ng-template>
-
-      <div class="bp-drawer-body">
 
         <!-- VIEW MODE -->
         <ng-container *ngIf="!editingMember">
@@ -731,9 +736,10 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     /* ── TEAM TAB ── */
     .bp-team-page { }
     .bp-team-title-bar { padding: var(--section-pad) var(--section-pad) 0; border-bottom: 0.5px solid var(--color-border); }
+    .bp-team-title-bar .bp-page-title { margin-bottom: 0; padding-bottom: var(--section-pad); }
     .bp-team-body { display: grid; grid-template-columns: 180px 1fr; min-height: calc(100vh - 300px); }
     .bp-team-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; }
-    .bp-team-main { padding: 20px 28px; }
+    .bp-team-main { padding: 20px 28px; max-width: 640px; margin: 0 auto; }
 
     .bp-sidebar-heading { font-size: 14px; font-weight: 500; color: var(--theme-accent); margin-bottom: 8px; }
     .bp-sidebar-sublabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
