@@ -1,22 +1,19 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ProjectService } from '../../../../core/services/project.service';
+import { ShellContextService } from '../../../../core/services/shell-context.service';
 import { Project } from '../../../../models';
-import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
-import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
-
-interface DetailTab { label: string; path: string; }
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
   imports: [
     CommonModule, RouterModule, RouterOutlet,
-    ToastModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent
+    ToastModule, LoadingSpinnerComponent
   ],
   providers: [MessageService],
   template: `
@@ -24,159 +21,87 @@ interface DetailTab { label: string; path: string; }
 
     <ng-container *ngIf="!loading && !project">
       <div class="bp-page" style="text-align:center;padding:80px 0;">
-        <p class="bp-muted-text">Project not found.</p>
+        <p style="color:var(--color-text-muted);font-size:var(--text-sm);">Project not found.</p>
         <a routerLink="/projects" style="color:var(--theme-accent);font-size:var(--text-sm);margin-top:8px;display:inline-block;">
           ← Back to Projects
         </a>
       </div>
     </ng-container>
 
+    <!-- No hero here — AppShellComponent renders it via ShellContextService -->
     <ng-container *ngIf="!loading && project">
-
-      <!-- PROJECT HERO -->
-      <div class="bp-project-hero">
-
-        <!-- Back link -->
-        <a routerLink="/projects" class="bp-back-link">← Projects</a>
-
-        <!-- Project name + status -->
-        <div class="bp-project-hero-title">
-          <h1 class="bp-project-name">{{ project.event_name || project.name }}</h1>
-          <app-status-badge [status]="project.status_name"></app-status-badge>
-        </div>
-
-        <!-- Client + meta pills -->
-        <div class="bp-project-meta">
-          <span *ngIf="project.client_name" class="bp-project-client">{{ project.client_name }}</span>
-          <span *ngIf="project.venue_name" class="bp-meta-pill">{{ project.venue_name }}</span>
-          <span *ngIf="project.venue_city" class="bp-meta-pill">{{ project.venue_city }}</span>
-          <span *ngIf="project.event_date" class="bp-meta-pill">{{ project.event_date }}</span>
-          <span *ngIf="project.stand_size" class="bp-meta-pill">{{ project.stand_size }}</span>
-          <span *ngIf="project.project_budget" class="bp-meta-pill">Budget: {{ project.project_budget | gbp }}</span>
-        </div>
-
-        <!-- Tabs -->
-        <div class="bp-hero-tabs">
-          <button *ngFor="let tab of tabs"
-            class="bp-hero-tab" [class.active]="isActive(tab.path)"
-            (click)="navigate(tab.path)">
-            {{ tab.label }}
-          </button>
-        </div>
-
-      </div>
-
-      <!-- TAB CONTENT -->
-      <div class="bp-project-content">
-        <router-outlet></router-outlet>
-      </div>
-
+      <router-outlet></router-outlet>
     </ng-container>
 
     <p-toast></p-toast>
   `,
-  styles: [`
-    /* ── HERO ── */
-    .bp-project-hero {
-      background: var(--theme-bg);
-      padding: 24px var(--section-pad) 0;
-      border-bottom: 0.5px solid var(--theme-border);
-      flex-shrink: 0;
-    }
-
-    /* ── BACK LINK ── */
-    .bp-back-link {
-      font-size: 12px;
-      color: var(--color-text-muted);
-      text-decoration: none;
-      display: inline-block;
-      margin-bottom: 12px;
-      transition: color 0.15s;
-    }
-    .bp-back-link:hover { color: var(--theme-accent); }
-
-    /* ── TITLE ROW ── */
-    .bp-project-hero-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    .bp-project-name {
-      font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 400;
-      color: var(--color-text-primary);
-      letter-spacing: -0.02em;
-      margin: 0;
-    }
-
-    /* ── META ROW ── */
-    .bp-project-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-    .bp-project-client {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--color-text-secondary);
-    }
-    .bp-meta-pill {
-      font-size: 11px;
-      color: var(--color-text-muted);
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      border-radius: 20px;
-      padding: 2px 10px;
-    }
-
-    /* ── CONTENT AREA ── */
-    .bp-project-content {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-    }
-
-    /* ── MISC ── */
-    .bp-muted-text { color: var(--color-text-muted); font-size: var(--text-sm); }
-  `]
+  styles: []
 })
-export class ProjectDetailComponent implements OnInit {
+export class ProjectDetailComponent implements OnInit, OnDestroy {
   project: Project | null = null;
   loading = true;
   pid = '';
 
-  tabs: DetailTab[] = [
-    { label: 'Brief',     path: 'brief' },
-    { label: 'Build',     path: 'build' },
-    { label: 'Estimate',  path: 'estimate' },
-    { label: 'Suppliers', path: 'suppliers' },
-    { label: 'Messages',  path: 'messages' },
+  private readonly PROJECT_TABS = [
+    { label: 'Brief',     path: '' },  // path set dynamically with pid
+    { label: 'Build',     path: '' },
+    { label: 'Estimate',  path: '' },
+    { label: 'Suppliers', path: '' },
+    { label: 'Messages',  path: '' },
   ];
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private projSvc: ProjectService,
+    private shellCtx: ShellContextService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.pid = this.route.snapshot.paramMap.get('id') || '';
     this.projSvc.getById(this.pid).subscribe({
-      next: p => { this.project = p; this.loading = false; this.cdr.detectChanges(); },
+      next: p => {
+        this.project = p;
+        this.pushContext(p);
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
     });
   }
 
-  navigate(path: string) {
-    this.router.navigate(['/projects', this.pid, path]);
+  ngOnDestroy() {
+    // Reset hero when leaving project
+    this.shellCtx.reset();
   }
 
-  isActive(path: string) {
-    return this.router.url.includes(`/projects/${this.pid}/${path}`);
+  private pushContext(p: Project) {
+    const tabs = [
+      { label: 'Brief',     path: `/projects/${this.pid}/brief` },
+      { label: 'Build',     path: `/projects/${this.pid}/build` },
+      { label: 'Estimate',  path: `/projects/${this.pid}/estimate` },
+      { label: 'Suppliers', path: `/projects/${this.pid}/suppliers` },
+      { label: 'Messages',  path: `/projects/${this.pid}/messages` },
+    ];
+
+    // Pills: client name + venue
+    const pills: string[] = [];
+    if (p.client_name) pills.push(p.client_name);
+    if (p.venue_name)  pills.push(p.venue_name);
+
+    // Sub: org name would be loaded from OrgService but we use page label pattern
+    // "Apex Exhibition · draft" — status comes from the project
+    const sub = p.status_name
+      ? p.status_name.charAt(0).toUpperCase() + p.status_name.slice(1)
+      : '';
+
+    this.shellCtx.set({
+      heroTitle:  p.event_name || p.name || 'Untitled',
+      heroSub:    sub,
+      pills,
+      tabs,
+      showStats:  false,
+    });
   }
 }

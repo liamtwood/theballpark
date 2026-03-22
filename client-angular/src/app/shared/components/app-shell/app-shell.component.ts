@@ -6,6 +6,9 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { SupplierService } from '../../../core/services/supplier.service';
+import { ShellContextService, ShellContext } from '../../../core/services/shell-context.service';
 
 interface ShellTab { label: string; path: string; }
 interface NavItem  { label: string; path: string; }
@@ -19,19 +22,44 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- HERO -->
     <div class="bp-hero">
 
-      <!-- USER NAME + LOCATION pills — above org name -->
-      <div *ngIf="showUserName && userName" class="bp-hero-meta">
-        <p-tag [value]="userName + ' · ' + (userRole | titlecase)" styleClass="bp-hero-tag"></p-tag>
-        <p-tag *ngIf="showLocation && orgCity" [value]="orgCity" styleClass="bp-hero-tag"></p-tag>
+      <!-- PILLS — context-driven -->
+      <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
+        <p-tag *ngFor="let pill of heroPills" [value]="pill" styleClass="bp-hero-tag"></p-tag>
       </div>
 
-      <!-- ORG NAME / PLATFORM NAME -->
+      <!-- TITLE — project name or org name -->
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
-      <p class="bp-hero-page-label">{{ pageLabel }}</p>
 
-      <!-- TABS -->
-      <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && tabs.length > 0">
-        <button *ngFor="let tab of tabs"
+      <!-- SUB — "Org name · status" on project pages, page label elsewhere -->
+      <p class="bp-hero-page-label">{{ heroSub }}</p>
+
+      <!-- STATS BAR — org home only -->
+      <div *ngIf="showStats && !hasContext" class="bp-hero-stats">
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">{{ creditLabel }}s remaining</span>
+          <span class="bp-hero-stat-value">{{ ballsBalance }}</span>
+          <span class="bp-hero-stat-sub" *ngIf="ballsResetDays">resets in {{ ballsResetDays }} days</span>
+        </div>
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">Active Projects</span>
+          <span class="bp-hero-stat-value">{{ activeCount }}</span>
+          <span class="bp-hero-stat-sub" *ngIf="activeProjectName">{{ activeProjectName }}</span>
+        </div>
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">Saved suppliers</span>
+          <span class="bp-hero-stat-value">{{ supplierCount }}</span>
+          <span class="bp-hero-stat-sub">across categories</span>
+        </div>
+        <div class="bp-hero-stat" style="border-right:none;">
+          <span class="bp-hero-stat-label">Quotes in progress</span>
+          <span class="bp-hero-stat-value">{{ quotesCount }}</span>
+          <span class="bp-hero-stat-sub">awaiting response</span>
+        </div>
+      </div>
+
+      <!-- TABS — context tabs (project) or route tabs (settings etc.) -->
+      <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+        <button *ngFor="let tab of activeTabs"
           class="bp-hero-tab" [class.active]="isActive(tab.path)"
           (click)="navigate(tab.path)">
           {{ tab.label }}
@@ -39,32 +67,24 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       </div>
     </div>
 
-    <!-- BODY — splits into sidenav + content when navMode === 'sidenav' -->
+    <!-- BODY -->
     <div class="bp-shell-body" [class.bp-shell-sidenav-mode]="navMode === 'sidenav'">
 
       <!-- SIDE NAV -->
       <nav class="bp-sidenav" *ngIf="navMode === 'sidenav'">
-
-        <!-- Home -->
-        <div class="bp-sidenav-home"
-          [class.active]="isActive('/')"
-          (click)="navigate('/')">
+        <div class="bp-sidenav-home" [class.active]="isActive('/')" (click)="navigate('/')">
           <span class="bp-sidenav-org">{{ orgName }}</span>
         </div>
-
-        <!-- Groups -->
         <ng-container *ngFor="let group of navGroups">
           <ng-container *ngIf="!group.adminOnly || isAdmin">
             <div class="bp-sidenav-group-label">{{ group.label }}</div>
             <div *ngFor="let item of group.items"
-              class="bp-sidenav-item"
-              [class.active]="isActive(item.path)"
+              class="bp-sidenav-item" [class.active]="isActive(item.path)"
               (click)="navigate(item.path)">
               {{ item.label }}
             </div>
           </ng-container>
         </ng-container>
-
       </nav>
 
       <!-- CONTENT -->
@@ -75,11 +95,10 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     </div>
   `,
   styles: [`
-    /* ── HOST ── */
-    :host { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-    .bp-hero { flex-shrink: 0; }
+    :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .bp-hero          { flex-shrink: 0; }
 
-    /* ── HERO META (user name + location pills) ── */
+    /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
     :host ::ng-deep .bp-hero-tag.p-tag {
       background: var(--theme-bg) !important;
@@ -102,89 +121,50 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
-
-    /* ── CONTENT AREA ── */
     .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
 
     /* ── SIDE NAV ── */
-    .bp-sidenav {
-      width: 200px;
-      flex-shrink: 0;
-      border-right: 0.5px solid var(--color-border);
-      padding: 16px 0;
-      overflow-y: auto;
-      background: var(--color-surface);
-    }
-
-    /* Home / org name link */
-    .bp-sidenav-home {
-      padding: 10px 16px 14px;
-      cursor: pointer;
-      border-bottom: 0.5px solid var(--color-border);
-      margin-bottom: 8px;
-    }
-    .bp-sidenav-org {
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--color-text-primary);
-      line-height: 1.2;
-      display: block;
-      transition: color 0.15s;
-    }
+    .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }
+    .bp-sidenav-home { padding: 10px 16px 14px; cursor: pointer; border-bottom: 0.5px solid var(--color-border); margin-bottom: 8px; }
+    .bp-sidenav-org { font-family: var(--font-display); font-size: 15px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; display: block; transition: color 0.15s; }
     .bp-sidenav-home:hover .bp-sidenav-org { color: var(--theme-accent); }
     .bp-sidenav-home.active .bp-sidenav-org { color: var(--theme-accent); }
-
-    /* Group label */
-    .bp-sidenav-group-label {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--color-text-muted);
-      padding: 12px 16px 4px;
-    }
-
-    /* Nav item */
-    .bp-sidenav-item {
-      display: flex;
-      align-items: center;
-      padding: 7px 16px;
-      font-size: 13px;
-      font-weight: 400;
-      color: var(--color-text-secondary);
-      cursor: pointer;
-      border-left: 2px solid transparent;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .bp-sidenav-item:hover {
-      background: var(--theme-bg);
-      color: var(--color-text-primary);
-    }
-    .bp-sidenav-item.active {
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-      font-weight: 500;
-      border-left-color: var(--theme-accent);
-    }
+    .bp-sidenav-group-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); padding: 12px 16px 4px; }
+    .bp-sidenav-item { display: flex; align-items: center; padding: 7px 16px; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .bp-sidenav-item:hover { background: var(--theme-bg); color: var(--color-text-primary); }
+    .bp-sidenav-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; border-left-color: var(--theme-accent); }
   `]
 })
 export class AppShellComponent implements OnInit, OnDestroy {
+  // Org defaults
   orgName      = '';
   userName     = '';
   userRole     = '';
   orgCity      = '';
   platformName = 'The Ballpark';
-  pageLabel    = '';
-  tabs: ShellTab[] = [];
+
+  // Route-driven
+  pageLabel = '';
+  routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
-  // Computed hero title — platform name on ballpark-settings, org name everywhere else
-  get heroTitle(): string {
-    return this.isBallparkRoute ? this.platformName : this.orgName;
-  }
+  // Context override (set by project detail)
+  ctx: ShellContext | null = null;
 
-  // Config-driven flags
+  // Computed — uses context if present, falls back to org defaults
+  get hasContext(): boolean   { return !!this.ctx?.heroTitle; }
+  get heroTitle(): string     { return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName); }
+  get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
+  get heroPills(): string[]   {
+    if (this.ctx?.pills?.length) return this.ctx.pills;
+    const pills: string[] = [];
+    if (this.showUserName && this.userName) pills.push(`${this.userName} · ${this.userRole}`);
+    if (this.showLocation && this.orgCity)  pills.push(this.orgCity);
+    return pills;
+  }
+  get activeTabs(): ShellTab[] { return this.ctx?.tabs?.length ? this.ctx.tabs : this.routeTabs; }
+
+  // Config flags
   heroAlign    = 'center';
   navMode: 'tabs' | 'sidenav' = 'tabs';
   showUserName = true;
@@ -192,6 +172,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
   showUpcoming = true;
   showStats    = true;
   creditLabel  = 'Ball';
+  ballsBalance      = 0;
+  ballsResetDays    = 0;
+  activeCount       = 0;
+  activeProjectName = '';
+  supplierCount     = 0;
+  quotesCount       = 0;
   isAdmin = true; // stub until v1.3 auth
 
   navGroups: NavGroup[] = [
@@ -234,6 +220,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private orgSvc: OrgService,
     private configService: ConfigService,
+    private shellCtx: ShellContextService,
+    private projectService: ProjectService,
+    private supplierService: SupplierService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -243,6 +232,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.orgCity      = (org as any).city || '';
+        this.ballsBalance = org.balls_balance || 0;
         this.cdr.detectChanges();
       }
     });
@@ -256,16 +246,35 @@ export class AppShellComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Load config and subscribe to live changes
+    // Load stats
+    this.projectService.getAll().subscribe((projects: any[]) => {
+      const active = (projects || []).filter((p: any) => p.status_name !== 'completed' && p.status_name !== 'cancelled');
+      this.activeCount = active.length;
+      this.activeProjectName = active.length > 0 ? active[0].name : '';
+      this.cdr.detectChanges();
+    });
+    this.supplierService.getAll().subscribe((suppliers: any[]) => {
+      this.supplierCount = (suppliers || []).length;
+      this.cdr.detectChanges();
+    });
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    this.ballsResetDays = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Config
     this.syncFromConfig(this.configService.current as any);
-    this.configService.config$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe((config: any) => {
+    this.configService.config$.pipe(takeUntil(this.destroy$)).subscribe((config: any) => {
       this.syncFromConfig(config);
       this.cdr.detectChanges();
     });
 
-    // Update page label + tabs on navigation
+    // Shell context — project detail writes here
+    this.shellCtx.context$.pipe(takeUntil(this.destroy$)).subscribe(ctx => {
+      this.ctx = ctx.heroTitle ? ctx : null;
+      this.cdr.detectChanges();
+    });
+
+    // Route changes
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
       takeUntil(this.destroy$)
@@ -292,13 +301,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.creditLabel  = config?.creditLabel  || 'Ball';
     this.platformName = config?.platformName || 'The Ballpark';
 
-    // Apply font pairing to root CSS variables
     const pairing = config?.fontPairing || 'playfair-franklin';
     const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];
     document.documentElement.style.setProperty('--font-display', fonts.display);
     document.documentElement.style.setProperty('--font-body', fonts.body);
-
-    // Apply alignment to root
     document.documentElement.style.setProperty('--hero-align', this.heroAlignVar);
     document.documentElement.style.setProperty('--hero-align-flex', this.heroAlignFlex);
   }
@@ -312,13 +318,17 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private updateFromRoute() {
     this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
+    // Reset context when navigating away from projects
+    if (!this.router.url.includes('/projects/')) {
+      this.shellCtx.reset();
+    }
     let route = this.activatedRoute;
     while (route.firstChild) {
       route = route.firstChild;
       const data = route.snapshot.data;
       if (data['pageLabel'] !== undefined) {
-        this.pageLabel = data['pageLabel'];
-        this.tabs      = data['tabs'] || [];
+        this.pageLabel  = data['pageLabel'];
+        this.routeTabs  = data['tabs'] || [];
       }
     }
   }
