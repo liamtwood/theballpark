@@ -5,14 +5,13 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
 import { ChipsModule } from 'primeng/chips';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen } from 'lucide-angular';
-import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { Org, User, Category, PlatformConfig } from '../../models';
@@ -26,9 +25,9 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    LucideAngularModule,
+    LucideAngularModule.pick({ SquarePen }),
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
+    ToggleSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -439,19 +438,19 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
                   </div>
                 </div>
               </div>
@@ -679,7 +678,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           <div class="mb-4">
             <label class="bp-field-label">Status</label>
             <div class="flex items-center gap-3 mt-1">
-              <p-inputSwitch [(ngModel)]="catForm.enabled"></p-inputSwitch>
+              <p-toggleSwitch [(ngModel)]="catForm.enabled"></p-toggleSwitch>
               <span style="font-size:var(--text-sm);color:var(--color-text-secondary);">
                 {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
               </span>
@@ -946,6 +945,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
+      max-width: 560px;
     }
     @media (max-width: 700px) { .bp-cat-grid { grid-template-columns: repeat(2, 1fr); } }
     .bp-cat-card {
@@ -959,7 +959,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-cat-disabled { opacity: 0.45; }
     .bp-cat-img {
       width: 100%;
-      height: 120px;
+      aspect-ratio: 4 / 3;
       background-size: cover;
       background-position: center;
       background-color: var(--theme-bg);
@@ -1288,10 +1288,6 @@ export class SettingsComponent implements OnInit {
   }
 
   inviteMember() {
-    this.inviteForm = { email: '', role: 'member' };
-    this.showInviteDrawer = true;
-    this.cdr.detectChanges();
-  }
 
   closeInviteDrawer() {
     this.showInviteDrawer = false;
@@ -1338,7 +1334,7 @@ export class SettingsComponent implements OnInit {
   submitEdit() {
     if (!this.editForm.name?.trim() || !this.selectedMember) return;
     this.selectedMember.name = this.editForm.name;
-    this.selectedMember.role = this.editForm.role as 'admin' | 'member';
+    this.selectedMember.role = this.editForm.role;
     this.editingMember = false;
     this.applyFilters();
     this.msg.add({ severity: 'success', summary: 'Member updated' });
