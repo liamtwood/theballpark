@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
@@ -13,12 +13,36 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, RouterModule, RouterOutlet],
   template: `
     <!-- HERO — always shown, tabs conditional on navMode -->
     <div class="bp-hero">
       <h1 class="bp-hero-org-name">{{ orgName }}</h1>
       <p class="bp-hero-page-label">{{ pageLabel }}</p>
+
+      <!-- USER NAME & ROLE pill -->
+      <div *ngIf="showUserName && userName" class="bp-hero-meta">
+        <span class="bp-hero-pill">{{ userName }} · {{ userRole | titlecase }}</span>
+        <span *ngIf="showLocation && orgCity" class="bp-hero-pill">{{ orgCity }}</span>
+      </div>
+
+      <!-- STATS BAR -->
+      <div *ngIf="showStats" class="bp-hero-stats">
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">{{ creditLabel }}s</span>
+          <span class="bp-hero-stat-value">{{ ballsBalance }}</span>
+        </div>
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">Active</span>
+          <span class="bp-hero-stat-value">{{ activeCount }}</span>
+        </div>
+        <div class="bp-hero-stat">
+          <span class="bp-hero-stat-label">Suppliers</span>
+          <span class="bp-hero-stat-value">{{ supplierCount }}</span>
+        </div>
+      </div>
+
+      <!-- TABS -->
       <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && tabs.length > 0">
         <button *ngFor="let tab of tabs"
           class="bp-hero-tab" [class.active]="isActive(tab.path)"
@@ -67,6 +91,17 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── HOST ── */
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-hero { flex-shrink: 0; }
+
+    /* ── HERO META (user name + location pills) ── */
+    .bp-hero-meta  { display: flex; justify-content: var(--hero-align-flex, center); gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .bp-hero-pill  { font-size: 11px; font-weight: 500; color: var(--theme-text); background: var(--theme-bg); border: 0.5px solid var(--theme-border); padding: 3px 12px; border-radius: 20px; }
+
+    /* ── HERO STATS BAR ── */
+    .bp-hero-stats      { display: flex; justify-content: var(--hero-align-flex, center); gap: 0; margin-bottom: 12px; }
+    .bp-hero-stat       { display: flex; flex-direction: column; align-items: center; padding: 6px 20px; border-right: 0.5px solid var(--theme-border); }
+    .bp-hero-stat:last-child { border-right: none; }
+    .bp-hero-stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--theme-text); }
+    .bp-hero-stat-value { font-size: 22px; font-weight: 700; color: var(--color-text-primary); line-height: 1.1; }
 
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -140,10 +175,23 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 })
 export class AppShellComponent implements OnInit, OnDestroy {
   orgName   = '';
+  userName  = '';
+  userRole  = '';
+  orgCity   = '';
   pageLabel = '';
   tabs: ShellTab[] = [];
-  heroAlign = 'center';
+
+  // Config-driven flags
+  heroAlign    = 'center';
   navMode: 'tabs' | 'sidenav' = 'tabs';
+  showUserName = true;
+  showLocation = true;
+  showUpcoming = true;
+  showStats    = true;
+  creditLabel  = 'Ball';
+  ballsBalance = 0;
+  activeCount  = 0;
+  supplierCount = 0;
   isAdmin = true; // stub until v1.3 auth
 
   navGroups: NavGroup[] = [
@@ -186,12 +234,25 @@ export class AppShellComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Load org name and role
+    // Load org data
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) { this.orgName = org.name; this.cdr.detectChanges(); }
+      if (org) {
+        this.orgName      = org.name;
+        this.orgCity      = (org as any).city || '';
+        this.ballsBalance = org.balls_balance || 0;
+        this.cdr.detectChanges();
+      }
     });
-    // TODO: v1.3 auth — replace stub with: this.orgSvc.getCurrentUser().subscribe(...)
-    // this.isAdmin is stubbed to true above
+
+    // TODO: v1.3 auth — load current user for role and name
+    // this.isAdmin stubbed to true, userName/userRole loaded from first org user
+    this.orgSvc.getUsers().subscribe((users: any[]) => {
+      if (users?.length) {
+        this.userName = users[0].name || '';
+        this.userRole = users[0].role || '';
+        this.cdr.detectChanges();
+      }
+    });
 
     // Load config and subscribe to live changes
     this.syncFromConfig(this.configService.current as any);
@@ -220,8 +281,16 @@ export class AppShellComponent implements OnInit, OnDestroy {
   }
 
   private syncFromConfig(config: any) {
-    this.heroAlign = config?.heroAlign || 'center';
-    this.navMode   = config?.navMode   || 'tabs';
+    this.heroAlign    = config?.heroAlign    || 'center';
+    this.navMode      = config?.navMode      || 'tabs';
+    this.showUserName = config?.showUserName !== false;
+    this.showLocation = config?.showLocation !== false;
+    this.showUpcoming = config?.showUpcoming !== false;
+    this.showStats    = config?.showStats    !== false;
+    this.creditLabel  = config?.creditLabel  || 'Ball';
+    // Set CSS variables on document root so all components pick them up
+    document.documentElement.style.setProperty('--hero-align', this.heroAlignVar);
+    document.documentElement.style.setProperty('--hero-align-flex', this.heroAlignFlex);
   }
 
   private updateFromRoute() {

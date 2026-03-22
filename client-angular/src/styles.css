@@ -295,19 +295,11 @@ lucide-icon svg {
 
 /* ============================================
    GLOBAL LAYOUT ALIGNMENT
+   Now driven by --hero-align / --hero-align-flex CSS variables
+   set by AppShellComponent.syncFromConfig()
    ============================================ */
-/* Centre mode */
-.layout-centre .bp-hero,
-.layout-centre .bp-hero-tabs { text-align: center; }
-.layout-centre .bp-hero-pills { justify-content: center; }
-.layout-centre .bp-hero-tabs { justify-content: center; }
 .layout-centre .bp-content { max-width: 1200px; margin: 0 auto; }
 .layout-centre .bp-body { max-width: 1200px; margin: 0 auto; }
-
-/* Left mode */
-.layout-left .bp-hero { text-align: left; }
-.layout-left .bp-hero-pills { justify-content: flex-start; }
-.layout-left .bp-hero-tabs { justify-content: flex-start; }
 
 /* Dark mode disabled button override */
 [data-mode="dark"] .p-button:disabled, [data-mode="dark"] .p-button.p-disabled {
