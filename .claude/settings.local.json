@@ -5,7 +5,15 @@
       "Bash(grep -r \"images\" C:/projects/ballpark/client-angular/dist/client-angular/browser/*.js)",
       "Bash(node src/db/migrate.js)",
       "Bash(node -e \":*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(ls *.md)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/api/categories)",
+      "Bash(unzip -o settings-refactor.zip -d settings-refactor-tmp)",
+      "Bash(SRC=settings-refactor-tmp/settings-refactor)",
+      "Bash(cp \"$SRC/features/settings/settings-shell.component.ts\" client-angular/src/app/features/settings/)",
+      "Bash(cp \"$SRC/features/settings/settings.routes.ts\" client-angular/src/app/features/settings/)",
+      "Bash(cp \"$SRC/features/settings/organisation/organisation.component.ts\" client-angular/src/app/features/settings/organisation/)",
+      "Bash(cp \"$SRC/features/settings/team/team.component.ts\" client-angular/src/app/features/settings/team/)"
     ]
   },
   "enableAllProjectMcpServers": true,

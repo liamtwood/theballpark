@@ -30,6 +30,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
+        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
+        </a>
         <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>

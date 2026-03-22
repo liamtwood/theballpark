@@ -326,34 +326,61 @@ When to use:
 
 ## Drawer Standard
 
+Reference: prototype screenshot (Stand structure brief drawer)
+
 ```html
 <p-sidebar [(visible)]="drawerVisible"
            position="right"
            styleClass="bp-drawer"
            [style]="{width:'480px'}">
+
   <!-- Parchment header -->
   <ng-template pTemplate="header">
     <div class="bp-drawer-header">
-      <div class="bp-drawer-title">{{ title }}</div>
-      <div class="bp-drawer-sub">{{ subtitle }}</div>
+      <span class="bp-drawer-label">SECTION LABEL</span>
+      <div class="bp-drawer-title">Drawer Title</div>
     </div>
   </ng-template>
 
-  <!-- Form content -->
+  <!-- Scrollable content -->
   <div class="bp-drawer-body">
-    <!-- fields here -->
+    <!-- fields, cards, selections here -->
   </div>
 
-  <!-- Footer -->
+  <!-- Dark CTA footer -->
   <ng-template pTemplate="footer">
-    <p-button label="Cancel" styleClass="bp-btn-cancel"
-              (onClick)="close()">
-    </p-button>
-    <p-button [label]="actionLabel" styleClass="bp-btn-save"
-              (onClick)="save()">
-    </p-button>
+    <div class="bp-drawer-footer">
+      <p-button label="Primary action →"
+                styleClass="bp-drawer-cta w-full">
+      </p-button>
+      <p class="bp-drawer-footer-sub">Supporting context text</p>
+    </div>
   </ng-template>
+
 </p-sidebar>
+```
+
+Header:
+  Parchment background (--theme-bg)
+  Section label — 11px uppercase, muted, letter-spaced
+  Title — Playfair Display, 22px, font-weight 400
+  Close X — top right
+
+Content:
+  White background
+  Scrollable
+  Standard padding var(--section-pad)
+
+Footer CTA:
+  Dark filled button — background: var(--color-black), color: #fff
+  Full width
+  Supporting subtext below — 11px, muted, centered
+  e.g. "This will use 1 Ball (7 remaining)"
+
+Note: footer CTA is dark (not amber) — this is intentional.
+The drawer CTA is a high-commitment primary action.
+Amber p-button is for inline/form actions.
+Dark CTA = "I am ready to commit to this action."
 ```
 
 ---
@@ -585,7 +612,9 @@ If no — use the standard components.
            Organisation: 3 sections, always-visible pencil,
              check/times icon edit pattern, readonly/edit toggle,
              zero layout shift, parchment inputs on edit
-           Team: member list with app-avatar, invite button
+           Team: p-dataView list/card toggle, filter sidebar
+             (Sort by / Filter by / Role), app-avatar,
+             app-status-badge, invite button
            Categories: active categories grid with pi-tag icon
            Subscription: plan + balance display
            Appearance: platform/terminology/theme/mode/hero controls
