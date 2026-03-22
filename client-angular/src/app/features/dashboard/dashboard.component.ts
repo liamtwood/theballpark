@@ -412,8 +412,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.projectService.getAll().subscribe({
       next: (data) => {
         this.projects = data;
-        this.activeProjects = data.filter(p => p.status_name === 'active' || p.status_name === 'draft');
         this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
+        this.activeProjects = data.filter(p => !this.completedProjects.includes(p));
         this.loading = false;
         this.cdr.detectChanges();
       },
