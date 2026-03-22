@@ -323,29 +323,49 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           </div>
 
           <div class="bp-content-pad">
+
+            <!-- ENABLED -->
             <div class="bp-section-header">
-              <span class="bp-section-title">CATEGORIES</span>
+              <span class="bp-section-title">ENABLED</span>
               <p-button label="Add category" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="addCategory()"></p-button>
             </div>
 
-            <p *ngIf="categories.length===0" class="bp-muted-text">No categories found.</p>
-
-            <div *ngIf="categories.length>0" class="bp-cat-grid">
-              <div *ngFor="let c of categories"
-                class="bp-cat-card" [class.bp-cat-disabled]="!c.enabled"
+            <div class="bp-cat-grid" *ngIf="enabledCategories().length > 0">
+              <div *ngFor="let c of enabledCategories()"
+                class="bp-cat-card"
                 (click)="openCategory(c)">
                 <div class="bp-cat-img"
                   [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : null"
                   [style.background-color]="!c.cover_image_url ? (c.card_color || 'var(--theme-bg)') : null">
-                  <span class="bp-cat-status-badge" [class.enabled]="c.enabled" [class.disabled]="!c.enabled">
-                    {{ c.enabled ? '✓' : '✕' }}
-                  </span>
+                  <span class="bp-cat-status-badge enabled">✓</span>
                 </div>
                 <div class="bp-cat-body">
                   <span class="bp-cat-name">{{ c.name }}</span>
                 </div>
               </div>
             </div>
+            <p *ngIf="enabledCategories().length === 0" class="bp-muted-text mb-6">No enabled categories.</p>
+
+            <!-- DISABLED -->
+            <div class="bp-section-header mt-6" *ngIf="disabledCategories().length > 0">
+              <span class="bp-section-title">DISABLED</span>
+            </div>
+
+            <div class="bp-cat-grid" *ngIf="disabledCategories().length > 0">
+              <div *ngFor="let c of disabledCategories()"
+                class="bp-cat-card bp-cat-disabled"
+                (click)="openCategory(c)">
+                <div class="bp-cat-img"
+                  [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : null"
+                  [style.background-color]="!c.cover_image_url ? (c.card_color || 'var(--theme-bg)') : null">
+                  <span class="bp-cat-status-badge disabled">✕</span>
+                </div>
+                <div class="bp-cat-body">
+                  <span class="bp-cat-name">{{ c.name }}</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -941,12 +961,13 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 
     /* ── CATEGORIES TAB ── */
     .bp-cat-page { }
-    .bp-content-pad { padding: var(--section-pad); }
+    .bp-content-pad { padding: var(--section-pad); max-width: 820px; margin: 0 auto; }
     .bp-cat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       max-width: 760px;
+      margin: 0 auto 24px;
     }
     @media (max-width: 700px) { .bp-cat-grid { grid-template-columns: repeat(2, 1fr); } }
     .bp-cat-card {
@@ -1218,6 +1239,14 @@ export class SettingsComponent implements OnInit {
   private catSnapshot: any = null;
 
   showCatImagePanel = false;
+
+  enabledCategories(): any[] {
+    return this.categories.filter((c: any) => c.enabled !== false);
+  }
+
+  disabledCategories(): any[] {
+    return this.categories.filter((c: any) => c.enabled === false);
+  }
 
   openCategory(c: any) {
     this.catForm = { ...c, tags: c.tags ? [...c.tags] : [] };
