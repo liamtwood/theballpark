@@ -1248,6 +1248,13 @@ export class SettingsComponent implements OnInit {
 
   submitCat() {
     if (!this.catForm.name?.trim()) return;
+    const idx = this.categories.findIndex((c: any) => c.id === this.catForm.id);
+    if (idx > -1) {
+      this.categories[idx] = { ...this.categories[idx], ...this.catForm };
+    } else {
+      this.categories = [...this.categories, { ...this.catForm, id: Date.now().toString() }];
+    }
+    this.categories = [...this.categories];
     this.editingCat = false;
     this.msg.add({ severity: 'success', summary: 'Category saved' });
     this.cdr.detectChanges();
@@ -1271,6 +1278,13 @@ export class SettingsComponent implements OnInit {
   onCatImageUpdated(urls: { coverUrl: string; cardColor?: string }) {
     if (urls.coverUrl !== undefined) this.catForm.cover_image_url = urls.coverUrl;
     if (urls.cardColor !== undefined) this.catForm.card_color = urls.cardColor;
+    // Write back to categories array immediately so card refreshes
+    const idx = this.categories.findIndex((c: any) => c.id === this.catForm.id);
+    if (idx > -1) {
+      this.categories[idx] = { ...this.categories[idx], ...this.catForm };
+      this.categories = [...this.categories];
+    }
+    this.cdr.detectChanges();
   }
 
   inviteMember() {
