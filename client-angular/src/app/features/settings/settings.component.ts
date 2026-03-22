@@ -739,7 +739,8 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     .bp-team-title-bar .bp-page-title { margin-bottom: 0; padding-bottom: var(--section-pad); }
     .bp-team-body { display: grid; grid-template-columns: 180px 1fr; min-height: calc(100vh - 300px); }
     .bp-team-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; }
-    .bp-team-main { padding: 20px 28px; max-width: 640px; margin: 0 auto; }
+    .bp-team-main { padding: 20px 28px; }
+    .bp-team-content { max-width: 560px; }
 
     .bp-sidebar-heading { font-size: 14px; font-weight: 500; color: var(--theme-accent); margin-bottom: 8px; }
     .bp-sidebar-sublabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
