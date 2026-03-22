@@ -9,5 +9,6 @@ export class CategoryService {
   getById(id: string) { return this.api.get<Category>(`/categories/${id}`); }
   create(data: any) { return this.api.post<Category>('/categories', data); }
   update(id: string, data: any) { return this.api.put<Category>(`/categories/${id}`, data); }
+  patch(id: string, data: any) { return this.api.patch<Category>(`/categories/${id}`, data); }
   delete(id: string) { return this.api.delete<Category>(`/categories/${id}`); }
 }

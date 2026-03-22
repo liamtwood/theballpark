@@ -1249,16 +1249,35 @@ export class SettingsComponent implements OnInit {
 
   submitCat() {
     if (!this.catForm.name?.trim()) return;
-    const idx = this.categories.findIndex((c: any) => c.id === this.catForm.id);
-    if (idx > -1) {
-      this.categories[idx] = { ...this.categories[idx], ...this.catForm };
-    } else {
-      this.categories = [...this.categories, { ...this.catForm, id: Date.now().toString() }];
-    }
-    this.categories = [...this.categories];
-    this.editingCat = false;
-    this.msg.add({ severity: 'success', summary: 'Category saved' });
-    this.cdr.detectChanges();
+    const payload = {
+      name: this.catForm.name,
+      description: this.catForm.description,
+      cover_image_url: this.catForm.cover_image_url,
+      card_color: this.catForm.card_color,
+      tags: this.catForm.tags,
+      enabled: this.catForm.enabled,
+    };
+    const isNew = !this.catForm.id;
+    const obs = isNew
+      ? this.catSvc.create(payload)
+      : this.catSvc.patch(this.catForm.id, payload);
+    obs.subscribe({
+      next: (saved: any) => {
+        const idx = this.categories.findIndex((c: any) => c.id === saved.id);
+        if (idx > -1) {
+          this.categories[idx] = { ...saved, enabled: saved.enabled !== false };
+        } else {
+          this.categories = [...this.categories, { ...saved, enabled: saved.enabled !== false }];
+        }
+        this.categories = [...this.categories];
+        this.editingCat = false;
+        this.msg.add({ severity: 'success', summary: 'Category saved' });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Failed to save category' });
+      }
+    });
   }
 
   closeCatDrawer() {
@@ -1284,6 +1303,13 @@ export class SettingsComponent implements OnInit {
     if (idx > -1) {
       this.categories[idx] = { ...this.categories[idx], ...this.catForm };
       this.categories = [...this.categories];
+    }
+    // Persist to DB if category exists
+    if (this.catForm.id) {
+      const patch: any = {};
+      if (urls.coverUrl !== undefined) patch.cover_image_url = urls.coverUrl;
+      if (urls.cardColor !== undefined) patch.card_color = urls.cardColor;
+      this.catSvc.patch(this.catForm.id, patch).subscribe();
     }
     this.cdr.detectChanges();
   }

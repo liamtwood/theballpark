@@ -269,6 +269,12 @@ const migrate = async () => {
 
       -- Add cover image column to orgs (suppliers)
       ALTER TABLE orgs ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+
+      -- Add image/config columns to categories
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS tags TEXT[];
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true;
     `);
 
     console.log('All tables created successfully.');
