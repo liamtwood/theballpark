@@ -20,10 +20,15 @@ import { OrgService } from '../../core/services/org.service';
         </button>
       </div>
     </div>
-    <router-outlet></router-outlet>
+    <div class="bp-shell-content">
+      <router-outlet></router-outlet>
+    </div>
   `,
-  // No component-specific styles — hero CSS is in styles.css
-  styles: []
+  styles: [`
+    :host          { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    .bp-hero       { flex-shrink: 0; }
+    .bp-shell-content { flex: 1; overflow-y: auto; }
+  `]
 })
 export class SettingsShellComponent {
   orgName = '';

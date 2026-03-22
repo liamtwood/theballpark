@@ -617,3 +617,33 @@ textarea.bp-input-edit:focus {
   font-size: 12px !important;
   background: transparent !important;
 }
+/* =============================================================
+   SCROLL FIX — append to styles.css
+   ============================================================= */
+
+/* ── APP ROOT — full viewport, no overflow ── */
+/* Add these to app.component.ts host styles or as global rules */
+app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── MAIN CONTENT AREA — fills remaining height below nav ── */
+/* This wraps <router-outlet> in app.component.html */
+.bp-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* critical for flex children to scroll correctly */
+}
+
+/* ── NON-SHELL PAGES ── */
+/* Any page without a hero banner wraps its content in .bp-page */
+/* This gives it correct height and independent scroll */
+.bp-page {
+  height: 100%;
+  overflow-y: auto;
+}

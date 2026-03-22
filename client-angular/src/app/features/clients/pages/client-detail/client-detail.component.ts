@@ -14,6 +14,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   standalone: true,
   imports: [CommonModule, RouterModule, LucideAngularModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading && !client" class="text-center py-16"><p class="text-gray-500">Client not found.</p>
       <a routerLink="/clients" style="color:var(--theme-accent);font-size:var(--text-sm);" class="mt-2 inline-block">Back to Clients</a></div>
@@ -46,6 +47,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
           </a>
         </div>
       </div>
+    </div>
     </div>
   `
 })

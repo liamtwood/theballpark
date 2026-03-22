@@ -24,6 +24,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, LucideAngularModule, TabViewModule, TableModule, ButtonModule, DialogModule, InputTextModule, InputTextareaModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading && !project" class="text-center py-16"><p class="text-gray-500">Project not found.</p>
       <a routerLink="/projects" style="color:var(--theme-accent);font-size:var(--text-sm);" class="mt-2 inline-block">Back to Projects</a></div>
@@ -149,6 +150,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
         <p-button label="Add" icon="pi pi-plus" [disabled]="!newCat.name" (click)="addCat()" [loading]="addingCat"></p-button>
       </ng-template>
     </p-dialog>
+    </div>
   `
 })
 export class ProjectDetailComponent implements OnInit {

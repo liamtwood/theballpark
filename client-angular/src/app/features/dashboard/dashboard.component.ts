@@ -19,6 +19,7 @@ import { ButtonModule } from 'primeng/button';
   standalone: true,
   imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent, StatusBadgeComponent],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
@@ -151,6 +152,7 @@ import { ButtonModule } from 'primeng/button';
       </div>
 
     </ng-container>
+    </div>
   `,
   styles: [`
     .bp-hero {

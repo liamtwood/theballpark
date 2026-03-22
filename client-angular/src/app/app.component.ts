@@ -11,11 +11,14 @@ import { ConfigService } from './core/services/config.service';
   template: `
     <div [class]="layoutClass">
       <app-top-nav></app-top-nav>
-      <main><router-outlet></router-outlet></main>
+      <div class="bp-main">
+        <router-outlet></router-outlet>
+      </div>
     </div>
   `,
   styles: [`
-    main { background: var(--color-bg); min-height: calc(100vh - var(--nav-height)); }
+    :host { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .bp-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {

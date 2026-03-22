@@ -21,6 +21,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   imports: [CommonModule, RouterModule, FormsModule, TableModule, ButtonModule, InputTextModule, ConfirmDialogModule, ToastModule, StatusBadgeComponent, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
   providers: [ConfirmationService, MessageService],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading">
       <div class="flex items-center justify-between mb-8">
@@ -59,6 +60,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
     </div>
     <p-confirmDialog></p-confirmDialog><p-toast></p-toast>
+    </div>
   `
 })
 export class ProjectListComponent implements OnInit {

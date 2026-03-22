@@ -22,7 +22,11 @@
       "Bash(unzip -o settings-fixes-v2.zip -d settings-fixes-v2-tmp)",
       "Bash(SRC=settings-fixes-v2-tmp/settings-fixes-v2)",
       "Bash(cp \"$SRC/marketplace.component.ts\" client-angular/src/app/features/ballpark-settings/marketplace/)",
-      "Bash(unzip -o settings-fixes-v3.zip -d settings-fixes-v3-tmp)"
+      "Bash(unzip -o settings-fixes-v3.zip -d settings-fixes-v3-tmp)",
+      "Bash(unzip -o scroll-fix.zip -d scroll-fix-tmp)",
+      "Bash(SRC=scroll-fix-tmp/scroll-fix)",
+      "Bash(cp \"$SRC/settings-shell.component.ts\" client-angular/src/app/features/settings/)",
+      "Bash(cp \"$SRC/ballpark-settings-shell.component.ts\" client-angular/src/app/features/ballpark-settings/)"
     ]
   },
   "enableAllProjectMcpServers": true,
