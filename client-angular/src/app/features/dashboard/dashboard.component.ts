@@ -9,7 +9,6 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ButtonModule } from 'primeng/button';
@@ -17,19 +16,11 @@ import { ButtonModule } from 'primeng/button';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, StatCardComponent, ImageUploadPanelComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent],
   template: `
     <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
-
-      <!-- STATS BAR -->
-      <div class="bp-stats-bar" *ngIf="showStats">
-        <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'"></app-stat-card>
-        <app-stat-card [label]="'Active ' + projectLabel + 's'" [value]="activeProjects.length" [sub]="activeProjects.length > 0 ? (activeProjects[0].client_name || activeProjects[0].name) : 'none yet'"></app-stat-card>
-        <app-stat-card label="Saved suppliers" [value]="supplierCount" sub="across categories"></app-stat-card>
-        <app-stat-card label="Quotes in progress" [value]="0" sub="awaiting response"></app-stat-card>
-      </div>
 
       <!-- TWO-COLUMN BODY -->
       <div class="bp-body">
@@ -155,10 +146,6 @@ import { ButtonModule } from 'primeng/button';
       color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px;
     }
     .bp-hero-sub { font-size: var(--text-base); color: var(--color-text-muted); }
-    .bp-stats-bar {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
-    }
     .bp-body {
       display: grid; grid-template-columns: 1fr 320px;
       background: var(--color-bg);
