@@ -35,7 +35,10 @@
       "Bash(cp \"$SRC/settings.routes.ts\" client-angular/src/app/features/settings/)",
       "Bash(cp \"$SRC/ballpark-settings.routes.ts\" client-angular/src/app/features/ballpark-settings/)",
       "Bash(rm -rf app-shell-v3-tmp)",
-      "Bash(unzip -o app-shell-v3.zip -d app-shell-v3-tmp)"
+      "Bash(unzip -o app-shell-v3.zip -d app-shell-v3-tmp)",
+      "Bash(rm -rf app-shell-v5-tmp)",
+      "Bash(unzip -o app-shell-v5.zip -d app-shell-v5-tmp)",
+      "Bash(SRC=app-shell-v5-tmp/app-shell-v5)"
     ]
   },
   "enableAllProjectMcpServers": true,

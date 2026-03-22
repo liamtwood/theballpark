@@ -636,6 +636,15 @@ app-top-nav { flex-shrink: 0; }
    APP SHELL — append to styles.css
    ============================================================= */
 
+/* ── BALLS TAG (top-nav) ── */
+.bp-balls-tag.p-tag {
+  background: var(--theme-bg) !important;
+  color: var(--theme-accent) !important;
+  border: 1.5px solid var(--theme-accent) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
 /* ── HERO — alignment driven by CSS variable set on app-shell host ── */
 .bp-hero {
   text-align: var(--hero-align, center);

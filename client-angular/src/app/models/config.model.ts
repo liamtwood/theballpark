@@ -21,4 +21,5 @@ export interface PlatformConfig {
   showStats?: boolean;
   logoUrl?: string;
   navMode?: 'tabs' | 'sidenav';
+  fontPairing?: string;
 }

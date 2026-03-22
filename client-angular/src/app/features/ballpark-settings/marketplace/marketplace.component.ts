@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputSwitchModule } from 'primeng/inputswitch';
+import { DropdownModule } from 'primeng/dropdown';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -19,7 +20,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
   imports: [
     CommonModule, FormsModule,
     LucideAngularModule,
-    ButtonModule, InputTextModule, InputSwitchModule, DialogModule, ToastModule,
+    ButtonModule, InputTextModule, InputSwitchModule, DropdownModule, DialogModule, ToastModule,
     ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -105,6 +106,31 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         </div>
       </div>
 
+      <!-- TYPOGRAPHY -->
+      <div class="bp-section">
+        <div class="bp-section-header">
+          <span class="bp-section-title">TYPOGRAPHY</span>
+        </div>
+        <label class="bp-field-label">Font pairing</label>
+        <p-dropdown
+          [(ngModel)]="appearance.fontPairing"
+          [options]="fontPairingOptions"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full bp-input-edit mt-2"
+          (ngModelChange)="liveUpdate()">
+          <ng-template pTemplate="selectedItem" let-item>
+            <span [style.font-family]="item?.preview">{{ item?.label }}</span>
+          </ng-template>
+          <ng-template pTemplate="item" let-item>
+            <div>
+              <div [style.font-family]="item?.preview" style="font-size:14px;">{{ item?.label }}</div>
+              <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px;">{{ item?.specimen }}</div>
+            </div>
+          </ng-template>
+        </p-dropdown>
+      </div>
+
       <!-- COLOUR THEME -->
       <div class="bp-section">
         <div class="bp-section-header">
@@ -144,7 +170,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         <label class="bp-field-label">Components</label>
         <div class="bp-toggle-list">
           <div class="bp-toggle-row">
-            <span>Org name</span>
+            <span>Organisation name</span>
             <span class="bp-toggle-disabled">Always on</span>
           </div>
           <div class="bp-toggle-row">
@@ -276,12 +302,14 @@ export class MarketplaceComponent implements OnInit {
     showUpcoming?: boolean;
     showStats?: boolean;
     navMode?: 'tabs' | 'sidenav';
+    fontPairing?: string;
   } = {
     platformName: 'The Ballpark', tagline: 'Exhibition Costing',
     projectLabel: 'Event', creditLabel: 'Ball', themeName: 'amber',
     mode: 'system' as 'light' | 'dark' | 'system',
     heroAlign: 'center', showUserName: true, showLocation: true,
-    showUpcoming: true, showStats: true, navMode: 'tabs'
+    showUpcoming: true, showStats: true, navMode: 'tabs',
+    fontPairing: 'playfair-franklin'
   };
 
   themePresets = ConfigService.THEME_PRESETS;
@@ -308,13 +336,21 @@ export class MarketplaceComponent implements OnInit {
       showLocation: current.showLocation !== false,
       showUpcoming: current.showUpcoming !== false,
       showStats:    current.showStats    !== false,
-      navMode:      current.navMode      || 'tabs'
+      navMode:      current.navMode      || 'tabs',
+      fontPairing:  current.fontPairing  || 'playfair-franklin'
     };
     this.previewUpdate();
     this.orgSvc.getCurrentOrg().subscribe({
       next: (org) => { this.org = org || null; this.cdr.detectChanges(); }
     });
   }
+
+  fontPairingOptions = [
+    { value: 'playfair-franklin', label: 'Playfair Display + Libre Franklin', preview: "'Playfair Display', serif",  specimen: 'The quick brown fox' },
+    { value: 'playfair-dm',       label: 'Playfair Display + DM Sans',        preview: "'Playfair Display', serif",  specimen: 'The quick brown fox' },
+    { value: 'inter',             label: 'Inter + Inter',                      preview: "'Inter', sans-serif",        specimen: 'The quick brown fox' },
+    { value: 'fraunces-nunito',   label: 'Fraunces + Nunito',                  preview: "'Fraunces', serif",          specimen: 'The quick brown fox' },
+  ];
 
   selectTheme(name: string)       { this.appearance.themeName = name; this.liveUpdate(); }
   selectMode(mode: string)        { this.appearance.mode = mode as 'light' | 'dark' | 'system'; this.liveUpdate(); }

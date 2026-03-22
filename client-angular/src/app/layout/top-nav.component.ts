@@ -5,13 +5,14 @@ import { Subscription } from 'rxjs';
 import { LucideAngularModule, Sun, Moon, Settings, House, User } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
+import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, AvatarComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent],
   template: `
     <nav class="bp-nav">
       <div class="bp-nav-left">
@@ -33,7 +34,7 @@ import { environment } from '../../environments/environment';
         <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
         </a>
-        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
+        <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>

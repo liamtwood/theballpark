@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
+import { TagModule } from 'primeng/tag';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
@@ -13,18 +14,20 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, TagModule, RouterModule, RouterOutlet],
   template: `
-    <!-- HERO — always shown, tabs conditional on navMode -->
+    <!-- HERO -->
     <div class="bp-hero">
-      <h1 class="bp-hero-org-name">{{ orgName }}</h1>
-      <p class="bp-hero-page-label">{{ pageLabel }}</p>
 
-      <!-- USER NAME & ROLE pill -->
+      <!-- USER NAME + LOCATION pills — above org name -->
       <div *ngIf="showUserName && userName" class="bp-hero-meta">
-        <span class="bp-hero-pill">{{ userName }} · {{ userRole | titlecase }}</span>
-        <span *ngIf="showLocation && orgCity" class="bp-hero-pill">{{ orgCity }}</span>
+        <p-tag [value]="userName + ' · ' + (userRole | titlecase)" styleClass="bp-hero-tag"></p-tag>
+        <p-tag *ngIf="showLocation && orgCity" [value]="orgCity" styleClass="bp-hero-tag"></p-tag>
       </div>
+
+      <!-- ORG NAME / PLATFORM NAME -->
+      <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
+      <p class="bp-hero-page-label">{{ pageLabel }}</p>
 
       <!-- STATS BAR -->
       <div *ngIf="showStats" class="bp-hero-stats">
@@ -93,8 +96,16 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-hero { flex-shrink: 0; }
 
     /* ── HERO META (user name + location pills) ── */
-    .bp-hero-meta  { display: flex; justify-content: var(--hero-align-flex, center); gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-    .bp-hero-pill  { font-size: 11px; font-weight: 500; color: var(--theme-text); background: var(--theme-bg); border: 0.5px solid var(--theme-border); padding: 3px 12px; border-radius: 20px; }
+    .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    :host ::ng-deep .bp-hero-tag.p-tag {
+      background: var(--theme-bg) !important;
+      color: var(--theme-text) !important;
+      border: 0.5px solid var(--theme-border) !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      padding: 3px 12px !important;
+      border-radius: 20px !important;
+    }
 
     /* ── HERO STATS BAR ── */
     .bp-hero-stats      { display: flex; justify-content: var(--hero-align-flex, center); gap: 0; margin-bottom: 12px; }
@@ -174,12 +185,19 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   `]
 })
 export class AppShellComponent implements OnInit, OnDestroy {
-  orgName   = '';
-  userName  = '';
-  userRole  = '';
-  orgCity   = '';
-  pageLabel = '';
+  orgName      = '';
+  userName     = '';
+  userRole     = '';
+  orgCity      = '';
+  platformName = 'The Ballpark';
+  pageLabel    = '';
   tabs: ShellTab[] = [];
+  isBallparkRoute = false;
+
+  // Computed hero title — platform name on ballpark-settings, org name everywhere else
+  get heroTitle(): string {
+    return this.isBallparkRoute ? this.platformName : this.orgName;
+  }
 
   // Config-driven flags
   heroAlign    = 'center';
@@ -215,12 +233,16 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   @HostBinding('style.--hero-align')
   get heroAlignVar() {
-    return this.navMode === 'sidenav' ? 'left' : this.heroAlign;
+    const val = this.navMode === 'sidenav' ? 'left' : this.heroAlign;
+    document.documentElement.style.setProperty('--hero-align', val);
+    return val;
   }
 
   @HostBinding('style.--hero-align-flex')
   get heroAlignFlex() {
-    return (this.navMode === 'sidenav' || this.heroAlign === 'left') ? 'flex-start' : 'center';
+    const val = (this.navMode === 'sidenav' || this.heroAlign === 'left') ? 'flex-start' : 'center';
+    document.documentElement.style.setProperty('--hero-align-flex', val);
+    return val;
   }
 
   private destroy$ = new Subject<void>();
@@ -244,8 +266,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       }
     });
 
-    // TODO: v1.3 auth — load current user for role and name
-    // this.isAdmin stubbed to true, userName/userRole loaded from first org user
+    // TODO: v1.3 auth — replace with getCurrentUser()
     this.orgSvc.getUsers().subscribe((users: any[]) => {
       if (users?.length) {
         this.userName = users[0].name || '';
@@ -288,12 +309,28 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.showUpcoming = config?.showUpcoming !== false;
     this.showStats    = config?.showStats    !== false;
     this.creditLabel  = config?.creditLabel  || 'Ball';
-    // Set CSS variables on document root so all components pick them up
+    this.platformName = config?.platformName || 'The Ballpark';
+
+    // Apply font pairing to root CSS variables
+    const pairing = config?.fontPairing || 'playfair-franklin';
+    const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];
+    document.documentElement.style.setProperty('--font-display', fonts.display);
+    document.documentElement.style.setProperty('--font-body', fonts.body);
+
+    // Apply alignment to root
     document.documentElement.style.setProperty('--hero-align', this.heroAlignVar);
     document.documentElement.style.setProperty('--hero-align-flex', this.heroAlignFlex);
   }
 
+  static readonly FONT_PAIRINGS: Record<string, { display: string; body: string; label: string }> = {
+    'playfair-franklin': { display: "'Playfair Display', serif",  body: "'Libre Franklin', sans-serif", label: 'Playfair Display + Libre Franklin' },
+    'playfair-dm':       { display: "'Playfair Display', serif",  body: "'DM Sans', sans-serif",        label: 'Playfair Display + DM Sans' },
+    'inter':             { display: "'Inter', sans-serif",        body: "'Inter', sans-serif",           label: 'Inter + Inter' },
+    'fraunces-nunito':   { display: "'Fraunces', serif",          body: "'Nunito', sans-serif",          label: 'Fraunces + Nunito' },
+  };
+
   private updateFromRoute() {
+    this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
     let route = this.activatedRoute;
     while (route.firstChild) {
       route = route.firstChild;
