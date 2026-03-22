@@ -335,8 +335,8 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
                 class="bp-cat-card" [class.bp-cat-disabled]="!c.enabled"
                 (click)="openCategory(c)">
                 <div class="bp-cat-img"
-                  [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : ''"
-                  [style.background]="!c.cover_image_url ? c.card_color || 'var(--theme-bg)' : ''">
+                  [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : null"
+                  [style.background-color]="!c.cover_image_url ? (c.card_color || 'var(--theme-bg)') : null">
                   <span class="bp-cat-status-badge" [class.enabled]="c.enabled" [class.disabled]="!c.enabled">
                     {{ c.enabled ? '✓' : '✕' }}
                   </span>
