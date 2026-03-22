@@ -21,7 +21,8 @@
       "Bash(cp \"$SRC/categories.component.ts\" client-angular/src/app/features/ballpark-settings/categories/)",
       "Bash(unzip -o settings-fixes-v2.zip -d settings-fixes-v2-tmp)",
       "Bash(SRC=settings-fixes-v2-tmp/settings-fixes-v2)",
-      "Bash(cp \"$SRC/marketplace.component.ts\" client-angular/src/app/features/ballpark-settings/marketplace/)"
+      "Bash(cp \"$SRC/marketplace.component.ts\" client-angular/src/app/features/ballpark-settings/marketplace/)",
+      "Bash(unzip -o settings-fixes-v3.zip -d settings-fixes-v3-tmp)"
     ]
   },
   "enableAllProjectMcpServers": true,
