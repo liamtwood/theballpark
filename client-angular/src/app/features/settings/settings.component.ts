@@ -946,7 +946,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      max-width: 560px;
+      max-width: 760px;
     }
     @media (max-width: 700px) { .bp-cat-grid { grid-template-columns: repeat(2, 1fr); } }
     .bp-cat-card {
