@@ -29,7 +29,8 @@ export const routes: Routes = [
       {
         path: 'projects/:id',
         loadComponent: () => import('./features/projects/pages/project-detail/project-detail.component').then(m => m.ProjectDetailComponent),
-        data: { pageLabel: 'PROJECTS', tabs: [] }
+        loadChildren: () => import('./features/projects/pages/project-detail/project-detail.routes').then(m => m.PROJECT_DETAIL_ROUTES),
+        data: { pageLabel: '', tabs: [] }  // shell sets its own hero — no global tabs needed
       },
 
       // ── SUPPLIERS ──

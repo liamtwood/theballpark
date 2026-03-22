@@ -38,7 +38,14 @@
       "Bash(unzip -o app-shell-v3.zip -d app-shell-v3-tmp)",
       "Bash(rm -rf app-shell-v5-tmp)",
       "Bash(unzip -o app-shell-v5.zip -d app-shell-v5-tmp)",
-      "Bash(SRC=app-shell-v5-tmp/app-shell-v5)"
+      "Bash(SRC=app-shell-v5-tmp/app-shell-v5)",
+      "Bash(rm -rf project-detail-tmp)",
+      "Bash(unzip -o project-detail.zip -d project-detail-tmp)",
+      "Bash(BASE=client-angular/src/app/features/projects/pages/project-detail)",
+      "Bash(mkdir -p \"$BASE/tabs/brief\" \"$BASE/tabs/build\" \"$BASE/tabs/estimate\" \"$BASE/tabs/suppliers\" \"$BASE/tabs/messages\")",
+      "Bash(SRC=project-detail-tmp/project-detail)",
+      "Bash(cp \"$SRC/project-detail.component.ts\" \"$BASE/\")",
+      "Bash(cp \"$SRC/project-detail.routes.ts\" \"$BASE/\")"
     ]
   },
   "enableAllProjectMcpServers": true,
