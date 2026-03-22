@@ -5,4 +5,8 @@ export interface Category {
   icon?: string;
   sort_order: number;
   is_active: boolean;
+  enabled?: boolean;
+  cover_image_url?: string;
+  card_color?: string;
+  tags?: string[];
 }

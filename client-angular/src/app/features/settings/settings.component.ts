@@ -9,6 +9,7 @@ import { InputSwitchModule } from 'primeng/inputswitch';
 import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
+import { ChipsModule } from 'primeng/chips';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
@@ -18,6 +19,7 @@ import { Org, User, Category, PlatformConfig } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
+import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 
 @Component({
   selector: 'app-settings',
@@ -26,8 +28,8 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, SidebarModule, DropdownModule,
-    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
+    InputSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
+    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
   template: `
@@ -314,20 +316,34 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
         </div>
 
         <!-- ── CATEGORIES TAB ── -->
-        <div *ngIf="activeTab === 2" class="bp-settings-body">
-          <h2 class="bp-page-title">Categories</h2>
+        <div *ngIf="activeTab === 2" class="bp-cat-page">
 
-          <div class="bp-section">
+          <div class="bp-team-title-bar">
+            <h2 class="bp-page-title">Categories</h2>
+          </div>
+
+          <div class="bp-content-pad">
             <div class="bp-section-header">
-              <span class="bp-section-title">ACTIVE CATEGORIES</span>
+              <span class="bp-section-title">CATEGORIES</span>
+              <p-button label="Add category" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="addCategory()"></p-button>
             </div>
+
             <p *ngIf="categories.length===0" class="bp-muted-text">No categories found.</p>
-            <div *ngIf="categories.length>0" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+            <div *ngIf="categories.length>0" class="bp-cat-grid">
               <div *ngFor="let c of categories"
-                class="flex items-center gap-2 px-3 py-2 rounded-lg"
-                style="background:var(--color-surface);border:0.5px solid var(--color-border);">
-                <i class="pi pi-tag" style="color:var(--color-text-muted);font-size:12px;"></i>
-                <span class="bp-category-name">{{c.name}}</span>
+                class="bp-cat-card" [class.bp-cat-disabled]="!c.enabled"
+                (click)="openCategory(c)">
+                <div class="bp-cat-img"
+                  [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : ''"
+                  [style.background]="!c.cover_image_url ? c.card_color || 'var(--theme-bg)' : ''">
+                  <span class="bp-cat-status-badge" [class.enabled]="c.enabled" [class.disabled]="!c.enabled">
+                    {{ c.enabled ? '✓' : '✕' }}
+                  </span>
+                </div>
+                <div class="bp-cat-body">
+                  <span class="bp-cat-name">{{ c.name }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -591,6 +607,97 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       </div>
     </p-sidebar>
 
+    <!-- ── CATEGORY DRAWER ── -->
+    <p-sidebar [(visible)]="showCatDrawer" position="right"
+      styleClass="bp-drawer" [style]="{width:'480px'}"
+      (onHide)="closeCatDrawer()">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header">
+          <span class="bp-drawer-label">CATEGORIES</span>
+          <div class="bp-drawer-title">{{ catForm.name || 'New category' }}</div>
+        </div>
+      </ng-template>
+
+      <div class="bp-drawer-body">
+
+        <!-- CATEGORY section header with edit controls -->
+        <div class="bp-section-header mb-4">
+          <span class="bp-section-title">CATEGORY</span>
+          <div class="flex items-center gap-1">
+            <ng-container *ngIf="!editingCat">
+              <button class="bp-icon-btn" (click)="startEditCat()" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editingCat">
+              <button class="bp-icon-btn bp-icon-save" (click)="submitCat()" [disabled]="!catForm.name?.trim()" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditCat()" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- VIEW MODE -->
+        <ng-container *ngIf="!editingCat">
+          <div class="mb-4">
+            <label class="bp-field-label">Name</label>
+            <input pInputText [value]="catForm.name" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Description</label>
+            <textarea pInputTextarea [value]="catForm.description || '—'" class="w-full bp-field-readonly" readonly [rows]="3" style="resize:none;"></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Tags</label>
+            <input pInputText [value]="catForm.tags?.join(', ') || '—'" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div>
+            <label class="bp-field-label">Status</label>
+            <input pInputText [value]="catForm.enabled ? 'Enabled' : 'Disabled'" class="w-full bp-field-readonly" readonly/>
+          </div>
+        </ng-container>
+
+        <!-- EDIT MODE -->
+        <ng-container *ngIf="editingCat">
+          <div class="mb-4">
+            <label class="bp-field-label">Name</label>
+            <input pInputText [(ngModel)]="catForm.name" class="w-full bp-input-edit"/>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Description</label>
+            <textarea pInputTextarea [(ngModel)]="catForm.description" class="w-full bp-input-edit" [rows]="3" style="resize:none;" placeholder="Describe this category..."></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Tags</label>
+            <p-chips [(ngModel)]="catForm.tags" styleClass="w-full bp-input-edit" placeholder="Add tag + Enter"></p-chips>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Image or colour</label>
+            <app-image-upload-panel
+              [entityId]="catForm.id || 'new'"
+              type="category"
+              [existingCoverUrl]="catForm.cover_image_url || ''"
+              [existingCardColor]="catForm.card_color || ''"
+              (imagesUpdated)="onCatImageUpdated($event)">
+            </app-image-upload-panel>
+          </div>
+          <div>
+            <label class="bp-field-label">Status</label>
+            <div class="flex items-center gap-3 mt-1">
+              <p-inputSwitch [(ngModel)]="catForm.enabled"></p-inputSwitch>
+              <span style="font-size:var(--text-sm);color:var(--color-text-secondary);">
+                {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+
+      </div>
+    </p-sidebar>
+
     <p-toast></p-toast>
   `,
   styles: [`
@@ -795,6 +902,56 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     .bp-drawer-title { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
     .bp-drawer-body { padding: 24px; }
 
+    /* ── CATEGORIES TAB ── */
+    .bp-cat-page { }
+    .bp-content-pad { padding: var(--section-pad); }
+    .bp-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .bp-cat-grid { grid-template-columns: repeat(2, 1fr); } }
+    .bp-cat-card {
+      border: 0.5px solid var(--color-border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .bp-cat-card:hover { border-color: var(--theme-accent); }
+    .bp-cat-disabled { opacity: 0.45; }
+    .bp-cat-img {
+      width: 100%;
+      height: 120px;
+      background-size: cover;
+      background-position: center;
+      background-color: var(--theme-bg);
+      position: relative;
+    }
+    .bp-cat-status-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .bp-cat-status-badge.enabled { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+    .bp-cat-status-badge.disabled { background: #F3F4F6; color: #9CA3AF; border: 0.5px solid #D1D5DB; }
+    .bp-cat-body { padding: 10px 14px; }
+    .bp-cat-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+
+    /* p-chips edit styling */
+    :host ::ng-deep .bp-input-edit.p-chips .p-inputtext {
+      background: var(--theme-bg) !important;
+      border-color: var(--theme-accent) !important;
+    }
+
     /* ── MISC ── */
     .bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
     .bp-member-name { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); margin: 0; }
@@ -906,7 +1063,7 @@ export class SettingsComponent implements OnInit {
         };
       }
       this.users = users || [];
-      this.categories = cats || [];
+      this.categories = (cats || []).map((c: any) => ({ ...c, enabled: c.enabled !== false }));
       this.applyFilters();
       this.loading = false;
       this.cdr.detectChanges();
@@ -1015,6 +1172,56 @@ export class SettingsComponent implements OnInit {
     { label: 'Member', value: 'member' },
     { label: 'Owner', value: 'owner' }
   ];
+
+  // Category drawer
+  showCatDrawer = false;
+  editingCat = false;
+  catForm: any = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+  private catSnapshot: any = null;
+
+  openCategory(c: any) {
+    this.catForm = { ...c, tags: c.tags ? [...c.tags] : [] };
+    this.editingCat = false;
+    this.showCatDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  addCategory() {
+    this.catForm = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+    this.editingCat = true;
+    this.showCatDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  startEditCat() {
+    this.catSnapshot = { ...this.catForm, tags: [...(this.catForm.tags || [])] };
+    this.editingCat = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelEditCat() {
+    if (this.catSnapshot) this.catForm = { ...this.catSnapshot, tags: [...(this.catSnapshot.tags || [])] };
+    this.editingCat = false;
+    this.cdr.detectChanges();
+  }
+
+  submitCat() {
+    if (!this.catForm.name?.trim()) return;
+    this.editingCat = false;
+    this.msg.add({ severity: 'success', summary: 'Category saved' });
+    this.cdr.detectChanges();
+  }
+
+  closeCatDrawer() {
+    this.showCatDrawer = false;
+    this.editingCat = false;
+    this.cdr.detectChanges();
+  }
+
+  onCatImageUpdated(urls: { coverUrl: string; cardColor?: string }) {
+    if (urls.coverUrl !== undefined) this.catForm.cover_image_url = urls.coverUrl;
+    if (urls.cardColor !== undefined) this.catForm.card_color = urls.cardColor;
+  }
 
   inviteMember() {
     this.inviteForm = { email: '', role: 'member' };

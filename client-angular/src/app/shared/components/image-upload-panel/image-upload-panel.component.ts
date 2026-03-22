@@ -195,7 +195,7 @@ import { ModalComponent } from '../modal/modal.component';
 export class ImageUploadPanelComponent implements OnInit {
   @Input() entityId = '';
   @Input() projectId = '';
-  @Input() type: 'project' | 'supplier' = 'project';
+  @Input() type: 'project' | 'supplier' | 'category' = 'project';
   @Input() subtitle = '';
   @Input() existingCoverUrl = '';
   @Input() existingLogoUrl = '';
