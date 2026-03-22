@@ -14,6 +14,12 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
+interface InviteCode {
+  code: string;
+  type: 'Single use' | 'Multi-use';
+  expires: string;
+}
+
 @Component({
   selector: 'app-team',
   standalone: true,
@@ -36,7 +42,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
         <div class="bp-team-body">
 
-          <!-- SIDEBAR -->
+          <!-- SIDEBAR: sort + filter -->
           <div class="bp-team-sidebar">
             <div class="bp-sidebar-heading">Sort by</div>
             <div *ngFor="let s of sortOptions"
@@ -64,7 +70,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </div>
           </div>
 
-          <!-- MAIN -->
+          <!-- MEMBERS -->
           <div class="bp-team-main">
             <div class="bp-section-header">
               <span class="bp-section-title">MEMBERS</span>
@@ -125,8 +131,28 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </div>
               </div>
             </div>
-
           </div>
+
+          <!-- INVITE CODES -->
+          <div class="bp-invite-panel">
+            <div class="bp-section-header">
+              <span class="bp-section-title">INVITE CODES</span>
+              <p-button label="+ Generate code" styleClass="p-button-outlined p-button-sm" (onClick)="generateCode()"></p-button>
+            </div>
+            <p class="bp-muted-text mb-4" style="font-size:11px;">Share a code for colleagues to join without an email invite.</p>
+
+            <p *ngIf="inviteCodes.length === 0" class="bp-muted-text">No codes generated yet.</p>
+
+            <div *ngFor="let c of inviteCodes; let last = last"
+              class="bp-code-row" [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'">
+              <div>
+                <div class="bp-code-value">{{ c.code }}</div>
+                <div class="bp-code-meta">{{ c.type }} · Expires {{ c.expires }}</div>
+              </div>
+              <button class="bp-copy-btn" (click)="copyCode(c.code)" title="Copy">Copy</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </ng-container>
@@ -136,15 +162,21 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       styleClass="bp-drawer" [style]="{width:'480px'}"
       (onHide)="closeInviteDrawer()">
       <ng-template pTemplate="header">
-        <div class="bp-drawer-header">
-          <span class="bp-drawer-label">TEAM</span>
-          <div class="bp-drawer-title">Invite member</div>
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">MEMBER</span>
+            <div class="bp-drawer-title">Invite member</div>
+          </div>
+          <button class="bp-icon-btn" (click)="closeInviteDrawer()" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
       </ng-template>
       <div class="bp-drawer-body">
         <div class="mb-4">
           <label class="bp-field-label">Email address</label>
-          <input pInputText [(ngModel)]="inviteForm.email" class="w-full bp-input-edit" type="email" placeholder="colleague@company.com"/>
+          <input pInputText [(ngModel)]="inviteForm.email" class="w-full bp-input-edit"
+            type="email" placeholder="colleague@company.com"/>
         </div>
         <div>
           <label class="bp-field-label">Role</label>
@@ -168,14 +200,20 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       styleClass="bp-drawer" [style]="{width:'480px'}"
       (onHide)="closeEditDrawer()">
       <ng-template pTemplate="header">
-        <div class="bp-drawer-header">
-          <span class="bp-drawer-label">TEAM</span>
-          <div class="bp-drawer-title">{{ editForm.name || 'Member' }}</div>
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">MEMBER</span>
+            <div class="bp-drawer-title">{{ editForm.name || 'Member' }}</div>
+          </div>
+          <button class="bp-icon-btn" (click)="closeEditDrawer()" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
       </ng-template>
+
       <div class="bp-drawer-body">
         <div class="bp-section-header mb-4">
-          <span class="bp-section-title">MEMBER</span>
+          <span class="bp-section-title">MEMBER DETAILS</span>
           <div class="flex items-center gap-1">
             <ng-container *ngIf="!editingMember">
               <button class="bp-icon-btn" (click)="startEditMember()" title="Edit">
@@ -183,7 +221,8 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               </button>
             </ng-container>
             <ng-container *ngIf="editingMember">
-              <button class="bp-icon-btn bp-icon-save" (click)="submitEdit()" [disabled]="!editForm.name?.trim()" title="Save">
+              <button class="bp-icon-btn bp-icon-save" (click)="submitEdit()"
+                [disabled]="!editForm.name?.trim()" title="Save">
                 <i class="pi pi-check"></i>
               </button>
               <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditMember()" title="Cancel">
@@ -232,9 +271,9 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   `,
   styles: [`
     /* ── TEAM LAYOUT ── */
-    .bp-team-body   { display: grid; grid-template-columns: 180px 1fr; min-height: calc(100vh - 300px); }
+    .bp-team-body    { display: grid; grid-template-columns: 180px 1fr 300px; min-height: calc(100vh - 300px); }
     .bp-team-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; }
-    .bp-team-main   { padding: 20px 28px; }
+    .bp-team-main    { padding: 20px 28px; border-right: 0.5px solid var(--color-border); }
 
     /* ── SIDEBAR ── */
     .bp-sidebar-heading  { font-size: 14px; font-weight: 500; color: var(--theme-accent); margin-bottom: 8px; }
@@ -256,14 +295,22 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
     .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
 
     /* ── MEMBERS ── */
-    .bp-member-row          { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }
+    .bp-member-row           { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }
     .bp-member-row-clickable { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
     .bp-member-row-clickable:hover { background: var(--theme-bg); }
-    .bp-member-grid         { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
-    .bp-member-card         { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
-    .bp-member-card-footer  { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
-    .bp-member-joined       { font-size: 11px; color: var(--color-text-muted); }
-    .bp-member-name         { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); margin: 0; }
+    .bp-member-grid          { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+    .bp-member-card          { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
+    .bp-member-card-footer   { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
+    .bp-member-joined        { font-size: 11px; color: var(--color-text-muted); }
+    .bp-member-name          { font-size: var(--text-md); font-weight: 500; color: var(--color-text-primary); margin: 0; }
+
+    /* ── INVITE CODES PANEL ── */
+    .bp-invite-panel { padding: 20px 24px; }
+    .bp-code-row     { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+    .bp-code-value   { font-size: 13px; font-weight: 600; color: var(--color-text-primary); font-family: monospace; letter-spacing: 0.04em; margin-bottom: 3px; }
+    .bp-code-meta    { font-size: 11px; color: var(--color-text-muted); }
+    .bp-copy-btn     { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 6px; padding: 4px 12px; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
+    .bp-copy-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--theme-bg); }
   `]
 })
 export class TeamComponent implements OnInit {
@@ -291,6 +338,13 @@ export class TeamComponent implements OnInit {
   roleOptions = [
     { label: 'Admin',  value: 'admin' },
     { label: 'Member', value: 'member' }
+  ];
+
+  // Invite codes — stub data until API is wired
+  inviteCodes: InviteCode[] = [
+    { code: 'ANCHOR-7X2K', type: 'Single use', expires: '20 Mar 2026' },
+    { code: 'ANCHOR-9QWP', type: 'Multi-use',  expires: '30 Apr 2026' },
+    { code: 'ANCHOR-RPSD', type: 'Single use', expires: '30 Apr 2026' },
   ];
 
   showInviteDrawer = false;
@@ -345,8 +399,8 @@ export class TeamComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  inviteMember()     { this.inviteForm = { email: '', role: 'member' }; this.showInviteDrawer = true; }
-  closeInviteDrawer(){ this.showInviteDrawer = false; }
+  inviteMember()      { this.inviteForm = { email: '', role: 'member' }; this.showInviteDrawer = true; }
+  closeInviteDrawer() { this.showInviteDrawer = false; }
 
   submitInvite() {
     if (!this.inviteForm.email?.includes('@')) return;
@@ -376,5 +430,16 @@ export class TeamComponent implements OnInit {
 
   removeMember(u: User) {
     this.msg.add({ severity: 'warn', summary: `Remove ${u.name} — coming soon` });
+  }
+
+  generateCode() {
+    // TODO: wire to API
+    this.msg.add({ severity: 'info', summary: 'Generate code — coming soon' });
+  }
+
+  copyCode(code: string) {
+    navigator.clipboard.writeText(code).then(() => {
+      this.msg.add({ severity: 'success', summary: `${code} copied to clipboard` });
+    });
   }
 }

@@ -27,6 +27,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     <ng-container *ngIf="!loading">
       <div class="bp-settings-body">
         <h2 class="bp-page-title">Organisation</h2>
+        <div class="bp-page-divider"></div>
 
         <!-- ORGANISATION DETAILS -->
         <div class="bp-section">
@@ -124,15 +125,15 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
           <ng-container *ngIf="!editingFin">
             <div class="bp-field-grid-3">
               <div>
-                <label class="bp-field-label">Default VAT</label>
+                <label class="bp-field-label">VAT</label>
                 <input pInputText [value]="form.vat + '%'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
-                <label class="bp-field-label">Default margin</label>
+                <label class="bp-field-label">Margin</label>
                 <input pInputText [value]="form.margin + '%'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
-                <label class="bp-field-label">Default contingency</label>
+                <label class="bp-field-label">Contingency</label>
                 <input pInputText [value]="form.contingency + '%'" class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
@@ -141,15 +142,15 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
           <ng-container *ngIf="editingFin">
             <div class="bp-field-grid-3">
               <div>
-                <label class="bp-field-label">Default VAT %</label>
+                <label class="bp-field-label">VAT %</label>
                 <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Default margin %</label>
+                <label class="bp-field-label">Margin %</label>
                 <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Default contingency %</label>
+                <label class="bp-field-label">Contingency %</label>
                 <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
             </div>
@@ -162,7 +163,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     <p-toast></p-toast>
   `,
   // No component-specific styles — all shared CSS is in styles.css
-  styles: []
+  // Exception: bp-page-divider is local to this component
+  styles: [`
+    .bp-page-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 0 0 32px; }
+  `]
 })
 export class OrganisationComponent implements OnInit {
   org: Org | null = null;

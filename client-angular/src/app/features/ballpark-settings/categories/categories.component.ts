@@ -7,6 +7,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { SidebarModule } from 'primeng/sidebar';
 import { ChipsModule } from 'primeng/chips';
+import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
@@ -22,7 +23,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule,
-    SidebarModule, ChipsModule, ToastModule,
+    SidebarModule, ChipsModule, TagModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -79,6 +80,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     <!-- CATEGORY DRAWER -->
     <p-sidebar [(visible)]="showCatDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
+      [showCloseIcon]="false"
       (onHide)="closeCatDrawer()">
 
       <ng-template pTemplate="header">
@@ -129,7 +131,13 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
           </div>
           <div>
             <label class="bp-field-label">Tags</label>
-            <input pInputText [value]="catForm.tags?.join(', ') || '—'" class="w-full bp-field-readonly" readonly/>
+            <div *ngIf="catForm.tags?.length > 0" class="bp-tag-list">
+              <p-tag *ngFor="let tag of catForm.tags"
+                [value]="tag"
+                styleClass="bp-cat-tag">
+              </p-tag>
+            </div>
+            <span *ngIf="!catForm.tags?.length" class="bp-muted-text">—</span>
           </div>
         </ng-container>
 
@@ -208,6 +216,18 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     .bp-cat-status-badge { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; }
     .bp-cat-status-badge.enabled  { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
     .bp-cat-status-badge.disabled { background: #F3F4F6; color: #9CA3AF; border: 0.5px solid #D1D5DB; }
+
+    /* ── TAG PILLS (view mode) ── */
+    .bp-tag-list { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
+    :host ::ng-deep .bp-cat-tag.p-tag {
+      background: var(--theme-bg) !important;
+      color: var(--theme-text) !important;
+      border: 0.5px solid var(--theme-border) !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      padding: 3px 10px !important;
+      border-radius: 20px !important;
+    }
   `]
 })
 export class CategoriesComponent implements OnInit {
