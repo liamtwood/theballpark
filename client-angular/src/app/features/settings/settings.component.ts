@@ -611,14 +611,20 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     <p-sidebar [(visible)]="showCatDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
       (onHide)="closeCatDrawer()">
+
       <ng-template pTemplate="header">
-        <div class="bp-drawer-header">
-          <span class="bp-drawer-label">CATEGORIES</span>
-          <div class="bp-drawer-title">{{ catForm.name || 'New category' }}</div>
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">CATEGORIES</span>
+            <div class="bp-drawer-title">{{ catForm.name || 'New category' }}</div>
+          </div>
+          <button class="bp-icon-btn" (click)="closeCatDrawer()" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
       </ng-template>
 
-      <div class="bp-drawer-body">
+      <div class="bp-drawer-body" style="background:var(--color-surface);">
 
         <!-- CATEGORY section header with edit controls -->
         <div class="bp-section-header mb-4">
@@ -674,16 +680,6 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
             <label class="bp-field-label">Tags</label>
             <p-chips [(ngModel)]="catForm.tags" styleClass="w-full bp-input-edit" placeholder="Add tag + Enter"></p-chips>
           </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Image or colour</label>
-            <app-image-upload-panel
-              [entityId]="catForm.id || 'new'"
-              type="category"
-              [existingCoverUrl]="catForm.cover_image_url || ''"
-              [existingCardColor]="catForm.card_color || ''"
-              (imagesUpdated)="onCatImageUpdated($event)">
-            </app-image-upload-panel>
-          </div>
           <div>
             <label class="bp-field-label">Status</label>
             <div class="flex items-center gap-3 mt-1">
@@ -695,7 +691,43 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           </div>
         </ng-container>
 
+        <!-- Image upload panel — shown when triggered from footer -->
+        <div *ngIf="showCatImagePanel" class="mt-4">
+          <app-image-upload-panel
+            [entityId]="catForm.id || 'new'"
+            type="category"
+            [existingCoverUrl]="catForm.cover_image_url || ''"
+            [existingCardColor]="catForm.card_color || ''"
+            (imagesUpdated)="onCatImageUpdated($event)"
+            (closed)="showCatImagePanel = false">
+          </app-image-upload-panel>
+        </div>
+
       </div>
+
+      <!-- SPECIAL OPERATIONS FOOTER -->
+      <ng-template pTemplate="footer">
+        <div class="bp-drawer-ops-footer">
+          <div>
+            <p-button
+              *ngIf="catForm.id"
+              label="Delete category"
+              icon="pi pi-trash"
+              styleClass="p-button-danger"
+              (onClick)="deleteCategory()">
+            </p-button>
+          </div>
+          <div>
+            <p-button
+              label="Add image"
+              icon="pi pi-image"
+              styleClass="p-button-outlined"
+              (onClick)="showCatImagePanel = !showCatImagePanel">
+            </p-button>
+          </div>
+        </div>
+      </ng-template>
+
     </p-sidebar>
 
     <p-toast></p-toast>
@@ -831,7 +863,12 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       background: var(--theme-bg) !important;
       border-color: var(--theme-accent) !important;
     }
-    /* p-dropdown with bp-input-edit styleClass */
+    .bp-drawer-ops-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
     :host ::ng-deep .bp-input-edit.p-dropdown {
       background: var(--theme-bg) !important;
       border-color: var(--theme-accent) !important;
@@ -1179,9 +1216,12 @@ export class SettingsComponent implements OnInit {
   catForm: any = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
   private catSnapshot: any = null;
 
+  showCatImagePanel = false;
+
   openCategory(c: any) {
     this.catForm = { ...c, tags: c.tags ? [...c.tags] : [] };
     this.editingCat = false;
+    this.showCatImagePanel = false;
     this.showCatDrawer = true;
     this.cdr.detectChanges();
   }
@@ -1189,6 +1229,7 @@ export class SettingsComponent implements OnInit {
   addCategory() {
     this.catForm = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
     this.editingCat = true;
+    this.showCatImagePanel = false;
     this.showCatDrawer = true;
     this.cdr.detectChanges();
   }
@@ -1215,6 +1256,15 @@ export class SettingsComponent implements OnInit {
   closeCatDrawer() {
     this.showCatDrawer = false;
     this.editingCat = false;
+    this.showCatImagePanel = false;
+    this.cdr.detectChanges();
+  }
+
+  deleteCategory() {
+    if (!this.catForm.id) return;
+    this.categories = this.categories.filter((c: any) => c.id !== this.catForm.id);
+    this.closeCatDrawer();
+    this.msg.add({ severity: 'success', summary: 'Category deleted' });
     this.cdr.detectChanges();
   }
 
