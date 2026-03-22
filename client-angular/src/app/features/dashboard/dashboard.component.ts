@@ -22,6 +22,30 @@ import { ButtonModule } from 'primeng/button';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
+      <!-- STATS SUMMARY -->
+      <div class="bp-dash-stats">
+        <div class="bp-dash-stat">
+          <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
+          <span class="bp-dash-stat-value">{{ org?.balls_balance ?? 0 }}</span>
+          <span class="bp-dash-stat-sub">resets in {{ daysUntilReset }} days</span>
+        </div>
+        <div class="bp-dash-stat">
+          <span class="bp-dash-stat-label">Active {{ projectLabel }}s</span>
+          <span class="bp-dash-stat-value">{{ activeProjects.length }}</span>
+          <span class="bp-dash-stat-sub">{{ activeProjects.length > 0 ? activeProjects[0].name : 'none yet' }}</span>
+        </div>
+        <div class="bp-dash-stat">
+          <span class="bp-dash-stat-label">Saved suppliers</span>
+          <span class="bp-dash-stat-value">{{ supplierCount }}</span>
+          <span class="bp-dash-stat-sub">across categories</span>
+        </div>
+        <div class="bp-dash-stat" style="border-right:none;">
+          <span class="bp-dash-stat-label">Quotes in progress</span>
+          <span class="bp-dash-stat-value">0</span>
+          <span class="bp-dash-stat-sub">awaiting response</span>
+        </div>
+      </div>
+
       <!-- TWO-COLUMN BODY -->
       <div class="bp-body">
         <div class="bp-body-left">
@@ -146,6 +170,21 @@ import { ButtonModule } from 'primeng/button';
       color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px;
     }
     .bp-hero-sub { font-size: var(--text-base); color: var(--color-text-muted); }
+    .bp-dash-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
+    }
+    .bp-dash-stat {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 14px 20px; border-right: 0.5px solid var(--color-border);
+    }
+    .bp-dash-stat:last-child { border-right: none; }
+    .bp-dash-stat-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--theme-accent); margin-bottom: 2px;
+    }
+    .bp-dash-stat-value { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1.1; }
+    .bp-dash-stat-sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
     .bp-body {
       display: grid; grid-template-columns: 1fr 320px;
       background: var(--color-bg);

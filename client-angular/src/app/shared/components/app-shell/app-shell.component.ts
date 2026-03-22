@@ -6,8 +6,6 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
-import { ProjectService } from '../../../core/services/project.service';
-import { SupplierService } from '../../../core/services/supplier.service';
 
 interface ShellTab { label: string; path: string; }
 interface NavItem  { label: string; path: string; }
@@ -30,35 +28,6 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <!-- ORG NAME / PLATFORM NAME -->
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
       <p class="bp-hero-page-label">{{ pageLabel }}</p>
-
-      <!-- STATS BAR -->
-      <div *ngIf="showStats" class="bp-hero-stats">
-
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">{{ creditLabel }}s remaining</span>
-          <span class="bp-hero-stat-value">{{ ballsBalance }}</span>
-          <span class="bp-hero-stat-sub" *ngIf="ballsResetDays">resets in {{ ballsResetDays }} days</span>
-        </div>
-
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">Active Projects</span>
-          <span class="bp-hero-stat-value">{{ activeCount }}</span>
-          <span class="bp-hero-stat-sub" *ngIf="activeProjectName">{{ activeProjectName }}</span>
-        </div>
-
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">Saved suppliers</span>
-          <span class="bp-hero-stat-value">{{ supplierCount }}</span>
-          <span class="bp-hero-stat-sub">across categories</span>
-        </div>
-
-        <div class="bp-hero-stat" style="border-right:none;">
-          <span class="bp-hero-stat-label">Quotes in progress</span>
-          <span class="bp-hero-stat-value">{{ quotesCount }}</span>
-          <span class="bp-hero-stat-sub">awaiting response</span>
-        </div>
-
-      </div>
 
       <!-- TABS -->
       <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && tabs.length > 0">
@@ -223,12 +192,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
   showUpcoming = true;
   showStats    = true;
   creditLabel  = 'Ball';
-  ballsBalance      = 0;
-  ballsResetDays    = 0;
-  activeCount       = 0;
-  activeProjectName = '';
-  supplierCount     = 0;
-  quotesCount       = 0;
   isAdmin = true; // stub until v1.3 auth
 
   navGroups: NavGroup[] = [
@@ -271,8 +234,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private orgSvc: OrgService,
     private configService: ConfigService,
-    private projectService: ProjectService,
-    private supplierService: SupplierService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -282,7 +243,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.orgCity      = (org as any).city || '';
-        this.ballsBalance = org.balls_balance || 0;
         this.cdr.detectChanges();
       }
     });
@@ -295,23 +255,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
-
-    // Load stats
-    this.projectService.getAll().subscribe((projects: any[]) => {
-      const active = (projects || []).filter((p: any) => p.status_name !== 'completed' && p.status_name !== 'cancelled');
-      this.activeCount = active.length;
-      this.activeProjectName = active.length > 0 ? active[0].name : '';
-      this.cdr.detectChanges();
-    });
-    this.supplierService.getAll().subscribe((suppliers: any[]) => {
-      this.supplierCount = (suppliers || []).length;
-      this.cdr.detectChanges();
-    });
-
-    // Balls reset days — estimate days until next month
-    const now = new Date();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    this.ballsResetDays = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Load config and subscribe to live changes
     this.syncFromConfig(this.configService.current as any);
