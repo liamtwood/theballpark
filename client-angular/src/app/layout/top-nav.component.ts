@@ -47,7 +47,7 @@ import { environment } from '../../environments/environment';
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 var(--section-pad); height: var(--nav-height);
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
-      position: sticky; top: 0; z-index: 100;
+      flex-shrink: 0; z-index: 100;
     }
     .bp-nav-left { display: flex; align-items: center; }
     .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; gap: 0; }

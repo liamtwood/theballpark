@@ -623,10 +623,10 @@ textarea.bp-input-edit:focus {
 
 /* ── APP ROOT ── */
 app-root {
-  display: flex;
-  flex-direction: column;
+  display: block;
   height: 100%;
 }
+app-top-nav { flex-shrink: 0; }
 
 /* ── MAIN CONTENT AREA ── */
 .bp-main {
@@ -634,7 +634,6 @@ app-root {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* ── NON-SHELL PAGES ── */

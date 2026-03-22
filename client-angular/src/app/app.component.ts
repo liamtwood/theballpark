@@ -17,8 +17,9 @@ import { ConfigService } from './core/services/config.service';
     </div>
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-    .bp-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+    :host { display: block; height: 100%; }
+    .layout-centre, .layout-left { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    .bp-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {
