@@ -433,7 +433,6 @@ lucide-icon svg {
   background: var(--theme-bg);
   padding: 32px var(--section-pad) 0;
   border-bottom: 0.5px solid var(--theme-border);
-  text-align: center;
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
@@ -452,7 +451,7 @@ lucide-icon svg {
   letter-spacing: 0.1em;
   margin-bottom: 20px;
 }
-.bp-hero-tabs { display: flex; justify-content: center; }
+.bp-hero-tabs { display: flex; }
 .bp-hero-tab {
   padding: 10px 20px;
   font-size: var(--text-sm);
@@ -481,7 +480,6 @@ lucide-icon svg {
   font-weight: 400;
   color: var(--theme-accent);
   margin-bottom: 24px;
-  text-align: center;
 }
 
 /* ── SECTIONS ── */
@@ -641,4 +639,20 @@ app-top-nav { flex-shrink: 0; }
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+/* =============================================================
+   APP SHELL — append to styles.css
+   ============================================================= */
+
+/* ── HERO — alignment driven by CSS variable set on app-shell host ── */
+.bp-hero {
+  text-align: var(--hero-align, center);
+}
+.bp-hero-tabs {
+  justify-content: var(--hero-align-flex, center);
+}
+
+/* ── PAGE TITLE — picks up same alignment token automatically ── */
+.bp-page-title {
+  text-align: var(--hero-align, center);
 }

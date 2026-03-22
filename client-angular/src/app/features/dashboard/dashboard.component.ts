@@ -23,22 +23,6 @@ import { ButtonModule } from 'primeng/button';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- HERO BANNER -->
-      <div class="bp-hero" [style.text-align]="heroAlign">
-        <div class="bp-hero-pills" [style.justify-content]="heroAlign === 'center' ? 'center' : 'flex-start'">
-          <div class="bp-hero-pill" *ngIf="showUpcoming && activeProjects.length > 0">
-            <lucide-icon name="calendar" [size]="12" style="color:#3B82F6;"></lucide-icon>
-            {{ activeProjects.length }} upcoming {{ activeProjects.length === 1 ? projectLabel.toLowerCase() : projectLabel.toLowerCase() + 's' }}
-          </div>
-          <div class="bp-hero-pill" *ngIf="showLocation && org?.city">
-            <lucide-icon name="map-pin" [size]="12" style="color:#EF4444;"></lucide-icon>
-            {{ org?.city }}
-          </div>
-        </div>
-        <h1 class="bp-hero-org-name">{{ org?.name || 'My Organisation' }}</h1>
-        <p class="bp-hero-sub" *ngIf="showUserName">{{ userName }} &middot; {{ org?.type === 'agency' ? 'Agency account' : 'Supplier account' }}</p>
-      </div>
-
       <!-- STATS BAR -->
       <div class="bp-stats-bar" *ngIf="showStats">
         <app-stat-card [label]="creditLabel + 's remaining'" [value]="org?.balls_balance ?? 0" [sub]="'resets in ' + daysUntilReset + ' days'"></app-stat-card>

@@ -20,4 +20,5 @@ export interface PlatformConfig {
   showUpcoming?: boolean;
   showStats?: boolean;
   logoUrl?: string;
+  navMode?: 'tabs' | 'sidenav';
 }

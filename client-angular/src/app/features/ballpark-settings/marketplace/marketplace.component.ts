@@ -166,6 +166,26 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         </div>
       </div>
 
+      <!-- NAVIGATION -->
+      <div class="bp-section">
+        <div class="bp-section-header">
+          <span class="bp-section-title">NAVIGATION</span>
+        </div>
+        <label class="bp-field-label">Layout</label>
+        <div class="flex gap-2 mt-2">
+          <button (click)="selectNavMode('tabs')"
+            [class.bp-mode-active]="appearance.navMode === 'tabs'"
+            class="bp-mode-option">
+            Tabs
+          </button>
+          <button (click)="selectNavMode('sidenav')"
+            [class.bp-mode-active]="appearance.navMode === 'sidenav'"
+            class="bp-mode-option">
+            Side navigation
+          </button>
+        </div>
+      </div>
+
       <!-- ACTIONS -->
       <div class="flex gap-3">
         <p-button label="Save marketplace settings" icon="pi pi-save" styleClass="flex-1" (onClick)="saveAppearance()"></p-button>
@@ -255,12 +275,13 @@ export class MarketplaceComponent implements OnInit {
     showLocation?: boolean;
     showUpcoming?: boolean;
     showStats?: boolean;
+    navMode?: 'tabs' | 'sidenav';
   } = {
     platformName: 'The Ballpark', tagline: 'Exhibition Costing',
     projectLabel: 'Event', creditLabel: 'Ball', themeName: 'amber',
     mode: 'system' as 'light' | 'dark' | 'system',
     heroAlign: 'center', showUserName: true, showLocation: true,
-    showUpcoming: true, showStats: true
+    showUpcoming: true, showStats: true, navMode: 'tabs'
   };
 
   themePresets = ConfigService.THEME_PRESETS;
@@ -286,7 +307,8 @@ export class MarketplaceComponent implements OnInit {
       showUserName: current.showUserName !== false,
       showLocation: current.showLocation !== false,
       showUpcoming: current.showUpcoming !== false,
-      showStats:    current.showStats    !== false
+      showStats:    current.showStats    !== false,
+      navMode:      current.navMode      || 'tabs'
     };
     this.previewUpdate();
     this.orgSvc.getCurrentOrg().subscribe({
@@ -294,9 +316,10 @@ export class MarketplaceComponent implements OnInit {
     });
   }
 
-  selectTheme(name: string)  { this.appearance.themeName = name; this.liveUpdate(); }
-  selectMode(mode: string)   { this.appearance.mode = mode as 'light' | 'dark' | 'system'; this.liveUpdate(); }
-  setHeroAlign(align: string){ this.appearance.heroAlign = align; this.liveUpdate(); }
+  selectTheme(name: string)       { this.appearance.themeName = name; this.liveUpdate(); }
+  selectMode(mode: string)        { this.appearance.mode = mode as 'light' | 'dark' | 'system'; this.liveUpdate(); }
+  setHeroAlign(align: string)     { this.appearance.heroAlign = align; this.liveUpdate(); }
+  selectNavMode(mode: 'tabs' | 'sidenav') { this.appearance.navMode = mode; this.liveUpdate(); }
 
   liveUpdate() { this.configService.update(this.appearance as any); this.previewUpdate(); }
 
