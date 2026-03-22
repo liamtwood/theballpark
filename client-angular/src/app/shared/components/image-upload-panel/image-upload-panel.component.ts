@@ -195,7 +195,7 @@ import { ModalComponent } from '../modal/modal.component';
 export class ImageUploadPanelComponent implements OnInit {
   @Input() entityId = '';
   @Input() projectId = '';
-  @Input() type: 'project' | 'supplier' | 'category' = 'project';
+  @Input() type: 'project' | 'supplier' | 'category' | 'logo' = 'project';
   @Input() subtitle = '';
   @Input() existingCoverUrl = '';
   @Input() existingLogoUrl = '';
@@ -299,11 +299,13 @@ export class ImageUploadPanelComponent implements OnInit {
         ? `suppliers/${this.entityId}`
         : this.type === 'category'
         ? `categories/${this.entityId}`
+        : this.type === 'logo'
+        ? `logos/${this.entityId}`
         : `projects/${this.entityId}`;
 
       const apiEndpoint = this.type === 'supplier'
         ? `/suppliers/${this.entityId}/images`
-        : this.type === 'category'
+        : (this.type === 'category' || this.type === 'logo')
         ? null
         : `/projects/${this.entityId}/images`;
 

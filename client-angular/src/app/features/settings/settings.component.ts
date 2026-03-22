@@ -10,6 +10,7 @@ import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
 import { ChipsModule } from 'primeng/chips';
+import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen } from 'lucide-angular';
 import { OrgService } from '../../core/services/org.service';
@@ -28,7 +29,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    InputSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
+    InputSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule, DialogModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -391,135 +392,172 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           </div>
         </div>
 
-        <!-- ── APPEARANCE TAB ── -->
-        <div *ngIf="activeTab === 4" class="bp-appearance-body">
-          <div class="bp-appearance-grid">
+        <!-- ── MARKETPLACE TAB ── -->
+        <div *ngIf="activeTab === 4" class="bp-settings-body">
 
-            <div>
-              <h2 class="bp-page-title">Appearance</h2>
+          <div class="bp-team-title-bar">
+            <h2 class="bp-page-title">Marketplace</h2>
+          </div>
 
-              <div class="bp-section">
-                <div class="bp-section-header"><span class="bp-section-title">PLATFORM</span></div>
-                <div class="mb-3">
-                  <label class="bp-field-label">Platform name</label>
-                  <input pInputText [(ngModel)]="appearance.platformName" class="w-full" (ngModelChange)="liveUpdate()"/>
-                </div>
-                <div class="mb-3">
-                  <label class="bp-field-label">Tagline</label>
-                  <input pInputText [(ngModel)]="appearance.tagline" class="w-full" (ngModelChange)="liveUpdate()"/>
-                </div>
+          <div style="padding: var(--section-pad); max-width: 640px; margin: 0 auto;">
+
+            <!-- PLATFORM -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">PLATFORM</span>
               </div>
-
-              <div class="bp-section">
-                <div class="bp-section-header"><span class="bp-section-title">TERMINOLOGY</span></div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="bp-field-label">Projects are called</label>
-                    <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full" (ngModelChange)="liveUpdate()"/>
-                  </div>
-                  <div>
-                    <label class="bp-field-label">Credits are called</label>
-                    <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full" (ngModelChange)="liveUpdate()"/>
-                  </div>
-                </div>
+              <div class="mb-3">
+                <label class="bp-field-label">Platform name</label>
+                <input pInputText [(ngModel)]="appearance.platformName" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
               </div>
-
-              <div class="bp-section">
-                <div class="bp-section-header"><span class="bp-section-title">COLOUR THEME</span></div>
-                <div class="flex gap-3 mt-2">
-                  <button *ngFor="let t of themeNames" (click)="selectTheme(t)"
-                    class="bp-swatch" [style.background]="themePresets[t].accent"
-                    [class.bp-swatch-active]="appearance.themeName === t" [title]="t">
-                    <i *ngIf="appearance.themeName === t" class="pi pi-check" style="color:#fff;font-size:12px;"></i>
-                  </button>
-                </div>
+              <div>
+                <label class="bp-field-label">Tagline</label>
+                <input pInputText [(ngModel)]="appearance.tagline" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
               </div>
-
-              <div class="bp-section">
-                <div class="bp-section-header"><span class="bp-section-title">MODE</span></div>
-                <div class="flex gap-2 mt-2">
-                  <button (click)="selectMode('light')" [class.bp-mode-active]="appearance.mode==='light'" class="bp-mode-option">Light</button>
-                  <button (click)="selectMode('dark')" [class.bp-mode-active]="appearance.mode==='dark'" class="bp-mode-option">Dark</button>
-                  <button (click)="selectMode('system')" [class.bp-mode-active]="appearance.mode==='system'" class="bp-mode-option">System</button>
-                </div>
-              </div>
-
-              <div class="bp-section">
-                <div class="bp-section-header"><span class="bp-section-title">HERO BANNER</span></div>
-                <label class="bp-field-label">Alignment</label>
-                <div class="flex gap-2 mt-1 mb-4">
-                  <button (click)="setHeroAlign('left')" [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">Left</button>
-                  <button (click)="setHeroAlign('center')" [class.bp-mode-active]="appearance.heroAlign==='center'" class="bp-mode-option">Centre</button>
-                </div>
-                <label class="bp-field-label">Components</label>
-                <div class="bp-toggle-list">
-                  <div class="bp-toggle-row">
-                    <span>Org name</span>
-                    <span class="bp-toggle-disabled">Always on</span>
-                  </div>
-                  <div class="bp-toggle-row">
-                    <span>User name &amp; role</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
-                  </div>
-                  <div class="bp-toggle-row">
-                    <span>Location pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
-                  </div>
-                  <div class="bp-toggle-row">
-                    <span>Upcoming events pill</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
-                  </div>
-                  <div class="bp-toggle-row">
-                    <span>Stats bar</span>
-                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
-                  </div>
-                </div>
-              </div>
-
-              <p-button label="Save appearance" icon="pi pi-save" styleClass="w-full" (onClick)="saveAppearance()"></p-button>
             </div>
 
-            <!-- LIVE PREVIEW — inline styles intentional: dynamic theme values from ConfigService -->
-            <div class="bp-preview-panel">
-              <div class="bp-preview-nav">
-                <div class="flex items-baseline">
-                  <span style="font-family:var(--font-display);font-size:10px;color:var(--color-text-primary);">{{ previewLogoFirst }}</span>
-                  <span style="font-family:var(--font-display);font-size:10px;" [style.color]="previewAccent">{{ previewLogoSecond }}</span>
-                  <span class="ml-1" style="font-size:6px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;">{{ appearance.tagline }}</span>
-                </div>
-                <span [style.background]="previewBg" [style.color]="previewText" style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:10px;">3 {{ appearance.creditLabel }}s</span>
+            <!-- MARKETPLACE LOGO -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">MARKETPLACE LOGO</span>
               </div>
-              <div [style.background]="previewBg" [style.text-align]="appearance.heroAlign==='center'?'center':'left'" class="bp-preview-hero">
-                <div style="font-family:var(--font-display);font-size:20px;color:var(--color-text-primary);letter-spacing:-0.02em;line-height:1.1;" class="mb-1">Anchor Events</div>
-                <div *ngIf="appearance.showUserName" style="font-size:8px;color:var(--color-text-muted);">Jamie Hollis &middot; Agency account</div>
+              <p class="bp-muted-text mb-3" style="font-size:var(--text-sm);">Upload your marketplace logo. Displayed in the nav and on supplier-facing pages.</p>
+              <app-image-upload-panel
+                entityId="marketplace-logo"
+                type="logo"
+                [existingCoverUrl]="org?.logo_url || ''"
+                (imagesUpdated)="onLogoUpdated($event)">
+              </app-image-upload-panel>
+            </div>
+
+            <!-- TERMINOLOGY -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">TERMINOLOGY</span>
               </div>
-              <div *ngIf="appearance.showStats" class="bp-preview-stats">
-                <div class="bp-preview-stat" style="border-right:0.5px solid var(--color-border);">
-                  <div [style.color]="previewAccent" style="font-size:6px;font-weight:600;text-transform:uppercase;">{{ appearance.creditLabel }}s</div>
-                  <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">3</div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="bp-field-label">Projects are called</label>
+                  <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
                 </div>
-                <div class="bp-preview-stat" style="border-right:0.5px solid var(--color-border);">
-                  <div style="font-size:6px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);">Active</div>
-                  <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">1</div>
-                </div>
-                <div class="bp-preview-stat">
-                  <div style="font-size:6px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);">Suppliers</div>
-                  <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">8</div>
-                </div>
-              </div>
-              <div class="p-2">
-                <div class="rounded-lg p-2" style="background:var(--color-surface);border:0.5px solid var(--color-border);">
-                  <div class="flex justify-between items-center mb-1">
-                    <span style="font-weight:600;color:var(--color-text-primary);">Sample {{ appearance.projectLabel }}</span>
-                    <span [style.background]="previewBg" [style.color]="previewText" style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:10px;">Active</span>
-                  </div>
-                  <div style="color:var(--color-text-muted);">Client &middot; Jun 2026</div>
+                <div>
+                  <label class="bp-field-label">Credits are called</label>
+                  <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
                 </div>
               </div>
+            </div>
+
+            <!-- COLOUR THEME -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">COLOUR THEME</span>
+              </div>
+              <div class="flex gap-3 mt-2">
+                <button *ngFor="let t of themeNames" (click)="selectTheme(t)"
+                  class="bp-swatch" [style.background]="themePresets[t].accent"
+                  [class.bp-swatch-active]="appearance.themeName === t" [title]="t">
+                  <i *ngIf="appearance.themeName === t" class="pi pi-check" style="color:#fff;font-size:12px;"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- MODE -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">MODE</span>
+              </div>
+              <div class="flex gap-2 mt-2">
+                <button (click)="selectMode('light')" [class.bp-mode-active]="appearance.mode==='light'" class="bp-mode-option">Light</button>
+                <button (click)="selectMode('dark')" [class.bp-mode-active]="appearance.mode==='dark'" class="bp-mode-option">Dark</button>
+                <button (click)="selectMode('system')" [class.bp-mode-active]="appearance.mode==='system'" class="bp-mode-option">System</button>
+              </div>
+            </div>
+
+            <!-- HERO BANNER -->
+            <div class="bp-section">
+              <div class="bp-section-header">
+                <span class="bp-section-title">HERO BANNER</span>
+              </div>
+              <label class="bp-field-label">Alignment</label>
+              <div class="flex gap-2 mt-1 mb-4">
+                <button (click)="setHeroAlign('left')" [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">Left</button>
+                <button (click)="setHeroAlign('center')" [class.bp-mode-active]="appearance.heroAlign==='center'" class="bp-mode-option">Centre</button>
+              </div>
+              <label class="bp-field-label">Components</label>
+              <div class="bp-toggle-list">
+                <div class="bp-toggle-row">
+                  <span>Org name</span>
+                  <span class="bp-toggle-disabled">Always on</span>
+                </div>
+                <div class="bp-toggle-row">
+                  <span>User name &amp; role</span>
+                  <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                </div>
+                <div class="bp-toggle-row">
+                  <span>Location pill</span>
+                  <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                </div>
+                <div class="bp-toggle-row">
+                  <span>Upcoming events pill</span>
+                  <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                </div>
+                <div class="bp-toggle-row">
+                  <span>Stats bar</span>
+                  <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="flex gap-3">
+              <p-button label="Save marketplace settings" icon="pi pi-save" styleClass="flex-1" (onClick)="saveAppearance()"></p-button>
+              <p-button label="Preview" icon="pi pi-eye" styleClass="p-button-outlined" (onClick)="showPreviewDialog = true"></p-button>
             </div>
 
           </div>
         </div>
+
+        <!-- PREVIEW DIALOG -->
+        <p-dialog [(visible)]="showPreviewDialog" [modal]="true" [closable]="true"
+          header="Marketplace preview" styleClass="bp-preview-dialog" [style]="{width:'480px'}">
+          <div class="bp-preview-panel" style="border:none;box-shadow:none;">
+            <div class="bp-preview-nav">
+              <div class="flex items-baseline">
+                <span style="font-family:var(--font-display);font-size:10px;color:var(--color-text-primary);">{{ previewLogoFirst }}</span>
+                <span style="font-family:var(--font-display);font-size:10px;" [style.color]="previewAccent">{{ previewLogoSecond }}</span>
+                <span class="ml-1" style="font-size:6px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;">{{ appearance.tagline }}</span>
+              </div>
+              <span [style.background]="previewBg" [style.color]="previewText" style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:10px;">3 {{ appearance.creditLabel }}s</span>
+            </div>
+            <div [style.background]="previewBg" [style.text-align]="appearance.heroAlign==='center'?'center':'left'" class="bp-preview-hero">
+              <div style="font-family:var(--font-display);font-size:20px;color:var(--color-text-primary);letter-spacing:-0.02em;line-height:1.1;" class="mb-1">Anchor Events</div>
+              <div *ngIf="appearance.showUserName" style="font-size:8px;color:var(--color-text-muted);">Jamie Hollis &middot; Agency account</div>
+            </div>
+            <div *ngIf="appearance.showStats" class="bp-preview-stats">
+              <div class="bp-preview-stat" style="border-right:0.5px solid var(--color-border);">
+                <div [style.color]="previewAccent" style="font-size:6px;font-weight:600;text-transform:uppercase;">{{ appearance.creditLabel }}s</div>
+                <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">3</div>
+              </div>
+              <div class="bp-preview-stat" style="border-right:0.5px solid var(--color-border);">
+                <div style="font-size:6px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);">Active</div>
+                <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">1</div>
+              </div>
+              <div class="bp-preview-stat">
+                <div style="font-size:6px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);">Suppliers</div>
+                <div style="font-size:14px;font-weight:700;color:var(--color-text-primary);">8</div>
+              </div>
+            </div>
+            <div class="p-2">
+              <div class="rounded-lg p-2" style="background:var(--color-surface);border:0.5px solid var(--color-border);">
+                <div class="flex justify-between items-center mb-1">
+                  <span style="font-weight:600;color:var(--color-text-primary);">Sample {{ appearance.projectLabel }}</span>
+                  <span [style.background]="previewBg" [style.color]="previewText" style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:10px;">Active</span>
+                </div>
+                <div style="color:var(--color-text-muted);">Client &middot; Jun 2026</div>
+              </div>
+            </div>
+          </div>
+        </p-dialog>
 
       </ng-container>
     </div>
@@ -1056,7 +1094,7 @@ export class SettingsComponent implements OnInit {
   private orgSnapshot: typeof this.form | null = null;
   private finSnapshot: typeof this.form | null = null;
 
-  tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Appearance'];
+  tabs = ['Organisation', 'Team', 'Categories', 'Subscription', 'Marketplace'];
   activeTab = 0;
 
   appearance: PlatformConfig & {
@@ -1235,10 +1273,18 @@ export class SettingsComponent implements OnInit {
   // Category drawer
   showCatDrawer = false;
   editingCat = false;
+  showCatImagePanel = false;
   catForm: any = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
   private catSnapshot: any = null;
 
-  showCatImagePanel = false;
+  showPreviewDialog = false;
+
+  onLogoUpdated(urls: { coverUrl: string }) {
+    if (this.org && urls.coverUrl !== undefined) {
+      (this.org as any).logo_url = urls.coverUrl;
+      this.cdr.detectChanges();
+    }
+  }
 
   enabledCategories(): any[] {
     return this.categories.filter((c: any) => c.enabled !== false);
@@ -1279,33 +1325,22 @@ export class SettingsComponent implements OnInit {
   submitCat() {
     if (!this.catForm.name?.trim()) return;
     const payload = {
-      name: this.catForm.name,
-      description: this.catForm.description,
-      cover_image_url: this.catForm.cover_image_url,
-      card_color: this.catForm.card_color,
-      tags: this.catForm.tags,
-      enabled: this.catForm.enabled,
+      name: this.catForm.name, description: this.catForm.description,
+      cover_image_url: this.catForm.cover_image_url, card_color: this.catForm.card_color,
+      tags: this.catForm.tags, enabled: this.catForm.enabled,
     };
-    const isNew = !this.catForm.id;
-    const obs = isNew
-      ? this.catSvc.create(payload)
-      : this.catSvc.patch(this.catForm.id, payload);
+    const obs = !this.catForm.id ? this.catSvc.create(payload) : this.catSvc.patch(this.catForm.id, payload);
     obs.subscribe({
       next: (saved: any) => {
         const idx = this.categories.findIndex((c: any) => c.id === saved.id);
-        if (idx > -1) {
-          this.categories[idx] = { ...saved, enabled: saved.enabled !== false };
-        } else {
-          this.categories = [...this.categories, { ...saved, enabled: saved.enabled !== false }];
-        }
+        if (idx > -1) { this.categories[idx] = { ...saved, enabled: saved.enabled !== false }; }
+        else { this.categories = [...this.categories, { ...saved, enabled: saved.enabled !== false }]; }
         this.categories = [...this.categories];
         this.editingCat = false;
         this.msg.add({ severity: 'success', summary: 'Category saved' });
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.msg.add({ severity: 'error', summary: 'Failed to save category' });
-      }
+      error: () => { this.msg.add({ severity: 'error', summary: 'Failed to save category' }); }
     });
   }
 
@@ -1327,13 +1362,11 @@ export class SettingsComponent implements OnInit {
   onCatImageUpdated(urls: { coverUrl: string; cardColor?: string }) {
     if (urls.coverUrl !== undefined) this.catForm.cover_image_url = urls.coverUrl;
     if (urls.cardColor !== undefined) this.catForm.card_color = urls.cardColor;
-    // Write back to categories array immediately so card refreshes
     const idx = this.categories.findIndex((c: any) => c.id === this.catForm.id);
     if (idx > -1) {
       this.categories[idx] = { ...this.categories[idx], ...this.catForm };
       this.categories = [...this.categories];
     }
-    // Persist to DB if category exists
     if (this.catForm.id) {
       const patch: any = {};
       if (urls.coverUrl !== undefined) patch.cover_image_url = urls.coverUrl;

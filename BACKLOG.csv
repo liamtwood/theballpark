@@ -2,7 +2,7 @@ type,area,title,description,priority,status
 backlog,settings,"Move Marketplace Logo to Appearance tab","Move logo upload from Organisation tab to Appearance tab",high,todo
 backlog,settings,"Replace live preview panel with Preview dialog","Remove sticky preview panel. Add Preview button that opens hero mockup in app-modal (p-dialog, bp-modal styleClass)",high,todo
 backlog,settings,"Pill text not uppercase","Add text-transform: uppercase to .bp-pill in styles.css",high,todo
-backlog,settings,"Team page — list/card toggle with filter sidebar","p-dataView with list/card toggle. Left sidebar: Sort by (name/joined/role), divider, Filter by (search input + role filter). Right: MEMBERS section header with toggle + Invite member button. app-avatar, app-status-badge, icon buttons (edit/remove).",high,done
+backlog,settings,"Invite member drawer","p-sidebar sliding from right, email input, standard parchment footer buttons",medium,todo
 backlog,settings,"Remove member confirm dialog","Confirm dialog before removing a team member",medium,todo
 backlog,settings,"Category management — request new category flow","Producer requests new category, admin reviews and approves",medium,todo
 backlog,settings,"Role management","Ability to change member role including owner transfer",low,todo
@@ -27,8 +27,4 @@ backlog,technical,"CLAUDE.md — Claude Code prompt file","Create .claude/CLAUDE
 backlog,technical,"Document DB schema architecture","Document single Supabase project structure in WORKING_STANDARDS.md",high,todo
 backlog,technical,"City / email / phone fields on org","Backend org model needs city, email, phone columns. Currently stored in form only.",low,todo
 backlog,technical,"Supabase environment separation","Not required for prototype phase. Review at AWS handoff.",low,todo
-backlog,standards,"Standardise save confirmation to PrimeNG p-toast","All save confirmations should use p-toast (already in stack). Audit all components and replace any custom success/error UI with p-toast via MessageService.",medium,todo
-backlog,marketplace,"Edit pattern — marketplace appearance setting","Add editPattern config option to ConfigService and Appearance tab. Options: inline (section pencil, current org style) | drawer (row click, current team style). Allows each marketplace deployment to choose their preferred edit UX. More patterns can be added over time.",low,todo
-backlog,settings,"Rename Appearance tab to Marketplace","Tab label, page title and section headers should read Marketplace / Marketplace Settings throughout. Reflects that this tab controls the branded marketplace configuration.",medium,todo
-backlog,settings,"Team edit drawer — MEMBER section header","Add MEMBER section header above Name/Email/Role fields in the view/edit drawer. Pencil tick and cross sit in the section header (same pattern as Organisation Details) not the drawer header.",medium,todo
-backlog,settings,"Team list row hover — remove movement animate with theme highlight","Remove padding-left shift on hover. Replace with subtle background highlight using var(--theme-bg) only. No movement.",medium,todo
+backlog,ai,"Taxonomy intelligence — category & subcat suggestion","When a supplier writes a product description, AI reads it and: (1) suggests the category if not set, (2) suggests matching subcats from that category's controlled list, (3) flags if description doesn't match assigned category. Prompt pattern: given description + available categories + scoped subcat list → return suggested_category, confidence, suggested_subcats, flag. Works for both supplier catalogue uploads and producer brief parsing.",high,todo
