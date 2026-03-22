@@ -297,10 +297,14 @@ export class ImageUploadPanelComponent implements OnInit {
 
       const basePath = this.type === 'supplier'
         ? `suppliers/${this.entityId}`
+        : this.type === 'category'
+        ? `categories/${this.entityId}`
         : `projects/${this.entityId}`;
 
       const apiEndpoint = this.type === 'supplier'
         ? `/suppliers/${this.entityId}/images`
+        : this.type === 'category'
+        ? null
         : `/projects/${this.entityId}/images`;
 
       let coverUrl = this.coverRemoved ? '' : this.existingCoverUrl;
@@ -335,7 +339,7 @@ export class ImageUploadPanelComponent implements OnInit {
         patch.card_color = this.selectedColor;
       }
 
-      if (Object.keys(patch).length) {
+      if (Object.keys(patch).length && apiEndpoint) {
         await firstValueFrom(this.api.patch(apiEndpoint, patch));
       }
 

@@ -657,12 +657,12 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
             <textarea pInputTextarea [value]="catForm.description || '—'" class="w-full bp-field-readonly" readonly [rows]="3" style="resize:none;"></textarea>
           </div>
           <div class="mb-4">
-            <label class="bp-field-label">Tags</label>
-            <input pInputText [value]="catForm.tags?.join(', ') || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
             <label class="bp-field-label">Status</label>
             <input pInputText [value]="catForm.enabled ? 'Enabled' : 'Disabled'" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div>
+            <label class="bp-field-label">Tags</label>
+            <input pInputText [value]="catForm.tags?.join(', ') || '—'" class="w-full bp-field-readonly" readonly/>
           </div>
         </ng-container>
 
@@ -677,10 +677,6 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
             <textarea pInputTextarea [(ngModel)]="catForm.description" class="w-full bp-input-edit" [rows]="3" style="resize:none;" placeholder="Describe this category..."></textarea>
           </div>
           <div class="mb-4">
-            <label class="bp-field-label">Tags</label>
-            <p-chips [(ngModel)]="catForm.tags" styleClass="w-full bp-input-edit" placeholder="Add tag + Enter"></p-chips>
-          </div>
-          <div>
             <label class="bp-field-label">Status</label>
             <div class="flex items-center gap-3 mt-1">
               <p-inputSwitch [(ngModel)]="catForm.enabled"></p-inputSwitch>
@@ -688,6 +684,10 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
                 {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
               </span>
             </div>
+          </div>
+          <div>
+            <label class="bp-field-label">Tags <span style="font-size:10px;color:var(--color-text-muted);font-weight:400;">— type and press Enter to add</span></label>
+            <p-chips [(ngModel)]="catForm.tags" styleClass="w-full bp-input-edit" [allowDuplicate]="false" [addOnBlur]="true" placeholder="e.g. build, structure..."></p-chips>
           </div>
         </ng-container>
 
