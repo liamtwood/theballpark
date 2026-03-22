@@ -7,6 +7,7 @@ import { InputSwitchModule } from 'primeng/inputswitch';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule } from 'lucide-angular';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { Org, PlatformConfig } from '../../../models';
@@ -17,6 +18,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
   standalone: true,
   imports: [
     CommonModule, FormsModule,
+    LucideAngularModule,
     ButtonModule, InputTextModule, InputSwitchModule, DialogModule, ToastModule,
     ImageUploadPanelComponent
   ],
@@ -47,14 +49,43 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
       <div class="bp-section">
         <div class="bp-section-header">
           <span class="bp-section-title">MARKETPLACE LOGO</span>
+          <div class="bp-section-actions">
+            <button *ngIf="!editingLogo" class="bp-icon-btn" (click)="editingLogo = true" title="Edit">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+            </button>
+            <ng-container *ngIf="editingLogo">
+              <button class="bp-icon-btn bp-icon-cancel" (click)="editingLogo = false" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
-        <p class="bp-muted-text mb-3" style="font-size:var(--text-sm);">Upload your marketplace logo. Displayed in the nav and on supplier-facing pages.</p>
-        <app-image-upload-panel
-          entityId="marketplace-logo"
-          type="logo"
-          [existingCoverUrl]="org?.logo_url || ''"
-          (imagesUpdated)="onLogoUpdated($event)">
-        </app-image-upload-panel>
+
+        <!-- VIEW MODE -->
+        <ng-container *ngIf="!editingLogo">
+          <div class="flex items-center gap-4">
+            <div *ngIf="org?.logo_url" class="bp-logo-preview">
+              <img [src]="org!.logo_url" alt="Marketplace logo" class="max-w-full max-h-full object-contain"/>
+            </div>
+            <div *ngIf="!org?.logo_url" class="bp-logo-placeholder">
+              <i class="pi pi-image" style="font-size:20px;color:var(--color-text-muted);"></i>
+            </div>
+            <span class="bp-muted-text" style="font-size:var(--text-sm);">
+              {{ org?.logo_url ? 'Logo uploaded' : 'No logo uploaded' }}
+            </span>
+          </div>
+        </ng-container>
+
+        <!-- EDIT MODE -->
+        <ng-container *ngIf="editingLogo">
+          <p class="bp-muted-text mb-3" style="font-size:var(--text-sm);">Displayed in the nav and on supplier-facing pages.</p>
+          <app-image-upload-panel
+            entityId="marketplace-logo"
+            type="logo"
+            [existingCoverUrl]="org?.logo_url || ''"
+            (imagesUpdated)="onLogoUpdated($event)">
+          </app-image-upload-panel>
+        </ng-container>
       </div>
 
       <!-- TERMINOLOGY -->
@@ -188,6 +219,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     <p-toast></p-toast>
   `,
   styles: [`
+    /* ── LOGO PREVIEW ── */
+    .bp-logo-preview     { width: 80px; height: 80px; border-radius: 8px; border: 0.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; }
+    .bp-logo-placeholder { width: 80px; height: 80px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+
     /* ── THEME SWATCHES ── */
     .bp-swatch        { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
     .bp-swatch-active { border-color: #111 !important; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #111; }
@@ -212,6 +247,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
 export class MarketplaceComponent implements OnInit {
   org: Org | null = null;
   showPreviewDialog = false;
+  editingLogo = false;
 
   appearance: PlatformConfig & {
     heroAlign?: string;
@@ -277,6 +313,7 @@ export class MarketplaceComponent implements OnInit {
   onLogoUpdated(urls: { coverUrl: string }) {
     if (this.org && urls.coverUrl !== undefined) {
       (this.org as any).logo_url = urls.coverUrl;
+      this.editingLogo = false;
       this.cdr.detectChanges();
     }
   }

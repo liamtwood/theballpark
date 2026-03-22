@@ -18,7 +18,10 @@
       "Bash(SRC=settings-fixes-tmp/settings-fixes)",
       "Bash(cp \"$SRC/team.component.ts\" client-angular/src/app/features/settings/team/)",
       "Bash(cp \"$SRC/organisation.component.ts\" client-angular/src/app/features/settings/organisation/)",
-      "Bash(cp \"$SRC/categories.component.ts\" client-angular/src/app/features/ballpark-settings/categories/)"
+      "Bash(cp \"$SRC/categories.component.ts\" client-angular/src/app/features/ballpark-settings/categories/)",
+      "Bash(unzip -o settings-fixes-v2.zip -d settings-fixes-v2-tmp)",
+      "Bash(SRC=settings-fixes-v2-tmp/settings-fixes-v2)",
+      "Bash(cp \"$SRC/marketplace.component.ts\" client-angular/src/app/features/ballpark-settings/marketplace/)"
     ]
   },
   "enableAllProjectMcpServers": true,

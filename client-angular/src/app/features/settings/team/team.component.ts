@@ -160,6 +160,7 @@ interface InviteCode {
     <!-- INVITE MEMBER DRAWER -->
     <p-sidebar [(visible)]="showInviteDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
+      [showCloseIcon]="false"
       (onHide)="closeInviteDrawer()">
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
@@ -198,6 +199,7 @@ interface InviteCode {
     <!-- VIEW / EDIT MEMBER DRAWER -->
     <p-sidebar [(visible)]="showEditDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
+      [showCloseIcon]="false"
       (onHide)="closeEditDrawer()">
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
