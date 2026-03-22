@@ -24,9 +24,9 @@ import { Router } from '@angular/router';
     </div>
   `,
   styles: [`
-    :host             { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-hero          { flex-shrink: 0; }
-    .bp-shell-content { flex: 1; overflow-y: auto; }
+    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
   `]
 })
 export class BallparkSettingsShellComponent {

@@ -17,7 +17,7 @@ import { ConfigService } from './core/services/config.service';
     </div>
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
     .bp-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
   `]
 })
