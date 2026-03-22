@@ -32,7 +32,8 @@
       "Bash(SRC=app-shell-v2-tmp/app-shell-v2)",
       "Bash(cp \"$SRC/app-shell.component.ts\" client-angular/src/app/shared/components/app-shell/)",
       "Bash(cp \"$SRC/app.routes.ts\" client-angular/src/app/)",
-      "Bash(cp \"$SRC/settings.routes.ts\" client-angular/src/app/features/settings/)"
+      "Bash(cp \"$SRC/settings.routes.ts\" client-angular/src/app/features/settings/)",
+      "Bash(cp \"$SRC/ballpark-settings.routes.ts\" client-angular/src/app/features/ballpark-settings/)"
     ]
   },
   "enableAllProjectMcpServers": true,

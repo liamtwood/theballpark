@@ -166,10 +166,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
   ];
 
   @HostBinding('style.--hero-align')
-  get heroAlignVar() { return this.heroAlign; }
+  get heroAlignVar() {
+    return this.navMode === 'sidenav' ? 'left' : this.heroAlign;
+  }
 
   @HostBinding('style.--hero-align-flex')
-  get heroAlignFlex() { return this.heroAlign === 'left' ? 'flex-start' : 'center'; }
+  get heroAlignFlex() {
+    return (this.navMode === 'sidenav' || this.heroAlign === 'left') ? 'flex-start' : 'center';
+  }
 
   private destroy$ = new Subject<void>();
 
