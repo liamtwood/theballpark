@@ -5,13 +5,14 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { InputSwitchModule } from 'primeng/inputswitch';
 import { ToastModule } from 'primeng/toast';
 import { SidebarModule } from 'primeng/sidebar';
 import { DropdownModule } from 'primeng/dropdown';
 import { ChipsModule } from 'primeng/chips';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen } from 'lucide-angular';
+import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { Org, User, Category, PlatformConfig } from '../../models';
@@ -25,9 +26,9 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    LucideAngularModule.pick({ SquarePen }),
+    LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule,
-    ToggleSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
+    InputSwitchModule, ToastModule, SidebarModule, DropdownModule, ChipsModule,
     LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -438,19 +439,19 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
                   </div>
                   <div class="bp-toggle-row">
                     <span>User name &amp; role</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showUserName" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Location pill</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showLocation" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Upcoming events pill</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showUpcoming" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                   <div class="bp-toggle-row">
                     <span>Stats bar</span>
-                    <p-toggleSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-toggleSwitch>
+                    <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
                   </div>
                 </div>
               </div>
@@ -678,7 +679,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
           <div class="mb-4">
             <label class="bp-field-label">Status</label>
             <div class="flex items-center gap-3 mt-1">
-              <p-toggleSwitch [(ngModel)]="catForm.enabled"></p-toggleSwitch>
+              <p-inputSwitch [(ngModel)]="catForm.enabled"></p-inputSwitch>
               <span style="font-size:var(--text-sm);color:var(--color-text-secondary);">
                 {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
               </span>
@@ -1288,6 +1289,10 @@ export class SettingsComponent implements OnInit {
   }
 
   inviteMember() {
+    this.inviteForm = { email: '', role: 'member' };
+    this.showInviteDrawer = true;
+    this.cdr.detectChanges();
+  }
 
   closeInviteDrawer() {
     this.showInviteDrawer = false;
@@ -1334,7 +1339,7 @@ export class SettingsComponent implements OnInit {
   submitEdit() {
     if (!this.editForm.name?.trim() || !this.selectedMember) return;
     this.selectedMember.name = this.editForm.name;
-    this.selectedMember.role = this.editForm.role;
+    this.selectedMember.role = this.editForm.role as 'admin' | 'member';
     this.editingMember = false;
     this.applyFilters();
     this.msg.add({ severity: 'success', summary: 'Member updated' });
