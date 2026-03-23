@@ -115,7 +115,7 @@ import { ButtonModule } from 'primeng/button';
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
           <div *ngFor="let p of activeProjects" class="bp-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : cardGradient(p)" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color && p.status_name !== 'draft'">
+            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color && p.status_name !== 'draft'">
               <div class="bp-card-img-hover" (click)="openUploadPanel($event, p)"><lucide-icon name="pencil" [size]="16"></lucide-icon></div>
               <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
               <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
@@ -409,12 +409,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  cardGradient(p: Project): string {
-    if (p.card_color) return '';
-    return p.status_name === 'draft'
-      ? 'linear-gradient(160deg, #374151, #4B5563)'
-      : 'linear-gradient(160deg, #1e3a5f, #2563eb)';
-  }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = {
