@@ -710,3 +710,71 @@ app-top-nav { flex-shrink: 0; }
 .bp-page-title {
   text-align: var(--hero-align, center);
 }
+/* =============================================================
+   RESPONSIVE — append to styles.css
+   Mobile-first breakpoints for dashboard and project detail
+   ============================================================= */
+
+/* ── DASHBOARD — collapse 3 columns to 1 on mobile ── */
+@media (max-width: 900px) {
+  .bp-body {
+    grid-template-columns: 1fr !important;
+  }
+  .bp-body-panel {
+    display: none; /* hide left panel on mobile — content moves to bottom */
+  }
+  .bp-body-left {
+    border-right: none !important;
+  }
+  .bp-body-right {
+    border-top: 0.5px solid var(--color-border);
+  }
+  .bp-project-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .bp-dash-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .bp-dash-stat:nth-child(2) { border-right: none; }
+  .bp-dash-stat:nth-child(3) { border-top: 0.5px solid var(--color-border); }
+  .bp-dash-stat:nth-child(4) { border-top: 0.5px solid var(--color-border); border-right: none; }
+}
+
+/* ── TOP NAV — compact on mobile ── */
+@media (max-width: 768px) {
+  .bp-nav { padding: 0 16px; }
+  .bp-nav-tagline { display: none; }
+  .bp-nav-link span { display: none; } /* hide link text, keep icons */
+  .bp-nav-link { padding: 0 8px; }
+}
+
+/* ── HERO — compact on mobile ── */
+@media (max-width: 768px) {
+  .bp-hero { padding: 20px 16px 0 !important; }
+  .bp-hero-org-name { font-size: 26px !important; }
+  .bp-hero-tab { padding: 8px 14px !important; font-size: 12px !important; }
+}
+
+/* ── PROJECT DETAIL TABS — scrollable on mobile ── */
+@media (max-width: 768px) {
+  .bp-hero-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start !important;
+  }
+  .bp-hero-tabs::-webkit-scrollbar { display: none; }
+}
+
+/* ── BRIEF TAB — stack grid on mobile ── */
+@media (max-width: 768px) {
+  .bp-field-grid-2 { grid-template-columns: 1fr !important; }
+  .bp-field-grid-3 { grid-template-columns: 1fr !important; }
+  .bp-brief-body { padding: 16px !important; }
+}
+
+/* ── SETTINGS — full width on mobile ── */
+@media (max-width: 768px) {
+  .bp-settings-body { padding: 16px !important; }
+  .bp-content-pad   { padding: 16px !important; }
+}
