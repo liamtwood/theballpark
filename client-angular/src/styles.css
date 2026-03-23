@@ -590,6 +590,38 @@ textarea.bp-input-edit:focus {
   border-color: var(--theme-accent) !important;
 }
 
+/* Edit mode — pInputNumber wrapper */
+.bp-input-edit.p-inputnumber,
+.bp-input-edit.p-inputnumber:hover {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-accent) !important;
+  background: var(--theme-bg) !important;
+  border-radius: 6px;
+}
+.bp-input-edit.p-inputnumber .p-inputtext {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Readonly mode — pInputNumber wrapper */
+.bp-field-readonly.p-inputnumber,
+.bp-field-readonly.p-inputnumber:hover {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-border) !important;
+  background: transparent !important;
+  border-radius: 6px;
+  cursor: default !important;
+}
+.bp-field-readonly.p-inputnumber .p-inputtext {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
 /* Edit mode — dropdown */
 .bp-input-edit.p-dropdown {
   background: var(--theme-bg) !important;
