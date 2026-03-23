@@ -142,15 +142,15 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
           <ng-container *ngIf="editingFin">
             <div class="bp-field-grid-3">
               <div>
-                <label class="bp-field-label">VAT %</label>
+                <label class="bp-field-label">VAT</label>
                 <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Margin %</label>
+                <label class="bp-field-label">Margin</label>
                 <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Contingency %</label>
+                <label class="bp-field-label">Contingency</label>
                 <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
               </div>
             </div>

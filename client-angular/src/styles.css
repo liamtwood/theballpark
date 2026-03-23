@@ -569,6 +569,20 @@ lucide-icon svg {
   color: var(--color-text-primary) !important;
 }
 
+/* View mode — readonly textarea */
+.bp-field-readonly.p-inputtextarea,
+.bp-field-readonly.p-inputtextarea:enabled,
+.bp-field-readonly.p-inputtextarea:hover,
+.bp-field-readonly.p-inputtextarea:enabled:hover,
+.bp-field-readonly.p-inputtextarea:enabled:focus {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  background: transparent !important;
+}
+
 /* Edit mode — parchment bg + accent border */
 .bp-input-edit.p-inputtext,
 input.bp-input-edit,

@@ -152,13 +152,13 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
               <div>
                 <label class="bp-field-label">Width (m)</label>
                 <p-inputNumber [(ngModel)]="form.stand_width_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" suffix=" m">
+                  [min]="1" [max]="100" [maxFractionDigits]="0">
                 </p-inputNumber>
               </div>
               <div>
                 <label class="bp-field-label">Depth (m)</label>
                 <p-inputNumber [(ngModel)]="form.stand_depth_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" suffix=" m">
+                  [min]="1" [max]="100" [maxFractionDigits]="0">
                 </p-inputNumber>
               </div>
             </div>
@@ -206,7 +206,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
               <div>
                 <label class="bp-field-label">Budget (£)</label>
                 <p-inputNumber [(ngModel)]="form.project_budget" styleClass="w-full bp-input-edit"
-                  mode="currency" currency="GBP" locale="en-GB">
+                  prefix="£" [maxFractionDigits]="0">
                 </p-inputNumber>
               </div>
               <div>

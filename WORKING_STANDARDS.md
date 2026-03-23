@@ -303,6 +303,10 @@ Always use PrimeNG icons (pi pi-*) for these — not Lucide.
 .bp-input-edit     → component styles only
                      editable pInputText: parchment bg,
                      theme accent border + glow on focus
+
+Non-editable fields (e.g. email, system IDs) should use
+bp-field-readonly in both view AND edit mode — they remain
+visually unchanged, signalling to the user they cannot be edited.
 ```
 
 ### Multiple Items (catalogue, team, categories)
