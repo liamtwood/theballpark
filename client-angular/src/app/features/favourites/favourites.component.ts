@@ -89,8 +89,7 @@ type FavTab = 'suppliers' | 'items';
         </div>
         <div class="bp-sup-list">
           <a *ngFor="let f of filtered" class="bp-row-card"
-            [routerLink]="['/suppliers', f.ref_id]"
-            [queryParams]="{ item: f.ref_id }">
+            [routerLink]="['/suppliers', f.supplier_org_id, 'items', f.ref_id]">
             <div class="bp-row-icon-wrap">
               <lucide-icon name="package" [size]="18" style="color:var(--theme-accent);"></lucide-icon>
             </div>

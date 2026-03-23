@@ -13,6 +13,7 @@ export interface Favourite {
   ref_price?: number;
   ref_category?: string;
   supplier_name?: string;
+  supplier_org_id?: string;
   is_active: boolean;
   created_at: string;
 }

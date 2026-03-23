@@ -7,7 +7,8 @@ async function getAll(orgId) {
       CASE WHEN f.type = 'supplier' THEN o.cover_image_url ELSE NULL END as ref_image_url,
       CASE WHEN f.type = 'item' THEN i.base_price ELSE NULL END as ref_price,
       CASE WHEN f.type = 'item' THEN c.name ELSE NULL END as ref_category,
-      CASE WHEN f.type = 'item' THEN o.name ELSE NULL END as supplier_name
+      CASE WHEN f.type = 'item' THEN o.name ELSE NULL END as supplier_name,
+      CASE WHEN f.type = 'item' THEN o.id ELSE NULL END as supplier_org_id
      FROM favourites f
      LEFT JOIN orgs o ON (f.type = 'supplier' AND f.ref_id = o.id)
                       OR (f.type = 'item' AND o.id = (SELECT org_id FROM items WHERE id = f.ref_id LIMIT 1))

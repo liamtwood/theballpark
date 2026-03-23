@@ -45,6 +45,11 @@ export const routes: Routes = [
         data: { pageLabel: '', tabs: [] }
       },
       {
+        path: 'suppliers/:id/items/:itemId',
+        loadComponent: () => import('./features/suppliers/item-detail.component').then(m => m.ItemDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
+      {
         path: 'favourites',
         loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
         data: { pageLabel: 'FAVOURITES', tabs: [] }

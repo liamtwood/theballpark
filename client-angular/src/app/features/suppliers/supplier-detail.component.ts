@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextareaModule } from 'primeng/inputtextarea';
@@ -86,7 +86,7 @@ import { Project } from '../../models';
               <button class="bp-heart-btn-sm" [class.active]="isItemFav(item.id)" (click)="toggleItemFav(item.id)">
                 <lucide-icon name="heart" [size]="14"></lucide-icon>
               </button>
-              <button class="bp-sup-item-quote-btn" (click)="openQuote(item)">Quote</button>
+              <button class="bp-sup-item-quote-btn" (click)="goToItem(item)">View →</button>
             </div>
           </div>
         </div>
@@ -227,8 +227,15 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private configService: ConfigService,
     private shellCtx: ShellContextService,
     private msg: MessageService,
+    private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  goToItem(item: any) {
+    const params: any = {};
+    if (this.selectedProjectId) params['projectId'] = this.selectedProjectId;
+    this.router.navigate(['/suppliers', this.sid, 'items', item.id], { queryParams: params });
+  }
 
   ngOnInit() {
     this.sid = this.route.snapshot.paramMap.get('id') || '';
