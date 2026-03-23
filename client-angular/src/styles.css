@@ -799,3 +799,23 @@ app-top-nav { flex-shrink: 0; }
   .bp-build-body  { padding-bottom: 60px !important; }
   .bp-msg-wrap    { padding-bottom: 60px !important; }
 }
+/* =============================================================
+   HERO SPACING FIX — append to styles.css
+   ============================================================= */
+
+/* Equal padding above and below org name in hero */
+.bp-hero {
+  padding: 24px var(--section-pad) 24px !important;
+}
+
+/* Mobile — tighter but still equal */
+@media (max-width: 768px) {
+  .bp-hero {
+    padding: 16px 16px 16px !important;
+  }
+
+  /* Remove any top gap caused by bottom-nav padding bleeding up */
+  .bp-page {
+    padding-top: 0 !important;
+  }
+}
