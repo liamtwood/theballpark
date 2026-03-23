@@ -649,5 +649,8 @@ v1.2  Architecture review, backend service layer,
       PrimeNG migration (shared components),
       dashboard complete,
       settings all 5 tabs complete
-v1.3  Authentication (Google SSO) — next
+v1.3  Project detail shell + Brief tab, AppShellComponent,
+      ShellContextService, settings split, category tags,
+      form standards (view/edit pattern, border consistency)
+v1.4  Authentication (Google SSO) — next
 ```
