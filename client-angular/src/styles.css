@@ -778,3 +778,14 @@ app-top-nav { flex-shrink: 0; }
   .bp-settings-body { padding: 16px !important; }
   .bp-content-pad   { padding: 16px !important; }
 }
+/* =============================================================
+   MOBILE HERO — append to responsive section in styles.css
+   ============================================================= */
+
+@media (max-width: 768px) {
+  /* Hide pills (client name, venue) on mobile project hero */
+  .bp-hero-meta { display: none !important; }
+
+  /* Hide sub label (ACTIVE, HOME etc.) on mobile */
+  .bp-hero-page-label { display: none !important; }
+}
