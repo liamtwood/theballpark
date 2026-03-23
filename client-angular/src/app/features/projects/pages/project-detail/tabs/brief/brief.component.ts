@@ -152,13 +152,13 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
               <div>
                 <label class="bp-field-label">Width (m)</label>
                 <p-inputNumber [(ngModel)]="form.stand_width_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" [maxFractionDigits]="0">
+                  [min]="1" [max]="100" [maxFractionDigits]="1">
                 </p-inputNumber>
               </div>
               <div>
                 <label class="bp-field-label">Depth (m)</label>
                 <p-inputNumber [(ngModel)]="form.stand_depth_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" [maxFractionDigits]="0">
+                  [min]="1" [max]="100" [maxFractionDigits]="1">
                 </p-inputNumber>
               </div>
             </div>
@@ -206,17 +206,17 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
               <div>
                 <label class="bp-field-label">Budget (£)</label>
                 <p-inputNumber [(ngModel)]="form.project_budget" styleClass="w-full bp-input-edit"
-                  prefix="£" [maxFractionDigits]="0">
+                  prefix="£" [maxFractionDigits]="0" [min]="0">
                 </p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Margin %</label>
+                <label class="bp-field-label">Margin</label>
                 <p-inputNumber [(ngModel)]="form.default_margin_pct" styleClass="w-full bp-input-edit"
                   suffix="%" [min]="0" [max]="100">
                 </p-inputNumber>
               </div>
               <div>
-                <label class="bp-field-label">Contingency %</label>
+                <label class="bp-field-label">Contingency</label>
                 <p-inputNumber [(ngModel)]="form.default_contingency_pct" styleClass="w-full bp-input-edit"
                   suffix="%" [min]="0" [max]="100">
                 </p-inputNumber>
@@ -245,8 +245,13 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
           </div>
 
           <ng-container *ngIf="!editingBrief">
-            <div *ngIf="form.raw_brief_text" class="bp-brief-text">{{ form.raw_brief_text }}</div>
-            <p *ngIf="!form.raw_brief_text" class="bp-muted-text">No brief added yet. Click edit to add one, or use the AI parser on the Build tab.</p>
+            <textarea pInputTextarea
+              [value]="form.raw_brief_text || ''"
+              class="w-full bp-field-readonly bp-brief-textarea"
+              [rows]="form.raw_brief_text ? 8 : 3"
+              readonly
+              [placeholder]="form.raw_brief_text ? '' : 'No brief added yet. Click edit to add one.'">
+            </textarea>
           </ng-container>
 
           <ng-container *ngIf="editingBrief">
