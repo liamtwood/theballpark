@@ -54,7 +54,9 @@
       "Bash(cp \"$SRC/seed-preview.js\" server/src/db/)",
       "Bash(cp \"$SRC/pool.js\" server/src/db/)",
       "Bash(node src/db/migrate-schemas.js)",
-      "Bash(node src/db/seed-preview.js)"
+      "Bash(node src/db/seed-preview.js)",
+      "Bash(rm -rf card-pcard-tmp)",
+      "Bash(unzip -o card-pcard.zip -d card-pcard-tmp)"
     ]
   },
   "enableAllProjectMcpServers": true,
