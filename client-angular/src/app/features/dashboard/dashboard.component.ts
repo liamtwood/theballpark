@@ -28,7 +28,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
     <ng-container *ngIf="!loading">
 
       <!-- STATS BAR -->
-      <div class="bp-dash-stats">
+      <div class="bp-dash-stats" [class.bp-dash-stats-visible]="mobileDashTab === 'summary'">
         <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
           <span class="bp-dash-stat-value">{{ org?.balls_balance ?? 0 }}</span>
@@ -51,66 +51,84 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
         </div>
       </div>
 
-      <!-- MOBILE TABS (hidden on desktop via CSS) -->
-      <div class="bp-dash-tabs">
-        <button class="bp-dash-tab" [class.active]="mobileTab === 'projects'" (click)="mobileTab = 'projects'">
-          Projects
-        </button>
-        <button class="bp-dash-tab" [class.active]="mobileTab === 'suppliers'" (click)="mobileTab = 'suppliers'">
-          Suppliers
-        </button>
+      <!-- MOBILE HERO TABS -->
+      <div class="bp-dash-hero-tabs">
+        <button class="bp-dash-hero-tab" [class.active]="mobileDashTab === 'projects'" (click)="mobileDashTab = 'projects'">Projects</button>
+        <button class="bp-dash-hero-tab" [class.active]="mobileDashTab === 'suppliers'" (click)="mobileDashTab = 'suppliers'">Suppliers</button>
+        <button class="bp-dash-hero-tab" [class.active]="mobileDashTab === 'summary'" (click)="mobileDashTab = 'summary'">Summary</button>
       </div>
 
-      <!-- MOBILE PROJECT LIST (hidden on desktop via CSS) -->
-      <div class="bp-mobile-list" *ngIf="mobileTab === 'projects'">
+      <!-- MOBILE PROJECTS LIST -->
+      <div class="bp-dash-tab-panel" [class.active]="mobileDashTab === 'projects'">
         <div class="bp-section-header">
           <span class="bp-section-title">Active {{ projectLabel }}s</span>
           <a routerLink="/projects/new" class="bp-section-action">+ New</a>
         </div>
-        <p *ngIf="activeProjects.length === 0" style="padding:16px;font-size:13px;color:var(--color-text-muted);">No active projects yet.</p>
+        <p *ngIf="activeProjects.length === 0" style="padding:12px 16px;font-size:13px;color:var(--color-text-muted);">No active projects yet.</p>
         <a *ngFor="let p of activeProjects" class="bp-row-card" [routerLink]="['/projects', p.id]">
-          <div class="bp-row-icon"
-            [class.bp-row-icon-active]="p.status_name !== 'draft'"
-            [class.bp-row-icon-draft]="p.status_name === 'draft'">
-            <i class="pi pi-folder" style="font-size:16px;color:#fff;"></i>
-          </div>
+          <lucide-icon name="folder" [size]="18" class="bp-row-icon" [class.muted]="p.status_name === 'draft'"></lucide-icon>
           <div class="bp-row-body">
             <div class="bp-row-name">{{ p.event_name || p.name }}</div>
             <div class="bp-row-meta">{{ p.client_name }}{{ p.event_date ? ' · ' + p.event_date : '' }}</div>
           </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chevron"></lucide-icon>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
-
         <div class="bp-section-header" *ngIf="completedProjects.length > 0" style="margin-top:8px;">
           <span class="bp-section-title">Completed</span>
         </div>
         <a *ngFor="let p of completedProjects" class="bp-row-card" [routerLink]="['/projects', p.id]">
-          <div class="bp-row-icon bp-row-icon-closed">
-            <i class="pi pi-folder" style="font-size:16px;color:#fff;"></i>
-          </div>
+          <lucide-icon name="folder" [size]="18" class="bp-row-icon muted"></lucide-icon>
           <div class="bp-row-body">
             <div class="bp-row-name">{{ p.event_name || p.name }}</div>
             <div class="bp-row-meta">{{ p.client_name }}{{ p.event_date ? ' · ' + p.event_date : '' }}</div>
           </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chevron"></lucide-icon>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
       </div>
 
-      <!-- MOBILE SUPPLIER LIST (hidden on desktop via CSS) -->
-      <div class="bp-mobile-list" *ngIf="mobileTab === 'suppliers'">
+      <!-- MOBILE SUPPLIERS LIST -->
+      <div class="bp-dash-tab-panel" [class.active]="mobileDashTab === 'suppliers'">
         <div class="bp-section-header">
           <span class="bp-section-title">Saved Suppliers</span>
+          <a routerLink="/suppliers" class="bp-section-action">Browse all</a>
         </div>
-        <p *ngIf="suppliers.length === 0" style="padding:16px;font-size:13px;color:var(--color-text-muted);">No suppliers saved yet.</p>
+        <p *ngIf="suppliers.length === 0" style="padding:12px 16px;font-size:13px;color:var(--color-text-muted);">No suppliers saved yet.</p>
         <a *ngFor="let s of suppliers" class="bp-row-card" routerLink="/suppliers">
-          <div class="bp-row-icon" style="background:linear-gradient(160deg,#1a1a2e,#16213e);">
-            <i class="pi pi-building" style="font-size:16px;color:#fff;"></i>
-          </div>
+          <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
           <div class="bp-row-body">
             <div class="bp-row-name">{{ s.name }}</div>
             <div class="bp-row-meta">{{ s.email || '' }}{{ s.city ? ' · ' + s.city : '' }}</div>
           </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chevron"></lucide-icon>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </a>
+      </div>
+
+      <!-- MOBILE SUMMARY TAB -->
+      <div class="bp-dash-tab-panel" [class.active]="mobileDashTab === 'summary'">
+        <div class="bp-section-header" style="margin-top:8px;">
+          <span class="bp-section-title">Upcoming</span>
+        </div>
+        <div class="bp-row-card" *ngIf="nextProject" [routerLink]="['/projects', nextProject.id]">
+          <lucide-icon name="calendar" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body">
+            <div class="bp-row-name">{{ nextProject.event_name || nextProject.name }}</div>
+            <div class="bp-row-meta">{{ nextProject.venue_name || nextProject.client_name }}{{ nextProject.event_date ? ' · ' + nextProject.event_date : '' }}</div>
+          </div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </div>
+        <p *ngIf="!nextProject" style="padding:12px 16px;font-size:13px;color:var(--color-text-muted);">No upcoming events.</p>
+        <div class="bp-section-header" style="margin-top:4px;">
+          <span class="bp-section-title">Quick Actions</span>
+        </div>
+        <a routerLink="/projects/new" class="bp-row-card">
+          <lucide-icon name="plus" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body"><div class="bp-row-name">New Project</div></div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </a>
+        <a routerLink="/suppliers" class="bp-row-card">
+          <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body"><div class="bp-row-name">Browse Suppliers</div></div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
       </div>
 
@@ -366,7 +384,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   showStats    = true;
   uploadPanelProjectId  = '';
   uploadSupplierPanelId = '';
-  mobileTab: 'projects' | 'suppliers' = 'projects';
+  mobileDashTab: 'projects' | 'suppliers' | 'summary' = 'projects';
   private sub?: Subscription;
 
   get nextProject(): Project | null { return this.activeProjects.length > 0 ? this.activeProjects[0] : null; }

@@ -846,75 +846,82 @@ app-top-nav { flex-shrink: 0; }
 
 }
 /* =============================================================
-   DASHBOARD MOBILE — append to styles.css
-   Row-style cards for projects and suppliers on mobile
-   Tabs for Projects / Suppliers
-   Credits card hidden on mobile
+   DASHBOARD MOBILE v2 — append to styles.css
+   Three hero tabs: Projects | Suppliers | Summary
+   Clean icon-only rows (no box or border on icon)
+   Stats only on Summary tab
    ============================================================= */
 
+/* ── HERO TABS on dashboard (always visible, centered) ── */
+.bp-dash-hero-tabs {
+  display: flex;
+  justify-content: center;
+  border-top: 0.5px solid #E8D9C0;
+  margin-top: 14px;
+}
+.bp-dash-hero-tab {
+  flex: 1; max-width: 120px;
+  padding: 10px;
+  font-size: 13px; font-weight: 500;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  background: none; border-top: none; border-left: none; border-right: none;
+  cursor: pointer; transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.bp-dash-hero-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+
+/* ── MOBILE ONLY ── */
 @media (max-width: 900px) {
 
-  /* ── HIDE desktop 3-col structure ── */
-  .bp-body-panel  { display: none !important; }
+  /* Hide desktop 3-col body */
+  .bp-body-panel { display: none !important; }
   .bp-body-right  { display: none !important; }
   .bp-body        { grid-template-columns: 1fr !important; }
   .bp-body-left   { border-right: none !important; padding: 0 !important; }
 
-  /* ── MOBILE TAB BAR (Projects / Suppliers) ── */
-  .bp-dash-tabs {
-    display: flex !important;
-    border-bottom: 0.5px solid var(--color-border);
-    background: #fff;
-  }
-  .bp-dash-tab {
-    flex: 1; padding: 12px; text-align: center;
-    font-size: 13px; font-weight: 500;
-    color: var(--color-text-muted);
-    border-bottom: 2px solid transparent;
-    cursor: pointer; transition: all 0.15s;
-    font-family: var(--font-body);
-    background: none; border-top: none; border-left: none; border-right: none;
-  }
-  .bp-dash-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+  /* Hide desktop p-card grid */
+  .bp-project-grid  { display: none !important; }
+  .bp-section-header { padding: 12px 16px 6px !important; margin-bottom: 0 !important; }
+  .bp-section-spacer { margin-top: 0 !important; }
 
-  /* ── MOBILE PROJECT LIST ── */
-  .bp-mobile-list { padding: 0 !important; }
+  /* Stats bar hidden by default — shown only on Summary tab via [class] */
+  .bp-dash-stats { display: none !important; }
+  .bp-dash-stats.bp-dash-stats-visible { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+  .bp-dash-stat:nth-child(2) { border-right: none !important; }
+  .bp-dash-stat:nth-child(3) { border-top: 0.5px solid var(--color-border); }
+  .bp-dash-stat:nth-child(4) { border-top: 0.5px solid var(--color-border); border-right: none !important; }
 
-  /* ── MOBILE ROW CARD ── */
+  /* Mobile tab content panels */
+  .bp-dash-tab-panel { display: none; }
+  .bp-dash-tab-panel.active { display: block; }
+
+  /* ── CLEAN ROW CARD ── */
   .bp-row-card {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px;
     border-bottom: 0.5px solid var(--color-border);
-    background: #fff; cursor: pointer;
-    text-decoration: none;
+    background: #fff; cursor: pointer; text-decoration: none;
   }
   .bp-row-card:active { background: var(--color-surface); }
   .bp-row-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: var(--theme-bg);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    width: 22px; text-align: center; flex-shrink: 0;
+    color: var(--theme-accent);
   }
-  .bp-row-icon-active { background: linear-gradient(160deg, #1e3a5f, #2563eb); }
-  .bp-row-icon-draft  { background: linear-gradient(160deg, #374151, #4B5563); }
-  .bp-row-icon-closed { background: linear-gradient(160deg, #374151, #6B7280); }
+  .bp-row-icon.muted { color: var(--color-text-muted); }
   .bp-row-body { flex: 1; min-width: 0; }
   .bp-row-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bp-row-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bp-row-chevron { color: var(--color-text-muted); flex-shrink: 0; }
+  .bp-row-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; }
+  .bp-row-chev { color: var(--color-border); flex-shrink: 0; }
 
-  /* Hide desktop p-card grid on mobile */
-  .bp-project-grid { display: none !important; }
-  .bp-section-header { padding: 12px 16px 8px !important; }
-  .bp-section-spacer { margin-top: 0 !important; }
-
-  /* Stats bar 2x2 */
-  .bp-dash-stats { grid-template-columns: 1fr 1fr !important; }
-  .bp-dash-stat:nth-child(3),
-  .bp-dash-stat:nth-child(4) { border-top: 0.5px solid var(--color-border); }
-  .bp-dash-stat:nth-child(2),
-  .bp-dash-stat:nth-child(4) { border-right: none !important; }
+  /* Summary tab — upcoming + quick actions */
+  .bp-summary-section { padding: 12px 16px 4px; }
+  .bp-summary-section-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); }
 }
 
-/* ── HIDE mobile tabs on desktop ── */
-.bp-dash-tabs { display: none; }
+/* Hide hero tabs on desktop */
+@media (min-width: 901px) {
+  .bp-dash-hero-tabs { display: none !important; }
+  .bp-dash-tab-panel { display: block !important; }
+  .bp-dash-stats { display: grid !important; }
+}
