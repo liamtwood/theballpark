@@ -7,28 +7,24 @@ export interface ShellTab {
 }
 
 export interface ShellContext {
-  // Hero title — org name by default, project name on project pages
-  heroTitle: string;
-
-  // Sub-label — page label (SETTINGS) by default, "Org name · status" on project pages
-  heroSub: string;
-
-  // Pills — [userName · role, city] by default, [clientName, venue] on project pages
-  pills: string[];
-
-  // Tabs
-  tabs: ShellTab[];
-
-  // Whether to show the stats bar (org home only)
-  showStats: boolean;
+  heroTitle:    string;
+  heroSub:      string;
+  pills:        string[];
+  tabs:         ShellTab[];
+  showStats:    boolean;
+  // Optional callback — if provided, AppShell calls this instead of navigating
+  // Used by dashboard tabs which switch internal state rather than routing
+  onTabClick?:  (tab: ShellTab) => void;
+  // Active tab override — used when tabs don't map to routes
+  activeTabPath?: string;
 }
 
 const DEFAULT_CONTEXT: ShellContext = {
-  heroTitle: '',
-  heroSub:   '',
-  pills:     [],
-  tabs:      [],
-  showStats: false,
+  heroTitle:    '',
+  heroSub:      '',
+  pills:        [],
+  tabs:         [],
+  showStats:    false,
 };
 
 @Injectable({ providedIn: 'root' })
