@@ -9,5 +9,9 @@ export const BALLPARK_SETTINGS_ROUTES: Routes = [
   {
     path: 'marketplace',
     loadComponent: () => import('./marketplace/marketplace.component').then(m => m.MarketplaceComponent)
+  },
+  {
+    path: 'orgs',
+    loadComponent: () => import('./orgs/orgs.component').then(m => m.OrgsComponent)
   }
 ];
