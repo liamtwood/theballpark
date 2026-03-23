@@ -63,7 +63,11 @@
       "Bash(cp \"$SRC/build.component.ts\" client-angular/src/app/features/projects/pages/project-detail/tabs/build/)",
       "Read(//c/projects/ballpark/$SRC/**)",
       "Bash(rm -rf messages-update-tmp)",
-      "Bash(unzip -o messages-update.zip -d messages-update-tmp)"
+      "Bash(unzip -o messages-update.zip -d messages-update-tmp)",
+      "Bash(rm -rf mobile-hero-fix-tmp)",
+      "Bash(unzip -o mobile-hero-fix.zip -d mobile-hero-fix-tmp)",
+      "Bash(rm -rf mobile-nav-tmp)",
+      "Bash(unzip -o mobile-nav.zip -d mobile-nav-tmp)"
     ]
   },
   "enableAllProjectMcpServers": true,

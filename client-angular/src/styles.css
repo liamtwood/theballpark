@@ -789,3 +789,13 @@ app-top-nav { flex-shrink: 0; }
   /* Hide sub label (ACTIVE, HOME etc.) on mobile */
   .bp-hero-page-label { display: none !important; }
 }
+/* =============================================================
+   BOTTOM NAV PAGE PADDING — append to responsive section in styles.css
+   Prevents page content from hiding behind the mobile bottom nav
+   ============================================================= */
+
+@media (max-width: 768px) {
+  .bp-page        { padding-bottom: 60px !important; }
+  .bp-build-body  { padding-bottom: 60px !important; }
+  .bp-msg-wrap    { padding-bottom: 60px !important; }
+}
