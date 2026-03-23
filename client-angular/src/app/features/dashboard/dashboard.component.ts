@@ -231,7 +231,7 @@ import { ButtonModule } from 'primeng/button';
 
     /* ── THREE-COLUMN BODY ── */
     .bp-body {
-      display: grid; grid-template-columns: 384px 1fr 320px;
+      display: grid; grid-template-columns: 384px minmax(400px, 1fr) 384px;
       background: var(--color-bg);
       min-height: calc(100vh - var(--nav-height) - 120px - 80px - 64px);
     }
