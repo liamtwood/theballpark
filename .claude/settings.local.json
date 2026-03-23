@@ -67,7 +67,13 @@
       "Bash(rm -rf mobile-hero-fix-tmp)",
       "Bash(unzip -o mobile-hero-fix.zip -d mobile-hero-fix-tmp)",
       "Bash(rm -rf mobile-nav-tmp)",
-      "Bash(unzip -o mobile-nav.zip -d mobile-nav-tmp)"
+      "Bash(unzip -o mobile-nav.zip -d mobile-nav-tmp)",
+      "Bash(rm -rf hero-spacing-fix-tmp)",
+      "Bash(unzip -o hero-spacing-fix.zip -d hero-spacing-fix-tmp)",
+      "Bash(rm -rf mobile-gap-fix-tmp)",
+      "Bash(unzip -o mobile-gap-fix.zip -d mobile-gap-fix-tmp)",
+      "Bash(rm -rf dashboard-mobile-tmp)",
+      "Bash(unzip -o dashboard-mobile.zip -d dashboard-mobile-tmp)"
     ]
   },
   "enableAllProjectMcpServers": true,
