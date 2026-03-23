@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectorRef } from '@a
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { TagModule } from 'primeng/tag';
+import { LucideAngularModule, MapPin } from 'lucide-angular';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
@@ -15,14 +16,22 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, TagModule, LucideAngularModule, RouterModule, RouterOutlet],
   template: `
     <!-- HERO -->
     <div class="bp-hero">
 
       <!-- PILLS — context-driven -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
-        <p-tag *ngFor="let pill of heroPills" [value]="pill" styleClass="bp-hero-tag"></p-tag>
+        <ng-container *ngFor="let pill of heroPills">
+          <!-- Location pill — map-pin icon -->
+          <span *ngIf="isLocationPill(pill)" class="bp-hero-tag-span">
+            <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
+            {{ pill }}
+          </span>
+          <!-- Standard pill -->
+          <p-tag *ngIf="!isLocationPill(pill)" [value]="pill" styleClass="bp-hero-tag"></p-tag>
+        </ng-container>
       </div>
 
       <!-- TITLE — project name or org name -->
@@ -31,7 +40,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <!-- SUB — "Org name · status" on project pages, page label elsewhere -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
 
-      <!-- TABS — context tabs (project) or route tabs (settings etc.) -->
+      <!-- TABS -->
       <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
         <button *ngFor="let tab of activeTabs"
           class="bp-hero-tab" [class.active]="isActive(tab.path)"
@@ -74,14 +83,30 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+
+    /* Standard p-tag pill — white fill, accent border */
     :host ::ng-deep .bp-hero-tag.p-tag {
-      background: var(--theme-bg) !important;
+      background: #fff !important;
       color: var(--theme-text) !important;
-      border: 0.5px solid var(--theme-border) !important;
+      border: 1.5px solid var(--theme-accent) !important;
       font-size: 11px !important;
       font-weight: 500 !important;
       padding: 3px 12px !important;
       border-radius: 20px !important;
+    }
+
+    /* Location pill — plain span with icon, same style */
+    .bp-hero-tag-span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #fff;
+      color: var(--theme-text);
+      border: 1.5px solid var(--theme-accent);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 12px;
+      border-radius: 20px;
     }
 
     /* ── HERO STATS BAR ── */
@@ -110,22 +135,18 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   `]
 })
 export class AppShellComponent implements OnInit, OnDestroy {
-  // Org defaults
   orgName      = '';
   userName     = '';
   userRole     = '';
   orgCity      = '';
   platformName = 'The Ballpark';
 
-  // Route-driven
   pageLabel = '';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
-  // Context override (set by project detail)
   ctx: ShellContext | null = null;
 
-  // Computed — uses context if present, falls back to org defaults
   get hasContext(): boolean   { return !!this.ctx?.heroTitle; }
   get heroTitle(): string     { return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName); }
   get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
@@ -138,7 +159,15 @@ export class AppShellComponent implements OnInit, OnDestroy {
   }
   get activeTabs(): ShellTab[] { return this.ctx?.tabs?.length ? this.ctx.tabs : this.routeTabs; }
 
-  // Config flags
+  // Determines if a pill should show the map-pin icon
+  isLocationPill(pill: string): boolean {
+    // On org pages: the city pill
+    if (pill === this.orgCity) return true;
+    // On project pages: the venue pill (second pill in context)
+    if (this.ctx?.pills && this.ctx.pills.length >= 2 && pill === this.ctx.pills[1]) return true;
+    return false;
+  }
+
   heroAlign    = 'center';
   navMode: 'tabs' | 'sidenav' = 'tabs';
   showUserName = true;
@@ -146,7 +175,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   showUpcoming = true;
   showStats    = true;
   creditLabel  = 'Ball';
-  ballsBalance      = 0;
+  ballsBalance = 0;
   isAdmin = true; // stub until v1.3 auth
 
   navGroups: NavGroup[] = [
@@ -163,7 +192,8 @@ export class AppShellComponent implements OnInit, OnDestroy {
       adminOnly: true,
       items: [
         { label: 'Categories', path: '/ballpark-settings/categories' },
-        { label: 'Marketplace', path: '/ballpark-settings/marketplace' }
+        { label: 'Marketplace', path: '/ballpark-settings/marketplace' },
+        { label: 'Orgs',        path: '/ballpark-settings/orgs' }
       ]
     }
   ];
@@ -194,7 +224,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Load org data
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
         this.orgName      = org.name;
@@ -213,20 +242,17 @@ export class AppShellComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Config
     this.syncFromConfig(this.configService.current as any);
     this.configService.config$.pipe(takeUntil(this.destroy$)).subscribe((config: any) => {
       this.syncFromConfig(config);
       this.cdr.detectChanges();
     });
 
-    // Shell context — project detail writes here
     this.shellCtx.context$.pipe(takeUntil(this.destroy$)).subscribe(ctx => {
       this.ctx = ctx.heroTitle ? ctx : null;
       this.cdr.detectChanges();
     });
 
-    // Route changes
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
       takeUntil(this.destroy$)
@@ -270,7 +296,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private updateFromRoute() {
     this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
-    // Reset context when navigating away from projects
     if (!this.router.url.includes('/projects/')) {
       this.shellCtx.reset();
     }
