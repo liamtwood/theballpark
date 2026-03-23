@@ -555,14 +555,14 @@ lucide-icon svg {
 /* View mode — transparent readonly */
 .bp-field-readonly.p-inputtext {
   background: transparent !important;
-  border-color: transparent !important;
+  border-color: var(--color-border) !important;
   box-shadow: none !important;
   cursor: default !important;
   color: var(--color-text-primary) !important;
 }
 .bp-field-readonly.p-inputtext:focus {
   box-shadow: none !important;
-  border-color: transparent !important;
+  border-color: var(--color-border) !important;
 }
 
 /* Edit mode — parchment bg + accent border */
