@@ -48,7 +48,13 @@
       "Bash(cp \"$SRC/project-detail.routes.ts\" \"$BASE/\")",
       "Bash(rm -rf shell-context-tmp)",
       "Bash(unzip -o shell-context.zip -d shell-context-tmp)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(SRC=schema-setup-tmp/schema-setup)",
+      "Bash(cp \"$SRC/migrate-schemas.js\" server/src/db/)",
+      "Bash(cp \"$SRC/seed-preview.js\" server/src/db/)",
+      "Bash(cp \"$SRC/pool.js\" server/src/db/)",
+      "Bash(node src/db/migrate-schemas.js)",
+      "Bash(node src/db/seed-preview.js)"
     ]
   },
   "enableAllProjectMcpServers": true,
