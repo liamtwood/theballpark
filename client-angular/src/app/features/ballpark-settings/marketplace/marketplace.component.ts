@@ -35,15 +35,40 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
       <div class="bp-section">
         <div class="bp-section-header">
           <span class="bp-section-title">PLATFORM</span>
+          <div class="bp-section-actions">
+            <button *ngIf="!editingPlatform" class="bp-icon-btn" (click)="startEdit('platform')" title="Edit">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+            </button>
+            <ng-container *ngIf="editingPlatform">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('platform')" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('platform')" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="bp-field-label">Platform name</label>
-          <input pInputText [(ngModel)]="appearance.platformName" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
-        </div>
-        <div>
-          <label class="bp-field-label">Tagline</label>
-          <input pInputText [(ngModel)]="appearance.tagline" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
-        </div>
+        <ng-container *ngIf="!editingPlatform">
+          <div class="mb-3">
+            <label class="bp-field-label">Platform name</label>
+            <input pInputText [value]="appearance.platformName || '—'" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div>
+            <label class="bp-field-label">Tagline</label>
+            <input pInputText [value]="appearance.tagline || '—'" class="w-full bp-field-readonly" readonly/>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="editingPlatform">
+          <div class="mb-3">
+            <label class="bp-field-label">Platform name</label>
+            <input pInputText [(ngModel)]="appearance.platformName" class="w-full bp-input-edit"/>
+          </div>
+          <div>
+            <label class="bp-field-label">Tagline</label>
+            <input pInputText [(ngModel)]="appearance.tagline" class="w-full bp-input-edit"/>
+          </div>
+        </ng-container>
       </div>
 
       <!-- MARKETPLACE LOGO -->
@@ -93,17 +118,44 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
       <div class="bp-section">
         <div class="bp-section-header">
           <span class="bp-section-title">TERMINOLOGY</span>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="bp-field-label">Projects are called</label>
-            <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
+          <div class="bp-section-actions">
+            <button *ngIf="!editingTerminology" class="bp-icon-btn" (click)="startEdit('terminology')" title="Edit">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+            </button>
+            <ng-container *ngIf="editingTerminology">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('terminology')" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('terminology')" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
           </div>
-          <div>
-            <label class="bp-field-label">Credits are called</label>
-            <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full bp-input-edit" (ngModelChange)="liveUpdate()"/>
-          </div>
         </div>
+        <ng-container *ngIf="!editingTerminology">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="bp-field-label">Projects are called</label>
+              <input pInputText [value]="appearance.projectLabel || '—'" class="w-full bp-field-readonly" readonly/>
+            </div>
+            <div>
+              <label class="bp-field-label">Credits are called</label>
+              <input pInputText [value]="appearance.creditLabel || '—'" class="w-full bp-field-readonly" readonly/>
+            </div>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="editingTerminology">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="bp-field-label">Projects are called</label>
+              <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full bp-input-edit"/>
+            </div>
+            <div>
+              <label class="bp-field-label">Credits are called</label>
+              <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full bp-input-edit"/>
+            </div>
+          </div>
+        </ng-container>
       </div>
 
       <!-- TYPOGRAPHY -->
@@ -294,6 +346,10 @@ export class MarketplaceComponent implements OnInit {
   org: Org | null = null;
   showPreviewDialog = false;
   editingLogo = false;
+  editingPlatform = false;
+  editingTerminology = false;
+  private platformSnapshot: any = null;
+  private terminologySnapshot: any = null;
 
   appearance: PlatformConfig & {
     heroAlign?: string;
@@ -351,6 +407,37 @@ export class MarketplaceComponent implements OnInit {
     { value: 'inter',             label: 'Inter + Inter',                      preview: "'Inter', sans-serif",        specimen: 'The quick brown fox' },
     { value: 'fraunces-nunito',   label: 'Fraunces + Nunito',                  preview: "'Fraunces', serif",          specimen: 'The quick brown fox' },
   ];
+
+  startEdit(section: 'platform' | 'terminology') {
+    if (section === 'platform') {
+      this.platformSnapshot = { platformName: this.appearance.platformName, tagline: this.appearance.tagline };
+      this.editingPlatform = true;
+    } else {
+      this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel };
+      this.editingTerminology = true;
+    }
+    this.cdr.detectChanges();
+  }
+
+  cancelEdit(section: 'platform' | 'terminology') {
+    if (section === 'platform' && this.platformSnapshot) {
+      Object.assign(this.appearance, this.platformSnapshot);
+      this.editingPlatform = false;
+    } else if (section === 'terminology' && this.terminologySnapshot) {
+      Object.assign(this.appearance, this.terminologySnapshot);
+      this.editingTerminology = false;
+    }
+    this.liveUpdate();
+    this.cdr.detectChanges();
+  }
+
+  saveSection(section: 'platform' | 'terminology') {
+    if (section === 'platform') this.editingPlatform = false;
+    else this.editingTerminology = false;
+    this.liveUpdate();
+    this.saveAppearance();
+    this.cdr.detectChanges();
+  }
 
   selectTheme(name: string)       { this.appearance.themeName = name; this.liveUpdate(); }
   selectMode(mode: string)        { this.appearance.mode = mode as 'light' | 'dark' | 'system'; this.liveUpdate(); }
