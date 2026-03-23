@@ -12,11 +12,12 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, ButtonModule, CardModule, LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent],
   template: `
     <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
@@ -113,22 +114,35 @@ import { ButtonModule } from 'primeng/button';
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
             <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New {{ projectLabel }}</a>
           </div>
-          <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
-          <div *ngFor="let p of activeProjects" class="bp-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color?.trim() && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color?.trim() && p.status_name !== 'draft'">
-              <div class="bp-card-img-hover" (click)="openUploadPanel($event, p)"><lucide-icon name="pencil" [size]="16"></lucide-icon></div>
-              <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
-              <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
+          <p *ngIf="activeProjects.length === 0" class="bp-empty">
+            No active {{ projectLabel.toLowerCase() }}s yet.
+          </p>
+
+          <div class="bp-project-grid">
+            <div *ngFor="let p of activeProjects"
+              class="bp-project-card-wrap"
+              [routerLink]="['/projects', p.id]">
+              <p-card styleClass="bp-project-card">
+                <ng-template pTemplate="header">
+                  <div class="bp-card-header"
+                    [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
+                    [class.bp-card-header-active]="!p.cover_image_url && p.status_name !== 'draft'"
+                    [class.bp-card-header-draft]="!p.cover_image_url && p.status_name === 'draft'">
+                    <span class="bp-card-client-chip">{{ p.client_name || 'No client' }}</span>
+                    <app-status-badge [status]="p.status_name" class="bp-card-status"></app-status-badge>
+                  </div>
+                </ng-template>
+                <div class="bp-card-content">
+                  <div class="bp-card-name">{{ p.event_name || p.name }}</div>
+                  <div class="bp-card-meta">
+                    {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}
+                  </div>
+                  <div class="bp-card-cost" *ngIf="p.total_client_cost">
+                    Est. {{ fmtCurrency(p.total_client_cost) }}
+                  </div>
+                </div>
+              </p-card>
             </div>
-            <div class="bp-card-body">
-              <div class="bp-card-row1">
-                <span class="bp-card-name">{{ p.name }}</span>
-                <app-status-badge [status]="p.status_name"></app-status-badge>
-              </div>
-              <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
-              <div class="bp-card-row3" *ngIf="p.total_client_cost">Est. {{ fmtCurrency(p.total_client_cost) }}</div>
-            </div>
-            <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
           </div>
 
           <!-- Completed projects -->
@@ -137,18 +151,28 @@ import { ButtonModule } from 'primeng/button';
               <span class="bp-section-title">Completed {{ projectLabel }}s</span>
             </div>
           </div>
-          <div *ngFor="let p of completedProjects" class="bp-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : ''" [class.bp-card-grad-closed]="!p.cover_image_url">
-              <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
-              <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
-            </div>
-            <div class="bp-card-body">
-              <div class="bp-card-row1">
-                <span class="bp-card-name">{{ p.name }}</span>
-                <app-status-badge [status]="p.status_name"></app-status-badge>
-              </div>
-              <div class="bp-card-row2">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
-              <div class="bp-card-row3" *ngIf="p.total_client_cost">{{ fmtCurrency(p.total_client_cost) }} final</div>
+          <div class="bp-project-grid" *ngIf="completedProjects.length > 0">
+            <div *ngFor="let p of completedProjects"
+              class="bp-project-card-wrap"
+              [routerLink]="['/projects', p.id]">
+              <p-card styleClass="bp-project-card">
+                <ng-template pTemplate="header">
+                  <div class="bp-card-header bp-card-header-closed"
+                    [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null">
+                    <span class="bp-card-client-chip">{{ p.client_name || 'No client' }}</span>
+                    <app-status-badge [status]="p.status_name" class="bp-card-status"></app-status-badge>
+                  </div>
+                </ng-template>
+                <div class="bp-card-content">
+                  <div class="bp-card-name">{{ p.event_name || p.name }}</div>
+                  <div class="bp-card-meta">
+                    {{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}
+                  </div>
+                  <div class="bp-card-cost" *ngIf="p.total_client_cost">
+                    {{ fmtCurrency(p.total_client_cost) }} final
+                  </div>
+                </div>
+              </p-card>
             </div>
           </div>
         </div>
@@ -265,42 +289,44 @@ import { ButtonModule } from 'primeng/button';
     .bp-section-spacer { margin-top: 24px; }
 
     /* PROJECT CARDS */
-    .bp-card {
-      display: flex; flex-direction: row;
-      border: 0.5px solid var(--color-border); border-radius: 10px;
-      overflow: visible; position: relative; margin-bottom: 12px;
-      cursor: pointer; transition: border-color 0.15s; text-decoration: none;
-      background: var(--color-surface);
-    }
-    .bp-card:hover { border-color: var(--color-text-muted); }
-    .bp-card-img {
-      width: 120px; min-height: 90px; flex-shrink: 0; border-radius: 10px 0 0 10px;
-      background-size: cover; background-position: center; position: relative; overflow: hidden;
-    }
-    .bp-card-img-hover {
-      position: absolute; inset: 0; background: rgba(0,0,0,0.4);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity 0.15s; cursor: pointer; color: #fff;
-    }
-    .bp-card-img:hover .bp-card-img-hover { opacity: 1; }
-    .bp-card-grad-draft  { background-image: linear-gradient(160deg, #374151, #4B5563); }
-    .bp-card-grad-active { background-image: linear-gradient(160deg, #1e3a5f, #2563eb); }
-    .bp-card-grad-closed { background-image: linear-gradient(160deg, #374151, #6B7280); }
-    .bp-card-logo {
-      position: absolute; bottom: 6px; right: 6px;
-      width: 24px; height: 24px; border-radius: 4px;
+    /* PROJECT CARD GRID */
+    .bp-project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 8px; }
+    .bp-project-card-wrap { cursor: pointer; text-decoration: none; display: block; }
+
+    /* p-card overrides */
+    :host ::ng-deep .bp-project-card.p-card { border: 0.5px solid var(--color-border); border-radius: 10px !important; overflow: hidden; margin: 0; box-shadow: none !important; transition: border-color 0.15s; }
+    :host ::ng-deep .bp-project-card.p-card:hover { border-color: var(--color-text-muted); }
+    :host ::ng-deep .bp-project-card .p-card-body { padding: 0 !important; }
+    :host ::ng-deep .bp-project-card .p-card-content { padding: 0 !important; }
+    :host ::ng-deep .bp-project-card .p-card-header { padding: 0 !important; }
+
+    /* CARD HEADER — image or gradient */
+    .bp-card-header {
+      height: 110px; position: relative;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      padding: 8px 10px;
       background-size: cover; background-position: center;
-      border: 1px solid rgba(255,255,255,0.4);
     }
-    .bp-card-logo-text {
-      background: rgba(255,255,255,0.2); display: flex; align-items: center;
-      justify-content: center; font-size: 8px; font-weight: 700; color: #fff;
+    .bp-card-header-active { background-image: linear-gradient(160deg, #1e3a5f, #2563eb); }
+    .bp-card-header-draft  { background-image: linear-gradient(160deg, #374151, #4B5563); }
+    .bp-card-header-closed { background-image: linear-gradient(160deg, #374151, #6B7280); }
+
+    /* Client chip */
+    .bp-card-client-chip {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px; padding: 3px 8px;
+      font-size: 10px; font-weight: 600; color: #fff;
     }
-    .bp-card-body  { padding: 10px 14px; flex: 1; min-width: 0; }
-    .bp-card-row1  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-    .bp-card-name  { font-size: 14px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bp-card-row2  { font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
-    .bp-card-row3  { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
+
+    /* Status badge positioning */
+    .bp-card-status { position: absolute; top: 8px; right: 8px; }
+
+    /* CARD CONTENT */
+    .bp-card-content { padding: 12px 14px 14px; }
+    .bp-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bp-card-meta { font-size: 11px; color: var(--color-text-muted); margin-bottom: 6px; }
+    .bp-card-cost { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); }
 
     /* CREDITS CARD */
     .bp-credits-card   { background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
@@ -362,7 +388,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
-  uploadPanelProjectId = '';
   uploadSupplierPanelId = '';
 
   get nextProject(): Project | null {
@@ -379,29 +404,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
 
-  clientInitials(name: string): string {
-    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  }
-
-  openUploadPanel(event: MouseEvent, project: Project) {
-    event.stopPropagation();
-    event.preventDefault();
-    this.uploadPanelProjectId = this.uploadPanelProjectId === project.id ? '' : project.id;
-  }
-
   openSupplierUpload(event: MouseEvent, s: any) {
     event.stopPropagation();
     event.preventDefault();
     this.uploadSupplierPanelId = this.uploadSupplierPanelId === s.id ? '' : s.id;
   }
 
-  onImagesUpdated(project: Project, urls: { coverUrl: string; logoUrl: string; cardColor?: string }) {
-    project.cover_image_url = urls.coverUrl;
-    project.client_logo_url = urls.logoUrl;
-    if (urls.cardColor) project.card_color = urls.cardColor;
-    this.uploadPanelProjectId = '';
-    this.cdr.detectChanges();
-  }
 
   onSupplierImagesUpdated(s: any, urls: { coverUrl: string }) {
     s.hero_image_url = urls.coverUrl;
