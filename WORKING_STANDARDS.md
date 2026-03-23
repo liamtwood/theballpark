@@ -719,5 +719,9 @@ v1.2  Architecture review, backend service layer,
 v1.3  Project detail shell + Brief tab, AppShellComponent,
       ShellContextService, settings split, category tags,
       form standards (view/edit pattern, border consistency)
-v1.4  Authentication (Google SSO) — next
+v1.4  Project detail shell + Brief tab, AppShell refactor,
+      ShellContextService, dashboard 3-column layout,
+      p-card project cards, form standards, multi-schema DB,
+      Orgs tab, hero pill styles
+v1.5  Authentication (Google SSO) — next
 ```
