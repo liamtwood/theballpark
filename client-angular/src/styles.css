@@ -836,4 +836,12 @@ app-top-nav { flex-shrink: 0; }
   /* Tight hero padding on mobile — just enough breathing room */
   .bp-hero             { padding: 16px 16px 0 !important; }
 
+  /* Ensure nav maintains exact height when nav-right is hidden */
+  .bp-nav              { height: var(--nav-height) !important; min-height: var(--nav-height) !important; max-height: var(--nav-height) !important; }
+  app-top-nav          { display: block !important; height: var(--nav-height) !important; flex-shrink: 0 !important; }
+
+  /* Remove any gap between nav and hero/content */
+  app-shell            { gap: 0 !important; }
+  .bp-main             { margin-top: 0 !important; padding-top: 0 !important; }
+
 }
