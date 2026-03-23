@@ -66,21 +66,23 @@ interface SupplierWithState extends Org {
         <div *ngFor="let s of filtered" class="bp-sup-card-wrap">
 
           <!-- ROW -->
-          <div class="bp-sup-card" (click)="toggleSupplier(s)">
-            <div class="bp-sup-card-img"
-              [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
-              [class.bp-sup-card-img-default]="!s.cover_image_url">
+          <div class="bp-sup-card">
+            <div class="bp-sup-card-nav" (click)="goToSupplier(s, null)">
+              <div class="bp-sup-card-img"
+                [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
+                [class.bp-sup-card-img-default]="!s.cover_image_url">
+              </div>
+              <div class="bp-sup-card-body">
+                <div class="bp-sup-card-name">{{ s.name }}</div>
+                <div class="bp-sup-card-meta">{{ $any(s).city || 'London' }}</div>
+              </div>
             </div>
-            <div class="bp-sup-card-body">
-              <div class="bp-sup-card-name">{{ s.name }}</div>
-              <div class="bp-sup-card-meta">{{ $any(s).city || 'London' }}</div>
-            </div>
-            <!-- Heart -->
-            <button class="bp-heart-btn" [class.active]="isFav(s.id)"
-              (click)="toggleFav($event, s.id)">
+            <button class="bp-heart-btn" [class.active]="isFav(s.id)" (click)="toggleFav($event, s.id)">
               <lucide-icon name="heart" [size]="16"></lucide-icon>
             </button>
-            <lucide-icon [name]="s.expanded ? 'chevron-down' : 'chevron-right'" [size]="16" class="bp-sup-card-chev"></lucide-icon>
+            <button class="bp-sup-expand-btn" (click)="toggleExpand(s)">
+              <lucide-icon [name]="s.expanded ? 'chevron-down' : 'chevron-right'" [size]="16"></lucide-icon>
+            </button>
           </div>
 
           <!-- EXPANDED — tag pills -->
@@ -131,8 +133,10 @@ interface SupplierWithState extends Org {
     .bp-sup-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--color-text-muted); }
     .bp-sup-list { background: var(--color-bg); }
     .bp-sup-card-wrap { border-bottom: 0.5px solid var(--color-border); }
-    .bp-sup-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; cursor: pointer; transition: background 0.15s; }
-    .bp-sup-card:active { background: var(--color-surface); }
+    .bp-sup-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; }
+    .bp-sup-card-nav { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
+    .bp-sup-card-nav:active { opacity: 0.7; }
+    .bp-sup-expand-btn { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
     .bp-sup-card-img { width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-sup-card-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-sup-card-body { flex: 1; min-width: 0; }
@@ -213,7 +217,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  toggleSupplier(s: SupplierWithState) {
+  toggleExpand(s: SupplierWithState) {
     s.expanded = !s.expanded;
     if (s.expanded && !s.catalogueLoaded) {
       this.supplierSvc.getCatalogue(s.id).subscribe({

@@ -17,6 +17,8 @@ export interface ShellContext {
   onTabClick?:  (tab: ShellTab) => void;
   // Active tab override — used when tabs don't map to routes
   activeTabPath?: string;
+  // Back arrow — if set, renders a ← back link in the hero
+  backPath?: string;
 }
 
 const DEFAULT_CONTEXT: ShellContext = {
