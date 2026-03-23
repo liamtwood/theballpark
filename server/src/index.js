@@ -1,5 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
+console.log('[STARTUP] APP_SCHEMA:', process.env.APP_SCHEMA || '(not set — defaults to public)');
+
 const express = require('express');
 const cors = require('cors');
 
