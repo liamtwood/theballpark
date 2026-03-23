@@ -39,6 +39,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
         data: { pageLabel: 'SUPPLIERS', tabs: [] }
       },
+      {
+        path: 'suppliers/:id',
+        loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
 
       // ── CLIENTS ──
       {
