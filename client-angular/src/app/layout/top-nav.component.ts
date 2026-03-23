@@ -168,8 +168,7 @@ import { environment } from '../../environments/environment';
       .bp-bottom-tab:hover  { color: var(--color-text-secondary); }
       .bp-bottom-tab.active { color: var(--theme-accent); }
 
-      /* Push page content up so bottom nav doesn't overlap */
-      :host { padding-bottom: 60px; display: block; }
+      :host { display: block; }
     }
   `]
 })
