@@ -552,15 +552,22 @@ lucide-icon svg {
 
 /* ── INPUT STATES — PrimeNG overrides (must be global) ── */
 
-/* View mode — transparent readonly */
-.bp-field-readonly.p-inputtext {
+/* View mode — readonly inputs with subtle border */
+.bp-field-readonly.p-inputtext,
+.p-inputtext.bp-field-readonly,
+input.bp-field-readonly.p-inputtext,
+textarea.bp-field-readonly,
+.bp-field-readonly.p-inputtext:enabled,
+.bp-field-readonly.p-inputtext:hover,
+.bp-field-readonly.p-inputtext:enabled:hover {
   background: transparent !important;
   border-color: var(--color-border) !important;
   box-shadow: none !important;
   cursor: default !important;
   color: var(--color-text-primary) !important;
 }
-.bp-field-readonly.p-inputtext:focus {
+.bp-field-readonly.p-inputtext:focus,
+.bp-field-readonly.p-inputtext:enabled:focus {
   box-shadow: none !important;
   border-color: var(--color-border) !important;
 }
