@@ -116,7 +116,7 @@ import { Project } from '../../models';
       </ng-template>
       <div class="bp-drawer-body">
         <!-- Project selector -->
-        <div class="mb-4" *ngIf="projects.length > 0">
+        <div class="mb-4" *ngIf="projects.length > 0 && !projectPreSelected">
           <label class="bp-field-label">Project</label>
           <p-dropdown [(ngModel)]="selectedProjectId" [options]="projects"
             optionLabel="name" optionValue="id"
@@ -215,6 +215,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   quoteBrief = '';
   ballsBalance = 0;
   creditLabel = 'Ball';
+  projectPreSelected = false;
   private sid = '';
 
   constructor(
@@ -236,6 +237,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     const qp = this.route.snapshot.queryParams;
     if (qp['cat']) this.activeCategory = qp['cat'];
     if (qp['item']) this.highlightedItemId = qp['item'];
+    if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) { this.ballsBalance = org.balls_balance || 0; this.cdr.detectChanges(); }
@@ -244,7 +246,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.projectSvc.getAll().subscribe({
       next: projects => {
         this.projects = (projects || []).filter(p => ['active','costing','draft'].includes(p.status_name || ''));
-        if (this.projects.length > 0) this.selectedProjectId = this.projects[0].id;
+        if (this.projects.length > 0 && !this.projectPreSelected) this.selectedProjectId = this.projects[0].id;
         this.cdr.detectChanges();
       }
     });

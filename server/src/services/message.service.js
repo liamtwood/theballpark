@@ -43,4 +43,17 @@ async function hardDelete(id) {
   return result.rows[0] || null;
 }
 
-module.exports = { getAll, getById, create, update, hardDelete };
+async function getAllByOrg(orgId) {
+  const result = await pool.query(
+    `SELECT m.*, u.name as sender_name, p.name as project_name
+     FROM messages m
+     LEFT JOIN users u ON m.user_id = u.id
+     LEFT JOIN projects p ON m.project_id = p.id
+     WHERE p.org_id = $1
+     ORDER BY m.created_at ASC`,
+    [orgId]
+  );
+  return result.rows;
+}
+
+module.exports = { getAll, getById, getAllByOrg, create, update, hardDelete };

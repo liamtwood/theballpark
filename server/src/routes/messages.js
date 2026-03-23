@@ -2,7 +2,13 @@ const router = require('express').Router();
 const MessageService = require('../services/message.service');
 
 router.get('/', async (req, res, next) => {
-  try { res.json(await MessageService.getAll(req.query.project_id)); } catch (err) { next(err); }
+  try {
+    if (req.query.org_id) {
+      res.json(await MessageService.getAllByOrg(req.query.org_id));
+    } else {
+      res.json(await MessageService.getAll(req.query.project_id));
+    }
+  } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

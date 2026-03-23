@@ -51,7 +51,7 @@ export const routes: Routes = [
       },
       {
         path: 'messages',
-        loadComponent: () => import('./features/projects/pages/project-detail/tabs/messages/messages.component').then(m => m.MessagesComponent),
+        loadComponent: () => import('./features/messages/global-messages.component').then(m => m.GlobalMessagesComponent),
         data: { pageLabel: 'MESSAGES', tabs: [] }
       },
 

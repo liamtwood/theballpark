@@ -12,5 +12,6 @@ export interface Message {
   category_id?: string;
   category_name?: string;
   msg_status?: string;
+  project_name?: string;
   created_at: string;
 }
