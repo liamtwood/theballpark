@@ -89,15 +89,15 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
             <div class="bp-field-grid-3 mt-4">
               <div>
                 <label class="bp-field-label">Stand size</label>
-                <input pInputText [value]="form.stand_size || '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.stand_size ? (form.stand_size.charAt(0).toUpperCase() + form.stand_size.slice(1)) : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
                 <label class="bp-field-label">Width (m)</label>
-                <input pInputText [value]="form.stand_width_m || '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.stand_width_m ? (+form.stand_width_m % 1 === 0 ? +form.stand_width_m : form.stand_width_m) : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
                 <label class="bp-field-label">Depth (m)</label>
-                <input pInputText [value]="form.stand_depth_m || '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.stand_depth_m ? (+form.stand_depth_m % 1 === 0 ? +form.stand_depth_m : form.stand_depth_m) : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
           </ng-container>
@@ -188,15 +188,15 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
             <div class="bp-field-grid-3">
               <div>
                 <label class="bp-field-label">Budget</label>
-                <input pInputText [value]="form.project_budget ? ('£' + form.project_budget) : '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.project_budget ? ('£' + (+form.project_budget).toLocaleString('en-GB', {maximumFractionDigits: 0})) : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
                 <label class="bp-field-label">Margin</label>
-                <input pInputText [value]="form.default_margin_pct ? (form.default_margin_pct + '%') : '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.default_margin_pct ? (+form.default_margin_pct % 1 === 0 ? +form.default_margin_pct + '%' : form.default_margin_pct + '%') : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
               <div>
                 <label class="bp-field-label">Contingency</label>
-                <input pInputText [value]="form.default_contingency_pct ? (form.default_contingency_pct + '%') : '—'" class="w-full bp-field-readonly" readonly/>
+                <input pInputText [value]="form.default_contingency_pct ? (+form.default_contingency_pct % 1 === 0 ? +form.default_contingency_pct + '%' : form.default_contingency_pct + '%') : '—'" class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
           </ng-container>
@@ -364,6 +364,7 @@ export class BriefComponent implements OnInit {
         this.editingFin     = false;
         this.editingBrief   = false;
         this.msg.add({ severity: 'success', summary: 'Project saved' });
+        this.projSvc.triggerRefresh();
         this.cdr.detectChanges();
       },
       error: () => {

@@ -435,16 +435,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: () => { this.userName = 'User'; },
     });
 
-    this.projectService.getAll().subscribe({
-      next: (data) => {
-        this.projects = data;
-        this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
-        this.activeProjects = data.filter(p => !this.completedProjects.includes(p));
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: () => { this.loading = false; this.cdr.detectChanges(); },
-    });
+    this.loadProjects();
+
+    this.projectService.refresh$.subscribe(() => this.loadProjects());
 
     this.supplierService.getAll().subscribe({
       next: (data) => {
@@ -467,6 +460,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() { this.sub?.unsubscribe(); }
+
+  private loadProjects() {
+    this.projectService.getAll().subscribe({
+      next: (data) => {
+        this.projects = data;
+        this.completedProjects = data.filter(p => p.status_name === 'completed' || p.status_name === 'cancelled');
+        this.activeProjects = data.filter(p => !this.completedProjects.includes(p));
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.loading = false; this.cdr.detectChanges(); },
+    });
+  }
 
   private buildCreditDots() {
     const balance = this.org?.balls_balance ?? 0;
