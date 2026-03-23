@@ -86,20 +86,6 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
                 <input pInputText [value]="(form.tier | titlecase) || '—'" class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
-            <div class="bp-field-grid-3 mt-4">
-              <div>
-                <label class="bp-field-label">Stand size</label>
-                <input pInputText [value]="form.stand_size ? (form.stand_size.charAt(0).toUpperCase() + form.stand_size.slice(1)) : '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Width (m)</label>
-                <input pInputText [value]="form.stand_width_m ? (+form.stand_width_m % 1 === 0 ? +form.stand_width_m : form.stand_width_m) : '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Depth (m)</label>
-                <input pInputText [value]="form.stand_depth_m ? (+form.stand_depth_m % 1 === 0 ? +form.stand_depth_m : form.stand_depth_m) : '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
-            </div>
           </ng-container>
 
           <!-- EDIT MODE -->
@@ -139,27 +125,6 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
                   optionLabel="label" optionValue="value"
                   styleClass="w-full bp-input-edit" placeholder="Select tier">
                 </p-dropdown>
-              </div>
-            </div>
-            <div class="bp-field-grid-3 mt-4">
-              <div>
-                <label class="bp-field-label">Stand size</label>
-                <p-dropdown [(ngModel)]="form.stand_size" [options]="standSizeOptions"
-                  optionLabel="label" optionValue="value"
-                  styleClass="w-full bp-input-edit" placeholder="Select size">
-                </p-dropdown>
-              </div>
-              <div>
-                <label class="bp-field-label">Width (m)</label>
-                <p-inputNumber [(ngModel)]="form.stand_width_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" [maxFractionDigits]="1">
-                </p-inputNumber>
-              </div>
-              <div>
-                <label class="bp-field-label">Depth (m)</label>
-                <p-inputNumber [(ngModel)]="form.stand_depth_m" styleClass="w-full bp-input-edit"
-                  [min]="1" [max]="100" [maxFractionDigits]="1">
-                </p-inputNumber>
               </div>
             </div>
           </ng-container>
@@ -297,13 +262,6 @@ export class BriefComponent implements OnInit {
     { label: 'Premium', value: 'premium' },
   ];
 
-  standSizeOptions = [
-    { label: 'S  (3×3m)',   value: 'S' },
-    { label: 'M  (4×6m)',   value: 'M' },
-    { label: 'L  (6×9m)',   value: 'L' },
-    { label: 'XL (9×12m)', value: 'XL' },
-  ];
-
   constructor(
     private route: ActivatedRoute,
     private projSvc: ProjectService,
@@ -334,9 +292,6 @@ export class BriefComponent implements OnInit {
       event_date:              p.event_date,
       guest_count:             p.guest_count,
       tier:                    p.tier,
-      stand_size:              p.stand_size,
-      stand_width_m:           p.stand_width_m,
-      stand_depth_m:           p.stand_depth_m,
       project_budget:          p.project_budget,
       default_margin_pct:      p.default_margin_pct,
       default_contingency_pct: p.default_contingency_pct,
