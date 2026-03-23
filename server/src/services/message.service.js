@@ -25,14 +25,15 @@ async function create(data) {
 }
 
 async function update(id, data) {
-  const { subject, body, direction, status_id } = data;
+  const { subject, body, direction, status_id, msg_status, category_id } = data;
   const result = await pool.query(
     `UPDATE messages SET
       subject = COALESCE($1, subject), body = COALESCE($2, body),
       direction = COALESCE($3, direction), status_id = COALESCE($4, status_id),
+      msg_status = COALESCE($5, msg_status), category_id = COALESCE($6, category_id),
       updated_at = NOW()
-     WHERE id = $5 RETURNING *`,
-    [subject, body, direction, status_id, id]
+     WHERE id = $7 RETURNING *`,
+    [subject, body, direction, status_id, msg_status, category_id, id]
   );
   return result.rows[0] || null;
 }

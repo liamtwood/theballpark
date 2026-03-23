@@ -25,6 +25,14 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const msg = await MessageService.update(req.params.id, req.body);
+    if (!msg) return res.status(404).json({ error: 'Not found' });
+    res.json(msg);
+  } catch (err) { next(err); }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const msg = await MessageService.hardDelete(req.params.id);

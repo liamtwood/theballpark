@@ -9,5 +9,8 @@ export interface Message {
   body?: string;
   direction: 'inbound' | 'outbound';
   status_id?: string;
+  category_id?: string;
+  category_name?: string;
+  msg_status?: string;
   created_at: string;
 }

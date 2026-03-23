@@ -61,7 +61,9 @@
       "Bash(unzip -o build-tab.zip -d build-tab-tmp)",
       "Bash(SRC=build-tab-tmp/build-tab)",
       "Bash(cp \"$SRC/build.component.ts\" client-angular/src/app/features/projects/pages/project-detail/tabs/build/)",
-      "Read(//c/projects/ballpark/$SRC/**)"
+      "Read(//c/projects/ballpark/$SRC/**)",
+      "Bash(rm -rf messages-update-tmp)",
+      "Bash(unzip -o messages-update.zip -d messages-update-tmp)"
     ]
   },
   "enableAllProjectMcpServers": true,
