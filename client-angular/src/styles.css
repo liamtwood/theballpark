@@ -819,3 +819,21 @@ app-top-nav { flex-shrink: 0; }
     padding-top: 0 !important;
   }
 }
+/* =============================================================
+   MOBILE GAP FIX — append to styles.css
+   Removes all vertical space around hero org name on mobile
+   ============================================================= */
+
+@media (max-width: 768px) {
+
+  /* Kill any leftover space from hidden elements */
+  .bp-hero-meta        { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
+  .bp-hero-page-label  { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
+
+  /* Remove bottom margin from org name — tabs sit right below */
+  .bp-hero-org-name    { margin-bottom: 0 !important; }
+
+  /* Tight hero padding on mobile — just enough breathing room */
+  .bp-hero             { padding: 16px 16px 0 !important; }
+
+}
