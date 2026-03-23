@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "db:migrate:schemas": "node src/db/migrate-schemas.js",
+    "db:seed:preview": "node src/db/seed-preview.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

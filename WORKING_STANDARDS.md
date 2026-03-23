@@ -563,6 +563,73 @@ SSL        → Conditional on NODE_ENV
 
 ---
 
+## Database Schema Architecture
+
+One Railway PostgreSQL instance, four schemas:
+
+```
+public   → dev        Local development. Default schema.
+preview  → preview    QA and stakeholder demos (Beth, Megan).
+                      Clean, curated demo data. Separate from dev.
+master   → production Production. Empty until launch.
+shared   → all envs   Cross-environment tables:
+                        shared.backlog       (replaces BACKLOG.csv)
+                        shared.bugs          (bug tracking)
+                        shared.feature_flags (per-env feature toggles)
+```
+
+### How schema switching works
+
+The `APP_SCHEMA` environment variable controls which schema the
+server uses. Set this in Railway per deployment:
+
+```
+Local .env:           APP_SCHEMA=public     (dev)
+Railway preview:      APP_SCHEMA=preview
+Railway production:   APP_SCHEMA=master
+```
+
+`pool.js` sets `search_path` on every connection so all SQL queries
+target the correct schema automatically — no table prefixes needed
+in any query or service file.
+
+### Running migrations
+
+```bash
+# Create schemas (run once — safe to re-run)
+node server/src/db/migrate-schemas.js
+
+# Seed preview with demo data
+node server/src/db/seed-preview.js
+
+# Seed dev (existing)
+npm run db:seed
+```
+
+### Adding new tables
+
+When adding a new table:
+1. Add it to `server/src/db/migrate.js` for the `public` (dev) schema
+2. Add the same table definition to `migrate-schemas.js` for
+   `preview` and `master` schemas
+3. Never prefix table names with schema in service files —
+   pool.js handles the schema routing automatically
+
+### shared schema
+
+The `shared` schema is accessible from all environments.
+Use it for data that spans environments:
+- `shared.backlog` — feature requests and improvements
+- `shared.bugs` — bug reports with environment tag
+- `shared.feature_flags` — toggle features per environment
+
+To query shared tables from a service, prefix explicitly:
+```sql
+SELECT * FROM shared.backlog WHERE status = 'todo'
+```
+
+---
+
 ## Environment Variables
 
 ```
@@ -649,5 +716,8 @@ v1.2  Architecture review, backend service layer,
       PrimeNG migration (shared components),
       dashboard complete,
       settings all 5 tabs complete
-v1.3  Authentication (Google SSO) — next
+v1.3  Project detail shell + Brief tab, AppShellComponent,
+      ShellContextService, settings split, category tags,
+      form standards (view/edit pattern, border consistency)
+v1.4  Authentication (Google SSO) — next
 ```

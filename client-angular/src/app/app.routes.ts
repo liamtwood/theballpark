@@ -74,7 +74,8 @@ export const routes: Routes = [
           pageLabel: 'PLATFORM SETTINGS',
           tabs: [
             { label: 'Categories', path: '/ballpark-settings/categories' },
-            { label: 'Marketplace', path: '/ballpark-settings/marketplace' }
+            { label: 'Marketplace', path: '/ballpark-settings/marketplace' },
+            { label: 'Orgs', path: '/ballpark-settings/orgs' }
           ]
         }
       },
