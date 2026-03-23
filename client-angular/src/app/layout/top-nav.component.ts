@@ -83,7 +83,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="heart" [size]="20"></lucide-icon>
           <span>Favourites</span>
         </a>
-        <a [routerLink]="projectMessagesPath" routerLinkActive="active" class="bp-bottom-tab">
+        <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
           <span>Messages</span>
         </a>
@@ -204,7 +204,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
   get projectBuildPath()    { return `/projects/${this.projectId}/build`; }
   get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
-  get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
+  get projectMessagesPath() { return '/messages'; }
+  get projectMessagesQueryParams(): any { return { projectId: this.projectId }; }
 
   private sub?: Subscription;
   private routerSub?: Subscription;

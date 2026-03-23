@@ -74,10 +74,9 @@ interface CategoryWithBrief {
             <!-- CATEGORY HEADER -->
             <div class="bp-cat-header" (click)="toggleCategory(cat)">
               <div class="bp-cat-header-left">
-                <div class="bp-cat-status-dot"
-                  [class.done]="cat.selectedVendorIds.length > 0"
-                  [class.pending]="cat.selectedVendorIds.length === 0">
-                </div>
+                <lucide-icon [name]="getCatIcon(cat)" [size]="18"
+                  [style.color]="cat.selectedVendorIds.length > 0 ? 'var(--theme-accent)' : 'var(--color-text-muted)'">
+                </lucide-icon>
                 <div>
                   <div class="bp-cat-name">{{ cat.name }}</div>
                   <div class="bp-cat-cost">Est. {{ fmtCurrency(cat.ballpark_cost) }}
@@ -249,9 +248,6 @@ interface CategoryWithBrief {
     .bp-cat-header       { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
     .bp-cat-header:hover { background: var(--color-surface); }
     .bp-cat-header-left  { display: flex; align-items: center; gap: 12px; }
-    .bp-cat-status-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .bp-cat-status-dot.done    { background: #10B981; }
-    .bp-cat-status-dot.pending { background: #E5E7EB; }
     .bp-cat-name         { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
     .bp-cat-cost         { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; }
     .bp-cat-vendor-count { color: var(--theme-accent); font-weight: 500; }
@@ -367,6 +363,21 @@ export class BuildComponent implements OnInit {
     } else {
       this.loading = false;
     }
+  }
+
+  getCatIcon(cat: CategoryWithBrief): string {
+    const map: Record<string, string> = {
+      'stand structure': 'warehouse', 'structure': 'warehouse', 'set build': 'warehouse',
+      'lighting': 'spotlight', 'av': 'headset', 'av & production': 'headset', 'audio visual': 'headset',
+      'permits': 'signature', 'permits & logistics': 'signature',
+      'catering': 'martini', 'talent': 'person-standing', 'talent & staffing': 'person-standing',
+      'entertainment': 'person-standing',
+    };
+    const key = (cat.name || '').toLowerCase();
+    for (const [k, v] of Object.entries(map)) {
+      if (key.includes(k)) return v;
+    }
+    return 'warehouse';
   }
 
   toggleCategory(cat: CategoryWithBrief) {

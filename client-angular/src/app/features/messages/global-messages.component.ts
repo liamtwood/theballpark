@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -40,7 +41,7 @@ const MSG_STATUSES = [
       <div class="bp-msg-wrap">
 
         <!-- PROJECT SELECTOR -->
-        <div class="bp-msg-project-bar">
+        <div class="bp-msg-project-bar" *ngIf="!projectPreSelected">
           <p-dropdown
             [(ngModel)]="selectedProjectId"
             [options]="projectOptions"
@@ -213,6 +214,7 @@ export class GlobalMessagesComponent implements OnInit {
   projects: Project[] = [];
   projectOptions: any[] = [];
   selectedProjectId = '';
+  projectPreSelected = false;
   activeFolderId = 'all';
   activeStatus = 'all';
   newMsg = '';
@@ -231,6 +233,7 @@ export class GlobalMessagesComponent implements OnInit {
     private orgSvc: OrgService,
     private shellCtx: ShellContextService,
     private toast: MessageService,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -238,10 +241,7 @@ export class GlobalMessagesComponent implements OnInit {
     this.shellCtx.set({ heroTitle: 'Messages', heroSub: '', pills: [], tabs: [] });
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) {
-        this.orgId = org.id;
-        this.loadAllMessages();
-      }
+      if (org) { this.orgId = org.id; this.cdr.detectChanges(); }
     });
 
     this.projectSvc.getAll().subscribe({
@@ -251,6 +251,17 @@ export class GlobalMessagesComponent implements OnInit {
           { name: 'All Projects', id: '' },
           ...this.projects.map(p => ({ name: p.event_name || p.name, id: p.id }))
         ];
+
+        const projectIdFromRoute = this.route.snapshot.queryParams['projectId'];
+        if (projectIdFromRoute) {
+          this.selectedProjectId = projectIdFromRoute;
+          this.projectPreSelected = true;
+          this.loadCategories();
+          this.loadProjectMessages();
+        } else {
+          this.loadAllMessages();
+        }
+
         this.loading = false;
         this.cdr.detectChanges();
       },
