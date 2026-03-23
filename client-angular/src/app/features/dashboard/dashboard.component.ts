@@ -16,7 +16,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 
-type DashTab = 'projects' | 'suppliers' | 'summary';
+type DashTab = 'projects' | 'settings';
 
 @Component({
   selector: 'app-dashboard',
@@ -33,7 +33,7 @@ type DashTab = 'projects' | 'suppliers' | 'summary';
     <ng-container *ngIf="!loading">
 
       <!-- STATS BAR — always visible on desktop, Summary tab on mobile -->
-      <div class="bp-dash-stats" [class.bp-dash-stats-mobile-visible]="activeTab === 'summary'">
+      <div class="bp-dash-stats">
         <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
           <span class="bp-dash-stat-value">{{ org?.balls_balance ?? 0 }}</span>
@@ -201,71 +201,29 @@ type DashTab = 'projects' | 'suppliers' | 'summary';
         </a>
       </div>
 
-      <!-- FAVOURITES TAB -->
-      <div class="bp-mobile-panel" [class.active]="activeTab === 'suppliers'">
-        <div class="bp-fav-subtabs">
-          <button class="bp-fav-subtab" [class.active]="favTab === 'suppliers'" (click)="favTab = 'suppliers'">
-            Suppliers <span class="bp-fav-count">{{ favSuppliers.length }}</span>
-          </button>
-          <button class="bp-fav-subtab" [class.active]="favTab === 'items'" (click)="favTab = 'items'">
-            Items <span class="bp-fav-count">{{ favItems.length }}</span>
-          </button>
+      <!-- SETTINGS TAB -->
+      <div class="bp-mobile-panel" [class.active]="activeTab === 'settings'">
+        <div class="bp-section-header" style="padding: 12px 16px 6px;">
+          <span class="bp-section-title">Settings</span>
         </div>
-        <div *ngIf="favsLoading" style="padding:20px;text-align:center;">
-          <i class="pi pi-spin pi-spinner" style="color:var(--theme-accent);"></i>
-        </div>
-        <ng-container *ngIf="!favsLoading && favTab === 'suppliers'">
-          <p *ngIf="favSuppliers.length === 0" class="bp-mobile-empty">No favourite suppliers yet. Tap &#9829; on any supplier.</p>
-          <a *ngFor="let f of favSuppliers" class="bp-row-card" [routerLink]="['/suppliers', f.ref_id]">
-            <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
-            <div class="bp-row-body">
-              <div class="bp-row-name">{{ f.ref_name }}</div>
-              <div class="bp-row-meta" *ngIf="f.ref_category">{{ f.ref_category }}</div>
-            </div>
-            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-          </a>
-          <div class="bp-row-card" style="cursor:pointer;" routerLink="/suppliers">
-            <lucide-icon name="search" [size]="18" class="bp-row-icon"></lucide-icon>
-            <div class="bp-row-body"><div class="bp-row-name">Browse all suppliers</div></div>
-            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-          </div>
-        </ng-container>
-        <ng-container *ngIf="!favsLoading && favTab === 'items'">
-          <p *ngIf="favItems.length === 0" class="bp-mobile-empty">No favourite items yet. Tap &#9829; on any catalogue item.</p>
-          <a *ngFor="let f of favItems" class="bp-row-card" [routerLink]="['/suppliers', f.ref_id]">
-            <lucide-icon name="package" [size]="18" class="bp-row-icon"></lucide-icon>
-            <div class="bp-row-body">
-              <div class="bp-row-name">{{ f.ref_name }}</div>
-              <div class="bp-row-meta">
-                {{ f.supplier_name }}{{ f.ref_category ? ' · ' + f.ref_category : '' }}
-              </div>
-            </div>
-            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-          </a>
-        </ng-container>
-      </div>
-
-      <!-- SUMMARY TAB -->
-      <div class="bp-mobile-panel" [class.active]="activeTab === 'summary'">
-        <div class="bp-section-header" style="margin-top:8px;"><span class="bp-section-title">Upcoming</span></div>
-        <a class="bp-row-card" *ngIf="nextProject" [routerLink]="['/projects', nextProject.id]">
-          <lucide-icon name="calendar" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body">
-            <div class="bp-row-name">{{ nextProject.event_name || nextProject.name }}</div>
-            <div class="bp-row-meta">{{ nextProject.venue_name || nextProject.client_name }}{{ nextProject.event_date ? ' · ' + nextProject.event_date : '' }}</div>
-          </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-        <p *ngIf="!nextProject" class="bp-mobile-empty">No upcoming events.</p>
-        <div class="bp-section-header" style="margin-top:4px;"><span class="bp-section-title">Quick Actions</span></div>
-        <a routerLink="/projects/new" class="bp-row-card">
-          <lucide-icon name="plus" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">New Project</div></div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-        <a routerLink="/suppliers" class="bp-row-card">
+        <a routerLink="/settings/organisation" class="bp-row-card">
           <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">Browse Suppliers</div></div>
+          <div class="bp-row-body"><div class="bp-row-name">Organisation</div></div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </a>
+        <a routerLink="/settings/team" class="bp-row-card">
+          <lucide-icon name="users" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body"><div class="bp-row-name">Team</div></div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </a>
+        <a routerLink="/settings/subscription" class="bp-row-card">
+          <lucide-icon name="credit-card" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body"><div class="bp-row-name">Subscription</div></div>
+          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+        </a>
+        <a routerLink="/settings/appearance" class="bp-row-card">
+          <lucide-icon name="palette" [size]="18" class="bp-row-icon"></lucide-icon>
+          <div class="bp-row-body"><div class="bp-row-name">Appearance</div></div>
           <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
       </div>
@@ -437,8 +395,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Update activeTabPath so AppShell highlights correct tab
     const tabMap: Record<DashTab, string> = {
       projects: 'tab:projects',
-      suppliers: 'tab:suppliers',
-      summary: 'tab:summary'
+      settings: 'tab:settings',
     };
     this.shellCtx.set({
       ...this.shellCtx.current,
@@ -470,15 +427,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
           pills: [],
           tabs: [
             { label: 'Projects',  path: 'tab:projects' },
-            { label: 'Favourites', path: 'tab:favourites' },
-            { label: 'Summary',   path: 'tab:summary' },
+            { label: 'Settings',  path: 'tab:settings' },
           ],
           activeTabPath: 'tab:projects',
           onTabClick: (tab) => {
             const map: Record<string, DashTab> = {
               'tab:projects':  'projects',
-              'tab:favourites': 'suppliers',
-              'tab:summary':   'summary'
+              'tab:settings':  'settings',
             };
             if (map[tab.path]) this.setTab(map[tab.path]);
           }

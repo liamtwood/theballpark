@@ -44,6 +44,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
         data: { pageLabel: '', tabs: [] }
       },
+      {
+        path: 'favourites',
+        loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
+        data: { pageLabel: 'FAVOURITES', tabs: [] }
+      },
+      {
+        path: 'messages',
+        loadComponent: () => import('./features/projects/pages/project-detail/tabs/messages/messages.component').then(m => m.MessagesComponent),
+        data: { pageLabel: 'MESSAGES', tabs: [] }
+      },
 
       // ── CLIENTS ──
       {

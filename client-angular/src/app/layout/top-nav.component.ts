@@ -49,7 +49,7 @@ import { environment } from '../../environments/environment';
     <!-- MOBILE BOTTOM NAV -->
     <nav class="bp-bottom-nav">
 
-      <!-- DEFAULT NAV — Home, Suppliers, Settings -->
+      <!-- DEFAULT NAV — Home, Suppliers, Favourites, Messages -->
       <ng-container *ngIf="!inProject">
         <a routerLink="/" [routerLinkActiveOptions]="{exact:true}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
@@ -59,9 +59,13 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>Suppliers</span>
         </a>
-        <a routerLink="/settings" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="settings" [size]="20"></lucide-icon>
-          <span>Settings</span>
+        <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="heart" [size]="20"></lucide-icon>
+          <span>Favourites</span>
+        </a>
+        <a routerLink="/messages" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="message-circle" [size]="20"></lucide-icon>
+          <span>Messages</span>
         </a>
       </ng-container>
 
