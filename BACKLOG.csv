@@ -1,0 +1,30 @@
+type,area,title,description,priority,status
+backlog,settings,"Move Marketplace Logo to Appearance tab","Move logo upload from Organisation tab to Appearance tab",high,todo
+backlog,settings,"Replace live preview panel with Preview dialog","Remove sticky preview panel. Add Preview button that opens hero mockup in app-modal (p-dialog, bp-modal styleClass)",high,todo
+backlog,settings,"Pill text not uppercase","Add text-transform: uppercase to .bp-pill in styles.css",high,todo
+backlog,settings,"Invite member drawer","p-sidebar sliding from right, email input, standard parchment footer buttons",medium,todo
+backlog,settings,"Remove member confirm dialog","Confirm dialog before removing a team member",medium,todo
+backlog,settings,"Category management — request new category flow","Producer requests new category, admin reviews and approves",medium,todo
+backlog,settings,"Role management","Ability to change member role including owner transfer",low,todo
+backlog,settings,"Category display — supplier count","Show supplier count per category on Categories tab",low,todo
+backlog,settings,"Subscription upgrade/downgrade flow","Add upgrade/downgrade flow when pricing confirmed with Beth & Megan",low,todo
+backlog,dashboard,"Migrate local badge classes to app-status-badge","dashboard.component.ts uses local .bp-badge-* classes. Migrate to app-status-badge. styles.css already updated.",high,todo
+backlog,auth,"Google SSO","v1.3 milestone. Enrollment flow already prototyped in React prototype.",high,todo
+backlog,projects,"Project list view","Tabular view of all projects with status, client, date, estimate",high,todo
+backlog,projects,"Create project — AI brief parser flow","3-step modal: Paste Brief → Review Project Details → Review Items. Split by category, infer implied costs, flag ambiguities.",high,todo
+backlog,projects,"Estimate view","Line items by category, scope toggle (In Scope / Client Handles / TBC), running total, margin/VAT/contingency",high,todo
+backlog,projects,"Project detail","Header, brief summary, category sections",medium,todo
+backlog,balls,"Send lead flow","Select suppliers per category, review items, confirm send, deduct Ball from balance",high,todo
+backlog,balls,"Ball balance — nav + transaction history","Live balance in nav, transaction history view",high,todo
+backlog,balls,"Quote comparison","Side-by-side supplier quotes with Ballpark reference line",medium,todo
+backlog,suppliers,"Supplier browse","Filter by category, search, save to shortlist",high,todo
+backlog,suppliers,"Supplier catalogue","Items with delivery/installed pricing toggle",high,todo
+backlog,suppliers,"Supplier design cards","Portrait style with portfolio images",medium,todo
+backlog,supplier-product,"Lead inbox","Supplier-facing incoming leads with brief details",high,todo
+backlog,supplier-product,"Quote submission","Structured quote form for suppliers to respond to leads",high,todo
+backlog,supplier-product,"Catalogue management","Supplier add/edit catalogue items via drawer",medium,todo
+backlog,technical,"CLAUDE.md — Claude Code prompt file","Create .claude/CLAUDE.md in repo with working standards summary for CC",medium,todo
+backlog,technical,"Document DB schema architecture","Document single Supabase project structure in WORKING_STANDARDS.md",high,todo
+backlog,technical,"City / email / phone fields on org","Backend org model needs city, email, phone columns. Currently stored in form only.",low,todo
+backlog,technical,"Supabase environment separation","Not required for prototype phase. Review at AWS handoff.",low,todo
+backlog,ai,"Taxonomy intelligence — category & subcat suggestion","When a supplier writes a product description, AI reads it and: (1) suggests the category if not set, (2) suggests matching subcats from that category's controlled list, (3) flags if description doesn't match assigned category. Prompt pattern: given description + available categories + scoped subcat list → return suggested_category, confidence, suggested_subcats, flag. Works for both supplier catalogue uploads and producer brief parsing.",high,todo

@@ -5,13 +5,14 @@ import { Subscription } from 'rxjs';
 import { LucideAngularModule, Sun, Moon, Settings, House, User } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
+import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, AvatarComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent],
   template: `
     <nav class="bp-nav">
       <div class="bp-nav-left">
@@ -30,7 +31,10 @@ import { environment } from '../../environments/environment';
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
-        <span class="bp-credits-pill">{{ ballsBalance }} {{ creditLabel }}s left</span>
+        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
+        </a>
+        <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
@@ -44,7 +48,7 @@ import { environment } from '../../environments/environment';
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 var(--section-pad); height: var(--nav-height);
       border-bottom: 0.5px solid var(--color-border); background: var(--color-surface);
-      position: sticky; top: 0; z-index: 100;
+      flex-shrink: 0; z-index: 100;
     }
     .bp-nav-left { display: flex; align-items: center; }
     .bp-nav-logo { display: flex; align-items: baseline; text-decoration: none; gap: 0; }
@@ -58,18 +62,18 @@ import { environment } from '../../environments/environment';
       color: var(--theme-accent); letter-spacing: -0.01em;
     }
     .bp-nav-tagline {
-      font-family: var(--font-body); font-size: 10px; font-weight: 400;
-      color: var(--color-text-muted); margin-left: 10px;
+      font-family: var(--font-body); font-size: 10px; font-weight: 600;
+      color: var(--theme-accent); margin-left: 10px;
       text-transform: uppercase; letter-spacing: 0.07em;
     }
     .bp-nav-right { display: flex; align-items: center; gap: 24px; }
     .bp-nav-link {
-      font-size: var(--text-base); color: var(--color-text-muted);
+      font-size: var(--text-base); color: #9CA3AF;
       cursor: pointer; text-decoration: none; transition: color 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
-    .bp-nav-link:hover { color: var(--color-text-primary); }
-    .bp-nav-link.active { color: var(--color-text-primary); font-weight: 500; }
+    .bp-nav-link:hover { color: #111111; }
+    .bp-nav-link.active { color: var(--theme-accent); font-weight: 600; }
     .bp-credits-pill {
       background: var(--theme-bg); color: var(--theme-text);
       font-size: var(--text-sm); font-weight: 600;

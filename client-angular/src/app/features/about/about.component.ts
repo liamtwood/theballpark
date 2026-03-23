@@ -7,6 +7,7 @@ import { ConfigService } from '../../core/services/config.service';
   standalone: true,
   imports: [LucideAngularModule],
   template: `
+    <div class="bp-page">
     <div style="padding: var(--section-pad);">
     <div style="max-width:640px;margin:0 auto;">
       <div style="background:var(--color-surface);border:0.5px solid var(--color-border);border-radius:10px;padding:32px;">
@@ -38,6 +39,7 @@ import { ConfigService } from '../../core/services/config.service';
           <span>by Anthropic</span>
         </div>
       </div>
+    </div>
     </div>
     </div>
   `

@@ -12,6 +12,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
   standalone: true,
   imports: [CommonModule, KeyValuePipe, LucideAngularModule, GbpPipe, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading">
       <div class="mb-8"><h1 class="text-2xl font-bold text-gray-900">Suppliers</h1>
@@ -48,6 +49,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
           </div>
         </div>
       </div>
+    </div>
     </div>
   `
 })

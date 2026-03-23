@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Ballpark — Option D Reference Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================
+     BALLPARK DESIGN SYSTEM — OPTION D REFERENCE
+     This file defines the exact visual design
+     that the Angular app should implement.
+     ============================================ */
+
+  /* --- CSS Variables (theme: amber/default) --- */
+  :root {
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Libre Franklin', sans-serif;
+
+    /* Theme colours — amber default */
+    --theme-accent: #D97706;
+    --theme-bg: #F5F0E8;       /* hero + credits card background */
+    --theme-empty: #EDD9A3;    /* empty dots */
+    --theme-text: #92400E;     /* text on theme bg */
+    --theme-border: #E8D9C0;   /* border on theme surfaces */
+
+    /* Neutral palette — light mode */
+    --color-black: #1E1E1E;
+    --color-white: #FFFFFF;
+    --color-bg: #FFFFFF;
+    --color-surface: #FFFFFF;
+    --color-border: #EBEBEB;
+    --color-text-primary: #111111;
+    --color-text-secondary: #888888;
+    --color-text-muted: #BBBBBB;
+
+    /* Typography scale */
+    --text-xs: 10px;
+    --text-sm: 12px;
+    --text-base: 13px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-xl: 18px;
+    --text-2xl: 22px;
+    --text-hero: 48px;
+
+    /* Spacing */
+    --nav-height: 52px;
+    --section-pad: 28px;
+  }
+
+  /* --- Dark mode overrides --- */
+  [data-mode="dark"] {
+    --color-bg: #111111;
+    --color-surface: #1E1E1E;
+    --color-border: #2A2A2A;
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #888888;
+    --color-text-muted: #555555;
+    --theme-bg: #2A2218;       /* darkened parchment */
+    --theme-border: #3D3020;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: var(--text-base);
+    line-height: 1.5;
+  }
+
+  /* ============================================
+     TOP NAVIGATION BAR
+     - Full width, white background
+     - Logo left: Playfair Display serif
+       "The Ball" in black + "park" in theme accent
+     - Tagline: small caps, muted, inline after logo
+     - Right: nav links + credits pill + avatar
+     ============================================ */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--section-pad);
+    height: var(--nav-height);
+    border-bottom: 0.5px solid var(--color-border);
+    background: var(--color-surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+  }
+  .nav-logo-text {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+  }
+  .nav-logo-accent {
+    /* Second half of platform name — theme colour */
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: var(--theme-accent);
+    letter-spacing: -0.01em;
+  }
+  .nav-tagline {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--color-text-muted);
+    margin-left: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .nav-link {
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .nav-link:hover { color: var(--color-text-primary); }
+  .nav-link.active { color: var(--color-text-primary); font-weight: 500; }
+  .nav-credits-pill {
+    /* Credits remaining pill — always in top nav */
+    background: var(--theme-bg);
+    color: var(--theme-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .nav-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-black);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .nav-mode-btn {
+    /* Dark/light mode toggle */
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 0.5px solid var(--color-border);
+    background: var(--color-surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  /* ============================================
+     HERO BANNER
+     - Background: theme tint (same as credits card)
+     - Org name: Playfair Display, 48px, display weight
+     - Sub: user name + role, muted
+     - Optional pills (upcoming event, location)
+     ============================================ */
+  .hero {
+    background: var(--theme-bg);
+    padding: 32px var(--section-pad) 28px;
+    border-bottom: 0.5px solid var(--theme-border);
+  }
+  .hero-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .hero-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    background: var(--color-surface);
+    border: 0.5px solid var(--color-border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+  .hero-pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .hero-org-name {
+    font-family: var(--font-display);
+    font-size: var(--text-hero);
+    font-weight: 400;
+    color: var(--color-text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .hero-sub {
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+  }
+
+  /* ============================================
+     STATS BAR
+     - 4 columns, equal width
+     - Thin vertical dividers between cells
+     - Credits stat: label + subtext in theme accent
+     - Other stats: muted labels
+     ============================================ */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 0.5px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .stat-cell {
+    padding: 18px 24px;
+    border-right: 0.5px solid var(--color-border);
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
+  }
+  .stat-label.themed { color: var(--theme-accent); }
+  .stat-number {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .stat-sub.themed { color: var(--theme-accent); }
+
+  /* ============================================
+     MAIN BODY — TWO COLUMN LAYOUT
+     Left: project lists (flex 1)
+     Right: action button + credits card + saved suppliers (320px)
+     ============================================ */
+  .body {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    background: var(--color-bg);
+    min-height: calc(100vh - var(--nav-height) - 120px - 80px - 64px);
+  }
+  .body-left {
+    padding: var(--section-pad);
+    border-right: 0.5px solid var(--color-border);
+  }
+  .body-right {
+    padding: 24px;
+    background: var(--color-surface);
+  }
+
+  /* ============================================
+     PROJECT LIST SECTIONS
+     ============================================ */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .section-action {
+    font-size: var(--text-sm);
+    color: var(--theme-accent);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .section-spacer { margin-top: 24px; }
+
+  .project-card {
+    background: var(--color-surface);
+    border: 0.5px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .project-card:hover { border-color: #ccc; }
+
+  .project-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .project-name {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .project-meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .project-meta-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00B84A;
+  }
+  .project-stats {
+    display: flex;
+    gap: 16px;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  /* Status badges */
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .badge-active {
+    background: var(--theme-bg);
+    color: var(--theme-text);
+  }
+  .badge-closed {
+    background: #F3F4F6;
+    color: #9CA3AF;
+  }
+
+  /* ============================================
+     RIGHT COLUMN
+     ============================================ */
+
+  /* Primary CTA button */
+  .cta-btn {
+    width: 100%;
+    background: var(--color-black);
+    color: #fff;
+    border: none;
+    padding: 13px;
+    border-radius: 8px;
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+    margin-bottom: 16px;
+    transition: background 0.2s;
+  }
+  .cta-btn:hover { background: var(--theme-accent); }
+
+  /* Credits card
+     IMPORTANT: same background as hero banner */
+  .credits-card {
+    background: var(--theme-bg);   /* MATCHES HERO */
+    border: 0.5px solid var(--theme-border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .credits-number {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .credits-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--theme-accent);
+    margin-bottom: 12px;
+  }
+  /* Dot visualiser: 10 dots total */
+  .credits-dots {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .credit-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .credit-dot.filled { background: var(--theme-accent); }
+  .credit-dot.empty { background: var(--theme-empty); }
+
+  .credits-desc {
+    font-size: 11px;
+    color: var(--theme-text);
+    line-height: 1.5;
+  }
+
+  /* Saved suppliers list */
+  .saved-suppliers-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .supplier-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--color-border);
+  }
+  .supplier-row:last-child { border-bottom: none; }
+  .supplier-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--theme-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .supplier-name {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .supplier-meta {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .supplier-price {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     REFERENCE IMPLEMENTATION
+     This is the exact layout the Angular app
+     should replicate. Read the CSS comments
+     carefully — they explain the design rules.
+     ============================================ -->
+
+<nav class="nav">
+  <div class="nav-logo">
+    <!-- Logo: first half black, second half theme accent -->
+    <!-- Split the platform name roughly in half -->
+    <span class="nav-logo-text">The Ball</span><span class="nav-logo-accent">park</span>
+    <span class="nav-tagline">Exhibition Costing</span>
+  </div>
+  <div class="nav-right">
+    <a class="nav-link active">Home</a>
+    <a class="nav-link">New Event</a>
+    <!-- Credits pill: theme bg + theme text colour -->
+    <span class="nav-credits-pill">7 Balls left</span>
+    <a class="nav-link">Settings</a>
+    <button class="nav-mode-btn" title="Toggle dark/light mode">☀️</button>
+    <div class="nav-avatar">JH</div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-pills">
+    <div class="hero-pill">
+      <div class="hero-pill-dot" style="background:#3B82F6;"></div>
+      1 upcoming event
+    </div>
+    <div class="hero-pill">
+      <div class="hero-pill-dot" style="background:#EF4444;"></div>
+      London
+    </div>
+  </div>
+  <!-- Org name: Playfair Display, 48px -->
+  <h1 class="hero-org-name">Anchor Events</h1>
+  <p class="hero-sub">Jamie Hollis · Agency account</p>
+</div>
+
+<div class="stats-bar">
+  <!-- Credits stat: label + subtext in theme accent -->
+  <div class="stat-cell">
+    <div class="stat-label themed">Balls remaining</div>
+    <div class="stat-number">7</div>
+    <div class="stat-sub themed">resets in 12 days</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Active Events</div>
+    <div class="stat-number">1</div>
+    <div class="stat-sub">Centrica Energy — costing</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Saved suppliers</div>
+    <div class="stat-number">18</div>
+    <div class="stat-sub">across 5 categories</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Quotes in progress</div>
+    <div class="stat-number">3</div>
+    <div class="stat-sub">awaiting response</div>
+  </div>
+</div>
+
+<div class="body">
+  <div class="body-left">
+    <div class="section-header">
+      <span class="section-title">Active Events</span>
+      <span class="section-action">+ New Event</span>
+    </div>
+
+    <div class="project-card">
+      <div class="project-card-top">
+        <span class="project-name">Centrica Energy — ExCeL London</span>
+        <span class="badge badge-active">Costing</span>
+      </div>
+      <div class="project-meta">
+        <div class="project-meta-dot"></div>
+        Centrica · 6–8 Jun 2025 · 9×6m
+      </div>
+      <div class="project-stats">
+        <span>5 categories</span>
+        <span>Est. £28,400</span>
+        <span>2 booked</span>
+      </div>
+    </div>
+
+    <div class="section-spacer">
+      <div class="section-header">
+        <span class="section-title">Completed Events</span>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-card-top">
+        <span class="project-name">HSBC — Money20/20 Europe</span>
+        <span class="badge badge-closed">Closed</span>
+      </div>
+      <div class="project-meta">HSBC Innovation · 3–5 Jun 2024 · 12×9m</div>
+      <div class="project-stats">
+        <span>6 categories</span>
+        <span>£61,200 final</span>
+        <span>6 booked</span>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-card-top">
+        <span class="project-name">Unilever — Cannes Lions</span>
+        <span class="badge badge-closed">Closed</span>
+      </div>
+      <div class="project-meta">Unilever · Jun 2024 · 6×4m</div>
+      <div class="project-stats">
+        <span>4 categories</span>
+        <span>£14,800 final</span>
+        <span>4 booked</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-right">
+    <button class="cta-btn">+ Start new Event</button>
+
+    <!-- Credits card: SAME background as hero banner -->
+    <div class="credits-card">
+      <div class="credits-number">7</div>
+      <div class="credits-label">Balls remaining this month</div>
+      <!-- 10 dots: filled = credits used, empty = credits remaining -->
+      <div class="credits-dots">
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot filled"></div>
+        <div class="credit-dot empty"></div>
+        <div class="credit-dot empty"></div>
+        <div class="credit-dot empty"></div>
+      </div>
+      <p class="credits-desc">
+        Each project fires simultaneously to all selected suppliers.
+        Build and estimate for free — only spend a Ball when ready to engage.
+      </p>
+    </div>
+
+    <div class="saved-suppliers-title">Saved suppliers</div>
+    <div class="supplier-row">
+      <div class="supplier-icon">🏗️</div>
+      <div>
+        <div class="supplier-name">Apex Exhibits</div>
+        <div class="supplier-meta">Stand structure · Bermondsey</div>
+      </div>
+      <div class="supplier-price">from £1,400/sqm</div>
+    </div>
+    <div class="supplier-row">
+      <div class="supplier-icon">📺</div>
+      <div>
+        <div class="supplier-name">Visuals Lab</div>
+        <div class="supplier-meta">AV & screens · Shoreditch</div>
+      </div>
+      <div class="supplier-price">from £480/screen</div>
+    </div>
+    <div class="supplier-row">
+      <div class="supplier-icon">🖨️</div>
+      <div>
+        <div class="supplier-name">Studio Print Works</div>
+        <div class="supplier-meta">Graphics & print · Hackney</div>
+      </div>
+      <div class="supplier-price">from £520</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -56,59 +56,122 @@
 }
 
 * { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; padding: 0; }
 body {
   font-family: var(--font-body);
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-size: var(--text-base);
   line-height: 1.5;
-  margin: 0;
+}
+
+/* Lucide icon custom element — must be inline-flex so it sits
+   beside text in flex rows instead of stacking vertically.
+   The inner SVG also needs to not be display:block. */
+lucide-icon {
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+lucide-icon svg {
+  display: block;
 }
 
 /* ============================================
-   GLOBAL THEME-AWARE BUTTONS (PrimeNG)
-   Default: theme-bg background, theme-text colour
-   Hover: theme-accent background, white text
+   FIELD LABEL STANDARD
+   Single class used in ALL input contexts:
+   settings, drawers, modals, forms.
+   View mode and edit mode use the same class
+   so there is no visual jump when toggling.
+   Change here to change everywhere.
    ============================================ */
+.bp-field-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);   /* 12px — consistent view + edit */
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+/* ============================================
+   BALLPARK BUTTON STANDARDS
+   All p-button variants — theme aware
+   Change here to change everywhere
+   ============================================ */
+
+/* Default filled button */
 .p-button {
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
-  border: 0.5px solid var(--theme-border) !important;
-  transition: all 0.2s ease !important;
+  background: var(--theme-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 9px 20px !important;
+  transition: background 0.15s, color 0.15s !important;
 }
 .p-button:hover:not(:disabled) {
+  background: var(--theme-text) !important;
+  color: #fff !important;
+}
+.p-button:focus {
+  box-shadow: 0 0 0 2px var(--theme-bg) !important;
+}
+.p-button:disabled {
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
+/* Outlined button */
+.p-button.p-button-outlined {
+  background: #fff !important;
+  color: var(--theme-accent) !important;
+  border: 0.5px solid var(--theme-accent) !important;
+  padding: 9px 20px !important;
+}
+.p-button.p-button-outlined:hover:not(:disabled) {
   background: var(--theme-accent) !important;
-  color: #ffffff !important;
-  border-color: var(--theme-accent) !important;
+  color: #fff !important;
 }
-.p-button:disabled, .p-button.p-disabled {
-  background: #F5F5F5 !important;
-  color: #bbb !important;
-  border-color: #eee !important;
-}
-/* Text-only buttons (cancel, icon-only) */
+
+/* Text/ghost button */
 .p-button.p-button-text {
   background: transparent !important;
+  color: var(--theme-accent) !important;
   border: none !important;
-  color: var(--color-text-secondary) !important;
 }
 .p-button.p-button-text:hover:not(:disabled) {
   background: var(--theme-bg) !important;
   color: var(--theme-text) !important;
 }
-/* Outlined buttons */
-.p-button.p-button-outlined {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border: 0.5px solid var(--theme-border) !important;
-}
-.p-button.p-button-outlined:hover:not(:disabled) {
+
+/* Parchment button (modal footer only) */
+.p-button.bp-btn-cancel,
+.p-button.bp-btn-save {
   background: var(--theme-bg) !important;
   color: var(--theme-text) !important;
+  border: 0.5px solid var(--theme-bg) !important;
 }
-/* Danger severity */
-.p-button.p-button-danger, .p-button.p-button-danger.p-button-text {
-  color: #EF4444 !important;
+.p-button.bp-btn-cancel:hover,
+.p-button.bp-btn-save:hover {
+  background: var(--theme-accent) !important;
+  color: #fff !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Danger button */
+.p-button.p-button-danger {
+  background: #fff !important;
+  color: #DC2626 !important;
+  border: 0.5px solid #FCA5A5 !important;
+}
+.p-button.p-button-danger:hover:not(:disabled) {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
 }
 
 /* ============================================
@@ -134,6 +197,12 @@ body {
   border-color: var(--theme-accent) !important;
   box-shadow: 0 0 0 1px var(--theme-accent) !important;
 }
+/* Input padding — equal all sides for consistent breathing room */
+.p-inputtext {
+  padding: 0.5rem !important;
+  font-size: var(--text-md) !important;
+  font-family: var(--font-body) !important;
+}
 /* Dropdown focus */
 .p-dropdown:not(.p-disabled).p-focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
 /* InputSwitch — on state uses theme */
@@ -147,8 +216,8 @@ body {
   color: var(--theme-text) !important;
 }
 /* Dialog header */
-.p-dialog .p-dialog-header { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
-.p-dialog .p-dialog-content { background: var(--color-surface) !important; color: var(--color-text-primary) !important; }
+.p-dialog .p-dialog-header { background: var(--color-surface); color: var(--color-text-primary); }
+.p-dialog .p-dialog-content { background: var(--color-surface); color: var(--color-text-primary); }
 /* Confirm dialog */
 .p-confirm-dialog .p-dialog-footer { background: var(--color-surface) !important; }
 /* Sort icon */
@@ -226,23 +295,417 @@ body {
 
 /* ============================================
    GLOBAL LAYOUT ALIGNMENT
+   Now driven by --hero-align / --hero-align-flex CSS variables
+   set by AppShellComponent.syncFromConfig()
    ============================================ */
-/* Centre mode */
-.layout-centre .bp-hero,
-.layout-centre .bp-hero-tabs { text-align: center; }
-.layout-centre .bp-hero-pills { justify-content: center; }
-.layout-centre .bp-hero-tabs { justify-content: center; }
 .layout-centre .bp-content { max-width: 1200px; margin: 0 auto; }
 .layout-centre .bp-body { max-width: 1200px; margin: 0 auto; }
-
-/* Left mode */
-.layout-left .bp-hero { text-align: left; }
-.layout-left .bp-hero-pills { justify-content: flex-start; }
-.layout-left .bp-hero-tabs { justify-content: flex-start; }
 
 /* Dark mode disabled button override */
 [data-mode="dark"] .p-button:disabled, [data-mode="dark"] .p-button.p-disabled {
   background: var(--color-border) !important;
   color: var(--color-text-muted) !important;
   border-color: var(--color-border) !important;
+}
+
+/* ============================================
+   STATUS PILLS — app-status-badge
+   Single source of truth for all pill colours.
+   Change here to change everywhere.
+   ============================================ */
+
+/* Project statuses */
+.bp-pill-active    { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-active     { background: #16A34A; }
+.bp-pill-draft     { background: #FEF9C3; color: #854D0E; border: 0.5px solid #FDE047; }
+.bp-dot-draft      { background: #CA8A04; }
+.bp-pill-costing   { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-costing    { background: #3B82F6; }
+.bp-pill-closed    { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-closed     { background: #9CA3AF; }
+.bp-pill-completed { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-completed  { background: #9CA3AF; }
+.bp-pill-cancelled { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-cancelled  { background: #9CA3AF; }
+
+/* Lead / Ball statuses */
+.bp-pill-sent      { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+.bp-dot-sent       { background: #7C3AED; }
+.bp-pill-quoted    { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-quoted     { background: #3B82F6; }
+.bp-pill-confirmed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-confirmed  { background: #16A34A; }
+.bp-pill-declined  { background: #FEE2E2; color: #991B1B; border: 0.5px solid #FCA5A5; }
+.bp-dot-declined   { background: #DC2626; }
+.bp-pill-pending   { background: #FEF9C3; color: #854D0E; border: 0.5px solid #FDE047; }
+.bp-dot-pending    { background: #CA8A04; }
+.bp-pill-accepted  { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-accepted   { background: #16A34A; }
+.bp-pill-in_progress { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-in_progress  { background: #3B82F6; }
+
+/* Team roles — no dot */
+.bp-pill-owner  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
+.bp-pill-member { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-pill-admin  { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+
+/* Fallback */
+.bp-pill- { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+
+/* ============================================
+   MODAL OVERRIDES — must come last to win
+   ============================================ */
+.bp-modal.p-dialog .p-dialog-header,
+.p-dialog.bp-modal .p-dialog-header {
+  background: var(--theme-bg) !important;
+  border-bottom: 0.5px solid var(--theme-border) !important;
+  padding: 24px 24px 20px 24px !important;
+}
+.bp-modal.p-dialog .p-dialog-header .p-dialog-title,
+.p-dialog.bp-modal .p-dialog-header .p-dialog-title {
+  font-family: var(--font-display) !important;
+  font-size: 22px !important;
+  font-weight: 400 !important;
+  color: #1C1208 !important;
+}
+.bp-modal.p-dialog .p-dialog-header .p-dialog-header-close,
+.p-dialog.bp-modal .p-dialog-header .p-dialog-header-close {
+  background: rgba(0,0,0,0.06) !important;
+  color: #8C7B6B !important;
+  border-radius: 50% !important;
+  border: none !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+.bp-modal.p-dialog .p-dialog-header .p-dialog-header-close:hover,
+.p-dialog.bp-modal .p-dialog-header .p-dialog-header-close:hover {
+  background: rgba(0,0,0,0.12) !important;
+  color: #1C1208 !important;
+}
+.bp-modal.p-dialog .p-dialog-content,
+.p-dialog.bp-modal .p-dialog-content {
+  padding: 24px !important;
+  background: #fff !important;
+}
+.bp-modal.p-dialog .p-dialog-footer,
+.p-dialog.bp-modal .p-dialog-footer {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  padding: 16px 24px 24px 24px !important;
+  border-top: 0.5px solid #F0F0F0 !important;
+  background: #fff !important;
+}
+.bp-modal.p-dialog .p-dialog-footer .p-button,
+.p-dialog.bp-modal .p-dialog-footer .p-button {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+  border: 0.5px solid var(--theme-bg) !important;
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 9px 20px !important;
+}
+.bp-modal.p-dialog .p-dialog-footer .p-button:hover,
+.p-dialog.bp-modal .p-dialog-footer .p-button:hover {
+  background: var(--theme-accent) !important;
+  color: #fff !important;
+  border-color: var(--theme-accent) !important;
+}
+/* =============================================================
+   SETTINGS — GLOBAL STYLES
+   Append to styles.css
+   Covers all shared patterns across:
+     settings-shell, ballpark-settings-shell,
+     organisation, team, subscription, categories, marketplace
+   ============================================================= */
+
+/* ── HERO BANNER ── */
+.bp-hero {
+  background: var(--theme-bg);
+  padding: 32px var(--section-pad) 0;
+  border-bottom: 0.5px solid var(--theme-border);
+}
+.bp-hero-org-name {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.bp-hero-page-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+.bp-hero-tabs { display: flex; }
+.bp-hero-tab {
+  padding: 10px 20px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.bp-hero-tab:hover { color: var(--color-text-primary); }
+.bp-hero-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+
+/* ── PAGE LAYOUT ── */
+.bp-settings-body  { max-width: 640px; margin: 0 auto; padding: var(--section-pad); }
+.bp-content-pad    { padding: var(--section-pad); max-width: 820px; margin: 0 auto; }
+.bp-team-title-bar { padding: var(--section-pad) var(--section-pad) 0; border-bottom: 0.5px solid var(--color-border); }
+.bp-team-title-bar .bp-page-title { margin-bottom: 0; padding-bottom: var(--section-pad); }
+
+/* ── PAGE TITLE ── */
+.bp-page-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  color: var(--theme-accent);
+  margin-bottom: 24px;
+}
+
+/* ── SECTIONS ── */
+.bp-section         { padding-bottom: 32px; margin-bottom: 8px; }
+.bp-section-header  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.bp-section-actions { display: flex; align-items: center; gap: 2px; }
+.bp-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--theme-accent);
+  text-transform: uppercase;
+}
+
+/* ── FIELD LAYOUT ── */
+.bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+/* ── FIELD LABELS & VALUES ── */
+.bp-field-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: block;
+}
+.bp-field-value-inline {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.bp-muted-text { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* ── ICON ACTION BUTTONS ── */
+.bp-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: color 0.15s, background 0.15s;
+  font-size: 13px;
+}
+.bp-icon-btn:hover          { color: var(--theme-accent); background: var(--theme-bg); }
+.bp-icon-save               { color: var(--theme-accent); }
+.bp-icon-save:hover:not(:disabled) { background: var(--theme-bg); }
+.bp-icon-save:disabled      { opacity: 0.4; cursor: default; }
+.bp-icon-cancel:hover       { color: var(--color-text-primary); background: var(--color-border); }
+.bp-icon-danger             { color: var(--color-text-muted); }
+.bp-icon-danger:hover       { color: #ef4444; background: #fef2f2; }
+
+/* ── DRAWER CHROME ── */
+.bp-drawer.p-sidebar .p-sidebar-header {
+  background: var(--theme-bg) !important;
+  border-bottom: 0.5px solid var(--theme-border) !important;
+  padding: 20px 24px !important;
+}
+.bp-drawer.p-sidebar .p-sidebar-content { padding: 0 !important; }
+.bp-drawer.p-sidebar .p-sidebar-footer {
+  background: #fff !important;
+  border-top: 0.5px solid var(--color-border) !important;
+  padding: 16px 24px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+.bp-drawer-header     { display: flex; flex-direction: column; gap: 2px; }
+.bp-drawer-header-row { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
+.bp-drawer-label      { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--theme-text); text-transform: uppercase; }
+.bp-drawer-title      { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
+.bp-drawer-body       { padding: 24px; }
+.bp-drawer-ops-footer { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+
+/* ── INPUT STATES — PrimeNG overrides (must be global) ── */
+
+/* View mode — readonly inputs */
+.bp-field-readonly.p-inputtext,
+.bp-field-readonly.p-inputtext.p-filled,
+.bp-field-readonly.p-inputtext:enabled,
+.bp-field-readonly.p-inputtext:enabled.p-filled,
+.bp-field-readonly.p-inputtext:hover,
+.bp-field-readonly.p-inputtext:enabled:hover,
+.bp-field-readonly.p-inputtext:enabled:focus {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* View mode — readonly textarea */
+.bp-field-readonly.p-inputtextarea,
+.bp-field-readonly.p-inputtextarea:enabled,
+.bp-field-readonly.p-inputtextarea:hover,
+.bp-field-readonly.p-inputtextarea:enabled:hover,
+.bp-field-readonly.p-inputtextarea:enabled:focus {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  background: transparent !important;
+}
+
+/* Edit mode — parchment bg + accent border */
+.bp-input-edit.p-inputtext,
+input.bp-input-edit,
+textarea.bp-input-edit {
+  background: var(--theme-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-accent) !important;
+}
+.bp-input-edit.p-inputtext:focus,
+input.bp-input-edit:focus,
+textarea.bp-input-edit:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
+}
+
+/* Edit mode — nested inputtext (inputNumber, chips) */
+.bp-input-edit .p-inputtext {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Edit mode — pInputNumber wrapper */
+.bp-input-edit.p-inputnumber,
+.bp-input-edit.p-inputnumber:hover {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-accent) !important;
+  background: var(--theme-bg) !important;
+  border-radius: 6px;
+}
+.bp-input-edit.p-inputnumber .p-inputtext {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Readonly mode — pInputNumber wrapper */
+.bp-field-readonly.p-inputnumber,
+.bp-field-readonly.p-inputnumber:hover {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-border) !important;
+  background: transparent !important;
+  border-radius: 6px;
+  cursor: default !important;
+}
+.bp-field-readonly.p-inputnumber .p-inputtext {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+/* Edit mode — dropdown */
+.bp-input-edit.p-dropdown {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-accent) !important;
+}
+.bp-input-edit.p-dropdown:not(.p-disabled).p-focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
+}
+
+/* Edit mode — chips */
+.bp-input-edit.p-chips .p-inputtext {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Team search input — borderless inside wrapper */
+.bp-team-search-input.p-inputtext {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  background: transparent !important;
+}
+/* =============================================================
+   SCROLL FIX — append to styles.css
+   ============================================================= */
+
+/* ── APP ROOT ── */
+app-root {
+  display: block;
+  height: 100%;
+}
+app-top-nav { flex-shrink: 0; }
+
+/* ── MAIN CONTENT AREA ── */
+.bp-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── NON-SHELL PAGES ── */
+.bp-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+/* =============================================================
+   APP SHELL — append to styles.css
+   ============================================================= */
+
+/* ── BALLS TAG (top-nav) ── */
+.bp-balls-tag.p-tag {
+  background: var(--theme-bg) !important;
+  color: var(--theme-accent) !important;
+  border: 1.5px solid var(--theme-accent) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
+/* ── HERO — alignment driven by CSS variable set on app-shell host ── */
+.bp-hero {
+  text-align: var(--hero-align, center);
+}
+.bp-hero-tabs {
+  justify-content: var(--hero-align-flex, center);
+}
+
+/* ── PAGE TITLE — picks up same alignment token automatically ── */
+.bp-page-title {
+  text-align: var(--hero-align, center);
 }

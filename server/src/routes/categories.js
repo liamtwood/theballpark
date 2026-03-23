@@ -25,6 +25,15 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /:id — partial update (images, tags, enabled, etc.)
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const cat = await CategoryService.update(req.params.id, req.body);
+    if (!cat) return res.status(404).json({ error: 'Not found' });
+    res.json(cat);
+  } catch (err) { next(err); }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const cat = await CategoryService.softDelete(req.params.id);

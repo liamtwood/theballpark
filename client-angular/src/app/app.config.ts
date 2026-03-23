@@ -9,7 +9,7 @@ import {
   Moon, Sun, User, Settings, House,
   Building2, Users, Layers, CreditCard, Palette, Upload, Save,
   Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
-  Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone,
+  Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen,
 } from 'lucide-angular';
 import { routes } from './app.routes';
 
@@ -27,7 +27,7 @@ export const appConfig: ApplicationConfig = {
         Moon, Sun, User, Settings, House,
         Building2, Users, Layers, CreditCard, Palette, Upload, Save,
         Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
-        Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone,
+        Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen,
       }),
     },
   ]

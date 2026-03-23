@@ -2,6 +2,14 @@
 
 All notable changes to The Ballpark are documented here.
 
+## [1.2] - 2026-03-19
+
+### Fixed
+- **Icons inline with text**: Added global `lucide-icon { display: inline-flex; }` rule. Fixes icons stacking above text in nav links, stats bar, action buttons, settings tabs, and supplier headings.
+
+### Changed
+- Version badge bumped to v1.2 across all environments (dev, preview, production).
+
 ## [1.1] - 2026-03-19 — Design System & Architecture
 
 ### Design

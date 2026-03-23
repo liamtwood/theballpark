@@ -22,6 +22,7 @@ import { Client, ParsedBrief } from '../../../../models';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, LucideAngularModule, StepsModule, ButtonModule, InputTextModule, InputNumberModule, InputTextareaModule, DropdownModule, InputSwitchModule, MessageModule],
   template: `
+    <div class="bp-page">
     <div class="max-w-3xl mx-auto">
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Create New Project</h1>
       <p class="text-sm text-gray-500 mb-8">Set up your exhibition project step by step</p>
@@ -128,6 +129,7 @@ import { Client, ParsedBrief } from '../../../../models';
         <p-button *ngIf="step<4" icon="pi pi-chevron-right" iconPos="right" label="Next" [disabled]="!canNext()" (click)="step=step+1"></p-button>
         <p-button *ngIf="step===4" icon="pi pi-check" label="{{submitting?'Creating...':'Create Project'}}" [disabled]="submitting" (click)="submit()" [loading]="submitting"></p-button>
       </div>
+    </div>
     </div>
   `
 })

@@ -19,6 +19,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   imports: [CommonModule, FormsModule, RouterModule, TableModule, ButtonModule, DialogModule, InputTextModule, ToastModule, LoadingSpinnerComponent, EmptyStateComponent],
   providers: [MessageService],
   template: `
+    <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
     <div *ngIf="!loading">
       <div class="flex items-center justify-between mb-8">
@@ -53,6 +54,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </ng-template>
     </p-dialog>
     <p-toast></p-toast>
+    </div>
   `
 })
 export class ClientListComponent implements OnInit {
