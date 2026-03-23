@@ -6,8 +6,6 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
-import { ProjectService } from '../../../core/services/project.service';
-import { SupplierService } from '../../../core/services/supplier.service';
 import { ShellContextService, ShellContext } from '../../../core/services/shell-context.service';
 
 interface ShellTab { label: string; path: string; }
@@ -32,30 +30,6 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
       <!-- SUB — "Org name · status" on project pages, page label elsewhere -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
-
-      <!-- STATS BAR — org home only -->
-      <div *ngIf="showStats && !hasContext" class="bp-hero-stats">
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">{{ creditLabel }}s remaining</span>
-          <span class="bp-hero-stat-value">{{ ballsBalance }}</span>
-          <span class="bp-hero-stat-sub" *ngIf="ballsResetDays">resets in {{ ballsResetDays }} days</span>
-        </div>
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">Active Projects</span>
-          <span class="bp-hero-stat-value">{{ activeCount }}</span>
-          <span class="bp-hero-stat-sub" *ngIf="activeProjectName">{{ activeProjectName }}</span>
-        </div>
-        <div class="bp-hero-stat">
-          <span class="bp-hero-stat-label">Saved suppliers</span>
-          <span class="bp-hero-stat-value">{{ supplierCount }}</span>
-          <span class="bp-hero-stat-sub">across categories</span>
-        </div>
-        <div class="bp-hero-stat" style="border-right:none;">
-          <span class="bp-hero-stat-label">Quotes in progress</span>
-          <span class="bp-hero-stat-value">{{ quotesCount }}</span>
-          <span class="bp-hero-stat-sub">awaiting response</span>
-        </div>
-      </div>
 
       <!-- TABS — context tabs (project) or route tabs (settings etc.) -->
       <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
@@ -173,11 +147,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
   showStats    = true;
   creditLabel  = 'Ball';
   ballsBalance      = 0;
-  ballsResetDays    = 0;
-  activeCount       = 0;
-  activeProjectName = '';
-  supplierCount     = 0;
-  quotesCount       = 0;
   isAdmin = true; // stub until v1.3 auth
 
   navGroups: NavGroup[] = [
@@ -221,8 +190,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private orgSvc: OrgService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
-    private projectService: ProjectService,
-    private supplierService: SupplierService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -245,21 +212,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
-
-    // Load stats
-    this.projectService.getAll().subscribe((projects: any[]) => {
-      const active = (projects || []).filter((p: any) => p.status_name !== 'completed' && p.status_name !== 'cancelled');
-      this.activeCount = active.length;
-      this.activeProjectName = active.length > 0 ? active[0].name : '';
-      this.cdr.detectChanges();
-    });
-    this.supplierService.getAll().subscribe((suppliers: any[]) => {
-      this.supplierCount = (suppliers || []).length;
-      this.cdr.detectChanges();
-    });
-    const now = new Date();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    this.ballsResetDays = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Config
     this.syncFromConfig(this.configService.current as any);
