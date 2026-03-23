@@ -864,3 +864,16 @@ app-top-nav { flex-shrink: 0; }
   color: var(--theme-accent) !important;
   font-weight: 600 !important;
 }
+
+/* ── FILLED HEART when active ── */
+.bp-heart-btn.active lucide-icon svg,
+.bp-heart-btn-sm.active lucide-icon svg,
+.bp-hero-heart.active lucide-icon svg {
+  fill: #E11D48 !important;
+  stroke: #E11D48 !important;
+}
+
+/* ── CENTER hero tabs ── */
+.bp-hero-tabs {
+  justify-content: center !important;
+}
