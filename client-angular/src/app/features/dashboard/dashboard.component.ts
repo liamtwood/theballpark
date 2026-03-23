@@ -115,7 +115,7 @@ import { ButtonModule } from 'primeng/button';
           </div>
           <div *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</div>
           <div *ngFor="let p of activeProjects" class="bp-card" [routerLink]="['/projects', p.id]">
-            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color && p.status_name !== 'draft'">
+            <div class="bp-card-img" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null" [class.bp-card-grad-draft]="!p.cover_image_url && !p.card_color?.trim() && p.status_name === 'draft'" [class.bp-card-grad-active]="!p.cover_image_url && !p.card_color?.trim() && p.status_name !== 'draft'">
               <div class="bp-card-img-hover" (click)="openUploadPanel($event, p)"><lucide-icon name="pencil" [size]="16"></lucide-icon></div>
               <div *ngIf="p.client_logo_url" class="bp-card-logo" [style.background-image]="'url(' + p.client_logo_url + ')'"></div>
               <div *ngIf="!p.client_logo_url && p.client_name" class="bp-card-logo bp-card-logo-text">{{ clientInitials(p.client_name) }}</div>
@@ -274,7 +274,7 @@ import { ButtonModule } from 'primeng/button';
     }
     .bp-card:hover { border-color: var(--color-text-muted); }
     .bp-card-img {
-      width: 80px; min-height: 80px; flex-shrink: 0; border-radius: 10px 0 0 10px;
+      width: 120px; min-height: 90px; flex-shrink: 0; border-radius: 10px 0 0 10px;
       background-size: cover; background-position: center; position: relative; overflow: hidden;
     }
     .bp-card-img-hover {
