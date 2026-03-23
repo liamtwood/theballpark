@@ -46,7 +46,7 @@ export const routes: Routes = [
       },
       {
         path: 'favourites',
-        loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
+        loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
         data: { pageLabel: 'FAVOURITES', tabs: [] }
       },
       {
