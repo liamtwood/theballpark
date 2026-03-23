@@ -231,7 +231,7 @@ import { ButtonModule } from 'primeng/button';
 
     /* ── THREE-COLUMN BODY ── */
     .bp-body {
-      display: grid; grid-template-columns: 320px 1fr 320px;
+      display: grid; grid-template-columns: 384px 1fr 320px;
       background: var(--color-bg);
       min-height: calc(100vh - var(--nav-height) - 120px - 80px - 64px);
     }
@@ -409,7 +409,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  cardGradient(p: Project): string { return ''; }
+  cardGradient(p: Project): string {
+    if (p.card_color) return '';
+    return p.status_name === 'draft'
+      ? 'linear-gradient(160deg, #374151, #4B5563)'
+      : 'linear-gradient(160deg, #1e3a5f, #2563eb)';
+  }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = {

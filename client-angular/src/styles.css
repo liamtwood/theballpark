@@ -695,6 +695,7 @@ app-top-nav { flex-shrink: 0; }
   border: 1.5px solid var(--theme-accent) !important;
   font-weight: 600 !important;
   font-size: 12px !important;
+  border-radius: 20px !important;
 }
 
 /* ── HERO — alignment driven by CSS variable set on app-shell host ── */
