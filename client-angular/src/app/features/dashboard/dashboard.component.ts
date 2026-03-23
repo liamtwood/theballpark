@@ -14,6 +14,7 @@ import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
+import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 
 type DashTab = 'projects' | 'suppliers' | 'summary';
 
@@ -200,21 +201,48 @@ type DashTab = 'projects' | 'suppliers' | 'summary';
         </a>
       </div>
 
-      <!-- SUPPLIERS TAB -->
+      <!-- FAVOURITES TAB -->
       <div class="bp-mobile-panel" [class.active]="activeTab === 'suppliers'">
-        <div class="bp-section-header">
-          <span class="bp-section-title">Saved Suppliers</span>
-          <a routerLink="/suppliers" class="bp-section-action">Browse all</a>
+        <div class="bp-fav-subtabs">
+          <button class="bp-fav-subtab" [class.active]="favTab === 'suppliers'" (click)="favTab = 'suppliers'">
+            Suppliers <span class="bp-fav-count">{{ favSuppliers.length }}</span>
+          </button>
+          <button class="bp-fav-subtab" [class.active]="favTab === 'items'" (click)="favTab = 'items'">
+            Items <span class="bp-fav-count">{{ favItems.length }}</span>
+          </button>
         </div>
-        <p *ngIf="suppliers.length === 0" class="bp-mobile-empty">No suppliers saved yet.</p>
-        <a *ngFor="let s of suppliers" class="bp-row-card" routerLink="/suppliers">
-          <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body">
-            <div class="bp-row-name">{{ s.name }}</div>
-            <div class="bp-row-meta">{{ s.email || '' }}{{ s.city ? ' · ' + s.city : '' }}</div>
+        <div *ngIf="favsLoading" style="padding:20px;text-align:center;">
+          <i class="pi pi-spin pi-spinner" style="color:var(--theme-accent);"></i>
+        </div>
+        <ng-container *ngIf="!favsLoading && favTab === 'suppliers'">
+          <p *ngIf="favSuppliers.length === 0" class="bp-mobile-empty">No favourite suppliers yet. Tap &#9829; on any supplier.</p>
+          <a *ngFor="let f of favSuppliers" class="bp-row-card" [routerLink]="['/suppliers', f.ref_id]">
+            <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
+            <div class="bp-row-body">
+              <div class="bp-row-name">{{ f.ref_name }}</div>
+              <div class="bp-row-meta" *ngIf="f.ref_category">{{ f.ref_category }}</div>
+            </div>
+            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+          </a>
+          <div class="bp-row-card" style="cursor:pointer;" routerLink="/suppliers">
+            <lucide-icon name="search" [size]="18" class="bp-row-icon"></lucide-icon>
+            <div class="bp-row-body"><div class="bp-row-name">Browse all suppliers</div></div>
+            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
           </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
+        </ng-container>
+        <ng-container *ngIf="!favsLoading && favTab === 'items'">
+          <p *ngIf="favItems.length === 0" class="bp-mobile-empty">No favourite items yet. Tap &#9829; on any catalogue item.</p>
+          <a *ngFor="let f of favItems" class="bp-row-card" [routerLink]="['/suppliers', f.ref_id]">
+            <lucide-icon name="package" [size]="18" class="bp-row-icon"></lucide-icon>
+            <div class="bp-row-body">
+              <div class="bp-row-name">{{ f.ref_name }}</div>
+              <div class="bp-row-meta">
+                {{ f.supplier_name }}{{ f.ref_category ? ' · ' + f.ref_category : '' }}
+              </div>
+            </div>
+            <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
+          </a>
+        </ng-container>
       </div>
 
       <!-- SUMMARY TAB -->
@@ -330,6 +358,13 @@ type DashTab = 'projects' | 'suppliers' | 'summary';
     .bp-row-chev  { color:var(--color-border); flex-shrink:0; }
     .bp-mobile-empty { padding:12px 16px; font-size:13px; color:var(--color-text-muted); }
 
+    /* FAVOURITES SUB-TABS */
+    .bp-fav-subtabs { display: flex; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); }
+    .bp-fav-subtab  { flex: 1; padding: 10px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.15s; }
+    .bp-fav-subtab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
+    .bp-fav-count { font-size: 11px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; color: var(--color-text-muted); }
+    .bp-fav-subtab.active .bp-fav-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
       .bp-desktop-only  { display:none !important; }
@@ -359,6 +394,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeTab: DashTab = 'projects';
   uploadPanelProjectId = '';
   uploadSupplierPanelId = '';
+  favTab: 'suppliers' | 'items' = 'suppliers';
+  favSuppliers: Favourite[] = [];
+  favItems: Favourite[] = [];
+  favsLoading = false;
   private sub?: Subscription;
 
   get nextProject(): Project | null { return this.activeProjects.length > 0 ? this.activeProjects[0] : null; }
@@ -369,6 +408,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private supplierService: SupplierService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private favSvc: FavouriteService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -430,14 +470,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           pills: [],
           tabs: [
             { label: 'Projects',  path: 'tab:projects' },
-            { label: 'Suppliers', path: 'tab:suppliers' },
+            { label: 'Favourites', path: 'tab:favourites' },
             { label: 'Summary',   path: 'tab:summary' },
           ],
           activeTabPath: 'tab:projects',
           onTabClick: (tab) => {
             const map: Record<string, DashTab> = {
               'tab:projects':  'projects',
-              'tab:suppliers': 'suppliers',
+              'tab:favourites': 'suppliers',
               'tab:summary':   'summary'
             };
             if (map[tab.path]) this.setTab(map[tab.path]);
@@ -451,6 +491,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.projectService.refresh$.subscribe(() => this.loadProjects());
     this.loadProjects();
     this.loadSuppliers();
+    this.loadFavourites();
   }
 
   loadProjects() {
@@ -474,6 +515,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: () => {}
+    });
+  }
+
+  loadFavourites() {
+    this.favsLoading = true;
+    this.favSvc.getAll().subscribe({
+      next: (favs: any[]) => {
+        this.favSuppliers = (favs || []).filter((f: any) => f.type === 'supplier');
+        this.favItems = (favs || []).filter((f: any) => f.type === 'item');
+        this.favsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.favsLoading = false; this.cdr.detectChanges(); }
     });
   }
 
