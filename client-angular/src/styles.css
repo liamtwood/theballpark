@@ -574,6 +574,8 @@ lucide-icon svg {
 input.bp-input-edit,
 textarea.bp-input-edit {
   background: var(--theme-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
   border-color: var(--theme-accent) !important;
 }
 .bp-input-edit.p-inputtext:focus,
