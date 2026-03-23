@@ -877,3 +877,16 @@ app-top-nav { flex-shrink: 0; }
 .bp-hero-tabs {
   justify-content: center !important;
 }
+
+/* ── INBOX CARD STYLE (messages) ── */
+.bp-inbox-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: #fff; transition: background 0.15s; }
+.bp-inbox-card:hover { background: var(--color-surface); }
+.bp-inbox-outbound { background: var(--theme-bg); }
+.bp-inbox-outbound:hover { background: var(--theme-bg); opacity: 0.85; }
+.bp-inbox-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--theme-accent); color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bp-inbox-outbound .bp-inbox-avatar { background: var(--color-text-muted); }
+.bp-inbox-card-body { flex: 1; min-width: 0; }
+.bp-inbox-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+.bp-inbox-sender { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.bp-inbox-time { font-size: 11px; color: var(--color-text-muted); margin-left: auto; white-space: nowrap; }
+.bp-inbox-preview { font-size: 13px; color: var(--color-text-secondary); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }

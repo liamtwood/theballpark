@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, FolderOpen, MessageCircle, FileText } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, FolderOpen, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
@@ -69,25 +69,32 @@ import { environment } from '../../environments/environment';
         </a>
       </ng-container>
 
-      <!-- PROJECT NAV — Home, Category, Messages, Brief -->
+      <!-- PROJECT NAV — Home, Suppliers, Favourites, Messages -->
       <ng-container *ngIf="inProject">
         <a routerLink="/" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
-        <a [routerLink]="projectBuildPath" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="folder-open" [size]="20"></lucide-icon>
-          <span>Category</span>
+        <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="building-2" [size]="20"></lucide-icon>
+          <span>Suppliers</span>
+        </a>
+        <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="heart" [size]="20"></lucide-icon>
+          <span>Favourites</span>
         </a>
         <a [routerLink]="projectMessagesPath" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
           <span>Messages</span>
         </a>
-        <a [routerLink]="projectBriefPath" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="file-text" [size]="20"></lucide-icon>
-          <span>Brief</span>
-        </a>
       </ng-container>
+
+      <!-- FLOATING ACTION BUTTON — project pages only -->
+      <div *ngIf="inProject" class="bp-fab-wrap">
+        <a [routerLink]="projectBuildPath" class="bp-fab" title="Add item or request quote">
+          <lucide-icon name="plus" [size]="20"></lucide-icon>
+        </a>
+      </div>
 
     </nav>
   `,
@@ -139,6 +146,8 @@ import { environment } from '../../environments/environment';
       display: none;
     }
 
+    .bp-fab-wrap { display: none; }
+
     /* ── MOBILE BREAKPOINT ── */
     @media (max-width: 768px) {
       /* Hide desktop nav links, keep logo */
@@ -171,6 +180,10 @@ import { environment } from '../../environments/environment';
       }
       .bp-bottom-tab:hover  { color: var(--color-text-secondary); }
       .bp-bottom-tab.active { color: var(--theme-accent); }
+
+      .bp-fab-wrap { display: block; position: fixed; bottom: 72px; right: 16px; z-index: 300; }
+      .bp-fab { width: 52px; height: 52px; border-radius: 50%; background: var(--theme-accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); text-decoration: none; transition: transform 0.15s; }
+      .bp-fab:active { transform: scale(0.95); }
 
       :host { display: block; }
     }

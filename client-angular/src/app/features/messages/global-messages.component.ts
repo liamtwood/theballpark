@@ -17,11 +17,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 interface CategoryFolder { id: string; name: string; actionCount: number; }
 
 const MSG_STATUSES = [
-  { id: 'all',           label: 'All',           color: '' },
-  { id: 'action_needed', label: 'Action Needed', color: '#DC2626' },
-  { id: 'follow_up',     label: 'Follow Up',     color: '#D97706' },
-  { id: 'quoted',        label: 'Quoted',        color: '#2563EB' },
-  { id: 'booked',        label: 'Booked',        color: '#059669' },
+  { id: 'all',           label: 'All',     color: '' },
+  { id: 'action_needed', label: 'Action',  color: '#DC2626' },
+  { id: 'follow_up',     label: 'Waiting', color: '#D97706' },
+  { id: 'quoted',        label: 'Quoted',  color: '#2563EB' },
+  { id: 'booked',        label: 'Booked',  color: '#059669' },
 ];
 
 @Component({

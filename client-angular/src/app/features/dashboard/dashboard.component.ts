@@ -16,7 +16,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 
-type DashTab = 'projects' | 'settings';
+type DashTab = 'projects';
 
 @Component({
   selector: 'app-dashboard',
@@ -92,7 +92,7 @@ type DashTab = 'projects' | 'settings';
         <div class="bp-body-left">
           <div class="bp-section-header">
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
-            <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New</a>
+            <!-- <a routerLink="/projects/new" class="bp-section-action"><lucide-icon name="plus" [size]="12"></lucide-icon> New</a> -->
           </div>
           <p *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</p>
           <div class="bp-project-grid">
@@ -177,7 +177,7 @@ type DashTab = 'projects' | 'settings';
       <div class="bp-mobile-panel" [class.active]="activeTab === 'projects'">
         <div class="bp-section-header">
           <span class="bp-section-title">Active {{ projectLabel }}s</span>
-          <a routerLink="/projects/new" class="bp-section-action">+ New</a>
+          <!-- <a routerLink="/projects/new" class="bp-section-action">+ New</a> -->
         </div>
         <p *ngIf="activeProjects.length === 0" class="bp-mobile-empty">No active projects yet.</p>
         <a *ngFor="let p of activeProjects" class="bp-row-card" [routerLink]="['/projects', p.id]">
@@ -197,33 +197,6 @@ type DashTab = 'projects' | 'settings';
             <div class="bp-row-name">{{ p.event_name || p.name }}</div>
             <div class="bp-row-meta">{{ p.client_name }}{{ p.event_date ? ' · ' + p.event_date : '' }}</div>
           </div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-      </div>
-
-      <!-- SETTINGS TAB -->
-      <div class="bp-mobile-panel" [class.active]="activeTab === 'settings'">
-        <div class="bp-section-header" style="padding: 12px 16px 6px;">
-          <span class="bp-section-title">Settings</span>
-        </div>
-        <a routerLink="/settings/organisation" class="bp-row-card">
-          <lucide-icon name="building-2" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">Organisation</div></div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-        <a routerLink="/settings/team" class="bp-row-card">
-          <lucide-icon name="users" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">Team</div></div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-        <a routerLink="/settings/subscription" class="bp-row-card">
-          <lucide-icon name="credit-card" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">Subscription</div></div>
-          <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
-        </a>
-        <a routerLink="/settings/appearance" class="bp-row-card">
-          <lucide-icon name="palette" [size]="18" class="bp-row-icon"></lucide-icon>
-          <div class="bp-row-body"><div class="bp-row-name">Appearance</div></div>
           <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
       </div>
@@ -395,7 +368,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Update activeTabPath so AppShell highlights correct tab
     const tabMap: Record<DashTab, string> = {
       projects: 'tab:projects',
-      settings: 'tab:settings',
     };
     this.shellCtx.set({
       ...this.shellCtx.current,
@@ -427,13 +399,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           pills: [],
           tabs: [
             { label: 'Projects',  path: 'tab:projects' },
-            { label: 'Settings',  path: 'tab:settings' },
           ],
           activeTabPath: 'tab:projects',
           onTabClick: (tab) => {
             const map: Record<string, DashTab> = {
               'tab:projects':  'projects',
-              'tab:settings':  'settings',
             };
             if (map[tab.path]) this.setTab(map[tab.path]);
           }
