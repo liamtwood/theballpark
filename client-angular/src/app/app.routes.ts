@@ -12,19 +12,19 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        data: { pageLabel: 'HOME', tabs: [] }
+        data: { pageLabel: '', tabs: [] }
       },
 
       // ── PROJECTS ──
       {
         path: 'projects',
         loadComponent: () => import('./features/projects/pages/project-list/project-list.component').then(m => m.ProjectListComponent),
-        data: { pageLabel: 'PROJECTS', tabs: [] }
+        data: { pageLabel: '', tabs: [] }
       },
       {
         path: 'projects/new',
         loadComponent: () => import('./features/projects/pages/project-create/project-create.component').then(m => m.ProjectCreateComponent),
-        data: { pageLabel: 'PROJECTS', tabs: [] }
+        data: { pageLabel: '', tabs: [] }
       },
       {
         path: 'projects/:id',
