@@ -73,19 +73,19 @@ import { environment } from '../../environments/environment';
         </a>
       </ng-container>
 
-      <!-- PROJECT NAV — Home, Suppliers, Favourites, Messages -->
+      <!-- PROJECT NAV — Home, Project, Suppliers, Messages -->
       <ng-container *ngIf="inProject">
         <a routerLink="/" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
+        <a [routerLink]="['/projects', projectId]" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="folder" [size]="20"></lucide-icon>
+          <span>Project</span>
+        </a>
         <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>Suppliers</span>
-        </a>
-        <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="heart" [size]="20"></lucide-icon>
-          <span>Favourites</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
