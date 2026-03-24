@@ -210,8 +210,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
   get projectBuildPath()    { return `/projects/${this.projectId}/build`; }
   get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
-  get projectMessagesPath() { return '/messages'; }
-  get projectMessagesQueryParams(): any { return { projectId: this.projectId }; }
+  get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
+  get projectMessagesQueryParams(): any { return {}; }
 
   private sub?: Subscription;
   private routerSub?: Subscription;
