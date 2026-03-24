@@ -10,7 +10,7 @@ import {
   Building2, Users, Layers, CreditCard, Palette, Upload, Save,
   Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
   Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
-  Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle,
+  Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft,
 } from 'lucide-angular';
 import { routes } from './app.routes';
 
@@ -29,7 +29,7 @@ export const appConfig: ApplicationConfig = {
         Building2, Users, Layers, CreditCard, Palette, Upload, Save,
         Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
         Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
-        Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle,
+        Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft,
       }),
     },
   ]
