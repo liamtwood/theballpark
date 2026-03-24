@@ -25,6 +25,10 @@ import { environment } from '../../environments/environment';
             <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
           </ng-container>
         </a>
+        <button class="bp-mode-btn bp-mode-btn-mobile" (click)="toggleMode()"
+          [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+          <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
+        </button>
         <span class="bp-nav-tagline">{{ tagline }}</span>
       </div>
       <div class="bp-nav-right">
@@ -147,9 +151,11 @@ import { environment } from '../../environments/environment';
     }
 
     .bp-fab-wrap { display: none; }
+    .bp-mode-btn-mobile { display: none; }
 
     /* ── MOBILE BREAKPOINT ── */
     @media (max-width: 768px) {
+      .bp-mode-btn-mobile { display: flex; margin-left: 8px; }
       /* Hide desktop nav links, keep logo */
       .bp-nav-right { display: none; }
       .bp-nav-tagline { display: none; }
@@ -264,7 +270,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
     const match = this.router.url.match(/\/projects\/([^\/]+)/);
     if (match) { this.projectId = match[1]; this.inProject = true; }
 
-    this.isDark = document.documentElement.getAttribute('data-mode') === 'dark';
+    const saved = localStorage.getItem('bp-mode');
+    this.isDark = saved === 'dark';
+    document.documentElement.setAttribute('data-mode', this.isDark ? 'dark' : 'light');
   }
 
   toggleMode() {
