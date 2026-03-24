@@ -333,6 +333,10 @@ lucide-icon svg {
   background: var(--color-bg) !important;
   color: var(--color-text-primary) !important;
 }
+[data-mode="dark"] .bp-msg-status-pill {
+  border-color: var(--color-text-muted) !important;
+  color: var(--color-text-secondary) !important;
+}
 
 /* ============================================
    GLOBAL .btn-primary — theme-aware action button
