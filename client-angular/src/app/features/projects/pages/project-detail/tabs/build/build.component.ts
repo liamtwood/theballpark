@@ -264,7 +264,7 @@ interface CategoryWithBrief {
 
     /* ── CATEGORY LIST ── */
     .bp-cat-list { padding: 12px var(--section-pad); flex: 1; }
-    .bp-cat-item { border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+    .bp-cat-item { border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: var(--color-surface); }
 
     /* ── CATEGORY HEADER ── */
     .bp-cat-header       { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
@@ -280,14 +280,14 @@ interface CategoryWithBrief {
     .bp-cat-expanded        { border-top: 0.5px solid var(--color-border); padding: 16px; background: var(--color-surface); }
     .bp-cat-section-label   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
     .bp-cat-section-hint    { font-size: 10px; color: var(--color-text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
-    .bp-cat-brief-text      { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; padding: 10px 12px; background: #fff; border: 0.5px solid var(--color-border); border-radius: 6px; }
+    .bp-cat-brief-text      { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; padding: 10px 12px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 6px; }
     .bp-brief-textarea      { font-size: 13px; line-height: 1.6; }
     .bp-brief-actions       { display: flex; gap: 8px; margin-top: 8px; }
 
     /* ── VENDORS ── */
     .bp-vendor-list  { display: flex; flex-direction: column; gap: 8px; }
     .bp-vendor-empty { font-size: 13px; color: var(--color-text-muted); padding: 12px 0; }
-    .bp-vendor-row   { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 8px; background: #fff; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .bp-vendor-row   { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 8px; background: var(--color-surface); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
     .bp-vendor-row.selected { border-color: var(--theme-accent); background: var(--theme-bg); }
     .bp-vendor-img   { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-vendor-grad  { background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
@@ -309,7 +309,7 @@ interface CategoryWithBrief {
     }
 
     /* ── STICKY FOOTER (mobile) ── */
-    .bp-build-footer     { padding: 16px var(--section-pad); border-top: 0.5px solid var(--color-border); background: #fff; }
+    .bp-build-footer     { padding: 16px var(--section-pad); border-top: 0.5px solid var(--color-border); background: var(--color-surface); }
     .bp-build-footer-sub { font-size: 11px; color: var(--color-text-muted); text-align: center; margin-top: 6px; }
 
     /* ── QUOTE REVIEW DRAWER ── */

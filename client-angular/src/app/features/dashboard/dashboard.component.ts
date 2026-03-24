@@ -223,7 +223,7 @@ type DashTab = 'projects';
     .bp-activity-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:0.5px solid var(--color-border); font-size:12px; color:var(--color-text-secondary); line-height:1.4; }
     .bp-activity-dot  { width:6px; height:6px; border-radius:50%; background:var(--theme-accent); margin-top:4px; flex-shrink:0; }
     .bp-activity-time { font-size:11px; color:var(--color-text-muted); margin-left:auto; white-space:nowrap; padding-left:8px; }
-    .bp-quick-action  { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; margin-bottom:8px; border:0.5px solid var(--color-border); border-radius:8px; background:#fff; font-size:13px; font-weight:500; color:var(--color-text-primary); cursor:pointer; text-decoration:none; transition:border-color 0.15s,color 0.15s; font-family:var(--font-body); }
+    .bp-quick-action  { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; margin-bottom:8px; border:0.5px solid var(--color-border); border-radius:8px; background:var(--color-surface); font-size:13px; font-weight:500; color:var(--color-text-primary); cursor:pointer; text-decoration:none; transition:border-color 0.15s,color 0.15s; font-family:var(--font-body); }
     .bp-quick-action:hover { border-color:var(--theme-accent); color:var(--theme-accent); }
     .bp-body-left { padding:var(--section-pad); border-right:0.5px solid var(--color-border); }
     .bp-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -279,7 +279,7 @@ type DashTab = 'projects';
     .bp-desktop-only { display:grid; }
 
     /* MOBILE ROW CARDS */
-    .bp-row-card  { display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:0.5px solid var(--color-border); background:#fff; cursor:pointer; text-decoration:none; }
+    .bp-row-card  { display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:0.5px solid var(--color-border); background:var(--color-surface); cursor:pointer; text-decoration:none; }
     .bp-row-card:active { background:var(--color-surface); }
     .bp-row-icon  { flex-shrink:0; color:var(--theme-accent); }
     .bp-row-icon.muted { color:var(--color-text-muted); }
