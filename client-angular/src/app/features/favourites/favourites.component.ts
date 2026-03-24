@@ -113,14 +113,14 @@ type FavTab = 'suppliers' | 'items';
   `,
   styles: [`
     /* SUB-TABS */
-    .bp-fav-subtabs { display: flex; border-bottom: 0.5px solid var(--color-border); background: #fff; }
+    .bp-fav-subtabs { display: flex; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); }
     .bp-fav-subtab  { flex: 1; padding: 12px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.15s; }
     .bp-fav-subtab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
     .bp-fav-count { font-size: 11px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; color: var(--color-text-muted); }
     .bp-fav-subtab.active .bp-fav-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
 
     /* SEARCH */
-    .bp-sup-search-bar  { padding: 12px 16px; background: #fff; border-bottom: 0.5px solid var(--color-border); }
+    .bp-sup-search-bar  { padding: 12px 16px; background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); }
     .bp-sup-search-wrap { display: flex; align-items: center; gap: 8px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 12px; height: 38px; }
     .bp-sup-search-icon  { color: var(--color-text-muted); flex-shrink: 0; }
     .bp-sup-search-input { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-size: 13px !important; }
@@ -135,7 +135,7 @@ type FavTab = 'suppliers' | 'items';
 
     /* ROW CARDS */
     .bp-sup-list { background: var(--color-bg); }
-    .bp-row-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: #fff; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+    .bp-row-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); cursor: pointer; text-decoration: none; transition: background 0.15s; }
     .bp-row-card:active { background: var(--color-surface); }
     .bp-row-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-row-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }

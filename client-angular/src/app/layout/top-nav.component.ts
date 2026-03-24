@@ -272,13 +272,14 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
     const saved = localStorage.getItem('bp-mode');
     this.isDark = saved === 'dark';
-    document.documentElement.setAttribute('data-mode', this.isDark ? 'dark' : 'light');
+    this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
   }
 
   toggleMode() {
     this.isDark = !this.isDark;
-    document.documentElement.setAttribute('data-mode', this.isDark ? 'dark' : 'light');
-    localStorage.setItem('bp-mode', this.isDark ? 'dark' : 'light');
+    const mode = this.isDark ? 'dark' : 'light';
+    localStorage.setItem('bp-mode', mode);
+    this.configService.update({ mode });
   }
 
   ngOnDestroy() {
