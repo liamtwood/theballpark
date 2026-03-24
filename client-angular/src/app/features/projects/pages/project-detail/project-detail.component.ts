@@ -86,9 +86,13 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     if (p.client_name) pills.push(p.client_name);
     if (p.venue_name)  pills.push(p.venue_name);
 
+    const sub = p.status_name
+      ? p.status_name.charAt(0).toUpperCase() + p.status_name.slice(1)
+      : '';
+
     this.shellCtx.set({
       heroTitle:  p.event_name || p.name || 'Untitled',
-      heroSub:    '',
+      heroSub:    (sub || 'Project').toUpperCase(),
       pills,
       tabs,
       showStats:  false,

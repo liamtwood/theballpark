@@ -395,18 +395,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Write to ShellContextService — tabs use callback not routing
         this.shellCtx.set({
           heroTitle: org.name,
-          heroSub: '',
+          heroSub: 'Projects',
           pills: [],
-          tabs: [
-            { label: 'Projects',  path: 'tab:projects' },
-          ],
-          activeTabPath: 'tab:projects',
-          onTabClick: (tab) => {
-            const map: Record<string, DashTab> = {
-              'tab:projects':  'projects',
-            };
-            if (map[tab.path]) this.setTab(map[tab.path]);
-          }
+          tabs: [],
         });
 
         this.cdr.detectChanges();
