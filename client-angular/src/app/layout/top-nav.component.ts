@@ -248,16 +248,20 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
     // Track project context for bottom nav switching
     this.ctxSub = this.shellCtx.context$.subscribe(ctx => {
-      this.inProject = !!ctx?.heroTitle && this.router.url.includes('/projects/');
+      this.inProject = !!ctx?.heroTitle && (this.router.url.includes('/projects/') || this.router.url.includes('projectId='));
       this.cdr.detectChanges();
     });
 
     this.routerSub = this.router.events.pipe(
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
-      const match = e.url.match(/\/projects\/([^\/]+)/);
-      if (match) {
-        this.projectId = match[1];
+      const projectMatch = e.url.match(/\/projects\/([^\/]+)/);
+      const qpMatch = e.url.match(/[?&]projectId=([^&]+)/);
+      if (projectMatch) {
+        this.projectId = projectMatch[1];
+        this.inProject = true;
+      } else if (qpMatch) {
+        this.projectId = qpMatch[1];
         this.inProject = true;
       } else {
         this.inProject = false;
@@ -268,7 +272,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
     // Check current route on init
     const match = this.router.url.match(/\/projects\/([^\/]+)/);
+    const qpMatch = this.router.url.match(/[?&]projectId=([^&]+)/);
     if (match) { this.projectId = match[1]; this.inProject = true; }
+    else if (qpMatch) { this.projectId = qpMatch[1]; this.inProject = true; }
 
     const saved = localStorage.getItem('bp-mode');
     this.isDark = saved === 'dark';
