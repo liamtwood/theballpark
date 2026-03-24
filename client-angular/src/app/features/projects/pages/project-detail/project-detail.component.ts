@@ -92,7 +92,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       pills,
       tabs,
       showStats:  false,
-      backPath:   '/',
     });
   }
 }

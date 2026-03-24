@@ -334,8 +334,7 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
             heroTitle: this.item.name,
             heroSub: '',
             pills: [],
-            tabs: [],
-            backPath: `/suppliers/${this.supplierId}`
+            tabs: []
           });
         }
         this.loading = false;

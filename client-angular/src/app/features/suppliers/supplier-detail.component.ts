@@ -262,7 +262,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       next: (suppliers: any[]) => {
         this.supplier = suppliers.find(s => s.id === this.sid) || null;
         if (this.supplier) {
-          this.shellCtx.set({ heroTitle: this.supplier.name, heroSub: this.supplier.city || 'London', pills: [], tabs: [], backPath: '/suppliers' });
+          this.shellCtx.set({ heroTitle: this.supplier.name, heroSub: this.supplier.city || 'London', pills: [], tabs: [] });
         }
         this.cdr.detectChanges();
       }
