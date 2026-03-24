@@ -853,8 +853,8 @@ app-top-nav { flex-shrink: 0; }
   /* Hide pills (client name, venue) on mobile project hero */
   .bp-hero-meta { display: none !important; }
 
-  /* Hide sub label (ACTIVE, HOME etc.) on mobile */
-  .bp-hero-page-label { display: none !important; }
+  /* Sub label visible on mobile — shows org/project context */
+  .bp-hero-page-label { font-size: 10px; margin-bottom: 8px; }
 }
 /* =============================================================
    BOTTOM NAV PAGE PADDING — append to responsive section in styles.css
@@ -895,7 +895,7 @@ app-top-nav { flex-shrink: 0; }
 
   /* Kill any leftover space from hidden elements */
   .bp-hero-meta        { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
-  .bp-hero-page-label  { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
+  .bp-hero-page-label  { font-size: 10px; margin-bottom: 4px !important; padding: 0 !important; }
 
   /* Remove bottom margin from org name — tabs sit right below */
   .bp-hero-org-name    { margin-bottom: 0 !important; }
