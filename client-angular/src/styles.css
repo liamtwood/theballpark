@@ -337,6 +337,12 @@ lucide-icon svg {
   border-color: var(--color-text-muted) !important;
   color: var(--color-text-secondary) !important;
 }
+[data-mode="dark"] .bp-drawer-body {
+  background: var(--color-surface) !important;
+}
+[data-mode="dark"] .p-sidebar-content {
+  background: var(--color-surface) !important;
+}
 
 /* ============================================
    GLOBAL .btn-primary — theme-aware action button
