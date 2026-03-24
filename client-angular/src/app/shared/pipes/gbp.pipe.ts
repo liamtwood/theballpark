@@ -6,7 +6,7 @@ export class GbpPipe implements PipeTransform {
     const num = typeof value === 'number' ? value : parseFloat(value as string) || 0;
     return new Intl.NumberFormat('en-GB', {
       style: 'currency', currency: 'GBP',
-      minimumFractionDigits: 2, maximumFractionDigits: 2,
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
     }).format(num);
   }
 }
