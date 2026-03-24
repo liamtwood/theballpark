@@ -320,6 +320,19 @@ lucide-icon svg {
 [data-mode="dark"] .border-gray-100 { border-color: var(--color-border) !important; }
 [data-mode="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border) !important; }
 [data-mode="dark"] .shadow-sm { box-shadow: none !important; }
+[data-mode="dark"] .p-dropdown-panel {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  color: var(--color-text-primary) !important;
+  background: var(--color-surface) !important;
+}
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+  background: var(--color-bg) !important;
+  color: var(--color-text-primary) !important;
+}
 
 /* ============================================
    GLOBAL .btn-primary — theme-aware action button
