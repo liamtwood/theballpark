@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ShellContextService } from '../../../../../../core/services/shell-context.service';
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { MessagesInboxComponent } from '../../../../../../shared/components/messages-inbox/messages-inbox.component';
@@ -19,17 +19,18 @@ export class MessagesComponent implements OnInit, OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private shellCtx: ShellContextService,
     private projectSvc: ProjectService
   ) {}
 
   ngOnInit() {
-    let r = this.route;
-    while (r.parent) r = r.parent;
-    this.pid = r.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id') || '';
+    // Extract project ID from URL — most reliable approach
+    const match = this.router.url.match(/\/projects\/([^\/]+)/);
+    this.pid = match?.[1] || this.route.parent?.snapshot.paramMap.get('id') || '';
 
     // Save parent context so we can restore on destroy
-    this.previousCtx = this.shellCtx.current;
+    this.previousCtx = { ...this.shellCtx.current };
 
     if (this.pid) {
       this.projectSvc.getById(this.pid).subscribe(p => {
@@ -43,7 +44,6 @@ export class MessagesComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Restore parent project hero when leaving messages tab
     if (this.previousCtx) {
       this.shellCtx.set(this.previousCtx);
     }
