@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { OrgService } from '../../core/services/org.service';
+import { ProjectService } from '../../core/services/project.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 
@@ -20,13 +22,24 @@ export class GlobalMessagesComponent implements OnInit, OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
+    private orgSvc: OrgService,
+    private projectSvc: ProjectService,
     private shellCtx: ShellContextService
   ) {}
 
   ngOnInit() {
-    this.shellCtx.set({ heroTitle: 'Messages', heroSub: '', pills: [], tabs: [] });
     // Pre-select project if navigated from project bottom nav
     this.preselectedProjectId = this.route.snapshot.queryParams['projectId'] || '';
+
+    this.orgSvc.getCurrentOrg().subscribe(org => {
+      if (this.preselectedProjectId) {
+        this.projectSvc.getById(this.preselectedProjectId).subscribe(p => {
+          this.shellCtx.set({ heroTitle: 'Messages', heroSub: p?.event_name || p?.name || org?.name || '', pills: [], tabs: [] });
+        });
+      } else {
+        this.shellCtx.set({ heroTitle: 'Messages', heroSub: org?.name || '', pills: [], tabs: [] });
+      }
+    });
   }
 
   ngOnDestroy() { this.shellCtx.reset(); }

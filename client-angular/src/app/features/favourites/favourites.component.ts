@@ -5,6 +5,7 @@ import { LucideAngularModule, Heart, Building2, Package, ChevronRight, Search } 
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
+import { OrgService } from '../../core/services/org.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
@@ -156,12 +157,16 @@ export class FavouritesComponent implements OnInit, OnDestroy {
 
   constructor(
     private favSvc: FavouriteService,
+    private orgSvc: OrgService,
     private shellCtx: ShellContextService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.shellCtx.set({ heroTitle: 'Favourites', heroSub: '', pills: [], tabs: [] });
+    this.orgSvc.getCurrentOrg().subscribe(org => {
+      this.shellCtx.set({ heroTitle: 'Favourites', heroSub: org?.name || '', pills: [], tabs: [] });
+      this.cdr.detectChanges();
+    });
     this.load();
   }
 

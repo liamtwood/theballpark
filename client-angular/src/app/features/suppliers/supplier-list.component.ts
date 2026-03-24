@@ -1,12 +1,14 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { LucideAngularModule, ChevronRight, ChevronDown, Search, Heart } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
+import { OrgService } from '../../core/services/org.service';
+import { ProjectService } from '../../core/services/project.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -173,13 +175,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private supplierSvc: SupplierService,
     private categorySvc: CategoryService,
     private favSvc: FavouriteService,
+    private orgSvc: OrgService,
+    private projectSvc: ProjectService,
     private shellCtx: ShellContextService,
+    private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: '', pills: [], tabs: [] });
+    this.orgSvc.getCurrentOrg().subscribe(org => {
+      const projectId = this.route.snapshot.queryParams['projectId'];
+      if (projectId) {
+        this.projectSvc.getById(projectId).subscribe(p => {
+          this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: p?.event_name || p?.name || '', pills: [], tabs: [] });
+          this.cdr.detectChanges();
+        });
+      } else {
+        this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: org?.name || '', pills: [], tabs: [] });
+        this.cdr.detectChanges();
+      }
+    });
 
     this.categorySvc.getAll().subscribe({
       next: cats => { this.categories = (cats || []).filter((c: any) => c.enabled !== false); this.cdr.detectChanges(); },
