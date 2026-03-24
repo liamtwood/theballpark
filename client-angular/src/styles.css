@@ -97,7 +97,13 @@
   --color-tier-bg:        #1E1535;
   --color-tier-text:      #C4B5FD;
   --color-tier-border:    #4C1D95;
+  --primary-color: var(--theme-accent);
 }
+[data-mode="dark"] .bp-hero {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-border) !important;
+}
+[data-mode="dark"] .bp-section-title { color: var(--theme-accent) !important; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; }
