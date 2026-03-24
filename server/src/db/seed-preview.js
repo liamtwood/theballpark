@@ -212,15 +212,86 @@ const seed = async () => {
       ['Furniture & Fixtures', categoryIds[4], 2400, statusIds['project_category_pending']],
       ['Graphics & Signage',   categoryIds[5], 3100, statusIds['project_category_pending']],
     ];
+    const pcIds = {};
     for (const [name, category_id, ballpark_cost, status_id] of pcData) {
-      await client.query(
+      const res = await client.query(
         `INSERT INTO preview.project_categories
            (project_id, category_id, name, ballpark_cost, status_id)
-         VALUES ($1,$2,$3,$4,$5)`,
+         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
         [project1Id, category_id, name, ballpark_cost, status_id]
       );
+      pcIds[name] = res.rows[0].id;
     }
     console.log('  Project categories seeded.');
+
+    // ── Messages ───────────────────────────────────────────────────────
+    // Thread 1: Construct & Co. — Stand Structure
+    await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '3 days')`,
+      [project1Id, supplier1Id, 'Construct & Co.', pcIds['Stand Structure'], 'Stand Structure',
+       'Hi, we need a 9×6m custom exhibition stand for Money20/20 at ExCeL London. Double-deck with meeting pod. Budget around £8,500 for the structure. Can you quote?',
+       'outbound', null, true]
+    );
+    await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '2 days')`,
+      [project1Id, supplier1Id, 'Construct & Co.', pcIds['Stand Structure'], 'Stand Structure',
+       'Thanks for reaching out! We can definitely do this. For a 9×6m double-deck with meeting pod at ExCeL, we\'d be looking at £8,200 for the shell structure plus £1,800 for the meeting pod fit-out. Total £10,000. Want me to send a detailed breakdown?',
+       'inbound', 'action_needed', false]
+    );
+    await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '1 day')`,
+      [project1Id, supplier1Id, 'Construct & Co.', pcIds['Stand Structure'], 'Stand Structure',
+       'That sounds great. Yes please send the full breakdown. Also — can you confirm lead time? We need to be on site by 1st June for build.',
+       'outbound', null, true]
+    );
+
+    // Thread 2: Volta AV — AV & Technology (with quote items)
+    await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '2 days')`,
+      [project1Id, supplier2Id, 'Volta AV London', pcIds['AV & Technology'], 'AV & Technology',
+       'We need AV for Money20/20 — large LED wall for the back panel, 2-3 screens for product demos, and a sound system for presentations. 3-day hire.',
+       'outbound', null, true]
+    );
+    const voltaQuoteRes = await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '1 day') RETURNING id`,
+      [project1Id, supplier2Id, 'Volta AV London', pcIds['AV & Technology'], 'AV & Technology',
+       'Here\'s our quote for the 3-day package at ExCeL. All prices include delivery, setup, and collection. Happy to discuss.',
+       'inbound', 'quoted', false]
+    );
+    const voltaQuoteId = voltaQuoteRes.rows[0].id;
+
+    // Quote items for Volta AV
+    await client.query(
+      `INSERT INTO preview.message_items (message_id, name, description, price)
+       VALUES ($1, $2, $3, $4)`,
+      [voltaQuoteId, '55" Display Screen', '55" Samsung 4K commercial display with floor stand. 3-day hire.', 200]
+    );
+    await client.query(
+      `INSERT INTO preview.message_items (message_id, name, description, price)
+       VALUES ($1, $2, $3, $4)`,
+      [voltaQuoteId, '65" Display Screen', '65" LG 4K commercial display with floor stand. 3-day hire.', 280]
+    );
+    await client.query(
+      `INSERT INTO preview.message_items (message_id, name, description, price)
+       VALUES ($1, $2, $3, $4)`,
+      [voltaQuoteId, '90" LED Wall Panel', '90" seamless LED wall panel. Includes rigging and content playback. 3-day hire.', 350]
+    );
+
+    // Thread 3: Greenhouse London — Florals (outbound only, waiting)
+    await client.query(
+      `INSERT INTO preview.messages (project_id, supplier_org_id, supplier_name, category_id, category_name, body, direction, msg_status, read, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW() - INTERVAL '1 day')`,
+      [project1Id, supplier3Id, 'Greenhouse London', null, 'Florals',
+       'Hi! We\'re looking for floral arrangements for our stand at Money20/20. Thinking tall centrepiece arrangements and some greenery along the front counter. Can you send some options?',
+       'outbound', 'follow_up', true]
+    );
+
+    console.log('  Messages seeded (3 threads, 6 messages, 3 quote items).');
 
     await client.query('COMMIT');
     console.log('\n✅ Preview schema seeded successfully.');
