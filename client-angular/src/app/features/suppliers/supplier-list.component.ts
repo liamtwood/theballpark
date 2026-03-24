@@ -1,12 +1,14 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { LucideAngularModule, ChevronRight, ChevronDown, Search, Heart } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
+import { OrgService } from '../../core/services/org.service';
+import { ProjectService } from '../../core/services/project.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -120,12 +122,12 @@ interface SupplierWithState extends Org {
     </div>
   `,
   styles: [`
-    .bp-sup-search-bar   { padding: 12px 16px; background: #fff; border-bottom: 0.5px solid var(--color-border); }
+    .bp-sup-search-bar   { padding: 12px 16px; background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); }
     .bp-sup-search-wrap  { display: flex; align-items: center; gap: 8px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 12px; height: 38px; }
     .bp-sup-search-icon  { color: var(--color-text-muted); flex-shrink: 0; }
     .bp-sup-search-input { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-size: 13px !important; }
     .bp-sup-search-clear { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 0; display: flex; align-items: center; }
-    .bp-sup-cats { display: flex; overflow-x: auto; border-bottom: 0.5px solid var(--color-border); background: #fff; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 0 8px; }
+    .bp-sup-cats { display: flex; overflow-x: auto; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 0 8px; }
     .bp-sup-cats::-webkit-scrollbar { display: none; }
     .bp-sup-cat-tab { padding: 10px 12px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); transition: color 0.15s; flex-shrink: 0; }
     .bp-sup-cat-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
@@ -133,7 +135,7 @@ interface SupplierWithState extends Org {
     .bp-sup-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--color-text-muted); }
     .bp-sup-list { background: var(--color-bg); }
     .bp-sup-card-wrap { border-bottom: 0.5px solid var(--color-border); }
-    .bp-sup-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; }
+    .bp-sup-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--color-surface); }
     .bp-sup-card-nav { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
     .bp-sup-card-nav:active { opacity: 0.7; }
     .bp-sup-expand-btn { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
@@ -156,7 +158,7 @@ interface SupplierWithState extends Org {
     .bp-sup-tag-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 6px; margin-top: 10px; }
     .bp-sup-tag-group-label:first-child { margin-top: 0; }
     .bp-sup-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .bp-sup-tag { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 0.5px solid var(--color-border); background: #fff; color: var(--color-text-primary); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+    .bp-sup-tag { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
     .bp-sup-tag:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--theme-bg); }
     .bp-sup-view-all { font-size: 12px; font-weight: 500; color: var(--theme-accent); background: none; border: none; cursor: pointer; font-family: var(--font-body); padding: 4px 0; }
   `]
@@ -173,13 +175,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private supplierSvc: SupplierService,
     private categorySvc: CategoryService,
     private favSvc: FavouriteService,
+    private orgSvc: OrgService,
+    private projectSvc: ProjectService,
     private shellCtx: ShellContextService,
+    private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: '', pills: [], tabs: [] });
+    this.orgSvc.getCurrentOrg().subscribe(org => {
+      const projectId = this.route.snapshot.queryParams['projectId'];
+      if (projectId) {
+        this.projectSvc.getById(projectId).subscribe(p => {
+          this.shellCtx.set({ heroTitle: p?.event_name || p?.name || 'Suppliers', heroSub: 'Suppliers', pills: [], tabs: [] });
+          this.cdr.detectChanges();
+        });
+      } else {
+        this.shellCtx.set({ heroTitle: org?.name || 'Suppliers', heroSub: 'Suppliers', pills: [], tabs: [] });
+        this.cdr.detectChanges();
+      }
+    });
 
     this.categorySvc.getAll().subscribe({
       next: cats => { this.categories = (cats || []).filter((c: any) => c.enabled !== false); this.cdr.detectChanges(); },

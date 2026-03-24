@@ -165,6 +165,19 @@ app-status-badge
 --font-body              /* Libre Franklin */
 ```
 
+### Status + message colours — always use vars, never hardcode
+```css
+--color-action-bg / text / border
+--color-waiting-bg / text / border
+--color-quoted-bg / text / border
+--color-booked-bg / text / border
+--color-msg-read-bg / border
+--color-msg-out-bg / border
+--color-thread-bg
+--color-unread-row-bg
+--color-tier-bg / text / border
+```
+
 ---
 
 ## Button Standards

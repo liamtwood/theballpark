@@ -31,12 +31,6 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
         </ng-container>
       </div>
 
-      <!-- BACK ARROW -->
-      <div *ngIf="ctx?.backPath" class="bp-hero-back" (click)="navigate(ctx!.backPath!)">
-        <i class="pi pi-arrow-left" style="font-size:13px;"></i>
-        <span>Back</span>
-      </div>
-
       <!-- TITLE -->
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
 
@@ -84,8 +78,6 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-hero          { flex-shrink: 0; }
-    .bp-hero-back     { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-muted); cursor: pointer; margin-bottom: 6px; transition: color 0.15s; }
-    .bp-hero-back:hover { color: var(--theme-accent); }
 
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }

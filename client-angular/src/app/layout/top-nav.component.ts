@@ -73,19 +73,19 @@ import { environment } from '../../environments/environment';
         </a>
       </ng-container>
 
-      <!-- PROJECT NAV — Home, Suppliers, Favourites, Messages -->
+      <!-- PROJECT NAV — Home, Project, Suppliers, Messages -->
       <ng-container *ngIf="inProject">
         <a routerLink="/" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
+        <a [routerLink]="['/projects', projectId]" routerLinkActive="active" class="bp-bottom-tab">
+          <lucide-icon name="folder" [size]="20"></lucide-icon>
+          <span>Project</span>
+        </a>
         <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>Suppliers</span>
-        </a>
-        <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="heart" [size]="20"></lucide-icon>
-          <span>Favourites</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
@@ -210,8 +210,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
   get projectBuildPath()    { return `/projects/${this.projectId}/build`; }
   get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
-  get projectMessagesPath() { return '/messages'; }
-  get projectMessagesQueryParams(): any { return { projectId: this.projectId }; }
+  get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
+  get projectMessagesQueryParams(): any { return {}; }
 
   private sub?: Subscription;
   private routerSub?: Subscription;
@@ -248,16 +248,20 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
     // Track project context for bottom nav switching
     this.ctxSub = this.shellCtx.context$.subscribe(ctx => {
-      this.inProject = !!ctx?.heroTitle && this.router.url.includes('/projects/');
+      this.inProject = !!ctx?.heroTitle && (this.router.url.includes('/projects/') || this.router.url.includes('projectId='));
       this.cdr.detectChanges();
     });
 
     this.routerSub = this.router.events.pipe(
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
-      const match = e.url.match(/\/projects\/([^\/]+)/);
-      if (match) {
-        this.projectId = match[1];
+      const projectMatch = e.url.match(/\/projects\/([^\/]+)/);
+      const qpMatch = e.url.match(/[?&]projectId=([^&]+)/);
+      if (projectMatch) {
+        this.projectId = projectMatch[1];
+        this.inProject = true;
+      } else if (qpMatch) {
+        this.projectId = qpMatch[1];
         this.inProject = true;
       } else {
         this.inProject = false;
@@ -268,17 +272,20 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
     // Check current route on init
     const match = this.router.url.match(/\/projects\/([^\/]+)/);
+    const qpMatch = this.router.url.match(/[?&]projectId=([^&]+)/);
     if (match) { this.projectId = match[1]; this.inProject = true; }
+    else if (qpMatch) { this.projectId = qpMatch[1]; this.inProject = true; }
 
     const saved = localStorage.getItem('bp-mode');
     this.isDark = saved === 'dark';
-    document.documentElement.setAttribute('data-mode', this.isDark ? 'dark' : 'light');
+    this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
   }
 
   toggleMode() {
     this.isDark = !this.isDark;
-    document.documentElement.setAttribute('data-mode', this.isDark ? 'dark' : 'light');
-    localStorage.setItem('bp-mode', this.isDark ? 'dark' : 'light');
+    const mode = this.isDark ? 'dark' : 'light';
+    localStorage.setItem('bp-mode', mode);
+    this.configService.update({ mode });
   }
 
   ngOnDestroy() {

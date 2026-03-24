@@ -223,7 +223,7 @@ import { Project } from '../../models';
     /* TAGS */
     .bp-item-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .bp-item-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--theme-bg); color: var(--theme-text); border: 0.5px solid var(--theme-border); }
-    .bp-item-tag-tier { background: #EDE9FE; color: #5B21B6; border-color: #8B5CF6; }
+    .bp-item-tag-tier { background: var(--color-tier-bg); color: var(--color-tier-text); border-color: var(--color-tier-border); }
 
     /* PRICE */
     .bp-item-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 0.5px solid var(--color-border); }
@@ -334,8 +334,7 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
             heroTitle: this.item.name,
             heroSub: '',
             pills: [],
-            tabs: [],
-            backPath: `/suppliers/${this.supplierId}`
+            tabs: []
           });
         }
         this.loading = false;

@@ -30,6 +30,29 @@
   --color-text-secondary: #888888;
   --color-text-muted: #BBBBBB;
 
+  /* Status colours — semantic, dark mode aware */
+  --color-action-bg:      #FEF2F2;
+  --color-action-text:    #DC2626;
+  --color-action-border:  #FECACA;
+  --color-waiting-bg:     #FFFBEB;
+  --color-waiting-text:   #D97706;
+  --color-waiting-border: #FDE68A;
+  --color-quoted-bg:      #EFF6FF;
+  --color-quoted-text:    #2563EB;
+  --color-quoted-border:  #BFDBFE;
+  --color-booked-bg:      #ECFDF5;
+  --color-booked-text:    #059669;
+  --color-booked-border:  #6EE7B7;
+  --color-msg-read-bg:    #F3F4F6;
+  --color-msg-read-border:#E5E7EB;
+  --color-msg-out-bg:     #FEFCF0;
+  --color-msg-out-border: #FDE68A;
+  --color-thread-bg:      #F9FAFB;
+  --color-unread-row-bg:  #FEFCF8;
+  --color-tier-bg:        #EDE9FE;
+  --color-tier-text:      #5B21B6;
+  --color-tier-border:    #8B5CF6;
+
   /* Typography scale */
   --text-xs: 10px;
   --text-sm: 12px;
@@ -53,7 +76,34 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #888888;
   --color-text-muted: #555555;
+  --color-action-bg:      #2D1515;
+  --color-action-text:    #F87171;
+  --color-action-border:  #7F1D1D;
+  --color-waiting-bg:     #2D2008;
+  --color-waiting-text:   #FCD34D;
+  --color-waiting-border: #78350F;
+  --color-quoted-bg:      #0F1D35;
+  --color-quoted-text:    #93C5FD;
+  --color-quoted-border:  #1E3A5F;
+  --color-booked-bg:      #0A2018;
+  --color-booked-text:    #6EE7B7;
+  --color-booked-border:  #064E3B;
+  --color-msg-read-bg:    #1A1A1A;
+  --color-msg-read-border:#2A2A2A;
+  --color-msg-out-bg:     #2A2218;
+  --color-msg-out-border: #3D3020;
+  --color-thread-bg:      #111111;
+  --color-unread-row-bg:  #1A1810;
+  --color-tier-bg:        #1E1535;
+  --color-tier-text:      #C4B5FD;
+  --color-tier-border:    #4C1D95;
+  --primary-color: var(--theme-accent);
 }
+[data-mode="dark"] .bp-hero {
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-border) !important;
+}
+[data-mode="dark"] .bp-section-title { color: var(--theme-accent) !important; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; }
@@ -270,6 +320,29 @@ lucide-icon svg {
 [data-mode="dark"] .border-gray-100 { border-color: var(--color-border) !important; }
 [data-mode="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border) !important; }
 [data-mode="dark"] .shadow-sm { box-shadow: none !important; }
+[data-mode="dark"] .p-dropdown-panel {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  color: var(--color-text-primary) !important;
+  background: var(--color-surface) !important;
+}
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+[data-mode="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+  background: var(--color-bg) !important;
+  color: var(--color-text-primary) !important;
+}
+[data-mode="dark"] .bp-msg-status-pill {
+  border-color: var(--color-text-muted) !important;
+  color: var(--color-text-secondary) !important;
+}
+[data-mode="dark"] .bp-drawer-body {
+  background: var(--color-surface) !important;
+}
+[data-mode="dark"] .p-sidebar-content {
+  background: var(--color-surface) !important;
+}
 
 /* ============================================
    GLOBAL .btn-primary — theme-aware action button
@@ -437,11 +510,12 @@ lucide-icon svg {
 }
 .bp-hero-page-label {
   font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-muted);
+  font-weight: 600;
+  color: var(--theme-text) !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 20px;
+  display: block;
 }
 .bp-hero-tabs { display: flex; }
 .bp-hero-tab {
@@ -786,8 +860,8 @@ app-top-nav { flex-shrink: 0; }
   /* Hide pills (client name, venue) on mobile project hero */
   .bp-hero-meta { display: none !important; }
 
-  /* Hide sub label (ACTIVE, HOME etc.) on mobile */
-  .bp-hero-page-label { display: none !important; }
+  /* Sub label visible on mobile — shows org/project context */
+  .bp-hero-page-label { font-size: 10px; margin-bottom: 8px; }
 }
 /* =============================================================
    BOTTOM NAV PAGE PADDING — append to responsive section in styles.css
@@ -828,7 +902,7 @@ app-top-nav { flex-shrink: 0; }
 
   /* Kill any leftover space from hidden elements */
   .bp-hero-meta        { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
-  .bp-hero-page-label  { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
+  .bp-hero-page-label  { font-size: 10px; margin-bottom: 4px !important; padding: 0 !important; }
 
   /* Remove bottom margin from org name — tabs sit right below */
   .bp-hero-org-name    { margin-bottom: 0 !important; }
@@ -879,7 +953,7 @@ app-top-nav { flex-shrink: 0; }
 }
 
 /* ── INBOX CARD STYLE (messages) ── */
-.bp-inbox-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: #fff; transition: background 0.15s; }
+.bp-inbox-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); transition: background 0.15s; }
 .bp-inbox-card:hover { background: var(--color-surface); }
 .bp-inbox-outbound { background: var(--theme-bg); }
 .bp-inbox-outbound:hover { background: var(--theme-bg); opacity: 0.85; }

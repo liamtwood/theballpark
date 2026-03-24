@@ -86,19 +86,12 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     if (p.client_name) pills.push(p.client_name);
     if (p.venue_name)  pills.push(p.venue_name);
 
-    // Sub: org name would be loaded from OrgService but we use page label pattern
-    // "Apex Exhibition · draft" — status comes from the project
-    const sub = p.status_name
-      ? p.status_name.charAt(0).toUpperCase() + p.status_name.slice(1)
-      : '';
-
     this.shellCtx.set({
       heroTitle:  p.event_name || p.name || 'Untitled',
-      heroSub:    sub,
+      heroSub:    '',
       pills,
       tabs,
       showStats:  false,
-      backPath:   '/',
     });
   }
 }
