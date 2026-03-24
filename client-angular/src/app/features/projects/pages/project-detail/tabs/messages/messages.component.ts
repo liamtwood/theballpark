@@ -38,6 +38,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
           ...this.previousCtx,
           heroTitle: p?.event_name || p?.name || 'Messages',
           heroSub: 'Messages',
+          tabs: [],
         });
       });
     }
