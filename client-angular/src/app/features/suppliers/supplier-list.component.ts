@@ -188,11 +188,11 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       const projectId = this.route.snapshot.queryParams['projectId'];
       if (projectId) {
         this.projectSvc.getById(projectId).subscribe(p => {
-          this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: p?.event_name || p?.name || '', pills: [], tabs: [] });
+          this.shellCtx.set({ heroTitle: p?.event_name || p?.name || 'Suppliers', heroSub: 'Suppliers', pills: [], tabs: [] });
           this.cdr.detectChanges();
         });
       } else {
-        this.shellCtx.set({ heroTitle: 'Suppliers', heroSub: org?.name || '', pills: [], tabs: [] });
+        this.shellCtx.set({ heroTitle: org?.name || 'Suppliers', heroSub: 'Suppliers', pills: [], tabs: [] });
         this.cdr.detectChanges();
       }
     });

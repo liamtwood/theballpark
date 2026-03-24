@@ -35,8 +35,8 @@ export class MessagesComponent implements OnInit, OnDestroy {
       this.projectSvc.getById(this.pid).subscribe(p => {
         this.shellCtx.set({
           ...this.previousCtx,
-          heroTitle: 'Messages',
-          heroSub: p?.event_name || p?.name || '',
+          heroTitle: p?.event_name || p?.name || 'Messages',
+          heroSub: 'Messages',
         });
       });
     }

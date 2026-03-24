@@ -34,10 +34,10 @@ export class GlobalMessagesComponent implements OnInit, OnDestroy {
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (this.preselectedProjectId) {
         this.projectSvc.getById(this.preselectedProjectId).subscribe(p => {
-          this.shellCtx.set({ heroTitle: 'Messages', heroSub: p?.event_name || p?.name || org?.name || '', pills: [], tabs: [] });
+          this.shellCtx.set({ heroTitle: p?.event_name || p?.name || 'Messages', heroSub: 'Messages', pills: [], tabs: [] });
         });
       } else {
-        this.shellCtx.set({ heroTitle: 'Messages', heroSub: org?.name || '', pills: [], tabs: [] });
+        this.shellCtx.set({ heroTitle: org?.name || 'Messages', heroSub: 'Messages', pills: [], tabs: [] });
       }
     });
   }
