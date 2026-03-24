@@ -511,10 +511,11 @@ lucide-icon svg {
 .bp-hero-page-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--theme-text);
+  color: var(--theme-text) !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 20px;
+  display: block;
 }
 .bp-hero-tabs { display: flex; }
 .bp-hero-tab {
