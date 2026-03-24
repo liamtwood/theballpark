@@ -25,12 +25,12 @@ import { environment } from '../../environments/environment';
             <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
           </ng-container>
         </a>
-        <button class="bp-mode-btn bp-mode-btn-mobile" (click)="toggleMode()"
-          [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-          <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
-        </button>
         <span class="bp-nav-tagline">{{ tagline }}</span>
       </div>
+      <button class="bp-mode-btn bp-mode-btn-mobile" (click)="toggleMode()"
+        [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+        <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
+      </button>
       <div class="bp-nav-right">
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
@@ -155,7 +155,7 @@ import { environment } from '../../environments/environment';
 
     /* ── MOBILE BREAKPOINT ── */
     @media (max-width: 768px) {
-      .bp-mode-btn-mobile { display: flex; margin-left: 8px; }
+      .bp-mode-btn-mobile { display: flex; margin-right: 16px; }
       /* Hide desktop nav links, keep logo */
       .bp-nav-right { display: none; }
       .bp-nav-tagline { display: none; }
