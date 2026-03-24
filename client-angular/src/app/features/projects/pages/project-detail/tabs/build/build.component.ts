@@ -187,7 +187,7 @@ interface CategoryWithBrief {
       </div>
       <ng-template pTemplate="footer">
         <div class="bp-drawer-footer">
-          <p-button label="Add to Project" styleClass="bp-drawer-cta w-full" [disabled]="!selectedNewCatId" [loading]="addingCat" (onClick)="addCategory()"></p-button>
+          <p-button label="Add Category" styleClass="bp-drawer-cta w-full" [disabled]="!selectedNewCatId" [loading]="addingCat" (onClick)="addCategory()"></p-button>
         </div>
       </ng-template>
     </p-sidebar>
