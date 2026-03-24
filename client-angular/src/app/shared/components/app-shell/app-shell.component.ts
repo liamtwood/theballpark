@@ -7,9 +7,8 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
-import { ShellContextService, ShellContext } from '../../../core/services/shell-context.service';
+import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
 
-interface ShellTab { label: string; path: string; }
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
@@ -21,30 +20,35 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- HERO -->
     <div class="bp-hero">
 
-      <!-- PILLS — context-driven -->
+      <!-- PILLS -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
         <ng-container *ngFor="let pill of heroPills">
-          <!-- Location pill — map-pin icon -->
           <span *ngIf="isLocationPill(pill)" class="bp-hero-tag-span">
             <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
             {{ pill }}
           </span>
-          <!-- Standard pill -->
           <p-tag *ngIf="!isLocationPill(pill)" [value]="pill" styleClass="bp-hero-tag"></p-tag>
         </ng-container>
       </div>
 
-      <!-- TITLE — project name or org name -->
+      <!-- BACK ARROW -->
+      <div *ngIf="ctx?.backPath" class="bp-hero-back" (click)="navigate(ctx!.backPath!)">
+        <i class="pi pi-arrow-left" style="font-size:13px;"></i>
+        <span>Back</span>
+      </div>
+
+      <!-- TITLE -->
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
 
-      <!-- SUB — "Org name · status" on project pages, page label elsewhere -->
+      <!-- SUB -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
 
       <!-- TABS -->
       <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
         <button *ngFor="let tab of activeTabs"
-          class="bp-hero-tab" [class.active]="isActive(tab.path)"
-          (click)="navigate(tab.path)">
+          class="bp-hero-tab"
+          [class.active]="isTabActive(tab)"
+          (click)="onTabClick(tab)">
           {{ tab.label }}
         </button>
       </div>
@@ -80,11 +84,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-hero          { flex-shrink: 0; }
+    .bp-hero-back     { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-muted); cursor: pointer; margin-bottom: 6px; transition: color 0.15s; }
+    .bp-hero-back:hover { color: var(--theme-accent); }
 
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 
-    /* Standard p-tag pill — white fill, accent border */
     :host ::ng-deep .bp-hero-tag.p-tag {
       background: #fff !important;
       color: var(--theme-text) !important;
@@ -95,27 +100,13 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       border-radius: 20px !important;
     }
 
-    /* Location pill — plain span with icon, same style */
     .bp-hero-tag-span {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #fff;
-      color: var(--theme-text);
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fff; color: var(--theme-text);
       border: 1.5px solid var(--theme-accent);
-      font-size: 11px;
-      font-weight: 500;
-      padding: 3px 12px;
-      border-radius: 20px;
+      font-size: 11px; font-weight: 500;
+      padding: 3px 12px; border-radius: 20px;
     }
-
-    /* ── HERO STATS BAR ── */
-    .bp-hero-stats      { display: flex; justify-content: var(--hero-align-flex, center); gap: 0; margin-bottom: 12px; }
-    .bp-hero-stat       { display: flex; flex-direction: column; align-items: center; padding: 8px 24px; border-right: 0.5px solid var(--theme-border); }
-    .bp-hero-stat:last-child { border-right: none; }
-    .bp-hero-stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--theme-text); margin-bottom: 2px; }
-    .bp-hero-stat-value { font-size: 26px; font-weight: 700; color: var(--color-text-primary); line-height: 1.1; }
-    .bp-hero-stat-sub   { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
 
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -141,7 +132,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   orgCity      = '';
   platformName = 'The Ballpark';
 
-  pageLabel = '';
+  pageLabel    = '';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -159,13 +150,27 @@ export class AppShellComponent implements OnInit, OnDestroy {
   }
   get activeTabs(): ShellTab[] { return this.ctx?.tabs?.length ? this.ctx.tabs : this.routeTabs; }
 
-  // Determines if a pill should show the map-pin icon
   isLocationPill(pill: string): boolean {
-    // On org pages: the city pill
     if (pill === this.orgCity) return true;
-    // On project pages: the venue pill (second pill in context)
     if (this.ctx?.pills && this.ctx.pills.length >= 2 && pill === this.ctx.pills[1]) return true;
     return false;
+  }
+
+  // Tab click — use onTabClick callback if present, otherwise navigate by path
+  onTabClick(tab: ShellTab) {
+    if (this.ctx?.onTabClick) {
+      this.ctx.onTabClick(tab);
+    } else {
+      this.navigate(tab.path);
+    }
+  }
+
+  // Tab active state — use activeTabPath if set (callback mode), otherwise route matching
+  isTabActive(tab: ShellTab): boolean {
+    if (this.ctx?.activeTabPath !== undefined) {
+      return tab.path === this.ctx.activeTabPath;
+    }
+    return this.isActive(tab.path);
   }
 
   heroAlign    = 'center';
@@ -176,7 +181,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   showStats    = true;
   creditLabel  = 'Ball';
   ballsBalance = 0;
-  isAdmin = true; // stub until v1.3 auth
+  isAdmin      = false;
 
   navGroups: NavGroup[] = [
     {
@@ -233,9 +238,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
       }
     });
 
-    // TODO: v1.3 auth — replace with getCurrentUser()
     this.orgSvc.getUsers().subscribe((users: any[]) => {
       if (users?.length) {
+        this.isAdmin  = users[0].role === 'admin';
         this.userName = users[0].name || '';
         this.userRole = users[0].role || '';
         this.cdr.detectChanges();
@@ -283,8 +288,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
     const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];
     document.documentElement.style.setProperty('--font-display', fonts.display);
     document.documentElement.style.setProperty('--font-body', fonts.body);
-    document.documentElement.style.setProperty('--hero-align', this.heroAlignVar);
-    document.documentElement.style.setProperty('--hero-align-flex', this.heroAlignFlex);
   }
 
   static readonly FONT_PAIRINGS: Record<string, { display: string; body: string; label: string }> = {
@@ -311,6 +314,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   }
 
   navigate(path: string) { this.router.navigateByUrl(path); }
+
   isActive(path: string) {
     if (path === '/') return this.router.url === '/';
     return this.router.url.startsWith(path);

@@ -46,8 +46,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     { label: 'Brief',     path: '' },  // path set dynamically with pid
     { label: 'Build',     path: '' },
     { label: 'Estimate',  path: '' },
-    { label: 'Suppliers', path: '' },
-    { label: 'Messages',  path: '' },
   ];
 
   constructor(
@@ -81,8 +79,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       { label: 'Brief',     path: `/projects/${this.pid}/brief` },
       { label: 'Build',     path: `/projects/${this.pid}/build` },
       { label: 'Estimate',  path: `/projects/${this.pid}/estimate` },
-      { label: 'Suppliers', path: `/projects/${this.pid}/suppliers` },
-      { label: 'Messages',  path: `/projects/${this.pid}/messages` },
     ];
 
     // Pills: client name + venue
@@ -102,6 +98,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       pills,
       tabs,
       showStats:  false,
+      backPath:   '/',
     });
   }
 }

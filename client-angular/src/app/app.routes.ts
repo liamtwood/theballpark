@@ -39,6 +39,26 @@ export const routes: Routes = [
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
         data: { pageLabel: 'SUPPLIERS', tabs: [] }
       },
+      {
+        path: 'suppliers/:id',
+        loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
+      {
+        path: 'suppliers/:id/items/:itemId',
+        loadComponent: () => import('./features/suppliers/item-detail.component').then(m => m.ItemDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
+      {
+        path: 'favourites',
+        loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
+        data: { pageLabel: 'FAVOURITES', tabs: [] }
+      },
+      {
+        path: 'messages',
+        loadComponent: () => import('./features/messages/global-messages.component').then(m => m.GlobalMessagesComponent),
+        data: { pageLabel: 'MESSAGES', tabs: [] }
+      },
 
       // ── CLIENTS ──
       {
