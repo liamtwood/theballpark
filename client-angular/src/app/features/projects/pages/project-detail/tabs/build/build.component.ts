@@ -5,10 +5,12 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SidebarModule } from 'primeng/sidebar';
+import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, ChevronRight, MapPin } from 'lucide-angular';
 import { ProjectCategoryService } from '../../../../../../core/services/project-category.service';
+import { CategoryService } from '../../../../../../core/services/category.service';
 import { SupplierService } from '../../../../../../core/services/supplier.service';
 import { OrgService } from '../../../../../../core/services/org.service';
 import { ConfigService } from '../../../../../../core/services/config.service';
@@ -35,7 +37,7 @@ interface CategoryWithBrief {
     CommonModule, FormsModule, RouterModule,
     LucideAngularModule,
     ButtonModule, InputTextareaModule,
-    SidebarModule, ToastModule, LoadingSpinnerComponent
+    SidebarModule, ToastModule, DropdownModule, LoadingSpinnerComponent
   ],
   providers: [MessageService],
   template: `
@@ -59,6 +61,7 @@ interface CategoryWithBrief {
             <div class="bp-build-title">Build</div>
             <div class="bp-build-sub">{{ categories.length }} categories · {{ totalSelectedVendors() }} vendors selected</div>
           </div>
+          <p-button label="+ Add Category" styleClass="p-button-outlined p-button-sm" (onClick)="openAddCategory()"></p-button>
           <p-button
             *ngIf="totalSelectedVendors() > 0"
             label="Request Quotes →"
@@ -75,7 +78,7 @@ interface CategoryWithBrief {
             <div class="bp-cat-header" (click)="toggleCategory(cat)">
               <div class="bp-cat-header-left">
                 <lucide-icon [name]="getCatIcon(cat)" [size]="18"
-                  [style.color]="cat.selectedVendorIds.length > 0 ? 'var(--theme-accent)' : 'var(--color-text-muted)'">
+                  style="color: var(--theme-accent);">
                 </lucide-icon>
                 <div>
                   <div class="bp-cat-name">{{ cat.name }}</div>
@@ -170,6 +173,25 @@ interface CategoryWithBrief {
       </div>
     </ng-container>
 
+    <!-- ADD CATEGORY DRAWER -->
+    <p-sidebar [(visible)]="showAddCatDrawer" position="bottom" styleClass="bp-drawer bp-drawer-bottom" [style]="{height:'auto'}" [showCloseIcon]="false">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header"><div class="bp-drawer-title">Add Category</div></div>
+          <button class="bp-icon-btn" (click)="showAddCatDrawer = false"><i class="pi pi-times"></i></button>
+        </div>
+      </ng-template>
+      <div class="bp-drawer-body">
+        <label class="bp-field-label">Category</label>
+        <p-dropdown [(ngModel)]="selectedNewCatId" [options]="availableCategories" optionLabel="name" optionValue="id" styleClass="w-full bp-input-edit" placeholder="Select a category"></p-dropdown>
+      </div>
+      <ng-template pTemplate="footer">
+        <div class="bp-drawer-footer">
+          <p-button label="Add to Project" styleClass="bp-drawer-cta w-full" [disabled]="!selectedNewCatId" [loading]="addingCat" (onClick)="addCategory()"></p-button>
+        </div>
+      </ng-template>
+    </p-sidebar>
+
     <!-- QUOTE REVIEW DRAWER -->
     <p-sidebar [(visible)]="showQuoteDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
@@ -230,9 +252,9 @@ interface CategoryWithBrief {
   styles: [`
     /* ── LAYOUT ── */
     .bp-build-body   { display: flex; flex-direction: column; min-height: 100%; }
-    .bp-build-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px var(--section-pad) 12px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-build-title  { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
-    .bp-build-sub    { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+    .bp-build-header { display: flex; align-items: center; justify-content: space-between; padding: 16px var(--section-pad) 12px; border-bottom: 0.5px solid var(--color-border); text-align: center; flex-direction: column; gap: 4px; }
+    .bp-build-title  { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); text-align: center; }
+    .bp-build-sub    { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; text-align: center; }
 
     /* ── EMPTY STATE ── */
     .bp-build-empty       { text-align: center; padding: 80px 24px; }
@@ -320,6 +342,10 @@ export class BuildComponent implements OnInit {
   ballsBalance = 0;
   creditLabel = 'Ball';
   private projectId = '';
+  showAddCatDrawer = false;
+  availableCategories: any[] = [];
+  selectedNewCatId = '';
+  addingCat = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -328,7 +354,8 @@ export class BuildComponent implements OnInit {
     private orgSvc: OrgService,
     private configService: ConfigService,
     private msg: MessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private categorySvc: CategoryService
   ) {}
 
   ngOnInit() {
@@ -363,6 +390,46 @@ export class BuildComponent implements OnInit {
     } else {
       this.loading = false;
     }
+
+    this.categorySvc.getAll().subscribe({
+      next: cats => {
+        this.availableCategories = (cats || []).filter((c: any) => c.enabled !== false);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  openAddCategory() {
+    this.selectedNewCatId = '';
+    this.showAddCatDrawer = true;
+  }
+
+  addCategory() {
+    if (!this.selectedNewCatId || !this.projectId) return;
+    this.addingCat = true;
+    const cat = this.availableCategories.find((c: any) => c.id === this.selectedNewCatId);
+    this.projectCategorySvc.create({
+      project_id: this.projectId,
+      category_id: this.selectedNewCatId,
+      name: cat?.name || 'New Category',
+      ballpark_cost: 0,
+      sort_order: this.categories.length
+    }).subscribe({
+      next: () => {
+        this.addingCat = false;
+        this.showAddCatDrawer = false;
+        this.projectCategorySvc.getByProject(this.projectId).subscribe({
+          next: cats => {
+            this.categories = (cats || []).map((c: any) => ({
+              ...c, editingBrief: false, briefDraft: c.requirement_brief || '',
+              selectedVendorIds: [], vendors: [], vendorsLoaded: false
+            }));
+            this.cdr.detectChanges();
+          }
+        });
+      },
+      error: () => { this.addingCat = false; this.cdr.detectChanges(); }
+    });
   }
 
   getCatIcon(cat: CategoryWithBrief): string {
@@ -372,6 +439,10 @@ export class BuildComponent implements OnInit {
       'permits': 'signature', 'permits & logistics': 'signature',
       'catering': 'martini', 'talent': 'person-standing', 'talent & staffing': 'person-standing',
       'entertainment': 'person-standing',
+      'av & technology': 'headset', 'graphics': 'image', 'graphics & signage': 'image',
+      'signage': 'image', 'print': 'printer', 'hospitality': 'martini',
+      'catering & hospitality': 'martini', 'bar': 'martini',
+      'staffing': 'person-standing', 'security': 'shield',
     };
     const key = (cat.name || '').toLowerCase();
     for (const [k, v] of Object.entries(map)) {
