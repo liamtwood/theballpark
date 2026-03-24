@@ -902,7 +902,7 @@ app-top-nav { flex-shrink: 0; }
 
   /* Kill any leftover space from hidden elements */
   .bp-hero-meta        { display: none !important; margin: 0 !important; padding: 0 !important; height: 0 !important; }
-  .bp-hero-page-label  { font-size: 10px; margin-bottom: 4px !important; padding: 0 !important; }
+  .bp-hero-page-label  { font-size: 10px; color: var(--theme-text) !important; margin-bottom: 10px !important; padding: 0 !important; }
 
   /* Remove bottom margin from org name — tabs sit right below */
   .bp-hero-org-name    { margin-bottom: 0 !important; }
@@ -930,6 +930,9 @@ app-top-nav { flex-shrink: 0; }
   color: var(--color-text-muted) !important;
   border-bottom: none !important;
   font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  font-size: 11px !important;
 }
 .bp-hero-tab:hover {
   color: var(--color-text-secondary) !important;
