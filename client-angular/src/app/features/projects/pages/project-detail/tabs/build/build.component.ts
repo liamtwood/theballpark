@@ -61,7 +61,7 @@ interface CategoryWithBrief {
             <div class="bp-build-title">Build</div>
             <div class="bp-build-sub">{{ categories.length }} categories · {{ totalSelectedVendors() }} vendors selected</div>
           </div>
-          <p-button label="+ Add Category" styleClass="p-button-outlined p-button-sm" (onClick)="openAddCategory()"></p-button>
+          <p-button label="+ Add Category" styleClass="bp-btn-save p-button-sm" (onClick)="openAddCategory()"></p-button>
           <p-button
             *ngIf="totalSelectedVendors() > 0"
             label="Request Quotes →"
