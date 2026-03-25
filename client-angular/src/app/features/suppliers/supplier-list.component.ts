@@ -120,6 +120,14 @@ interface SupplierWithState extends Org {
               <button class="bp-toggle-btn" [class.active]="viewMode === 'items'" (click)="viewMode = 'items'; onViewModeChange()">Items</button>
               <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'" (click)="viewMode = 'suppliers'; onViewModeChange()">Suppliers</button>
             </div>
+            <div class="bp-view-toggle">
+              <button class="bp-view-btn" [class.active]="itemLayout === 'list'" (click)="itemLayout = 'list'">
+                <lucide-icon name="list" [size]="14"></lucide-icon>
+              </button>
+              <button class="bp-view-btn" [class.active]="itemLayout === 'card'" (click)="itemLayout = 'card'">
+                <lucide-icon name="layers" [size]="14"></lucide-icon>
+              </button>
+            </div>
           </div>
 
           <!-- ── SUPPLIERS VIEW ── -->
@@ -147,27 +155,52 @@ interface SupplierWithState extends Org {
               <i class="pi pi-spin pi-spinner" style="font-size:14px;color:var(--theme-accent);"></i>
             </div>
             <div *ngIf="!itemsLoading && !filteredItems.length" class="bp-cat-empty">No items found.</div>
-            <div *ngFor="let item of filteredItems"
-              class="bp-sup-item bp-sup-item-clickable"
-              [class.bp-sup-item-selected]="selectedItem?.id === item.id"
-              (click)="selectItem(item)">
-              <div class="bp-sup-item-body">
-                <div class="bp-sup-item-name">{{ item.name }}</div>
-                <div class="bp-sup-item-desc" *ngIf="item.description">{{ item.description }}</div>
-                <div class="bp-sup-item-meta">
-                  <span class="bp-sup-item-tag" *ngIf="item.category_name">{{ item.category_name }}</span>
-                  <span class="bp-sup-item-tag" *ngIf="item.tier">{{ item.tier }}</span>
-                  <ng-container *ngIf="item.tags?.length">
-                    <span class="bp-sup-item-tag" *ngFor="let t of item.tags.slice(0,3)">{{ t }}</span>
-                  </ng-container>
+
+            <!-- LIST VIEW -->
+            <ng-container *ngIf="!itemsLoading && filteredItems.length && itemLayout === 'list'">
+              <div *ngFor="let item of filteredItems"
+                class="bp-sup-item bp-sup-item-clickable"
+                [class.bp-sup-item-selected]="selectedItem?.id === item.id"
+                (click)="selectItem(item)">
+                <div class="bp-sup-item-body">
+                  <div class="bp-sup-item-name">{{ item.name }}</div>
+                  <div class="bp-sup-item-desc" *ngIf="item.description">{{ item.description }}</div>
+                  <div class="bp-sup-item-meta">
+                    <span class="bp-sup-item-tag" *ngIf="item.category_name">{{ item.category_name }}</span>
+                    <span class="bp-sup-item-tag" *ngIf="item.tier">{{ item.tier }}</span>
+                    <ng-container *ngIf="item.tags?.length">
+                      <span class="bp-sup-item-tag" *ngFor="let t of item.tags.slice(0,3)">{{ t }}</span>
+                    </ng-container>
+                  </div>
+                </div>
+                <div class="bp-sup-item-right">
+                  <div class="bp-sup-item-price" *ngIf="item.base_price">{{ item.base_price | gbp }}</div>
+                  <div class="bp-sup-item-unit" *ngIf="item.unit">{{ item.unit }}</div>
+                  <button class="bp-heart-btn" [class.active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
+                    <lucide-icon name="heart" [size]="14"></lucide-icon>
+                  </button>
                 </div>
               </div>
-              <div class="bp-sup-item-right">
-                <div class="bp-sup-item-price" *ngIf="item.base_price">{{ item.base_price | gbp }}</div>
-                <div class="bp-sup-item-unit" *ngIf="item.unit">{{ item.unit }}</div>
-                <button class="bp-heart-btn" [class.active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
-                  <lucide-icon name="heart" [size]="14"></lucide-icon>
-                </button>
+            </ng-container>
+
+            <!-- CARD VIEW -->
+            <div *ngIf="!itemsLoading && filteredItems.length && itemLayout === 'card'" class="bp-item-grid">
+              <div *ngFor="let item of filteredItems"
+                class="bp-item-card"
+                [class.bp-item-card-selected]="selectedItem?.id === item.id"
+                (click)="selectItem(item)">
+                <div class="bp-item-card-img"
+                  [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : (item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null)"
+                  [class.bp-item-card-img-default]="!item.image_url && !item.supplier_cover_url">
+                  <button class="bp-grid-heart" [class.active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
+                    <lucide-icon name="heart" [size]="14"></lucide-icon>
+                  </button>
+                </div>
+                <div class="bp-item-card-body">
+                  <div class="bp-item-card-name">{{ item.name }}</div>
+                  <div class="bp-item-card-price" *ngIf="item.base_price">{{ item.base_price | gbp }} <span class="bp-item-card-unit" *ngIf="item.unit">{{ item.unit }}</span></div>
+                  <div class="bp-item-card-supplier" *ngIf="item.supplier_name">{{ item.supplier_name }}</div>
+                </div>
               </div>
             </div>
           </ng-container>
@@ -416,6 +449,27 @@ interface SupplierWithState extends Org {
     .bp-sup-item-price { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .bp-sup-item-unit { font-size: 10px; color: var(--color-text-muted); }
 
+    /* ── ITEM CARD GRID ── */
+    .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
+    .bp-item-card:hover { border-color: var(--theme-accent); }
+    .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
+    .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; }
+    .bp-item-card-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-item-card-body { padding: 10px 12px; }
+    .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
+    .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
+    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+    .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
+
+    /* ── VIEW TOGGLE (list/card) ── */
+    .bp-view-toggle { display: flex; gap: 4px; margin-left: 8px; }
+    .bp-view-btn { width: 30px; height: 30px; border-radius: 6px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-grid-heart { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
+    .bp-grid-heart:hover { color: #E11D48; }
+    .bp-grid-heart.active { color: #E11D48; }
+
     /* ── HEART BTN ── */
     .bp-heart-btn {
       background: none; border: none; cursor: pointer;
@@ -509,6 +563,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   activeCategory = 'all';
   activeTag = '';
   viewMode: 'suppliers' | 'items' = 'items';
+  itemLayout: 'list' | 'card' = 'card';
 
   viewOptions = [
     { label: 'Suppliers', value: 'suppliers' },
