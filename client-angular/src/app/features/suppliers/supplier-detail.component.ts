@@ -17,6 +17,7 @@ import { OrgService } from '../../core/services/org.service';
 import { ConfigService } from '../../core/services/config.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { Project } from '../../models';
 
 @Component({
@@ -26,7 +27,7 @@ import { Project } from '../../models';
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent
+    GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
   template: `
@@ -42,7 +43,19 @@ import { Project } from '../../models';
         <button class="bp-hero-heart" [class.active]="isSupplierFav()" (click)="toggleSupplierFav()">
           <lucide-icon name="heart" [size]="20"></lucide-icon>
         </button>
+        <button class="bp-sup-edit-img-btn" (click)="showImagePanel = true">
+          <i class="pi pi-pencil" style="font-size:13px;"></i>
+        </button>
       </div>
+
+      <app-image-upload-panel
+        *ngIf="showImagePanel"
+        [entityId]="supplier?.id || ''"
+        type="supplier"
+        [existingCoverUrl]="supplier?.cover_image_url || ''"
+        (imagesUpdated)="onImagesUpdated($event)"
+        (closed)="showImagePanel = false">
+      </app-image-upload-panel>
 
       <!-- SUPPLIER INFO -->
       <div class="bp-sup-info">
@@ -166,6 +179,7 @@ import { Project } from '../../models';
     .bp-hero-heart { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: all 0.15s; }
     .bp-hero-heart:hover { color: #E11D48; }
     .bp-hero-heart.active { color: #E11D48; background: #fff; }
+    .bp-sup-edit-img-btn { position: absolute; bottom: 12px; right: 12px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-primary); }
     .bp-sup-info { padding: 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); }
     .bp-sup-info-name { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 4px; }
     .bp-sup-info-meta { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
@@ -209,6 +223,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   loading = true;
   activeCategory = 'all';
   highlightedItemId = '';
+  showImagePanel = false;
   showQuoteDrawer = false;
   selectedItem: any = null;
   selectedProjectId = '';
@@ -329,5 +344,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.msg.add({ severity: 'success', summary: 'Quote requested!', detail: `${this.supplier?.name} will be in touch.`, life: 3000 });
     this.ballsBalance = Math.max(0, this.ballsBalance - 1);
     this.cdr.detectChanges();
+  }
+
+  onImagesUpdated(event: { coverUrl: string }) {
+    if (this.supplier) {
+      this.supplier.cover_image_url = event.coverUrl;
+      this.cdr.detectChanges();
+    }
   }
 }
