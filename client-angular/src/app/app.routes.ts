@@ -37,7 +37,7 @@ export const routes: Routes = [
       {
         path: 'suppliers',
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
-        data: { pageLabel: 'SUPPLIERS', tabs: [] }
+        data: { pageLabel: 'CATALOGUE', tabs: [] }
       },
       {
         path: 'suppliers/:id',

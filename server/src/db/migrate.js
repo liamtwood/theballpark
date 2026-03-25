@@ -117,6 +117,8 @@ const migrate = async () => {
         lead_time_days INTEGER,
         coverage_area NUMERIC(10,2),
         tier VARCHAR(20) DEFAULT 'mid' CHECK (tier IN ('basic', 'mid', 'premium')),
+        tags TEXT[] DEFAULT '{}',
+        image_url VARCHAR,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),

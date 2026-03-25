@@ -1,8 +1,18 @@
 const router = require('express').Router();
 const ItemService = require('../services/item.service');
 
+// GET /api/items/tags?category_id= — must be before /:id
+router.get('/tags', async (req, res, next) => {
+  try {
+    if (!req.query.category_id) return res.status(400).json({ error: 'category_id required' });
+    res.json(await ItemService.getTagsByCategory(req.query.category_id));
+  } catch (err) { next(err); }
+});
+
 router.get('/', async (req, res, next) => {
-  try { res.json(await ItemService.getAll(req.query.org_id, req.query.category_id)); } catch (err) { next(err); }
+  try {
+    res.json(await ItemService.getAll(req.query.org_id, req.query.category_id, req.query.tag));
+  } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

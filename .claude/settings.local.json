@@ -73,7 +73,8 @@
       "Bash(rm -rf mobile-gap-fix-tmp)",
       "Bash(unzip -o mobile-gap-fix.zip -d mobile-gap-fix-tmp)",
       "Bash(rm -rf dashboard-mobile-tmp)",
-      "Bash(unzip -o dashboard-mobile.zip -d dashboard-mobile-tmp)"
+      "Bash(unzip -o dashboard-mobile.zip -d dashboard-mobile-tmp)",
+      "Bash(node:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
