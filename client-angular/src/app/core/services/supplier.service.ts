@@ -21,4 +21,8 @@ export class SupplierService {
   getTagsByCategory(categoryId: string) {
     return this.api.get<string[]>(`/items/tags?category_id=${categoryId}`);
   }
+
+  getItemCounts() {
+    return this.api.get<{ counts: Record<string, number>; total: number }>('/items/counts');
+  }
 }

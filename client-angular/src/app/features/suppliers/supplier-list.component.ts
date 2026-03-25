@@ -81,12 +81,13 @@ interface SupplierWithState extends Org {
             <div class="bp-sidebar-sublabel">Category</div>
             <button class="bp-sidebar-item active" (click)="setCategory('all')">
               <span>All</span>
-              <span class="bp-sidebar-count">{{ totalItemCount() }} items</span>
+              <span class="bp-sidebar-count">{{ totalItems }}</span>
             </button>
             <button *ngFor="let cat of categories"
               class="bp-sidebar-item"
               (click)="setCategory(cat.id)">
               <span>{{ cat.name }}</span>
+              <span class="bp-sidebar-count" *ngIf="categoryCounts[cat.id]">{{ categoryCounts[cat.id] }}</span>
             </button>
           </ng-container>
 
@@ -513,6 +514,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       this.shellCtx.set({ heroTitle: this.configSvc.platformName, heroSub: label, pills: [], tabs: [] });
     }
 
+    this.loadCategoryCounts();
     this.categorySvc.getAll().subscribe({
       next: cats => { this.categories = (cats || []).filter((c: any) => c.enabled !== false); this.cdr.detectChanges(); },
       error: () => {}
@@ -630,17 +632,17 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  countByCategory(catId: string): number {
-    return this.suppliers.reduce((sum, s) => {
-      if (((s as any).category_ids || []).includes(catId)) {
-        return sum + (parseInt((s as any).item_count, 10) || 0);
-      }
-      return sum;
-    }, 0);
-  }
+  categoryCounts: Record<string, number> = {};
+  totalItems = 0;
 
-  totalItemCount(): number {
-    return this.suppliers.reduce((sum, s) => sum + (parseInt((s as any).item_count, 10) || 0), 0);
+  loadCategoryCounts() {
+    this.supplierSvc.getItemCounts().subscribe({
+      next: (data: any) => {
+        this.categoryCounts = data.counts || {};
+        this.totalItems = data.total || 0;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   selectItem(item: any) { this.selectedItem = item; this.cdr.detectChanges(); }

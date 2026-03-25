@@ -1,6 +1,11 @@
 const router = require('express').Router();
 const ItemService = require('../services/item.service');
 
+// GET /api/items/counts — item counts per category
+router.get('/counts', async (req, res, next) => {
+  try { res.json(await ItemService.countsByCategory()); } catch (err) { next(err); }
+});
+
 // GET /api/items/tags?category_id= — must be before /:id
 router.get('/tags', async (req, res, next) => {
   try {
