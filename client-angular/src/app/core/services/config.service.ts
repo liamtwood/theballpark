@@ -21,6 +21,7 @@ export class ConfigService {
     tagline: 'Exhibition Costing',
     projectLabel: 'Event',
     creditLabel: 'Ball',
+    catalogueLabel: 'Catalogue',
     themeName: 'amber',
     mode: 'system',
     heroAlign: 'center',
@@ -45,6 +46,7 @@ export class ConfigService {
   get tagline(): string { return this.config.tagline; }
   get projectLabel(): string { return this.config.projectLabel; }
   get creditLabel(): string { return this.config.creditLabel; }
+  get catalogueLabel(): string { return this.config.catalogueLabel || 'Catalogue'; }
   get logoUrl(): string { return this.config.logoUrl || ''; }
   get heroAlign(): string { return this.config.heroAlign || 'center'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }

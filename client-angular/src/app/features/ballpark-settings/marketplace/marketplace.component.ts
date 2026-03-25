@@ -142,6 +142,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
               <label class="bp-field-label">Credits are called</label>
               <input pInputText [value]="appearance.creditLabel || '—'" class="w-full bp-field-readonly" readonly/>
             </div>
+            <div>
+              <label class="bp-field-label">Catalogue page is called</label>
+              <input pInputText [value]="appearance.catalogueLabel || '—'" class="w-full bp-field-readonly" readonly/>
+            </div>
           </div>
         </ng-container>
         <ng-container *ngIf="editingTerminology">
@@ -153,6 +157,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <div>
               <label class="bp-field-label">Credits are called</label>
               <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full bp-input-edit"/>
+            </div>
+            <div>
+              <label class="bp-field-label">Catalogue page is called</label>
+              <input pInputText [(ngModel)]="appearance.catalogueLabel" class="w-full bp-input-edit"/>
             </div>
           </div>
         </ng-container>
@@ -361,7 +369,7 @@ export class MarketplaceComponent implements OnInit {
     fontPairing?: string;
   } = {
     platformName: 'The Ballpark', tagline: 'Exhibition Costing',
-    projectLabel: 'Event', creditLabel: 'Ball', themeName: 'amber',
+    projectLabel: 'Event', creditLabel: 'Ball', catalogueLabel: 'Catalogue', themeName: 'amber',
     mode: 'system' as 'light' | 'dark' | 'system',
     heroAlign: 'center', showUserName: true, showLocation: true,
     showUpcoming: true, showStats: true, navMode: 'tabs',
@@ -413,7 +421,7 @@ export class MarketplaceComponent implements OnInit {
       this.platformSnapshot = { platformName: this.appearance.platformName, tagline: this.appearance.tagline };
       this.editingPlatform = true;
     } else {
-      this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel };
+      this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel, catalogueLabel: this.appearance.catalogueLabel };
       this.editingTerminology = true;
     }
     this.cdr.detectChanges();

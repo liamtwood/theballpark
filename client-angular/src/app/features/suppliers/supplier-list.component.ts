@@ -14,6 +14,7 @@ import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
 import { ProjectService } from '../../core/services/project.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { ConfigService } from '../../core/services/config.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -350,8 +351,8 @@ interface SupplierWithState extends Org {
     </div>
   `,
   styles: [`
-    .bp-cat-body { display: grid; grid-template-columns: 200px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
-    .bp-cat-body--detail { grid-template-columns: 200px 1fr 300px; }
+    .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
+    .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
     .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
     .bp-cat-main { padding: 20px 28px; overflow-y: auto; min-width: 0; }
     .bp-cat-detail { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
@@ -490,25 +491,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private orgSvc: OrgService,
     private projectSvc: ProjectService,
     private shellCtx: ShellContextService,
+    private configSvc: ConfigService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    const label = this.configSvc.catalogueLabel.toUpperCase();
     const projectId = this.route.snapshot.queryParams['projectId'];
     if (projectId) {
       this.projectSvc.getById(projectId).subscribe(p => {
         this.shellCtx.set({
-          heroTitle: 'Catalogue',
-          heroSub: 'CATALOGUE',
+          heroTitle: this.configSvc.platformName,
+          heroSub: label,
           pills: p ? [p.event_name || p.name || ''] : [],
           tabs: []
         });
         this.cdr.detectChanges();
       });
     } else {
-      this.shellCtx.set({ heroTitle: 'Catalogue', heroSub: 'CATALOGUE', pills: [], tabs: [] });
+      this.shellCtx.set({ heroTitle: this.configSvc.platformName, heroSub: label, pills: [], tabs: [] });
     }
 
     this.categorySvc.getAll().subscribe({
