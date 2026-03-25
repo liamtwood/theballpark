@@ -350,6 +350,8 @@ async function run() {
     const catRes = await client.query(`SELECT id, name FROM categories WHERE is_active = true`);
     const catMap = {};
     for (const row of catRes.rows) catMap[row.name] = row.id;
+    // Aliases for seed data that uses short names
+    if (catMap['Catering & Hospitality']) catMap['Catering'] = catMap['Catering & Hospitality'];
     console.log(`    Found: ${Object.keys(catMap).join(', ')}`);
 
     // ── 3. Upsert items ────────────────────────────────────────────────────
