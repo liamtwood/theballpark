@@ -110,7 +110,7 @@ type DashTab = 'projects';
                 </ng-template>
                 <div class="bp-card-content">
                   <div class="bp-card-name">{{ p.event_name || p.name }}</div>
-                  <div class="bp-card-meta">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
+                  <div class="bp-card-meta">{{ p.event_date || '' }}</div>
                   <div class="bp-card-cost" *ngIf="p.total_client_cost">Est. {{ fmtCurrency(p.total_client_cost) }}</div>
                 </div>
               </p-card>
@@ -133,7 +133,7 @@ type DashTab = 'projects';
                 </ng-template>
                 <div class="bp-card-content">
                   <div class="bp-card-name">{{ p.event_name || p.name }}</div>
-                  <div class="bp-card-meta">{{ p.client_name || '' }}{{ p.client_name && p.event_date ? ' · ' : '' }}{{ p.event_date || '' }}</div>
+                  <div class="bp-card-meta">{{ p.event_date || '' }}</div>
                   <div class="bp-card-cost" *ngIf="p.total_client_cost">{{ fmtCurrency(p.total_client_cost) }} final</div>
                 </div>
               </p-card>
