@@ -14,6 +14,7 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 
 interface SupplierWithState extends Org {
   expanded: boolean;
@@ -29,7 +30,7 @@ interface SupplierWithState extends Org {
     CommonModule, FormsModule, RouterModule,
     InputTextModule, ButtonModule,
     LucideAngularModule,
-    LoadingSpinnerComponent, GbpPipe
+    LoadingSpinnerComponent, ImageUploadPanelComponent, GbpPipe
   ],
   template: `
     <div class="bp-page">
@@ -192,9 +193,14 @@ interface SupplierWithState extends Org {
                 <div class="bp-item-card-img"
                   [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : (item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null)"
                   [class.bp-item-card-img-default]="!item.image_url && !item.supplier_cover_url">
-                  <button class="bp-grid-heart" [class.active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
+                  <div class="bp-grid-actions">
+                    <button class="bp-grid-action-btn" (click)="openItemImageUpload($event, item)">
+                      <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+                    </button>
+                    <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
+                      <lucide-icon name="heart" [size]="14"></lucide-icon>
+                    </button>
+                  </div>
                 </div>
                 <div class="bp-item-card-body">
                   <div class="bp-item-card-name">{{ item.name }}</div>
@@ -277,6 +283,16 @@ interface SupplierWithState extends Org {
         </div>
 
       </div>
+
+      <!-- ITEM IMAGE UPLOAD PANEL -->
+      <app-image-upload-panel
+        *ngIf="uploadItemId"
+        [entityId]="uploadItemId"
+        type="item"
+        [existingCoverUrl]="uploadItemExistingUrl"
+        (imagesUpdated)="onItemImageUpdated($event)"
+        (closed)="uploadItemId = ''">
+      </app-image-upload-panel>
 
     </ng-container>
     </div>
@@ -466,9 +482,10 @@ interface SupplierWithState extends Org {
     .bp-view-toggle { display: flex; gap: 4px; margin-left: 8px; }
     .bp-view-btn { width: 30px; height: 30px; border-radius: 6px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
     .bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
-    .bp-grid-heart { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
-    .bp-grid-heart:hover { color: #E11D48; }
-    .bp-grid-heart.active { color: #E11D48; }
+    .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+    .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
+    .bp-grid-action-btn:hover { color: var(--theme-accent); }
+    .bp-grid-heart-active { color: #E11D48 !important; }
 
     /* ── HEART BTN ── */
     .bp-heart-btn {
@@ -564,6 +581,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   activeTag = '';
   viewMode: 'suppliers' | 'items' = 'items';
   itemLayout: 'list' | 'card' = 'card';
+  uploadItemId = '';
+  uploadItemExistingUrl = '';
 
   viewOptions = [
     { label: 'Suppliers', value: 'suppliers' },
@@ -733,5 +752,21 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     if (projectId) {
       this.router.navigate(['/projects', projectId], { queryParams: { addItem: item.id } });
     }
+  }
+
+  openItemImageUpload(event: MouseEvent, item: any) {
+    event.stopPropagation();
+    this.uploadItemId = item.id;
+    this.uploadItemExistingUrl = item.image_url || '';
+    this.cdr.detectChanges();
+  }
+
+  onItemImageUpdated(event: { coverUrl: string }) {
+    const item = this.filteredItems.find((i: any) => i.id === this.uploadItemId);
+    if (item) {
+      item.image_url = event.coverUrl;
+    }
+    this.uploadItemId = '';
+    this.cdr.detectChanges();
   }
 }
