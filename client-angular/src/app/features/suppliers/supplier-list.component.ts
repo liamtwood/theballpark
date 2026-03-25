@@ -81,13 +81,12 @@ interface SupplierWithState extends Org {
             <div class="bp-sidebar-sublabel">Category</div>
             <button class="bp-sidebar-item active" (click)="setCategory('all')">
               <span>All</span>
-              <span class="bp-sidebar-count">{{ suppliers.length }}</span>
+              <span class="bp-sidebar-count">{{ totalItemCount() }} items</span>
             </button>
             <button *ngFor="let cat of categories"
               class="bp-sidebar-item"
               (click)="setCategory(cat.id)">
               <span>{{ cat.name }}</span>
-              <span class="bp-sidebar-count">{{ countByCategory(cat.id) }}</span>
             </button>
           </ng-container>
 
@@ -632,7 +631,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   countByCategory(catId: string): number {
-    return this.suppliers.filter(s => ((s as any).category_ids || []).includes(catId)).length;
+    return this.suppliers.reduce((sum, s) => {
+      if (((s as any).category_ids || []).includes(catId)) {
+        return sum + (parseInt((s as any).item_count, 10) || 0);
+      }
+      return sum;
+    }, 0);
+  }
+
+  totalItemCount(): number {
+    return this.suppliers.reduce((sum, s) => sum + (parseInt((s as any).item_count, 10) || 0), 0);
   }
 
   selectItem(item: any) { this.selectedItem = item; this.cdr.detectChanges(); }
