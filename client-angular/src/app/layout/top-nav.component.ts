@@ -61,7 +61,7 @@ import { environment } from '../../environments/environment';
         </a>
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
-          <span>Suppliers</span>
+          <span>Catalogue</span>
         </a>
         <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="heart" [size]="20"></lucide-icon>
@@ -85,7 +85,7 @@ import { environment } from '../../environments/environment';
         </a>
         <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
-          <span>Suppliers</span>
+          <span>Catalogue</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
