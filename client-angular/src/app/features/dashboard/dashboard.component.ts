@@ -157,7 +157,7 @@ type DashTab = 'projects';
           <div class="bp-saved-hd">SAVED SUPPLIERS</div>
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
           <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
-            <div class="bp-sup-img" [class]="'bp-sup-bg-' + getCategoryClass(s.category)" [style.background-image]="s.hero_image_url ? 'url(' + s.hero_image_url + ')' : null">
+            <div class="bp-sup-img" [class]="'bp-sup-bg-' + getCategoryClass(s.category)" [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null">
               <div class="bp-sup-cat">{{ s.category }}</div>
               <div class="bp-sup-heart">&hearts;</div>
             </div>
