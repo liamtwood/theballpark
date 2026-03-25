@@ -18,6 +18,7 @@ app.use(express.json());
 const OrgService = require('./services/org.service');
 const UserService = require('./services/user.service');
 const ProjectService = require('./services/project.service');
+const ItemService = require('./services/item.service');
 
 // Convenience: get the first agency org (acts as "current org")
 app.get('/api/org', async (req, res, next) => {
@@ -63,6 +64,16 @@ app.get('/api/suppliers', async (req, res, next) => {
 // Convenience: get supplier catalogue items grouped by category
 app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
   try { res.json(await OrgService.getCatalogue(req.params.id)); } catch (err) { next(err); }
+});
+
+// PATCH item images
+app.patch('/api/items/:id/images', async (req, res, next) => {
+  try {
+    const { cover_image_url } = req.body;
+    const result = await ItemService.update(req.params.id, { image_url: cover_image_url });
+    if (!result) return res.status(404).json({ error: 'Not found' });
+    res.json(result);
+  } catch (err) { next(err); }
 });
 
 // PATCH supplier images

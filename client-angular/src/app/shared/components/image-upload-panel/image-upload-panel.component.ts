@@ -195,7 +195,7 @@ import { ModalComponent } from '../modal/modal.component';
 export class ImageUploadPanelComponent implements OnInit {
   @Input() entityId = '';
   @Input() projectId = '';
-  @Input() type: 'project' | 'supplier' | 'category' | 'logo' = 'project';
+  @Input() type: 'project' | 'supplier' | 'category' | 'logo' | 'item' = 'project';
   @Input() subtitle = '';
   @Input() existingCoverUrl = '';
   @Input() existingLogoUrl = '';
@@ -291,12 +291,14 @@ export class ImageUploadPanelComponent implements OnInit {
     this.cdr.detectChanges();
 
     try {
-      const bucket = this.type === 'supplier'
+      const bucket = (this.type === 'supplier' || this.type === 'item')
         ? this.storageService.suppliersBucket
         : this.storageService.projectsBucket;
 
       const basePath = this.type === 'supplier'
         ? `suppliers/${this.entityId}`
+        : this.type === 'item'
+        ? `items/${this.entityId}`
         : this.type === 'category'
         ? `categories/${this.entityId}`
         : this.type === 'logo'
@@ -305,6 +307,8 @@ export class ImageUploadPanelComponent implements OnInit {
 
       const apiEndpoint = this.type === 'supplier'
         ? `/suppliers/${this.entityId}/images`
+        : this.type === 'item'
+        ? `/items/${this.entityId}/images`
         : (this.type === 'category' || this.type === 'logo')
         ? null
         : `/projects/${this.entityId}/images`;
