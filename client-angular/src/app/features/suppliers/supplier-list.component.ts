@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
-import { SelectButtonModule } from 'primeng/selectbutton';
 import { ButtonModule } from 'primeng/button';
 import { LucideAngularModule, Search, Heart, List, Layers, ChevronRight, ChevronLeft, MapPin } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
@@ -28,7 +27,7 @@ interface SupplierWithState extends Org {
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    InputTextModule, SelectButtonModule, ButtonModule,
+    InputTextModule, ButtonModule,
     LucideAngularModule,
     LoadingSpinnerComponent, GbpPipe
   ],
@@ -116,14 +115,8 @@ interface SupplierWithState extends Org {
               {{ viewMode === 'suppliers' ? (filtered.length + ' supplier' + (filtered.length !== 1 ? 's' : '')) : (filteredItems.length + ' item' + (filteredItems.length !== 1 ? 's' : '')) }}
             </span>
             <div class="bp-cat-toggle-wrap">
-              <p-selectButton
-                [(ngModel)]="viewMode"
-                [options]="viewOptions"
-                optionLabel="label"
-                optionValue="value"
-                styleClass="bp-view-toggle"
-                (onChange)="onViewModeChange()">
-              </p-selectButton>
+              <button class="bp-toggle-btn" [class.active]="viewMode === 'items'" (click)="viewMode = 'items'; onViewModeChange()">Items</button>
+              <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'" (click)="viewMode = 'suppliers'; onViewModeChange()">Suppliers</button>
             </div>
           </div>
 
@@ -326,7 +319,7 @@ interface SupplierWithState extends Org {
       background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0;
     }
     .bp-cat-circle {
-      width: 72px; height: 72px; border-radius: 50%;
+      width: 96px; height: 96px; border-radius: 50%;
       background-size: cover; background-position: center;
       border: 2.5px solid transparent; transition: border-color 0.15s;
       display: flex; align-items: center; justify-content: center;
@@ -336,7 +329,7 @@ interface SupplierWithState extends Org {
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials {
-      font-size: 22px; font-weight: 600; color: var(--theme-accent);
+      font-size: 28px; font-weight: 600; color: var(--theme-accent);
       font-family: var(--font-display);
     }
     .bp-cat-circle-btn.active .bp-cat-circle {
@@ -345,7 +338,7 @@ interface SupplierWithState extends Org {
     }
     .bp-cat-circle-label {
       font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
-      text-align: center; max-width: 72px; line-height: 1.3;
+      text-align: center; max-width: 96px; line-height: 1.3;
       font-family: var(--font-body);
     }
     .bp-cat-circle-btn.active .bp-cat-circle-label {
@@ -361,10 +354,9 @@ interface SupplierWithState extends Org {
       letter-spacing: 0.1em; color: var(--theme-accent);
     }
     .bp-cat-section-count { font-size: 12px; color: var(--color-text-muted); flex: 1; }
-    .bp-cat-toggle-wrap { flex-shrink: 0; }
-    :host ::ng-deep .bp-view-toggle.p-selectbutton .p-button {
-      font-size: 12px; padding: 5px 12px; font-family: var(--font-body);
-    }
+    .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
+    .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
+    .bp-toggle-btn.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
     .bp-cat-empty {
       padding: 40px 16px; text-align: center;
       font-size: 13px; color: var(--color-text-muted);
@@ -509,7 +501,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   activeCategory = 'all';
   activeTag = '';
-  viewMode: 'suppliers' | 'items' = 'suppliers';
+  viewMode: 'suppliers' | 'items' = 'items';
 
   viewOptions = [
     { label: 'Suppliers', value: 'suppliers' },
@@ -552,6 +544,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
         this.suppliers = (suppliers || []).map(s => ({ ...s, expanded: false, catalogueItems: [], catalogueLoaded: false }));
         this.applyFilters();
         this.loading = false;
+        if (this.viewMode === 'items') this.loadItems();
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
