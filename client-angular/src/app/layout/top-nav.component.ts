@@ -35,6 +35,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
+        <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="store" [size]="14"></lucide-icon> Store
+        </a>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
