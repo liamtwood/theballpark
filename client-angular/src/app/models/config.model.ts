@@ -22,4 +22,5 @@ export interface PlatformConfig {
   logoUrl?: string;
   navMode?: 'tabs' | 'sidenav';
   fontPairing?: string;
+  catalogueLabel?: string;
 }
