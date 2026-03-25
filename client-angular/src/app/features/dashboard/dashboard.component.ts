@@ -105,6 +105,7 @@ type DashTab = 'projects';
                     [class.bp-card-header-draft]="!p.cover_image_url && p.status_name === 'draft'">
                     <span class="bp-card-client-chip">{{ p.client_name || 'No client' }}</span>
                     <app-status-badge [status]="p.status_name" class="bp-card-status"></app-status-badge>
+                    <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
                     <div class="bp-card-edit-overlay" (click)="openUploadPanel($event, p)"><i class="pi pi-pencil" style="font-size:14px;color:#fff;"></i></div>
                   </div>
                 </ng-template>
@@ -128,6 +129,7 @@ type DashTab = 'projects';
                   <div class="bp-card-header bp-card-header-closed" [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null">
                     <span class="bp-card-client-chip">{{ p.client_name || 'No client' }}</span>
                     <app-status-badge [status]="p.status_name" class="bp-card-status"></app-status-badge>
+                    <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
                     <div class="bp-card-edit-overlay" (click)="openUploadPanel($event, p)"><i class="pi pi-pencil" style="font-size:14px;color:#fff;"></i></div>
                   </div>
                 </ng-template>
@@ -244,6 +246,7 @@ type DashTab = 'projects';
     .bp-card-header-closed { background-image:linear-gradient(160deg,#374151,#6B7280); }
     .bp-card-client-chip   { background:var(--color-surface); color:var(--color-text-primary); border:1.5px solid var(--color-text-primary); border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; }
     .bp-card-status        { position:absolute; top:8px; right:8px; }
+    .bp-card-logo          { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); max-width:70%; max-height:70%; object-fit:contain; pointer-events:none; }
     .bp-card-edit-overlay  { position:absolute; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s; cursor:pointer; }
     .bp-card-header:hover .bp-card-edit-overlay { opacity:1; }
     .bp-card-content { padding:12px 14px 14px; }
