@@ -74,8 +74,23 @@ async function softDelete(id) {
   return result.rows[0] || null;
 }
 
+// Returns all supplier orgs with an array of their distinct category_ids
+// so the frontend can filter by category without lazy-loading catalogue items
 async function getSuppliers() {
-  const result = await pool.query("SELECT * FROM orgs WHERE type = 'supplier' AND is_active = true ORDER BY name ASC");
+  const result = await pool.query(`
+    SELECT
+      o.*,
+      COALESCE(
+        ARRAY_AGG(DISTINCT i.category_id) FILTER (WHERE i.category_id IS NOT NULL),
+        '{}'
+      ) AS category_ids,
+      COUNT(i.id) FILTER (WHERE i.is_active = true) AS item_count
+    FROM orgs o
+    LEFT JOIN items i ON i.org_id = o.id AND i.is_active = true
+    WHERE o.type = 'supplier' AND o.is_active = true
+    GROUP BY o.id
+    ORDER BY o.name ASC
+  `);
   return result.rows;
 }
 
