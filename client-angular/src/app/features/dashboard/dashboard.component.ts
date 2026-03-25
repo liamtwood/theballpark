@@ -242,7 +242,7 @@ type DashTab = 'projects';
     .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
     .bp-card-header-draft  { background-image:linear-gradient(160deg,#374151,#4B5563); }
     .bp-card-header-closed { background-image:linear-gradient(160deg,#374151,#6B7280); }
-    .bp-card-client-chip   { background:rgba(255,255,255,0.92) !important; color:var(--color-text-primary) !important; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; border:none; }
+    .bp-card-client-chip   { background:var(--color-surface); color:var(--color-text-primary); border:1.5px solid var(--color-text-primary); border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; }
     .bp-card-status        { position:absolute; top:8px; right:8px; }
     .bp-card-edit-overlay  { position:absolute; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s; cursor:pointer; }
     .bp-card-header:hover .bp-card-edit-overlay { opacity:1; }
