@@ -21,6 +21,16 @@ async function getAll(orgId, categoryId, tag) {
   return result.rows;
 }
 
+async function countsByCategory() {
+  const result = await pool.query(
+    `SELECT category_id, COUNT(*) AS count FROM items WHERE is_active = true AND category_id IS NOT NULL GROUP BY category_id`
+  );
+  const map = {};
+  let total = 0;
+  for (const r of result.rows) { map[r.category_id] = parseInt(r.count, 10); total += parseInt(r.count, 10); }
+  return { counts: map, total };
+}
+
 async function getTagsByCategory(categoryId) {
   const result = await pool.query(
     `SELECT DISTINCT UNNEST(tags) AS tag
@@ -94,4 +104,4 @@ async function softDelete(id) {
   return result.rows[0] || null;
 }
 
-module.exports = { getAll, getById, getTagsByCategory, create, update, softDelete };
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete };
