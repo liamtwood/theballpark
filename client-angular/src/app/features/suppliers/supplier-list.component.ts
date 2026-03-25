@@ -101,9 +101,9 @@ interface SupplierWithState extends Org {
               [class.active]="activeCategory === cat.id"
               (click)="setCategory(cat.id)">
               <div class="bp-cat-circle"
-                [style.background-image]="cat.image_url ? 'url(' + cat.image_url + ')' : null"
-                [class.bp-cat-circle--no-image]="!cat.image_url">
-                <span *ngIf="!cat.image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+                [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
+                [class.bp-cat-circle--no-image]="!cat.cover_image_url">
+                <span *ngIf="!cat.cover_image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
               </div>
               <span class="bp-cat-circle-label">{{ cat.name }}</span>
             </button>
