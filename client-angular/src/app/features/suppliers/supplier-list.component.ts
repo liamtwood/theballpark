@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
-import { LucideAngularModule, Search, Heart, List, Layers, ChevronRight, ChevronLeft, MapPin } from 'lucide-angular';
+import {
+  LucideAngularModule, Search, Heart, List, Layers,
+  ChevronRight, ChevronLeft, MapPin, SquarePen, Building2
+} from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
@@ -21,6 +24,8 @@ interface SupplierWithState extends Org {
   catalogueItems: any[];
   catalogueLoaded: boolean;
   cover_image_url?: string;
+  category_ids?: string[];
+  item_count?: number;
 }
 
 @Component({
@@ -37,12 +42,12 @@ interface SupplierWithState extends Org {
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- CATEGORY CIRCLES — full width above columns -->
+      <!-- CATEGORY CIRCLES -->
       <div class="bp-cat-circles-wrap">
         <div class="bp-cat-circles">
           <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
             <div class="bp-cat-circle bp-cat-circle--all">
-              <lucide-icon name="layers" [size]="22" style="color:var(--color-text-muted);"></lucide-icon>
+              <lucide-icon name="layers" [size]="22"></lucide-icon>
             </div>
             <span class="bp-cat-circle-label">All</span>
           </button>
@@ -60,8 +65,8 @@ interface SupplierWithState extends Org {
         </div>
       </div>
 
-      <!-- DESKTOP LAYOUT -->
-      <div class="bp-cat-body" [class.bp-cat-body--detail]="viewMode === 'items'">
+      <!-- THREE-COLUMN BODY -->
+      <div class="bp-cat-body" [class.bp-cat-body--detail]="hasDetailPanel()">
 
         <!-- ── SIDEBAR ── -->
         <div class="bp-cat-sidebar">
@@ -71,7 +76,6 @@ interface SupplierWithState extends Org {
               placeholder="Search..." class="bp-sidebar-search-input"/>
           </div>
 
-          <!-- Category list (when All selected) -->
           <ng-container *ngIf="activeCategory === 'all'">
             <div class="bp-sidebar-sublabel">Category</div>
             <button class="bp-sidebar-item active" (click)="setCategory('all')">
@@ -86,20 +90,20 @@ interface SupplierWithState extends Org {
             </button>
           </ng-container>
 
-          <!-- Tag list (when category selected) -->
           <ng-container *ngIf="activeCategory !== 'all'">
             <button class="bp-sidebar-back" (click)="setCategory('all')">
               <lucide-icon name="chevron-left" [size]="13"></lucide-icon>
               All categories
             </button>
-            <div class="bp-sidebar-sublabel" style="margin-top:16px;">Filter by type</div>
+            <div class="bp-sidebar-sublabel mt-4">Filter by type</div>
             <div *ngIf="tagsLoading" class="bp-sidebar-tags-loading">
               <i class="pi pi-spin pi-spinner" style="font-size:12px;color:var(--theme-accent);"></i>
             </div>
             <ng-container *ngIf="!tagsLoading">
-              <button *ngIf="!availableTags.length" class="bp-sidebar-item" style="color:var(--color-text-muted);font-style:italic;cursor:default;">No tags yet</button>
+              <button *ngIf="!availableTags.length" class="bp-sidebar-item"
+                style="color:var(--color-text-muted);font-style:italic;cursor:default;">No tags yet</button>
               <button *ngFor="let tag of availableTags"
-                class="bp-sidebar-item bp-sidebar-tag-item"
+                class="bp-sidebar-item"
                 [class.active]="activeTag === tag"
                 (click)="setTag(tag)">
                 <span>{{ tag }}</span>
@@ -110,16 +114,18 @@ interface SupplierWithState extends Org {
 
         <!-- ── MAIN ── -->
         <div class="bp-cat-main">
-
-          <!-- Section header -->
           <div class="bp-cat-section-header">
             <span class="bp-cat-section-title">CATALOGUE</span>
             <span class="bp-cat-section-count">
-              {{ viewMode === 'suppliers' ? (filtered.length + ' supplier' + (filtered.length !== 1 ? 's' : '')) : (filteredItems.length + ' item' + (filteredItems.length !== 1 ? 's' : '')) }}
+              {{ viewMode === 'suppliers'
+                  ? (filtered.length + ' supplier' + (filtered.length !== 1 ? 's' : ''))
+                  : (filteredItems.length + ' item' + (filteredItems.length !== 1 ? 's' : '')) }}
             </span>
             <div class="bp-cat-toggle-wrap">
-              <button class="bp-toggle-btn" [class.active]="viewMode === 'items'" (click)="viewMode = 'items'; onViewModeChange()">Items</button>
-              <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'" (click)="viewMode = 'suppliers'; onViewModeChange()">Suppliers</button>
+              <button class="bp-toggle-btn" [class.active]="viewMode === 'items'"
+                (click)="viewMode = 'items'; onViewModeChange()">Items</button>
+              <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'"
+                (click)="viewMode = 'suppliers'; onViewModeChange()">Suppliers</button>
             </div>
             <div class="bp-view-toggle">
               <button class="bp-view-btn" [class.active]="itemLayout === 'list'" (click)="itemLayout = 'list'">
@@ -131,132 +137,179 @@ interface SupplierWithState extends Org {
             </div>
           </div>
 
-          <!-- ── SUPPLIERS VIEW ── -->
+          <!-- SUPPLIERS VIEW -->
           <ng-container *ngIf="viewMode === 'suppliers'">
             <div *ngIf="!filtered.length" class="bp-cat-empty">No suppliers found.</div>
-            <div *ngFor="let s of filtered" class="bp-member-row bp-member-row-clickable" (click)="goToSupplier(s, null)">
-              <div class="bp-member-img"
-                [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
-                [class.bp-member-img-default]="!s.cover_image_url">
+
+            <!-- list -->
+            <ng-container *ngIf="itemLayout === 'list'">
+              <div *ngFor="let s of filtered"
+                class="bp-member-row bp-member-row-clickable"
+                [class.bp-member-row-selected]="selectedSupplier?.id === s.id"
+                (click)="selectSupplier(s)">
+                <div class="bp-member-img"
+                  [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
+                  [class.bp-member-img-default]="!s.cover_image_url">
+                </div>
+                <div class="bp-member-body">
+                  <div class="bp-member-name">{{ s.name }}</div>
+                  <div class="bp-member-meta">{{ $any(s).city || 'London' }}</div>
+                </div>
+                <button class="bp-heart-btn" [class.active]="isFav(s.id)" (click)="toggleFav($event, s.id)">
+                  <lucide-icon name="heart" [size]="16"></lucide-icon>
+                </button>
+                <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
               </div>
-              <div class="bp-member-body">
-                <div class="bp-member-name">{{ s.name }}</div>
-                <div class="bp-member-meta">{{ $any(s).city || 'London' }}</div>
+            </ng-container>
+
+            <!-- grid -->
+            <ng-container *ngIf="itemLayout === 'card'">
+              <div class="bp-item-grid">
+                <div *ngFor="let s of filtered"
+                  class="bp-item-card"
+                  [class.bp-item-card-selected]="selectedSupplier?.id === s.id"
+                  (click)="selectSupplier(s)">
+                  <div class="bp-item-card-img"
+                    [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
+                    [class.bp-item-card-img-default]="!s.cover_image_url">
+                    <div class="bp-grid-actions">
+                      <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isFav(s.id)"
+                        (click)="toggleFav($event, s.id)">
+                        <lucide-icon name="heart" [size]="14"></lucide-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="bp-item-card-body">
+                    <div class="bp-item-card-name">{{ s.name }}</div>
+                    <div class="bp-item-card-supplier">{{ $any(s).city || 'London' }}</div>
+                  </div>
+                </div>
               </div>
-              <button class="bp-heart-btn" [class.active]="isFav(s.id)" (click)="toggleFav($event, s.id)">
-                <lucide-icon name="heart" [size]="16"></lucide-icon>
-              </button>
-              <lucide-icon name="chevron-right" [size]="16" style="color:var(--color-text-muted);flex-shrink:0;"></lucide-icon>
-            </div>
+            </ng-container>
           </ng-container>
 
-          <!-- ── ITEMS VIEW ── -->
+          <!-- ITEMS VIEW -->
           <ng-container *ngIf="viewMode === 'items'">
             <div *ngIf="itemsLoading" class="bp-cat-empty">
               <i class="pi pi-spin pi-spinner" style="font-size:14px;color:var(--theme-accent);"></i>
             </div>
             <div *ngIf="!itemsLoading && !filteredItems.length" class="bp-cat-empty">No items found.</div>
 
-            <!-- LIST VIEW -->
-            <ng-container *ngIf="!itemsLoading && filteredItems.length && itemLayout === 'list'">
+            <!-- list -->
+            <ng-container *ngIf="itemLayout === 'list' && !itemsLoading">
               <div *ngFor="let item of filteredItems"
                 class="bp-sup-item bp-sup-item-clickable"
                 [class.bp-sup-item-selected]="selectedItem?.id === item.id"
                 (click)="selectItem(item)">
                 <div class="bp-sup-item-body">
                   <div class="bp-sup-item-name">{{ item.name }}</div>
-                  <div class="bp-sup-item-desc" *ngIf="item.description">{{ item.description }}</div>
-                  <div class="bp-sup-item-meta">
-                    <span class="bp-sup-item-tag" *ngIf="item.category_name">{{ item.category_name }}</span>
-                    <span class="bp-sup-item-tag" *ngIf="item.tier">{{ item.tier }}</span>
-                    <ng-container *ngIf="item.tags?.length">
-                      <span class="bp-sup-item-tag" *ngFor="let t of item.tags.slice(0,3)">{{ t }}</span>
-                    </ng-container>
+                  <div class="bp-sup-item-sub" *ngIf="item.supplier_name">
+                    {{ item.supplier_name }}<span *ngIf="item.supplier_city"> · {{ item.supplier_city }}</span>
                   </div>
                 </div>
                 <div class="bp-sup-item-right">
-                  <div class="bp-sup-item-price" *ngIf="item.base_price">{{ item.base_price | gbp }}</div>
+                  <div class="bp-sup-item-price-range" *ngIf="item.min_price && item.max_price">
+                    {{ item.min_price | gbp }} – {{ item.max_price | gbp }}
+                  </div>
+                  <div class="bp-sup-item-price-range" *ngIf="item.base_price && !(item.min_price && item.max_price)">
+                    {{ item.base_price | gbp }}
+                  </div>
                   <div class="bp-sup-item-unit" *ngIf="item.unit">{{ item.unit }}</div>
-                  <button class="bp-heart-btn" [class.active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
                 </div>
               </div>
             </ng-container>
 
-            <!-- CARD VIEW -->
-            <div *ngIf="!itemsLoading && filteredItems.length && itemLayout === 'card'" class="bp-item-grid">
-              <div *ngFor="let item of filteredItems"
-                class="bp-item-card"
-                [class.bp-item-card-selected]="selectedItem?.id === item.id"
-                (click)="selectItem(item)">
-                <div class="bp-item-card-img"
-                  [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : (item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null)"
-                  [class.bp-item-card-img-default]="!item.image_url && !item.supplier_cover_url">
-                  <div class="bp-grid-actions">
-                    <button class="bp-grid-action-btn" (click)="openItemImageUpload($event, item)">
-                      <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-                    </button>
-                    <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isItemFav(item.id)" (click)="toggleItemFav($event, item.id)">
-                      <lucide-icon name="heart" [size]="14"></lucide-icon>
-                    </button>
+            <!-- grid -->
+            <ng-container *ngIf="itemLayout === 'card' && !itemsLoading">
+              <div class="bp-item-grid">
+                <div *ngFor="let item of filteredItems"
+                  class="bp-item-card"
+                  [class.bp-item-card-selected]="selectedItem?.id === item.id"
+                  (click)="selectItem(item)">
+                  <div class="bp-item-card-img"
+                    [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : (item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null)"
+                    [class.bp-item-card-img-default]="!item.image_url && !item.supplier_cover_url">
+                    <div class="bp-grid-actions">
+                      <button class="bp-grid-action-btn" (click)="openItemImageUpload($event, item)">
+                        <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+                      </button>
+                      <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isItemFav(item.id)"
+                        (click)="toggleItemFav($event, item.id)">
+                        <lucide-icon name="heart" [size]="14"></lucide-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="bp-item-card-body">
+                    <div class="bp-item-card-name">{{ item.name }}</div>
+                    <div class="bp-item-card-price" *ngIf="item.base_price">
+                      {{ item.base_price | gbp }}
+                      <span class="bp-item-card-unit" *ngIf="item.unit">{{ item.unit }}</span>
+                    </div>
+                    <div class="bp-item-card-supplier" *ngIf="item.supplier_name">{{ item.supplier_name }}</div>
                   </div>
                 </div>
-                <div class="bp-item-card-body">
-                  <div class="bp-item-card-name">{{ item.name }}</div>
-                  <div class="bp-item-card-price" *ngIf="item.base_price">{{ item.base_price | gbp }} <span class="bp-item-card-unit" *ngIf="item.unit">{{ item.unit }}</span></div>
-                  <div class="bp-item-card-supplier" *ngIf="item.supplier_name">{{ item.supplier_name }}</div>
+              </div>
+            </ng-container>
+          </ng-container>
+        </div>
+
+        <!-- ── RIGHT DETAIL PANEL ── -->
+        <div class="bp-cat-detail" *ngIf="hasDetailPanel()">
+
+          <!-- Supplier detail -->
+          <ng-container *ngIf="viewMode === 'suppliers' && selectedSupplier">
+            <div class="bp-item-hero-img"
+              [style.background-image]="selectedSupplier.cover_image_url ? 'url(' + selectedSupplier.cover_image_url + ')' : null"
+              [class.bp-item-hero-img-default]="!selectedSupplier.cover_image_url">
+            </div>
+            <div class="bp-item-detail-body">
+              <div class="bp-item-detail-name">{{ selectedSupplier.name }}</div>
+              <div class="bp-item-sup-city mb-2" *ngIf="$any(selectedSupplier).city">
+                <lucide-icon name="map-pin" [size]="12"></lucide-icon>
+                {{ $any(selectedSupplier).city }}
+              </div>
+              <p class="bp-item-desc" *ngIf="selectedSupplier.description">{{ selectedSupplier.description }}</p>
+              <div class="bp-item-specs" *ngIf="$any(selectedSupplier).item_count">
+                <div class="bp-item-spec">
+                  <span class="bp-item-spec-label">Catalogue items</span>
+                  <span class="bp-item-spec-value">{{ $any(selectedSupplier).item_count }}</span>
                 </div>
+              </div>
+              <div class="flex gap-2">
+                <p-button label="View supplier" styleClass="flex-1"
+                  (onClick)="goToSupplier(selectedSupplier, null)"></p-button>
+                <p-button icon="pi pi-heart" styleClass="p-button-outlined"
+                  [class.p-button-danger]="isFav(selectedSupplier.id)"
+                  (onClick)="toggleFav($event, selectedSupplier.id)"></p-button>
               </div>
             </div>
           </ng-container>
 
-        </div>
-
-        <!-- ── RIGHT DETAIL PANEL (items mode) ── -->
-        <div class="bp-cat-detail" *ngIf="viewMode === 'items'">
-
-          <!-- Empty state -->
-          <div *ngIf="!selectedItem" class="bp-cat-detail-empty">
-            <p>Select an item to preview</p>
-          </div>
-
           <!-- Item detail -->
-          <ng-container *ngIf="selectedItem">
+          <ng-container *ngIf="viewMode === 'items' && selectedItem">
             <div class="bp-item-hero-img"
-              [style.background-image]="selectedItem.image_url ? 'url(' + selectedItem.image_url + ')' : null"
-              [class.bp-item-hero-img-default]="!selectedItem.image_url">
+              [style.background-image]="selectedItem.image_url ? 'url(' + selectedItem.image_url + ')' : (selectedItem.supplier_cover_url ? 'url(' + selectedItem.supplier_cover_url + ')' : null)"
+              [class.bp-item-hero-img-default]="!selectedItem.image_url && !selectedItem.supplier_cover_url">
             </div>
-
             <div class="bp-item-detail-body">
-              <div class="bp-item-category-label" *ngIf="selectedItem.category_name">
-                {{ selectedItem.category_name | uppercase }}
-              </div>
+              <div class="bp-item-category-label" *ngIf="selectedItem.category_name">{{ selectedItem.category_name | uppercase }}</div>
               <div class="bp-item-detail-name">{{ selectedItem.name }}</div>
-
-              <div class="bp-item-tags-row" *ngIf="selectedItem.tags?.length || selectedItem.tier">
-                <span class="bp-sup-item-tag" *ngIf="selectedItem.tier">{{ selectedItem.tier }}</span>
-                <span class="bp-sup-item-tag" *ngFor="let t of (selectedItem.tags || [])">{{ t }}</span>
-              </div>
-
-              <div class="bp-item-price-row" *ngIf="selectedItem.base_price">
-                <span class="bp-item-price">{{ selectedItem.base_price | gbp }}</span>
+              <div class="bp-item-price-row" *ngIf="selectedItem.base_price || (selectedItem.min_price && selectedItem.max_price)">
+                <ng-container *ngIf="selectedItem.min_price && selectedItem.max_price">
+                  <span class="bp-item-price">{{ selectedItem.min_price | gbp }}</span>
+                  <span class="bp-item-price-sep">–</span>
+                  <span class="bp-item-price">{{ selectedItem.max_price | gbp }}</span>
+                </ng-container>
+                <span class="bp-item-price" *ngIf="!(selectedItem.min_price && selectedItem.max_price)">{{ selectedItem.base_price | gbp }}</span>
                 <span class="bp-item-price-label" *ngIf="selectedItem.unit">{{ selectedItem.unit }}</span>
               </div>
-
               <p class="bp-item-desc" *ngIf="selectedItem.description">{{ selectedItem.description }}</p>
-
-              <div class="bp-item-specs" *ngIf="selectedItem.lead_time_days || (selectedItem.min_price && selectedItem.max_price)">
-                <div class="bp-item-spec" *ngIf="selectedItem.lead_time_days">
+              <div class="bp-item-specs" *ngIf="selectedItem.lead_time_days">
+                <div class="bp-item-spec">
                   <span class="bp-item-spec-label">Lead time</span>
                   <span class="bp-item-spec-value">{{ selectedItem.lead_time_days }} working days</span>
                 </div>
-                <div class="bp-item-spec" *ngIf="selectedItem.min_price && selectedItem.max_price">
-                  <span class="bp-item-spec-label">Price range</span>
-                  <span class="bp-item-spec-value">{{ selectedItem.min_price | gbp }} – {{ selectedItem.max_price | gbp }}</span>
-                </div>
               </div>
-
               <div class="bp-item-supplier" *ngIf="selectedItem.supplier_name" (click)="goToSupplierById(selectedItem.org_id)">
                 <div class="bp-item-sup-img"
                   [style.background-image]="selectedItem.supplier_cover_url ? 'url(' + selectedItem.supplier_cover_url + ')' : null"
@@ -269,22 +322,21 @@ interface SupplierWithState extends Org {
                     {{ selectedItem.supplier_city }}
                   </div>
                 </div>
-                <lucide-icon name="chevron-right" [size]="14" style="color:var(--color-text-muted);"></lucide-icon>
+                <lucide-icon name="chevron-right" [size]="14" class="bp-row-chev"></lucide-icon>
               </div>
-
-              <p-button
-                label="+ Add to Project"
-                styleClass="w-full"
-                (onClick)="addToProject(selectedItem)">
-              </p-button>
+              <p-button label="+ Add to Project" styleClass="w-full" (onClick)="addToProject(selectedItem)"></p-button>
             </div>
           </ng-container>
 
+          <!-- Empty state -->
+          <div *ngIf="(viewMode === 'suppliers' && !selectedSupplier) || (viewMode === 'items' && !selectedItem)"
+            class="bp-cat-detail-empty">
+            <p>Select {{ viewMode === 'suppliers' ? 'a supplier' : 'an item' }} to preview</p>
+          </div>
         </div>
 
       </div>
 
-      <!-- ITEM IMAGE UPLOAD PANEL -->
       <app-image-upload-panel
         *ngIf="uploadItemId"
         [entityId]="uploadItemId"
@@ -298,268 +350,114 @@ interface SupplierWithState extends Org {
     </div>
   `,
   styles: [`
-    /* ── THREE-COLUMN LAYOUT ── */
-    .bp-cat-body {
-      display: grid;
-      grid-template-columns: 200px 1fr;
-      min-height: calc(100vh - 200px);
-    }
-    .bp-cat-body--detail {
-      grid-template-columns: 200px 1fr 300px;
-    }
-    .bp-cat-sidebar {
-      border-right: 0.5px solid var(--color-border);
-      padding: 20px 16px;
-    }
-    .bp-cat-main {
-      padding: 20px 28px;
-      min-width: 0;
-    }
-    .bp-cat-detail {
-      border-left: 0.5px solid var(--color-border);
-      overflow-y: auto;
-    }
+    .bp-cat-body { display: grid; grid-template-columns: 200px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
+    .bp-cat-body--detail { grid-template-columns: 200px 1fr 300px; }
+    .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
+    .bp-cat-main { padding: 20px 28px; overflow-y: auto; min-width: 0; }
+    .bp-cat-detail { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
 
-    /* ── SIDEBAR ── */
-    .bp-sidebar-search {
-      display: flex; align-items: center; gap: 8px;
-      border: 0.5px solid var(--color-border); border-radius: 8px;
-      padding: 0 10px; height: 34px; margin-bottom: 20px;
-    }
-    .bp-sidebar-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
-    .bp-sidebar-search-input {
-      flex: 1; border: none !important; background: transparent !important;
-      box-shadow: none !important; padding: 0 !important; font-size: 12px !important;
-    }
-    .bp-sidebar-sublabel {
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 8px;
-    }
-    .bp-sidebar-item {
-      display: flex; align-items: center; justify-content: space-between;
-      width: 100%; padding: 7px 10px; font-size: 13px; font-weight: 500;
-      color: var(--color-text-secondary); background: none; border: none;
-      border-radius: 6px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
-    }
-    .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
-    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
-    .bp-sidebar-count {
-      font-size: 11px; color: var(--color-text-muted); background: var(--color-surface);
-      border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px;
-    }
-    .bp-sidebar-item.active .bp-sidebar-count {
-      background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent);
-    }
-    .bp-sidebar-back {
-      display: flex; align-items: center; gap: 5px;
-      background: none; border: none; cursor: pointer; font-family: var(--font-body);
-      font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0;
-    }
-    .bp-sidebar-back:hover { opacity: 0.75; }
-    .bp-sidebar-tag-item { font-size: 12.5px; }
-    .bp-sidebar-tags-loading { padding: 12px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
-
-    /* ── CATEGORY CIRCLES ── */
-    .bp-cat-circles-wrap {
-      padding: 20px 28px 0;
-      border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-cat-circles {
-      display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px;
-      scrollbar-width: none; justify-content: center;
-    }
+    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); }
+    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; justify-content: center; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
-    .bp-cat-circle-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0;
-    }
-    .bp-cat-circle {
-      width: 96px; height: 96px; border-radius: 50%;
-      background-size: cover; background-position: center;
-      border: 2.5px solid transparent; transition: border-color 0.15s;
-      display: flex; align-items: center; justify-content: center;
-      background-color: var(--color-surface);
-      box-shadow: 0 0 0 0.5px var(--color-border);
-    }
+    .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
+    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); }
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
-    .bp-cat-circle-initials {
-      font-size: 28px; font-weight: 600; color: var(--theme-accent);
-      font-family: var(--font-display);
-    }
-    .bp-cat-circle-btn.active .bp-cat-circle {
-      border-color: var(--theme-accent);
-      box-shadow: 0 0 0 2px var(--theme-accent);
-    }
-    .bp-cat-circle-label {
-      font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
-      text-align: center; max-width: 96px; line-height: 1.3;
-      font-family: var(--font-body);
-    }
-    .bp-cat-circle-btn.active .bp-cat-circle-label {
-      color: var(--theme-accent); font-weight: 600;
-    }
+    .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
+    .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
+    .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
 
-    /* ── SECTION HEADER ── */
-    .bp-cat-section-header {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
-    }
-    .bp-cat-section-title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--theme-accent);
-    }
+    .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }
+    .bp-sidebar-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+    .bp-sidebar-search-input { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-size: 12px !important; }
+    .bp-sidebar-sublabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 8px; }
+    .bp-sidebar-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); background: none; border: none; border-radius: 6px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+    .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
+    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
+    .bp-sidebar-count { font-size: 11px; color: var(--color-text-muted); background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; }
+    .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
+    .bp-sidebar-back:hover { opacity: 0.75; }
+    .bp-sidebar-tags-loading { padding: 12px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
+
+    .bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .bp-cat-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
     .bp-cat-section-count { font-size: 12px; color: var(--color-text-muted); flex: 1; }
     .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
     .bp-toggle-btn.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
-    .bp-cat-empty {
-      padding: 40px 16px; text-align: center;
-      font-size: 13px; color: var(--color-text-muted);
-    }
+    .bp-view-toggle { display: flex; gap: 4px; }
+    .bp-view-btn { width: 30px; height: 30px; border-radius: 6px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-cat-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--color-text-muted); }
 
-    /* ── SUPPLIER ROWS (existing pattern) ── */
-    .bp-member-row {
-      display: flex; align-items: center; gap: 14px;
-      padding: 10px 0; border-bottom: 0.5px solid var(--color-border);
-    }
+    .bp-member-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border); }
     .bp-member-row-clickable { cursor: pointer; transition: background 0.15s; }
-    .bp-member-row-clickable:hover {
-      background: var(--color-surface); margin: 0 -12px;
-      padding: 10px 12px; border-radius: 8px; border-bottom-color: transparent;
-    }
-    .bp-member-img {
-      width: 44px; height: 44px; border-radius: 10px;
-      flex-shrink: 0; background-size: cover; background-position: center;
-    }
-    .bp-member-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-member-row-clickable:hover { background: var(--color-surface); margin: 0 -12px; padding: 10px 12px; border-radius: 8px; border-bottom-color: transparent; }
+    .bp-member-row-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
+    .bp-member-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
+    .bp-member-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
     .bp-member-body { flex: 1; min-width: 0; }
     .bp-member-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
     .bp-member-meta { font-size: 12px; color: var(--color-text-muted); }
+    .bp-row-chev { color: var(--color-text-muted); flex-shrink: 0; }
 
-    /* ── ITEM ROWS ── */
-    .bp-sup-item {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 12px; padding: 14px 0; border-bottom: 0.5px solid var(--color-border);
-      transition: background 0.15s;
-    }
+    .bp-sup-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid var(--color-border); transition: background 0.15s; }
     .bp-sup-item-clickable { cursor: pointer; }
-    .bp-sup-item-clickable:hover {
-      background: var(--color-surface); margin: 0 -12px;
-      padding: 14px 12px; border-radius: 8px; border-bottom-color: transparent;
-    }
-    .bp-sup-item-selected {
-      background: var(--theme-bg) !important; margin: 0 -12px !important;
-      padding: 14px 12px !important; border-radius: 8px !important;
-      border-bottom-color: transparent !important;
-      border-left: 3px solid var(--theme-accent);
-    }
+    .bp-sup-item-clickable:hover { background: var(--color-surface); margin: 0 -12px; padding: 12px 12px; border-radius: 8px; border-bottom-color: transparent; }
+    .bp-sup-item-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 12px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
     .bp-sup-item-body { flex: 1; min-width: 0; }
-    .bp-sup-item-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
-    .bp-sup-item-desc { font-size: 12px; color: var(--color-text-muted); line-height: 1.4; margin-bottom: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .bp-sup-item-meta { display: flex; flex-wrap: wrap; gap: 4px; }
-    .bp-sup-item-tag {
-      font-size: 10px; font-weight: 500; background: var(--theme-bg); color: var(--theme-text);
-      border: 0.5px solid var(--theme-border); border-radius: 20px; padding: 1px 7px;
-    }
-    .bp-sup-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-    .bp-sup-item-price { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+    .bp-sup-item-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+    .bp-sup-item-sub { font-size: 12px; color: var(--color-text-muted); }
+    .bp-sup-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+    .bp-sup-item-price-range { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
     .bp-sup-item-unit { font-size: 10px; color: var(--color-text-muted); }
 
-    /* ── ITEM CARD GRID ── */
-    .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
     .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
     .bp-item-card:hover { border-color: var(--theme-accent); }
     .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
     .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; }
-    .bp-item-card-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-item-card-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
     .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
-
-    /* ── VIEW TOGGLE (list/card) ── */
-    .bp-view-toggle { display: flex; gap: 4px; margin-left: 8px; }
-    .bp-view-btn { width: 30px; height: 30px; border-radius: 6px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-    .bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
     .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
-    .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
+    .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
     .bp-grid-action-btn:hover { color: var(--theme-accent); }
     .bp-grid-heart-active { color: #E11D48 !important; }
 
-    /* ── HEART BTN ── */
-    .bp-heart-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--color-text-muted); padding: 2px;
-      display: flex; align-items: center; transition: color 0.15s;
-    }
+    .bp-heart-btn { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 2px; display: flex; align-items: center; transition: color 0.15s; }
     .bp-heart-btn:hover { color: #E11D48; }
     .bp-heart-btn.active { color: #E11D48; }
 
-    /* ── RIGHT DETAIL PANEL ── */
-    .bp-cat-detail-empty {
-      display: flex; align-items: center; justify-content: center;
-      height: 100%; font-size: 13px; color: var(--color-text-muted);
-      padding: 40px 20px; text-align: center;
-    }
-    .bp-item-hero-img {
-      width: 100%; height: 160px;
-      background-size: cover; background-position: center;
-    }
-    .bp-item-hero-img-default {
-      background: linear-gradient(160deg, #1a1a2e, #16213e);
-    }
+    .bp-cat-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 13px; color: var(--color-text-muted); padding: 40px 20px; text-align: center; }
+    .bp-item-hero-img { width: 100%; height: 160px; background-size: cover; background-position: center; }
+    .bp-item-hero-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
     .bp-item-detail-body { padding: 16px 20px; }
-    .bp-item-category-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-      color: var(--theme-accent); margin-bottom: 4px;
-    }
-    .bp-item-detail-name {
-      font-family: var(--font-display); font-size: 18px; font-weight: 400;
-      color: var(--color-text-primary); margin-bottom: 8px; line-height: 1.3;
-    }
-    .bp-item-tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-    .bp-item-price-row {
-      display: flex; align-items: baseline; gap: 6px;
-      margin-bottom: 10px; padding-bottom: 10px;
-      border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-item-price { font-size: 24px; font-weight: 700; color: var(--color-text-primary); }
-    .bp-item-price-label { font-size: 12px; color: var(--color-text-muted); }
-    .bp-item-desc {
-      font-size: 12px; color: var(--color-text-secondary);
-      line-height: 1.6; margin-bottom: 14px;
-    }
-    .bp-item-specs {
-      border: 0.5px solid var(--color-border); border-radius: 10px;
-      overflow: hidden; margin-bottom: 14px;
-    }
-    .bp-item-spec {
-      display: flex; justify-content: space-between;
-      padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px;
-    }
+    .bp-item-category-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
+    .bp-item-detail-name { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 8px; line-height: 1.3; }
+    .bp-item-price-row { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 0.5px solid var(--color-border); }
+    .bp-item-price { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
+    .bp-item-price-sep { font-size: 16px; color: var(--color-text-muted); }
+    .bp-item-price-label { font-size: 12px; color: var(--color-text-muted); margin-left: 4px; }
+    .bp-item-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 14px; }
+    .bp-item-specs { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+    .bp-item-spec { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
     .bp-item-spec:last-child { border-bottom: none; }
     .bp-item-spec-label { color: var(--color-text-muted); }
     .bp-item-spec-value { font-weight: 500; color: var(--color-text-primary); }
-    .bp-item-supplier {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px; border: 0.5px solid var(--color-border);
-      border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s;
-    }
+    .bp-item-supplier { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
     .bp-item-supplier:hover { border-color: var(--theme-accent); }
-    .bp-item-sup-img {
-      width: 32px; height: 32px; border-radius: 7px;
-      flex-shrink: 0; background-size: cover; background-position: center;
-    }
-    .bp-item-sup-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-item-sup-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
+    .bp-item-sup-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
     .bp-item-sup-body { flex: 1; min-width: 0; }
     .bp-item-sup-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-item-sup-city {
-      display: flex; align-items: center; gap: 3px;
-      font-size: 10px; color: var(--color-text-muted); margin-top: 1px;
-    }
+    .bp-item-sup-city { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
 
-    /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .bp-cat-circles-wrap { display: none; }
       .bp-cat-body, .bp-cat-body--detail { display: none; }
@@ -573,6 +471,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   filteredItems: any[] = [];
   availableTags: string[] = [];
   selectedItem: any = null;
+  selectedSupplier: SupplierWithState | null = null;
   loading = true;
   tagsLoading = false;
   itemsLoading = false;
@@ -583,11 +482,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   itemLayout: 'list' | 'card' = 'card';
   uploadItemId = '';
   uploadItemExistingUrl = '';
-
-  viewOptions = [
-    { label: 'Suppliers', value: 'suppliers' },
-    { label: 'Items', value: 'items' }
-  ];
 
   constructor(
     private supplierSvc: SupplierService,
@@ -602,18 +496,20 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.orgSvc.getCurrentOrg().subscribe(org => {
-      const projectId = this.route.snapshot.queryParams['projectId'];
-      if (projectId) {
-        this.projectSvc.getById(projectId).subscribe(p => {
-          this.shellCtx.set({ heroTitle: p?.event_name || p?.name || org?.name || 'Catalogue', heroSub: 'CATALOGUE', pills: [], tabs: [] });
-          this.cdr.detectChanges();
+    const projectId = this.route.snapshot.queryParams['projectId'];
+    if (projectId) {
+      this.projectSvc.getById(projectId).subscribe(p => {
+        this.shellCtx.set({
+          heroTitle: 'Catalogue',
+          heroSub: 'CATALOGUE',
+          pills: p ? [p.event_name || p.name || ''] : [],
+          tabs: []
         });
-      } else {
-        this.shellCtx.set({ heroTitle: org?.name || 'Catalogue', heroSub: 'CATALOGUE', pills: [], tabs: [] });
         this.cdr.detectChanges();
-      }
-    });
+      });
+    } else {
+      this.shellCtx.set({ heroTitle: 'Catalogue', heroSub: 'CATALOGUE', pills: [], tabs: [] });
+    }
 
     this.categorySvc.getAll().subscribe({
       next: cats => { this.categories = (cats || []).filter((c: any) => c.enabled !== false); this.cdr.detectChanges(); },
@@ -637,10 +533,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { this.shellCtx.reset(); }
 
+  hasDetailPanel(): boolean {
+    return this.viewMode === 'items' || (this.viewMode === 'suppliers' && !!this.selectedSupplier);
+  }
+
   setCategory(catId: string) {
     this.activeCategory = catId;
     this.activeTag = '';
     this.selectedItem = null;
+    this.selectedSupplier = null;
     this.availableTags = [];
     this.applyFilters();
     if (catId !== 'all') {
@@ -660,11 +561,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange() {
-    this.applyFilters();
+    if (this.viewMode === 'items') {
+      this.loadItems();
+    } else {
+      this.applyFilters();
+    }
   }
 
   onViewModeChange() {
     this.selectedItem = null;
+    this.selectedSupplier = null;
     if (this.viewMode === 'items') this.loadItems();
     this.cdr.detectChanges();
   }
@@ -673,11 +579,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.tagsLoading = true;
     this.cdr.detectChanges();
     this.supplierSvc.getTagsByCategory(categoryId).subscribe({
-      next: (tags: string[]) => {
-        this.availableTags = (tags || []).sort();
-        this.tagsLoading = false;
-        this.cdr.detectChanges();
-      },
+      next: (tags: string[]) => { this.availableTags = (tags || []).sort(); this.tagsLoading = false; this.cdr.detectChanges(); },
       error: () => { this.tagsLoading = false; this.cdr.detectChanges(); }
     });
   }
@@ -691,9 +593,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     if (this.activeTag) params.tag = this.activeTag;
     this.supplierSvc.getItems(params).subscribe({
       next: (items: any[]) => {
-        this.filteredItems = this.searchTerm.trim()
-          ? (items || []).filter(i => i.name.toLowerCase().includes(this.searchTerm.toLowerCase()))
-          : (items || []);
+        let result = items || [];
+        if (this.searchTerm.trim()) {
+          const term = this.searchTerm.toLowerCase();
+          result = result.filter(i =>
+            i.name.toLowerCase().includes(term) ||
+            (i.supplier_name || '').toLowerCase().includes(term)
+          );
+        }
+        this.filteredItems = result;
         this.itemsLoading = false;
         this.cdr.detectChanges();
       },
@@ -705,23 +613,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     let result = this.suppliers;
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
-      result = result.filter(s => s.name.toLowerCase().includes(term) || ((s as any).city || '').toLowerCase().includes(term));
+      result = result.filter(s =>
+        s.name.toLowerCase().includes(term) ||
+        ((s as any).city || '').toLowerCase().includes(term)
+      );
     }
     if (this.activeCategory !== 'all') {
-      result = result.filter(s => !s.catalogueLoaded || s.catalogueItems.some((i: any) => i.category_id === this.activeCategory));
+      result = result.filter(s => {
+        const catIds: string[] = (s as any).category_ids || [];
+        return catIds.includes(this.activeCategory);
+      });
     }
     this.filtered = result;
     this.cdr.detectChanges();
   }
 
   countByCategory(catId: string): number {
-    return this.suppliers.filter(s => !s.catalogueLoaded || s.catalogueItems.some((i: any) => i.category_id === catId)).length;
+    return this.suppliers.filter(s => ((s as any).category_ids || []).includes(catId)).length;
   }
 
-  selectItem(item: any) {
-    this.selectedItem = item;
-    this.cdr.detectChanges();
-  }
+  selectItem(item: any) { this.selectedItem = item; this.cdr.detectChanges(); }
+  selectSupplier(s: SupplierWithState) { this.selectedSupplier = s; this.cdr.detectChanges(); }
 
   isFav(supplierId: string): boolean { return this.favSvc.isSupplierFavourited(supplierId); }
   isItemFav(itemId: string): boolean { return this.favSvc.isItemFavourited(itemId); }
@@ -743,9 +655,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/suppliers', s.id], { queryParams: params });
   }
 
-  goToSupplierById(orgId: string) {
-    this.router.navigate(['/suppliers', orgId]);
-  }
+  goToSupplierById(orgId: string) { this.router.navigate(['/suppliers', orgId]); }
 
   addToProject(item: any) {
     const projectId = this.route.snapshot.queryParams['projectId'];
@@ -763,9 +673,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   onItemImageUpdated(event: { coverUrl: string }) {
     const item = this.filteredItems.find((i: any) => i.id === this.uploadItemId);
-    if (item) {
-      item.image_url = event.coverUrl;
-    }
+    if (item) item.image_url = event.coverUrl;
     this.uploadItemId = '';
     this.cdr.detectChanges();
   }
