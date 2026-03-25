@@ -36,6 +36,29 @@ interface SupplierWithState extends Org {
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
+      <!-- CATEGORY CIRCLES — full width above columns -->
+      <div class="bp-cat-circles-wrap">
+        <div class="bp-cat-circles">
+          <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
+            <div class="bp-cat-circle bp-cat-circle--all">
+              <lucide-icon name="layers" [size]="22" style="color:var(--color-text-muted);"></lucide-icon>
+            </div>
+            <span class="bp-cat-circle-label">All</span>
+          </button>
+          <button *ngFor="let cat of categories"
+            class="bp-cat-circle-btn"
+            [class.active]="activeCategory === cat.id"
+            (click)="setCategory(cat.id)">
+            <div class="bp-cat-circle"
+              [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
+              [class.bp-cat-circle--no-image]="!cat.cover_image_url">
+              <span *ngIf="!cat.cover_image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            </div>
+            <span class="bp-cat-circle-label">{{ cat.name }}</span>
+          </button>
+        </div>
+      </div>
+
       <!-- DESKTOP LAYOUT -->
       <div class="bp-cat-body" [class.bp-cat-body--detail]="viewMode === 'items'">
 
@@ -86,27 +109,6 @@ interface SupplierWithState extends Org {
 
         <!-- ── MAIN ── -->
         <div class="bp-cat-main">
-
-          <!-- Category circles -->
-          <div class="bp-cat-circles">
-            <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
-              <div class="bp-cat-circle bp-cat-circle--all">
-                <lucide-icon name="layers" [size]="22" style="color:var(--color-text-muted);"></lucide-icon>
-              </div>
-              <span class="bp-cat-circle-label">All</span>
-            </button>
-            <button *ngFor="let cat of categories"
-              class="bp-cat-circle-btn"
-              [class.active]="activeCategory === cat.id"
-              (click)="setCategory(cat.id)">
-              <div class="bp-cat-circle"
-                [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
-                [class.bp-cat-circle--no-image]="!cat.cover_image_url">
-                <span *ngIf="!cat.cover_image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
-              </div>
-              <span class="bp-cat-circle-label">{{ cat.name }}</span>
-            </button>
-          </div>
 
           <!-- Section header -->
           <div class="bp-cat-section-header">
@@ -309,9 +311,13 @@ interface SupplierWithState extends Org {
     .bp-sidebar-tags-loading { padding: 12px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
 
     /* ── CATEGORY CIRCLES ── */
+    .bp-cat-circles-wrap {
+      padding: 20px 28px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
     .bp-cat-circles {
-      display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px;
-      margin-bottom: 20px; scrollbar-width: none;
+      display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px;
+      scrollbar-width: none; justify-content: center;
     }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn {
@@ -484,6 +490,7 @@ interface SupplierWithState extends Org {
 
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
+      .bp-cat-circles-wrap { display: none; }
       .bp-cat-body, .bp-cat-body--detail { display: none; }
     }
   `]
