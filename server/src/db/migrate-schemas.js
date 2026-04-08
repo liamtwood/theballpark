@@ -152,6 +152,7 @@ const migrate = async () => {
         tier VARCHAR(20) DEFAULT 'mid' CHECK (tier IN ('basic', 'mid', 'premium')),
         tags TEXT[] DEFAULT '{}',
         image_url VARCHAR,
+        external_url VARCHAR,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),

@@ -35,6 +35,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
+        <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
+        </a>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
@@ -61,7 +64,7 @@ import { environment } from '../../environments/environment';
         </a>
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
-          <span>Catalogue</span>
+          <span>{{ catalogueLabel }}</span>
         </a>
         <a routerLink="/favourites" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="heart" [size]="20"></lucide-icon>
@@ -85,7 +88,7 @@ import { environment } from '../../environments/environment';
         </a>
         <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
-          <span>Catalogue</span>
+          <span>{{ catalogueLabel }}</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="message-circle" [size]="20"></lucide-icon>
@@ -201,6 +204,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   logoUrl      = '';
   tagline      = 'Exhibition Costing';
   creditLabel  = 'Ball';
+  catalogueLabel = 'Catalogue';
   ballsBalance = 0;
   orgName      = '';
   isDark       = false;
@@ -235,6 +239,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       }
       if (cfg.tagline)     this.tagline     = cfg.tagline;
       if (cfg.creditLabel) this.creditLabel = cfg.creditLabel;
+      if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
       this.cdr.detectChanges();
     });
 

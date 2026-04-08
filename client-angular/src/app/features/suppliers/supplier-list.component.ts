@@ -228,8 +228,8 @@ interface SupplierWithState extends Org {
                   [class.bp-item-card-selected]="selectedItem?.id === item.id"
                   (click)="selectItem(item)">
                   <div class="bp-item-card-img"
-                    [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : (item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null)"
-                    [class.bp-item-card-img-default]="!item.image_url && !item.supplier_cover_url">
+                    [style.background-image]="item.image_url ? 'url(' + item.image_url + ')' : item.external_url ? 'url(' + item.external_url + ')' : item.supplier_cover_url ? 'url(' + item.supplier_cover_url + ')' : null"
+                    [class.bp-item-card-img-default]="!item.image_url && !item.external_url && !item.supplier_cover_url">
                     <div class="bp-grid-actions">
                       <button class="bp-grid-action-btn" (click)="openItemImageUpload($event, item)">
                         <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -289,8 +289,8 @@ interface SupplierWithState extends Org {
           <!-- Item detail -->
           <ng-container *ngIf="viewMode === 'items' && selectedItem">
             <div class="bp-item-hero-img"
-              [style.background-image]="selectedItem.image_url ? 'url(' + selectedItem.image_url + ')' : (selectedItem.supplier_cover_url ? 'url(' + selectedItem.supplier_cover_url + ')' : null)"
-              [class.bp-item-hero-img-default]="!selectedItem.image_url && !selectedItem.supplier_cover_url">
+              [style.background-image]="selectedItem.image_url ? 'url(' + selectedItem.image_url + ')' : selectedItem.external_url ? 'url(' + selectedItem.external_url + ')' : selectedItem.supplier_cover_url ? 'url(' + selectedItem.supplier_cover_url + ')' : null"
+              [class.bp-item-hero-img-default]="!selectedItem.image_url && !selectedItem.external_url && !selectedItem.supplier_cover_url">
             </div>
             <div class="bp-item-detail-body">
               <div class="bp-item-category-label" *ngIf="selectedItem.category_name">{{ selectedItem.category_name | uppercase }}</div>
