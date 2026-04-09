@@ -179,6 +179,9 @@ interface SupplierWithState extends Org {
                     <img *ngIf="!s.cover_image_url && s.logo_url" [src]="s.logo_url" [alt]="s.name" class="bp-card-logo-img"/>
                     <span *ngIf="!s.cover_image_url && !s.logo_url" class="bp-card-initials">{{ s.name.charAt(0) }}</span>
                     <div class="bp-grid-actions">
+                      <button class="bp-grid-action-btn" (click)="openSupplierImageUpload($event, s)">
+                        <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+                      </button>
                       <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isFav(s.id)"
                         (click)="toggleFav($event, s.id)">
                         <lucide-icon name="heart" [size]="14"></lucide-icon>
@@ -357,6 +360,16 @@ interface SupplierWithState extends Org {
         (closed)="uploadItemId = ''">
       </app-image-upload-panel>
 
+      <app-image-upload-panel
+        *ngIf="uploadSupplierId"
+        [entityId]="uploadSupplierId"
+        type="supplier"
+        [existingCoverUrl]="uploadSupplierCoverUrl"
+        [existingLogoUrl]="uploadSupplierLogoUrl"
+        (imagesUpdated)="onSupplierImageUpdated($event)"
+        (closed)="uploadSupplierId = ''">
+      </app-image-upload-panel>
+
     </ng-container>
     </div>
   `,
@@ -409,8 +422,8 @@ interface SupplierWithState extends Org {
     .bp-member-row-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
     .bp-member-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-member-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-member-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-member-img-logo img { max-width: 70%; max-height: 70%; object-fit: contain; }
+    .bp-member-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
+    .bp-member-img-logo img { max-width: 36px; max-height: 36px; object-fit: contain; }
     .bp-member-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-member-body { flex: 1; min-width: 0; }
     .bp-member-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
@@ -434,8 +447,8 @@ interface SupplierWithState extends Org {
     .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
     .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; }
     .bp-item-card-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .bp-card-logo-img { max-height: 60%; max-width: 70%; object-fit: contain; }
+    .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
@@ -454,8 +467,8 @@ interface SupplierWithState extends Org {
     .bp-cat-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 13px; color: var(--color-text-muted); padding: 40px 20px; text-align: center; }
     .bp-item-hero-img { width: 100%; height: 160px; background-size: cover; background-position: center; }
     .bp-item-hero-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-item-hero-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .bp-hero-logo-img { max-height: 60%; max-width: 70%; object-fit: contain; }
+    .bp-item-hero-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-item-detail-body { padding: 16px 20px; }
     .bp-item-category-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
@@ -502,6 +515,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   itemLayout: 'list' | 'card' = 'card';
   uploadItemId = '';
   uploadItemExistingUrl = '';
+  uploadSupplierId = '';
+  uploadSupplierCoverUrl = '';
+  uploadSupplierLogoUrl = '';
 
   constructor(
     private supplierSvc: SupplierService,
@@ -707,6 +723,24 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     const item = this.filteredItems.find((i: any) => i.id === this.uploadItemId);
     if (item) item.image_url = event.coverUrl;
     this.uploadItemId = '';
+    this.cdr.detectChanges();
+  }
+
+  openSupplierImageUpload(event: MouseEvent, supplier: SupplierWithState) {
+    event.stopPropagation();
+    this.uploadSupplierId = supplier.id;
+    this.uploadSupplierCoverUrl = supplier.cover_image_url || '';
+    this.uploadSupplierLogoUrl = supplier.logo_url || '';
+    this.cdr.detectChanges();
+  }
+
+  onSupplierImageUpdated(event: { coverUrl: string; logoUrl: string }) {
+    const supplier = this.suppliers.find(s => s.id === this.uploadSupplierId);
+    if (supplier) {
+      supplier.cover_image_url = event.coverUrl;
+      supplier.logo_url = event.logoUrl;
+    }
+    this.uploadSupplierId = '';
     this.cdr.detectChanges();
   }
 }
