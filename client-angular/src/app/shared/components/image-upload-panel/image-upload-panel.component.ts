@@ -83,9 +83,9 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
-      <!-- Client logo (project only) -->
-      <div class="iup-section" *ngIf="type === 'project'">
-        <div class="iup-label">Client logo</div>
+      <!-- Logo (project + supplier) -->
+      <div class="iup-section" *ngIf="type === 'project' || type === 'supplier'">
+        <div class="iup-label">{{ type === 'supplier' ? 'Company logo' : 'Client logo' }}</div>
 
         <div *ngIf="!logoPreview"
              class="iup-drop"
@@ -327,7 +327,7 @@ export class ImageUploadPanelComponent implements OnInit {
         coverUrl = await this.storageService.uploadImage(bucket, `${basePath}/cover`, blob);
       }
 
-      if (this.logoFile && this.type === 'project') {
+      if (this.logoFile && (this.type === 'project' || this.type === 'supplier')) {
         this.statusText = this.logoRemoveBg ? 'Removing logo background...' : 'Uploading logo...';
         this.cdr.detectChanges();
         const blob = this.logoRemoveBg
@@ -340,7 +340,9 @@ export class ImageUploadPanelComponent implements OnInit {
 
       const patch: any = {};
       if (coverUrl !== this.existingCoverUrl) patch.cover_image_url = coverUrl;
-      if (logoUrl !== this.existingLogoUrl) patch.client_logo_url = logoUrl;
+      if (logoUrl !== this.existingLogoUrl) {
+        patch[this.type === 'supplier' ? 'logo_url' : 'client_logo_url'] = logoUrl;
+      }
       if (this.type === 'project' && this.selectedColor !== this.existingCardColor) {
         patch.card_color = this.selectedColor;
       }

@@ -4,6 +4,36 @@ console.log('[STARTUP] APP_SCHEMA:', process.env.APP_SCHEMA || '(not set — def
 
 const express = require('express');
 const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+
+// ── Ensure Supabase storage buckets exist ──────────────────────────
+async function ensureBuckets() {
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const buckets = [
+    process.env.STORAGE_BUCKET_SUPPLIERS || 'dev-supplier-assets',
+    process.env.STORAGE_BUCKET_PROJECTS  || 'dev-project-assets',
+  ];
+
+  for (const name of buckets) {
+    const { error: getErr } = await supabase.storage.getBucket(name);
+    if (getErr) {
+      const { error: createErr } = await supabase.storage.createBucket(name, { public: true });
+      if (createErr) {
+        console.error(`[STORAGE] Failed to create bucket "${name}":`, createErr.message);
+      } else {
+        console.log(`[STORAGE] Created bucket "${name}"`);
+      }
+    } else {
+      console.log(`[STORAGE] Bucket "${name}" already exists`);
+    }
+  }
+}
+
+ensureBuckets().catch(err => console.error('[STORAGE] ensureBuckets error:', err.message));
 
 const app = express();
 
@@ -79,8 +109,8 @@ app.patch('/api/items/:id/images', async (req, res, next) => {
 // PATCH supplier images
 app.patch('/api/suppliers/:id/images', async (req, res, next) => {
   try {
-    const { cover_image_url } = req.body;
-    const result = await OrgService.update(req.params.id, { cover_image_url });
+    const { cover_image_url, logo_url } = req.body;
+    const result = await OrgService.update(req.params.id, { cover_image_url, logo_url });
     if (!result) return res.status(404).json({ error: 'Not found' });
     res.json(result);
   } catch (err) { next(err); }
