@@ -16,6 +16,8 @@ export interface CatalogueEntity {
   specs?: { label: string; value: string }[];
   // Parent reference (items link to their supplier)
   parentEntity?: { id: string; name: string; subtitle?: string; image_url?: string };
+  // Display mode — 'cover' (full bleed) or 'contain' (centred logo)
+  image_display?: 'cover' | 'contain';
   // Pass-through for actions
   _raw?: any;
 }

@@ -272,6 +272,10 @@ const migrate = async () => {
 
       -- Add cover image column to orgs (suppliers)
       ALTER TABLE orgs ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+      ALTER TABLE orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+
+      -- Add image_display to items
+      ALTER TABLE items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
 
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
