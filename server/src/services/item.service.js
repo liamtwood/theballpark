@@ -6,7 +6,8 @@ async function getAll(orgId, categoryId, tag) {
       c.name AS category_name,
       o.name AS supplier_name,
       o.city AS supplier_city,
-      o.cover_image_url AS supplier_cover_url
+      o.cover_image_url AS supplier_cover_url,
+      o.image_display AS supplier_image_display
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.id
     LEFT JOIN orgs o ON i.org_id = o.id
@@ -48,7 +49,8 @@ async function getById(id) {
       c.name AS category_name,
       o.name AS supplier_name,
       o.city AS supplier_city,
-      o.cover_image_url AS supplier_cover_url
+      o.cover_image_url AS supplier_cover_url,
+      o.image_display AS supplier_image_display
      FROM items i
      LEFT JOIN categories c ON i.category_id = c.id
      LEFT JOIN orgs o ON i.org_id = o.id
