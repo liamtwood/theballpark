@@ -229,6 +229,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       external_url: i.external_url,
       cover_image_url: this.supplier?.cover_image_url,
       image_display: i.image_url ? (i.image_display || 'cover') : (this.supplier?.image_display || 'cover'),
+      category_id: i.category_id,
       subtitle: i.category_name,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,

@@ -12,6 +12,7 @@ export interface CatalogueEntity {
   price?: number;
   priceRange?: { min: number; max: number };
   unit?: string;
+  category_id?: string;
   categoryLabel?: string;
   specs?: { label: string; value: string }[];
   // Parent reference (items link to their supplier)
