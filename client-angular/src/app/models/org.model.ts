@@ -10,6 +10,7 @@ export interface Org {
   email?: string;
   website?: string;
   logo_url?: string;
+  cover_image_url?: string;
   subscription_tier: 'starter' | 'studio' | 'agency';
   balls_balance: number;
   balls_monthly_allowance: number;

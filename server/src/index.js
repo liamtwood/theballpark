@@ -109,8 +109,8 @@ app.patch('/api/items/:id/images', async (req, res, next) => {
 // PATCH supplier images
 app.patch('/api/suppliers/:id/images', async (req, res, next) => {
   try {
-    const { cover_image_url } = req.body;
-    const result = await OrgService.update(req.params.id, { cover_image_url });
+    const { cover_image_url, logo_url } = req.body;
+    const result = await OrgService.update(req.params.id, { cover_image_url, logo_url });
     if (!result) return res.status(404).json({ error: 'Not found' });
     res.json(result);
   } catch (err) { next(err); }

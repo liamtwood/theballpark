@@ -10,3 +10,4 @@ export { Message } from './message.model';
 export { BallsTransaction } from './balls-transaction.model';
 export { ParsedBrief } from './parsed-brief.model';
 export { ThemePreset, PlatformConfig } from './config.model';
+export { CatalogueEntity, CategoryInfo } from './catalogue.model';

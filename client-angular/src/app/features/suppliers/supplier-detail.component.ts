@@ -35,10 +35,15 @@ import { Project } from '../../models';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- HERO IMAGE -->
+      <!-- HERO IMAGE — three treatments: cover / logo / initials -->
       <div class="bp-sup-hero-img"
         [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-        [class.bp-sup-hero-img-default]="!supplier.cover_image_url">
+        [class.bp-sup-hero-img-default]="!supplier.cover_image_url && !supplier.logo_url"
+        [class.bp-sup-hero-img-logo]="!supplier.cover_image_url && !!supplier.logo_url">
+        <img *ngIf="!supplier.cover_image_url && supplier.logo_url"
+             [src]="supplier.logo_url" [alt]="supplier.name" class="bp-sup-hero-logo-img"/>
+        <span *ngIf="!supplier.cover_image_url && !supplier.logo_url"
+              class="bp-sup-hero-initials">{{ supplier.name.charAt(0) }}</span>
         <!-- Heart on supplier -->
         <button class="bp-hero-heart" [class.active]="isSupplierFav()" (click)="toggleSupplierFav()">
           <lucide-icon name="heart" [size]="20"></lucide-icon>
@@ -53,6 +58,7 @@ import { Project } from '../../models';
         [entityId]="supplier?.id || ''"
         type="supplier"
         [existingCoverUrl]="supplier?.cover_image_url || ''"
+        [existingLogoUrl]="supplier?.logo_url || ''"
         (imagesUpdated)="onImagesUpdated($event)"
         (closed)="showImagePanel = false">
       </app-image-upload-panel>
@@ -175,7 +181,10 @@ import { Project } from '../../models';
   `,
   styles: [`
     .bp-sup-hero-img { width: 100%; height: 200px; background-size: cover; background-position: center; position: relative; }
-    .bp-sup-hero-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .bp-sup-hero-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-sup-hero-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-sup-hero-logo-img { max-height: 168px; max-width: calc(100% - 32px); object-fit: contain; }
+    .bp-sup-hero-initials { font-size: 56px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-hero-heart { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: all 0.15s; }
     .bp-hero-heart:hover { color: #E11D48; }
     .bp-hero-heart.active { color: #E11D48; background: #fff; }
@@ -346,9 +355,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  onImagesUpdated(event: { coverUrl: string }) {
+  onImagesUpdated(event: { coverUrl: string; logoUrl: string }) {
     if (this.supplier) {
       this.supplier.cover_image_url = event.coverUrl;
+      this.supplier.logo_url = event.logoUrl;
       this.cdr.detectChanges();
     }
   }
