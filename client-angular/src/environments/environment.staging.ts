@@ -1,7 +1,7 @@
 export const environment = {
   production: true,
   apiUrl: 'https://theballpark-preview-preview.up.railway.app/api',
-  version: '[Preview] v1.5',
+  version: '[Preview] v1.6',
   supabaseUrl: '',
   supabaseAnonKey: '',
   storageBucketProjects: 'preview-project-assets',
