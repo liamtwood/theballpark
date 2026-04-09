@@ -7,143 +7,56 @@ import { DropdownModule } from 'primeng/dropdown';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule } from 'lucide-angular';
 import { OrgService } from '../../../core/services/org.service';
-import { Org } from '../../../models';
+import { Org, CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
+import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
 
 @Component({
   selector: 'app-orgs',
   standalone: true,
   imports: [
     CommonModule, FormsModule, TitleCasePipe,
-    LucideAngularModule,
     ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
+    LoadingSpinnerComponent, CatalogueGridComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
-      <div class="bp-team-page">
-
-        <div class="bp-team-title-bar">
-          <h2 class="bp-page-title">Organisations</h2>
-        </div>
-
-        <div class="bp-team-body">
-
-          <!-- SIDEBAR -->
-          <div class="bp-team-sidebar">
-            <div class="bp-sidebar-heading">Sort by</div>
-            <div *ngFor="let s of sortOptions"
-              class="bp-sidebar-item" [class.active]="currentSort === s.value"
-              (click)="setSort(s.value)">
-              {{ s.label }}
-              <span class="bp-sidebar-arrow">{{ currentSort === s.value ? '↑' : '↕' }}</span>
-            </div>
-
-            <hr class="bp-sidebar-divider"/>
-
-            <div class="bp-sidebar-heading">Filter by</div>
-            <div class="bp-team-search">
-              <i class="pi pi-search" style="color:var(--color-text-muted);font-size:12px;"></i>
-              <input pInputText [(ngModel)]="searchTerm" placeholder="Search..."
-                class="bp-team-search-input" (ngModelChange)="applyFilters()"/>
-            </div>
-
-            <div class="bp-sidebar-sublabel">Type</div>
-            <div *ngFor="let t of typeFilters"
-              class="bp-sidebar-item" [class.active]="typeFilter === t.value"
-              (click)="setTypeFilter(t.value)">
-              {{ t.label }}
-              <span class="bp-sidebar-count">{{ getTypeCount(t.value) }}</span>
-            </div>
-          </div>
-
-          <!-- MAIN LIST -->
-          <div class="bp-team-main">
-            <div class="bp-team-content">
-              <div class="bp-section-header">
-                <span class="bp-section-title">ORGANISATIONS</span>
-                <div class="flex items-center gap-2">
-                  <div class="bp-view-toggle">
-                    <button class="bp-view-btn" [class.active]="viewMode==='list'" (click)="viewMode='list'" title="List view">
-                      <i class="pi pi-bars"></i>
-                    </button>
-                    <button class="bp-view-btn" [class.active]="viewMode==='grid'" (click)="viewMode='grid'" title="Card view">
-                      <i class="pi pi-th-large"></i>
-                    </button>
-                  </div>
-                  <p-button label="Add Org" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="openAddDrawer()"></p-button>
-                </div>
-              </div>
-
-              <p *ngIf="filteredOrgs.length===0" class="bp-muted-text">No organisations found.</p>
-
-              <!-- LIST VIEW -->
-              <ng-container *ngIf="viewMode==='list'">
-                <div *ngFor="let o of filteredOrgs; let last = last"
-                  class="bp-member-row bp-member-row-clickable"
-                  [style.border-bottom]="!last ? '0.5px solid var(--color-border)' : 'none'"
-                  (click)="viewOrg(o)">
-                  <div class="flex items-center gap-3">
-                    <app-avatar [name]="o.name"></app-avatar>
-                    <div>
-                      <p class="bp-member-name">{{ o.name }}</p>
-                      <p class="bp-muted-text">{{ o.city || '—' }}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2" (click)="$event.stopPropagation()">
-                    <app-status-badge [status]="o.type"></app-status-badge>
-                    <app-status-badge [status]="o.subscription_tier"></app-status-badge>
-                    <span *ngIf="o.type === 'agency'" class="bp-member-joined">{{ o.balls_balance }} balls</span>
-                    <app-status-badge [status]="o.is_active ? 'active' : 'disabled'"></app-status-badge>
-                  </div>
-                </div>
-              </ng-container>
-
-              <!-- GRID VIEW -->
-              <div *ngIf="viewMode==='grid'" class="bp-member-grid">
-                <div *ngFor="let o of filteredOrgs" class="bp-member-card bp-member-row-clickable"
-                  (click)="viewOrg(o)">
-                  <div class="flex items-center gap-3 mb-3">
-                    <app-avatar [name]="o.name" [size]="44"></app-avatar>
-                    <div>
-                      <p class="bp-member-name">{{ o.name }}</p>
-                      <p class="bp-muted-text">{{ o.city || '—' }}</p>
-                    </div>
-                  </div>
-                  <div class="bp-member-card-footer" (click)="$event.stopPropagation()">
-                    <div class="flex items-center gap-2">
-                      <app-status-badge [status]="o.type"></app-status-badge>
-                      <app-status-badge [status]="o.subscription_tier"></app-status-badge>
-                    </div>
-                    <span *ngIf="o.type === 'agency'" class="bp-member-joined">{{ o.balls_balance }} balls</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- RIGHT PANEL (placeholder) -->
-          <div class="bp-invite-panel">
-            <div class="bp-section-header">
-              <span class="bp-section-title">SUMMARY</span>
-            </div>
-            <div class="bp-muted-text mb-2" style="font-size:11px;">{{ orgs.length }} total organisations</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);">
-              <div class="mb-1">{{ getTypeCount('agency') }} agencies</div>
-              <div>{{ getTypeCount('supplier') }} suppliers</div>
-            </div>
-          </div>
-
-        </div>
-      </div>
+      <app-catalogue-grid
+        [entities]="orgEntities"
+        [categories]="typeCategories"
+        entityType="supplier"
+        entityLabel="organisation"
+        sectionTitle="ORGANISATIONS"
+        actionLabel="View details"
+        [favouriteIds]="emptySet"
+        [showEdit]="true"
+        [showFavourite]="false"
+        [totalCount]="orgs.length"
+        (entitySelected)="onEntitySelected($event)"
+        (actionClicked)="onAction($event)"
+        (imageEditRequested)="onImageEdit($event)">
+        <button catalogue-toggles class="bp-add-btn" (click)="openAddDrawer()">
+          <i class="pi pi-plus" style="font-size:11px;"></i> Add Org
+        </button>
+      </app-catalogue-grid>
     </ng-container>
+
+    <!-- Image upload panel -->
+    <app-image-upload-panel
+      *ngIf="uploadEntityId"
+      [entityId]="uploadEntityId"
+      type="supplier"
+      [existingCoverUrl]="uploadCoverUrl"
+      [existingLogoUrl]="uploadLogoUrl"
+      [existingImageDisplay]="uploadImageDisplay"
+      (imagesUpdated)="onImageUpdated($event)"
+      (closed)="uploadEntityId = ''">
+    </app-image-upload-panel>
 
     <!-- ADD ORG DRAWER -->
     <p-sidebar [(visible)]="showAddDrawer" position="right"
@@ -255,31 +168,22 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
     <p-toast></p-toast>
   `,
   styles: [`
-    /* Reuses bp-team-* classes from global styles.css */
-    .bp-team-content { max-width: 560px; }
+    .bp-add-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 14px; font-size: 12px; font-weight: 500;
+      font-family: var(--font-body); border: 1px solid var(--theme-accent);
+      background: transparent; color: var(--theme-accent);
+      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .bp-add-btn:hover { background: var(--theme-accent); color: #fff; }
   `]
 })
 export class OrgsComponent implements OnInit {
   loading = true;
   orgs: Org[] = [];
-  filteredOrgs: Org[] = [];
-  viewMode: 'list' | 'grid' = 'list';
-  currentSort = 'name';
-  searchTerm = '';
-  typeFilter = 'all';
-
-  sortOptions = [
-    { label: 'Name', value: 'name' },
-    { label: 'City', value: 'city' },
-    { label: 'Type', value: 'type' },
-    { label: 'Created', value: 'created' }
-  ];
-
-  typeFilters = [
-    { label: 'All', value: 'all' },
-    { label: 'Agency', value: 'agency' },
-    { label: 'Supplier', value: 'supplier' }
-  ];
+  orgEntities: CatalogueEntity[] = [];
+  typeCategories: CategoryInfo[] = [];
+  emptySet = new Set<string>();
 
   typeOptions = [
     { label: 'Agency', value: 'agency' },
@@ -302,7 +206,8 @@ export class OrgsComponent implements OnInit {
     this.orgSvc.getAll().subscribe({
       next: (data) => {
         this.orgs = data || [];
-        this.applyFilters();
+        this.mapOrgs();
+        this.buildTypeCategories();
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -310,32 +215,65 @@ export class OrgsComponent implements OnInit {
     });
   }
 
-  getTypeCount(type: string): number {
-    if (type === 'all') return this.orgs.length;
-    return this.orgs.filter(o => o.type === type).length;
+  mapOrgs() {
+    this.orgEntities = this.orgs.map(o => ({
+      id: o.id,
+      name: o.name,
+      description: o.description,
+      cover_image_url: o.cover_image_url,
+      logo_url: o.logo_url,
+      image_display: (o as any).image_display || 'cover',
+      category_id: o.type,
+      subtitle: (o as any).city || '—',
+      specs: [
+        { label: 'Type', value: o.type === 'agency' ? 'Agency' : 'Supplier' },
+        { label: 'Tier', value: o.subscription_tier || 'starter' },
+        ...(o.type === 'agency' ? [{ label: 'Balls', value: String(o.balls_balance || 0) }] : [])
+      ],
+      _raw: o
+    }));
   }
 
-  setSort(val: string) { this.currentSort = val; this.applyFilters(); }
-  setTypeFilter(val: string) { this.typeFilter = val; this.applyFilters(); }
+  buildTypeCategories() {
+    const agencyCount = this.orgs.filter(o => o.type === 'agency').length;
+    const supplierCount = this.orgs.filter(o => o.type === 'supplier').length;
+    this.typeCategories = [
+      { id: 'agency', name: 'Agency', count: agencyCount },
+      { id: 'supplier', name: 'Supplier', count: supplierCount }
+    ];
+  }
 
-  applyFilters() {
-    let list = [...this.orgs];
-    if (this.typeFilter !== 'all') {
-      list = list.filter(o => o.type === this.typeFilter);
-    }
-    if (this.searchTerm.trim()) {
-      const q = this.searchTerm.toLowerCase();
-      list = list.filter(o => o.name?.toLowerCase().includes(q) || (o as any).city?.toLowerCase().includes(q));
-    }
-    list.sort((a, b) => {
-      if (this.currentSort === 'name') return (a.name || '').localeCompare(b.name || '');
-      if (this.currentSort === 'city') return ((a as any).city || '').localeCompare((b as any).city || '');
-      if (this.currentSort === 'type') return (a.type || '').localeCompare(b.type || '');
-      if (this.currentSort === 'created') return (b.created_at || '').localeCompare(a.created_at || '');
-      return 0;
-    });
-    this.filteredOrgs = list;
+  // Image upload
+  uploadEntityId = '';
+  uploadCoverUrl = '';
+  uploadLogoUrl = '';
+  uploadImageDisplay: 'cover' | 'contain' = 'cover';
+
+  onEntitySelected(_entity: CatalogueEntity) {}
+
+  onImageEdit(entity: CatalogueEntity) {
+    this.uploadEntityId = entity.id;
+    this.uploadCoverUrl = entity.cover_image_url || '';
+    this.uploadLogoUrl = entity.logo_url || '';
+    this.uploadImageDisplay = entity.image_display || 'cover';
     this.cdr.detectChanges();
+  }
+
+  onImageUpdated(event: { coverUrl: string; logoUrl: string; imageDisplay?: 'cover' | 'contain' }) {
+    const org = this.orgs.find(o => o.id === this.uploadEntityId);
+    if (org) {
+      org.cover_image_url = event.coverUrl;
+      org.logo_url = event.logoUrl;
+      if (event.imageDisplay) (org as any).image_display = event.imageDisplay;
+    }
+    this.mapOrgs();
+    this.uploadEntityId = '';
+    this.cdr.detectChanges();
+  }
+
+  onAction(entity: CatalogueEntity) {
+    const org = this.orgs.find(o => o.id === entity.id);
+    if (org) this.viewOrg(org);
   }
 
   viewOrg(o: Org) {
@@ -371,7 +309,8 @@ export class OrgsComponent implements OnInit {
     } as any).subscribe({
       next: (org) => {
         this.orgs = [...this.orgs, org];
-        this.applyFilters();
+        this.mapOrgs();
+        this.buildTypeCategories();
         this.closeAddDrawer();
         this.msg.add({ severity: 'success', summary: `${org.name} created` });
       },
