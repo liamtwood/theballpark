@@ -107,11 +107,11 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             [class.bp-list-row-selected]="selectedEntity?.id === e.id"
             (click)="select(e)">
             <div class="bp-list-img"
-              [style.background-image]="getImageUrl(e) ? 'url(' + getImageUrl(e) + ')' : null"
-              [class.bp-list-img-default]="!getImageUrl(e) && !e.logo_url"
-              [class.bp-list-img-logo]="!getImageUrl(e) && !!e.logo_url">
-              <img *ngIf="!getImageUrl(e) && e.logo_url" [src]="e.logo_url" [alt]="e.name"/>
-              <span *ngIf="!getImageUrl(e) && !e.logo_url" class="bp-list-initials">{{ e.name.charAt(0) }}</span>
+              [style.background-image]="getImageUrl(e) && e.image_display !== 'contain' ? 'url(' + getImageUrl(e) + ')' : null"
+              [class.bp-list-img-default]="!getImageUrl(e)"
+              [class.bp-list-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
+              <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name"/>
+              <span *ngIf="!getImageUrl(e)" class="bp-list-initials">{{ e.name.charAt(0) }}</span>
             </div>
             <div class="bp-list-body">
               <div class="bp-list-name">{{ e.name }}</div>
@@ -138,11 +138,11 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
               <div class="bp-item-card-img"
-                [style.background-image]="getImageUrl(e) ? 'url(' + getImageUrl(e) + ')' : null"
-                [class.bp-item-card-img-default]="!getImageUrl(e) && !e.logo_url"
-                [class.bp-item-card-img-logo]="!getImageUrl(e) && !!e.logo_url">
-                <img *ngIf="!getImageUrl(e) && e.logo_url" [src]="e.logo_url" [alt]="e.name" class="bp-card-logo-img"/>
-                <span *ngIf="!getImageUrl(e) && !e.logo_url" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
+                [style.background-image]="getImageUrl(e) && e.image_display !== 'contain' ? 'url(' + getImageUrl(e) + ')' : null"
+                [class.bp-item-card-img-default]="!getImageUrl(e)"
+                [class.bp-item-card-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
+                <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name" class="bp-card-logo-img"/>
+                <span *ngIf="!getImageUrl(e)" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
                   <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
                     <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -172,12 +172,12 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
         <ng-container *ngIf="selectedEntity">
           <!-- Hero image -->
           <div class="bp-detail-hero"
-            [style.background-image]="getImageUrl(selectedEntity) ? 'url(' + getImageUrl(selectedEntity) + ')' : null"
-            [class.bp-detail-hero-default]="!getImageUrl(selectedEntity) && !selectedEntity.logo_url"
-            [class.bp-detail-hero-logo]="!getImageUrl(selectedEntity) && !!selectedEntity.logo_url">
-            <img *ngIf="!getImageUrl(selectedEntity) && selectedEntity.logo_url"
-                 [src]="selectedEntity.logo_url" [alt]="selectedEntity.name" class="bp-detail-hero-logo-img"/>
-            <span *ngIf="!getImageUrl(selectedEntity) && !selectedEntity.logo_url"
+            [style.background-image]="getImageUrl(selectedEntity) && selectedEntity.image_display !== 'contain' ? 'url(' + getImageUrl(selectedEntity) + ')' : null"
+            [class.bp-detail-hero-default]="!getImageUrl(selectedEntity)"
+            [class.bp-detail-hero-logo]="!!getImageUrl(selectedEntity) && selectedEntity.image_display === 'contain'">
+            <img *ngIf="getImageUrl(selectedEntity) && selectedEntity.image_display === 'contain'"
+                 [src]="getImageUrl(selectedEntity)!" [alt]="selectedEntity.name" class="bp-detail-hero-logo-img"/>
+            <span *ngIf="!getImageUrl(selectedEntity)"
                   class="bp-detail-hero-initials">{{ selectedEntity.name.charAt(0) }}</span>
           </div>
 

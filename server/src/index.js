@@ -99,8 +99,8 @@ app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
 // PATCH item images
 app.patch('/api/items/:id/images', async (req, res, next) => {
   try {
-    const { cover_image_url } = req.body;
-    const result = await ItemService.update(req.params.id, { image_url: cover_image_url });
+    const { cover_image_url, image_display } = req.body;
+    const result = await ItemService.update(req.params.id, { image_url: cover_image_url, image_display });
     if (!result) return res.status(404).json({ error: 'Not found' });
     res.json(result);
   } catch (err) { next(err); }
@@ -109,8 +109,8 @@ app.patch('/api/items/:id/images', async (req, res, next) => {
 // PATCH supplier images
 app.patch('/api/suppliers/:id/images', async (req, res, next) => {
   try {
-    const { cover_image_url, logo_url } = req.body;
-    const result = await OrgService.update(req.params.id, { cover_image_url, logo_url });
+    const { cover_image_url, logo_url, image_display } = req.body;
+    const result = await OrgService.update(req.params.id, { cover_image_url, logo_url, image_display });
     if (!result) return res.status(404).json({ error: 'Not found' });
     res.json(result);
   } catch (err) { next(err); }
