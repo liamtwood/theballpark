@@ -29,7 +29,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
           [entities]="currentEntities"
           [categories]="categories"
           [tags]="availableTags"
-          [entityType]="viewMode"
+          [entityType]="entityType"
           [entityLabel]="viewMode === 'suppliers' ? 'supplier' : 'item'"
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
@@ -102,6 +102,10 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // Mapped entities
   supplierEntities: CatalogueEntity[] = [];
   itemEntities: CatalogueEntity[] = [];
+
+  get entityType(): 'item' | 'supplier' {
+    return this.viewMode === 'suppliers' ? 'supplier' : 'item';
+  }
   supplierFavIds = new Set<string>();
   itemFavIds = new Set<string>();
 
