@@ -404,7 +404,7 @@ export class CatalogueGridComponent implements OnChanges {
   }
 
   getImageUrl(e: CatalogueEntity): string | null {
-    return e.cover_image_url || e.image_url || e.external_url || null;
+    return e.image_url || e.cover_image_url || e.external_url || null;
   }
 
   select(e: CatalogueEntity) {
