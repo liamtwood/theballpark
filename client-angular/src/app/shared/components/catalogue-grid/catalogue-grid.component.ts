@@ -19,6 +19,14 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     LucideAngularModule, GbpPipe
   ],
   template: `
+    <!-- BACK BUTTON -->
+    <div class="bp-grid-back-wrap" *ngIf="showBack">
+      <button class="bp-grid-back-btn" (click)="onBack()">
+        <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
+        {{ backLabel }}
+      </button>
+    </div>
+
     <!-- CATEGORY CIRCLES -->
     <div class="bp-cat-circles-wrap" *ngIf="categories.length">
       <div class="bp-cat-circles">
@@ -253,6 +261,10 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   styles: [`
     :host { display: block; }
 
+    .bp-grid-back-wrap { padding: 12px 28px 0; }
+    .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
+    .bp-grid-back-btn:hover { opacity: 0.75; }
+
     .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); }
     .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; justify-content: center; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
@@ -377,9 +389,12 @@ export class CatalogueGridComponent implements OnChanges {
   @Input() favouriteIds: Set<string> = new Set();
   @Input() showEdit = true;
   @Input() showFavourite = true;
+  @Input() showBack = false;
+  @Input() backLabel = 'Back to catalogue';
   @Input() totalCount = 0;
 
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
+  @Output() backClicked = new EventEmitter<void>();
   @Output() favouriteToggled = new EventEmitter<string>();
   @Output() imageEditRequested = new EventEmitter<CatalogueEntity>();
   @Output() actionClicked = new EventEmitter<CatalogueEntity>();
@@ -419,6 +434,10 @@ export class CatalogueGridComponent implements OnChanges {
     this.selectedEntity = null;
     this.categoryChanged.emit(catId);
     this.applyFilter();
+  }
+
+  onBack() {
+    this.backClicked.emit();
   }
 
   setTag(tag: string) {
