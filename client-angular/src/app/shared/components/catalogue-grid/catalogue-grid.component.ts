@@ -471,6 +471,9 @@ export class CatalogueGridComponent implements OnChanges {
 
   private applyFilter() {
     let result = this.entities;
+    if (this.activeCategory !== 'all') {
+      result = result.filter(e => e.category_id === this.activeCategory);
+    }
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();
       result = result.filter(e =>
