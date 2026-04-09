@@ -12,13 +12,14 @@ import { LucideAngularModule, MapPin, ChevronRight, Heart } from 'lucide-angular
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
 import { FavouriteService } from '../../core/services/favourite.service';
-import { ShellContextService } from '../../core/services/shell-context.service';
 import { OrgService } from '../../core/services/org.service';
 import { ConfigService } from '../../core/services/config.service';
+import { ShellContextService } from '../../core/services/shell-context.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
-import { Project } from '../../models';
+import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
+import { Project, CatalogueEntity, CategoryInfo } from '../../models';
 
 @Component({
   selector: 'app-supplier-detail',
@@ -27,7 +28,7 @@ import { Project } from '../../models';
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent
+    GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent
   ],
   providers: [MessageService],
   template: `
@@ -35,87 +36,37 @@ import { Project } from '../../models';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- HERO IMAGE — three treatments: cover / logo / initials -->
-      <div class="bp-sup-hero-img"
-        [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-        [class.bp-sup-hero-img-default]="!supplier.cover_image_url && !supplier.logo_url"
-        [class.bp-sup-hero-img-logo]="!supplier.cover_image_url && !!supplier.logo_url">
-        <img *ngIf="!supplier.cover_image_url && supplier.logo_url"
-             [src]="supplier.logo_url" [alt]="supplier.name" class="bp-sup-hero-logo-img"/>
-        <span *ngIf="!supplier.cover_image_url && !supplier.logo_url"
-              class="bp-sup-hero-initials">{{ supplier.name.charAt(0) }}</span>
-        <!-- Heart on supplier -->
-        <button class="bp-hero-heart" [class.active]="isSupplierFav()" (click)="toggleSupplierFav()">
-          <lucide-icon name="heart" [size]="20"></lucide-icon>
-        </button>
-        <button class="bp-sup-edit-img-btn" (click)="showImagePanel = true">
-          <i class="pi pi-pencil" style="font-size:13px;"></i>
-        </button>
-      </div>
+      <!-- SUPPLIER CATALOGUE via reusable grid -->
+      <app-catalogue-grid
+        [entities]="itemEntities"
+        [categories]="categories"
+        entityType="item"
+        entityLabel="item"
+        [actionLabel]="'View →'"
+        [favouriteIds]="itemFavIds"
+        [showEdit]="true"
+        [showFavourite]="true"
+        [showBack]="true"
+        backLabel="Back to catalogue"
+        [totalCount]="itemEntities.length"
+        sectionTitle="CATALOGUE"
+        (entitySelected)="onEntitySelected($event)"
+        (favouriteToggled)="onFavToggled($event)"
+        (imageEditRequested)="onImageEdit($event)"
+        (actionClicked)="onAction($event)"
+        (backClicked)="goBack()">
+      </app-catalogue-grid>
 
+      <!-- Image upload panel for items -->
       <app-image-upload-panel
-        *ngIf="showImagePanel"
-        [entityId]="supplier?.id || ''"
-        type="supplier"
-        [existingCoverUrl]="supplier?.cover_image_url || ''"
-        [existingLogoUrl]="supplier?.logo_url || ''"
-        (imagesUpdated)="onImagesUpdated($event)"
-        (closed)="showImagePanel = false">
+        *ngIf="uploadEntityId"
+        [entityId]="uploadEntityId"
+        type="item"
+        [existingCoverUrl]="uploadCoverUrl"
+        [existingImageDisplay]="uploadImageDisplay"
+        (imagesUpdated)="onItemImageUpdated($event)"
+        (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
-
-      <!-- SUPPLIER INFO -->
-      <div class="bp-sup-info">
-        <div class="bp-sup-info-name">{{ supplier.name }}</div>
-        <div class="bp-sup-info-meta">
-          <lucide-icon name="map-pin" [size]="12"></lucide-icon>
-          {{ supplier.city || 'London' }}
-        </div>
-        <div class="bp-sup-info-desc" *ngIf="supplier.description">{{ supplier.description }}</div>
-      </div>
-
-      <!-- CATEGORY TABS -->
-      <div class="bp-sup-cats" *ngIf="categoryGroups.length > 1">
-        <button class="bp-sup-cat-tab" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">All</button>
-        <button *ngFor="let g of categoryGroups"
-          class="bp-sup-cat-tab"
-          [class.active]="activeCategory === g.categoryId"
-          (click)="setCategory(g.categoryId)">
-          {{ g.categoryName }}
-          <span class="bp-sup-cat-count">{{ g.items.length }}</span>
-        </button>
-      </div>
-
-      <!-- CATALOGUE ITEMS -->
-      <div class="bp-sup-items">
-        <div *ngFor="let item of filteredItems()" class="bp-sup-item"
-          [class.bp-sup-item-highlighted]="item.id === highlightedItemId"
-          [id]="'item-' + item.id">
-          <div class="bp-sup-item-body">
-            <div class="bp-sup-item-name">{{ item.name }}</div>
-            <div class="bp-sup-item-desc" *ngIf="item.description">{{ item.description }}</div>
-            <div class="bp-sup-item-meta">
-              <span class="bp-sup-item-tag">{{ item.category_name }}</span>
-              <span class="bp-sup-item-tag" *ngIf="item.tier">{{ item.tier }}</span>
-            </div>
-          </div>
-          <div class="bp-sup-item-right">
-            <div class="bp-sup-item-price" *ngIf="item.base_price">{{ item.base_price | gbp }}</div>
-            <div class="bp-sup-item-actions">
-              <!-- Heart on item -->
-              <button class="bp-heart-btn-sm" [class.active]="isItemFav(item.id)" (click)="toggleItemFav(item.id)">
-                <lucide-icon name="heart" [size]="14"></lucide-icon>
-              </button>
-              <button class="bp-sup-item-quote-btn" (click)="goToItem(item)">View →</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Custom quote -->
-        <div class="bp-sup-custom">
-          <div class="bp-sup-custom-label">Don't see what you need?</div>
-          <button class="bp-sup-custom-btn" (click)="openQuote(null)">Request custom quote →</button>
-        </div>
-      </div>
 
     </ng-container>
 
@@ -134,7 +85,6 @@ import { Project } from '../../models';
         </div>
       </ng-template>
       <div class="bp-drawer-body">
-        <!-- Project selector -->
         <div class="mb-4" *ngIf="projects.length > 0 && !projectPreSelected">
           <label class="bp-field-label">Project</label>
           <p-dropdown [(ngModel)]="selectedProjectId" [options]="projects"
@@ -149,14 +99,12 @@ import { Project } from '../../models';
             No active projects. <a routerLink="/projects/new" style="color:var(--theme-accent);">Create one first →</a>
           </p>
         </div>
-        <!-- Brief -->
         <div class="mb-4">
           <label class="bp-field-label">Your requirements</label>
           <textarea pInputTextarea [(ngModel)]="quoteBrief" class="w-full bp-input-edit" [rows]="4"
             [placeholder]="selectedItem ? 'Tell ' + supplier?.name + ' what you need for ' + selectedItem.name + '...' : 'Describe what you need...'">
           </textarea>
         </div>
-        <!-- Ball cost -->
         <div class="bp-review-ball-card">
           <div>
             <div class="bp-review-ball-label">Using 1 {{ creditLabel }}</div>
@@ -180,43 +128,6 @@ import { Project } from '../../models';
     </div>
   `,
   styles: [`
-    .bp-sup-hero-img { width: 100%; height: 200px; background-size: cover; background-position: center; position: relative; }
-    .bp-sup-hero-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-sup-hero-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
-    .bp-sup-hero-logo-img { max-height: 168px; max-width: calc(100% - 32px); object-fit: contain; }
-    .bp-sup-hero-initials { font-size: 56px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
-    .bp-hero-heart { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: all 0.15s; }
-    .bp-hero-heart:hover { color: #E11D48; }
-    .bp-hero-heart.active { color: #E11D48; background: #fff; }
-    .bp-sup-edit-img-btn { position: absolute; bottom: 12px; right: 12px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-primary); }
-    .bp-sup-info { padding: 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); }
-    .bp-sup-info-name { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 4px; }
-    .bp-sup-info-meta { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
-    .bp-sup-info-desc { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
-    .bp-sup-cats { display: flex; overflow-x: auto; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); scrollbar-width: none; padding: 0 8px; }
-    .bp-sup-cats::-webkit-scrollbar { display: none; }
-    .bp-sup-cat-tab { padding: 10px 12px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
-    .bp-sup-cat-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
-    .bp-sup-cat-count { font-size: 10px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 6px; color: var(--color-text-muted); }
-    .bp-sup-items { background: var(--color-bg); }
-    .bp-sup-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); transition: background 0.15s; }
-    .bp-sup-item-highlighted { background: var(--theme-bg) !important; border-left: 3px solid var(--theme-accent); }
-    .bp-sup-item-body { flex: 1; min-width: 0; }
-    .bp-sup-item-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
-    .bp-sup-item-desc { font-size: 12px; color: var(--color-text-muted); line-height: 1.4; margin-bottom: 6px; }
-    .bp-sup-item-meta { display: flex; flex-wrap: wrap; gap: 4px; }
-    .bp-sup-item-tag { font-size: 10px; font-weight: 500; background: var(--theme-bg); color: var(--theme-text); border: 0.5px solid var(--theme-border); border-radius: 20px; padding: 1px 7px; }
-    .bp-sup-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-    .bp-sup-item-price { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
-    .bp-sup-item-actions { display: flex; align-items: center; gap: 6px; }
-    .bp-heart-btn-sm { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 2px; display: flex; align-items: center; transition: color 0.15s; }
-    .bp-heart-btn-sm:hover { color: #E11D48; }
-    .bp-heart-btn-sm.active { color: #E11D48; }
-    .bp-sup-item-quote-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1.5px solid var(--theme-accent); color: var(--theme-accent); background: transparent; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; white-space: nowrap; }
-    .bp-sup-item-quote-btn:hover { background: var(--theme-accent); color: #fff; }
-    .bp-sup-custom { padding: 16px; text-align: center; }
-    .bp-sup-custom-label { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
-    .bp-sup-custom-btn { font-size: 13px; font-weight: 500; color: var(--theme-accent); background: none; border: none; cursor: pointer; font-family: var(--font-body); }
     .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
     .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 2px; }
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
@@ -227,12 +138,8 @@ import { Project } from '../../models';
 export class SupplierDetailComponent implements OnInit, OnDestroy {
   supplier: any = null;
   catalogueItems: any[] = [];
-  categoryGroups: { categoryId: string; categoryName: string; items: any[] }[] = [];
   projects: Project[] = [];
   loading = true;
-  activeCategory = 'all';
-  highlightedItemId = '';
-  showImagePanel = false;
   showQuoteDrawer = false;
   selectedItem: any = null;
   selectedProjectId = '';
@@ -241,6 +148,16 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   creditLabel = 'Ball';
   projectPreSelected = false;
   private sid = '';
+
+  // Catalogue grid data
+  itemEntities: CatalogueEntity[] = [];
+  categories: CategoryInfo[] = [];
+  itemFavIds = new Set<string>();
+
+  // Image upload
+  uploadEntityId = '';
+  uploadCoverUrl = '';
+  uploadImageDisplay: 'cover' | 'contain' = 'cover';
 
   constructor(
     private route: ActivatedRoute,
@@ -255,19 +172,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {}
 
-  goToItem(item: any) {
-    const params: any = {};
-    if (this.selectedProjectId) params['projectId'] = this.selectedProjectId;
-    this.router.navigate(['/suppliers', this.sid, 'items', item.id], { queryParams: params });
-  }
-
   ngOnInit() {
     this.sid = this.route.snapshot.paramMap.get('id') || '';
     this.creditLabel = this.configService.current?.creditLabel || 'Ball';
 
     const qp = this.route.snapshot.queryParams;
-    if (qp['cat']) this.activeCategory = qp['cat'];
-    if (qp['item']) this.highlightedItemId = qp['item'];
     if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
@@ -295,57 +204,85 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.supplierSvc.getCatalogue(this.sid).subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
-        this.buildCategoryGroups();
+        this.mapItems();
+        this.buildCategories();
         this.loading = false;
         this.cdr.detectChanges();
-        if (this.highlightedItemId) {
-          setTimeout(() => {
-            const el = document.getElementById('item-' + this.highlightedItemId);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 200);
-        }
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
     });
 
-    this.favSvc.supplierFavIds$.subscribe(() => this.cdr.detectChanges());
-    this.favSvc.itemFavIds$.subscribe(() => this.cdr.detectChanges());
+    this.favSvc.itemFavIds$.subscribe(ids => {
+      this.itemFavIds = new Set(ids);
+      this.cdr.detectChanges();
+    });
   }
 
   ngOnDestroy() { this.shellCtx.reset(); }
 
-  buildCategoryGroups() {
-    const map: Record<string, { categoryId: string; categoryName: string; items: any[] }> = {};
+  mapItems() {
+    this.itemEntities = this.catalogueItems.map((i: any) => ({
+      id: i.id,
+      name: i.name,
+      description: i.description,
+      image_url: i.image_url,
+      external_url: i.external_url,
+      cover_image_url: this.supplier?.cover_image_url,
+      image_display: i.image_url ? (i.image_display || 'cover') : (this.supplier?.image_display || 'cover'),
+      subtitle: i.category_name,
+      price: i.base_price ? Number(i.base_price) : undefined,
+      priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
+      unit: i.unit,
+      categoryLabel: i.category_name,
+      specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
+      _raw: i
+    }));
+  }
+
+  buildCategories() {
+    const map: Record<string, { id: string; name: string; count: number }> = {};
     for (const item of this.catalogueItems) {
       const key = item.category_id || 'other';
-      if (!map[key]) map[key] = { categoryId: key, categoryName: item.category_name || 'Other', items: [] };
-      map[key].items.push(item);
+      if (!map[key]) map[key] = { id: key, name: item.category_name || 'Other', count: 0 };
+      map[key].count++;
     }
-    this.categoryGroups = Object.values(map);
+    this.categories = Object.values(map);
   }
 
-  setCategory(catId: string) { this.activeCategory = catId; this.cdr.detectChanges(); }
+  // ── Event handlers ────────────────────────────────────────────────────
 
-  filteredItems(): any[] {
-    if (this.activeCategory === 'all') return this.catalogueItems;
-    return this.catalogueItems.filter(i => i.category_id === this.activeCategory);
+  goBack() {
+    this.router.navigate(['/suppliers']);
   }
 
-  isSupplierFav(): boolean { return this.favSvc.isSupplierFavourited(this.sid); }
-  isItemFav(itemId: string): boolean { return this.favSvc.isItemFavourited(itemId); }
+  onEntitySelected(_entity: CatalogueEntity) {}
 
-  toggleSupplierFav() {
-    this.favSvc.toggleSupplier(this.sid).subscribe(() => this.cdr.detectChanges());
+  onFavToggled(entityId: string) {
+    this.favSvc.toggleItem(entityId).subscribe(() => this.cdr.detectChanges());
   }
 
-  toggleItemFav(itemId: string) {
-    this.favSvc.toggleItem(itemId).subscribe(() => this.cdr.detectChanges());
+  onImageEdit(entity: CatalogueEntity) {
+    this.uploadEntityId = entity.id;
+    this.uploadCoverUrl = entity.image_url || '';
+    this.uploadImageDisplay = entity.image_display || 'cover';
+    this.cdr.detectChanges();
   }
 
-  openQuote(item: any | null) {
-    this.selectedItem = item;
-    this.quoteBrief = '';
-    this.showQuoteDrawer = true;
+  onAction(entity: CatalogueEntity) {
+    const params: any = {};
+    if (this.selectedProjectId) params['projectId'] = this.selectedProjectId;
+    this.router.navigate(['/suppliers', this.sid, 'items', entity.id], { queryParams: params });
+  }
+
+  onItemImageUpdated(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }) {
+    const raw = this.catalogueItems.find(i => i.id === this.uploadEntityId);
+    if (raw) {
+      raw.image_url = event.coverUrl;
+      if (event.imageDisplay) raw.image_display = event.imageDisplay;
+    }
+    this.mapItems();
+    this.uploadEntityId = '';
+    this.cdr.detectChanges();
   }
 
   sendQuote() {
@@ -353,13 +290,5 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.msg.add({ severity: 'success', summary: 'Quote requested!', detail: `${this.supplier?.name} will be in touch.`, life: 3000 });
     this.ballsBalance = Math.max(0, this.ballsBalance - 1);
     this.cdr.detectChanges();
-  }
-
-  onImagesUpdated(event: { coverUrl: string; logoUrl: string }) {
-    if (this.supplier) {
-      this.supplier.cover_image_url = event.coverUrl;
-      this.supplier.logo_url = event.logoUrl;
-      this.cdr.detectChanges();
-    }
   }
 }
