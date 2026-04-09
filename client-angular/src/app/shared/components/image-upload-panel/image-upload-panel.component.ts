@@ -65,6 +65,18 @@ import { ModalComponent } from '../modal/modal.component';
           <p-checkbox [(ngModel)]="coverRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
           <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
         </div>
+
+        <div class="iup-display-toggle" *ngIf="coverPreview && (type === 'supplier' || type === 'item')">
+          <div class="iup-label" style="margin-top:12px">Display as</div>
+          <div class="iup-toggle-row">
+            <button class="iup-toggle-opt" [class.active]="imageDisplay === 'cover'" (click)="imageDisplay = 'cover'">
+              Cover photo
+            </button>
+            <button class="iup-toggle-opt" [class.active]="imageDisplay === 'contain'" (click)="imageDisplay = 'contain'">
+              Logo
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Card background colour (shown for both project and supplier when no image) -->
@@ -190,6 +202,9 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .iup-error { font-size: 12px; color: #DC2626; margin-top: 10px; }
+    .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
+    .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
+    .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
   `]
 })
 export class ImageUploadPanelComponent implements OnInit {
@@ -200,11 +215,13 @@ export class ImageUploadPanelComponent implements OnInit {
   @Input() existingCoverUrl = '';
   @Input() existingLogoUrl = '';
   @Input() existingCardColor = '';
+  @Input() existingImageDisplay: 'cover' | 'contain' = 'cover';
 
   @Output() imagesUpdated = new EventEmitter<{
     coverUrl: string;
     logoUrl: string;
     cardColor?: string;
+    imageDisplay?: 'cover' | 'contain';
   }>();
   @Output() closed = new EventEmitter<void>();
 
@@ -220,6 +237,7 @@ export class ImageUploadPanelComponent implements OnInit {
   coverRemoved = false;
   logoRemoved = false;
   selectedColor = 'navy';
+  imageDisplay: 'cover' | 'contain' = 'cover';
 
   cardColors = [
     { value: 'navy',  label: 'Navy',   gradient: 'linear-gradient(160deg,#1a1a2e,#16213e)' },
@@ -244,6 +262,7 @@ export class ImageUploadPanelComponent implements OnInit {
     if (this.existingCoverUrl) this.coverPreview = this.existingCoverUrl;
     if (this.existingLogoUrl) this.logoPreview = this.existingLogoUrl;
     if (this.existingCardColor) this.selectedColor = this.existingCardColor;
+    if (this.existingImageDisplay) this.imageDisplay = this.existingImageDisplay;
   }
 
   getSelectedGradient(): string {
@@ -346,15 +365,19 @@ export class ImageUploadPanelComponent implements OnInit {
       if (this.type === 'project' && this.selectedColor !== this.existingCardColor) {
         patch.card_color = this.selectedColor;
       }
+      if ((this.type === 'supplier' || this.type === 'item') && this.imageDisplay !== this.existingImageDisplay) {
+        patch.image_display = this.imageDisplay;
+      }
 
       if (Object.keys(patch).length && apiEndpoint) {
         await firstValueFrom(this.api.patch(apiEndpoint, patch));
       }
 
-      this.imagesUpdated.emit({ 
-        coverUrl, 
-        logoUrl, 
-        cardColor: this.type === 'project' ? this.selectedColor : undefined 
+      this.imagesUpdated.emit({
+        coverUrl,
+        logoUrl,
+        cardColor: this.type === 'project' ? this.selectedColor : undefined,
+        imageDisplay: (this.type === 'supplier' || this.type === 'item') ? this.imageDisplay : undefined
       });
       this.closed.emit();
 

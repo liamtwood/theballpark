@@ -57,6 +57,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         [entityId]="uploadEntityId"
         type="item"
         [existingCoverUrl]="uploadCoverUrl"
+        [existingImageDisplay]="uploadImageDisplay"
         (imagesUpdated)="onItemImageUpdated($event)"
         (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
@@ -67,6 +68,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         type="supplier"
         [existingCoverUrl]="uploadCoverUrl"
         [existingLogoUrl]="uploadLogoUrl"
+        [existingImageDisplay]="uploadImageDisplay"
         (imagesUpdated)="onSupplierImageUpdated($event)"
         (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
@@ -209,6 +211,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       description: s.description,
       cover_image_url: s.cover_image_url,
       logo_url: s.logo_url,
+      image_display: (s as any).image_display || 'cover',
       subtitle: (s as any).city || 'London',
       specs: (s as any).item_count ? [{ label: 'Catalogue items', value: String((s as any).item_count) }] : [],
       _raw: s
@@ -223,6 +226,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       image_url: i.image_url,
       external_url: i.external_url,
       cover_image_url: i.supplier_cover_url,
+      image_display: i.image_display || 'cover',
       subtitle: i.supplier_name,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
@@ -324,10 +328,13 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     }
   }
 
+  uploadImageDisplay: 'cover' | 'contain' = 'cover';
+
   onImageEdit(entity: CatalogueEntity) {
     this.uploadEntityId = entity.id;
     this.uploadCoverUrl = entity.cover_image_url || entity.image_url || '';
     this.uploadLogoUrl = entity.logo_url || '';
+    this.uploadImageDisplay = entity.image_display || 'cover';
     this.cdr.detectChanges();
   }
 
@@ -348,19 +355,23 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     }
   }
 
-  onItemImageUpdated(event: { coverUrl: string }) {
+  onItemImageUpdated(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }) {
     const raw = this.rawItems.find(i => i.id === this.uploadEntityId);
-    if (raw) raw.image_url = event.coverUrl;
+    if (raw) {
+      raw.image_url = event.coverUrl;
+      if (event.imageDisplay) raw.image_display = event.imageDisplay;
+    }
     this.mapItems();
     this.uploadEntityId = '';
     this.cdr.detectChanges();
   }
 
-  onSupplierImageUpdated(event: { coverUrl: string; logoUrl: string }) {
+  onSupplierImageUpdated(event: { coverUrl: string; logoUrl: string; imageDisplay?: 'cover' | 'contain' }) {
     const raw = this.suppliers.find(s => s.id === this.uploadEntityId);
     if (raw) {
       raw.cover_image_url = event.coverUrl;
       raw.logo_url = event.logoUrl;
+      if (event.imageDisplay) (raw as any).image_display = event.imageDisplay;
     }
     this.mapSuppliers();
     this.uploadEntityId = '';

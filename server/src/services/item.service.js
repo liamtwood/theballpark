@@ -79,7 +79,7 @@ async function update(id, data) {
   const {
     org_id, category_id, name, description, unit,
     base_price, min_price, max_price, lead_time_days,
-    coverage_area, tier, tags, image_url
+    coverage_area, tier, tags, image_url, image_display
   } = data;
   const result = await pool.query(
     `UPDATE items SET
@@ -89,10 +89,11 @@ async function update(id, data) {
       min_price = COALESCE($7, min_price), max_price = COALESCE($8, max_price),
       lead_time_days = COALESCE($9, lead_time_days), coverage_area = COALESCE($10, coverage_area),
       tier = COALESCE($11, tier), tags = COALESCE($12, tags),
-      image_url = COALESCE($13, image_url), updated_at = NOW()
-     WHERE id = $14 RETURNING *`,
+      image_url = COALESCE($13, image_url), image_display = COALESCE($14, image_display),
+      updated_at = NOW()
+     WHERE id = $15 RETURNING *`,
     [org_id, category_id, name, description, unit, base_price, min_price,
-     max_price, lead_time_days, coverage_area, tier, tags, image_url, id]
+     max_price, lead_time_days, coverage_area, tier, tags, image_url, image_display, id]
   );
   return result.rows[0] || null;
 }
