@@ -24,7 +24,6 @@ interface SupplierWithState extends Org {
   expanded: boolean;
   catalogueItems: any[];
   catalogueLoaded: boolean;
-  cover_image_url?: string;
   category_ids?: string[];
   item_count?: number;
 }
@@ -150,7 +149,10 @@ interface SupplierWithState extends Org {
                 (click)="selectSupplier(s)">
                 <div class="bp-member-img"
                   [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
-                  [class.bp-member-img-default]="!s.cover_image_url">
+                  [class.bp-member-img-default]="!s.cover_image_url && !s.logo_url"
+                  [class.bp-member-img-logo]="!s.cover_image_url && !!s.logo_url">
+                  <img *ngIf="!s.cover_image_url && s.logo_url" [src]="s.logo_url" [alt]="s.name"/>
+                  <span *ngIf="!s.cover_image_url && !s.logo_url" class="bp-member-initials">{{ s.name.charAt(0) }}</span>
                 </div>
                 <div class="bp-member-body">
                   <div class="bp-member-name">{{ s.name }}</div>
@@ -172,7 +174,10 @@ interface SupplierWithState extends Org {
                   (click)="selectSupplier(s)">
                   <div class="bp-item-card-img"
                     [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null"
-                    [class.bp-item-card-img-default]="!s.cover_image_url">
+                    [class.bp-item-card-img-default]="!s.cover_image_url && !s.logo_url"
+                    [class.bp-item-card-img-logo]="!s.cover_image_url && !!s.logo_url">
+                    <img *ngIf="!s.cover_image_url && s.logo_url" [src]="s.logo_url" [alt]="s.name" class="bp-card-logo-img"/>
+                    <span *ngIf="!s.cover_image_url && !s.logo_url" class="bp-card-initials">{{ s.name.charAt(0) }}</span>
                     <div class="bp-grid-actions">
                       <button class="bp-grid-action-btn" [class.bp-grid-heart-active]="isFav(s.id)"
                         (click)="toggleFav($event, s.id)">
@@ -261,7 +266,12 @@ interface SupplierWithState extends Org {
           <ng-container *ngIf="viewMode === 'suppliers' && selectedSupplier">
             <div class="bp-item-hero-img"
               [style.background-image]="selectedSupplier.cover_image_url ? 'url(' + selectedSupplier.cover_image_url + ')' : null"
-              [class.bp-item-hero-img-default]="!selectedSupplier.cover_image_url">
+              [class.bp-item-hero-img-default]="!selectedSupplier.cover_image_url && !selectedSupplier.logo_url"
+              [class.bp-item-hero-img-logo]="!selectedSupplier.cover_image_url && !!selectedSupplier.logo_url">
+              <img *ngIf="!selectedSupplier.cover_image_url && selectedSupplier.logo_url"
+                   [src]="selectedSupplier.logo_url" [alt]="selectedSupplier.name" class="bp-hero-logo-img"/>
+              <span *ngIf="!selectedSupplier.cover_image_url && !selectedSupplier.logo_url"
+                    class="bp-hero-initials">{{ selectedSupplier.name.charAt(0) }}</span>
             </div>
             <div class="bp-item-detail-body">
               <div class="bp-item-detail-name">{{ selectedSupplier.name }}</div>
@@ -398,7 +408,10 @@ interface SupplierWithState extends Org {
     .bp-member-row-clickable:hover { background: var(--color-surface); margin: 0 -12px; padding: 10px 12px; border-radius: 8px; border-bottom-color: transparent; }
     .bp-member-row-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
     .bp-member-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-member-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
+    .bp-member-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-member-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-member-img-logo img { max-width: 70%; max-height: 70%; object-fit: contain; }
+    .bp-member-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-member-body { flex: 1; min-width: 0; }
     .bp-member-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
     .bp-member-meta { font-size: 12px; color: var(--color-text-muted); }
@@ -420,7 +433,10 @@ interface SupplierWithState extends Org {
     .bp-item-card:hover { border-color: var(--theme-accent); }
     .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
     .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; }
-    .bp-item-card-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
+    .bp-item-card-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .bp-card-logo-img { max-height: 60%; max-width: 70%; object-fit: contain; }
+    .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
@@ -437,7 +453,10 @@ interface SupplierWithState extends Org {
 
     .bp-cat-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 13px; color: var(--color-text-muted); padding: 40px 20px; text-align: center; }
     .bp-item-hero-img { width: 100%; height: 160px; background-size: cover; background-position: center; }
-    .bp-item-hero-img-default { background: linear-gradient(160deg, #2a2a2a, #444); }
+    .bp-item-hero-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-item-hero-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .bp-hero-logo-img { max-height: 60%; max-width: 70%; object-fit: contain; }
+    .bp-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-item-detail-body { padding: 16px 20px; }
     .bp-item-category-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
     .bp-item-detail-name { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 8px; line-height: 1.3; }
