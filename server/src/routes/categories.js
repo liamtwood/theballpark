@@ -5,6 +5,10 @@ router.get('/', async (req, res, next) => {
   try { res.json(await CategoryService.getAll()); } catch (err) { next(err); }
 });
 
+router.get('/:id/children', async (req, res, next) => {
+  try { res.json(await CategoryService.getChildren(req.params.id)); } catch (err) { next(err); }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const cat = await CategoryService.getById(req.params.id);

@@ -283,6 +283,9 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tags TEXT[];
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0;
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES orgs(id);
     `);
 
     console.log('All tables created successfully.');

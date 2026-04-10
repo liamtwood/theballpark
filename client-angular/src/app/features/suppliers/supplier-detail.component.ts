@@ -14,6 +14,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CategoryService } from '../../core/services/category.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -40,6 +41,7 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
       <app-catalogue-grid
         [entities]="itemEntities"
         [categories]="categories"
+        [childCategories]="childCategories"
         entityType="item"
         entityLabel="item"
         [actionLabel]="'View →'"
@@ -54,6 +56,7 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
         (favouriteToggled)="onFavToggled($event)"
         (imageEditRequested)="onImageEdit($event)"
         (actionClicked)="onAction($event)"
+        (categoryChanged)="onCategoryChanged($event)"
         (backClicked)="goBack()">
       </app-catalogue-grid>
 
@@ -152,6 +155,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // Catalogue grid data
   itemEntities: CatalogueEntity[] = [];
   categories: CategoryInfo[] = [];
+  childCategories: CategoryInfo[] = [];
   itemFavIds = new Set<string>();
 
   // Image upload
@@ -166,6 +170,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private favSvc: FavouriteService,
     private orgSvc: OrgService,
     private configService: ConfigService,
+    private catSvc: CategoryService,
     private shellCtx: ShellContextService,
     private msg: MessageService,
     private router: Router,
@@ -259,6 +264,21 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   // ── Event handlers ────────────────────────────────────────────────────
+
+  onCategoryChanged(catId: string) {
+    this.childCategories = [];
+    if (catId !== 'all') {
+      this.catSvc.getChildren(catId).subscribe({
+        next: (children) => {
+          this.childCategories = children.map(c => ({
+            id: c.id, name: c.name, cover_image_url: c.cover_image_url,
+            tagline: c.tagline, description: c.description, tags: c.tags
+          }));
+          this.cdr.detectChanges();
+        }
+      });
+    }
+  }
 
   goBack() {
     this.router.navigate(['/suppliers']);

@@ -62,6 +62,29 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       </div>
     </div>
 
+    <!-- CHILD CATEGORY CIRCLES -->
+    <div class="bp-child-circles-wrap" *ngIf="childCategories.length && activeCategory !== 'all'">
+      <div class="bp-child-circles">
+        <button class="bp-child-circle-btn" [class.active]="activeChildCategory === 'all'" (click)="setChildCategory('all')">
+          <div class="bp-child-circle bp-child-circle--all">
+            <lucide-icon name="layers" [size]="16"></lucide-icon>
+          </div>
+          <span class="bp-child-circle-label">All</span>
+        </button>
+        <button *ngFor="let child of childCategories"
+          class="bp-child-circle-btn"
+          [class.active]="activeChildCategory === child.id"
+          (click)="setChildCategory(child.id)">
+          <div class="bp-child-circle"
+            [style.background-image]="child.cover_image_url ? 'url(' + child.cover_image_url + ')' : null"
+            [class.bp-child-circle--no-image]="!child.cover_image_url">
+            <span *ngIf="!child.cover_image_url" class="bp-child-circle-initials">{{ child.name.charAt(0) }}</span>
+          </div>
+          <span class="bp-child-circle-label">{{ child.name }}</span>
+        </button>
+      </div>
+    </div>
+
     <!-- THREE-COLUMN BODY -->
     <div class="bp-cat-body bp-cat-body--detail">
 
@@ -289,6 +312,19 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
 
+    /* CHILD CATEGORY CIRCLES */
+    .bp-child-circles-wrap { padding: 16px 28px 0; border-bottom: 0.5px solid var(--color-border); }
+    .bp-child-circles { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; justify-content: center; }
+    .bp-child-circles::-webkit-scrollbar { display: none; }
+    .bp-child-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
+    .bp-child-circle { width: 64px; height: 64px; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); }
+    .bp-child-circle--all { background-color: var(--color-surface); }
+    .bp-child-circle--no-image { background-color: var(--theme-bg); }
+    .bp-child-circle-initials { font-size: 20px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-child-circle-btn.active .bp-child-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
+    .bp-child-circle-label { font-size: 10px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 72px; line-height: 1.3; font-family: var(--font-body); }
+    .bp-child-circle-btn.active .bp-child-circle-label { color: var(--theme-accent); font-weight: 600; }
+
     /* CATEGORY HEADER PANEL */
     .bp-cat-header-panel { background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); padding: 28px 28px 24px; }
     .bp-cat-header-inner { max-width: 680px; margin: 0 auto; text-align: center; }
@@ -414,6 +450,7 @@ export class CatalogueGridComponent implements OnChanges {
   @Input() backLabel = 'Back to catalogue';
   @Input() totalCount = 0;
   @Input() selectedCategory: CategoryInfo | null = null;
+  @Input() childCategories: CategoryInfo[] = [];
 
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
   @Output() backClicked = new EventEmitter<void>();
@@ -427,6 +464,7 @@ export class CatalogueGridComponent implements OnChanges {
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
+  activeChildCategory = 'all';
   activeTag = '';
   searchQuery = '';
   layout: 'list' | 'card' = 'card';
@@ -452,10 +490,17 @@ export class CatalogueGridComponent implements OnChanges {
 
   setCategory(catId: string) {
     this.activeCategory = catId;
+    this.activeChildCategory = 'all';
     this.activeTag = '';
     this.selectedEntity = null;
     this.selectedCategory = catId === 'all' ? null : this.categories.find(c => c.id === catId) || null;
     this.categoryChanged.emit(catId);
+    this.applyFilter();
+  }
+
+  setChildCategory(childId: string) {
+    this.activeChildCategory = childId;
+    this.selectedEntity = null;
     this.applyFilter();
   }
 
@@ -495,7 +540,15 @@ export class CatalogueGridComponent implements OnChanges {
   private applyFilter() {
     let result = this.entities;
     if (this.activeCategory !== 'all') {
-      result = result.filter(e => e.category_id === this.activeCategory);
+      if (this.activeChildCategory !== 'all') {
+        result = result.filter(e => e.category_id === this.activeChildCategory);
+      } else if (this.childCategories.length) {
+        const childIds = new Set(this.childCategories.map(c => c.id));
+        childIds.add(this.activeCategory);
+        result = result.filter(e => childIds.has(e.category_id || ''));
+      } else {
+        result = result.filter(e => e.category_id === this.activeCategory);
+      }
     }
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();

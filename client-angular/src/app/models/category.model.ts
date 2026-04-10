@@ -10,4 +10,7 @@ export interface Category {
   cover_image_url?: string;
   card_color?: string;
   tags?: string[];
+  parent_id?: string | null;
+  level?: number;
+  org_id?: string | null;
 }

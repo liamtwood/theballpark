@@ -6,6 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { SidebarModule } from 'primeng/sidebar';
+import { DropdownModule } from 'primeng/dropdown';
 import { ChipsModule } from 'primeng/chips';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
@@ -23,7 +24,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule,
-    SidebarModule, ChipsModule, TagModule, ToastModule,
+    SidebarModule, DropdownModule, ChipsModule, TagModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
@@ -133,6 +134,14 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <label class="bp-field-label">Status</label>
             <input pInputText [value]="catForm.enabled ? 'Enabled' : 'Disabled'" class="w-full bp-field-readonly" readonly/>
           </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Parent category</label>
+            <input pInputText [value]="getParentName(catForm.parent_id)" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div class="mb-4" *ngIf="catForm.org_id">
+            <label class="bp-field-label">Supplier org</label>
+            <input pInputText [value]="catForm.org_id" class="w-full bp-field-readonly" readonly/>
+          </div>
           <div>
             <label class="bp-field-label">Tags</label>
             <div *ngIf="catForm.tags?.length > 0" class="bp-tag-list">
@@ -167,6 +176,21 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
                 {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
               </span>
             </div>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Parent category</label>
+            <p-dropdown [(ngModel)]="catForm.parent_id"
+              [options]="parentOptions"
+              optionLabel="label" optionValue="value"
+              placeholder="None (top-level)"
+              [showClear]="true"
+              styleClass="w-full bp-input-edit"
+              (ngModelChange)="onParentChange()">
+            </p-dropdown>
+          </div>
+          <div class="mb-4" *ngIf="catForm.org_id">
+            <label class="bp-field-label">Supplier org</label>
+            <input pInputText [value]="catForm.org_id" class="w-full bp-field-readonly" readonly/>
           </div>
           <div>
             <label class="bp-field-label">Tags <span style="font-size:10px;color:var(--color-text-muted);font-weight:400;">— type and press Enter to add</span></label>
@@ -241,11 +265,12 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
 export class CategoriesComponent implements OnInit {
   categories: Category[] = [];
   loading = true;
+  parentOptions: { label: string; value: string | null }[] = [];
 
   showCatDrawer    = false;
   editingCat       = false;
   showCatImagePanel = false;
-  catForm: any     = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+  catForm: any     = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true, parent_id: null, level: 0, org_id: null };
   private catSnapshot: any = null;
 
   constructor(
@@ -258,6 +283,7 @@ export class CategoriesComponent implements OnInit {
     this.catSvc.getAll().subscribe({
       next: (cats) => {
         this.categories = (cats || []).map((c: any) => ({ ...c, enabled: c.enabled !== false }));
+        this.buildParentOptions();
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -268,6 +294,22 @@ export class CategoriesComponent implements OnInit {
   enabledCategories()  { return this.categories.filter((c: any) => c.enabled !== false); }
   disabledCategories() { return this.categories.filter((c: any) => c.enabled === false); }
 
+  buildParentOptions() {
+    this.parentOptions = this.categories
+      .filter((c: any) => !c.parent_id && c.level === 0)
+      .map((c: any) => ({ label: c.name, value: c.id }));
+  }
+
+  getParentName(parentId: string | null): string {
+    if (!parentId) return 'None (top-level)';
+    const p = this.categories.find((c: any) => c.id === parentId);
+    return p ? p.name : parentId;
+  }
+
+  onParentChange() {
+    this.catForm.level = this.catForm.parent_id ? 1 : 0;
+  }
+
   openCategory(c: any) {
     this.catForm = { ...c, tags: c.tags ? [...c.tags] : [] };
     this.editingCat = false;
@@ -277,7 +319,7 @@ export class CategoriesComponent implements OnInit {
   }
 
   addCategory() {
-    this.catForm = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+    this.catForm = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true, parent_id: null, level: 0, org_id: null };
     this.editingCat = true;
     this.showCatImagePanel = false;
     this.showCatDrawer = true;
@@ -297,7 +339,8 @@ export class CategoriesComponent implements OnInit {
     const payload = {
       name: this.catForm.name, description: this.catForm.description, tagline: this.catForm.tagline,
       cover_image_url: this.catForm.cover_image_url, card_color: this.catForm.card_color,
-      tags: this.catForm.tags, enabled: this.catForm.enabled
+      tags: this.catForm.tags, enabled: this.catForm.enabled,
+      parent_id: this.catForm.parent_id || null, level: this.catForm.level || 0, org_id: this.catForm.org_id || null
     };
     const obs = !this.catForm.id ? this.catSvc.create(payload) : this.catSvc.patch(this.catForm.id, payload);
     obs.subscribe({
@@ -306,6 +349,7 @@ export class CategoriesComponent implements OnInit {
         if (idx > -1) { this.categories[idx] = { ...saved, enabled: saved.enabled !== false }; }
         else { this.categories = [...this.categories, { ...saved, enabled: saved.enabled !== false }]; }
         this.categories = [...this.categories];
+        this.buildParentOptions();
         this.editingCat = false;
         this.msg.add({ severity: 'success', summary: 'Category saved' });
         this.cdr.detectChanges();

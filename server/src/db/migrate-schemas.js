@@ -311,6 +311,9 @@ const migrate = async () => {
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES preview.categories(id);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0;
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES preview.orgs(id);
     `);
     console.log('  Preview schema ALTER columns applied.');
 
@@ -337,6 +340,9 @@ const migrate = async () => {
       ALTER TABLE master.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE master.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE master.categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
+      ALTER TABLE master.categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES master.categories(id);
+      ALTER TABLE master.categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0;
+      ALTER TABLE master.categories ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES master.orgs(id);
     `);
     console.log('  Master schema ALTER columns applied.');
 
