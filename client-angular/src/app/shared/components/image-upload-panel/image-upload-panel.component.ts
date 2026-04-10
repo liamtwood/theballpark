@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { CheckboxModule } from 'primeng/checkbox';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import { firstValueFrom } from 'rxjs';
 import { ImageProcessingService } from '../../services/image-processing.service';
 import { StorageService } from '../../services/storage.service';
@@ -12,7 +13,7 @@ import { ModalComponent } from '../modal/modal.component';
 @Component({
   selector: 'app-image-upload-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, CheckboxModule, ModalComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, CheckboxModule, SelectButtonModule, ModalComponent],
   template: `
     <app-modal
       title="Edit images"
@@ -23,87 +24,52 @@ import { ModalComponent } from '../modal/modal.component';
       (close)="cancel()"
       (confirm)="save()">
 
-      <!-- Two-zone upload: Cover + Logo side by side -->
-      <div class="iup-zones">
+      <!-- Single image upload -->
+      <div class="iup-section">
+        <div class="iup-label">Image</div>
 
-        <!-- LEFT: Cover / photo -->
-        <div class="iup-zone" [class.active]="imageDisplay === 'cover'">
-          <div class="iup-label">Cover / photo</div>
-
-          <div *ngIf="!coverPreview"
-               class="iup-drop"
-               (click)="coverInput.click()"
-               (dragover)="$event.preventDefault()"
-               (drop)="onDrop($event, 'cover')">
-            <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
-            <span class="iup-drop-text">Click or drop</span>
-            <span class="iup-drop-hint">JPG, PNG — fills the card</span>
-            <input #coverInput type="file" accept="image/*"
-                   (change)="onFileSelect($event, 'cover')"
-                   style="display:none"/>
-          </div>
-
-          <div *ngIf="coverPreview" class="iup-preview">
-            <img [src]="coverPreview" class="iup-thumb"/>
-            <span class="iup-filename">{{ coverFile ? coverFile.name : 'current image' }}</span>
-            <button class="iup-remove" (click)="clearFile('cover')" title="Remove image">
-              <lucide-icon name="x" [size]="12"></lucide-icon>
-            </button>
-          </div>
-
-          <button *ngIf="coverPreview && !coverFile"
-                  class="iup-replace"
-                  (click)="coverInput2.click()">
-            Replace
-            <input #coverInput2 type="file" accept="image/*"
-                   (change)="onFileSelect($event, 'cover')"
-                   style="display:none"/>
-          </button>
-
-          <div class="flex items-center gap-2 mt-3" *ngIf="coverFile">
-            <p-checkbox [(ngModel)]="coverRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
-          </div>
+        <div *ngIf="!imagePreview"
+             class="iup-drop"
+             (click)="fileInput.click()"
+             (dragover)="$event.preventDefault()"
+             (drop)="onDrop($event)">
+          <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
+          <span class="iup-drop-text">Click to upload or drag & drop</span>
+          <span class="iup-drop-hint">JPG, PNG — recommended 1200×800px</span>
+          <input #fileInput type="file" accept="image/*"
+                 (change)="onFileSelect($event)"
+                 style="display:none"/>
         </div>
 
-        <!-- RIGHT: Logo -->
-        <div class="iup-zone" [class.active]="imageDisplay === 'contain'">
-          <div class="iup-label">Logo</div>
-
-          <div *ngIf="!logoPreview"
-               class="iup-drop"
-               (click)="logoInput.click()"
-               (dragover)="$event.preventDefault()"
-               (drop)="onDrop($event, 'logo')">
-            <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
-            <span class="iup-drop-text">Click or drop</span>
-            <span class="iup-drop-hint">PNG — contained / centred</span>
-            <input #logoInput type="file" accept="image/*"
-                   (change)="onFileSelect($event, 'logo')"
-                   style="display:none"/>
-          </div>
-
-          <div *ngIf="logoPreview" class="iup-preview">
-            <img [src]="logoPreview" class="iup-thumb"/>
-            <span class="iup-filename">{{ logoFile ? logoFile.name : 'current logo' }}</span>
-            <button class="iup-remove" (click)="clearFile('logo')" title="Remove logo">
-              <lucide-icon name="x" [size]="12"></lucide-icon>
-            </button>
-          </div>
-
-          <button *ngIf="logoPreview && !logoFile"
-                  class="iup-replace"
-                  (click)="logoInput2.click()">
-            Replace
-            <input #logoInput2 type="file" accept="image/*"
-                   (change)="onFileSelect($event, 'logo')"
-                   style="display:none"/>
+        <div *ngIf="imagePreview" class="iup-preview">
+          <img [src]="imagePreview" class="iup-thumb"/>
+          <span class="iup-filename">{{ imageFile ? imageFile.name : 'current image' }}</span>
+          <button class="iup-remove" (click)="clearFile()" title="Remove image">
+            <lucide-icon name="x" [size]="12"></lucide-icon>
           </button>
-
-          <div class="flex items-center gap-2 mt-3" *ngIf="logoFile">
-            <p-checkbox [(ngModel)]="logoRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
-          </div>
         </div>
 
+        <button *ngIf="imagePreview && !imageFile"
+                class="iup-replace"
+                (click)="replaceInput.click()">
+          Click to replace current image
+          <input #replaceInput type="file" accept="image/*"
+                 (change)="onFileSelect($event)"
+                 style="display:none"/>
+        </button>
+
+        <div class="flex items-center gap-2 mt-3" *ngIf="imageFile">
+          <p-checkbox [(ngModel)]="removeBg" [binary]="true" label="Remove background"></p-checkbox>
+          <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
+        </div>
+      </div>
+
+      <!-- Display as toggle -->
+      <div class="iup-section" *ngIf="imagePreview">
+        <div class="iup-label">Display as</div>
+        <p-selectButton [options]="displayOptions" [(ngModel)]="imageDisplay"
+                        optionLabel="label" optionValue="value"
+                        styleClass="iup-display-toggle"></p-selectButton>
       </div>
 
       <!-- Card background colour -->
@@ -132,12 +98,6 @@ import { ModalComponent } from '../modal/modal.component';
     </app-modal>
   `,
   styles: [`
-    .iup-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-    .iup-zone {
-      padding: 14px; border-radius: 10px; border: 1.5px solid #E5E7EB;
-      background: #FAFAF8; transition: border-color 0.15s;
-    }
-    .iup-zone.active { border-color: var(--theme-accent, #D97706); }
     .iup-section { margin-bottom: 20px; }
     .iup-section:last-of-type { margin-bottom: 0; }
     .iup-label {
@@ -149,7 +109,7 @@ import { ModalComponent } from '../modal/modal.component';
     }
     .iup-drop {
       border: 1.5px dashed #D9CFC2; border-radius: 10px; padding: 20px;
-      text-align: center; cursor: pointer; background: #fff;
+      text-align: center; cursor: pointer; background: #FAFAF8;
       display: flex; flex-direction: column; align-items: center; gap: 4px;
       transition: all 0.15s;
     }
@@ -189,6 +149,9 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .iup-error { font-size: 12px; color: #DC2626; margin-top: 10px; }
+    :host ::ng-deep .iup-display-toggle .p-button {
+      font-size: 12px; font-weight: 500; padding: 6px 16px; font-family: inherit;
+    }
   `]
 })
 export class ImageUploadPanelComponent implements OnInit {
@@ -209,19 +172,20 @@ export class ImageUploadPanelComponent implements OnInit {
   }>();
   @Output() closed = new EventEmitter<void>();
 
-  coverFile: File | null = null;
-  logoFile: File | null = null;
-  coverPreview: string | null = null;
-  logoPreview: string | null = null;
-  coverRemoveBg = false;
-  logoRemoveBg = true;
+  imageFile: File | null = null;
+  imagePreview: string | null = null;
+  removeBg = false;
   processing = false;
   statusText = '';
   errorText = '';
-  coverRemoved = false;
-  logoRemoved = false;
+  imageRemoved = false;
   selectedColor = 'navy';
   imageDisplay: 'cover' | 'contain' = 'cover';
+
+  displayOptions = [
+    { label: 'Cover photo', value: 'cover' },
+    { label: 'Logo', value: 'contain' },
+  ];
 
   cardColors = [
     { value: 'navy',  label: 'Navy',   gradient: 'linear-gradient(160deg,#1a1a2e,#16213e)' },
@@ -243,45 +207,36 @@ export class ImageUploadPanelComponent implements OnInit {
 
   ngOnInit() {
     if (!this.entityId && this.projectId) this.entityId = this.projectId;
-    if (this.existingCoverUrl) this.coverPreview = this.existingCoverUrl;
-    if (this.existingLogoUrl) this.logoPreview = this.existingLogoUrl;
+    if (this.existingCoverUrl) this.imagePreview = this.existingCoverUrl;
+    else if (this.existingLogoUrl) this.imagePreview = this.existingLogoUrl;
     if (this.existingCardColor) this.selectedColor = this.existingCardColor;
     if (this.existingImageDisplay) this.imageDisplay = this.existingImageDisplay;
   }
 
-  getSelectedGradient(): string {
-    return this.cardColors.find(c => c.value === this.selectedColor)?.gradient
-      || this.cardColors[0].gradient;
-  }
-
-  onFileSelect(event: Event, type: 'cover' | 'logo') {
+  onFileSelect(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-    this.setFile(input.files[0], type);
-    if (type === 'cover') this.coverRemoved = false;
-    else this.logoRemoved = false;
+    this.imageFile = input.files[0];
+    this.imagePreview = URL.createObjectURL(this.imageFile);
+    this.imageRemoved = false;
+    this.cdr.detectChanges();
   }
 
-  onDrop(event: DragEvent, type: 'cover' | 'logo') {
+  onDrop(event: DragEvent) {
     event.preventDefault();
     const file = event.dataTransfer?.files?.[0];
     if (file?.type.startsWith('image/')) {
-      this.setFile(file, type);
-      if (type === 'cover') this.coverRemoved = false;
-      else this.logoRemoved = false;
+      this.imageFile = file;
+      this.imagePreview = URL.createObjectURL(file);
+      this.imageRemoved = false;
+      this.cdr.detectChanges();
     }
   }
 
-  clearFile(type: 'cover' | 'logo') {
-    if (type === 'cover') {
-      this.coverFile = null;
-      this.coverPreview = null;
-      this.coverRemoved = true;
-    } else {
-      this.logoFile = null;
-      this.logoPreview = null;
-      this.logoRemoved = true;
-    }
+  clearFile() {
+    this.imageFile = null;
+    this.imagePreview = null;
+    this.imageRemoved = true;
     this.cdr.detectChanges();
   }
 
@@ -316,39 +271,23 @@ export class ImageUploadPanelComponent implements OnInit {
         ? null
         : `/projects/${this.entityId}/images`;
 
-      let coverUrl = this.coverRemoved ? '' : this.existingCoverUrl;
-      let logoUrl = this.logoRemoved ? '' : this.existingLogoUrl;
+      const existingUrl = this.existingCoverUrl || this.existingLogoUrl;
+      let imageUrl = this.imageRemoved ? '' : existingUrl;
 
-      if (this.coverFile) {
-        this.statusText = this.coverRemoveBg ? 'Removing background...' : 'Uploading image...';
+      if (this.imageFile) {
+        this.statusText = this.removeBg ? 'Removing background...' : 'Uploading image...';
         this.cdr.detectChanges();
-        const blob = this.coverRemoveBg
-          ? await this.imageService.processImage(this.coverFile, { removeBg: true, autoCrop: true, padding: 10 })
-          : this.coverFile;
+        const blob = this.removeBg
+          ? await this.imageService.processImage(this.imageFile, { removeBg: true, autoCrop: true, padding: 10 })
+          : this.imageFile;
         this.statusText = 'Uploading...';
         this.cdr.detectChanges();
-        coverUrl = await this.storageService.uploadImage(bucket, `${basePath}/cover`, blob);
+        imageUrl = await this.storageService.uploadImage(bucket, `${basePath}/cover`, blob);
       }
-
-      if (this.logoFile) {
-        this.statusText = this.logoRemoveBg ? 'Removing logo background...' : 'Uploading logo...';
-        this.cdr.detectChanges();
-        const blob = this.logoRemoveBg
-          ? await this.imageService.processImage(this.logoFile, { removeBg: true, autoCrop: true, padding: 4 })
-          : this.logoFile;
-        this.statusText = 'Uploading logo...';
-        this.cdr.detectChanges();
-        logoUrl = await this.storageService.uploadImage(bucket, `${basePath}/logo`, blob);
-      }
-
-      // Derive image_display from which zone was last uploaded
-      if (this.logoFile) this.imageDisplay = 'contain';
-      else if (this.coverFile) this.imageDisplay = 'cover';
 
       const patch: any = {};
-      if (coverUrl !== this.existingCoverUrl) patch.cover_image_url = coverUrl;
-      if (logoUrl !== this.existingLogoUrl) {
-        patch[this.type === 'supplier' ? 'logo_url' : 'client_logo_url'] = logoUrl;
+      if (imageUrl !== existingUrl) {
+        patch.cover_image_url = imageUrl;
       }
       if (this.selectedColor !== this.existingCardColor) {
         patch.card_color = this.selectedColor;
@@ -362,8 +301,8 @@ export class ImageUploadPanelComponent implements OnInit {
       }
 
       this.imagesUpdated.emit({
-        coverUrl,
-        logoUrl,
+        coverUrl: imageUrl,
+        logoUrl: '',
         cardColor: this.selectedColor,
         imageDisplay: this.imageDisplay
       });
@@ -376,12 +315,5 @@ export class ImageUploadPanelComponent implements OnInit {
       this.processing = false;
       this.cdr.detectChanges();
     }
-  }
-
-  private setFile(file: File, type: 'cover' | 'logo') {
-    const url = URL.createObjectURL(file);
-    if (type === 'cover') { this.coverFile = file; this.coverPreview = url; }
-    else { this.logoFile = file; this.logoPreview = url; }
-    this.cdr.detectChanges();
   }
 }
