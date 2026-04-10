@@ -306,6 +306,13 @@ const migrate = async () => {
     `);
     console.log('  Preview schema tables created.');
 
+    // ── 2b. ALTER preview tables for columns added after initial creation ─
+    await client.query(`
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+    `);
+    console.log('  Preview schema ALTER columns applied.');
+
     // ── 3. Create master schema (same structure as preview) ──────────────
     console.log('  Creating master schema tables...');
     await client.query(`
@@ -323,6 +330,13 @@ const migrate = async () => {
       CREATE TABLE IF NOT EXISTS master.balls_transactions (LIKE preview.balls_transactions INCLUDING ALL);
     `);
     console.log('  Master schema tables created.');
+
+    // ── 3b. ALTER master tables for columns added after initial creation ──
+    await client.query(`
+      ALTER TABLE master.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+      ALTER TABLE master.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+    `);
+    console.log('  Master schema ALTER columns applied.');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
