@@ -241,10 +241,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   buildCategories() {
-    const map: Record<string, { id: string; name: string; count: number }> = {};
+    const map: Record<string, { id: string; name: string; cover_image_url?: string; count: number }> = {};
     for (const item of this.catalogueItems) {
       const key = item.category_id || 'other';
-      if (!map[key]) map[key] = { id: key, name: item.category_name || 'Other', count: 0 };
+      if (!map[key]) map[key] = { id: key, name: item.category_name || 'Other', cover_image_url: item.category_cover_image_url, count: 0 };
       map[key].count++;
     }
     this.categories = Object.values(map);
