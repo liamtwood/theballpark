@@ -122,6 +122,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <input pInputText [value]="catForm.name" class="w-full bp-field-readonly" readonly/>
           </div>
           <div class="mb-4">
+            <label class="bp-field-label">Tagline</label>
+            <input pInputText [value]="catForm.tagline || '—'" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div class="mb-4">
             <label class="bp-field-label">Description</label>
             <textarea pInputTextarea [value]="catForm.description || '—'" class="w-full bp-field-readonly" readonly [rows]="3" style="resize:none;"></textarea>
           </div>
@@ -146,6 +150,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
           <div class="mb-4">
             <label class="bp-field-label">Name</label>
             <input pInputText [(ngModel)]="catForm.name" class="w-full bp-input-edit"/>
+          </div>
+          <div class="mb-4">
+            <label class="bp-field-label">Tagline <span style="font-size:10px;color:var(--color-text-muted);font-weight:400;">— short, punchy, one line</span></label>
+            <input pInputText [(ngModel)]="catForm.tagline" class="w-full bp-input-edit" placeholder="e.g. Delivering exceptional food & drink experiences"/>
           </div>
           <div class="mb-4">
             <label class="bp-field-label">Description</label>
@@ -237,7 +245,7 @@ export class CategoriesComponent implements OnInit {
   showCatDrawer    = false;
   editingCat       = false;
   showCatImagePanel = false;
-  catForm: any     = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+  catForm: any     = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
   private catSnapshot: any = null;
 
   constructor(
@@ -269,7 +277,7 @@ export class CategoriesComponent implements OnInit {
   }
 
   addCategory() {
-    this.catForm = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
+    this.catForm = { id: '', name: '', description: '', tagline: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
     this.editingCat = true;
     this.showCatImagePanel = false;
     this.showCatDrawer = true;
@@ -287,7 +295,7 @@ export class CategoriesComponent implements OnInit {
   submitCat() {
     if (!this.catForm.name?.trim()) return;
     const payload = {
-      name: this.catForm.name, description: this.catForm.description,
+      name: this.catForm.name, description: this.catForm.description, tagline: this.catForm.tagline,
       cover_image_url: this.catForm.cover_image_url, card_color: this.catForm.card_color,
       tags: this.catForm.tags, enabled: this.catForm.enabled
     };

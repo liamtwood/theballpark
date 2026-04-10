@@ -138,21 +138,53 @@ const seed = async () => {
 
     // ── Categories ───────────────────────────────────────────────────────
     const categoryData = [
-      ['Stand Structure',      'Shell scheme, space-only and custom builds.',           'Warehouse',       0],
-      ['Flooring',             'Carpet, vinyl, raised platforms.',                      'Grid3x3',         1],
-      ['Lighting',             'Spotlights, LED strips, mood lighting.',                'Lightbulb',       2],
-      ['AV & Technology',      'Screens, projectors, interactive displays.',            'Monitor',         3],
-      ['Furniture & Fixtures', 'Seating, tables, counters, display units.',             'Armchair',        4],
-      ['Graphics & Signage',   'Large-format print, fabric, 3D lettering.',             'Image',           5],
-      ['Catering',             'On-stand catering, barista, drinks packages.',          'UtensilsCrossed', 6],
-      ['Florals',              'Floral arrangements, plants, greenery.',                'Flower2',         7],
+      ['Stand Structure',
+        'From shell schemes to fully custom builds, stand structure defines how your brand shows up on the exhibition floor. The right build balances impact, practicality and budget.',
+        'The architecture of your brand',
+        'Warehouse', 0,
+        '{custom-build,shell-scheme,space-only,double-deck,modular,rigging,fabrication}'],
+      ['Flooring',
+        'The foundation of every stand. Flooring sets the tone from the moment visitors step on, whether it is premium carpet, vinyl, raised platforms or specialist finishes.',
+        'Ground-level impact',
+        'Grid3x3', 1,
+        '{carpet,vinyl,raised-floor,platform,branded,anti-fatigue,sustainable}'],
+      ['Lighting',
+        'Great lighting transforms a stand from forgettable to unmissable. From spotlights highlighting hero products to ambient LED strips that set the mood, lighting shapes the entire visitor experience.',
+        'Setting the mood and the moment',
+        'Lightbulb', 2,
+        '{LED,spotlights,ambient,track-lighting,gobo,neon,rigging,colour-wash}'],
+      ['AV & Technology',
+        'Screens, projection, interactive displays and sound systems that bring your stand to life. AV is where content meets hardware to create experiences that hold attention and drive engagement.',
+        'Sound, vision and technical production',
+        'Monitor', 3,
+        '{LED-wall,screens,projection,interactive,sound,touch-screen,content,streaming}'],
+      ['Furniture & Fixtures',
+        'Seating, tables, counters and display units that make your stand functional and inviting. The right furniture balances comfort, brand alignment and traffic flow.',
+        'Form meets function',
+        'Armchair', 4,
+        '{seating,counters,tables,display-units,shelving,branded,bespoke}'],
+      ['Graphics & Signage',
+        'Large-format print, fabric backdrops, 3D lettering and digital signage that communicate your brand story at scale. Graphics turn blank walls into brand experiences.',
+        'Your brand at scale',
+        'Image', 5,
+        '{large-format,fabric,vinyl,3D-lettering,digital-signage,backlit,wayfinding}'],
+      ['Catering & Hospitality',
+        'On-stand catering, barista services and drinks packages that keep conversations flowing. Food and drink create the social moments where business gets done.',
+        'Delivering exceptional food & drink experiences',
+        'UtensilsCrossed', 6,
+        '{barista,canapes,cocktails,drinks-package,breakfast,lunch,dietary,staffed}'],
+      ['Florals',
+        'Floral arrangements, living walls, plants and greenery that bring warmth and life to any stand. Florals soften hard edges and create Instagram-worthy moments.',
+        'Bringing the outside in',
+        'Flower2', 7,
+        '{arrangements,living-wall,greenery,centrepiece,hanging,dried,sustainable,seasonal}'],
     ];
     const categoryIds = [];
-    for (const [name, description, icon, sort_order] of categoryData) {
+    for (const [name, description, tagline, icon, sort_order, tagsArr] of categoryData) {
       const res = await client.query(
-        `INSERT INTO preview.categories (name, description, icon, sort_order)
-         VALUES ($1,$2,$3,$4) RETURNING id`,
-        [name, description, icon, sort_order]
+        `INSERT INTO preview.categories (name, description, tagline, icon, sort_order, tags)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [name, description, tagline, icon, sort_order, tagsArr]
       );
       categoryIds.push(res.rows[0].id);
     }

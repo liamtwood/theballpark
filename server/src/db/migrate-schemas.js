@@ -310,6 +310,7 @@ const migrate = async () => {
     await client.query(`
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
     `);
     console.log('  Preview schema ALTER columns applied.');
 
@@ -335,6 +336,7 @@ const migrate = async () => {
     await client.query(`
       ALTER TABLE master.orgs ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
       ALTER TABLE master.items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
+      ALTER TABLE master.categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
     `);
     console.log('  Master schema ALTER columns applied.');
 

@@ -50,6 +50,18 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       </div>
     </div>
 
+    <!-- CATEGORY HEADER PANEL -->
+    <div class="bp-cat-header-panel" *ngIf="selectedCategory && activeCategory !== 'all'">
+      <div class="bp-cat-header-inner">
+        <div class="bp-cat-header-tagline" *ngIf="selectedCategory.tagline">{{ selectedCategory.tagline }}</div>
+        <h2 class="bp-cat-header-name">{{ selectedCategory.name }}</h2>
+        <p class="bp-cat-header-desc" *ngIf="selectedCategory.description">{{ selectedCategory.description }}</p>
+        <div class="bp-cat-header-tags" *ngIf="selectedCategory.tags?.length">
+          <span class="bp-cat-header-tag" *ngFor="let tag of selectedCategory.tags">{{ tag }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- THREE-COLUMN BODY -->
     <div class="bp-cat-body bp-cat-body--detail">
 
@@ -277,6 +289,15 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
 
+    /* CATEGORY HEADER PANEL */
+    .bp-cat-header-panel { background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); padding: 28px 28px 24px; }
+    .bp-cat-header-inner { max-width: 680px; margin: 0 auto; text-align: center; }
+    .bp-cat-header-tagline { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 6px; }
+    .bp-cat-header-name { font-family: var(--font-display); font-size: 26px; font-weight: 400; color: var(--color-text-primary); margin: 0 0 10px; line-height: 1.3; }
+    .bp-cat-header-desc { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; margin: 0 0 14px; }
+    .bp-cat-header-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .bp-cat-header-tag { font-size: 11px; font-weight: 500; color: var(--theme-accent); background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 20px; padding: 3px 12px; }
+
     .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
     .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
     .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
@@ -392,6 +413,7 @@ export class CatalogueGridComponent implements OnChanges {
   @Input() showBack = false;
   @Input() backLabel = 'Back to catalogue';
   @Input() totalCount = 0;
+  @Input() selectedCategory: CategoryInfo | null = null;
 
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
   @Output() backClicked = new EventEmitter<void>();
@@ -432,6 +454,7 @@ export class CatalogueGridComponent implements OnChanges {
     this.activeCategory = catId;
     this.activeTag = '';
     this.selectedEntity = null;
+    this.selectedCategory = catId === 'all' ? null : this.categories.find(c => c.id === catId) || null;
     this.categoryChanged.emit(catId);
     this.applyFilter();
   }

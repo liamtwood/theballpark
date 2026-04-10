@@ -97,7 +97,10 @@ async function getSuppliers() {
 
 async function getCatalogue(supplierId) {
   const result = await pool.query(
-    `SELECT i.*, c.name as category_name, c.icon as category_icon, c.cover_image_url as category_cover_image_url
+    `SELECT i.*, c.name as category_name, c.icon as category_icon,
+            c.cover_image_url as category_cover_image_url,
+            c.tagline as category_tagline, c.description as category_description,
+            c.tags as category_tags
      FROM items i LEFT JOIN categories c ON i.category_id = c.id
      WHERE i.org_id = $1 AND i.is_active = true
      ORDER BY c.sort_order ASC, i.name ASC`,

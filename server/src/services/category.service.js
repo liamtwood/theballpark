@@ -11,17 +11,17 @@ async function getById(id) {
 }
 
 async function create(data) {
-  const { name, description, icon, sort_order, cover_image_url, card_color, tags, enabled } = data;
+  const { name, description, icon, sort_order, cover_image_url, card_color, tags, enabled, tagline } = data;
   const result = await pool.query(
-    `INSERT INTO categories (name, description, icon, sort_order, cover_image_url, card_color, tags, enabled)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [name, description, icon, sort_order || 0, cover_image_url, card_color, tags || null, enabled !== false]
+    `INSERT INTO categories (name, description, icon, sort_order, cover_image_url, card_color, tags, enabled, tagline)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    [name, description, icon, sort_order || 0, cover_image_url, card_color, tags || null, enabled !== false, tagline || null]
   );
   return result.rows[0];
 }
 
 async function update(id, data) {
-  const { name, description, icon, sort_order, cover_image_url, card_color, tags, enabled } = data;
+  const { name, description, icon, sort_order, cover_image_url, card_color, tags, enabled, tagline } = data;
   const result = await pool.query(
     `UPDATE categories SET
       name = COALESCE($1, name), description = COALESCE($2, description),
@@ -30,9 +30,10 @@ async function update(id, data) {
       card_color = COALESCE($6, card_color),
       tags = COALESCE($7, tags),
       enabled = COALESCE($8, enabled),
+      tagline = COALESCE($9, tagline),
       updated_at = NOW()
-     WHERE id = $9 RETURNING *`,
-    [name, description, icon, sort_order, cover_image_url, card_color, tags || null, enabled, id]
+     WHERE id = $10 RETURNING *`,
+    [name, description, icon, sort_order, cover_image_url, card_color, tags || null, enabled, tagline, id]
   );
   return result.rows[0] || null;
 }

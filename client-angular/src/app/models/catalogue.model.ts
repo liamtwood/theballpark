@@ -27,5 +27,8 @@ export interface CategoryInfo {
   id: string;
   name: string;
   cover_image_url?: string;
+  tagline?: string;
+  description?: string;
+  tags?: string[];
   count?: number;
 }
