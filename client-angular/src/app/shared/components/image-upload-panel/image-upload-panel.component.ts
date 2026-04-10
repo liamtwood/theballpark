@@ -23,63 +23,90 @@ import { ModalComponent } from '../modal/modal.component';
       (close)="cancel()"
       (confirm)="save()">
 
-      <!-- Cover / hero image -->
-      <div class="iup-section">
-        <div class="iup-label">
-          {{ type === 'supplier' ? 'Portfolio / hero image' : 'Project / venue image' }}
-        </div>
+      <!-- Two-zone upload: Cover + Logo side by side -->
+      <div class="iup-zones">
 
-        <div *ngIf="!coverPreview"
-             class="iup-drop"
-             (click)="coverInput.click()"
-             (dragover)="$event.preventDefault()"
-             (drop)="onDrop($event, 'cover')">
-          <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
-          <span class="iup-drop-text">Click to upload or drag & drop</span>
-          <span class="iup-drop-hint">
-            {{ type === 'supplier' ? 'JPG, PNG — show your best work' : 'JPG, PNG — recommended 1200×800px' }}
-          </span>
-          <input #coverInput type="file" accept="image/*"
-                 (change)="onFileSelect($event, 'cover')"
-                 style="display:none"/>
-        </div>
+        <!-- LEFT: Cover / photo -->
+        <div class="iup-zone" [class.active]="imageDisplay === 'cover'">
+          <div class="iup-label">Cover / photo</div>
 
-        <div *ngIf="coverPreview" class="iup-preview">
-          <img [src]="coverPreview" class="iup-thumb"/>
-          <span class="iup-filename">{{ coverFile ? coverFile.name : 'current image' }}</span>
-          <button class="iup-remove" (click)="clearFile('cover')" title="Remove image">
-            <lucide-icon name="x" [size]="12"></lucide-icon>
-          </button>
-        </div>
+          <div *ngIf="!coverPreview"
+               class="iup-drop"
+               (click)="coverInput.click()"
+               (dragover)="$event.preventDefault()"
+               (drop)="onDrop($event, 'cover')">
+            <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
+            <span class="iup-drop-text">Click or drop</span>
+            <span class="iup-drop-hint">JPG, PNG — fills the card</span>
+            <input #coverInput type="file" accept="image/*"
+                   (change)="onFileSelect($event, 'cover')"
+                   style="display:none"/>
+          </div>
 
-        <button *ngIf="coverPreview && !coverFile"
-                class="iup-replace"
-                (click)="coverInput2.click()">
-          Click to replace current image
-          <input #coverInput2 type="file" accept="image/*"
-                 (change)="onFileSelect($event, 'cover')"
-                 style="display:none"/>
-        </button>
-
-        <div class="flex items-center gap-2 mt-3" *ngIf="coverFile">
-          <p-checkbox [(ngModel)]="coverRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
-          <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
-        </div>
-
-        <div class="iup-display-toggle" *ngIf="coverPreview && (type === 'supplier' || type === 'item')">
-          <div class="iup-label" style="margin-top:12px">Display as</div>
-          <div class="iup-toggle-row">
-            <button class="iup-toggle-opt" [class.active]="imageDisplay === 'cover'" (click)="imageDisplay = 'cover'">
-              Cover photo
-            </button>
-            <button class="iup-toggle-opt" [class.active]="imageDisplay === 'contain'" (click)="imageDisplay = 'contain'">
-              Logo
+          <div *ngIf="coverPreview" class="iup-preview">
+            <img [src]="coverPreview" class="iup-thumb"/>
+            <span class="iup-filename">{{ coverFile ? coverFile.name : 'current image' }}</span>
+            <button class="iup-remove" (click)="clearFile('cover')" title="Remove image">
+              <lucide-icon name="x" [size]="12"></lucide-icon>
             </button>
           </div>
+
+          <button *ngIf="coverPreview && !coverFile"
+                  class="iup-replace"
+                  (click)="coverInput2.click()">
+            Replace
+            <input #coverInput2 type="file" accept="image/*"
+                   (change)="onFileSelect($event, 'cover')"
+                   style="display:none"/>
+          </button>
+
+          <div class="flex items-center gap-2 mt-3" *ngIf="coverFile">
+            <p-checkbox [(ngModel)]="coverRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
+          </div>
         </div>
+
+        <!-- RIGHT: Logo -->
+        <div class="iup-zone" [class.active]="imageDisplay === 'contain'">
+          <div class="iup-label">Logo</div>
+
+          <div *ngIf="!logoPreview"
+               class="iup-drop"
+               (click)="logoInput.click()"
+               (dragover)="$event.preventDefault()"
+               (drop)="onDrop($event, 'logo')">
+            <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
+            <span class="iup-drop-text">Click or drop</span>
+            <span class="iup-drop-hint">PNG — contained / centred</span>
+            <input #logoInput type="file" accept="image/*"
+                   (change)="onFileSelect($event, 'logo')"
+                   style="display:none"/>
+          </div>
+
+          <div *ngIf="logoPreview" class="iup-preview">
+            <img [src]="logoPreview" class="iup-thumb"/>
+            <span class="iup-filename">{{ logoFile ? logoFile.name : 'current logo' }}</span>
+            <button class="iup-remove" (click)="clearFile('logo')" title="Remove logo">
+              <lucide-icon name="x" [size]="12"></lucide-icon>
+            </button>
+          </div>
+
+          <button *ngIf="logoPreview && !logoFile"
+                  class="iup-replace"
+                  (click)="logoInput2.click()">
+            Replace
+            <input #logoInput2 type="file" accept="image/*"
+                   (change)="onFileSelect($event, 'logo')"
+                   style="display:none"/>
+          </button>
+
+          <div class="flex items-center gap-2 mt-3" *ngIf="logoFile">
+            <p-checkbox [(ngModel)]="logoRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Card background colour (shown for both project and supplier when no image) -->
+      <!-- Card background colour -->
       <div class="iup-section">
         <div class="iup-label">Card background colour</div>
         <div class="iup-hint-text">Used when no image is uploaded</div>
@@ -95,46 +122,6 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
-      <!-- Logo (project + supplier) -->
-      <div class="iup-section" *ngIf="type === 'project' || type === 'supplier'">
-        <div class="iup-label">{{ type === 'supplier' ? 'Company logo' : 'Client logo' }}</div>
-
-        <div *ngIf="!logoPreview"
-             class="iup-drop"
-             (click)="logoInput.click()"
-             (dragover)="$event.preventDefault()"
-             (drop)="onDrop($event, 'logo')">
-          <lucide-icon name="image" [size]="20" class="iup-drop-icon"></lucide-icon>
-          <span class="iup-drop-text">Click to upload or drag & drop</span>
-          <span class="iup-drop-hint">PNG with transparency recommended</span>
-          <input #logoInput type="file" accept="image/*"
-                 (change)="onFileSelect($event, 'logo')"
-                 style="display:none"/>
-        </div>
-
-        <div *ngIf="logoPreview" class="iup-preview">
-          <img [src]="logoPreview" class="iup-thumb"/>
-          <span class="iup-filename">{{ logoFile ? logoFile.name : 'current logo' }}</span>
-          <button class="iup-remove" (click)="clearFile('logo')" title="Remove logo">
-            <lucide-icon name="x" [size]="12"></lucide-icon>
-          </button>
-        </div>
-
-        <button *ngIf="logoPreview && !logoFile"
-                class="iup-replace"
-                (click)="logoInput2.click()">
-          Click to replace current logo
-          <input #logoInput2 type="file" accept="image/*"
-                 (change)="onFileSelect($event, 'logo')"
-                 style="display:none"/>
-        </button>
-
-        <div class="flex items-center gap-2 mt-3" *ngIf="logoFile">
-          <p-checkbox [(ngModel)]="logoRemoveBg" [binary]="true" label="Remove background"></p-checkbox>
-          <span class="text-xs" style="color:var(--theme-accent)">  (auto-detects light & dark)</span>
-        </div>
-      </div>
-
       <!-- Status / error -->
       <div *ngIf="processing" class="iup-status">
         <lucide-icon name="loader-circle" [size]="14" class="iup-spinner"></lucide-icon>
@@ -145,6 +132,12 @@ import { ModalComponent } from '../modal/modal.component';
     </app-modal>
   `,
   styles: [`
+    .iup-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .iup-zone {
+      padding: 14px; border-radius: 10px; border: 1.5px solid #E5E7EB;
+      background: #FAFAF8; transition: border-color 0.15s;
+    }
+    .iup-zone.active { border-color: var(--theme-accent, #D97706); }
     .iup-section { margin-bottom: 20px; }
     .iup-section:last-of-type { margin-bottom: 0; }
     .iup-label {
@@ -156,7 +149,7 @@ import { ModalComponent } from '../modal/modal.component';
     }
     .iup-drop {
       border: 1.5px dashed #D9CFC2; border-radius: 10px; padding: 20px;
-      text-align: center; cursor: pointer; background: #FAFAF8;
+      text-align: center; cursor: pointer; background: #fff;
       display: flex; flex-direction: column; align-items: center; gap: 4px;
       transition: all 0.15s;
     }
@@ -192,19 +185,10 @@ import { ModalComponent } from '../modal/modal.component';
       align-items: center; justify-content: center;
       font-size: 14px; color: #fff; font-weight: 700;
     }
-    .iup-color-preview {
-      height: 48px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.2s;
-    }
-    .iup-color-preview-text { font-size: 11px; color: rgba(255,255,255,0.5); }
     .iup-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--theme-accent, #D97706); margin-top: 12px; }
     .iup-spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .iup-error { font-size: 12px; color: #DC2626; margin-top: 10px; }
-    .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
-    .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
-    .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
   `]
 })
 export class ImageUploadPanelComponent implements OnInit {
@@ -346,7 +330,7 @@ export class ImageUploadPanelComponent implements OnInit {
         coverUrl = await this.storageService.uploadImage(bucket, `${basePath}/cover`, blob);
       }
 
-      if (this.logoFile && (this.type === 'project' || this.type === 'supplier')) {
+      if (this.logoFile) {
         this.statusText = this.logoRemoveBg ? 'Removing logo background...' : 'Uploading logo...';
         this.cdr.detectChanges();
         const blob = this.logoRemoveBg
@@ -357,15 +341,19 @@ export class ImageUploadPanelComponent implements OnInit {
         logoUrl = await this.storageService.uploadImage(bucket, `${basePath}/logo`, blob);
       }
 
+      // Derive image_display from which zone was last uploaded
+      if (this.logoFile) this.imageDisplay = 'contain';
+      else if (this.coverFile) this.imageDisplay = 'cover';
+
       const patch: any = {};
       if (coverUrl !== this.existingCoverUrl) patch.cover_image_url = coverUrl;
       if (logoUrl !== this.existingLogoUrl) {
         patch[this.type === 'supplier' ? 'logo_url' : 'client_logo_url'] = logoUrl;
       }
-      if (this.type === 'project' && this.selectedColor !== this.existingCardColor) {
+      if (this.selectedColor !== this.existingCardColor) {
         patch.card_color = this.selectedColor;
       }
-      if ((this.type === 'supplier' || this.type === 'item') && this.imageDisplay !== this.existingImageDisplay) {
+      if (this.imageDisplay !== this.existingImageDisplay) {
         patch.image_display = this.imageDisplay;
       }
 
@@ -376,8 +364,8 @@ export class ImageUploadPanelComponent implements OnInit {
       this.imagesUpdated.emit({
         coverUrl,
         logoUrl,
-        cardColor: this.type === 'project' ? this.selectedColor : undefined,
-        imageDisplay: (this.type === 'supplier' || this.type === 'item') ? this.imageDisplay : undefined
+        cardColor: this.selectedColor,
+        imageDisplay: this.imageDisplay
       });
       this.closed.emit();
 
