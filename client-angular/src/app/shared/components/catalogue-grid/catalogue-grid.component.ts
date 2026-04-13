@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
   ChevronRight, ChevronLeft, MapPin, SquarePen
@@ -15,7 +16,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    InputTextModule, ButtonModule,
+    InputTextModule, ButtonModule, SelectButtonModule,
     LucideAngularModule, GbpPipe
   ],
   template: `
@@ -121,6 +122,13 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
+          <div class="bp-model-toggle-wrap" *ngIf="hasModels && activeCategory !== 'all'">
+            <p-selectButton [options]="modelOptions" [(ngModel)]="activeModel"
+              (onChange)="onModelChange($event.value)"
+              styleClass="bp-model-toggle" optionLabel="label" optionValue="value">
+            </p-selectButton>
+            <span class="bp-model-hint">{{ modelLabel }}</span>
+          </div>
           <div class="bp-view-toggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
@@ -299,6 +307,19 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-cat-circle-icon { color: var(--theme-accent); }
+    /* Model toggle */
+    .bp-model-toggle-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .bp-model-hint { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
+    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-button {
+      padding: 3px 10px !important; font-size: 11px !important; font-weight: 600 !important;
+      min-width: 28px !important; border-color: var(--color-border) !important;
+      background: var(--color-surface) !important; color: var(--color-text-muted) !important;
+    }
+    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-highlight {
+      background: var(--theme-accent) !important; color: #fff !important;
+      border-color: var(--theme-accent) !important;
+    }
+
     .bp-child-circles-wrap { padding-top: 0; margin-top: -8px; }
     .bp-cat-circle-btn--child .bp-cat-circle--sm { width: 64px; height: 64px; }
     .bp-cat-circle-btn--child .bp-cat-circle-label { font-size: 10px; }
@@ -436,10 +457,35 @@ export class CatalogueGridComponent implements OnChanges {
   activeCategory = 'all';
   activeChildCategory: string | null = null;
   activeTag = '';
+  activeModel = 'A';
   searchQuery = '';
   layout: 'list' | 'card' = 'card';
   filteredEntities: CatalogueEntity[] = [];
   activeChildCategories: CategoryInfo[] = [];
+
+  modelOptions = [
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'C', value: 'C' },
+    { label: 'D', value: 'D' }
+  ];
+
+  private modelLabels: Record<string, string> = {
+    'A': 'Browse by format',
+    'B': 'Browse by meal occasion',
+    'C': 'Browse by event type',
+    'D': 'Browse by budget'
+  };
+
+  get modelLabel(): string { return this.modelLabels[this.activeModel] || ''; }
+
+  get hasModels(): boolean {
+    if (this.activeCategory === 'all') return false;
+    const models = new Set(
+      this.categories.filter(c => c.parent_id === this.activeCategory).map(c => c.model || 'A')
+    );
+    return models.size > 1;
+  }
 
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
@@ -467,10 +513,9 @@ export class CatalogueGridComponent implements OnChanges {
     this.activeCategory = catId;
     this.activeChildCategory = null;
     this.activeTag = '';
+    this.activeModel = 'A';
     this.selectedEntity = null;
-    this.activeChildCategories = catId !== 'all'
-      ? this.categories.filter(c => c.parent_id === catId)
-      : [];
+    this.updateChildCategories();
     this.categoryChanged.emit(catId);
     this.applyFilter();
   }
@@ -479,12 +524,29 @@ export class CatalogueGridComponent implements OnChanges {
     this.activeChildCategory = childId;
     this.activeTag = '';
     this.selectedEntity = null;
-    if (childId) {
+    if (childId && this.activeModel === 'A') {
       this.categoryChanged.emit(childId);
     } else {
       this.categoryChanged.emit(this.activeCategory);
     }
     this.applyFilter();
+  }
+
+  onModelChange(model: string) {
+    this.activeModel = model;
+    this.activeChildCategory = null;
+    this.activeTag = '';
+    this.selectedEntity = null;
+    this.updateChildCategories();
+    this.applyFilter();
+  }
+
+  private updateChildCategories() {
+    this.activeChildCategories = this.activeCategory !== 'all'
+      ? this.categories.filter(c =>
+          c.parent_id === this.activeCategory && (c.model || 'A') === this.activeModel
+        )
+      : [];
   }
 
   onBack() {
@@ -522,16 +584,39 @@ export class CatalogueGridComponent implements OnChanges {
 
   private applyFilter() {
     let result = this.entities;
-    if (this.activeChildCategory) {
-      result = result.filter(e => e.category_id === this.activeChildCategory);
-    } else if (this.activeCategory !== 'all') {
-      // Include items in this category and any child categories
-      const childIds = this.categories
-        .filter(c => c.parent_id === this.activeCategory)
+
+    if (this.activeCategory !== 'all') {
+      // First: scope to parent category and its model-A children (the actual item assignments)
+      const modelAChildIds = this.categories
+        .filter(c => c.parent_id === this.activeCategory && (c.model || 'A') === 'A')
         .map(c => c.id);
-      const validIds = new Set([this.activeCategory, ...childIds]);
+      const validIds = new Set([this.activeCategory, ...modelAChildIds]);
       result = result.filter(e => e.category_id && validIds.has(e.category_id));
+
+      // Then: apply child filter based on active model
+      if (this.activeChildCategory) {
+        if (this.activeModel === 'A') {
+          result = result.filter(e => e.category_id === this.activeChildCategory);
+        } else {
+          // Models B/C/D: filter by item tags or name matching child category keywords
+          const child = this.categories.find(c => c.id === this.activeChildCategory);
+          if (child) {
+            const childName = child.name.toLowerCase();
+            const keywords = childName.split(/\s*[&,]\s*|\s+/).filter(w => w.length > 2);
+            result = result.filter(e => {
+              const raw = e._raw;
+              const tags: string[] = raw?.tags || [];
+              const haystack = [
+                e.name.toLowerCase(),
+                ...tags.map(t => t.toLowerCase())
+              ].join(' ');
+              return keywords.some(kw => haystack.includes(kw));
+            });
+          }
+        }
+      }
     }
+
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();
       result = result.filter(e =>

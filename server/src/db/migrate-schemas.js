@@ -133,6 +133,7 @@ const migrate = async () => {
         namespace VARCHAR(20) DEFAULT 'catalogue',
         parent_id UUID REFERENCES preview.categories(id),
         tagline VARCHAR(255),
+        model VARCHAR(1) DEFAULT 'A',
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),

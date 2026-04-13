@@ -32,4 +32,5 @@ export interface CategoryInfo {
   parent_id?: string;
   tagline?: string;
   description?: string;
+  model?: string;
 }

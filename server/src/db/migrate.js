@@ -287,6 +287,7 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS namespace VARCHAR(20) DEFAULT 'catalogue';
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS model VARCHAR(1) DEFAULT 'A';
     `);
 
     console.log('All tables created successfully.');
@@ -356,6 +357,28 @@ const migrate = async () => {
         }
       }
       console.log('Catering child categories ensured.');
+
+      // Model B/C/D children for catering taxonomy demo
+      const modelChildren = [
+        { model: 'B', children: ['Breakfast', 'Lunch', 'Dinner', 'Drinks', 'All Day'] },
+        { model: 'C', children: ['Gala & Awards', 'Corporate', 'Activation', 'Summer Party', 'Conference', 'Private Dining'] },
+        { model: 'D', children: ['Core', 'Signature', 'Premium'] }
+      ];
+      for (const mc of modelChildren) {
+        for (let i = 0; i < mc.children.length; i++) {
+          const exists = await client.query(
+            `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND model = $3`,
+            [mc.children[i], cateringId, mc.model]
+          );
+          if (!exists.rows.length) {
+            await client.query(
+              `INSERT INTO categories (name, parent_id, sort_order, namespace, model) VALUES ($1, $2, $3, 'catalogue', $4)`,
+              [mc.children[i], cateringId, i, mc.model]
+            );
+          }
+        }
+      }
+      console.log('Catering taxonomy models B/C/D ensured.');
     }
 
 

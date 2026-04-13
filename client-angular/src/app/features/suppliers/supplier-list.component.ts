@@ -161,6 +161,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
             parent_id: c.parent_id || undefined,
             tagline: c.tagline,
             description: c.description,
+            model: c.model || 'A',
             count: this.categoryCounts[c.id] || 0
           }));
         this.cdr.detectChanges();

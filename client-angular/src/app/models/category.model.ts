@@ -12,4 +12,5 @@ export interface Category {
   namespace?: string;
   parent_id?: string;
   tagline?: string;
+  model?: string;
 }
