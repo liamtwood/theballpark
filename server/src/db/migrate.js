@@ -288,6 +288,8 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS model VARCHAR(1) DEFAULT 'A';
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_name VARCHAR(50);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_color VARCHAR(30) DEFAULT 'var(--theme-bg)';
 
       -- Feedback hierarchy columns
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS owner VARCHAR(100);

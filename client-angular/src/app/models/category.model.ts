@@ -13,4 +13,7 @@ export interface Category {
   parent_id?: string;
   tagline?: string;
   model?: string;
+  icon_name?: string;
+  icon_color?: string;
+  logo_url?: string;
 }

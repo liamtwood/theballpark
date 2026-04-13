@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -30,7 +30,11 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 
     <!-- CATEGORY CIRCLES -->
     <div class="bp-cat-circles-wrap" *ngIf="categories.length">
-      <div class="bp-cat-circles">
+      <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
+        (click)="scrollCircles(-200)">
+        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+      </button>
+      <div class="bp-cat-circles" #circlesRow (scroll)="onCirclesScroll()">
         <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
           <div class="bp-cat-circle bp-cat-circle--all">
             <lucide-icon name="layers" [size]="22"></lucide-icon>
@@ -43,9 +47,13 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           (click)="setCategory(cat.id)">
           <div class="bp-cat-circle"
             [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
-            [class.bp-cat-circle--no-image]="!cat.cover_image_url">
-            <lucide-icon *ngIf="!cat.cover_image_url && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
-            <span *ngIf="!cat.cover_image_url && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
+            [class.bp-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
+            [class.bp-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
+            <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-cat-circle-logo-img"/>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="28" class="bp-cat-circle-lucide"></lucide-icon>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
+            <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
             <button *ngIf="showEdit" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
               <lucide-icon name="square-pen" [size]="12"></lucide-icon>
             </button>
@@ -53,6 +61,10 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
         </button>
       </div>
+      <button class="bp-circles-arrow bp-circles-arrow--right" *ngIf="canScrollRight"
+        (click)="scrollCircles(200)">
+        <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
+      </button>
     </div>
 
     <!-- CHILD CATEGORY CIRCLES (when parent selected and has children) -->
@@ -72,8 +84,10 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           (click)="setChildCategory(child.id)">
           <div class="bp-cat-circle bp-cat-circle--sm"
             [style.background-image]="child.cover_image_url ? 'url(' + child.cover_image_url + ')' : null"
-            [class.bp-cat-circle--no-image]="!child.cover_image_url">
-            <span *ngIf="!child.cover_image_url" class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
+            [style.background-color]="!child.cover_image_url && child.icon_name && child.icon_color ? child.icon_color : null"
+            [class.bp-cat-circle--no-image]="!child.cover_image_url && !child.icon_name">
+            <lucide-icon *ngIf="!child.cover_image_url && child.icon_name" [name]="child.icon_name" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+            <span *ngIf="!child.cover_image_url && !child.icon_name" class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
             <button *ngIf="showEdit" class="bp-cat-circle-edit bp-cat-circle-edit--sm" (click)="onCategoryEdit($event, child)" title="Edit image">
               <lucide-icon name="square-pen" [size]="10"></lucide-icon>
             </button>
@@ -305,8 +319,18 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-grid-back-btn:hover { opacity: 0.75; }
 
-    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); }
-    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; justify-content: center; }
+    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: hidden; }
+    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
+    .bp-circles-arrow {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: var(--color-surface); border: 0.5px solid var(--color-border);
+      color: var(--theme-accent); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 32px; transition: all 0.15s; z-index: 2;
+    }
+    .bp-circles-arrow:hover { border-color: var(--theme-accent); }
+    .bp-circles-arrow--left { margin-right: 8px; }
+    .bp-circles-arrow--right { margin-left: 8px; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
     .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
@@ -314,6 +338,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-cat-circle-icon { color: var(--theme-accent); }
+    .bp-cat-circle-lucide { color: var(--color-text-muted); }
+    .bp-cat-circle--logo { background: var(--theme-bg); }
+    .bp-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
     .bp-cat-circle-edit {
       position: absolute; bottom: 2px; right: 2px;
       width: 22px; height: 22px; border-radius: 50%;
@@ -446,7 +473,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     }
   `]
 })
-export class CatalogueGridComponent implements OnChanges {
+export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   @Input() tags: string[] = [];
@@ -510,12 +537,39 @@ export class CatalogueGridComponent implements OnChanges {
     return this.categories.filter(c => !c.parent_id);
   }
 
+  @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
+  canScrollLeft = false;
+  canScrollRight = false;
+
   constructor(private cdr: ChangeDetectorRef) {}
+
+  ngAfterViewInit() { this.checkScrollArrows(); }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['entities']) {
       this.applyFilter();
     }
+    if (changes['categories']) {
+      setTimeout(() => this.checkScrollArrows(), 0);
+    }
+  }
+
+  scrollCircles(delta: number) {
+    const el = this.circlesRowRef?.nativeElement;
+    if (el) {
+      el.scrollBy({ left: delta, behavior: 'smooth' });
+      setTimeout(() => this.checkScrollArrows(), 350);
+    }
+  }
+
+  onCirclesScroll() { this.checkScrollArrows(); }
+
+  private checkScrollArrows() {
+    const el = this.circlesRowRef?.nativeElement;
+    if (!el) return;
+    this.canScrollLeft = el.scrollLeft > 0;
+    this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    this.cdr.detectChanges();
   }
 
   getImageUrl(e: CatalogueEntity): string | null {
