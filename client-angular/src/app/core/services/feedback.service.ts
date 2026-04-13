@@ -19,6 +19,7 @@ export interface FeedbackEntry {
   type?: string;
   meeting_time?: string;
   description?: string;
+  status?: string;
   created_at: string;
   category_name?: string;
   subcategory_name?: string;
