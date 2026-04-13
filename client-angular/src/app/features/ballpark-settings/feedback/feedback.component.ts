@@ -159,8 +159,8 @@ import { ToastModule } from 'primeng/toast';
             placeholder="Add tag..." (ngModelChange)="markDirty()"></p-chips>
         </div>
 
-        <!-- Children / action items -->
-        <div *ngIf="childEntries.length" class="mt-4">
+        <!-- Children / action items (meeting notes only) -->
+        <div *ngIf="childEntries.length && selectedEntry.meeting_date" class="mt-4">
           <div class="bp-section-header mb-3">
             <span class="bp-section-title">ACTION ITEMS</span>
           </div>
@@ -174,7 +174,7 @@ import { ToastModule } from 'primeng/toast';
           </div>
         </div>
 
-        <div *ngIf="!selectedEntry.parent_id" class="mt-4">
+        <div *ngIf="selectedEntry.meeting_date" class="mt-4">
           <button class="bp-add-action-btn" (click)="openAddAction()">
             <i class="pi pi-plus" style="font-size:11px;"></i> Add action item
           </button>
