@@ -366,6 +366,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     }
 
     .bp-child-circles-wrap { padding-top: 0; margin-top: -8px; }
+    .bp-child-circles-wrap .bp-cat-circles { justify-content: center; }
     .bp-cat-circle-btn--child .bp-cat-circle--sm { width: 64px; height: 64px; }
     .bp-cat-circle-btn--child .bp-cat-circle-label { font-size: 10px; }
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }

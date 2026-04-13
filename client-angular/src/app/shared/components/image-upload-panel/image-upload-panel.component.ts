@@ -135,6 +135,30 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
+      <!-- Icon picker (category only) -->
+      <div class="iup-section" *ngIf="type === 'category'">
+        <div class="iup-label">Lucide icon</div>
+        <div class="iup-hint-text">Select an icon for the category circle</div>
+        <div class="iup-icon-grid">
+          <button *ngFor="let ic of iconOptions" class="iup-icon-btn"
+            [class.selected]="selectedIconName === ic"
+            (click)="selectedIconName = ic">
+            <lucide-icon [name]="ic" [size]="20"></lucide-icon>
+            <span class="iup-icon-label">{{ ic }}</span>
+          </button>
+        </div>
+        <div class="iup-label" style="margin-top:14px">Icon background</div>
+        <div class="iup-swatches">
+          <div *ngFor="let c of iconColors"
+               class="iup-swatch"
+               [class.selected]="selectedIconColor === c"
+               [style.background]="c"
+               (click)="selectedIconColor = c">
+            <span *ngIf="selectedIconColor === c" class="iup-swatch-check">✓</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Status / error -->
       <div *ngIf="processing" class="iup-status">
         <lucide-icon name="loader-circle" [size]="14" class="iup-spinner"></lucide-icon>
@@ -202,6 +226,20 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .iup-error { font-size: 12px; color: #DC2626; margin-top: 10px; }
+    .iup-icon-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+      max-height: 220px; overflow-y: auto; margin-bottom: 8px;
+    }
+    .iup-icon-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 4px; border-radius: 8px; cursor: pointer;
+      border: 1.5px solid transparent; background: var(--color-surface, #FAFAF8);
+      color: var(--color-text-muted, #6B7280); transition: all 0.15s;
+      font-family: inherit;
+    }
+    .iup-icon-btn:hover { border-color: var(--color-border, #D9CFC2); }
+    .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--theme-bg, #FEF3C7); color: var(--theme-accent, #D97706); }
+    .iup-icon-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
     .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
     .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
     .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
@@ -217,11 +255,16 @@ export class ImageUploadPanelComponent implements OnInit {
   @Input() existingCardColor = '';
   @Input() existingImageDisplay: 'cover' | 'contain' = 'cover';
 
+  @Input() existingIconName = '';
+  @Input() existingIconColor = '';
+
   @Output() imagesUpdated = new EventEmitter<{
     coverUrl: string;
     logoUrl: string;
     cardColor?: string;
     imageDisplay?: 'cover' | 'contain';
+    iconName?: string;
+    iconColor?: string;
   }>();
   @Output() closed = new EventEmitter<void>();
 
@@ -238,6 +281,19 @@ export class ImageUploadPanelComponent implements OnInit {
   logoRemoved = false;
   selectedColor = 'navy';
   imageDisplay: 'cover' | 'contain' = 'cover';
+  selectedIconName = '';
+  selectedIconColor = 'var(--theme-bg)';
+
+  iconOptions = [
+    'utensils', 'music', 'mic', 'tv', 'building-2', 'flower-2',
+    'zap', 'truck', 'users', 'star', 'heart', 'camera', 'coffee',
+    'shopping-bag', 'map-pin', 'award', 'briefcase', 'globe',
+    'sparkles', 'wine', 'palette', 'layers'
+  ];
+  iconColors = [
+    'var(--theme-bg)', 'var(--color-surface)',
+    '#FEF3C7', '#DBEAFE', '#D1FAE5', '#FDE2E2', '#EDE9FE', '#FEE2E2'
+  ];
 
   cardColors = [
     { value: 'navy',  label: 'Navy',   gradient: 'linear-gradient(160deg,#1a1a2e,#16213e)' },
@@ -263,6 +319,8 @@ export class ImageUploadPanelComponent implements OnInit {
     if (this.existingLogoUrl) this.logoPreview = this.existingLogoUrl;
     if (this.existingCardColor) this.selectedColor = this.existingCardColor;
     if (this.existingImageDisplay) this.imageDisplay = this.existingImageDisplay;
+    if (this.existingIconName) this.selectedIconName = this.existingIconName;
+    if (this.existingIconColor) this.selectedIconColor = this.existingIconColor;
   }
 
   getSelectedGradient(): string {
@@ -373,11 +431,24 @@ export class ImageUploadPanelComponent implements OnInit {
         await firstValueFrom(this.api.patch(apiEndpoint, patch));
       }
 
+      // Category icon patch
+      if (this.type === 'category') {
+        const catPatch: any = {};
+        if (coverUrl !== this.existingCoverUrl) catPatch.cover_image_url = coverUrl;
+        if (this.selectedIconName) catPatch.icon_name = this.selectedIconName;
+        if (this.selectedIconColor) catPatch.icon_color = this.selectedIconColor;
+        if (Object.keys(catPatch).length) {
+          await firstValueFrom(this.api.patch(`/categories/${this.entityId}`, catPatch));
+        }
+      }
+
       this.imagesUpdated.emit({
         coverUrl,
         logoUrl,
         cardColor: this.type === 'project' ? this.selectedColor : undefined,
-        imageDisplay: (this.type === 'supplier' || this.type === 'item') ? this.imageDisplay : undefined
+        imageDisplay: (this.type === 'supplier' || this.type === 'item') ? this.imageDisplay : undefined,
+        iconName: this.type === 'category' ? this.selectedIconName : undefined,
+        iconColor: this.type === 'category' ? this.selectedIconColor : undefined
       });
       this.closed.emit();
 
