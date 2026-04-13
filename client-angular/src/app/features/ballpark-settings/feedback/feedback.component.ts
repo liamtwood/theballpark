@@ -68,7 +68,7 @@ import { ToastModule } from 'primeng/toast';
         [showEdit]="false"
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
-        (entitySelected)="onEntitySelected($event)"
+        (entitySelected)="onEntityPreview($event)"
         (actionClicked)="onEntitySelected($event)">
       </app-catalogue-grid>
 
@@ -455,7 +455,16 @@ export class FeedbackComponent implements OnInit {
     return 'action';
   }
 
-  // Entity selection
+  // Preview (click row) — lets grid show built-in detail panel
+  onEntityPreview(entity: CatalogueEntity) {
+    const entry = entity._raw as FeedbackEntry;
+    if (entry?.meeting_date) {
+      window.open('/meeting/' + entry.id, '_blank');
+    }
+    // Otherwise grid handles its own preview panel
+  }
+
+  // View (click action button) — opens full edit drawer
   onEntitySelected(entity: CatalogueEntity) {
     this.selectedEntry = entity._raw || this.entries.find(e => e.id === entity.id) || null;
     this.childEntries = [];
