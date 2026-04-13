@@ -95,7 +95,8 @@ export const routes: Routes = [
           tabs: [
             { label: 'Categories', path: '/ballpark-settings/categories' },
             { label: 'Marketplace', path: '/ballpark-settings/marketplace' },
-            { label: 'Orgs', path: '/ballpark-settings/orgs' }
+            { label: 'Orgs', path: '/ballpark-settings/orgs' },
+            { label: 'Feedback', path: '/ballpark-settings/feedback' }
           ]
         }
       },

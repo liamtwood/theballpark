@@ -5,7 +5,10 @@ import { Category } from '../../models';
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   constructor(private api: ApiService) {}
-  getAll() { return this.api.get<Category[]>('/categories'); }
+  getAll(namespace?: string) {
+    const params = namespace ? `?namespace=${namespace}` : '';
+    return this.api.get<Category[]>(`/categories${params}`);
+  }
   getById(id: string) { return this.api.get<Category>(`/categories/${id}`); }
   create(data: any) { return this.api.post<Category>('/categories', data); }
   update(id: string, data: any) { return this.api.put<Category>(`/categories/${id}`, data); }

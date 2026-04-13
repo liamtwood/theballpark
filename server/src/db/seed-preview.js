@@ -158,6 +158,59 @@ const seed = async () => {
     }
     console.log('  Categories seeded.');
 
+    // ── Feedback Categories (namespace = 'feedback') ─────────────────────
+    const feedbackParents = [
+      {
+        name: 'Bug',
+        tagline: 'Something isn\'t working',
+        description: 'Log anything broken, inconsistent or behaving unexpectedly. No detail too small.',
+        tags: ['UI Glitch', 'Data Issue', 'Performance', 'Crash'],
+        sort_order: 0,
+        children: ['UI Glitch', 'Data Issue', 'Performance', 'Crash']
+      },
+      {
+        name: 'Enhancement',
+        tagline: 'Make it better',
+        description: 'Feature requests, improvements and nice-to-haves. How should Ballpark work better for you?',
+        tags: ['Feature Request', 'Improvement', 'Nice to Have'],
+        sort_order: 1,
+        children: ['Feature Request', 'Improvement', 'Nice to Have']
+      },
+      {
+        name: 'Question',
+        tagline: 'Something we need to discuss',
+        description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.',
+        tags: ['Product Question', 'Pricing Question', 'Process Question'],
+        sort_order: 2,
+        children: ['Product Question', 'Pricing Question', 'Process Question', 'Technical Question']
+      },
+      {
+        name: 'Prompt',
+        tagline: 'A requirement or instruction for the build',
+        description: 'Capture specific requirements, design directions and build instructions directly from the session.',
+        tags: ['Requirement', 'Instruction', 'Design Direction'],
+        sort_order: 3,
+        children: ['Requirement', 'Instruction', 'Design Direction']
+      }
+    ];
+
+    for (const fp of feedbackParents) {
+      const parentRes = await client.query(
+        `INSERT INTO preview.categories (name, tagline, description, tags, sort_order, namespace)
+         VALUES ($1, $2, $3, $4, $5, 'feedback') RETURNING id`,
+        [fp.name, fp.tagline, fp.description, fp.tags, fp.sort_order]
+      );
+      const parentId = parentRes.rows[0].id;
+      for (let i = 0; i < fp.children.length; i++) {
+        await client.query(
+          `INSERT INTO preview.categories (name, parent_id, sort_order, namespace)
+           VALUES ($1, $2, $3, 'feedback')`,
+          [fp.children[i], parentId, i]
+        );
+      }
+    }
+    console.log('  Feedback categories seeded (4 parents + children).');
+
     // ── Projects ─────────────────────────────────────────────────────────
     const project1Res = await client.query(
       `INSERT INTO preview.projects

@@ -382,7 +382,7 @@ export class CatalogueGridComponent implements OnChanges {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   @Input() tags: string[] = [];
-  @Input() entityType: 'item' | 'supplier' = 'item';
+  @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
   @Input() sectionTitle: string = 'CATALOGUE';
   @Input() actionLabel: string = 'View';

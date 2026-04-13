@@ -282,6 +282,11 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tags TEXT[];
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true;
+
+      -- Namespace + hierarchy columns for categories
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS namespace VARCHAR(20) DEFAULT 'catalogue';
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
     `);
 
     console.log('All tables created successfully.');

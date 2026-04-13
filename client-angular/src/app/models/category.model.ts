@@ -9,4 +9,7 @@ export interface Category {
   cover_image_url?: string;
   card_color?: string;
   tags?: string[];
+  namespace?: string;
+  parent_id?: string;
+  tagline?: string;
 }
