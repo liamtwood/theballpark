@@ -288,6 +288,12 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS model VARCHAR(1) DEFAULT 'A';
+
+      -- Feedback hierarchy columns
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS owner VARCHAR(100);
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS due_date DATE;
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS meeting_date DATE;
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES shared.feedback(id);
     `);
 
     console.log('All tables created successfully.');

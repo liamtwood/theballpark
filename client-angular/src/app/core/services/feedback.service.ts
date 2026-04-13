@@ -10,14 +10,32 @@ export interface FeedbackEntry {
   page_url?: string;
   submitted_by?: string;
   environment?: string;
+  owner?: string;
+  due_date?: string;
+  meeting_date?: string;
+  parent_id?: string;
   created_at: string;
   category_name?: string;
   subcategory_name?: string;
+  children?: FeedbackEntry[];
 }
+
+export interface TeamMember {
+  name: string;
+  initials: string;
+}
+
+export const TEAM_MEMBERS: TeamMember[] = [
+  { name: 'Liam', initials: 'LW' },
+  { name: 'Beth', initials: 'BP' },
+  { name: 'Megan', initials: 'MG' },
+  { name: 'James', initials: 'JC' }
+];
 
 @Injectable({ providedIn: 'root' })
 export class FeedbackService {
   constructor(private api: ApiService) {}
   getAll() { return this.api.get<FeedbackEntry[]>('/feedback'); }
+  getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
   create(data: Partial<FeedbackEntry>) { return this.api.post<FeedbackEntry>('/feedback', data); }
 }

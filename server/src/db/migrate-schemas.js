@@ -374,6 +374,10 @@ const migrate = async () => {
         page_url VARCHAR(500),
         submitted_by VARCHAR(100),
         environment VARCHAR(20) DEFAULT 'preview',
+        owner VARCHAR(100),
+        due_date DATE,
+        meeting_date DATE,
+        parent_id UUID REFERENCES shared.feedback(id),
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
