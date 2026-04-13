@@ -46,6 +46,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             [class.bp-cat-circle--no-image]="!cat.cover_image_url">
             <lucide-icon *ngIf="!cat.cover_image_url && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
             <span *ngIf="!cat.cover_image_url && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            <button *ngIf="showEdit" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
+              <lucide-icon name="square-pen" [size]="12"></lucide-icon>
+            </button>
           </div>
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
         </button>
@@ -68,8 +71,12 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           [class.active]="activeChildCategory === child.id"
           (click)="setChildCategory(child.id)">
           <div class="bp-cat-circle bp-cat-circle--sm"
+            [style.background-image]="child.cover_image_url ? 'url(' + child.cover_image_url + ')' : null"
             [class.bp-cat-circle--no-image]="!child.cover_image_url">
-            <span class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
+            <span *ngIf="!child.cover_image_url" class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
+            <button *ngIf="showEdit" class="bp-cat-circle-edit bp-cat-circle-edit--sm" (click)="onCategoryEdit($event, child)" title="Edit image">
+              <lucide-icon name="square-pen" [size]="10"></lucide-icon>
+            </button>
           </div>
           <span class="bp-cat-circle-label">{{ child.name }}</span>
         </button>
@@ -302,11 +309,22 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; justify-content: center; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
-    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); }
+    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-cat-circle-icon { color: var(--theme-accent); }
+    .bp-cat-circle-edit {
+      position: absolute; bottom: 2px; right: 2px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--color-text-muted); transition: all 0.15s;
+      opacity: 0; pointer-events: none;
+    }
+    .bp-cat-circle-edit--sm { width: 18px; height: 18px; bottom: 0; right: 0; }
+    .bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
+    .bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
     /* Model toggle */
     .bp-model-toggle-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .bp-model-hint { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
@@ -452,6 +470,7 @@ export class CatalogueGridComponent implements OnChanges {
   @Output() categoryChanged = new EventEmitter<string>();
   @Output() tagChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
+  @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
@@ -567,6 +586,11 @@ export class CatalogueGridComponent implements OnChanges {
   onEdit(event: MouseEvent, e: CatalogueEntity) {
     event.stopPropagation();
     this.imageEditRequested.emit(e);
+  }
+
+  onCategoryEdit(event: MouseEvent, cat: CategoryInfo) {
+    event.stopPropagation();
+    this.categoryImageEditRequested.emit(cat);
   }
 
   onToggleFav(event: any, e: CatalogueEntity) {
