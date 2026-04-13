@@ -301,6 +301,7 @@ const migrate = async () => {
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS type VARCHAR(20);
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS meeting_time VARCHAR(10);
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'open';
     `);
 
     console.log('All tables created successfully.');

@@ -77,7 +77,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda', 'completed', 'type', 'meeting_time', 'description'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;
