@@ -13,5 +13,9 @@ export const BALLPARK_SETTINGS_ROUTES: Routes = [
   {
     path: 'orgs',
     loadComponent: () => import('./orgs/orgs.component').then(m => m.OrgsComponent)
+  },
+  {
+    path: 'feedback',
+    loadComponent: () => import('./feedback/feedback.component').then(m => m.FeedbackComponent)
   }
 ];

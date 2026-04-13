@@ -130,6 +130,10 @@ const migrate = async () => {
         card_color VARCHAR(20),
         tags TEXT[],
         enabled BOOLEAN DEFAULT true,
+        namespace VARCHAR(20) DEFAULT 'catalogue',
+        parent_id UUID REFERENCES preview.categories(id),
+        tagline VARCHAR(255),
+        model VARCHAR(1) DEFAULT 'A',
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -358,6 +362,24 @@ const migrate = async () => {
         commit_ref VARCHAR(100),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- Feedback (cross-environment capture)
+      CREATE TABLE IF NOT EXISTS shared.feedback (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        category_id UUID,
+        subcategory_id UUID,
+        title VARCHAR(255) NOT NULL,
+        notes TEXT,
+        page_url VARCHAR(500),
+        submitted_by VARCHAR(100),
+        environment VARCHAR(20) DEFAULT 'preview',
+        owner VARCHAR(100),
+        due_date DATE,
+        meeting_date DATE,
+        parent_id UUID REFERENCES shared.feedback(id),
+        agenda TEXT[] DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
       -- Feature flags (cross-environment config)

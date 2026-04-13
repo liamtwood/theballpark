@@ -2,7 +2,7 @@ const router = require('express').Router();
 const CategoryService = require('../services/category.service');
 
 router.get('/', async (req, res, next) => {
-  try { res.json(await CategoryService.getAll()); } catch (err) { next(err); }
+  try { res.json(await CategoryService.getAll(req.query.namespace)); } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

@@ -282,9 +282,115 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS tags TEXT[];
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true;
+
+      -- Namespace + hierarchy columns for categories
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS namespace VARCHAR(20) DEFAULT 'catalogue';
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES categories(id);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS tagline VARCHAR(255);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS model VARCHAR(1) DEFAULT 'A';
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_name VARCHAR(50);
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_color VARCHAR(30) DEFAULT 'var(--theme-bg)';
+
+      -- Feedback hierarchy columns
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS owner VARCHAR(100);
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS due_date DATE;
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS meeting_date DATE;
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES shared.feedback(id);
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS agenda TEXT[] DEFAULT '{}';
     `);
 
     console.log('All tables created successfully.');
+
+    // ── Seed feedback categories (idempotent) ────────────────────────────
+    const feedbackParents = [
+      { name: 'Prompt', tagline: 'A requirement or direction', description: 'Capture requirements, bug reports, enhancement ideas and build instructions from the session.', tags: '{Note,Bug,Enhancement}', sort: 0, children: ['Note', 'Bug', 'Enhancement'] },
+      { name: 'Question', tagline: 'Something to discuss', description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.', tags: '{Product,Pricing,Process,Technical}', sort: 1, children: ['Product', 'Pricing', 'Process', 'Technical'] },
+      { name: 'Works Well', tagline: 'What\'s working great', description: 'Capture what\'s working well so we can build on it.', tags: '{}', sort: 2, children: [] }
+    ];
+    for (const fp of feedbackParents) {
+      const exists = await client.query(
+        `SELECT id FROM categories WHERE name = $1 AND namespace = 'feedback' AND parent_id IS NULL`,
+        [fp.name]
+      );
+      let parentId;
+      if (exists.rows.length) {
+        parentId = exists.rows[0].id;
+      } else {
+        const r = await client.query(
+          `INSERT INTO categories (name, tagline, description, tags, sort_order, namespace)
+           VALUES ($1, $2, $3, $4::text[], $5, 'feedback') RETURNING id`,
+          [fp.name, fp.tagline, fp.description, fp.tags, fp.sort]
+        );
+        parentId = r.rows[0].id;
+      }
+      for (let i = 0; i < fp.children.length; i++) {
+        const childExists = await client.query(
+          `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND namespace = 'feedback'`,
+          [fp.children[i], parentId]
+        );
+        if (!childExists.rows.length) {
+          await client.query(
+            `INSERT INTO categories (name, parent_id, sort_order, namespace)
+             VALUES ($1, $2, $3, 'feedback')`,
+            [fp.children[i], parentId, i]
+          );
+        }
+      }
+    }
+    console.log('Feedback categories ensured.');
+
+    // ── Seed Catering child categories (idempotent) ──────────────────────
+    const cateringRes = await client.query(
+      `SELECT id FROM categories WHERE name ILIKE '%Catering%' AND namespace = 'catalogue' AND parent_id IS NULL LIMIT 1`
+    );
+    if (cateringRes.rows.length) {
+      const cateringId = cateringRes.rows[0].id;
+      const cateringChildren = [
+        { name: 'Canapes & Drinks Reception', sort: 0 },
+        { name: 'Sit-Down Dining', sort: 1 },
+        { name: 'Bowl Food & Sharing', sort: 2 },
+        { name: 'Street Food & Casual', sort: 3 },
+        { name: 'Bar & Drinks Service', sort: 4 },
+        { name: 'Working Lunch', sort: 5 }
+      ];
+      for (const ch of cateringChildren) {
+        const chExists = await client.query(
+          `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2`,
+          [ch.name, cateringId]
+        );
+        if (!chExists.rows.length) {
+          await client.query(
+            `INSERT INTO categories (name, parent_id, sort_order, namespace) VALUES ($1, $2, $3, 'catalogue')`,
+            [ch.name, cateringId, ch.sort]
+          );
+        }
+      }
+      console.log('Catering child categories ensured.');
+
+      // Model B/C/D children for catering taxonomy demo
+      const modelChildren = [
+        { model: 'B', children: ['Breakfast', 'Lunch', 'Dinner', 'Drinks', 'All Day'] },
+        { model: 'C', children: ['Gala & Awards', 'Corporate', 'Activation', 'Summer Party', 'Conference', 'Private Dining'] },
+        { model: 'D', children: ['Core', 'Signature', 'Premium'] }
+      ];
+      for (const mc of modelChildren) {
+        for (let i = 0; i < mc.children.length; i++) {
+          const exists = await client.query(
+            `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND model = $3`,
+            [mc.children[i], cateringId, mc.model]
+          );
+          if (!exists.rows.length) {
+            await client.query(
+              `INSERT INTO categories (name, parent_id, sort_order, namespace, model) VALUES ($1, $2, $3, 'catalogue', $4)`,
+              [mc.children[i], cateringId, i, mc.model]
+            );
+          }
+        }
+      }
+      console.log('Catering taxonomy models B/C/D ensured.');
+    }
+
+
   } catch (err) {
     console.error('Migration failed:', err.message);
     throw err;

@@ -15,7 +15,10 @@ async function getAll(orgId, categoryId, tag) {
   `;
   const params = [];
   if (orgId) { params.push(orgId); query += ` AND i.org_id = $${params.length}`; }
-  if (categoryId) { params.push(categoryId); query += ` AND i.category_id = $${params.length}`; }
+  if (categoryId) {
+    params.push(categoryId);
+    query += ` AND (i.category_id = $${params.length} OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $${params.length}))`;
+  }
   if (tag) { params.push(tag); query += ` AND $${params.length} = ANY(i.tags)`; }
   query += ' ORDER BY i.created_at DESC';
   const result = await pool.query(query, params);
@@ -24,11 +27,23 @@ async function getAll(orgId, categoryId, tag) {
 
 async function countsByCategory() {
   const result = await pool.query(
-    `SELECT category_id, COUNT(*) AS count FROM items WHERE is_active = true AND category_id IS NOT NULL GROUP BY category_id`
+    `SELECT i.category_id, c.parent_id, COUNT(*) AS count
+     FROM items i
+     LEFT JOIN categories c ON i.category_id = c.id
+     WHERE i.is_active = true AND i.category_id IS NOT NULL
+     GROUP BY i.category_id, c.parent_id`
   );
   const map = {};
   let total = 0;
-  for (const r of result.rows) { map[r.category_id] = parseInt(r.count, 10); total += parseInt(r.count, 10); }
+  for (const r of result.rows) {
+    const cnt = parseInt(r.count, 10);
+    map[r.category_id] = (map[r.category_id] || 0) + cnt;
+    // Roll up to parent
+    if (r.parent_id) {
+      map[r.parent_id] = (map[r.parent_id] || 0) + cnt;
+    }
+    total += cnt;
+  }
   return { counts: map, total };
 }
 
@@ -36,7 +51,8 @@ async function getTagsByCategory(categoryId) {
   const result = await pool.query(
     `SELECT DISTINCT UNNEST(tags) AS tag
      FROM items
-     WHERE category_id = $1 AND is_active = true AND tags IS NOT NULL AND array_length(tags, 1) > 0
+     WHERE (category_id = $1 OR category_id IN (SELECT id FROM categories WHERE parent_id = $1))
+       AND is_active = true AND tags IS NOT NULL AND array_length(tags, 1) > 0
      ORDER BY tag ASC`,
     [categoryId]
   );
