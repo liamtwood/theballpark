@@ -16,6 +16,9 @@ export interface FeedbackEntry {
   parent_id?: string;
   agenda?: string[];
   completed?: boolean;
+  type?: string;
+  meeting_time?: string;
+  description?: string;
   created_at: string;
   category_name?: string;
   subcategory_name?: string;
