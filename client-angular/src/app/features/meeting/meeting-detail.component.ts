@@ -102,88 +102,36 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
         <!-- RIGHT COLUMN -->
         <div class="bp-mtg-right">
-          <!-- ACTION ITEMS -->
           <div class="bp-mtg-section">
-            <div class="bp-mtg-section-label">ACTION ITEMS</div>
-            <div *ngFor="let c of actions" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed"
+            <div class="bp-mtg-section-label">ITEMS</div>
+
+            <div *ngFor="let c of children" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed"
               (click)="openEdit(c)" [pTooltip]="c.description || ''" tooltipPosition="left">
               <p-checkbox [(ngModel)]="c.completed" [binary]="true"
                 (onChange)="toggleComplete(c); $event.originalEvent?.stopPropagation()" styleClass="bp-mtg-check"></p-checkbox>
+              <lucide-icon [name]="getTypeIcon(c)" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
               <span class="bp-mtg-row-title">{{ c.title }}</span>
               <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
             </div>
-            <div *ngIf="!actions.length" class="bp-mtg-empty">No action items yet.</div>
-            <div class="bp-mtg-inline-add">
-              <input class="bp-mtg-inline-input" [(ngModel)]="newAction"
-                (keydown.enter)="addChild('action')" placeholder="Title..."/>
-              <div class="bp-mtg-owner-row">
-                <button *ngFor="let m of team" class="bp-mtg-owner-btn"
-                  [class.active]="newActionOwner === m.name" (click)="newActionOwner = m.name">{{ m.initials }}</button>
-              </div>
-              <button class="bp-mtg-add-text" (click)="addChild('action')" [disabled]="!newAction?.trim()">Add</button>
-            </div>
-          </div>
 
-          <!-- BUGS -->
-          <div class="bp-mtg-section">
-            <div class="bp-mtg-section-label">BUGS</div>
-            <div *ngFor="let c of bugs" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed"
-              (click)="openEdit(c)" [pTooltip]="c.description || ''" tooltipPosition="left">
-              <lucide-icon name="bug" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
-              <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
-            </div>
-            <div *ngIf="!bugs.length" class="bp-mtg-empty">No bugs logged.</div>
-            <div class="bp-mtg-inline-add">
-              <input class="bp-mtg-inline-input" [(ngModel)]="newBug"
-                (keydown.enter)="addChild('bug')" placeholder="Title..."/>
-              <div class="bp-mtg-owner-row">
-                <button *ngFor="let m of team" class="bp-mtg-owner-btn"
-                  [class.active]="newBugOwner === m.name" (click)="newBugOwner = m.name">{{ m.initials }}</button>
-              </div>
-              <button class="bp-mtg-add-text" (click)="addChild('bug')" [disabled]="!newBug?.trim()">Add</button>
-            </div>
-          </div>
+            <div *ngIf="!children.length" class="bp-mtg-empty">No items yet.</div>
 
-          <!-- ENHANCEMENTS -->
-          <div class="bp-mtg-section">
-            <div class="bp-mtg-section-label">ENHANCEMENTS</div>
-            <div *ngFor="let c of enhancements" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed"
-              (click)="openEdit(c)" [pTooltip]="c.description || ''" tooltipPosition="left">
-              <lucide-icon name="lightbulb" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
-              <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
-            </div>
-            <div *ngIf="!enhancements.length" class="bp-mtg-empty">No enhancements logged.</div>
+            <!-- Inline add -->
             <div class="bp-mtg-inline-add">
-              <input class="bp-mtg-inline-input" [(ngModel)]="newEnhancement"
-                (keydown.enter)="addChild('enhancement')" placeholder="Title..."/>
+              <div class="bp-mtg-type-selector">
+                <button *ngFor="let t of childTypes" class="bp-mtg-type-btn"
+                  [class.active]="newItemType === t.value" (click)="newItemType = t.value"
+                  [title]="t.label">
+                  <lucide-icon [name]="t.icon" [size]="12"></lucide-icon>
+                </button>
+              </div>
+              <input class="bp-mtg-inline-input" [(ngModel)]="newItemTitle"
+                (keydown.enter)="addItem()" placeholder="Title..."/>
               <div class="bp-mtg-owner-row">
                 <button *ngFor="let m of team" class="bp-mtg-owner-btn"
-                  [class.active]="newEnhancementOwner === m.name" (click)="newEnhancementOwner = m.name">{{ m.initials }}</button>
+                  [class.active]="newItemOwner === m.name" (click)="newItemOwner = m.name">{{ m.initials }}</button>
               </div>
-              <button class="bp-mtg-add-text" (click)="addChild('enhancement')" [disabled]="!newEnhancement?.trim()">Add</button>
-            </div>
-          </div>
-
-          <!-- AGENDA ITEMS -->
-          <div class="bp-mtg-section">
-            <div class="bp-mtg-section-label">AGENDA ITEMS</div>
-            <div *ngFor="let c of agendaItems" class="bp-mtg-row"
-              (click)="openEdit(c)" [pTooltip]="c.description || ''" tooltipPosition="left">
-              <lucide-icon name="list" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
-              <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
-            </div>
-            <div *ngIf="!agendaItems.length" class="bp-mtg-empty">No agenda items logged.</div>
-            <div class="bp-mtg-inline-add">
-              <input class="bp-mtg-inline-input" [(ngModel)]="newAgendaChild"
-                (keydown.enter)="addChild('agenda')" placeholder="Title..."/>
-              <div class="bp-mtg-owner-row">
-                <button *ngFor="let m of team" class="bp-mtg-owner-btn"
-                  [class.active]="newAgendaChildOwner === m.name" (click)="newAgendaChildOwner = m.name">{{ m.initials }}</button>
-              </div>
-              <button class="bp-mtg-add-text" (click)="addChild('agenda')" [disabled]="!newAgendaChild?.trim()">Add</button>
+              <button class="bp-mtg-add-text" (click)="addItem()" [disabled]="!newItemTitle?.trim()">Add</button>
             </div>
           </div>
         </div>
@@ -404,6 +352,15 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       font-family: var(--font-body); flex-shrink: 0; padding: 4px 8px;
     }
     .bp-mtg-add-text:disabled { opacity: 0.3; cursor: not-allowed; }
+    .bp-mtg-type-selector { display: flex; gap: 2px; flex-shrink: 0; }
+    .bp-mtg-type-btn {
+      width: 24px; height: 24px; border-radius: 4px; border: 1px solid var(--color-border);
+      background: var(--color-surface); color: var(--color-text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .bp-mtg-type-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-mtg-type-btn.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
 
     /* Edit dialog */
     .bp-edit-step { padding: 8px 0; }
@@ -460,10 +417,9 @@ export class MeetingDetailComponent implements OnInit {
   meetingTypes = ['Notes', 'Meeting', 'Call'];
 
   newAgendaItem = '';
-  newAction = ''; newActionOwner = '';
-  newBug = ''; newBugOwner = '';
-  newEnhancement = ''; newEnhancementOwner = '';
-  newAgendaChild = ''; newAgendaChildOwner = '';
+  newItemTitle = '';
+  newItemOwner = '';
+  newItemType = 'action';
 
   // Edit dialog
   showEditDialog = false;
@@ -474,19 +430,14 @@ export class MeetingDetailComponent implements OnInit {
   editType = 'action';
   editDueDate: Date | null = null;
   childTypes = [
-    { label: 'Bug', value: 'bug' },
-    { label: 'Enhancement', value: 'enhancement' },
-    { label: 'Question', value: 'question' },
-    { label: 'Action', value: 'action' },
-    { label: 'Agenda', value: 'agenda' }
+    { label: 'Action', value: 'action', icon: 'check-square' },
+    { label: 'Bug', value: 'bug', icon: 'bug' },
+    { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb' },
+    { label: 'Question', value: 'question', icon: 'circle-help' },
+    { label: 'Agenda', value: 'agenda', icon: 'list' }
   ];
 
   notesChanged$ = new Subject<string>();
-
-  get actions(): FeedbackEntry[] { return this.children.filter(c => !this.isBug(c) && !this.isEnhancement(c) && !this.isAgenda(c)); }
-  get bugs(): FeedbackEntry[] { return this.children.filter(c => this.isBug(c)); }
-  get enhancements(): FeedbackEntry[] { return this.children.filter(c => this.isEnhancement(c)); }
-  get agendaItems(): FeedbackEntry[] { return this.children.filter(c => this.isAgenda(c)); }
 
   constructor(
     private route: ActivatedRoute,
@@ -542,14 +493,10 @@ export class MeetingDetailComponent implements OnInit {
 
   openAgendaEdit(i: number) {
     const text = this.agenda[i];
-    // Find existing child matching this agenda item
-    const existing = this.children.find(c =>
-      this.isAgenda(c) && c.title.replace(/^\[Agenda\]\s*/, '') === text
-    );
+    const existing = this.children.find(c => c.type === 'agenda' && c.title === text);
     if (existing) {
       this.openEdit(existing);
     } else {
-      // Pre-fill edit dialog for new agenda child
       this.editEntry = { id: '', title: text, type: 'agenda', created_at: '' } as FeedbackEntry;
       this.editTitle = text;
       this.editDescription = '';
@@ -563,9 +510,7 @@ export class MeetingDetailComponent implements OnInit {
 
   getAgendaChild(i: number): FeedbackEntry | null {
     const text = this.agenda[i];
-    return this.children.find(c =>
-      this.isAgenda(c) && c.title.replace(/^\[Agenda\]\s*/, '') === text
-    ) || null;
+    return this.children.find(c => c.type === 'agenda' && c.title === text) || null;
   }
   moveAgenda(i: number, dir: number) {
     const j = i + dir;
@@ -577,27 +522,17 @@ export class MeetingDetailComponent implements OnInit {
   saveAgenda() { if (this.entry) this.feedbackSvc.patch(this.entry.id, { agenda: this.agenda }).subscribe(); }
   trackIdx(i: number) { return i; }
 
-  addChild(type: 'action' | 'bug' | 'enhancement' | 'agenda') {
-    if (!this.entry) return;
-    let title = '', owner = '';
-    if (type === 'action') { title = this.newAction; owner = this.newActionOwner; }
-    else if (type === 'bug') { title = this.newBug; owner = this.newBugOwner; }
-    else if (type === 'agenda') { title = this.newAgendaChild; owner = this.newAgendaChildOwner; }
-    else { title = this.newEnhancement; owner = this.newEnhancementOwner; }
-    if (!title?.trim()) return;
-
-    const prefix = type === 'bug' ? '[Bug] ' : type === 'enhancement' ? '[Enhancement] ' : type === 'agenda' ? '[Agenda] ' : '';
+  addItem() {
+    if (!this.entry || !this.newItemTitle?.trim()) return;
     this.feedbackSvc.create({
-      title: prefix + title.trim(),
+      title: this.newItemTitle.trim(),
       parent_id: this.entry.id,
-      owner: owner || undefined,
-      type: type,
+      owner: this.newItemOwner || undefined,
+      type: this.newItemType,
     } as any).subscribe({
       next: () => {
-        if (type === 'action') { this.newAction = ''; this.newActionOwner = ''; }
-        else if (type === 'bug') { this.newBug = ''; this.newBugOwner = ''; }
-        else if (type === 'agenda') { this.newAgendaChild = ''; this.newAgendaChildOwner = ''; }
-        else { this.newEnhancement = ''; this.newEnhancementOwner = ''; }
+        this.newItemTitle = '';
+        this.newItemOwner = '';
         this.loadChildren();
         this.cdr.detectChanges();
       },
@@ -608,10 +543,10 @@ export class MeetingDetailComponent implements OnInit {
   // Edit dialog
   openEdit(child: FeedbackEntry) {
     this.editEntry = child;
-    this.editTitle = child.title.replace(/^\[(Bug|Enhancement|Agenda)\]\s*/, '');
+    this.editTitle = child.title;
     this.editDescription = child.description || child.notes || '';
     this.editOwner = child.owner || '';
-    this.editType = this.inferChildType(child);
+    this.editType = child.type || 'action';
     this.editDueDate = child.due_date ? new Date(child.due_date) : null;
     this.showEditDialog = true;
     this.cdr.detectChanges();
@@ -619,9 +554,8 @@ export class MeetingDetailComponent implements OnInit {
 
   saveEdit() {
     if (!this.editEntry || !this.editTitle?.trim()) return;
-    const prefix = this.editType === 'bug' ? '[Bug] ' : this.editType === 'enhancement' ? '[Enhancement] ' : this.editType === 'agenda' ? '[Agenda] ' : '';
     const data: any = {
-      title: prefix + this.editTitle.trim(),
+      title: this.editTitle.trim(),
       description: this.editDescription?.trim() || null,
       owner: this.editOwner || null,
       due_date: this.editDueDate ? this.editDueDate.toISOString().split('T')[0] : null,
@@ -663,8 +597,7 @@ export class MeetingDetailComponent implements OnInit {
   }
 
   getTypeIcon(entry: FeedbackEntry): string {
-    const t = this.inferChildType(entry);
-    switch (t) {
+    switch (entry.type) {
       case 'bug': return 'bug';
       case 'enhancement': return 'lightbulb';
       case 'question': return 'circle-help';
@@ -672,17 +605,4 @@ export class MeetingDetailComponent implements OnInit {
       default: return 'check-square';
     }
   }
-
-  private inferChildType(c: FeedbackEntry): string {
-    if (c.type) return c.type;
-    const t = (c.title || '').toLowerCase();
-    if (t.startsWith('[bug]')) return 'bug';
-    if (t.startsWith('[enhancement]')) return 'enhancement';
-    if (t.startsWith('[agenda]')) return 'agenda';
-    return 'action';
-  }
-
-  private isBug(c: FeedbackEntry): boolean { return this.inferChildType(c) === 'bug'; }
-  private isEnhancement(c: FeedbackEntry): boolean { return this.inferChildType(c) === 'enhancement'; }
-  private isAgenda(c: FeedbackEntry): boolean { return this.inferChildType(c) === 'agenda'; }
 }
