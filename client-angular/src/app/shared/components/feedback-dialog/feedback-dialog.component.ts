@@ -177,17 +177,15 @@ export class FeedbackDialogComponent implements OnInit {
   titlePlaceholder = '';
 
   private iconMap: Record<string, string> = {
-    'Bug': 'bug',
-    'Enhancement': 'lightbulb',
+    'Prompt': 'clipboard-pen',
     'Question': 'circle-help',
-    'Prompt': 'clipboard-pen'
+    'Works Well': 'check'
   };
 
   private placeholderMap: Record<string, string> = {
-    'Bug': "What's broken?",
-    'Enhancement': 'What would you like?',
+    'Prompt': 'Describe the requirement or direction',
     'Question': 'What do you want to know?',
-    'Prompt': 'Describe the requirement'
+    'Works Well': "What's working great?"
   };
 
   constructor(

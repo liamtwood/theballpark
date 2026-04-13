@@ -161,36 +161,28 @@ const seed = async () => {
     // ── Feedback Categories (namespace = 'feedback') ─────────────────────
     const feedbackParents = [
       {
-        name: 'Bug',
-        tagline: 'Something isn\'t working',
-        description: 'Log anything broken, inconsistent or behaving unexpectedly. No detail too small.',
-        tags: ['UI Glitch', 'Data Issue', 'Performance', 'Crash'],
+        name: 'Prompt',
+        tagline: 'A requirement or direction',
+        description: 'Capture requirements, bug reports, enhancement ideas and build instructions from the session.',
+        tags: ['Note', 'Bug', 'Enhancement'],
         sort_order: 0,
-        children: ['UI Glitch', 'Data Issue', 'Performance', 'Crash']
-      },
-      {
-        name: 'Enhancement',
-        tagline: 'Make it better',
-        description: 'Feature requests, improvements and nice-to-haves. How should Ballpark work better for you?',
-        tags: ['Feature Request', 'Improvement', 'Nice to Have'],
-        sort_order: 1,
-        children: ['Feature Request', 'Improvement', 'Nice to Have']
+        children: ['Note', 'Bug', 'Enhancement']
       },
       {
         name: 'Question',
-        tagline: 'Something we need to discuss',
+        tagline: 'Something to discuss',
         description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.',
-        tags: ['Product Question', 'Pricing Question', 'Process Question'],
-        sort_order: 2,
-        children: ['Product Question', 'Pricing Question', 'Process Question', 'Technical Question']
+        tags: ['Product', 'Pricing', 'Process', 'Technical'],
+        sort_order: 1,
+        children: ['Product', 'Pricing', 'Process', 'Technical']
       },
       {
-        name: 'Prompt',
-        tagline: 'A requirement or instruction for the build',
-        description: 'Capture specific requirements, design directions and build instructions directly from the session.',
-        tags: ['Requirement', 'Instruction', 'Design Direction'],
-        sort_order: 3,
-        children: ['Requirement', 'Instruction', 'Design Direction']
+        name: 'Works Well',
+        tagline: 'What\'s working great',
+        description: 'Capture what\'s working well so we can build on it.',
+        tags: [],
+        sort_order: 2,
+        children: []
       }
     ];
 
@@ -209,7 +201,7 @@ const seed = async () => {
         );
       }
     }
-    console.log('  Feedback categories seeded (4 parents + children).');
+    console.log('  Feedback categories seeded (3 parents + children).');
 
     // ── Projects ─────────────────────────────────────────────────────────
     const project1Res = await client.query(

@@ -107,7 +107,7 @@ export class FeedbackComponent implements OnInit {
   emptySet = new Set<string>();
 
   private iconMap: Record<string, string> = {
-    'Bug': 'bug', 'Enhancement': 'lightbulb', 'Question': 'circle-help', 'Prompt': 'clipboard-pen'
+    'Prompt': 'clipboard-pen', 'Question': 'circle-help', 'Works Well': 'check'
   };
 
   showDrawer = false;
