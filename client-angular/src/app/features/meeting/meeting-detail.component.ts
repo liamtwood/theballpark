@@ -218,12 +218,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     }
 
     /* Section labels */
-    .bp-mtg-section { margin-bottom: 24px; }
+    .bp-mtg-section { margin-bottom: 24px; padding-top: 20px; }
+    .bp-mtg-section:first-child { padding-top: 0; }
     .bp-mtg-notes-section { flex: 1; display: flex; flex-direction: column; }
     .bp-mtg-section-label {
-      font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
       color: var(--color-text-muted); text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 0.5px solid var(--color-border);
     }
 
     /* Agenda */
@@ -279,14 +281,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
     /* Right column rows */
     .bp-mtg-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 0; border-bottom: 0.5px solid var(--color-border);
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 0; border-bottom: 0.5px solid var(--color-border);
     }
     .bp-mtg-row--done { opacity: 0.5; }
     .bp-mtg-row--done .bp-mtg-row-title { text-decoration: line-through; }
     .bp-mtg-row-title {
       flex: 1; font-size: 13px; color: var(--color-text-primary);
-      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      min-width: 0; word-wrap: break-word;
     }
     .bp-mtg-type-icon { color: var(--theme-accent); flex-shrink: 0; }
     .bp-mtg-owner {
@@ -418,23 +420,27 @@ export class MeetingDetailComponent implements OnInit {
 
   // Children
   addChild(type: 'action' | 'bug' | 'enhancement') {
+    if (!this.entry) return;
     let title = '', owner = '';
     if (type === 'action') { title = this.newAction; owner = this.newActionOwner; }
     else if (type === 'bug') { title = this.newBug; owner = this.newBugOwner; }
     else { title = this.newEnhancement; owner = this.newEnhancementOwner; }
     if (!title?.trim()) return;
 
+    const prefix = type === 'bug' ? '[Bug] ' : type === 'enhancement' ? '[Enhancement] ' : '';
     this.feedbackSvc.create({
-      title: (type === 'bug' ? '[Bug] ' : type === 'enhancement' ? '[Enhancement] ' : '') + title.trim(),
-      parent_id: this.entry!.id,
+      title: prefix + title.trim(),
+      parent_id: this.entry.id,
       owner: owner || undefined
-    }).subscribe({
+    } as any).subscribe({
       next: () => {
         if (type === 'action') { this.newAction = ''; this.newActionOwner = ''; }
         else if (type === 'bug') { this.newBug = ''; this.newBugOwner = ''; }
         else { this.newEnhancement = ''; this.newEnhancementOwner = ''; }
         this.loadChildren();
-      }
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => { console.error('Failed to add child:', err); }
     });
   }
 

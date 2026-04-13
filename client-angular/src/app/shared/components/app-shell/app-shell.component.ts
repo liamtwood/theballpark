@@ -18,7 +18,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   imports: [CommonModule, TitleCasePipe, TagModule, LucideAngularModule, RouterModule, RouterOutlet],
   template: `
     <!-- HERO -->
-    <div class="bp-hero">
+    <div class="bp-hero" *ngIf="!hideHero">
 
       <!-- PILLS -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
@@ -125,6 +125,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   platformName = 'The Ballpark';
 
   pageLabel    = '';
+  hideHero     = false;
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -301,6 +302,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       if (data['pageLabel'] !== undefined) {
         this.pageLabel  = data['pageLabel'];
         this.routeTabs  = data['tabs'] || [];
+        this.hideHero   = !!data['hideHero'];
       }
     }
   }
