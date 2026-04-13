@@ -366,10 +366,12 @@ export class FeedbackDialogComponent implements OnChanges {
     this.feedbackSvc.create(data).subscribe({
       next: (result) => {
         if (this.step === 'note') {
-          this.lastCreatedId = result.id;
-          this.parentTitle = this.title;
-          this.step = 'post-note';
           this.msg.add({ severity: 'success', summary: 'Note saved \u2713' });
+          this.submitted.emit({ id: result.id, flow: 'note' });
+          this.reset();
+          this.visible = false;
+          this.visibleChange.emit(false);
+          window.open('/meeting/' + result.id, '_blank');
           this.cdr.detectChanges();
         } else {
           this.msg.add({ severity: 'success', summary: 'Logged \u2713' });
