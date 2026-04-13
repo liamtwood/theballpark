@@ -304,6 +304,7 @@ export class FeedbackComponent implements OnInit {
   filterCategories: CategoryInfo[] = [
     { id: 'note', name: 'Notes', icon: 'clipboard-pen' },
     { id: 'bug', name: 'Bugs', icon: 'bug' },
+    { id: 'enhancement', name: 'Enhancements', icon: 'lightbulb' },
     { id: 'action', name: 'Actions', icon: 'check-square' },
     { id: 'question', name: 'Questions', icon: 'circle-help' }
   ];
@@ -418,7 +419,8 @@ export class FeedbackComponent implements OnInit {
     if (e.type) return e.type;
     if (e.meeting_date) return 'note';
     const title = (e.title || '').toLowerCase();
-    if (title.includes('bug') || e.subcategory_name?.toLowerCase().includes('bug')) return 'bug';
+    if (title.includes('bug') || title.startsWith('[bug]') || e.subcategory_name?.toLowerCase().includes('bug')) return 'bug';
+    if (title.includes('enhancement') || title.startsWith('[enhancement]') || e.subcategory_name?.toLowerCase().includes('enhancement')) return 'enhancement';
     if (title.includes('question') || e.subcategory_name?.toLowerCase().includes('question')) return 'question';
     return 'action';
   }
@@ -565,6 +567,7 @@ export class FeedbackComponent implements OnInit {
     const type = this.inferType(entry);
     switch (type) {
       case 'bug': return 'bug';
+      case 'enhancement': return 'lightbulb';
       case 'question': return 'circle-help';
       case 'note': return 'clipboard-pen';
       default: return 'check-square';
