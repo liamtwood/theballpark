@@ -26,6 +26,28 @@ async function getById(id) {
   return result.rows[0] || null;
 }
 
+async function getToday() {
+  const today = new Date().toISOString().split('T')[0];
+  const result = await pool.query(`
+    SELECT f.*
+    FROM shared.feedback f
+    WHERE f.meeting_date = $1 AND f.parent_id IS NULL
+    ORDER BY f.created_at DESC LIMIT 1
+  `, [today]);
+  if (result.rows.length) return result.rows[0];
+  // Create today's note
+  const ins = await pool.query(
+    `INSERT INTO shared.feedback (title, meeting_date, agenda)
+     VALUES ($1, $2, $3) RETURNING *`,
+    [
+      new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' Meeting',
+      today,
+      ['Finding items demo', 'AI brief parser', 'Open discussion']
+    ]
+  );
+  return ins.rows[0];
+}
+
 async function getChildren(parentId) {
   const result = await pool.query(`
     SELECT f.*,
@@ -55,7 +77,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda', 'completed'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;
@@ -70,4 +92,8 @@ async function patch(id, data) {
   return result.rows[0] || null;
 }
 
-module.exports = { getAll, getById, getChildren, create, patch };
+async function remove(id) {
+  await pool.query('DELETE FROM shared.feedback WHERE id = $1', [id]);
+}
+
+module.exports = { getAll, getById, getToday, getChildren, create, patch, remove };
