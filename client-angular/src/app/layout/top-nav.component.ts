@@ -38,6 +38,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
         </a>
+        <a href="/meeting/today" target="_blank" class="bp-nav-link">
+          <lucide-icon name="clipboard-pen" [size]="14"></lucide-icon> Meeting
+        </a>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
