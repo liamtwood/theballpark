@@ -94,6 +94,17 @@ import { ToastModule } from 'primeng/toast';
         </div>
       </ng-template>
       <div class="bp-drawer-body" *ngIf="selectedEntry">
+        <!-- Type -->
+        <div class="mb-4">
+          <label class="bp-field-label">Type</label>
+          <div class="bp-type-row">
+            <button *ngFor="let t of typeEditOptions" class="bp-type-pill"
+              [class.active]="editType === t.value" (click)="editType = t.value; markDirty()">
+              <lucide-icon [name]="t.icon" [size]="12"></lucide-icon> {{ t.label }}
+            </button>
+          </div>
+        </div>
+
         <!-- Status -->
         <div class="mb-4">
           <label class="bp-field-label">Status</label>
@@ -244,6 +255,16 @@ import { ToastModule } from 'primeng/toast';
     }
     .bp-owner-circle:hover { border-color: var(--theme-accent); }
     .bp-owner-circle.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
+    .bp-type-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .bp-type-pill {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      border: 1px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
+      font-family: var(--font-body);
+    }
+    .bp-type-pill:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-type-pill.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
     .bp-owner-display { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; color: var(--color-text-primary); }
     .bp-owner-badge {
       width: 28px; height: 28px; border-radius: 50%; font-size: 10px; font-weight: 600;
@@ -335,8 +356,17 @@ export class FeedbackComponent implements OnInit {
   editNotes = '';
   editOwner = '';
   editStatus = 'open';
+  editType = 'action';
   editTags: string[] = [];
   isDirty = false;
+
+  typeEditOptions = [
+    { label: 'Action', value: 'action', icon: 'check-square' },
+    { label: 'Bug', value: 'bug', icon: 'bug' },
+    { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb' },
+    { label: 'Question', value: 'question', icon: 'circle-help' },
+    { label: 'Note', value: 'note', icon: 'clipboard-pen' }
+  ];
 
   statusEditOptions = [
     { label: 'Open', value: 'open' },
@@ -438,6 +468,7 @@ export class FeedbackComponent implements OnInit {
       this.editNotes = this.selectedEntry.notes || '';
       this.editOwner = this.selectedEntry.owner || '';
       this.editStatus = this.selectedEntry.status || 'open';
+      this.editType = this.inferType(this.selectedEntry);
       this.editTags = [];
       this.isDirty = false;
       this.showDrawer = true;
@@ -457,6 +488,7 @@ export class FeedbackComponent implements OnInit {
       notes: this.editNotes || undefined,
       owner: this.editOwner || undefined,
       status: this.editStatus,
+      type: this.editType,
     } as any).subscribe({
       next: () => {
         this.isDirty = false;
@@ -533,6 +565,7 @@ export class FeedbackComponent implements OnInit {
     this.editNotes = child.notes || '';
     this.editOwner = child.owner || '';
     this.editStatus = child.status || 'open';
+    this.editType = this.inferType(child);
     this.editTags = [];
     this.isDirty = false;
     this.childEntries = [];
