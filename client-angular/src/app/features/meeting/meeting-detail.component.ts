@@ -62,8 +62,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <div class="bp-mtg-section">
             <div class="bp-mtg-section-label">AGENDA</div>
             <div class="bp-mtg-agenda-list">
-              <div *ngFor="let item of agenda; let i = index; trackBy: trackIdx" class="bp-mtg-agenda-item">
-                <div class="bp-mtg-reorder">
+              <div *ngFor="let item of agenda; let i = index; trackBy: trackIdx"
+                class="bp-mtg-agenda-item" (click)="openAgendaEdit(i)">
+                <div class="bp-mtg-reorder" (click)="$event.stopPropagation()">
                   <button class="bp-mtg-reorder-btn" [disabled]="i === 0" (click)="moveAgenda(i, -1)">
                     <lucide-icon name="chevron-up" [size]="10"></lucide-icon>
                   </button>
@@ -72,9 +73,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
                   </button>
                 </div>
                 <span class="bp-mtg-agenda-num">{{ i + 1 }}.</span>
-                <input class="bp-mtg-agenda-input" [(ngModel)]="agenda[i]"
-                  (blur)="saveAgenda()" placeholder="Agenda item..."/>
-                <button class="bp-mtg-remove" (click)="removeAgenda(i)">
+                <span class="bp-mtg-agenda-text">{{ agenda[i] }}</span>
+                <span class="bp-mtg-agenda-linked" *ngIf="getAgendaChild(i)">
+                  <lucide-icon name="link" [size]="10"></lucide-icon>
+                </span>
+                <button class="bp-mtg-remove" (click)="$event.stopPropagation(); removeAgenda(i)">
                   <lucide-icon name="x" [size]="12"></lucide-icon>
                 </button>
               </div>
@@ -317,6 +320,13 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       font-size: 14px; color: var(--color-text-primary); font-family: var(--font-body); padding: 3px 0;
     }
     .bp-mtg-agenda-input::placeholder { color: var(--color-text-muted); }
+    .bp-mtg-agenda-text {
+      flex: 1; font-size: 14px; color: var(--color-text-primary);
+      font-family: var(--font-body); cursor: pointer;
+    }
+    .bp-mtg-agenda-item { cursor: pointer; border-radius: 6px; padding: 5px 4px; transition: background 0.1s; }
+    .bp-mtg-agenda-item:hover { background: var(--theme-bg); }
+    .bp-mtg-agenda-linked { color: var(--theme-accent); display: flex; align-items: center; flex-shrink: 0; }
     .bp-mtg-reorder {
       display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
       opacity: 0; transition: opacity 0.15s;
@@ -529,6 +539,34 @@ export class MeetingDetailComponent implements OnInit {
     this.saveAgenda();
   }
   removeAgenda(i: number) { this.agenda.splice(i, 1); this.saveAgenda(); }
+
+  openAgendaEdit(i: number) {
+    const text = this.agenda[i];
+    // Find existing child matching this agenda item
+    const existing = this.children.find(c =>
+      this.isAgenda(c) && c.title.replace(/^\[Agenda\]\s*/, '') === text
+    );
+    if (existing) {
+      this.openEdit(existing);
+    } else {
+      // Pre-fill edit dialog for new agenda child
+      this.editEntry = { id: '', title: text, type: 'agenda', created_at: '' } as FeedbackEntry;
+      this.editTitle = text;
+      this.editDescription = '';
+      this.editOwner = '';
+      this.editType = 'agenda';
+      this.editDueDate = null;
+      this.showEditDialog = true;
+      this.cdr.detectChanges();
+    }
+  }
+
+  getAgendaChild(i: number): FeedbackEntry | null {
+    const text = this.agenda[i];
+    return this.children.find(c =>
+      this.isAgenda(c) && c.title.replace(/^\[Agenda\]\s*/, '') === text
+    ) || null;
+  }
   moveAgenda(i: number, dir: number) {
     const j = i + dir;
     if (j < 0 || j >= this.agenda.length) return;
@@ -582,21 +620,30 @@ export class MeetingDetailComponent implements OnInit {
   saveEdit() {
     if (!this.editEntry || !this.editTitle?.trim()) return;
     const prefix = this.editType === 'bug' ? '[Bug] ' : this.editType === 'enhancement' ? '[Enhancement] ' : this.editType === 'agenda' ? '[Agenda] ' : '';
-    this.feedbackSvc.patch(this.editEntry.id, {
+    const data: any = {
       title: prefix + this.editTitle.trim(),
       description: this.editDescription?.trim() || null,
       owner: this.editOwner || null,
       due_date: this.editDueDate ? this.editDueDate.toISOString().split('T')[0] : null,
       type: this.editType,
-    }).subscribe({
-      next: () => { this.showEditDialog = false; this.loadChildren(); }
-    });
+    };
+    if (this.editEntry.id) {
+      this.feedbackSvc.patch(this.editEntry.id, data).subscribe({
+        next: () => { this.showEditDialog = false; this.loadChildren(); }
+      });
+    } else {
+      // Create new child
+      data.parent_id = this.entry!.id;
+      this.feedbackSvc.create(data).subscribe({
+        next: () => { this.showEditDialog = false; this.loadChildren(); }
+      });
+    }
   }
 
   cancelEdit() { this.showEditDialog = false; }
 
   deleteFromEdit() {
-    if (!this.editEntry) return;
+    if (!this.editEntry?.id) { this.showEditDialog = false; return; }
     this.feedbackSvc.remove(this.editEntry.id).subscribe(() => {
       this.showEditDialog = false;
       this.children = this.children.filter(c => c.id !== this.editEntry!.id);
