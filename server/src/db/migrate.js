@@ -299,26 +299,66 @@ const migrate = async () => {
       { name: 'Prompt', tagline: 'A requirement or instruction for the build', description: 'Capture specific requirements, design directions and build instructions directly from the session.', tags: '{Requirement,Instruction,Design Direction}', sort: 3, children: ['Requirement', 'Instruction', 'Design Direction'] }
     ];
     for (const fp of feedbackParents) {
-      const r = await client.query(
-        `INSERT INTO categories (name, tagline, description, tags, sort_order, namespace)
-         SELECT $1, $2, $3, $4::text[], $5, 'feedback'
-         WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = $1 AND namespace = 'feedback' AND parent_id IS NULL)
-         RETURNING id`,
-        [fp.name, fp.tagline, fp.description, fp.tags, fp.sort]
+      const exists = await client.query(
+        `SELECT id FROM categories WHERE name = $1 AND namespace = 'feedback' AND parent_id IS NULL`,
+        [fp.name]
       );
-      if (r.rows.length) {
-        const parentId = r.rows[0].id;
-        for (let i = 0; i < fp.children.length; i++) {
+      let parentId;
+      if (exists.rows.length) {
+        parentId = exists.rows[0].id;
+      } else {
+        const r = await client.query(
+          `INSERT INTO categories (name, tagline, description, tags, sort_order, namespace)
+           VALUES ($1, $2, $3, $4::text[], $5, 'feedback') RETURNING id`,
+          [fp.name, fp.tagline, fp.description, fp.tags, fp.sort]
+        );
+        parentId = r.rows[0].id;
+      }
+      for (let i = 0; i < fp.children.length; i++) {
+        const childExists = await client.query(
+          `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND namespace = 'feedback'`,
+          [fp.children[i], parentId]
+        );
+        if (!childExists.rows.length) {
           await client.query(
             `INSERT INTO categories (name, parent_id, sort_order, namespace)
-             SELECT $1, $2, $3, 'feedback'
-             WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND namespace = 'feedback')`,
+             VALUES ($1, $2, $3, 'feedback')`,
             [fp.children[i], parentId, i]
           );
         }
       }
     }
     console.log('Feedback categories ensured.');
+
+    // ── Seed Catering child categories (idempotent) ──────────────────────
+    const cateringRes = await client.query(
+      `SELECT id FROM categories WHERE name ILIKE '%Catering%' AND namespace = 'catalogue' AND parent_id IS NULL LIMIT 1`
+    );
+    if (cateringRes.rows.length) {
+      const cateringId = cateringRes.rows[0].id;
+      const cateringChildren = [
+        { name: 'Canapes & Drinks Reception', sort: 0 },
+        { name: 'Sit-Down Dining', sort: 1 },
+        { name: 'Bowl Food & Sharing', sort: 2 },
+        { name: 'Street Food & Casual', sort: 3 },
+        { name: 'Bar & Drinks Service', sort: 4 },
+        { name: 'Working Lunch', sort: 5 }
+      ];
+      for (const ch of cateringChildren) {
+        const chExists = await client.query(
+          `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2`,
+          [ch.name, cateringId]
+        );
+        if (!chExists.rows.length) {
+          await client.query(
+            `INSERT INTO categories (name, parent_id, sort_order, namespace) VALUES ($1, $2, $3, 'catalogue')`,
+            [ch.name, cateringId, ch.sort]
+          );
+        }
+      }
+      console.log('Catering child categories ensured.');
+    }
+
 
   } catch (err) {
     console.error('Migration failed:', err.message);

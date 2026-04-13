@@ -36,7 +36,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
-        <button *ngFor="let cat of categories"
+        <button *ngFor="let cat of parentCategories"
           class="bp-cat-circle-btn"
           [class.active]="activeCategory === cat.id"
           (click)="setCategory(cat.id)">
@@ -47,6 +47,30 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             <span *ngIf="!cat.cover_image_url && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
           </div>
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CHILD CATEGORY CIRCLES (when parent selected and has children) -->
+    <div class="bp-cat-circles-wrap bp-child-circles-wrap" *ngIf="activeChildCategories.length">
+      <div class="bp-cat-circles">
+        <button class="bp-cat-circle-btn bp-cat-circle-btn--child"
+          [class.active]="!activeChildCategory"
+          (click)="setChildCategory(null)">
+          <div class="bp-cat-circle bp-cat-circle--sm bp-cat-circle--all">
+            <lucide-icon name="layers" [size]="16"></lucide-icon>
+          </div>
+          <span class="bp-cat-circle-label">All</span>
+        </button>
+        <button *ngFor="let child of activeChildCategories"
+          class="bp-cat-circle-btn bp-cat-circle-btn--child"
+          [class.active]="activeChildCategory === child.id"
+          (click)="setChildCategory(child.id)">
+          <div class="bp-cat-circle bp-cat-circle--sm"
+            [class.bp-cat-circle--no-image]="!child.cover_image_url">
+            <span class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
+          </div>
+          <span class="bp-cat-circle-label">{{ child.name }}</span>
         </button>
       </div>
     </div>
@@ -68,7 +92,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             <span>All</span>
             <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
           </button>
-          <button *ngFor="let cat of categories"
+          <button *ngFor="let cat of parentCategories"
             class="bp-sidebar-item"
             (click)="setCategory(cat.id)">
             <span>{{ cat.name }}</span>
@@ -275,6 +299,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-cat-circle-icon { color: var(--theme-accent); }
+    .bp-child-circles-wrap { padding-top: 0; margin-top: -8px; }
+    .bp-cat-circle-btn--child .bp-cat-circle--sm { width: 64px; height: 64px; }
+    .bp-cat-circle-btn--child .bp-cat-circle-label { font-size: 10px; }
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
@@ -407,10 +434,16 @@ export class CatalogueGridComponent implements OnChanges {
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
+  activeChildCategory: string | null = null;
   activeTag = '';
   searchQuery = '';
   layout: 'list' | 'card' = 'card';
   filteredEntities: CatalogueEntity[] = [];
+  activeChildCategories: CategoryInfo[] = [];
+
+  get parentCategories(): CategoryInfo[] {
+    return this.categories.filter(c => !c.parent_id);
+  }
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -432,9 +465,25 @@ export class CatalogueGridComponent implements OnChanges {
 
   setCategory(catId: string) {
     this.activeCategory = catId;
+    this.activeChildCategory = null;
     this.activeTag = '';
     this.selectedEntity = null;
+    this.activeChildCategories = catId !== 'all'
+      ? this.categories.filter(c => c.parent_id === catId)
+      : [];
     this.categoryChanged.emit(catId);
+    this.applyFilter();
+  }
+
+  setChildCategory(childId: string | null) {
+    this.activeChildCategory = childId;
+    this.activeTag = '';
+    this.selectedEntity = null;
+    if (childId) {
+      this.categoryChanged.emit(childId);
+    } else {
+      this.categoryChanged.emit(this.activeCategory);
+    }
     this.applyFilter();
   }
 
@@ -473,8 +522,15 @@ export class CatalogueGridComponent implements OnChanges {
 
   private applyFilter() {
     let result = this.entities;
-    if (this.activeCategory !== 'all') {
-      result = result.filter(e => e.category_id === this.activeCategory);
+    if (this.activeChildCategory) {
+      result = result.filter(e => e.category_id === this.activeChildCategory);
+    } else if (this.activeCategory !== 'all') {
+      // Include items in this category and any child categories
+      const childIds = this.categories
+        .filter(c => c.parent_id === this.activeCategory)
+        .map(c => c.id);
+      const validIds = new Set([this.activeCategory, ...childIds]);
+      result = result.filter(e => e.category_id && validIds.has(e.category_id));
     }
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();

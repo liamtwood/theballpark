@@ -29,4 +29,7 @@ export interface CategoryInfo {
   cover_image_url?: string;
   icon?: string;
   count?: number;
+  parent_id?: string;
+  tagline?: string;
+  description?: string;
 }

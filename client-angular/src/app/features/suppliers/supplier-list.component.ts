@@ -158,6 +158,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
             id: c.id,
             name: c.name,
             cover_image_url: c.cover_image_url,
+            parent_id: c.parent_id || undefined,
+            tagline: c.tagline,
+            description: c.description,
             count: this.categoryCounts[c.id] || 0
           }));
         this.cdr.detectChanges();
@@ -228,6 +231,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       cover_image_url: i.supplier_cover_url,
       image_display: i.image_url ? (i.image_display || 'cover') : (i.supplier_image_display || 'cover'),
       subtitle: i.supplier_name,
+      category_id: i.category_id,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
