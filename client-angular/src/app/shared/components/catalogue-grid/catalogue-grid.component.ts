@@ -43,7 +43,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <div class="bp-cat-circle"
             [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
             [class.bp-cat-circle--no-image]="!cat.cover_image_url">
-            <span *ngIf="!cat.cover_image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            <lucide-icon *ngIf="!cat.cover_image_url && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
+            <span *ngIf="!cat.cover_image_url && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
           </div>
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
         </button>
@@ -273,6 +274,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-cat-circle-icon { color: var(--theme-accent); }
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }

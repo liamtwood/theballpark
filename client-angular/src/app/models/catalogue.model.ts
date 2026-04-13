@@ -27,5 +27,6 @@ export interface CategoryInfo {
   id: string;
   name: string;
   cover_image_url?: string;
+  icon?: string;
   count?: number;
 }

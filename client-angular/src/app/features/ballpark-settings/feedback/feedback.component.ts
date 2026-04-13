@@ -106,6 +106,10 @@ export class FeedbackComponent implements OnInit {
   entries: FeedbackEntry[] = [];
   emptySet = new Set<string>();
 
+  private iconMap: Record<string, string> = {
+    'Bug': 'bug', 'Enhancement': 'lightbulb', 'Question': 'circle-help', 'Prompt': 'clipboard-pen'
+  };
+
   showDrawer = false;
   selectedEntry: FeedbackEntry | null = null;
 
@@ -131,7 +135,8 @@ export class FeedbackComponent implements OnInit {
     this.parentCategories = parents.map(p => ({
       id: p.id,
       name: p.name,
-      cover_image_url: p.cover_image_url
+      cover_image_url: p.cover_image_url,
+      icon: this.iconMap[p.name]
     }));
   }
 
@@ -158,6 +163,7 @@ export class FeedbackComponent implements OnInit {
           id: p.id,
           name: p.name,
           cover_image_url: p.cover_image_url,
+          icon: this.iconMap[p.name],
           count: this.entries.filter(e => e.category_id === p.id).length
         }));
         this.loading = false;
