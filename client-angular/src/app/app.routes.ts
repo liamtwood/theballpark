@@ -105,7 +105,7 @@ export const routes: Routes = [
       {
         path: 'meeting/:id',
         loadComponent: () => import('./features/meeting/meeting-detail.component').then(m => m.MeetingDetailComponent),
-        data: { pageLabel: '', tabs: [] }
+        data: { pageLabel: '', tabs: [], hideHero: true }
       },
 
       // ── ABOUT ──
