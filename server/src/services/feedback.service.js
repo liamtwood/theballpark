@@ -63,11 +63,11 @@ async function getChildren(parentId) {
 }
 
 async function create(data) {
-  const { category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, meeting_date, parent_id, agenda } = data;
+  const { category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, meeting_date, parent_id, agenda, type, meeting_time, description } = data;
   const result = await pool.query(
-    `INSERT INTO shared.feedback (category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, meeting_date, parent_id, agenda)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-    [category_id || null, subcategory_id || null, title, notes || null, page_url || null, submitted_by || null, environment || 'preview', owner || null, due_date || null, meeting_date || null, parent_id || null, agenda || []]
+    `INSERT INTO shared.feedback (category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, meeting_date, parent_id, agenda, type, meeting_time, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+    [category_id || null, subcategory_id || null, title, notes || null, page_url || null, submitted_by || null, environment || 'preview', owner || null, due_date || null, meeting_date || null, parent_id || null, agenda || [], type || null, meeting_time || null, description || null]
   );
   return result.rows[0];
 }
@@ -77,7 +77,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda', 'completed'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'meeting_date', 'agenda', 'completed', 'type', 'meeting_time', 'description'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;
