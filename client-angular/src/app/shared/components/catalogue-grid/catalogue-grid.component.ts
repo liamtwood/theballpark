@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
   ChevronRight, ChevronLeft, MapPin, SquarePen
@@ -15,7 +16,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    InputTextModule, ButtonModule,
+    InputTextModule, ButtonModule, SelectButtonModule,
     LucideAngularModule, GbpPipe
   ],
   template: `
@@ -29,23 +30,69 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 
     <!-- CATEGORY CIRCLES -->
     <div class="bp-cat-circles-wrap" *ngIf="categories.length">
-      <div class="bp-cat-circles">
+      <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
+        (click)="scrollCircles(-200)">
+        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+      </button>
+      <div class="bp-cat-circles" #circlesRow (scroll)="onCirclesScroll()">
         <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
           <div class="bp-cat-circle bp-cat-circle--all">
             <lucide-icon name="layers" [size]="22"></lucide-icon>
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
-        <button *ngFor="let cat of categories"
+        <button *ngFor="let cat of parentCategories"
           class="bp-cat-circle-btn"
           [class.active]="activeCategory === cat.id"
           (click)="setCategory(cat.id)">
           <div class="bp-cat-circle"
             [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
-            [class.bp-cat-circle--no-image]="!cat.cover_image_url">
-            <span *ngIf="!cat.cover_image_url" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
+            [class.bp-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
+            [class.bp-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
+            <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-cat-circle-logo-img"/>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="28" class="bp-cat-circle-lucide"></lucide-icon>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
+            <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+            <button *ngIf="showEdit" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
+              <lucide-icon name="square-pen" [size]="12"></lucide-icon>
+            </button>
           </div>
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
+        </button>
+      </div>
+      <button class="bp-circles-arrow bp-circles-arrow--right" *ngIf="canScrollRight"
+        (click)="scrollCircles(200)">
+        <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- CHILD CATEGORY CIRCLES (when parent selected and has children) -->
+    <div class="bp-cat-circles-wrap bp-child-circles-wrap" *ngIf="activeChildCategories.length">
+      <div class="bp-cat-circles">
+        <button class="bp-cat-circle-btn bp-cat-circle-btn--child"
+          [class.active]="!activeChildCategory"
+          (click)="setChildCategory(null)">
+          <div class="bp-cat-circle bp-cat-circle--sm bp-cat-circle--all">
+            <lucide-icon name="layers" [size]="16"></lucide-icon>
+          </div>
+          <span class="bp-cat-circle-label">All</span>
+        </button>
+        <button *ngFor="let child of activeChildCategories"
+          class="bp-cat-circle-btn bp-cat-circle-btn--child"
+          [class.active]="activeChildCategory === child.id"
+          (click)="setChildCategory(child.id)">
+          <div class="bp-cat-circle bp-cat-circle--sm"
+            [style.background-image]="child.cover_image_url ? 'url(' + child.cover_image_url + ')' : null"
+            [style.background-color]="!child.cover_image_url && child.icon_name && child.icon_color ? child.icon_color : null"
+            [class.bp-cat-circle--no-image]="!child.cover_image_url && !child.icon_name">
+            <lucide-icon *ngIf="!child.cover_image_url && child.icon_name" [name]="child.icon_name" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+            <span *ngIf="!child.cover_image_url && !child.icon_name" class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
+            <button *ngIf="showEdit" class="bp-cat-circle-edit bp-cat-circle-edit--sm" (click)="onCategoryEdit($event, child)" title="Edit image">
+              <lucide-icon name="square-pen" [size]="10"></lucide-icon>
+            </button>
+          </div>
+          <span class="bp-cat-circle-label">{{ child.name }}</span>
         </button>
       </div>
     </div>
@@ -67,7 +114,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             <span>All</span>
             <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
           </button>
-          <button *ngFor="let cat of categories"
+          <button *ngFor="let cat of parentCategories"
             class="bp-sidebar-item"
             (click)="setCategory(cat.id)">
             <span>{{ cat.name }}</span>
@@ -96,6 +143,13 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
+          <div class="bp-model-toggle-wrap" *ngIf="hasModels && activeCategory !== 'all'">
+            <p-selectButton [options]="modelOptions" [(ngModel)]="activeModel"
+              (onChange)="onModelChange($event.value)"
+              styleClass="bp-model-toggle" optionLabel="label" optionValue="value">
+            </p-selectButton>
+            <span class="bp-model-hint">{{ modelLabel }}</span>
+          </div>
           <div class="bp-view-toggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
@@ -265,14 +319,55 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-grid-back-btn:hover { opacity: 0.75; }
 
-    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); }
-    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; justify-content: center; }
+    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: hidden; }
+    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
+    .bp-circles-arrow {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: var(--color-surface); border: 0.5px solid var(--color-border);
+      color: var(--theme-accent); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 32px; transition: all 0.15s; z-index: 2;
+    }
+    .bp-circles-arrow:hover { border-color: var(--theme-accent); }
+    .bp-circles-arrow--left { margin-right: 8px; }
+    .bp-circles-arrow--right { margin-left: 8px; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
-    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); }
+    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-cat-circle-icon { color: var(--theme-accent); }
+    .bp-cat-circle-lucide { color: var(--color-text-muted); }
+    .bp-cat-circle--logo { background: var(--theme-bg); }
+    .bp-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
+    .bp-cat-circle-edit {
+      position: absolute; bottom: 2px; right: 2px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--color-text-muted); transition: all 0.15s;
+      opacity: 0; pointer-events: none;
+    }
+    .bp-cat-circle-edit--sm { width: 18px; height: 18px; bottom: 0; right: 0; }
+    .bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
+    .bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+    /* Model toggle */
+    .bp-model-toggle-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .bp-model-hint { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
+    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-button {
+      padding: 3px 10px !important; font-size: 11px !important; font-weight: 600 !important;
+      min-width: 28px !important; border-color: var(--color-border) !important;
+      background: var(--color-surface) !important; color: var(--color-text-muted) !important;
+    }
+    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-highlight {
+      background: var(--theme-accent) !important; color: #fff !important;
+      border-color: var(--theme-accent) !important;
+    }
+
+    .bp-child-circles-wrap { padding-top: 0; margin-top: -8px; }
+    .bp-cat-circle-btn--child .bp-cat-circle--sm { width: 64px; height: 64px; }
+    .bp-cat-circle-btn--child .bp-cat-circle-label { font-size: 10px; }
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
@@ -378,11 +473,11 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     }
   `]
 })
-export class CatalogueGridComponent implements OnChanges {
+export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   @Input() tags: string[] = [];
-  @Input() entityType: 'item' | 'supplier' = 'item';
+  @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
   @Input() sectionTitle: string = 'CATALOGUE';
   @Input() actionLabel: string = 'View';
@@ -402,20 +497,79 @@ export class CatalogueGridComponent implements OnChanges {
   @Output() categoryChanged = new EventEmitter<string>();
   @Output() tagChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
+  @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
+  activeChildCategory: string | null = null;
   activeTag = '';
+  activeModel = 'A';
   searchQuery = '';
   layout: 'list' | 'card' = 'card';
   filteredEntities: CatalogueEntity[] = [];
+  activeChildCategories: CategoryInfo[] = [];
+
+  modelOptions = [
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'C', value: 'C' },
+    { label: 'D', value: 'D' }
+  ];
+
+  private modelLabels: Record<string, string> = {
+    'A': 'Browse by format',
+    'B': 'Browse by meal occasion',
+    'C': 'Browse by event type',
+    'D': 'Browse by budget'
+  };
+
+  get modelLabel(): string { return this.modelLabels[this.activeModel] || ''; }
+
+  get hasModels(): boolean {
+    if (this.activeCategory === 'all') return false;
+    const models = new Set(
+      this.categories.filter(c => c.parent_id === this.activeCategory).map(c => c.model || 'A')
+    );
+    return models.size > 1;
+  }
+
+  get parentCategories(): CategoryInfo[] {
+    return this.categories.filter(c => !c.parent_id);
+  }
+
+  @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
+  canScrollLeft = false;
+  canScrollRight = false;
 
   constructor(private cdr: ChangeDetectorRef) {}
+
+  ngAfterViewInit() { this.checkScrollArrows(); }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['entities']) {
       this.applyFilter();
     }
+    if (changes['categories']) {
+      setTimeout(() => this.checkScrollArrows(), 0);
+    }
+  }
+
+  scrollCircles(delta: number) {
+    const el = this.circlesRowRef?.nativeElement;
+    if (el) {
+      el.scrollBy({ left: delta, behavior: 'smooth' });
+      setTimeout(() => this.checkScrollArrows(), 350);
+    }
+  }
+
+  onCirclesScroll() { this.checkScrollArrows(); }
+
+  private checkScrollArrows() {
+    const el = this.circlesRowRef?.nativeElement;
+    if (!el) return;
+    this.canScrollLeft = el.scrollLeft > 0;
+    this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    this.cdr.detectChanges();
   }
 
   getImageUrl(e: CatalogueEntity): string | null {
@@ -430,10 +584,42 @@ export class CatalogueGridComponent implements OnChanges {
 
   setCategory(catId: string) {
     this.activeCategory = catId;
+    this.activeChildCategory = null;
     this.activeTag = '';
+    this.activeModel = 'A';
     this.selectedEntity = null;
+    this.updateChildCategories();
     this.categoryChanged.emit(catId);
     this.applyFilter();
+  }
+
+  setChildCategory(childId: string | null) {
+    this.activeChildCategory = childId;
+    this.activeTag = '';
+    this.selectedEntity = null;
+    if (childId && this.activeModel === 'A') {
+      this.categoryChanged.emit(childId);
+    } else {
+      this.categoryChanged.emit(this.activeCategory);
+    }
+    this.applyFilter();
+  }
+
+  onModelChange(model: string) {
+    this.activeModel = model;
+    this.activeChildCategory = null;
+    this.activeTag = '';
+    this.selectedEntity = null;
+    this.updateChildCategories();
+    this.applyFilter();
+  }
+
+  private updateChildCategories() {
+    this.activeChildCategories = this.activeCategory !== 'all'
+      ? this.categories.filter(c =>
+          c.parent_id === this.activeCategory && (c.model || 'A') === this.activeModel
+        )
+      : [];
   }
 
   onBack() {
@@ -456,6 +642,11 @@ export class CatalogueGridComponent implements OnChanges {
     this.imageEditRequested.emit(e);
   }
 
+  onCategoryEdit(event: MouseEvent, cat: CategoryInfo) {
+    event.stopPropagation();
+    this.categoryImageEditRequested.emit(cat);
+  }
+
   onToggleFav(event: any, e: CatalogueEntity) {
     if (event.stopPropagation) event.stopPropagation();
     this.favouriteToggled.emit(e.id);
@@ -471,9 +662,39 @@ export class CatalogueGridComponent implements OnChanges {
 
   private applyFilter() {
     let result = this.entities;
+
     if (this.activeCategory !== 'all') {
-      result = result.filter(e => e.category_id === this.activeCategory);
+      // First: scope to parent category and its model-A children (the actual item assignments)
+      const modelAChildIds = this.categories
+        .filter(c => c.parent_id === this.activeCategory && (c.model || 'A') === 'A')
+        .map(c => c.id);
+      const validIds = new Set([this.activeCategory, ...modelAChildIds]);
+      result = result.filter(e => e.category_id && validIds.has(e.category_id));
+
+      // Then: apply child filter based on active model
+      if (this.activeChildCategory) {
+        if (this.activeModel === 'A') {
+          result = result.filter(e => e.category_id === this.activeChildCategory);
+        } else {
+          // Models B/C/D: filter by item tags or name matching child category keywords
+          const child = this.categories.find(c => c.id === this.activeChildCategory);
+          if (child) {
+            const childName = child.name.toLowerCase();
+            const keywords = childName.split(/\s*[&,]\s*|\s+/).filter(w => w.length > 2);
+            result = result.filter(e => {
+              const raw = e._raw;
+              const tags: string[] = raw?.tags || [];
+              const haystack = [
+                e.name.toLowerCase(),
+                ...tags.map(t => t.toLowerCase())
+              ].join(' ');
+              return keywords.some(kw => haystack.includes(kw));
+            });
+          }
+        }
+      }
     }
+
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();
       result = result.filter(e =>

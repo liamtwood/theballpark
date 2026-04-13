@@ -41,7 +41,8 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
           (parentClicked)="onParentClicked($event)"
           (categoryChanged)="onCategoryChanged($event)"
           (tagChanged)="onTagChanged($event)"
-          (searchChanged)="onSearchChanged($event)">
+          (searchChanged)="onSearchChanged($event)"
+          (categoryImageEditRequested)="onCategoryImageEdit($event)">
           <div catalogue-toggles class="bp-cat-toggle-wrap">
             <button class="bp-toggle-btn" [class.active]="viewMode === 'items'"
               (click)="switchMode('items')">Items</button>
@@ -72,6 +73,15 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         (imagesUpdated)="onSupplierImageUpdated($event)"
         (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
+
+      <app-image-upload-panel
+        *ngIf="categoryUploadId"
+        [entityId]="categoryUploadId"
+        type="category"
+        [existingCoverUrl]="categoryUploadCoverUrl"
+        (imagesUpdated)="onCategoryImageUpdated($event)"
+        (closed)="categoryUploadId = ''">
+      </app-image-upload-panel>
     </div>
   `,
   styles: [`
@@ -97,6 +107,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   categoryCounts: Record<string, number> = {};
 
   // Image upload
+  categoryUploadId = '';
+  categoryUploadCoverUrl = '';
   uploadEntityId = '';
   uploadCoverUrl = '';
   uploadLogoUrl = '';
@@ -158,6 +170,13 @@ export class SupplierListComponent implements OnInit, OnDestroy {
             id: c.id,
             name: c.name,
             cover_image_url: c.cover_image_url,
+            logo_url: c.logo_url,
+            icon_name: c.icon_name,
+            icon_color: c.icon_color,
+            parent_id: c.parent_id || undefined,
+            tagline: c.tagline,
+            description: c.description,
+            model: c.model || 'A',
             count: this.categoryCounts[c.id] || 0
           }));
         this.cdr.detectChanges();
@@ -228,6 +247,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       cover_image_url: i.supplier_cover_url,
       image_display: i.image_url ? (i.image_display || 'cover') : (i.supplier_image_display || 'cover'),
       subtitle: i.supplier_name,
+      category_id: i.category_id,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
@@ -375,6 +395,23 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     }
     this.mapSuppliers();
     this.uploadEntityId = '';
+    this.cdr.detectChanges();
+  }
+
+  onCategoryImageEdit(cat: CategoryInfo) {
+    this.categoryUploadId = cat.id;
+    this.categoryUploadCoverUrl = cat.cover_image_url || '';
+    this.cdr.detectChanges();
+  }
+
+  onCategoryImageUpdated(event: { coverUrl: string; cardColor?: string }) {
+    const cat = this.categories.find(c => c.id === this.categoryUploadId);
+    if (cat && event.coverUrl !== undefined) {
+      cat.cover_image_url = event.coverUrl;
+      this.categorySvc.patch(this.categoryUploadId, { cover_image_url: event.coverUrl }).subscribe();
+    }
+    this.categories = [...this.categories];
+    this.categoryUploadId = '';
     this.cdr.detectChanges();
   }
 }
