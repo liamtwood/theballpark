@@ -11,7 +11,7 @@ import {
   Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
   Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
   Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft, Store,
-  MessageSquare,
+  MessageSquare, Bug, Lightbulb, CircleHelp, ClipboardPen,
 } from 'lucide-angular';
 import { routes } from './app.routes';
 
@@ -31,7 +31,7 @@ export const appConfig: ApplicationConfig = {
         Sparkles, LoaderCircle, Inbox, Folder, FileText, List, Package,
         Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
         Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft, Store,
-        MessageSquare,
+        MessageSquare, Bug, Lightbulb, CircleHelp, ClipboardPen,
       }),
     },
   ]

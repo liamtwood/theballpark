@@ -7,6 +7,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule } from 'lucide-angular';
 import { CategoryService } from '../../../core/services/category.service';
 import { FeedbackService } from '../../../core/services/feedback.service';
 import { Category } from '../../../models';
@@ -15,7 +16,7 @@ interface CategoryOption {
   id: string;
   name: string;
   tagline?: string;
-  emoji: string;
+  icon: string;
 }
 
 @Component({
@@ -23,7 +24,8 @@ interface CategoryOption {
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    DialogModule, InputTextModule, InputTextareaModule, ButtonModule, ToastModule
+    DialogModule, InputTextModule, InputTextareaModule, ButtonModule, ToastModule,
+    LucideAngularModule
   ],
   providers: [MessageService],
   template: `
@@ -40,7 +42,7 @@ interface CategoryOption {
             class="bp-fb-cat-btn"
             [class.active]="selectedCategory?.id === cat.id"
             (click)="selectCategory(cat)">
-            <span class="bp-fb-cat-emoji">{{ cat.emoji }}</span>
+            <lucide-icon [name]="cat.icon" [size]="28" class="bp-fb-cat-icon"></lucide-icon>
             <span class="bp-fb-cat-name">{{ cat.name }}</span>
             <span class="bp-fb-cat-tagline">{{ cat.tagline }}</span>
           </button>
@@ -63,7 +65,10 @@ interface CategoryOption {
       <!-- STEP 3: Detail -->
       <div *ngIf="step === 3" class="bp-fb-step">
         <div class="bp-fb-context">
-          <span class="bp-fb-context-cat">{{ selectedCategory?.emoji }} {{ selectedCategory?.name }}</span>
+          <span class="bp-fb-context-cat">
+            <lucide-icon *ngIf="selectedCategory?.icon" [name]="selectedCategory!.icon" [size]="14"></lucide-icon>
+            {{ selectedCategory?.name }}
+          </span>
           <span class="bp-fb-context-sep" *ngIf="selectedSubcategory"> &rsaquo; </span>
           <span class="bp-fb-context-sub" *ngIf="selectedSubcategory">{{ selectedSubcategory.name }}</span>
         </div>
@@ -111,7 +116,7 @@ interface CategoryOption {
     .bp-fb-cat-btn.active {
       border-color: var(--theme-accent); background: var(--theme-bg);
     }
-    .bp-fb-cat-emoji { font-size: 28px; line-height: 1; }
+    .bp-fb-cat-icon { color: var(--theme-accent); }
     .bp-fb-cat-name {
       font-size: 14px; font-weight: 600; color: var(--color-text-primary);
     }
@@ -171,11 +176,11 @@ export class FeedbackDialogComponent implements OnInit {
   notes = '';
   titlePlaceholder = '';
 
-  private emojiMap: Record<string, string> = {
-    'Bug': '\uD83D\uDC1B',
-    'Enhancement': '\uD83D\uDCA1',
-    'Question': '\u2753',
-    'Prompt': '\uD83D\uDCDD'
+  private iconMap: Record<string, string> = {
+    'Bug': 'bug',
+    'Enhancement': 'lightbulb',
+    'Question': 'circle-help',
+    'Prompt': 'clipboard-pen'
   };
 
   private placeholderMap: Record<string, string> = {
@@ -202,7 +207,7 @@ export class FeedbackDialogComponent implements OnInit {
             id: c.id,
             name: c.name,
             tagline: c.tagline,
-            emoji: this.emojiMap[c.name] || '\uD83D\uDCCC'
+            icon: this.iconMap[c.name] || 'message-square'
           }));
         this.cdr.detectChanges();
       }
