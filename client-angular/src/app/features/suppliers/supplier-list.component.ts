@@ -79,6 +79,8 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         [entityId]="categoryUploadId"
         type="category"
         [existingCoverUrl]="categoryUploadCoverUrl"
+        [existingIconName]="categoryUploadIconName"
+        [existingIconColor]="categoryUploadIconColor"
         (imagesUpdated)="onCategoryImageUpdated($event)"
         (closed)="categoryUploadId = ''">
       </app-image-upload-panel>
@@ -109,6 +111,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // Image upload
   categoryUploadId = '';
   categoryUploadCoverUrl = '';
+  categoryUploadIconName = '';
+  categoryUploadIconColor = '';
   uploadEntityId = '';
   uploadCoverUrl = '';
   uploadLogoUrl = '';
@@ -401,14 +405,17 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   onCategoryImageEdit(cat: CategoryInfo) {
     this.categoryUploadId = cat.id;
     this.categoryUploadCoverUrl = cat.cover_image_url || '';
+    this.categoryUploadIconName = cat.icon_name || '';
+    this.categoryUploadIconColor = cat.icon_color || '';
     this.cdr.detectChanges();
   }
 
-  onCategoryImageUpdated(event: { coverUrl: string; cardColor?: string }) {
+  onCategoryImageUpdated(event: { coverUrl: string; cardColor?: string; iconName?: string; iconColor?: string }) {
     const cat = this.categories.find(c => c.id === this.categoryUploadId);
-    if (cat && event.coverUrl !== undefined) {
-      cat.cover_image_url = event.coverUrl;
-      this.categorySvc.patch(this.categoryUploadId, { cover_image_url: event.coverUrl }).subscribe();
+    if (cat) {
+      if (event.coverUrl !== undefined) cat.cover_image_url = event.coverUrl;
+      if (event.iconName) cat.icon_name = event.iconName;
+      if (event.iconColor) cat.icon_color = event.iconColor;
     }
     this.categories = [...this.categories];
     this.categoryUploadId = '';
