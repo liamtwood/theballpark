@@ -137,6 +137,7 @@ app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
+app.use('/api/feedback', require('./routes/feedback'));
 
 // Centralised error handler
 app.use((err, req, res, next) => {

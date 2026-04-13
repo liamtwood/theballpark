@@ -363,6 +363,19 @@ const migrate = async () => {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      -- Feedback (cross-environment capture)
+      CREATE TABLE IF NOT EXISTS shared.feedback (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        category_id UUID,
+        subcategory_id UUID,
+        title VARCHAR(255) NOT NULL,
+        notes TEXT,
+        page_url VARCHAR(500),
+        submitted_by VARCHAR(100),
+        environment VARCHAR(20) DEFAULT 'preview',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
       -- Feature flags (cross-environment config)
       CREATE TABLE IF NOT EXISTS shared.feature_flags (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

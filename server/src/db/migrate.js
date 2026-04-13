@@ -290,6 +290,36 @@ const migrate = async () => {
     `);
 
     console.log('All tables created successfully.');
+
+    // ── Seed feedback categories (idempotent) ────────────────────────────
+    const feedbackParents = [
+      { name: 'Bug', tagline: "Something isn't working", description: 'Log anything broken, inconsistent or behaving unexpectedly. No detail too small.', tags: '{UI Glitch,Data Issue,Performance,Crash}', sort: 0, children: ['UI Glitch', 'Data Issue', 'Performance', 'Crash'] },
+      { name: 'Enhancement', tagline: 'Make it better', description: 'Feature requests, improvements and nice-to-haves. How should Ballpark work better for you?', tags: '{Feature Request,Improvement,Nice to Have}', sort: 1, children: ['Feature Request', 'Improvement', 'Nice to Have'] },
+      { name: 'Question', tagline: 'Something we need to discuss', description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.', tags: '{Product Question,Pricing Question,Process Question}', sort: 2, children: ['Product Question', 'Pricing Question', 'Process Question', 'Technical Question'] },
+      { name: 'Prompt', tagline: 'A requirement or instruction for the build', description: 'Capture specific requirements, design directions and build instructions directly from the session.', tags: '{Requirement,Instruction,Design Direction}', sort: 3, children: ['Requirement', 'Instruction', 'Design Direction'] }
+    ];
+    for (const fp of feedbackParents) {
+      const r = await client.query(
+        `INSERT INTO categories (name, tagline, description, tags, sort_order, namespace)
+         SELECT $1, $2, $3, $4::text[], $5, 'feedback'
+         WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = $1 AND namespace = 'feedback' AND parent_id IS NULL)
+         RETURNING id`,
+        [fp.name, fp.tagline, fp.description, fp.tags, fp.sort]
+      );
+      if (r.rows.length) {
+        const parentId = r.rows[0].id;
+        for (let i = 0; i < fp.children.length; i++) {
+          await client.query(
+            `INSERT INTO categories (name, parent_id, sort_order, namespace)
+             SELECT $1, $2, $3, 'feedback'
+             WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND namespace = 'feedback')`,
+            [fp.children[i], parentId, i]
+          );
+        }
+      }
+    }
+    console.log('Feedback categories ensured.');
+
   } catch (err) {
     console.error('Migration failed:', err.message);
     throw err;
