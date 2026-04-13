@@ -85,7 +85,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <div *ngFor="let c of actions" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed">
               <p-checkbox [(ngModel)]="c.completed" [binary]="true"
                 (onChange)="toggleComplete(c)" styleClass="bp-mtg-check"></p-checkbox>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
+              <input class="bp-mtg-row-title bp-mtg-row-edit" [(ngModel)]="c.title"
+                (blur)="saveChildTitle(c)"/>
               <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
               <button class="bp-mtg-remove" (click)="removeChild(c)">
                 <lucide-icon name="x" [size]="12"></lucide-icon>
@@ -110,7 +111,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <div class="bp-mtg-section-label">BUGS</div>
             <div *ngFor="let c of bugs" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed">
               <lucide-icon name="bug" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
+              <input class="bp-mtg-row-title bp-mtg-row-edit" [(ngModel)]="c.title"
+                (blur)="saveChildTitle(c)"/>
               <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
               <button class="bp-mtg-remove" (click)="removeChild(c)">
                 <lucide-icon name="x" [size]="12"></lucide-icon>
@@ -135,7 +137,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <div class="bp-mtg-section-label">ENHANCEMENTS</div>
             <div *ngFor="let c of enhancements" class="bp-mtg-row" [class.bp-mtg-row--done]="c.completed">
               <lucide-icon name="lightbulb" [size]="14" class="bp-mtg-type-icon"></lucide-icon>
-              <span class="bp-mtg-row-title">{{ c.title }}</span>
+              <input class="bp-mtg-row-title bp-mtg-row-edit" [(ngModel)]="c.title"
+                (blur)="saveChildTitle(c)"/>
               <span class="bp-mtg-owner" *ngIf="c.owner">{{ getInitials(c.owner) }}</span>
               <button class="bp-mtg-remove" (click)="removeChild(c)">
                 <lucide-icon name="x" [size]="12"></lucide-icon>
@@ -290,6 +293,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       flex: 1; font-size: 13px; color: var(--color-text-primary);
       min-width: 0; word-wrap: break-word;
     }
+    .bp-mtg-row-edit {
+      border: none; outline: none; background: transparent;
+      font-family: var(--font-body); padding: 2px 0; width: 100%;
+    }
+    .bp-mtg-row-edit:focus { background: var(--theme-bg); border-radius: 4px; padding: 2px 6px; }
     .bp-mtg-type-icon { color: var(--theme-accent); flex-shrink: 0; }
     .bp-mtg-owner {
       width: 28px; height: 28px; border-radius: 50%; font-size: 10px; font-weight: 600;
@@ -442,6 +450,12 @@ export class MeetingDetailComponent implements OnInit {
       },
       error: (err: any) => { console.error('Failed to add child:', err); }
     });
+  }
+
+  saveChildTitle(child: FeedbackEntry) {
+    if (child.title?.trim()) {
+      this.feedbackSvc.patch(child.id, { title: child.title }).subscribe();
+    }
   }
 
   toggleComplete(child: FeedbackEntry) {
