@@ -7,6 +7,7 @@ import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, Folde
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
+import { FeedbackService } from '../core/services/feedback.service';
 import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
@@ -38,9 +39,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
         </a>
-        <a href="/meeting/today" target="_blank" class="bp-nav-link">
+        <button class="bp-nav-link" (click)="createMeeting()" style="border:none;background:none;cursor:pointer;">
           <lucide-icon name="clipboard-pen" [size]="14"></lucide-icon> Meeting
-        </a>
+        </button>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
@@ -228,6 +229,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     private configService: ConfigService,
     private orgService: OrgService,
     private shellCtx: ShellContextService,
+    private feedbackSvc: FeedbackService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -294,6 +296,20 @@ export class TopNavComponent implements OnInit, OnDestroy {
     const mode = this.isDark ? 'dark' : 'light';
     localStorage.setItem('bp-mode', mode);
     this.configService.update({ mode });
+  }
+
+  createMeeting() {
+    const today = new Date();
+    const title = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' Meeting';
+    this.feedbackSvc.create({
+      title,
+      meeting_date: today.toISOString().split('T')[0],
+      agenda: ['Finding items demo', 'AI brief parser', 'Open discussion']
+    }).subscribe({
+      next: (entry) => {
+        window.open('/meeting/' + entry.id, '_blank');
+      }
+    });
   }
 
   ngOnDestroy() {
