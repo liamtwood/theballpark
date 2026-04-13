@@ -63,6 +63,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <div class="bp-mtg-section-label">AGENDA</div>
             <div class="bp-mtg-agenda-list">
               <div *ngFor="let item of agenda; let i = index; trackBy: trackIdx" class="bp-mtg-agenda-item">
+                <div class="bp-mtg-reorder">
+                  <button class="bp-mtg-reorder-btn" [disabled]="i === 0" (click)="moveAgenda(i, -1)">
+                    <lucide-icon name="chevron-up" [size]="10"></lucide-icon>
+                  </button>
+                  <button class="bp-mtg-reorder-btn" [disabled]="i === agenda.length - 1" (click)="moveAgenda(i, 1)">
+                    <lucide-icon name="chevron-down" [size]="10"></lucide-icon>
+                  </button>
+                </div>
                 <span class="bp-mtg-agenda-num">{{ i + 1 }}.</span>
                 <input class="bp-mtg-agenda-input" [(ngModel)]="agenda[i]"
                   (blur)="saveAgenda()" placeholder="Agenda item..."/>
@@ -309,6 +317,18 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       font-size: 14px; color: var(--color-text-primary); font-family: var(--font-body); padding: 3px 0;
     }
     .bp-mtg-agenda-input::placeholder { color: var(--color-text-muted); }
+    .bp-mtg-reorder {
+      display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .bp-mtg-agenda-item:hover .bp-mtg-reorder { opacity: 1; }
+    .bp-mtg-reorder-btn {
+      width: 16px; height: 12px; border: none; background: transparent;
+      cursor: pointer; color: var(--color-text-muted); display: flex;
+      align-items: center; justify-content: center; padding: 0;
+    }
+    .bp-mtg-reorder-btn:hover:not(:disabled) { color: var(--theme-accent); }
+    .bp-mtg-reorder-btn:disabled { opacity: 0.2; cursor: default; }
 
     .bp-mtg-remove {
       width: 20px; height: 20px; border: none; background: transparent;
@@ -509,6 +529,13 @@ export class MeetingDetailComponent implements OnInit {
     this.saveAgenda();
   }
   removeAgenda(i: number) { this.agenda.splice(i, 1); this.saveAgenda(); }
+  moveAgenda(i: number, dir: number) {
+    const j = i + dir;
+    if (j < 0 || j >= this.agenda.length) return;
+    [this.agenda[i], this.agenda[j]] = [this.agenda[j], this.agenda[i]];
+    this.agenda = [...this.agenda];
+    this.saveAgenda();
+  }
   saveAgenda() { if (this.entry) this.feedbackSvc.patch(this.entry.id, { agenda: this.agenda }).subscribe(); }
   trackIdx(i: number) { return i; }
 
