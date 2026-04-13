@@ -12,7 +12,7 @@ import {
   Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
   Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft, Store,
   MessageSquare, Bug, Lightbulb, CircleHelp, ClipboardPen,
-  Utensils, Music, Mic, Tv, Flower2, Zap, Camera, Coffee,
+  ChevronUp, Utensils, Music, Mic, Tv, Flower2, Zap, Camera, Coffee,
   ShoppingBag, Award, Briefcase, Globe, Wine, Star,
 } from 'lucide-angular';
 import { routes } from './app.routes';
@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
         Truck, ChevronDown, ChevronRight, ArrowLeft, Mail, Phone, Pencil, X, Image, Check, SquarePen, Search,
         Warehouse, Spotlight, Headset, Signature, Martini, PersonStanding, CheckSquare, AlertTriangle, ChevronLeft, Store,
         MessageSquare, Bug, Lightbulb, CircleHelp, ClipboardPen,
-        Utensils, Music, Mic, Tv, Flower2, Zap, Camera, Coffee,
+        ChevronUp, Utensils, Music, Mic, Tv, Flower2, Zap, Camera, Coffee,
         ShoppingBag, Award, Briefcase, Globe, Wine, Star,
       }),
     },
