@@ -5,6 +5,10 @@ router.get('/', async (req, res, next) => {
   try { res.json(await FeedbackService.getAll()); } catch (err) { next(err); }
 });
 
+router.get('/today', async (req, res, next) => {
+  try { res.json(await FeedbackService.getToday()); } catch (err) { next(err); }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const entry = await FeedbackService.getById(req.params.id);
@@ -26,6 +30,13 @@ router.patch('/:id', async (req, res, next) => {
     const entry = await FeedbackService.patch(req.params.id, req.body);
     if (!entry) return res.status(404).json({ error: 'Not found' });
     res.json(entry);
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await FeedbackService.remove(req.params.id);
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 
