@@ -14,6 +14,7 @@ export interface FeedbackEntry {
   due_date?: string;
   meeting_date?: string;
   parent_id?: string;
+  agenda?: string[];
   created_at: string;
   category_name?: string;
   subcategory_name?: string;
@@ -36,6 +37,8 @@ export const TEAM_MEMBERS: TeamMember[] = [
 export class FeedbackService {
   constructor(private api: ApiService) {}
   getAll() { return this.api.get<FeedbackEntry[]>('/feedback'); }
+  getById(id: string) { return this.api.get<FeedbackEntry>(`/feedback/${id}`); }
   getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
   create(data: Partial<FeedbackEntry>) { return this.api.post<FeedbackEntry>('/feedback', data); }
+  patch(id: string, data: Partial<FeedbackEntry>) { return this.api.patch<FeedbackEntry>(`/feedback/${id}`, data); }
 }

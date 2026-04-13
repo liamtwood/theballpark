@@ -378,6 +378,7 @@ const migrate = async () => {
         due_date DATE,
         meeting_date DATE,
         parent_id UUID REFERENCES shared.feedback(id),
+        agenda TEXT[] DEFAULT '{}',
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 

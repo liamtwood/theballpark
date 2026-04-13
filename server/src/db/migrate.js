@@ -294,6 +294,7 @@ const migrate = async () => {
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS due_date DATE;
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS meeting_date DATE;
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES shared.feedback(id);
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS agenda TEXT[] DEFAULT '{}';
     `);
 
     console.log('All tables created successfully.');

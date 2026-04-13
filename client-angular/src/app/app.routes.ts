@@ -101,6 +101,13 @@ export const routes: Routes = [
         }
       },
 
+      // ── MEETING ──
+      {
+        path: 'meeting/:id',
+        loadComponent: () => import('./features/meeting/meeting-detail.component').then(m => m.MeetingDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
+
       // ── ABOUT ──
       {
         path: 'about',
