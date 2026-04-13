@@ -81,9 +81,15 @@ import { InputTextModule } from 'primeng/inputtext';
             <input pInputText [value]="formatDate(selectedEntry.created_at)" class="w-full bp-field-readonly" readonly/>
           </div>
         </div>
-        <div *ngIf="selectedEntry.environment" class="mb-4">
-          <label class="bp-field-label">Environment</label>
-          <input pInputText [value]="selectedEntry.environment" class="w-full bp-field-readonly" readonly/>
+        <div class="bp-field-grid-2 mb-4">
+          <div>
+            <label class="bp-field-label">Logged by</label>
+            <input pInputText [value]="selectedEntry.submitted_by || '—'" class="w-full bp-field-readonly" readonly/>
+          </div>
+          <div *ngIf="selectedEntry.environment">
+            <label class="bp-field-label">Environment</label>
+            <input pInputText [value]="selectedEntry.environment" class="w-full bp-field-readonly" readonly/>
+          </div>
         </div>
       </div>
     </p-sidebar>
@@ -137,9 +143,13 @@ export class FeedbackComponent implements OnInit {
           id: e.id,
           name: e.title,
           description: e.notes,
-          subtitle: e.page_url || '',
+          subtitle: [e.page_url, e.submitted_by].filter(Boolean).join(' · ') || '',
           category_id: e.category_id,
           categoryLabel: e.category_name,
+          specs: [
+            ...(e.page_url ? [{ label: 'Page', value: e.page_url }] : []),
+            ...(e.submitted_by ? [{ label: 'Logged by', value: e.submitted_by }] : []),
+          ],
           _raw: e
         }));
         // Update category counts
