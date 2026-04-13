@@ -233,6 +233,11 @@ export class FeedbackComponent implements OnInit {
     this.selectedEntry = entity._raw || this.entries.find(e => e.id === entity.id) || null;
     this.childEntries = [];
     if (this.selectedEntry) {
+      // Meeting notes open in new tab
+      if (this.selectedEntry.meeting_date) {
+        window.open('/meeting/' + this.selectedEntry.id, '_blank');
+        return;
+      }
       this.showDrawer = true;
       // Load children
       this.feedbackSvc.getChildren(this.selectedEntry.id).subscribe({
