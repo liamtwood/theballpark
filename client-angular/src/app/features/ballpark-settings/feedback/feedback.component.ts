@@ -397,6 +397,7 @@ export class FeedbackComponent implements OnInit {
           subtitle: this.buildSubtitle(e),
           category_id: this.inferType(e),
           categoryLabel: this.inferType(e),
+          icon: this.getTypeIcon(e),
           specs: [
             ...(e.status ? [{ label: 'Status', value: e.status }] : []),
             ...(e.owner ? [{ label: 'Owner', value: e.owner }] : []),
