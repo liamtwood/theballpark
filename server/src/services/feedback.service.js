@@ -93,6 +93,8 @@ async function patch(id, data) {
 }
 
 async function remove(id) {
+  // Delete children first (foreign key constraint)
+  await pool.query('DELETE FROM shared.feedback WHERE parent_id = $1', [id]);
   await pool.query('DELETE FROM shared.feedback WHERE id = $1', [id]);
 }
 
