@@ -27,7 +27,7 @@ import { ModalComponent } from '../modal/modal.component';
       <div class="iup-tabs">
         <button class="iup-tab" [class.active]="activeTab === 'upload'" (click)="activeTab = 'upload'">Upload</button>
         <button class="iup-tab" [class.active]="activeTab === 'search'" (click)="activeTab = 'search'">Search</button>
-        <button *ngIf="type === 'category'" class="iup-tab" [class.active]="activeTab === 'icon'" (click)="activeTab = 'icon'">Icon</button>
+        <button class="iup-tab" [class.active]="activeTab === 'icon'" (click)="activeTab = 'icon'">Icon</button>
       </div>
 
       <!-- ═══ UPLOAD TAB ═══ -->
@@ -178,10 +178,10 @@ import { ModalComponent } from '../modal/modal.component';
       <!-- ═══ ICON TAB ═══ -->
       <ng-container *ngIf="activeTab === 'icon'">
 
-      <!-- Icon picker (category only) -->
+      <!-- Icon picker -->
       <div class="iup-section">
         <div class="iup-label">Lucide icon</div>
-        <div class="iup-hint-text">Select an icon for the category circle</div>
+        <div class="iup-hint-text">Select an icon to display when no image is set</div>
         <div class="iup-icon-grid">
           <button *ngFor="let ic of iconOptions" class="iup-icon-btn"
             [class.selected]="selectedIconName === ic"
@@ -550,8 +550,8 @@ export class ImageUploadPanelComponent implements OnInit {
         await firstValueFrom(this.api.patch(apiEndpoint, patch));
       }
 
-      // Category icon patch
-      if (this.type === 'category') {
+      // Icon patch for categories
+      if (this.type === 'category' && (this.selectedIconName || coverUrl !== this.existingCoverUrl)) {
         const catPatch: any = {};
         if (coverUrl !== this.existingCoverUrl) catPatch.cover_image_url = coverUrl;
         if (this.selectedIconName) catPatch.icon_name = this.selectedIconName;
@@ -566,8 +566,8 @@ export class ImageUploadPanelComponent implements OnInit {
         logoUrl,
         cardColor: this.type === 'project' ? this.selectedColor : undefined,
         imageDisplay: (this.type === 'supplier' || this.type === 'item') ? this.imageDisplay : undefined,
-        iconName: this.type === 'category' ? this.selectedIconName : undefined,
-        iconColor: this.type === 'category' ? this.selectedIconColor : undefined
+        iconName: this.selectedIconName || undefined,
+        iconColor: this.selectedIconColor || undefined
       });
       this.closed.emit();
 
