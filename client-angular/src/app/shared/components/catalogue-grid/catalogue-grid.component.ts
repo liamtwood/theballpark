@@ -173,7 +173,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
               [class.bp-list-img-default]="!getImageUrl(e)"
               [class.bp-list-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
               <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name"/>
-              <span *ngIf="!getImageUrl(e)" class="bp-list-initials">{{ e.name.charAt(0) }}</span>
+              <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="18" class="bp-list-icon"></lucide-icon>
+              <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-list-initials">{{ e.name.charAt(0) }}</span>
             </div>
             <div class="bp-list-body">
               <div class="bp-list-name">{{ e.name }}</div>
@@ -204,7 +205,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
                 [class.bp-item-card-img-default]="!getImageUrl(e)"
                 [class.bp-item-card-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
                 <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name" class="bp-card-logo-img"/>
-                <span *ngIf="!getImageUrl(e)" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
+                <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
+                <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
                   <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
                     <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -408,6 +410,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-list-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
     .bp-list-img-logo img { max-width: 36px; max-height: 36px; object-fit: contain; }
     .bp-list-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-list-icon { color: var(--theme-accent); }
     .bp-list-body { flex: 1; min-width: 0; }
     .bp-list-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
     .bp-list-sub { font-size: 12px; color: var(--color-text-muted); }
@@ -426,6 +429,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+    .bp-card-icon { color: var(--theme-accent); }
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
