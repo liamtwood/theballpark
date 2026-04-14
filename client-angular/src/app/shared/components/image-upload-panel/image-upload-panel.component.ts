@@ -23,6 +23,16 @@ import { ModalComponent } from '../modal/modal.component';
       (close)="cancel()"
       (confirm)="save()">
 
+      <!-- TAB BAR -->
+      <div class="iup-tabs">
+        <button class="iup-tab" [class.active]="activeTab === 'upload'" (click)="activeTab = 'upload'">Upload</button>
+        <button class="iup-tab" [class.active]="activeTab === 'search'" (click)="activeTab = 'search'">Search</button>
+        <button *ngIf="type === 'category'" class="iup-tab" [class.active]="activeTab === 'icon'" (click)="activeTab = 'icon'">Icon</button>
+      </div>
+
+      <!-- ═══ UPLOAD TAB ═══ -->
+      <ng-container *ngIf="activeTab === 'upload'">
+
       <!-- Cover / hero image -->
       <div class="iup-section">
         <div class="iup-label">
@@ -135,29 +145,10 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
-      <!-- Icon picker (category only) -->
-      <div class="iup-section" *ngIf="type === 'category'">
-        <div class="iup-label">Lucide icon</div>
-        <div class="iup-hint-text">Select an icon for the category circle</div>
-        <div class="iup-icon-grid">
-          <button *ngFor="let ic of iconOptions" class="iup-icon-btn"
-            [class.selected]="selectedIconName === ic"
-            (click)="selectedIconName = ic">
-            <lucide-icon [name]="ic" [size]="20"></lucide-icon>
-            <span class="iup-icon-label">{{ ic }}</span>
-          </button>
-        </div>
-        <div class="iup-label" style="margin-top:14px">Icon background</div>
-        <div class="iup-swatches">
-          <div *ngFor="let c of iconColors"
-               class="iup-swatch"
-               [class.selected]="selectedIconColor === c"
-               [style.background]="c"
-               (click)="selectedIconColor = c">
-            <span *ngIf="selectedIconColor === c" class="iup-swatch-check">✓</span>
-          </div>
-        </div>
-      </div>
+      </ng-container>
+
+      <!-- ═══ SEARCH TAB ═══ -->
+      <ng-container *ngIf="activeTab === 'search'">
 
       <!-- Unsplash search -->
       <div class="iup-section">
@@ -182,6 +173,37 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
+      </ng-container>
+
+      <!-- ═══ ICON TAB ═══ -->
+      <ng-container *ngIf="activeTab === 'icon'">
+
+      <!-- Icon picker (category only) -->
+      <div class="iup-section">
+        <div class="iup-label">Lucide icon</div>
+        <div class="iup-hint-text">Select an icon for the category circle</div>
+        <div class="iup-icon-grid">
+          <button *ngFor="let ic of iconOptions" class="iup-icon-btn"
+            [class.selected]="selectedIconName === ic"
+            (click)="selectedIconName = ic">
+            <lucide-icon [name]="ic" [size]="20"></lucide-icon>
+            <span class="iup-icon-label">{{ ic }}</span>
+          </button>
+        </div>
+        <div class="iup-label" style="margin-top:14px">Icon background</div>
+        <div class="iup-swatches">
+          <div *ngFor="let c of iconColors"
+               class="iup-swatch"
+               [class.selected]="selectedIconColor === c"
+               [style.background]="c"
+               (click)="selectedIconColor = c">
+            <span *ngIf="selectedIconColor === c" class="iup-swatch-check">✓</span>
+          </div>
+        </div>
+      </div>
+
+      </ng-container>
+
       <!-- Status / error -->
       <div *ngIf="processing" class="iup-status">
         <lucide-icon name="loader-circle" [size]="14" class="iup-spinner"></lucide-icon>
@@ -192,6 +214,21 @@ import { ModalComponent } from '../modal/modal.component';
     </app-modal>
   `,
   styles: [`
+    .iup-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--color-border, #D9CFC2);
+      margin-bottom: 16px;
+    }
+    .iup-tab {
+      padding: 8px 16px; font-size: 13px; font-weight: 500;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--color-text-muted, #6B7280); font-family: inherit;
+      border-bottom: 2px solid transparent; transition: all 0.15s;
+    }
+    .iup-tab:hover { color: var(--color-text-primary, #374151); }
+    .iup-tab.active {
+      color: var(--theme-accent, #D97706);
+      border-bottom-color: var(--theme-accent, #D97706);
+    }
     .iup-section { margin-bottom: 20px; }
     .iup-section:last-of-type { margin-bottom: 0; }
     .iup-label {
@@ -333,6 +370,7 @@ export class ImageUploadPanelComponent implements OnInit {
   imageDisplay: 'cover' | 'contain' = 'cover';
   selectedIconName = '';
   selectedIconColor = 'var(--theme-bg)';
+  activeTab: 'upload' | 'search' | 'icon' = 'upload';
   unsplashQuery = '';
   unsplashResults: { url: string; thumb: string; description: string; photographer: string }[] = [];
   unsplashSearching = false;
