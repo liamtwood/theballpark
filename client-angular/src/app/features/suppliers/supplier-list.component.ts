@@ -59,6 +59,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         type="item"
         [existingCoverUrl]="uploadCoverUrl"
         [existingImageDisplay]="uploadImageDisplay"
+        [searchTerm]="uploadSearchTerm"
         (imagesUpdated)="onItemImageUpdated($event)"
         (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
@@ -70,6 +71,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         [existingCoverUrl]="uploadCoverUrl"
         [existingLogoUrl]="uploadLogoUrl"
         [existingImageDisplay]="uploadImageDisplay"
+        [searchTerm]="uploadSearchTerm"
         (imagesUpdated)="onSupplierImageUpdated($event)"
         (closed)="uploadEntityId = ''">
       </app-image-upload-panel>
@@ -81,6 +83,7 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
         [existingCoverUrl]="categoryUploadCoverUrl"
         [existingIconName]="categoryUploadIconName"
         [existingIconColor]="categoryUploadIconColor"
+        [searchTerm]="categoryUploadSearchTerm"
         (imagesUpdated)="onCategoryImageUpdated($event)"
         (closed)="categoryUploadId = ''">
       </app-image-upload-panel>
@@ -113,7 +116,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   categoryUploadCoverUrl = '';
   categoryUploadIconName = '';
   categoryUploadIconColor = '';
+  categoryUploadSearchTerm = '';
   uploadEntityId = '';
+  uploadSearchTerm = '';
   uploadCoverUrl = '';
   uploadLogoUrl = '';
 
@@ -359,6 +364,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.uploadCoverUrl = entity.cover_image_url || entity.image_url || '';
     this.uploadLogoUrl = entity.logo_url || '';
     this.uploadImageDisplay = entity.image_display || 'cover';
+    this.uploadSearchTerm = entity.name;
     this.cdr.detectChanges();
   }
 
@@ -407,6 +413,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.categoryUploadCoverUrl = cat.cover_image_url || '';
     this.categoryUploadIconName = cat.icon_name || '';
     this.categoryUploadIconColor = cat.icon_color || '';
+    this.categoryUploadSearchTerm = cat.name;
     this.cdr.detectChanges();
   }
 

@@ -159,6 +159,29 @@ import { ModalComponent } from '../modal/modal.component';
         </div>
       </div>
 
+      <!-- Unsplash search -->
+      <div class="iup-section">
+        <div class="iup-label">Search images</div>
+        <div class="iup-search-bar">
+          <input class="iup-search-input" [(ngModel)]="unsplashQuery"
+            (keydown.enter)="searchUnsplash()" placeholder="Search photos..."/>
+          <button class="iup-search-btn" (click)="searchUnsplash()" [disabled]="unsplashSearching">
+            <lucide-icon [name]="unsplashSearching ? 'loader-circle' : 'search'" [size]="14"
+              [class.iup-spinner]="unsplashSearching"></lucide-icon>
+          </button>
+        </div>
+        <div class="iup-unsplash-grid" *ngIf="unsplashResults.length">
+          <div *ngFor="let img of unsplashResults" class="iup-unsplash-thumb"
+            [class.selected]="selectedUnsplashUrl === img.url"
+            (click)="selectUnsplash(img)">
+            <img [src]="img.thumb" [alt]="img.description" loading="lazy"/>
+          </div>
+        </div>
+        <div class="iup-unsplash-credit" *ngIf="unsplashResults.length">
+          Photos by <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
+        </div>
+      </div>
+
       <!-- Status / error -->
       <div *ngIf="processing" class="iup-status">
         <lucide-icon name="loader-circle" [size]="14" class="iup-spinner"></lucide-icon>
@@ -240,6 +263,32 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-icon-btn:hover { border-color: var(--color-border, #D9CFC2); }
     .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--theme-bg, #FEF3C7); color: var(--theme-accent, #D97706); }
     .iup-icon-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+    .iup-search-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+    .iup-search-input {
+      flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid var(--color-border, #D9CFC2);
+      border-radius: 6px; outline: none; background: var(--color-surface, #FAFAF8);
+      color: var(--color-text-primary, #374151); font-family: inherit;
+    }
+    .iup-search-input:focus { border-color: var(--theme-accent, #D97706); }
+    .iup-search-btn {
+      width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--color-border, #D9CFC2);
+      background: var(--color-surface, #FAFAF8); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; color: var(--color-text-muted, #6B7280);
+      transition: all 0.15s;
+    }
+    .iup-search-btn:hover:not(:disabled) { border-color: var(--theme-accent, #D97706); color: var(--theme-accent, #D97706); }
+    .iup-unsplash-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px;
+    }
+    .iup-unsplash-thumb {
+      aspect-ratio: 16/10; border-radius: 6px; overflow: hidden; cursor: pointer;
+      border: 2px solid transparent; transition: border-color 0.15s;
+    }
+    .iup-unsplash-thumb:hover { border-color: var(--color-border, #D9CFC2); }
+    .iup-unsplash-thumb.selected { border-color: var(--theme-accent, #D97706); }
+    .iup-unsplash-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .iup-unsplash-credit { font-size: 10px; color: var(--color-text-muted, #9CA3AF); }
+    .iup-unsplash-credit a { color: var(--theme-accent, #D97706); text-decoration: none; }
     .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
     .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
     .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
@@ -257,6 +306,7 @@ export class ImageUploadPanelComponent implements OnInit {
 
   @Input() existingIconName = '';
   @Input() existingIconColor = '';
+  @Input() searchTerm = '';
 
   @Output() imagesUpdated = new EventEmitter<{
     coverUrl: string;
@@ -283,6 +333,10 @@ export class ImageUploadPanelComponent implements OnInit {
   imageDisplay: 'cover' | 'contain' = 'cover';
   selectedIconName = '';
   selectedIconColor = 'var(--theme-bg)';
+  unsplashQuery = '';
+  unsplashResults: { url: string; thumb: string; description: string; photographer: string }[] = [];
+  unsplashSearching = false;
+  selectedUnsplashUrl = '';
 
   iconOptions = [
     'utensils', 'music', 'mic', 'tv', 'building-2', 'flower-2',
@@ -321,6 +375,31 @@ export class ImageUploadPanelComponent implements OnInit {
     if (this.existingImageDisplay) this.imageDisplay = this.existingImageDisplay;
     if (this.existingIconName) this.selectedIconName = this.existingIconName;
     if (this.existingIconColor) this.selectedIconColor = this.existingIconColor;
+    if (this.searchTerm) {
+      this.unsplashQuery = this.searchTerm;
+      this.searchUnsplash();
+    }
+  }
+
+  searchUnsplash() {
+    if (!this.unsplashQuery?.trim()) return;
+    this.unsplashSearching = true;
+    this.cdr.detectChanges();
+    this.api.get<any[]>(`/unsplash/search?query=${encodeURIComponent(this.unsplashQuery)}`).subscribe({
+      next: (results) => {
+        this.unsplashResults = results || [];
+        this.unsplashSearching = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.unsplashSearching = false; this.cdr.detectChanges(); }
+    });
+  }
+
+  selectUnsplash(img: { url: string; thumb: string }) {
+    this.selectedUnsplashUrl = img.url;
+    this.coverPreview = img.url;
+    this.coverFile = null; // Clear any uploaded file — using URL directly
+    this.cdr.detectChanges();
   }
 
   getSelectedGradient(): string {
@@ -393,7 +472,9 @@ export class ImageUploadPanelComponent implements OnInit {
       let coverUrl = this.coverRemoved ? '' : this.existingCoverUrl;
       let logoUrl = this.logoRemoved ? '' : this.existingLogoUrl;
 
-      if (this.coverFile) {
+      if (this.selectedUnsplashUrl) {
+        coverUrl = this.selectedUnsplashUrl;
+      } else if (this.coverFile) {
         this.statusText = this.coverRemoveBg ? 'Removing background...' : 'Uploading image...';
         this.cdr.detectChanges();
         const blob = this.coverRemoveBg

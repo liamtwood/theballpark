@@ -139,6 +139,28 @@ app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 
+// Unsplash image search proxy
+app.get('/api/unsplash/search', async (req, res) => {
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (!key) return res.json([]);
+  try {
+    const query = encodeURIComponent(req.query.query || 'exhibition');
+    const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=9&orientation=landscape`;
+    const resp = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
+    if (!resp.ok) return res.json([]);
+    const data = await resp.json();
+    res.json((data.results || []).map(p => ({
+      url: p.urls?.regular,
+      thumb: p.urls?.small,
+      description: p.alt_description || p.description || '',
+      photographer: p.user?.name || ''
+    })));
+  } catch (err) {
+    console.error('[Unsplash]', err.message);
+    res.json([]);
+  }
+});
+
 // Centralised error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
