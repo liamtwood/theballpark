@@ -19,6 +19,8 @@ export interface CatalogueEntity {
   parentEntity?: { id: string; name: string; subtitle?: string; image_url?: string };
   // Display mode — 'cover' (full bleed) or 'contain' (centred logo)
   image_display?: 'cover' | 'contain';
+  // Lucide icon name — shown when no image
+  icon?: string;
   // Pass-through for actions
   _raw?: any;
 }
