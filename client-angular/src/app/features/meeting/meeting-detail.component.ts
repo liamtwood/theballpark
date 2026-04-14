@@ -32,6 +32,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <lucide-icon name="arrow-left" [size]="14"></lucide-icon> Back
         </button>
         <span class="bp-mtg-header-title">{{ entry.title }}</span>
+        <button class="bp-mtg-delete-btn" (click)="deleteMeeting()">
+          <lucide-icon name="x" [size]="12"></lucide-icon> Delete
+        </button>
         <button class="bp-mtg-open-btn" (click)="openNewTab()">Open in new tab</button>
       </div>
 
@@ -216,6 +219,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       font-family: var(--font-body); transition: all 0.15s;
     }
     .bp-mtg-open-btn:hover { background: var(--theme-accent); color: #fff; }
+    .bp-mtg-delete-btn {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 500; color: var(--color-text-muted);
+      border: 1px solid var(--color-border); background: transparent;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer;
+      font-family: var(--font-body); transition: all 0.15s;
+    }
+    .bp-mtg-delete-btn:hover { color: var(--color-action-text); border-color: var(--color-action-text); }
 
     .bp-mtg-body { display: grid; grid-template-columns: 40% 60%; height: calc(100vh - 97px); overflow: hidden; }
     .bp-mtg-left {
@@ -587,6 +598,14 @@ export class MeetingDetailComponent implements OnInit {
 
   toggleComplete(child: FeedbackEntry) {
     this.feedbackSvc.patch(child.id, { completed: child.completed }).subscribe();
+  }
+
+  deleteMeeting() {
+    if (!this.entry) return;
+    if (!confirm('Delete this meeting note and all its items?')) return;
+    this.feedbackSvc.remove(this.entry.id).subscribe(() => {
+      this.router.navigate(['/ballpark-settings/feedback']);
+    });
   }
 
   openNewTab() { if (this.entry) window.open('/meeting/' + this.entry.id, '_blank'); }
