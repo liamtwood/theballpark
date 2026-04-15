@@ -302,7 +302,18 @@ const migrate = async () => {
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS meeting_time VARCHAR(10);
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS description TEXT;
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'open';
+      ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS object_type VARCHAR(20) DEFAULT 'issue';
     `);
+
+    // Rename meeting_date → event_date (safe: only runs if column exists)
+    try {
+      await client.query(`ALTER TABLE shared.feedback RENAME COLUMN meeting_date TO event_date`);
+    } catch (e) {
+      // Column already renamed or doesn't exist — ignore
+    }
+
+    // Backfill object_type on existing rows
+    await client.query(`UPDATE shared.feedback SET object_type = 'folder' WHERE event_date IS NOT NULL AND object_type = 'issue'`);
 
     console.log('All tables created successfully.');
 
