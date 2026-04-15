@@ -20,14 +20,14 @@ import { FeedbackDialogComponent } from './shared/components/feedback-dialog/fee
 
     <!-- Quick type menu (right-click) -->
     <div class="bp-fab-menu" *ngIf="showQuickMenu" [style.bottom.px]="menuBottom" [style.right.px]="24">
-      <button class="bp-fab-menu-item" (click)="openFlow('bug')">
-        <lucide-icon name="bug" [size]="14"></lucide-icon> Bug
+      <button class="bp-fab-menu-item" (click)="openFlow('folder')">
+        <lucide-icon name="folder-open" [size]="14"></lucide-icon> Folder
+      </button>
+      <button class="bp-fab-menu-item" (click)="openFlow('issue')">
+        <lucide-icon name="alert-triangle" [size]="14"></lucide-icon> Issue
       </button>
       <button class="bp-fab-menu-item" (click)="openFlow('note')">
-        <lucide-icon name="clipboard-pen" [size]="14"></lucide-icon> Note
-      </button>
-      <button class="bp-fab-menu-item" (click)="openFlow('question')">
-        <lucide-icon name="circle-help" [size]="14"></lucide-icon> Question
+        <lucide-icon name="file-text" [size]="14"></lucide-icon> Note
       </button>
     </div>
 
@@ -70,7 +70,7 @@ import { FeedbackDialogComponent } from './shared/components/feedback-dialog/fee
 export class AppComponent {
   showFeedback = false;
   showQuickMenu = false;
-  initialFlow: 'bug' | 'note' | 'question' | 'action' | null = null;
+  initialFlow: 'folder' | 'issue' | 'note' | null = null;
   menuBottom = 80;
 
   openFeedback() {
@@ -90,7 +90,7 @@ export class AppComponent {
     }
   }
 
-  openFlow(flow: 'bug' | 'note' | 'question') {
+  openFlow(flow: 'folder' | 'issue' | 'note') {
     this.showQuickMenu = false;
     this.initialFlow = flow;
     this.showFeedback = true;

@@ -101,12 +101,13 @@ export const routes: Routes = [
         }
       },
 
-      // ── MEETING ──
+      // ── FOLDER (meeting notes, sprints, test runs, workshops) ──
       {
-        path: 'meeting/:id',
-        loadComponent: () => import('./features/meeting/meeting-detail.component').then(m => m.MeetingDetailComponent),
+        path: 'folder/:id',
+        loadComponent: () => import('./features/meeting/meeting-detail.component').then(m => m.FolderDetailComponent),
         data: { pageLabel: '', tabs: [], hideHero: true }
       },
+      { path: 'meeting/:id', redirectTo: 'folder/:id' },
 
       // ── ABOUT ──
       {

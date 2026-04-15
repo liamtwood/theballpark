@@ -126,9 +126,9 @@ import { ToastModule } from 'primeng/toast';
         </div>
 
         <!-- Meeting date if present -->
-        <div class="mb-4" *ngIf="selectedEntry.meeting_date">
+        <div class="mb-4" *ngIf="selectedEntry.event_date">
           <label class="bp-field-label">Meeting date</label>
-          <input pInputText [value]="formatDate(selectedEntry.meeting_date)" class="w-full bp-field-readonly" readonly/>
+          <input pInputText [value]="formatDate(selectedEntry.event_date)" class="w-full bp-field-readonly" readonly/>
         </div>
 
         <div class="mb-4">
@@ -160,7 +160,7 @@ import { ToastModule } from 'primeng/toast';
         </div>
 
         <!-- Children / action items (meeting notes only) -->
-        <div *ngIf="childEntries.length && selectedEntry.meeting_date" class="mt-4">
+        <div *ngIf="childEntries.length && selectedEntry.event_date" class="mt-4">
           <div class="bp-section-header mb-3">
             <span class="bp-section-title">ACTION ITEMS</span>
           </div>
@@ -174,7 +174,7 @@ import { ToastModule } from 'primeng/toast';
           </div>
         </div>
 
-        <div *ngIf="selectedEntry.meeting_date" class="mt-4">
+        <div *ngIf="selectedEntry.event_date" class="mt-4">
           <button class="bp-add-action-btn" (click)="openAddAction()">
             <i class="pi pi-plus" style="font-size:11px;"></i> Add action item
           </button>
@@ -194,7 +194,7 @@ import { ToastModule } from 'primeng/toast';
     <!-- Add action dialog -->
     <app-feedback-dialog
       [(visible)]="showActionDialog"
-      initialFlow="action"
+      initialFlow="issue"
       [parentId]="selectedEntry?.id || ''"
       [parentTitle]="selectedEntry?.title || ''"
       (submitted)="onActionAdded()">
@@ -323,11 +323,12 @@ export class FeedbackComponent implements OnInit {
   selectedIds = new Set<string>();
 
   filterCategories: CategoryInfo[] = [
-    { id: 'note', name: 'Notes', icon: 'clipboard-pen' },
+    { id: 'folder', name: 'Folders', icon: 'folder-open' },
     { id: 'bug', name: 'Bugs', icon: 'bug' },
     { id: 'enhancement', name: 'Enhancements', icon: 'lightbulb' },
-    { id: 'action', name: 'Actions', icon: 'check-square' },
-    { id: 'question', name: 'Questions', icon: 'circle-help' }
+    { id: 'question', name: 'Questions', icon: 'circle-help' },
+    { id: 'prompt', name: 'Prompts', icon: 'clipboard-pen' },
+    { id: 'note', name: 'Notes', icon: 'file-text' }
   ];
 
   // Filter state
@@ -447,20 +448,18 @@ export class FeedbackComponent implements OnInit {
   }
 
   inferType(e: FeedbackEntry): string {
+    if (e.object_type === 'folder') return 'folder';
+    if (e.object_type === 'note') return 'note';
     if (e.type) return e.type;
-    if (e.meeting_date) return 'note';
-    const title = (e.title || '').toLowerCase();
-    if (title.includes('bug') || title.startsWith('[bug]') || e.subcategory_name?.toLowerCase().includes('bug')) return 'bug';
-    if (title.includes('enhancement') || title.startsWith('[enhancement]') || e.subcategory_name?.toLowerCase().includes('enhancement')) return 'enhancement';
-    if (title.includes('question') || e.subcategory_name?.toLowerCase().includes('question')) return 'question';
-    return 'action';
+    if (e.event_date) return 'folder';
+    return 'bug';
   }
 
   // Preview (click row) — lets grid show built-in detail panel
   onEntityPreview(entity: CatalogueEntity) {
     const entry = entity._raw as FeedbackEntry;
-    if (entry?.meeting_date) {
-      window.open('/meeting/' + entry.id, '_blank');
+    if (entry?.object_type === 'folder') {
+      window.open('/folder/' + entry.id, '_blank');
     }
     // Otherwise grid handles its own preview panel
   }
@@ -470,8 +469,8 @@ export class FeedbackComponent implements OnInit {
     this.selectedEntry = entity._raw || this.entries.find(e => e.id === entity.id) || null;
     this.childEntries = [];
     if (this.selectedEntry) {
-      if (this.selectedEntry.meeting_date) {
-        window.open('/meeting/' + this.selectedEntry.id, '_blank');
+      if (this.selectedEntry.event_date) {
+        window.open('/folder/' + this.selectedEntry.id, '_blank');
         return;
       }
       this.editTitle = this.selectedEntry.title;
@@ -609,10 +608,12 @@ export class FeedbackComponent implements OnInit {
   getTypeIcon(entry: FeedbackEntry): string {
     const type = this.inferType(entry);
     switch (type) {
+      case 'folder': return 'folder-open';
       case 'bug': return 'bug';
       case 'enhancement': return 'lightbulb';
       case 'question': return 'circle-help';
-      case 'note': return 'clipboard-pen';
+      case 'prompt': return 'clipboard-pen';
+      case 'note': return 'file-text';
       default: return 'check-square';
     }
   }
