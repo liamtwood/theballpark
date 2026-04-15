@@ -130,7 +130,7 @@ export class SuppliersComponent implements OnInit {
     while (r.parent) r = r.parent;
     this.projectId = r.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id') || '';
 
-    this.categorySvc.getAll().subscribe({ next: cats => { this.categories = (cats||[]).filter((c:any)=>c.enabled!==false); this.cdr.detectChanges(); } });
+    this.categorySvc.getAll('catalogue').subscribe({ next: cats => { this.categories = (cats||[]).filter((c:any)=>c.enabled!==false); this.cdr.detectChanges(); } });
     this.supplierSvc.getAll().subscribe({
       next: (s: Org[]) => { this.suppliers = (s||[]).map(s=>({...s,expanded:false,catalogueItems:[],catalogueLoaded:false})); this.applyFilters(); this.loading=false; this.cdr.detectChanges(); },
       error: () => { this.loading=false; this.cdr.detectChanges(); }

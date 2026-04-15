@@ -171,7 +171,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     }
 
     this.loadCategoryCounts();
-    this.categorySvc.getAll().subscribe({
+    this.categorySvc.getAll('catalogue').subscribe({
       next: cats => {
         this.categories = ((cats || []) as any[])
           .filter((c: any) => c.enabled !== false)

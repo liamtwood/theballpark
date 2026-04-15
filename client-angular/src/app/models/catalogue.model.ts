@@ -38,4 +38,10 @@ export interface CategoryInfo {
   tagline?: string;
   description?: string;
   model?: string;
+  namespace?: string;
+  object_type?: string;
+  level?: number;
+  enabled?: boolean;
+  card_color?: string;
+  tags?: string[];
 }

@@ -290,6 +290,7 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS model VARCHAR(1) DEFAULT 'A';
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_name VARCHAR(50);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_color VARCHAR(30) DEFAULT 'var(--theme-bg)';
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS object_type VARCHAR(20);
 
       -- Feedback hierarchy columns
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS owner VARCHAR(100);
@@ -318,42 +319,52 @@ const migrate = async () => {
     console.log('All tables created successfully.');
 
     // ── Seed feedback categories (idempotent) ────────────────────────────
-    const feedbackParents = [
-      { name: 'Prompt', tagline: 'A requirement or direction', description: 'Capture requirements, bug reports, enhancement ideas and build instructions from the session.', tags: '{Note,Bug,Enhancement}', sort: 0, children: ['Note', 'Bug', 'Enhancement'] },
-      { name: 'Question', tagline: 'Something to discuss', description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.', tags: '{Product,Pricing,Process,Technical}', sort: 1, children: ['Product', 'Pricing', 'Process', 'Technical'] },
-      { name: 'Works Well', tagline: 'What\'s working great', description: 'Capture what\'s working well so we can build on it.', tags: '{}', sort: 2, children: [] }
+    // New flat model: folder types + issue types (level=0, no children).
+    const feedbackCategories = [
+      // Folder types
+      { name: 'Minutes',    object_type: 'folder', tagline: 'Meeting notes and decisions',   description: 'Record meetings, decisions and follow-up actions.',       icon_name: 'calendar',       icon_color: 'var(--theme-bg)',        sort: 0 },
+      { name: 'Sprint',     object_type: 'folder', tagline: 'Development sprint tracker',    description: 'Plan and track work across a development sprint.',        icon_name: 'zap',            icon_color: 'var(--theme-bg)',        sort: 1 },
+      { name: 'Test Run',   object_type: 'folder', tagline: 'QA and testing sessions',       description: 'Record bugs and observations from a testing session.',    icon_name: 'flask-conical',  icon_color: 'var(--theme-bg)',        sort: 2 },
+      { name: 'Workshop',   object_type: 'folder', tagline: 'Working sessions and discovery',description: 'Capture outputs from workshops and working sessions.',    icon_name: 'users',          icon_color: 'var(--theme-bg)',        sort: 3 },
+      { name: 'Note',       object_type: 'folder', tagline: 'General notes and documents',   description: 'A free-form note or reference document.',                 icon_name: 'file-text',      icon_color: 'var(--theme-bg)',        sort: 4 },
+      // Issue types
+      { name: 'Bug',         object_type: 'issue', tagline: 'Something is broken',           description: 'Log anything broken, inconsistent or behaving unexpectedly.', icon_name: 'bug',            icon_color: 'var(--color-danger-bg)', sort: 5 },
+      { name: 'Enhancement', object_type: 'issue', tagline: 'Make it better',                description: 'Feature requests, improvements and nice-to-haves.',        icon_name: 'lightbulb',      icon_color: 'var(--theme-bg)',        sort: 6 },
+      { name: 'Question',    object_type: 'issue', tagline: 'Something to discuss',          description: 'Open questions about the product, process or pricing.',   icon_name: 'circle-help',    icon_color: 'var(--theme-bg)',        sort: 7 },
+      { name: 'Prompt',      object_type: 'issue', tagline: 'A requirement or instruction',  description: 'Capture specific requirements and build instructions.',   icon_name: 'clipboard-pen',  icon_color: 'var(--theme-bg)',        sort: 8 }
     ];
-    for (const fp of feedbackParents) {
+    for (const fc of feedbackCategories) {
       const exists = await client.query(
         `SELECT id FROM categories WHERE name = $1 AND namespace = 'feedback' AND parent_id IS NULL`,
-        [fp.name]
+        [fc.name]
       );
-      let parentId;
       if (exists.rows.length) {
-        parentId = exists.rows[0].id;
+        await client.query(
+          `UPDATE categories SET
+             object_type = $1, tagline = $2, description = $3,
+             icon_name = $4, icon_color = $5, sort_order = $6, updated_at = NOW()
+           WHERE id = $7`,
+          [fc.object_type, fc.tagline, fc.description, fc.icon_name, fc.icon_color, fc.sort, exists.rows[0].id]
+        );
       } else {
-        const r = await client.query(
-          `INSERT INTO categories (name, tagline, description, tags, sort_order, namespace)
-           VALUES ($1, $2, $3, $4::text[], $5, 'feedback') RETURNING id`,
-          [fp.name, fp.tagline, fp.description, fp.tags, fp.sort]
+        await client.query(
+          `INSERT INTO categories (name, tagline, description, icon_name, icon_color, sort_order, namespace, object_type)
+           VALUES ($1, $2, $3, $4, $5, $6, 'feedback', $7)`,
+          [fc.name, fc.tagline, fc.description, fc.icon_name, fc.icon_color, fc.sort, fc.object_type]
         );
-        parentId = r.rows[0].id;
-      }
-      for (let i = 0; i < fp.children.length; i++) {
-        const childExists = await client.query(
-          `SELECT 1 FROM categories WHERE name = $1 AND parent_id = $2 AND namespace = 'feedback'`,
-          [fp.children[i], parentId]
-        );
-        if (!childExists.rows.length) {
-          await client.query(
-            `INSERT INTO categories (name, parent_id, sort_order, namespace)
-             VALUES ($1, $2, $3, 'feedback')`,
-            [fp.children[i], parentId, i]
-          );
-        }
       }
     }
     console.log('Feedback categories ensured.');
+
+    // Backfill shared.feedback.category_id by matching type -> category name
+    await client.query(`
+      UPDATE shared.feedback f SET category_id = c.id
+      FROM categories c
+      WHERE c.namespace = 'feedback'
+        AND c.parent_id IS NULL
+        AND LOWER(c.name) = LOWER(f.type)
+        AND (f.category_id IS NULL OR f.category_id <> c.id)
+    `);
 
     // ── Seed Catering child categories (idempotent) ──────────────────────
     const cateringRes = await client.query(

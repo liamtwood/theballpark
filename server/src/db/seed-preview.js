@@ -159,49 +159,38 @@ const seed = async () => {
     console.log('  Categories seeded.');
 
     // ── Feedback Categories (namespace = 'feedback') ─────────────────────
-    const feedbackParents = [
-      {
-        name: 'Prompt',
-        tagline: 'A requirement or direction',
-        description: 'Capture requirements, bug reports, enhancement ideas and build instructions from the session.',
-        tags: ['Note', 'Bug', 'Enhancement'],
-        sort_order: 0,
-        children: ['Note', 'Bug', 'Enhancement']
-      },
-      {
-        name: 'Question',
-        tagline: 'Something to discuss',
-        description: 'Open questions about the product, process or pricing. Log it here and we\'ll work through it together.',
-        tags: ['Product', 'Pricing', 'Process', 'Technical'],
-        sort_order: 1,
-        children: ['Product', 'Pricing', 'Process', 'Technical']
-      },
-      {
-        name: 'Works Well',
-        tagline: 'What\'s working great',
-        description: 'Capture what\'s working well so we can build on it.',
-        tags: [],
-        sort_order: 2,
-        children: []
-      }
+    // Flat model: folder types + issue types (level=0).
+    const feedbackCategories = [
+      { name: 'Minutes',     object_type: 'folder', tagline: 'Meeting notes and decisions',    description: 'Record meetings, decisions and follow-up actions.',       icon_name: 'calendar',      icon_color: 'var(--theme-bg)',        sort: 0 },
+      { name: 'Sprint',      object_type: 'folder', tagline: 'Development sprint tracker',     description: 'Plan and track work across a development sprint.',        icon_name: 'zap',           icon_color: 'var(--theme-bg)',        sort: 1 },
+      { name: 'Test Run',    object_type: 'folder', tagline: 'QA and testing sessions',        description: 'Record bugs and observations from a testing session.',    icon_name: 'flask-conical', icon_color: 'var(--theme-bg)',        sort: 2 },
+      { name: 'Workshop',    object_type: 'folder', tagline: 'Working sessions and discovery', description: 'Capture outputs from workshops and working sessions.',    icon_name: 'users',         icon_color: 'var(--theme-bg)',        sort: 3 },
+      { name: 'Note',        object_type: 'folder', tagline: 'General notes and documents',    description: 'A free-form note or reference document.',                 icon_name: 'file-text',     icon_color: 'var(--theme-bg)',        sort: 4 },
+      { name: 'Bug',         object_type: 'issue',  tagline: 'Something is broken',            description: 'Log anything broken, inconsistent or behaving unexpectedly.', icon_name: 'bug',           icon_color: 'var(--color-danger-bg)', sort: 5 },
+      { name: 'Enhancement', object_type: 'issue',  tagline: 'Make it better',                 description: 'Feature requests, improvements and nice-to-haves.',        icon_name: 'lightbulb',     icon_color: 'var(--theme-bg)',        sort: 6 },
+      { name: 'Question',    object_type: 'issue',  tagline: 'Something to discuss',           description: 'Open questions about the product, process or pricing.',   icon_name: 'circle-help',   icon_color: 'var(--theme-bg)',        sort: 7 },
+      { name: 'Prompt',      object_type: 'issue',  tagline: 'A requirement or instruction',   description: 'Capture specific requirements and build instructions.',   icon_name: 'clipboard-pen', icon_color: 'var(--theme-bg)',        sort: 8 }
     ];
 
-    for (const fp of feedbackParents) {
-      const parentRes = await client.query(
-        `INSERT INTO preview.categories (name, tagline, description, tags, sort_order, namespace)
-         VALUES ($1, $2, $3, $4, $5, 'feedback') RETURNING id`,
-        [fp.name, fp.tagline, fp.description, fp.tags, fp.sort_order]
+    for (const fc of feedbackCategories) {
+      await client.query(
+        `INSERT INTO preview.categories
+           (name, tagline, description, sort_order, namespace, object_type, icon_name, icon_color)
+         VALUES ($1, $2, $3, $4, 'feedback', $5, $6, $7)`,
+        [fc.name, fc.tagline, fc.description, fc.sort, fc.object_type, fc.icon_name, fc.icon_color]
       );
-      const parentId = parentRes.rows[0].id;
-      for (let i = 0; i < fp.children.length; i++) {
-        await client.query(
-          `INSERT INTO preview.categories (name, parent_id, sort_order, namespace)
-           VALUES ($1, $2, $3, 'feedback')`,
-          [fp.children[i], parentId, i]
-        );
-      }
     }
-    console.log('  Feedback categories seeded (3 parents + children).');
+    console.log('  Feedback categories seeded (9 flat folder/issue types).');
+
+    // Backfill any existing preview feedback rows by type → category name
+    await client.query(`
+      UPDATE shared.feedback f SET category_id = c.id
+      FROM preview.categories c
+      WHERE c.namespace = 'feedback'
+        AND c.parent_id IS NULL
+        AND LOWER(c.name) = LOWER(f.type)
+        AND (f.category_id IS NULL OR f.category_id <> c.id)
+    `);
 
     // ── Projects ─────────────────────────────────────────────────────────
     const project1Res = await client.query(
