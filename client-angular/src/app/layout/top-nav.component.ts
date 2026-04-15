@@ -39,9 +39,17 @@ import { environment } from '../../environments/environment';
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
         </a>
-        <button class="bp-nav-link" (click)="createMeeting()" style="border:none;background:none;cursor:pointer;">
-          <lucide-icon name="clipboard-pen" [size]="14"></lucide-icon> Meeting
-        </button>
+        <div class="bp-nav-folder-wrap" style="position:relative;">
+          <button class="bp-nav-link" (click)="showFolderMenu = !showFolderMenu" style="border:none;background:none;cursor:pointer;">
+            <lucide-icon name="folder-open" [size]="14"></lucide-icon> New Folder
+          </button>
+          <div class="bp-nav-folder-menu" *ngIf="showFolderMenu">
+            <button (click)="createFolder('minutes')"><lucide-icon name="calendar" [size]="12"></lucide-icon> Meeting notes</button>
+            <button (click)="createFolder('sprint')"><lucide-icon name="zap" [size]="12"></lucide-icon> Sprint</button>
+            <button (click)="createFolder('test_run')"><lucide-icon name="check-square" [size]="12"></lucide-icon> Test run</button>
+            <button (click)="createFolder('workshop')"><lucide-icon name="users" [size]="12"></lucide-icon> Workshop</button>
+          </div>
+        </div>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
@@ -141,6 +149,19 @@ import { environment } from '../../environments/environment';
     }
     .bp-nav-link:hover { color: #111111; }
     .bp-nav-link.active { color: var(--theme-accent); font-weight: 600; }
+    .bp-nav-folder-menu {
+      position: absolute; top: 100%; left: 0; z-index: 100;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: 8px; padding: 4px 0; min-width: 160px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 4px;
+    }
+    .bp-nav-folder-menu button {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 8px 14px; font-size: 13px; font-weight: 500;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--color-text-primary); font-family: var(--font-body);
+    }
+    .bp-nav-folder-menu button:hover { background: var(--theme-bg); }
     .bp-mode-btn {
       width: 32px; height: 32px; border-radius: 50%;
       border: 0.5px solid var(--color-border); background: transparent;
@@ -298,16 +319,27 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.configService.update({ mode });
   }
 
-  createMeeting() {
+  showFolderMenu = false;
+
+  createFolder(type: string) {
+    this.showFolderMenu = false;
     const today = new Date();
-    const title = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' Meeting';
+    const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const labels: Record<string, string> = {
+      minutes: dateStr + ' Meeting',
+      sprint: 'Sprint — ' + dateStr,
+      test_run: 'Test Run — ' + dateStr,
+      workshop: 'Workshop — ' + dateStr
+    };
     this.feedbackSvc.create({
-      title,
-      meeting_date: today.toISOString().split('T')[0],
-      agenda: ['Finding items demo', 'AI brief parser', 'Open discussion']
-    }).subscribe({
+      title: labels[type] || dateStr + ' Folder',
+      event_date: today.toISOString().split('T')[0],
+      object_type: 'folder',
+      type,
+      agenda: (type === 'minutes' || type === 'workshop') ? [] : undefined
+    } as any).subscribe({
       next: (entry) => {
-        window.open('/meeting/' + entry.id, '_blank');
+        window.open('/folder/' + entry.id, '_blank');
       }
     });
   }

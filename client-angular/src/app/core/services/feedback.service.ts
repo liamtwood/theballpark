@@ -12,7 +12,7 @@ export interface FeedbackEntry {
   environment?: string;
   owner?: string;
   due_date?: string;
-  meeting_date?: string;
+  event_date?: string;
   parent_id?: string;
   agenda?: string[];
   completed?: boolean;
@@ -20,6 +20,7 @@ export interface FeedbackEntry {
   meeting_time?: string;
   description?: string;
   status?: string;
+  object_type?: 'issue' | 'folder' | 'note';
   created_at: string;
   category_name?: string;
   subcategory_name?: string;
@@ -41,9 +42,17 @@ export const TEAM_MEMBERS: TeamMember[] = [
 @Injectable({ providedIn: 'root' })
 export class FeedbackService {
   constructor(private api: ApiService) {}
-  getAll() { return this.api.get<FeedbackEntry[]>('/feedback'); }
+  getAll(objectType?: string) {
+    const qs = objectType ? `?object_type=${objectType}` : '';
+    return this.api.get<FeedbackEntry[]>(`/feedback${qs}`);
+  }
   getById(id: string) { return this.api.get<FeedbackEntry>(`/feedback/${id}`); }
   getToday() { return this.api.get<FeedbackEntry>('/feedback/today'); }
+  getFolders() { return this.api.get<FeedbackEntry[]>('/feedback/folders'); }
+  getIssues(folderId?: string) {
+    const qs = folderId ? `?folder_id=${folderId}` : '';
+    return this.api.get<FeedbackEntry[]>(`/feedback/issues${qs}`);
+  }
   getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
   create(data: Partial<FeedbackEntry>) { return this.api.post<FeedbackEntry>('/feedback', data); }
   patch(id: string, data: any) { return this.api.patch<FeedbackEntry>(`/feedback/${id}`, data); }

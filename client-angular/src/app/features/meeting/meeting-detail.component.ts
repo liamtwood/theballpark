@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
@@ -14,10 +14,10 @@ import { FeedbackService, FeedbackEntry, TEAM_MEMBERS, TeamMember } from '../../
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
-  selector: 'app-meeting-detail',
+  selector: 'app-folder-detail',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterModule,
+    CommonModule, FormsModule, RouterModule, TitleCasePipe,
     InputTextModule, InputTextareaModule, CalendarModule, CheckboxModule,
     DialogModule, TooltipModule,
     LucideAngularModule, LoadingSpinnerComponent
@@ -31,8 +31,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
         <button class="bp-mtg-back" routerLink="/ballpark-settings/feedback">
           <lucide-icon name="arrow-left" [size]="14"></lucide-icon> Back
         </button>
+        <span class="bp-mtg-header-label">{{ folderLabel }}</span>
         <span class="bp-mtg-header-title">{{ entry.title }}</span>
-        <button class="bp-mtg-delete-btn" (click)="deleteMeeting()">
+        <button class="bp-mtg-delete-btn" (click)="deleteFolder()">
           <lucide-icon name="x" [size]="12"></lucide-icon> Delete
         </button>
         <button class="bp-mtg-open-btn" (click)="openNewTab()">Open in new tab</button>
@@ -48,16 +49,16 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <!-- Type + Date + Time row -->
           <div class="bp-mtg-meta-row">
             <div class="bp-mtg-type-pills">
-              <button *ngFor="let t of meetingTypes" class="bp-mtg-type-pill"
+              <button *ngFor="let t of folderTypeOptions" class="bp-mtg-type-pill"
                 [class.active]="entry.type === t" (click)="entry.type = t; saveField('type', t)">
-                {{ t }}
+                {{ t.replace('_', ' ') | titlecase }}
               </button>
             </div>
-            <p-calendar [(ngModel)]="meetingDateObj" [showIcon]="true" dateFormat="dd M yy"
+            <p-calendar [(ngModel)]="eventDateObj" [showIcon]="true" dateFormat="dd M yy"
               (onSelect)="onDateChange()" inputStyleClass="bp-mtg-date-input"
               styleClass="bp-mtg-date-cal"></p-calendar>
             <input class="bp-mtg-time-input" [(ngModel)]="entry.meeting_time"
-              (blur)="saveField('meeting_time', entry.meeting_time)"
+              (blur)="saveField('meeting_time', entry.meeting_time || '')"
               placeholder="Time..." type="time"/>
           </div>
 
@@ -211,6 +212,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       cursor: pointer; font-family: var(--font-body); transition: color 0.15s;
     }
     .bp-mtg-back:hover { color: var(--theme-accent); }
+    .bp-mtg-header-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--theme-accent); text-transform: uppercase; background: var(--theme-bg); padding: 2px 8px; border-radius: 4px; }
     .bp-mtg-header-title { flex: 1; text-align: center; font-size: 13px; color: var(--color-text-muted); font-weight: 500; }
     .bp-mtg-open-btn {
       font-size: 12px; font-weight: 500; color: var(--theme-accent);
@@ -418,14 +420,19 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     }
   `]
 })
-export class MeetingDetailComponent implements OnInit {
+export class FolderDetailComponent implements OnInit {
   loading = true;
   entry: FeedbackEntry | null = null;
   children: FeedbackEntry[] = [];
   agenda: string[] = [];
-  meetingDateObj: Date = new Date();
+  eventDateObj: Date = new Date();
   team: TeamMember[] = TEAM_MEMBERS;
-  meetingTypes = ['Notes', 'Meeting', 'Call'];
+  folderTypeOptions = ['minutes', 'sprint', 'test_run', 'workshop'];
+
+  get folderLabel(): string {
+    const t = this.entry?.type || 'minutes';
+    return t.replace('_', ' ').toUpperCase();
+  }
 
   newAgendaItem = '';
   newItemTitle = '';
@@ -468,7 +475,7 @@ export class MeetingDetailComponent implements OnInit {
       next: (entry) => {
         this.entry = entry;
         this.agenda = entry?.agenda || [];
-        this.meetingDateObj = entry?.meeting_date ? new Date(entry.meeting_date) : new Date();
+        this.eventDateObj = entry?.event_date ? new Date(entry.event_date) : new Date();
         this.loading = false;
         this.loadChildren();
         this.cdr.detectChanges();
@@ -489,8 +496,8 @@ export class MeetingDetailComponent implements OnInit {
   }
 
   onDateChange() {
-    if (this.entry && this.meetingDateObj) {
-      this.feedbackSvc.patch(this.entry.id, { meeting_date: this.meetingDateObj.toISOString().split('T')[0] }).subscribe();
+    if (this.entry && this.eventDateObj) {
+      this.feedbackSvc.patch(this.entry.id, { event_date: this.eventDateObj.toISOString().split('T')[0] }).subscribe();
     }
   }
 
@@ -600,15 +607,15 @@ export class MeetingDetailComponent implements OnInit {
     this.feedbackSvc.patch(child.id, { completed: child.completed }).subscribe();
   }
 
-  deleteMeeting() {
+  deleteFolder() {
     if (!this.entry) return;
-    if (!confirm('Delete this meeting note and all its items?')) return;
+    if (!confirm('Delete this folder and all its items?')) return;
     this.feedbackSvc.remove(this.entry.id).subscribe(() => {
-      this.router.navigate(['/ballpark-settings/feedback']);
+      window.close();
     });
   }
 
-  openNewTab() { if (this.entry) window.open('/meeting/' + this.entry.id, '_blank'); }
+  openNewTab() { if (this.entry) window.open('/folder/' + this.entry.id, '_blank'); }
 
   getInitials(name: string): string {
     const m = this.team.find(t => t.name === name);
