@@ -168,6 +168,9 @@ import { ModalComponent } from '../modal/modal.component';
             <img [src]="img.thumb" [alt]="img.description" loading="lazy"/>
           </div>
         </div>
+        <div class="iup-unsplash-empty" *ngIf="unsplashSearched && !unsplashResults.length && !unsplashSearching">
+          No images found. Try a different search term.
+        </div>
         <div class="iup-unsplash-credit" *ngIf="unsplashResults.length">
           Photos by <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
         </div>
@@ -324,6 +327,7 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-unsplash-thumb:hover { border-color: var(--color-border, #D9CFC2); }
     .iup-unsplash-thumb.selected { border-color: var(--theme-accent, #D97706); }
     .iup-unsplash-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .iup-unsplash-empty { font-size: 12px; color: var(--color-text-muted, #9CA3AF); text-align: center; padding: 20px 0; }
     .iup-unsplash-credit { font-size: 10px; color: var(--color-text-muted, #9CA3AF); }
     .iup-unsplash-credit a { color: var(--theme-accent, #D97706); text-decoration: none; }
     .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
@@ -374,6 +378,7 @@ export class ImageUploadPanelComponent implements OnInit {
   unsplashQuery = '';
   unsplashResults: { url: string; thumb: string; description: string; photographer: string }[] = [];
   unsplashSearching = false;
+  unsplashSearched = false;
   selectedUnsplashUrl = '';
 
   iconOptions = [
@@ -427,6 +432,7 @@ export class ImageUploadPanelComponent implements OnInit {
       next: (results) => {
         this.unsplashResults = results || [];
         this.unsplashSearching = false;
+        this.unsplashSearched = true;
         this.cdr.detectChanges();
       },
       error: () => { this.unsplashSearching = false; this.cdr.detectChanges(); }

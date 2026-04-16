@@ -321,8 +321,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-grid-back-btn:hover { opacity: 0.75; }
 
-    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: hidden; }
-    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
+    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible; }
+    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
     .bp-circles-arrow {
       width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
       background: var(--color-surface); border: 0.5px solid var(--color-border);
