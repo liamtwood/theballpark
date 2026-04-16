@@ -391,7 +391,7 @@ export class BuildComponent implements OnInit {
       this.loading = false;
     }
 
-    this.categorySvc.getAll().subscribe({
+    this.categorySvc.getAll('catalogue').subscribe({
       next: cats => {
         this.availableCategories = (cats || []).filter((c: any) => c.enabled !== false);
         this.cdr.detectChanges();

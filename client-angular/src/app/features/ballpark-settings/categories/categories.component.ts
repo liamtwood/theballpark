@@ -5,6 +5,8 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputSwitchModule } from 'primeng/inputswitch';
+import { DropdownModule } from 'primeng/dropdown';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import { SidebarModule } from 'primeng/sidebar';
 import { ChipsModule } from 'primeng/chips';
 import { TagModule } from 'primeng/tag';
@@ -12,168 +14,183 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { CategoryService } from '../../../core/services/category.service';
-import { Category } from '../../../models';
+import { Category, CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
+
+interface NamespaceOption {
+  id: 'all' | 'catalogue' | 'feedback';
+  label: string;
+  icon: string;
+  bg: string;
+}
 
 @Component({
   selector: 'app-categories',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
-    LucideAngularModule,
+    CommonModule, FormsModule, LucideAngularModule,
     ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule,
-    SidebarModule, ChipsModule, TagModule, ToastModule,
-    LoadingSpinnerComponent, ImageUploadPanelComponent
+    DropdownModule, SelectButtonModule, SidebarModule, ChipsModule, TagModule, ToastModule,
+    LoadingSpinnerComponent, CatalogueGridComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
-      <div class="bp-team-title-bar">
-        <h2 class="bp-page-title">Categories</h2>
+      <!-- NAMESPACE CIRCLES -->
+      <div class="bp-ns-circles-wrap">
+        <div class="bp-ns-circles">
+          <button *ngFor="let ns of namespaces"
+            class="bp-ns-circle-btn"
+            [class.active]="selectedNamespace === ns.id"
+            (click)="setNamespace(ns.id)">
+            <div class="bp-ns-circle" [style.background-color]="ns.bg">
+              <lucide-icon [name]="ns.icon" [size]="24"></lucide-icon>
+            </div>
+            <span class="bp-ns-circle-label">{{ ns.label }}</span>
+          </button>
+        </div>
       </div>
 
-      <div class="bp-content-pad">
-
-        <!-- ENABLED -->
-        <div class="bp-section-header">
-          <span class="bp-section-title">ENABLED</span>
-          <p-button label="Add category" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="addCategory()"></p-button>
-        </div>
-
-        <div class="bp-cat-grid" *ngIf="enabledCategories().length > 0">
-          <div *ngFor="let c of enabledCategories()" class="bp-cat-card" (click)="openCategory(c)">
-            <div class="bp-cat-img"
-              [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : null"
-              [style.background-color]="!c.cover_image_url ? (c.card_color || 'var(--theme-bg)') : null">
-              <span class="bp-cat-status-badge enabled">✓</span>
-            </div>
-            <div class="bp-cat-body">
-              <span class="bp-cat-name">{{ c.name }}</span>
-            </div>
-          </div>
-        </div>
-        <p *ngIf="enabledCategories().length === 0" class="bp-muted-text mb-6">No enabled categories.</p>
-
-        <!-- DISABLED -->
-        <div class="bp-section-header mt-6" *ngIf="disabledCategories().length > 0">
-          <span class="bp-section-title">DISABLED</span>
-        </div>
-        <div class="bp-cat-grid" *ngIf="disabledCategories().length > 0">
-          <div *ngFor="let c of disabledCategories()" class="bp-cat-card bp-cat-disabled" (click)="openCategory(c)">
-            <div class="bp-cat-img"
-              [style.background-image]="c.cover_image_url ? 'url(' + c.cover_image_url + ')' : null"
-              [style.background-color]="!c.cover_image_url ? (c.card_color || 'var(--theme-bg)') : null">
-              <span class="bp-cat-status-badge disabled">✕</span>
-            </div>
-            <div class="bp-cat-body">
-              <span class="bp-cat-name">{{ c.name }}</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
+      <!-- CATALOGUE GRID -->
+      <app-catalogue-grid
+        [entities]="catEntities"
+        [categories]="circleCategories"
+        [tags]="availableTags"
+        entityType="item"
+        entityLabel="category"
+        sectionTitle="CATEGORIES"
+        actionLabel="Edit category"
+        [favouriteIds]="emptySet"
+        [showFavourite]="false"
+        [showEdit]="true"
+        [totalCount]="catEntities.length"
+        (entitySelected)="onEntitySelected($event)"
+        (actionClicked)="onAction($event)"
+        (imageEditRequested)="onImageEdit($event)"
+        (categoryImageEditRequested)="onCategoryImageEdit($event)">
+        <button catalogue-toggles class="bp-add-btn" (click)="openAdd()">
+          <i class="pi pi-plus" style="font-size:11px;"></i> Add category
+        </button>
+      </app-catalogue-grid>
     </ng-container>
 
-    <!-- CATEGORY DRAWER -->
-    <p-sidebar [(visible)]="showCatDrawer" position="right"
+    <!-- Image upload panels -->
+    <app-image-upload-panel
+      *ngIf="uploadCatId"
+      [entityId]="uploadCatId"
+      type="category"
+      [existingCoverUrl]="uploadCoverUrl"
+      [existingCardColor]="uploadCardColor"
+      [existingIconName]="uploadIconName"
+      [existingIconColor]="uploadIconColor"
+      [searchTerm]="uploadSearchTerm"
+      (imagesUpdated)="onCatImageUpdated($event)"
+      (closed)="uploadCatId = ''">
+    </app-image-upload-panel>
+
+    <!-- CATEGORY EDIT DRAWER -->
+    <p-sidebar [(visible)]="showDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
       [showCloseIcon]="false"
-      (onHide)="closeCatDrawer()">
+      (onHide)="closeDrawer()">
 
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
           <div class="bp-drawer-header">
-            <span class="bp-drawer-label">CATEGORIES</span>
-            <div class="bp-drawer-title">{{ catForm.name || 'New category' }}</div>
+            <span class="bp-drawer-label">CATEGORY</span>
+            <div class="bp-drawer-title">{{ form.id ? (form.name || 'Category') : 'New category' }}</div>
           </div>
-          <button class="bp-icon-btn" (click)="closeCatDrawer()" title="Close">
+          <button class="bp-icon-btn" (click)="closeDrawer()" title="Close">
             <i class="pi pi-times"></i>
           </button>
         </div>
       </ng-template>
 
-      <div class="bp-drawer-body" style="background:var(--color-surface);">
-        <div class="bp-section-header mb-4">
-          <span class="bp-section-title">CATEGORY</span>
-          <div class="flex items-center gap-1">
-            <ng-container *ngIf="!editingCat">
-              <button class="bp-icon-btn" (click)="startEditCat()" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editingCat">
-              <button class="bp-icon-btn bp-icon-save" (click)="submitCat()" [disabled]="!catForm.name?.trim()" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditCat()" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
+      <div class="bp-drawer-body">
+        <div class="mb-4">
+          <label class="bp-field-label">Name *</label>
+          <input pInputText [(ngModel)]="form.name" class="w-full bp-input-edit" placeholder="Category name"/>
+        </div>
+
+        <div class="mb-4">
+          <label class="bp-field-label">Namespace *</label>
+          <p-dropdown [(ngModel)]="form.namespace" [options]="namespaceOptions"
+            optionLabel="label" optionValue="value"
+            (onChange)="onNamespaceFormChange()"
+            styleClass="w-full bp-input-edit"
+            placeholder="Select namespace">
+          </p-dropdown>
+        </div>
+
+        <div class="mb-4" *ngIf="form.namespace === 'feedback'">
+          <label class="bp-field-label">Object type</label>
+          <p-selectButton [(ngModel)]="form.object_type"
+            [options]="objectTypeOptions"
+            optionLabel="label" optionValue="value"
+            styleClass="bp-object-type-toggle">
+          </p-selectButton>
+        </div>
+
+        <div class="mb-4">
+          <label class="bp-field-label">Parent category</label>
+          <p-dropdown [(ngModel)]="form.parent_id" [options]="parentOptions"
+            optionLabel="label" optionValue="value"
+            [showClear]="true"
+            styleClass="w-full bp-input-edit"
+            placeholder="— None (level 0) —">
+          </p-dropdown>
+          <div class="bp-field-hint">
+            Level: {{ form.parent_id ? 1 : 0 }}
+            <span *ngIf="form.parent_id"> — child of parent category</span>
           </div>
         </div>
 
-        <!-- VIEW MODE -->
-        <ng-container *ngIf="!editingCat">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [value]="catForm.name" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Description</label>
-            <textarea pInputTextarea [value]="catForm.description || '—'" class="w-full bp-field-readonly" readonly [rows]="3" style="resize:none;"></textarea>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Status</label>
-            <input pInputText [value]="catForm.enabled ? 'Enabled' : 'Disabled'" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Tags</label>
-            <div *ngIf="catForm.tags?.length > 0" class="bp-tag-list">
-              <p-tag *ngFor="let tag of catForm.tags"
-                [value]="tag"
-                styleClass="bp-cat-tag">
-              </p-tag>
-            </div>
-            <span *ngIf="!catForm.tags?.length" class="bp-muted-text">—</span>
-          </div>
-        </ng-container>
+        <div class="mb-4">
+          <label class="bp-field-label">Tagline</label>
+          <input pInputText [(ngModel)]="form.tagline" class="w-full bp-input-edit" placeholder="Short one-line description"/>
+        </div>
 
-        <!-- EDIT MODE -->
-        <ng-container *ngIf="editingCat">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [(ngModel)]="catForm.name" class="w-full bp-input-edit"/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Description</label>
-            <textarea pInputTextarea [(ngModel)]="catForm.description" class="w-full bp-input-edit" [rows]="3" style="resize:none;" placeholder="Describe this category..."></textarea>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Status</label>
-            <div class="flex items-center gap-3 mt-1">
-              <p-inputSwitch [(ngModel)]="catForm.enabled"></p-inputSwitch>
-              <span style="font-size:var(--text-sm);color:var(--color-text-secondary);">
-                {{ catForm.enabled ? 'Enabled' : 'Disabled' }}
-              </span>
-            </div>
-          </div>
-          <div>
-            <label class="bp-field-label">Tags <span style="font-size:10px;color:var(--color-text-muted);font-weight:400;">— type and press Enter to add</span></label>
-            <p-chips [(ngModel)]="catForm.tags" styleClass="w-full bp-input-edit" [allowDuplicate]="false" [addOnBlur]="true" placeholder="e.g. build, structure..."></p-chips>
-          </div>
-        </ng-container>
+        <div class="mb-4">
+          <label class="bp-field-label">Description</label>
+          <textarea pInputTextarea [(ngModel)]="form.description" class="w-full bp-input-edit" [rows]="3" style="resize:none;" placeholder="Describe this category..."></textarea>
+        </div>
 
-        <div *ngIf="showCatImagePanel" class="mt-4">
+        <div class="mb-4" *ngIf="form.parent_id">
+          <label class="bp-field-label">Model</label>
+          <input pInputText [(ngModel)]="form.model" class="w-full bp-input-edit" placeholder="A / B / C / D" maxlength="1"/>
+          <div class="bp-field-hint">For A/B/C/D taxonomy — optional</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="bp-field-label">Tags <span class="bp-field-hint-inline">— press Enter to add</span></label>
+          <p-chips [(ngModel)]="form.tags" styleClass="w-full bp-input-edit" [allowDuplicate]="false" [addOnBlur]="true" placeholder="e.g. build, structure..."></p-chips>
+        </div>
+
+        <div>
+          <label class="bp-field-label">Status</label>
+          <div class="flex items-center gap-3 mt-1">
+            <p-inputSwitch [(ngModel)]="form.enabled"></p-inputSwitch>
+            <span style="font-size:var(--text-sm);color:var(--color-text-secondary);">
+              {{ form.enabled ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+        </div>
+
+        <div *ngIf="showImagePanel" class="mt-4">
           <app-image-upload-panel
-            [entityId]="catForm.id || 'new'"
+            [entityId]="form.id || 'new'"
             type="category"
-            [existingCoverUrl]="catForm.cover_image_url || ''"
-            [existingCardColor]="catForm.card_color || ''"
-            (imagesUpdated)="onCatImageUpdated($event)"
-            (closed)="showCatImagePanel = false">
+            [existingCoverUrl]="form.cover_image_url || ''"
+            [existingCardColor]="form.card_color || ''"
+            [existingIconName]="form.icon_name || ''"
+            [existingIconColor]="form.icon_color || ''"
+            [searchTerm]="form.name || ''"
+            (imagesUpdated)="onDrawerImageUpdated($event)"
+            (closed)="showImagePanel = false">
           </app-image-upload-panel>
         </div>
       </div>
@@ -181,13 +198,18 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
       <ng-template pTemplate="footer">
         <div class="bp-drawer-ops-footer">
           <div>
-            <p-button *ngIf="catForm.id" label="Delete category" icon="pi pi-trash"
+            <p-button *ngIf="form.id" label="Delete" icon="pi pi-trash"
               styleClass="p-button-danger" (onClick)="deleteCategory()">
             </p-button>
           </div>
-          <div>
+          <div class="flex gap-2">
             <p-button label="Add image" icon="pi pi-image"
-              styleClass="p-button-outlined" (onClick)="showCatImagePanel = !showCatImagePanel">
+              styleClass="p-button-outlined" (onClick)="showImagePanel = !showImagePanel">
+            </p-button>
+            <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeDrawer()"></p-button>
+            <p-button [label]="form.id ? 'Save' : 'Create'" styleClass="bp-btn-save"
+              [disabled]="!form.name?.trim() || !form.namespace"
+              (onClick)="submit()">
             </p-button>
           </div>
         </div>
@@ -198,47 +220,90 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     <p-toast></p-toast>
   `,
   styles: [`
-    /* ── CATEGORY GRID ── */
-    .bp-cat-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      max-width: 760px;
-      margin: 0 auto 24px;
+    /* ── NAMESPACE CIRCLES ── */
+    .bp-ns-circles-wrap { padding: 20px 28px 4px; border-bottom: 0.5px solid var(--color-border); }
+    .bp-ns-circles { display: flex; gap: 20px; justify-content: center; padding-bottom: 16px; }
+    .bp-ns-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; padding: 0; }
+    .bp-ns-circle {
+      width: 68px; height: 68px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2.5px solid transparent; transition: border-color 0.15s;
+      color: var(--theme-accent);
+      box-shadow: 0 0 0 0.5px var(--color-border);
     }
-    @media (max-width: 700px) { .bp-cat-grid { grid-template-columns: repeat(2, 1fr); } }
-    .bp-cat-card         { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
-    .bp-cat-card:hover   { border-color: var(--theme-accent); }
-    .bp-cat-disabled     { opacity: 0.45; }
-    .bp-cat-img          { width: 100%; aspect-ratio: 4 / 3; background-size: cover; background-position: center; background-color: var(--theme-bg); position: relative; }
-    .bp-cat-body         { padding: 10px 14px; }
-    .bp-cat-name         { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-cat-status-badge { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; }
-    .bp-cat-status-badge.enabled  { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
-    .bp-cat-status-badge.disabled { background: #F3F4F6; color: #9CA3AF; border: 0.5px solid #D1D5DB; }
+    .bp-ns-circle-btn.active .bp-ns-circle {
+      border-color: var(--theme-accent);
+      box-shadow: 0 0 0 2px var(--theme-accent);
+    }
+    .bp-ns-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); font-family: var(--font-body); }
+    .bp-ns-circle-btn.active .bp-ns-circle-label { color: var(--theme-accent); font-weight: 600; }
 
-    /* ── TAG PILLS (view mode) ── */
-    .bp-tag-list { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
-    :host ::ng-deep .bp-cat-tag.p-tag {
-      background: var(--theme-bg) !important;
-      color: var(--theme-text) !important;
-      border: 0.5px solid var(--theme-border) !important;
-      font-size: 11px !important;
-      font-weight: 500 !important;
-      padding: 3px 10px !important;
-      border-radius: 20px !important;
+    /* ── ADD BUTTON ── */
+    .bp-add-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 14px; font-size: 12px; font-weight: 500;
+      font-family: var(--font-body); border: 1px solid var(--theme-accent);
+      background: transparent; color: var(--theme-accent);
+      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .bp-add-btn:hover { background: var(--theme-accent); color: #fff; }
+
+    /* ── FIELD HINT ── */
+    .bp-field-hint { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
+    .bp-field-hint-inline { font-size: 10px; color: var(--color-text-muted); font-weight: 400; }
+
+    /* ── OBJECT TYPE TOGGLE ── */
+    :host ::ng-deep .bp-object-type-toggle.p-selectbutton .p-button {
+      padding: 6px 16px !important; font-size: 12px !important; font-weight: 500 !important;
+      border-color: var(--color-border) !important;
+      background: var(--color-surface) !important; color: var(--color-text-muted) !important;
+    }
+    :host ::ng-deep .bp-object-type-toggle.p-selectbutton .p-highlight {
+      background: var(--theme-accent) !important; color: #fff !important;
+      border-color: var(--theme-accent) !important;
     }
   `]
 })
 export class CategoriesComponent implements OnInit {
-  categories: Category[] = [];
   loading = true;
+  allCategories: Category[] = [];
+  selectedNamespace: 'all' | 'catalogue' | 'feedback' = 'all';
+  emptySet = new Set<string>();
 
-  showCatDrawer    = false;
-  editingCat       = false;
-  showCatImagePanel = false;
-  catForm: any     = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
-  private catSnapshot: any = null;
+  namespaces: NamespaceOption[] = [
+    { id: 'all',       label: 'All',       icon: 'layers',         bg: 'var(--color-surface)' },
+    { id: 'catalogue', label: 'Catalogue', icon: 'shopping-bag',   bg: 'var(--theme-bg)' },
+    { id: 'feedback',  label: 'Feedback',  icon: 'message-square', bg: 'var(--theme-bg)' }
+  ];
+
+  namespaceOptions = [
+    { label: 'Catalogue', value: 'catalogue' },
+    { label: 'Feedback',  value: 'feedback'  }
+  ];
+
+  objectTypeOptions = [
+    { label: 'Folder type', value: 'folder' },
+    { label: 'Issue type',  value: 'issue'  }
+  ];
+
+  // Data passed to CatalogueGridComponent
+  catEntities: CatalogueEntity[] = [];
+  circleCategories: CategoryInfo[] = [];
+  availableTags: string[] = [];
+
+  // Drawer state
+  showDrawer = false;
+  showImagePanel = false;
+  form: any = this.emptyForm();
+  parentOptions: { label: string; value: string }[] = [];
+
+  // Image upload (from grid circle edit)
+  uploadCatId = '';
+  uploadCoverUrl = '';
+  uploadCardColor = '';
+  uploadIconName = '';
+  uploadIconColor = '';
+  uploadSearchTerm = '';
 
   constructor(
     private catSvc: CategoryService,
@@ -249,7 +314,8 @@ export class CategoriesComponent implements OnInit {
   ngOnInit() {
     this.catSvc.getAll().subscribe({
       next: (cats) => {
-        this.categories = (cats || []).map((c: any) => ({ ...c, enabled: c.enabled !== false }));
+        this.allCategories = (cats || []).map((c: any) => ({ ...c, enabled: c.enabled !== false }));
+        this.rebuild();
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -257,76 +323,240 @@ export class CategoriesComponent implements OnInit {
     });
   }
 
-  enabledCategories()  { return this.categories.filter((c: any) => c.enabled !== false); }
-  disabledCategories() { return this.categories.filter((c: any) => c.enabled === false); }
-
-  openCategory(c: any) {
-    this.catForm = { ...c, tags: c.tags ? [...c.tags] : [] };
-    this.editingCat = false;
-    this.showCatImagePanel = false;
-    this.showCatDrawer = true;
-    this.cdr.detectChanges();
-  }
-
-  addCategory() {
-    this.catForm = { id: '', name: '', description: '', tags: [], cover_image_url: '', card_color: '', enabled: true };
-    this.editingCat = true;
-    this.showCatImagePanel = false;
-    this.showCatDrawer = true;
-    this.cdr.detectChanges();
-  }
-
-  startEditCat() { this.catSnapshot = { ...this.catForm, tags: [...(this.catForm.tags || [])] }; this.editingCat = true; this.cdr.detectChanges(); }
-
-  cancelEditCat() {
-    if (this.catSnapshot) this.catForm = { ...this.catSnapshot, tags: [...(this.catSnapshot.tags || [])] };
-    this.editingCat = false;
-    this.cdr.detectChanges();
-  }
-
-  submitCat() {
-    if (!this.catForm.name?.trim()) return;
-    const payload = {
-      name: this.catForm.name, description: this.catForm.description,
-      cover_image_url: this.catForm.cover_image_url, card_color: this.catForm.card_color,
-      tags: this.catForm.tags, enabled: this.catForm.enabled
+  private emptyForm() {
+    return {
+      id: '', name: '', namespace: 'catalogue', object_type: 'folder',
+      parent_id: null, tagline: '', description: '', model: '',
+      tags: [], enabled: true,
+      cover_image_url: '', card_color: '', icon_name: '', icon_color: 'var(--theme-bg)'
     };
-    const obs = !this.catForm.id ? this.catSvc.create(payload) : this.catSvc.patch(this.catForm.id, payload);
+  }
+
+  setNamespace(ns: 'all' | 'catalogue' | 'feedback') {
+    this.selectedNamespace = ns;
+    this.rebuild();
+    this.cdr.detectChanges();
+  }
+
+  private rebuild() {
+    const filtered = this.allCategories.filter(c =>
+      this.selectedNamespace === 'all' || (c.namespace || 'catalogue') === this.selectedNamespace
+    );
+
+    // Map to CategoryInfo (circles) — include all levels so child rows work
+    this.circleCategories = filtered.map(c => this.toCategoryInfo(c));
+
+    // Map to CatalogueEntity (cards in grid body)
+    this.catEntities = filtered.map(c => this.toEntity(c));
+
+    // Aggregate unique tags
+    const tagSet = new Set<string>();
+    filtered.forEach(c => (c.tags || []).forEach(t => tagSet.add(t)));
+    this.availableTags = Array.from(tagSet).sort();
+
+    // Parent options for drawer (level-0 only)
+    this.parentOptions = this.allCategories
+      .filter(c => !c.parent_id)
+      .map(c => ({ label: `${c.name} (${c.namespace || 'catalogue'})`, value: c.id }));
+  }
+
+  private toCategoryInfo(c: Category): CategoryInfo {
+    return {
+      id: c.id,
+      name: c.name,
+      cover_image_url: c.cover_image_url,
+      logo_url: c.logo_url,
+      icon_name: c.icon_name,
+      icon_color: c.icon_color,
+      parent_id: c.parent_id || undefined,
+      tagline: c.tagline,
+      description: c.description,
+      model: c.model || 'A',
+      namespace: c.namespace,
+      object_type: c.object_type,
+      enabled: c.enabled,
+      card_color: c.card_color,
+      tags: c.tags
+    };
+  }
+
+  private toEntity(c: Category): CatalogueEntity {
+    const level = c.parent_id ? 1 : 0;
+    const parentName = c.parent_id
+      ? (this.allCategories.find(p => p.id === c.parent_id)?.name || '')
+      : '';
+    return {
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      cover_image_url: c.cover_image_url,
+      logo_url: c.logo_url,
+      image_display: 'cover',
+      // Category_id drives grid filtering by selected circle:
+      // level-0 → own id (itself appears when its own circle is active)
+      // level-1 → parent_id (appears under parent)
+      category_id: c.parent_id || c.id,
+      subtitle: `${c.namespace || 'catalogue'} · level ${level}`,
+      categoryLabel: parentName || (c.namespace || 'catalogue'),
+      icon: c.icon_name,
+      specs: [
+        { label: 'Namespace',   value: c.namespace || 'catalogue' },
+        { label: 'Level',       value: String(level) },
+        { label: 'Object type', value: c.object_type || '—' },
+        { label: 'Enabled',     value: c.enabled !== false ? 'Yes' : 'No' }
+      ],
+      _raw: c
+    };
+  }
+
+  // ── Events from CatalogueGridComponent ──────────────────────────────────
+
+  onEntitySelected(_e: CatalogueEntity) { /* detail panel is built-in */ }
+
+  onAction(e: CatalogueEntity) {
+    // "Edit" button clicked in detail panel → open drawer
+    const cat = this.allCategories.find(c => c.id === e.id);
+    if (cat) this.openEdit(cat);
+  }
+
+  onImageEdit(e: CatalogueEntity) {
+    const cat = this.allCategories.find(c => c.id === e.id);
+    if (!cat) return;
+    this.beginImageUpload(cat);
+  }
+
+  onCategoryImageEdit(ci: CategoryInfo) {
+    const cat = this.allCategories.find(c => c.id === ci.id);
+    if (!cat) return;
+    this.beginImageUpload(cat);
+  }
+
+  private beginImageUpload(cat: Category) {
+    this.uploadCatId = cat.id;
+    this.uploadCoverUrl = cat.cover_image_url || '';
+    this.uploadCardColor = cat.card_color || '';
+    this.uploadIconName = cat.icon_name || '';
+    this.uploadIconColor = cat.icon_color || 'var(--theme-bg)';
+    this.uploadSearchTerm = cat.name;
+    this.cdr.detectChanges();
+  }
+
+  onCatImageUpdated(event: { coverUrl?: string; cardColor?: string; iconName?: string; iconColor?: string }) {
+    const cat = this.allCategories.find(c => c.id === this.uploadCatId);
+    if (!cat) { this.uploadCatId = ''; return; }
+    const patch: any = {};
+    if (event.coverUrl !== undefined) { cat.cover_image_url = event.coverUrl; patch.cover_image_url = event.coverUrl; }
+    if (event.cardColor !== undefined) { cat.card_color = event.cardColor; patch.card_color = event.cardColor; }
+    if (event.iconName !== undefined) { cat.icon_name = event.iconName; patch.icon_name = event.iconName; }
+    if (event.iconColor !== undefined) { cat.icon_color = event.iconColor; patch.icon_color = event.iconColor; }
+    this.rebuild();
+    this.catSvc.patch(cat.id, patch).subscribe({
+      next: () => this.cdr.detectChanges(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save image' })
+    });
+    this.uploadCatId = '';
+    this.cdr.detectChanges();
+  }
+
+  // ── Drawer ──────────────────────────────────────────────────────────────
+
+  openAdd() {
+    this.form = this.emptyForm();
+    if (this.selectedNamespace !== 'all') this.form.namespace = this.selectedNamespace;
+    this.showImagePanel = false;
+    this.showDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  openEdit(c: Category) {
+    this.form = {
+      id: c.id,
+      name: c.name || '',
+      namespace: c.namespace || 'catalogue',
+      object_type: c.object_type || 'folder',
+      parent_id: c.parent_id || null,
+      tagline: c.tagline || '',
+      description: c.description || '',
+      model: c.model || '',
+      tags: c.tags ? [...c.tags] : [],
+      enabled: c.enabled !== false,
+      cover_image_url: c.cover_image_url || '',
+      card_color: c.card_color || '',
+      icon_name: c.icon_name || '',
+      icon_color: c.icon_color || 'var(--theme-bg)'
+    };
+    this.showImagePanel = false;
+    this.showDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDrawer() {
+    this.showDrawer = false;
+    this.showImagePanel = false;
+    this.cdr.detectChanges();
+  }
+
+  onNamespaceFormChange() {
+    if (this.form.namespace !== 'feedback') this.form.object_type = null;
+    else if (!this.form.object_type) this.form.object_type = 'folder';
+  }
+
+  onDrawerImageUpdated(event: { coverUrl?: string; cardColor?: string; iconName?: string; iconColor?: string }) {
+    if (event.coverUrl !== undefined) this.form.cover_image_url = event.coverUrl;
+    if (event.cardColor !== undefined) this.form.card_color = event.cardColor;
+    if (event.iconName !== undefined) this.form.icon_name = event.iconName;
+    if (event.iconColor !== undefined) this.form.icon_color = event.iconColor;
+    this.cdr.detectChanges();
+  }
+
+  submit() {
+    if (!this.form.name?.trim() || !this.form.namespace) return;
+    const payload: any = {
+      name: this.form.name.trim(),
+      namespace: this.form.namespace,
+      parent_id: this.form.parent_id || null,
+      tagline: this.form.tagline || null,
+      description: this.form.description || null,
+      tags: this.form.tags || [],
+      enabled: this.form.enabled,
+      model: this.form.model || 'A',
+      cover_image_url: this.form.cover_image_url || null,
+      card_color: this.form.card_color || null,
+      icon_name: this.form.icon_name || null,
+      icon_color: this.form.icon_color || null,
+      object_type: this.form.namespace === 'feedback' ? (this.form.object_type || 'folder') : null
+    };
+    const obs = this.form.id
+      ? this.catSvc.patch(this.form.id, payload)
+      : this.catSvc.create(payload);
+
     obs.subscribe({
       next: (saved: any) => {
-        const idx = this.categories.findIndex((c: any) => c.id === saved.id);
-        if (idx > -1) { this.categories[idx] = { ...saved, enabled: saved.enabled !== false }; }
-        else { this.categories = [...this.categories, { ...saved, enabled: saved.enabled !== false }]; }
-        this.categories = [...this.categories];
-        this.editingCat = false;
-        this.msg.add({ severity: 'success', summary: 'Category saved' });
+        const normalised = { ...saved, enabled: saved.enabled !== false };
+        const idx = this.allCategories.findIndex(c => c.id === saved.id);
+        if (idx > -1) this.allCategories[idx] = normalised;
+        else this.allCategories = [...this.allCategories, normalised];
+        this.rebuild();
+        this.closeDrawer();
+        this.msg.add({ severity: 'success', summary: this.form.id ? 'Category saved' : 'Category created' });
         this.cdr.detectChanges();
       },
-      error: () => { this.msg.add({ severity: 'error', summary: 'Failed to save category' }); }
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save category' })
     });
   }
 
-  closeCatDrawer() { this.showCatDrawer = false; this.editingCat = false; this.showCatImagePanel = false; this.cdr.detectChanges(); }
-
   deleteCategory() {
-    if (!this.catForm.id) return;
-    this.categories = this.categories.filter((c: any) => c.id !== this.catForm.id);
-    this.closeCatDrawer();
-    this.msg.add({ severity: 'success', summary: 'Category deleted' });
-    this.cdr.detectChanges();
-  }
-
-  onCatImageUpdated(urls: { coverUrl: string; cardColor?: string }) {
-    if (urls.coverUrl !== undefined) this.catForm.cover_image_url = urls.coverUrl;
-    if (urls.cardColor !== undefined) this.catForm.card_color = urls.cardColor;
-    const idx = this.categories.findIndex((c: any) => c.id === this.catForm.id);
-    if (idx > -1) { this.categories[idx] = { ...this.categories[idx], ...this.catForm }; this.categories = [...this.categories]; }
-    if (this.catForm.id) {
-      const patch: any = {};
-      if (urls.coverUrl !== undefined) patch.cover_image_url = urls.coverUrl;
-      if (urls.cardColor !== undefined) patch.card_color = urls.cardColor;
-      this.catSvc.patch(this.catForm.id, patch).subscribe();
-    }
-    this.cdr.detectChanges();
+    if (!this.form.id) return;
+    const id = this.form.id;
+    this.catSvc.delete(id).subscribe({
+      next: () => {
+        this.allCategories = this.allCategories.filter(c => c.id !== id);
+        this.rebuild();
+        this.closeDrawer();
+        this.msg.add({ severity: 'success', summary: 'Category deleted' });
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to delete category' })
+    });
   }
 }
