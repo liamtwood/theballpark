@@ -16,4 +16,6 @@ export interface Category {
   icon_name?: string;
   icon_color?: string;
   logo_url?: string;
+  object_type?: string;
+  level?: number;
 }
