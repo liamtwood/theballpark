@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
-import { SelectButtonModule } from 'primeng/selectbutton';
+import { CheckboxModule } from 'primeng/checkbox';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
   ChevronRight, ChevronLeft, MapPin, SquarePen
@@ -16,7 +16,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    InputTextModule, ButtonModule, SelectButtonModule,
+    InputTextModule, ButtonModule, CheckboxModule,
     LucideAngularModule, GbpPipe
   ],
   template: `
@@ -28,23 +28,34 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       </button>
     </div>
 
-    <!-- CATEGORY CIRCLES -->
+    <!-- BREADCRUMB (when drilled into a category) -->
+    <div class="bp-breadcrumb" *ngIf="drilledCategory">
+      <button class="bp-breadcrumb-link" (click)="drillOut()">All Categories</button>
+      <lucide-icon name="chevron-right" [size]="12" class="bp-breadcrumb-sep"></lucide-icon>
+      <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
+    </div>
+
+    <!-- CATEGORY CIRCLES (single row — level-0 or level-1 depending on drill state) -->
     <div class="bp-cat-circles-wrap" *ngIf="categories.length">
       <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
         (click)="scrollCircles(-200)">
         <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
       </button>
       <div class="bp-cat-circles" #circlesRow (scroll)="onCirclesScroll()">
-        <button class="bp-cat-circle-btn" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
+        <!-- "All" circle -->
+        <button class="bp-cat-circle-btn"
+          [class.active]="!drilledCategory ? activeCategory === 'all' : !activeChildCategory"
+          (click)="!drilledCategory ? setCategory('all') : setChildCategory(null)">
           <div class="bp-cat-circle bp-cat-circle--all">
             <lucide-icon name="layers" [size]="22"></lucide-icon>
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
-        <button *ngFor="let cat of parentCategories"
+        <!-- Category circles -->
+        <button *ngFor="let cat of displayedCircles"
           class="bp-cat-circle-btn"
-          [class.active]="activeCategory === cat.id"
-          (click)="setCategory(cat.id)">
+          [class.active]="!drilledCategory ? activeCategory === cat.id : activeChildCategory === cat.id"
+          (click)="onCircleClick(cat)">
           <div class="bp-cat-circle"
             [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
             [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
@@ -67,36 +78,6 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       </button>
     </div>
 
-    <!-- CHILD CATEGORY CIRCLES (when parent selected and has children) -->
-    <div class="bp-cat-circles-wrap bp-child-circles-wrap" *ngIf="activeChildCategories.length">
-      <div class="bp-cat-circles">
-        <button class="bp-cat-circle-btn bp-cat-circle-btn--child"
-          [class.active]="!activeChildCategory"
-          (click)="setChildCategory(null)">
-          <div class="bp-cat-circle bp-cat-circle--sm bp-cat-circle--all">
-            <lucide-icon name="layers" [size]="16"></lucide-icon>
-          </div>
-          <span class="bp-cat-circle-label">All</span>
-        </button>
-        <button *ngFor="let child of activeChildCategories"
-          class="bp-cat-circle-btn bp-cat-circle-btn--child"
-          [class.active]="activeChildCategory === child.id"
-          (click)="setChildCategory(child.id)">
-          <div class="bp-cat-circle bp-cat-circle--sm"
-            [style.background-image]="child.cover_image_url ? 'url(' + child.cover_image_url + ')' : null"
-            [style.background-color]="!child.cover_image_url && child.icon_name && child.icon_color ? child.icon_color : null"
-            [class.bp-cat-circle--no-image]="!child.cover_image_url && !child.icon_name">
-            <lucide-icon *ngIf="!child.cover_image_url && child.icon_name" [name]="child.icon_name" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
-            <span *ngIf="!child.cover_image_url && !child.icon_name" class="bp-cat-circle-initials" style="font-size:16px;">{{ child.name.charAt(0) }}</span>
-            <button *ngIf="showEdit" class="bp-cat-circle-edit bp-cat-circle-edit--sm" (click)="onCategoryEdit($event, child)" title="Edit image">
-              <lucide-icon name="square-pen" [size]="10"></lucide-icon>
-            </button>
-          </div>
-          <span class="bp-cat-circle-label">{{ child.name }}</span>
-        </button>
-      </div>
-    </div>
-
     <!-- THREE-COLUMN BODY -->
     <div class="bp-cat-body bp-cat-body--detail">
 
@@ -108,32 +89,52 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             placeholder="Search..." class="bp-sidebar-search-input"/>
         </div>
 
-        <ng-container *ngIf="activeCategory === 'all'">
+        <!-- Not drilled in: show category list -->
+        <ng-container *ngIf="!drilledCategory">
           <div class="bp-sidebar-sublabel">Category</div>
-          <button class="bp-sidebar-item active" (click)="setCategory('all')">
+          <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
             <span>All</span>
             <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
           </button>
           <button *ngFor="let cat of parentCategories"
             class="bp-sidebar-item"
+            [class.active]="activeCategory === cat.id"
             (click)="setCategory(cat.id)">
             <span>{{ cat.name }}</span>
             <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
           </button>
         </ng-container>
 
-        <ng-container *ngIf="activeCategory !== 'all'">
-          <button class="bp-sidebar-back" (click)="setCategory('all')">
+        <!-- Drilled in: show subcategory checkboxes -->
+        <ng-container *ngIf="drilledCategory">
+          <button class="bp-sidebar-back" (click)="drillOut()">
             <lucide-icon name="chevron-left" [size]="13"></lucide-icon>
             All categories
           </button>
-          <div class="bp-sidebar-sublabel mt-4" *ngIf="tags.length">Filter by type</div>
-          <button *ngFor="let tag of tags"
-            class="bp-sidebar-item"
-            [class.active]="activeTag === tag"
-            (click)="setTag(tag)">
-            <span>{{ tag }}</span>
-          </button>
+          <div class="bp-sidebar-sublabel mt-4">Subcategory</div>
+          <div class="bp-sidebar-check-actions">
+            <button class="bp-sidebar-check-link" (click)="checkAll()">Select all</button>
+            <span class="bp-sidebar-check-sep">·</span>
+            <button class="bp-sidebar-check-link" (click)="uncheckAll()">Clear</button>
+          </div>
+          <div *ngFor="let child of childCategories" class="bp-sidebar-check-item">
+            <p-checkbox [binary]="true"
+              [ngModel]="checkedChildIds.has(child.id)"
+              (onChange)="toggleChild(child.id)"
+              [label]="child.name">
+            </p-checkbox>
+          </div>
+
+          <!-- Tags (if any exist for this category) -->
+          <ng-container *ngIf="tags.length">
+            <div class="bp-sidebar-sublabel mt-4">Filter by type</div>
+            <button *ngFor="let tag of tags"
+              class="bp-sidebar-item"
+              [class.active]="activeTag === tag"
+              (click)="setTag(tag)">
+              <span>{{ tag }}</span>
+            </button>
+          </ng-container>
         </ng-container>
       </div>
 
@@ -143,13 +144,6 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
-          <div class="bp-model-toggle-wrap" *ngIf="hasModels && activeCategory !== 'all'">
-            <p-selectButton [options]="modelOptions" [(ngModel)]="activeModel"
-              (onChange)="onModelChange($event.value)"
-              styleClass="bp-model-toggle" optionLabel="label" optionValue="value">
-            </p-selectButton>
-            <span class="bp-model-hint">{{ modelLabel }}</span>
-          </div>
           <div class="bp-view-toggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
@@ -321,6 +315,13 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-grid-back-btn:hover { opacity: 0.75; }
 
+    /* ── BREADCRUMB ── */
+    .bp-breadcrumb { display: flex; align-items: center; gap: 6px; padding: 12px 28px 0; font-family: var(--font-body); font-size: 12px; }
+    .bp-breadcrumb-link { background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 0; }
+    .bp-breadcrumb-link:hover { opacity: 0.75; }
+    .bp-breadcrumb-sep { color: var(--color-text-muted); }
+    .bp-breadcrumb-current { font-weight: 500; color: var(--color-text-primary); }
+
     .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible; }
     .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
     .bp-circles-arrow {
@@ -351,26 +352,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       cursor: pointer; color: var(--color-text-muted); transition: all 0.15s;
       opacity: 0; pointer-events: none;
     }
-    .bp-cat-circle-edit--sm { width: 18px; height: 18px; bottom: 0; right: 0; }
     .bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
     .bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
-    /* Model toggle */
-    .bp-model-toggle-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-    .bp-model-hint { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
-    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-button {
-      padding: 3px 10px !important; font-size: 11px !important; font-weight: 600 !important;
-      min-width: 28px !important; border-color: var(--color-border) !important;
-      background: var(--color-surface) !important; color: var(--color-text-muted) !important;
-    }
-    :host ::ng-deep .bp-model-toggle.p-selectbutton .p-highlight {
-      background: var(--theme-accent) !important; color: #fff !important;
-      border-color: var(--theme-accent) !important;
-    }
 
-    .bp-child-circles-wrap { padding-top: 0; margin-top: -8px; }
-    .bp-child-circles-wrap .bp-cat-circles { justify-content: center; }
-    .bp-cat-circle-btn--child .bp-cat-circle--sm { width: 64px; height: 64px; }
-    .bp-cat-circle-btn--child .bp-cat-circle-label { font-size: 10px; }
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
@@ -392,6 +376,16 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
     .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-sidebar-back:hover { opacity: 0.75; }
+
+    /* ── SIDEBAR CHECKBOXES ── */
+    .bp-sidebar-check-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+    .bp-sidebar-check-link { background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--theme-accent); padding: 0; }
+    .bp-sidebar-check-link:hover { opacity: 0.75; }
+    .bp-sidebar-check-sep { color: var(--color-text-muted); font-size: 11px; }
+    .bp-sidebar-check-item { padding: 4px 0; }
+    :host ::ng-deep .bp-sidebar-check-item .p-checkbox-label { font-size: 12px !important; font-weight: 500 !important; color: var(--color-text-secondary) !important; cursor: pointer; }
+    :host ::ng-deep .bp-sidebar-check-item .p-checkbox .p-checkbox-box { width: 16px !important; height: 16px !important; border-radius: 3px !important; }
+    :host ::ng-deep .bp-sidebar-check-item .p-checkbox.p-checkbox-checked .p-checkbox-box { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
 
     .bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
     .bp-cat-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
@@ -500,6 +494,7 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Output() actionClicked = new EventEmitter<CatalogueEntity>();
   @Output() parentClicked = new EventEmitter<CatalogueEntity>();
   @Output() categoryChanged = new EventEmitter<string>();
+  @Output() drillChanged = new EventEmitter<string | null>();
   @Output() tagChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
   @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
@@ -508,38 +503,25 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   activeCategory = 'all';
   activeChildCategory: string | null = null;
   activeTag = '';
-  activeModel = 'A';
   searchQuery = '';
   layout: 'list' | 'card' = 'card';
   filteredEntities: CatalogueEntity[] = [];
-  activeChildCategories: CategoryInfo[] = [];
 
-  modelOptions = [
-    { label: 'A', value: 'A' },
-    { label: 'B', value: 'B' },
-    { label: 'C', value: 'C' },
-    { label: 'D', value: 'D' }
-  ];
-
-  private modelLabels: Record<string, string> = {
-    'A': 'Browse by format',
-    'B': 'Browse by meal occasion',
-    'C': 'Browse by event type',
-    'D': 'Browse by budget'
-  };
-
-  get modelLabel(): string { return this.modelLabels[this.activeModel] || ''; }
-
-  get hasModels(): boolean {
-    if (this.activeCategory === 'all') return false;
-    const models = new Set(
-      this.categories.filter(c => c.parent_id === this.activeCategory).map(c => c.model || 'A')
-    );
-    return models.size > 1;
-  }
+  // Drill-down state
+  drilledCategory: CategoryInfo | null = null;
+  checkedChildIds: Set<string> = new Set();
 
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
+  }
+
+  get childCategories(): CategoryInfo[] {
+    if (!this.drilledCategory) return [];
+    return this.categories.filter(c => c.parent_id === this.drilledCategory!.id);
+  }
+
+  get displayedCircles(): CategoryInfo[] {
+    return this.drilledCategory ? this.childCategories : this.parentCategories;
   }
 
   @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
@@ -587,45 +569,108 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     this.cdr.detectChanges();
   }
 
+  // ── Circle click handler ──────────────────────────────────────────────
+
+  onCircleClick(cat: CategoryInfo) {
+    if (this.drilledCategory) {
+      // We're in drill-down mode — clicking a child circle
+      this.setChildCategory(cat.id);
+    } else {
+      // Top-level — click a level-0 circle
+      this.setCategory(cat.id);
+    }
+  }
+
   setCategory(catId: string) {
-    this.activeCategory = catId;
+    if (catId === 'all') {
+      this.drillOut();
+      return;
+    }
+
+    // Check if this category has children → drill in
+    const hasChildren = this.categories.some(c => c.parent_id === catId);
+    if (hasChildren) {
+      const cat = this.categories.find(c => c.id === catId);
+      if (cat) this.drillIn(cat);
+    } else {
+      // Simple category (no children) — just filter (orgs/admin pattern)
+      this.activeCategory = catId;
+      this.activeChildCategory = null;
+      this.activeTag = '';
+      this.selectedEntity = null;
+      this.categoryChanged.emit(catId);
+      this.applyFilter();
+    }
+  }
+
+  // ── Drill-down ────────────────────────────────────────────────────────
+
+  drillIn(cat: CategoryInfo) {
+    this.drilledCategory = cat;
+    this.activeCategory = cat.id;
     this.activeChildCategory = null;
     this.activeTag = '';
-    this.activeModel = 'A';
     this.selectedEntity = null;
-    this.updateChildCategories();
-    this.categoryChanged.emit(catId);
+
+    // Check all children by default
+    this.checkedChildIds = new Set(
+      this.categories.filter(c => c.parent_id === cat.id).map(c => c.id)
+    );
+
+    this.categoryChanged.emit(cat.id);
+    this.drillChanged.emit(cat.id);
     this.applyFilter();
+    setTimeout(() => this.checkScrollArrows(), 0);
+    this.cdr.detectChanges();
+  }
+
+  drillOut() {
+    this.drilledCategory = null;
+    this.activeCategory = 'all';
+    this.activeChildCategory = null;
+    this.activeTag = '';
+    this.selectedEntity = null;
+    this.checkedChildIds.clear();
+
+    this.categoryChanged.emit('all');
+    this.drillChanged.emit(null);
+    this.applyFilter();
+    setTimeout(() => this.checkScrollArrows(), 0);
+    this.cdr.detectChanges();
   }
 
   setChildCategory(childId: string | null) {
     this.activeChildCategory = childId;
     this.activeTag = '';
     this.selectedEntity = null;
-    if (childId && this.activeModel === 'A') {
-      this.categoryChanged.emit(childId);
+    this.categoryChanged.emit(childId || this.activeCategory);
+    this.applyFilter();
+  }
+
+  // ── Checkbox controls ─────────────────────────────────────────────────
+
+  toggleChild(childId: string) {
+    if (this.checkedChildIds.has(childId)) {
+      this.checkedChildIds.delete(childId);
     } else {
-      this.categoryChanged.emit(this.activeCategory);
+      this.checkedChildIds.add(childId);
     }
+    this.checkedChildIds = new Set(this.checkedChildIds); // trigger change detection
     this.applyFilter();
   }
 
-  onModelChange(model: string) {
-    this.activeModel = model;
-    this.activeChildCategory = null;
-    this.activeTag = '';
-    this.selectedEntity = null;
-    this.updateChildCategories();
+  checkAll() {
+    this.checkedChildIds = new Set(this.childCategories.map(c => c.id));
     this.applyFilter();
   }
 
-  private updateChildCategories() {
-    this.activeChildCategories = this.activeCategory !== 'all'
-      ? this.categories.filter(c =>
-          c.parent_id === this.activeCategory && (c.model || 'A') === this.activeModel
-        )
-      : [];
+  uncheckAll() {
+    this.checkedChildIds.clear();
+    this.checkedChildIds = new Set(); // trigger change detection
+    this.applyFilter();
   }
+
+  // ── Other handlers ────────────────────────────────────────────────────
 
   onBack() {
     this.backClicked.emit();
@@ -665,39 +710,26 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     this.parentClicked.emit(e);
   }
 
+  // ── Filtering ─────────────────────────────────────────────────────────
+
   private applyFilter() {
     let result = this.entities;
 
-    if (this.activeCategory !== 'all') {
-      // First: scope to parent category and its model-A children (the actual item assignments)
-      const modelAChildIds = this.categories
-        .filter(c => c.parent_id === this.activeCategory && (c.model || 'A') === 'A')
-        .map(c => c.id);
-      const validIds = new Set([this.activeCategory, ...modelAChildIds]);
-      result = result.filter(e => e.category_id && validIds.has(e.category_id));
+    if (this.drilledCategory) {
+      // Drilled in: filter by checked subcategory IDs
+      // Also include items assigned directly to the parent category
+      const validIds = new Set(this.checkedChildIds);
+      validIds.add(this.drilledCategory.id);
 
-      // Then: apply child filter based on active model
+      // If a specific child circle is active, narrow further
       if (this.activeChildCategory) {
-        if (this.activeModel === 'A') {
-          result = result.filter(e => e.category_id === this.activeChildCategory);
-        } else {
-          // Models B/C/D: filter by item tags or name matching child category keywords
-          const child = this.categories.find(c => c.id === this.activeChildCategory);
-          if (child) {
-            const childName = child.name.toLowerCase();
-            const keywords = childName.split(/\s*[&,]\s*|\s+/).filter(w => w.length > 2);
-            result = result.filter(e => {
-              const raw = e._raw;
-              const tags: string[] = raw?.tags || [];
-              const haystack = [
-                e.name.toLowerCase(),
-                ...tags.map(t => t.toLowerCase())
-              ].join(' ');
-              return keywords.some(kw => haystack.includes(kw));
-            });
-          }
-        }
+        result = result.filter(e => e.category_id === this.activeChildCategory);
+      } else {
+        result = result.filter(e => e.category_id && validIds.has(e.category_id));
       }
+    } else if (this.activeCategory !== 'all') {
+      // Simple filter (no drill — used by orgs/admin grids)
+      result = result.filter(e => e.category_id === this.activeCategory);
     }
 
     if (this.searchQuery.trim()) {
