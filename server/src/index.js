@@ -49,6 +49,31 @@ const OrgService = require('./services/org.service');
 const UserService = require('./services/user.service');
 const ProjectService = require('./services/project.service');
 const ItemService = require('./services/item.service');
+const pool = require('./db/pool');
+
+// Health check — cheapest round-trip that proves DB is alive.
+// Used by Railway health check and UptimeRobot keep-alive pings.
+app.get('/api/health', async (req, res) => {
+  const t0 = Date.now();
+  try {
+    const r = await pool.query('SELECT 1 AS ok');
+    res.json({
+      status: 'ok',
+      schema: process.env.APP_SCHEMA || 'public',
+      db: r.rows[0].ok === 1 ? 'up' : 'unknown',
+      latency_ms: Date.now() - t0,
+      ts: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'degraded',
+      db: 'down',
+      error: err.message,
+      latency_ms: Date.now() - t0,
+      ts: new Date().toISOString()
+    });
+  }
+});
 
 // Convenience: get the first agency org (acts as "current org")
 app.get('/api/org', async (req, res, next) => {
@@ -175,4 +200,17 @@ const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
   console.log(`Ballpark server listening on port ${PORT}`);
+
+  // Supabase keep-alive: run a trivial DB query every 5 minutes so the
+  // free-tier project never hits its 7-day inactivity pause. The interval
+  // lives inside this Node process — if the process dies, Railway's
+  // restart policy revives it and the heartbeat restarts on the next boot.
+  const HEARTBEAT_MS = 5 * 60 * 1000;
+  const heartbeat = setInterval(() => {
+    pool.query('SELECT 1')
+      .then(() => { /* silent success — we don't want to spam logs */ })
+      .catch(err => console.warn('[heartbeat] db ping failed:', err.message));
+  }, HEARTBEAT_MS);
+  heartbeat.unref(); // don't keep the event loop alive solely for this
+  console.log(`[heartbeat] Supabase keep-alive every ${HEARTBEAT_MS / 1000}s`);
 });
