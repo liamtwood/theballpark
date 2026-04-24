@@ -1,20 +1,38 @@
 /**
- * Ballpark — Preview Schema Seed
- * 
- * Populates the preview schema with clean, curated demo data
- * for stakeholder demos (Beth Pizey, Megan Goodwin).
- * 
- * Completely separate from public (dev) data.
- * Safe to re-run — truncates preview tables first.
- * 
+ * Ballpark — Preview Schema Seed (INITIAL BOOTSTRAP ONLY)
+ *
+ * ⚠️  DESTRUCTIVE. This script TRUNCATES every preview table with new UUIDs
+ *     and re-seeds from scratch. Any manually-uploaded images, curated
+ *     categories, edited suppliers, or Unsplash picks WILL BE LOST.
+ *     (They aren't technically "lost" — files stay in Supabase storage —
+ *     but new UUIDs orphan every URL in the DB.)
+ *
+ *     Only run this once, at the very start of a preview environment,
+ *     before any manual curation. To re-run after that, pass the explicit
+ *     confirmation flag below.
+ *
  * Usage:
- *   node server/src/db/seed-preview.js
+ *   node server/src/db/seed-preview.js --force-wipe-preview-i-understand
  */
 
 const { Client } = require('pg');
 require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
 
+const FORCE_FLAG = '--force-wipe-preview-i-understand';
+
 const seed = async () => {
+  if (!process.argv.includes(FORCE_FLAG)) {
+    console.error(
+      `\n  ⚠️  seed-preview.js refuses to run without confirmation.\n` +
+      `\n  This script TRUNCATES every preview.* table and assigns new UUIDs\n` +
+      `  to every row. All manually-uploaded images, curated categories, and\n` +
+      `  Unsplash picks in preview will be orphaned in Supabase storage.\n` +
+      `\n  If you really want to re-bootstrap preview from scratch, run:\n` +
+      `     node server/src/db/seed-preview.js ${FORCE_FLAG}\n`
+    );
+    process.exit(2);
+  }
+
   const client = new Client({
     connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -22,8 +40,27 @@ const seed = async () => {
   await client.connect();
 
   try {
+    // Extra guard: if preview already has data, require an even stronger signal.
+    const { rows } = await client.query(
+      `SELECT (SELECT COUNT(*) FROM preview.orgs)::int AS orgs,
+              (SELECT COUNT(*) FROM preview.items)::int AS items,
+              (SELECT COUNT(*) FROM preview.projects)::int AS projects`
+    );
+    const { orgs, items, projects } = rows[0];
+    if (orgs > 0 || items > 0 || projects > 0) {
+      console.error(
+        `\n  ⚠️  preview schema already has data:\n` +
+        `     orgs=${orgs}  items=${items}  projects=${projects}\n` +
+        `  Refusing to TRUNCATE. If you still want to wipe, manually run:\n` +
+        `     TRUNCATE preview.* CASCADE;\n` +
+        `  then re-run this script with ${FORCE_FLAG}.\n`
+      );
+      await client.end();
+      process.exit(3);
+    }
+
     await client.query('BEGIN');
-    console.log('Seeding preview schema...');
+    console.log('Seeding preview schema (empty environment, safe to seed)...');
 
     // ── Clear existing preview data ──────────────────────────────────────
     await client.query(`
