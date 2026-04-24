@@ -105,17 +105,21 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           </button>
         </ng-container>
 
-        <!-- Drilled in: show subcategory checkboxes -->
+        <!-- Drilled in: FORMAT + TYPE sections -->
         <ng-container *ngIf="drilledCategory">
           <button class="bp-sidebar-back" (click)="drillOut()">
             <lucide-icon name="chevron-left" [size]="13"></lucide-icon>
             All categories
           </button>
-          <div class="bp-sidebar-sublabel mt-4">Subcategory</div>
-          <div class="bp-sidebar-check-actions">
-            <button class="bp-sidebar-check-link" (click)="checkAll()">Select all</button>
-            <span class="bp-sidebar-check-sep">·</span>
-            <button class="bp-sidebar-check-link" (click)="uncheckAll()">Clear</button>
+
+          <!-- FORMAT section (model=A subcategories) -->
+          <div class="bp-sidebar-section-header mt-4">
+            <span class="bp-sidebar-sublabel">Format</span>
+            <div class="bp-sidebar-check-actions">
+              <button class="bp-sidebar-check-link" (click)="checkAll()">All</button>
+              <span class="bp-sidebar-check-sep">·</span>
+              <button class="bp-sidebar-check-link" (click)="uncheckAll()">None</button>
+            </div>
           </div>
           <div *ngFor="let child of childCategories" class="bp-sidebar-check-item">
             <p-checkbox [binary]="true"
@@ -125,15 +129,23 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             </p-checkbox>
           </div>
 
-          <!-- Tags (if any exist for this category) -->
+          <!-- TYPE section (tags aggregated from items in this category) -->
           <ng-container *ngIf="tags.length">
-            <div class="bp-sidebar-sublabel mt-4">Filter by type</div>
-            <button *ngFor="let tag of tags"
-              class="bp-sidebar-item"
-              [class.active]="activeTag === tag"
-              (click)="setTag(tag)">
-              <span>{{ tag }}</span>
-            </button>
+            <div class="bp-sidebar-section-header mt-4">
+              <span class="bp-sidebar-sublabel">Type</span>
+              <div class="bp-sidebar-check-actions">
+                <button class="bp-sidebar-check-link" (click)="checkAllTags()">All</button>
+                <span class="bp-sidebar-check-sep">·</span>
+                <button class="bp-sidebar-check-link" (click)="uncheckAllTags()">None</button>
+              </div>
+            </div>
+            <div *ngFor="let tag of tags" class="bp-sidebar-check-item">
+              <p-checkbox [binary]="true"
+                [ngModel]="checkedTags.has(tag)"
+                (onChange)="toggleTag(tag)"
+                [label]="tag">
+              </p-checkbox>
+            </div>
           </ng-container>
         </ng-container>
       </div>
@@ -378,7 +390,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-sidebar-back:hover { opacity: 0.75; }
 
     /* ── SIDEBAR CHECKBOXES ── */
-    .bp-sidebar-check-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+    .bp-sidebar-check-actions { display: flex; align-items: center; gap: 6px; }
+    .bp-sidebar-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .bp-sidebar-section-header .bp-sidebar-sublabel { margin-bottom: 0; }
     .bp-sidebar-check-link { background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--theme-accent); padding: 0; }
     .bp-sidebar-check-link:hover { opacity: 0.75; }
     .bp-sidebar-check-sep { color: var(--color-text-muted); font-size: 11px; }
@@ -510,6 +524,7 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   // Drill-down state
   drilledCategory: CategoryInfo | null = null;
   checkedChildIds: Set<string> = new Set();
+  checkedTags: Set<string> = new Set();
 
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
@@ -517,7 +532,11 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
 
   get childCategories(): CategoryInfo[] {
     if (!this.drilledCategory) return [];
-    return this.categories.filter(c => c.parent_id === this.drilledCategory!.id);
+    // Only show model='A' children as FORMAT subcategories — the only model
+    // items are actually assigned to today. B/C/D children are legacy POC rows.
+    return this.categories.filter(c =>
+      c.parent_id === this.drilledCategory!.id && (c.model || 'A') === 'A'
+    );
   }
 
   get displayedCircles(): CategoryInfo[] {
@@ -538,6 +557,11 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     }
     if (changes['categories']) {
       setTimeout(() => this.checkScrollArrows(), 0);
+    }
+    if (changes['tags']) {
+      // All tags checked by default whenever the tag list changes
+      this.checkedTags = new Set(this.tags || []);
+      this.applyFilter();
     }
   }
 
@@ -631,6 +655,7 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     this.activeTag = '';
     this.selectedEntity = null;
     this.checkedChildIds.clear();
+    this.checkedTags.clear();
 
     this.categoryChanged.emit('all');
     this.drillChanged.emit(null);
@@ -667,6 +692,26 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   uncheckAll() {
     this.checkedChildIds.clear();
     this.checkedChildIds = new Set(); // trigger change detection
+    this.applyFilter();
+  }
+
+  toggleTag(tag: string) {
+    if (this.checkedTags.has(tag)) {
+      this.checkedTags.delete(tag);
+    } else {
+      this.checkedTags.add(tag);
+    }
+    this.checkedTags = new Set(this.checkedTags); // trigger change detection
+    this.applyFilter();
+  }
+
+  checkAllTags() {
+    this.checkedTags = new Set(this.tags || []);
+    this.applyFilter();
+  }
+
+  uncheckAllTags() {
+    this.checkedTags = new Set();
     this.applyFilter();
   }
 
@@ -716,16 +761,26 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     let result = this.entities;
 
     if (this.drilledCategory) {
-      // Drilled in: filter by checked subcategory IDs
-      // Also include items assigned directly to the parent category
+      // FORMAT filter — restrict by checked subcategory IDs.
+      // Items assigned directly to the parent category also pass.
       const validIds = new Set(this.checkedChildIds);
       validIds.add(this.drilledCategory.id);
 
-      // If a specific child circle is active, narrow further
       if (this.activeChildCategory) {
         result = result.filter(e => e.category_id === this.activeChildCategory);
       } else {
         result = result.filter(e => e.category_id && validIds.has(e.category_id));
+      }
+
+      // TYPE filter — only applied if the user has unchecked at least one tag.
+      // Default (all tags checked) passes everything, including items with no tags.
+      // Once filtered, items must have >=1 tag in the checked set (items with
+      // empty tags are excluded, which is the honest behaviour).
+      if (this.tags.length && this.checkedTags.size < this.tags.length) {
+        result = result.filter(e => {
+          const itemTags: string[] = e._raw?.tags || [];
+          return itemTags.some(t => this.checkedTags.has(t));
+        });
       }
     } else if (this.activeCategory !== 'all') {
       // Simple filter (no drill — used by orgs/admin grids)
