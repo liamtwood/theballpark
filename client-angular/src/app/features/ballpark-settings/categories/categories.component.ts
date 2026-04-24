@@ -221,8 +221,8 @@ interface NamespaceOption {
   `,
   styles: [`
     /* ── NAMESPACE CIRCLES ── */
-    .bp-ns-circles-wrap { padding: 20px 28px 4px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-ns-circles { display: flex; gap: 20px; justify-content: center; padding-bottom: 16px; }
+    .bp-ns-circles-wrap { padding: 20px 28px 4px; border-bottom: 0.5px solid var(--color-border); overflow: visible; }
+    .bp-ns-circles { display: flex; gap: 20px; justify-content: center; padding: 4px 4px 16px; }
     .bp-ns-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; padding: 0; }
     .bp-ns-circle {
       width: 68px; height: 68px; border-radius: 50%;
