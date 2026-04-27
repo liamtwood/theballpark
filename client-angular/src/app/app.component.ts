@@ -1,41 +1,46 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { TopNavComponent } from './layout/top-nav.component';
 import { LucideAngularModule } from 'lucide-angular';
 import { FeedbackDialogComponent } from './shared/components/feedback-dialog/feedback-dialog.component';
+
+const PUBLIC_PATH_PREFIXES = ['/welcome'];
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, RouterOutlet, TopNavComponent, LucideAngularModule, FeedbackDialogComponent],
   template: `
-    <app-top-nav></app-top-nav>
+    <app-top-nav *ngIf="!isPublic"></app-top-nav>
     <router-outlet></router-outlet>
 
-    <!-- Floating feedback button -->
-    <button class="bp-feedback-fab" (click)="openFeedback()" (contextmenu)="onFabContext($event)" title="Log feedback">
-      <lucide-icon name="message-square" [size]="22"></lucide-icon>
-    </button>
+    <ng-container *ngIf="!isPublic">
+      <!-- Floating feedback button -->
+      <button class="bp-feedback-fab" (click)="openFeedback()" (contextmenu)="onFabContext($event)" title="Log feedback">
+        <lucide-icon name="message-square" [size]="22"></lucide-icon>
+      </button>
 
-    <!-- Quick type menu (right-click) -->
-    <div class="bp-fab-menu" *ngIf="showQuickMenu" [style.bottom.px]="menuBottom" [style.right.px]="24">
-      <button class="bp-fab-menu-item" (click)="openFlow('folder')">
-        <lucide-icon name="folder-open" [size]="14"></lucide-icon> Folder
-      </button>
-      <button class="bp-fab-menu-item" (click)="openFlow('issue')">
-        <lucide-icon name="alert-triangle" [size]="14"></lucide-icon> Issue
-      </button>
-      <button class="bp-fab-menu-item" (click)="openFlow('note')">
-        <lucide-icon name="file-text" [size]="14"></lucide-icon> Note
-      </button>
-    </div>
+      <!-- Quick type menu (right-click) -->
+      <div class="bp-fab-menu" *ngIf="showQuickMenu" [style.bottom.px]="menuBottom" [style.right.px]="24">
+        <button class="bp-fab-menu-item" (click)="openFlow('folder')">
+          <lucide-icon name="folder-open" [size]="14"></lucide-icon> Folder
+        </button>
+        <button class="bp-fab-menu-item" (click)="openFlow('issue')">
+          <lucide-icon name="alert-triangle" [size]="14"></lucide-icon> Issue
+        </button>
+        <button class="bp-fab-menu-item" (click)="openFlow('note')">
+          <lucide-icon name="file-text" [size]="14"></lucide-icon> Note
+        </button>
+      </div>
 
-    <app-feedback-dialog
-      [(visible)]="showFeedback"
-      [initialFlow]="initialFlow"
-      (submitted)="onFeedbackSubmitted($event)">
-    </app-feedback-dialog>
+      <app-feedback-dialog
+        [(visible)]="showFeedback"
+        [initialFlow]="initialFlow"
+        (submitted)="onFeedbackSubmitted($event)">
+      </app-feedback-dialog>
+    </ng-container>
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -72,6 +77,16 @@ export class AppComponent {
   showQuickMenu = false;
   initialFlow: 'folder' | 'issue' | 'note' | null = null;
   menuBottom = 80;
+  isPublic = false;
+
+  constructor(router: Router) {
+    const evaluate = (url: string) => {
+      this.isPublic = PUBLIC_PATH_PREFIXES.some(p => url === p || url.startsWith(p + '/') || url.startsWith(p + '?'));
+    };
+    evaluate(router.url);
+    router.events.pipe(filter(e => e instanceof NavigationEnd))
+      .subscribe((e: any) => evaluate(e.urlAfterRedirects || e.url));
+  }
 
   openFeedback() {
     this.showQuickMenu = false;
