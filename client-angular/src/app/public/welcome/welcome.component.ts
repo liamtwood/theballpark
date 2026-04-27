@@ -46,12 +46,6 @@ const DEFAULT_CONTENT: Content = {
   'producers.tagline':      'By producers, for creators.',
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
-  'producers.step_1_label': 'Brief in',
-  'producers.step_1_text':  'Type, paste, or drop your event brief',
-  'producers.step_2_label': 'AI parses',
-  'producers.step_2_text':  'Categories, budget bands, supplier matches',
-  'producers.step_3_label': 'Quotes back',
-  'producers.step_3_text':  'Real prices from real suppliers',
   'guestlist.eyebrow':         'You made it',
   'guestlist.headline':        'Those who get in early, get ahead.',
   'guestlist.subtitle':        "Get on the guestlist and the moment we're live you'll be the first to know.",
@@ -163,23 +157,9 @@ const DEFAULT_CONTENT: Content = {
                 <h2 class="bp-producers-headline">{{ text('producers.headline') }}</h2>
                 <p class="bp-producers-tagline">{{ text('producers.tagline') }}</p>
               </div>
-              <div class="bp-producers-card">
+              <div>
                 <p class="bp-producers-body">{{ text('producers.body_1') }}</p>
                 <p class="bp-producers-body">{{ text('producers.body_2') }}</p>
-                <div class="bp-producers-steps">
-                  <div class="bp-producers-step">
-                    <div class="bp-producers-step-label">{{ text('producers.step_1_label') }}</div>
-                    <div class="bp-producers-step-text">{{ text('producers.step_1_text') }}</div>
-                  </div>
-                  <div class="bp-producers-step">
-                    <div class="bp-producers-step-label">{{ text('producers.step_2_label') }}</div>
-                    <div class="bp-producers-step-text">{{ text('producers.step_2_text') }}</div>
-                  </div>
-                  <div class="bp-producers-step">
-                    <div class="bp-producers-step-label">{{ text('producers.step_3_label') }}</div>
-                    <div class="bp-producers-step-text">{{ text('producers.step_3_text') }}</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -467,34 +447,15 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 500;
       opacity: 0.9; margin: 0;
     }
-    .bp-producers-card {
-      background: rgba(220,240,235,0.08);
-      border: 1px solid rgba(220,240,235,0.18);
-      border-radius: 16px; padding: 32px;
-      backdrop-filter: blur(12px);
-    }
     .bp-producers-body {
       font-family: 'Inter', sans-serif;
       font-size: 16px; font-weight: 500;
       line-height: 1.7; opacity: 0.95; margin: 0 0 20px 0;
     }
-    .bp-producers-body:last-of-type { margin-bottom: 28px; }
-    .bp-producers-steps { display: flex; flex-direction: column; gap: 12px; }
-    .bp-producers-step { display: flex; align-items: baseline; gap: 16px; }
-    .bp-producers-step-label {
-      font-family: 'Inter', sans-serif;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.15em; text-transform: uppercase;
-      opacity: 0.7; min-width: 80px;
-    }
-    .bp-producers-step-text {
-      font-family: 'Inter', sans-serif;
-      font-size: 13px; font-weight: 500; opacity: 0.9;
-    }
+    .bp-producers-body:last-of-type { margin-bottom: 0; }
 
     @media (max-width: 768px) {
       .bp-producers-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
-      .bp-producers-step { justify-content: center; }
     }
 
     /* ── Slide 4 ──────────────────────────────── */

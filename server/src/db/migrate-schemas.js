@@ -548,12 +548,6 @@ const migrate = async () => {
       ['producers.tagline',       'text',     'By producers, for creators.',                                                'Italic tagline', null, 3, 20],
       ['producers.body_1',        'longtext', 'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.', 'Body paragraph 1', null, 3, 30],
       ['producers.body_2',        'longtext', 'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.', 'Body paragraph 2', null, 3, 40],
-      ['producers.step_1_label',  'text',     'Brief in',                                       'Step 1 — label', null, 3, 50],
-      ['producers.step_1_text',   'text',     'Type, paste, or drop your event brief',          'Step 1 — text',  null, 3, 51],
-      ['producers.step_2_label',  'text',     'AI parses',                                      'Step 2 — label', null, 3, 60],
-      ['producers.step_2_text',   'text',     'Categories, budget bands, supplier matches',     'Step 2 — text',  null, 3, 61],
-      ['producers.step_3_label',  'text',     'Quotes back',                                    'Step 3 — label', null, 3, 70],
-      ['producers.step_3_text',   'text',     'Real prices from real suppliers',                'Step 3 — text',  null, 3, 71],
 
       // Slide 4 — Guestlist
       ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
