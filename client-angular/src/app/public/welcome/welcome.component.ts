@@ -11,10 +11,11 @@ import { environment } from '../../../environments/environment';
 // Intentionally outside the parchment design system per spec: inline
 // brand colours, no PrimeNG, no CSS vars from the app theme.
 //
-// Visual approach:
-//   - Each slide has a flat dark base + 2–3 absolutely-positioned circles
-//     (border-radius: 50%) with radial gradients and filter: blur(80–120px)
-//   - SVG turbulence grain overlay (baseFrequency 0.80, opacity ~0.20)
+// Visual approach — locked recipe, see WORKING_STANDARDS.md → Marketing Visual Recipe:
+//   - Flat brand-coloured base per slide + inline <svg viewBox="0 0 800 500"> with two
+//     gradient-filled <circle> elements wrapped in <g filter="url(#blur)">; <feGaussianBlur
+//     stdDeviation="20">. Don't substitute CSS filter: blur() — calibrated against prototype.
+//   - SVG turbulence grain overlay (baseFrequency 0.80, numOctaves 3, opacity 0.20, mix-blend overlay)
 //   - Keyboard nav: ← →, Enter advances on slides 1–3
 //
 // Content is fetched from /api/welcome/content on init; defaults from the
@@ -80,9 +81,21 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 1: Hero ────────────────────────────── -->
         <section *ngIf="step === 0" class="bp-slide bp-slide-1">
-          <div class="bp-blob bp-blob-1a"></div>
-          <div class="bp-blob bp-blob-1b"></div>
-          <div class="bp-blob bp-blob-1c"></div>
+          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#FA91B0"/>
+                <stop offset="100%" stop-color="#DF5980"/>
+              </linearGradient>
+              <filter id="s1-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g filter="url(#s1-blur)">
+              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
+            </g>
+          </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-1-inner">
             <span class="bp-eyebrow-pill">{{ text('hero.eyebrow') }}</span>
@@ -93,9 +106,21 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 2: Suppliers ───────────────────────── -->
         <section *ngIf="step === 1" class="bp-slide bp-slide-2">
-          <div class="bp-blob bp-blob-2a"></div>
-          <div class="bp-blob bp-blob-2b"></div>
-          <div class="bp-blob bp-blob-2c"></div>
+          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#79A8BA"/>
+                <stop offset="100%" stop-color="#457187"/>
+              </linearGradient>
+              <filter id="s2-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g filter="url(#s2-blur)">
+              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
+              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
+            </g>
+          </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-2-inner">
             <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
@@ -112,8 +137,25 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
         <section *ngIf="step === 2" class="bp-slide bp-slide-3">
-          <div class="bp-blob bp-blob-3a"></div>
-          <div class="bp-blob bp-blob-3b"></div>
+          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#2D8E53"/>
+                <stop offset="100%" stop-color="#133C23"/>
+              </linearGradient>
+              <linearGradient id="s3-light" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#33A25F"/>
+                <stop offset="100%" stop-color="#2D8E53"/>
+              </linearGradient>
+              <filter id="s3-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g filter="url(#s3-blur)">
+              <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
+              <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
+            </g>
+          </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-3-inner">
             <div class="bp-producers-grid">
@@ -145,8 +187,21 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 4: Guestlist ───────────────────────── -->
         <section *ngIf="step === 3" class="bp-slide bp-slide-4">
-          <div class="bp-blob bp-blob-4a"></div>
-          <div class="bp-blob bp-blob-4b"></div>
+          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#33A25F"/>
+                <stop offset="100%" stop-color="#133C23"/>
+              </linearGradient>
+              <filter id="s4-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g filter="url(#s4-blur)">
+              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+            </g>
+          </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
             <div class="bp-eyebrow">{{ text('guestlist.eyebrow') }}</div>
@@ -223,13 +278,6 @@ const DEFAULT_CONTENT: Content = {
         </button>
       </div>
 
-      <!-- SVG noise filter (referenced by .bp-grain) -->
-      <svg class="bp-grain-defs" aria-hidden="true">
-        <filter id="bp-noise">
-          <feTurbulence type="fractalNoise" baseFrequency="0.80" numOctaves="2" stitchTiles="stitch"/>
-          <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.20 0"/>
-        </filter>
-      </svg>
     </div>
   `,
   styles: [`
@@ -294,53 +342,41 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-slide-inner { position: relative; z-index: 5; max-width: 1100px; padding: 0 32px; text-align: center; }
 
-    /* ── Blurred-circle blobs (per-slide) ─────── */
-    .bp-blob {
-      position: absolute;
-      border-radius: 50%;
-      pointer-events: none;
+    /* ── SVG circle background (per-slide) ──────────────────────────────
+       Locked recipe — see WORKING_STANDARDS.md → Marketing Visual Recipe.
+       Each slide template inlines an <svg viewBox="0 0 800 500"> with two
+       gradient-filled circles wrapped in <g filter="url(#blur)">.
+       Don't substitute CSS filter: blur() — calibrated against prototype. */
+    .bp-svg-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
       z-index: 1;
-      filter: blur(110px);
-      opacity: 0.95;
+      pointer-events: none;
     }
 
-    /* Slide 1 — hero · pink (#EB7396) base + pink gradient blobs (FA91B0 → DF5980) */
-    .bp-slide-1 { background: #EB7396; }
-    .bp-blob-1a { width: 720px; height: 720px; left: -120px; top: -160px;     background: radial-gradient(circle, #FA91B0 0%, #DF5980 55%, rgba(223,89,128,0) 100%); }
-    .bp-blob-1b { width: 800px; height: 800px; right: -160px; top: 80px;       background: radial-gradient(circle, #DF5980 0%, #FA91B0 50%, rgba(250,145,176,0) 100%); }
-    .bp-blob-1c { width: 600px; height: 600px; left: 30%; bottom: -200px;      background: radial-gradient(circle, #FA91B0 0%, #DF5980 60%, rgba(223,89,128,0) 100%); }
-
-    /* Slide 2 — suppliers · blue (#6391A4) base + blue gradient blobs (79A8BA → 457187) */
+    /* Per-slide bases (circle gradients live in template <linearGradient> defs) */
+    .bp-slide-1 { background: #287F4D; }
     .bp-slide-2 {
-      background: #6391A4;
+      background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
     }
     .bp-slide-2-inner { margin-bottom: 56px; }
-    .bp-blob-2a { width: 760px; height: 760px; left: -160px; top: -120px;      background: radial-gradient(circle, #79A8BA 0%, #457187 55%, rgba(69,113,135,0) 100%); }
-    .bp-blob-2b { width: 760px; height: 760px; left: 30%;    top: 30%;          background: radial-gradient(circle, #457187 0%, #79A8BA 50%, rgba(121,168,186,0) 100%); }
-    .bp-blob-2c { width: 740px; height: 740px; right: -180px; bottom: -120px;  background: radial-gradient(circle, #79A8BA 0%, #457187 60%, rgba(69,113,135,0) 100%); }
+    .bp-slide-3 { background: #6391A4; }
+    .bp-slide-4 { background: #6391A4; }
 
-    /* Slide 3 — producers · green (#2D8E53) base + green gradient blobs (33A25F → 133C23) */
-    .bp-slide-3 { background: #2D8E53; }
-    .bp-blob-3a { width: 800px; height: 800px; left: -160px; top: -120px;      background: radial-gradient(circle, #33A25F 0%, #133C23 60%, rgba(19,60,35,0) 100%); }
-    .bp-blob-3b { width: 720px; height: 720px; right: -200px; bottom: -160px;  background: radial-gradient(circle, #133C23 0%, #33A25F 45%, rgba(51,162,95,0) 100%); }
-
-    /* Slide 4 — guestlist · same green base, varied composition for visual lift */
-    .bp-slide-4 { background: #2D8E53; }
-    .bp-blob-4a { width: 820px; height: 820px; left: -180px; top: -200px;      background: radial-gradient(circle, #33A25F 0%, #133C23 55%, rgba(19,60,35,0) 100%); }
-    .bp-blob-4b { width: 720px; height: 720px; right: -180px; bottom: -120px;  background: radial-gradient(circle, #133C23 0%, #33A25F 50%, rgba(51,162,95,0) 100%); }
-
-    /* ── Grain overlay ────────────────────────── */
+    /* ── Grain overlay (identical on every slide) ───────────────────────
+       Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
+       Don't add div opacity attenuation — the matrix already attenuates. */
     .bp-grain {
       position: absolute; inset: 0;
       z-index: 4;
       pointer-events: none;
       mix-blend-mode: overlay;
-      opacity: 0.85; /* the SVG matrix already attenuates to ~0.20 */
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.20 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.20;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
-    .bp-grain-defs { position: absolute; width: 0; height: 0; }
 
     /* ── Slide 1 typography ───────────────────── */
     .bp-eyebrow-pill {

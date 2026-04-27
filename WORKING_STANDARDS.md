@@ -83,6 +83,72 @@ Custom CSS → ONLY for unique visuals that PrimeNG/Tailwind cannot do
 
 ---
 
+## Marketing Visual Recipe — `/welcome` (locked)
+
+The public `/welcome` page is intentionally outside the parchment design system. It uses its own brand-coloured visual recipe shared across all 4 slides. **Do not** substitute the recipe with CSS gradients/blurs — visuals were iterated specifically away from CSS blur (which came out ~5× too soft).
+
+### Font
+
+- **Inter** (weights 500, 700, 900) for both display and body on this page.
+- *Why not the global Playfair Display?* Playfair requires a paid licence at our distribution scale. Inter was the agreed substitute. Don't reintroduce Playfair on `/welcome`.
+
+### Per-slide colour matrix
+
+All circles `r=280`, `feGaussianBlur stdDeviation=20`, `viewBox="0 0 800 500"`, `preserveAspectRatio="xMidYMid slice"`. Text colour `#DCF0EB` everywhere.
+
+| Slide | Background | Circle gradient | Angle | Circle 1 (cx, cy) | Circle 2 (cx, cy) |
+|---|---|---|---|---|---|
+| 1 Hero      | `#287F4D` | `#FA91B0 → #DF5980` | 135° | (100, 250) | (700, 250) |
+| 2 Suppliers | `#EB7396` | `#79A8BA → #457187` | 135° | (700, 0)   | (100, 500) |
+| 3 Producers | `#6391A4` | C1 dark `#2D8E53 → #133C23` / C2 light `#33A25F → #2D8E53` | 180° | (400, 0) — dark | (400, 500) — light |
+| 4 Guestlist | `#6391A4` | `#33A25F → #133C23` | 135° | (100, 250) | (700, 250) |
+
+### Brand palette
+
+```
+Font colour:   #DCF0EB
+
+Backgrounds:
+  Green        #2D8E53
+  Pink         #EB7396
+  Blue         #6391A4
+  Slide 1 base #287F4D  (custom — slightly darker than bg green)
+
+Gradient pairs (light → dark):
+  Pink         #FA91B0 → #DF5980
+  Blue         #79A8BA → #457187
+  Green        #33A25F → #133C23
+```
+
+### Blur recipe (mandatory)
+
+Inline `<svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">` per slide:
+
+- `<defs>` `<linearGradient>` per circle
+  - 135° (default) → `x1="0%" y1="0%" x2="100%" y2="100%"`
+  - 180° (vertical, slide 3) → `x1="0%" y1="0%" x2="0%" y2="100%"`
+- `<defs>` `<filter id="…-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>`
+- `<g filter="url(#…-blur)">` wrapping the two `<circle>` elements with `fill="url(#…gradient)"`
+
+CSS `filter: blur(…)` on a `border-radius: 50%` div with a radial gradient is **not** acceptable — was specifically rejected during v1.9 iteration.
+
+### Grain overlay (identical on every slide)
+
+```css
+.bp-grain {
+  position: absolute; inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.20;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+```
+
+The matrix's `0.5` alpha and the div's `opacity: 0.20` are calibrated together — don't double-attenuate or change `numOctaves`.
+
+---
+
 ## Standard Components
 
 ### PrimeNG Components (always use these)
