@@ -189,9 +189,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
       label: 'Ballpark',
       adminOnly: true,
       items: [
-        { label: 'Categories', path: '/ballpark-settings/categories' },
-        { label: 'Marketplace', path: '/ballpark-settings/marketplace' },
-        { label: 'Orgs',        path: '/ballpark-settings/orgs' }
+        { label: 'Categories',   path: '/ballpark-settings/categories' },
+        { label: 'Marketplace',  path: '/ballpark-settings/marketplace' },
+        { label: 'Orgs',         path: '/ballpark-settings/orgs' },
+        { label: 'Early Access', path: '/ballpark-settings/early-access' }
       ]
     }
   ];
