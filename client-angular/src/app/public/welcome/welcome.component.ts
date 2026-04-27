@@ -233,12 +233,12 @@ const DEFAULT_CONTENT: Content = {
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
 
     :host {
       display: block;
-      font-family: 'DM Sans', sans-serif;
-      color: #1C1208;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #DCF0EB;
       height: 100vh;
       overflow: hidden;
     }
@@ -256,13 +256,13 @@ const DEFAULT_CONTENT: Content = {
       display: flex; align-items: center; justify-content: space-between;
     }
     .bp-welcome-logo {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: 22px; font-weight: 900; letter-spacing: 0.02em;
-      color: #fff; background: none; border: none; cursor: pointer; padding: 0;
+      color: #DCF0EB; background: none; border: none; cursor: pointer; padding: 0;
     }
     .bp-welcome-counter {
-      font-size: 11px; letter-spacing: 0.2em;
-      color: rgba(255,255,255,0.7);
+      font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
+      color: rgba(220,240,235,0.7);
       font-variant-numeric: tabular-nums;
     }
 
@@ -288,7 +288,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      color: #fff;
+      color: #DCF0EB;
       overflow: hidden;
       isolation: isolate;
     }
@@ -301,35 +301,35 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
       z-index: 1;
       filter: blur(110px);
-      opacity: 0.85;
+      opacity: 0.95;
     }
 
-    /* Slide 1 — hero (magenta / pink) over warm dark base */
-    .bp-slide-1 { background: #2a0a18; }
-    .bp-blob-1a { width: 720px;  height: 720px; left: -120px; top: -160px; background: radial-gradient(circle, #B5365C 0%, rgba(181,54,92,0) 70%); }
-    .bp-blob-1b { width: 800px;  height: 800px; right: -160px; top: 80px;  background: radial-gradient(circle, #D8567E 0%, rgba(216,86,126,0) 70%); }
-    .bp-blob-1c { width: 600px;  height: 600px; left: 30%;     bottom: -200px; background: radial-gradient(circle, #F4A4BC 0%, rgba(244,164,188,0) 70%); }
+    /* Slide 1 — hero · pink (#EB7396) base + pink gradient blobs (FA91B0 → DF5980) */
+    .bp-slide-1 { background: #EB7396; }
+    .bp-blob-1a { width: 720px; height: 720px; left: -120px; top: -160px;     background: radial-gradient(circle, #FA91B0 0%, #DF5980 55%, rgba(223,89,128,0) 100%); }
+    .bp-blob-1b { width: 800px; height: 800px; right: -160px; top: 80px;       background: radial-gradient(circle, #DF5980 0%, #FA91B0 50%, rgba(250,145,176,0) 100%); }
+    .bp-blob-1c { width: 600px; height: 600px; left: 30%; bottom: -200px;      background: radial-gradient(circle, #FA91B0 0%, #DF5980 60%, rgba(223,89,128,0) 100%); }
 
-    /* Slide 2 — suppliers (blue → purple → pink) over deep navy */
+    /* Slide 2 — suppliers · blue (#6391A4) base + blue gradient blobs (79A8BA → 457187) */
     .bp-slide-2 {
-      background: #15193b;
+      background: #6391A4;
       flex-direction: column;
       padding: 80px 0 100px;
     }
     .bp-slide-2-inner { margin-bottom: 56px; }
-    .bp-blob-2a { width: 760px; height: 760px; left: -160px; top: -120px; background: radial-gradient(circle, #4F6ABE 0%, rgba(79,106,190,0) 70%); }
-    .bp-blob-2b { width: 760px; height: 760px; left: 30%;    top: 30%;   background: radial-gradient(circle, #7C5FA8 0%, rgba(124,95,168,0) 70%); }
-    .bp-blob-2c { width: 740px; height: 740px; right: -180px; bottom: -120px; background: radial-gradient(circle, #B85A8C 0%, rgba(184,90,140,0) 70%); }
+    .bp-blob-2a { width: 760px; height: 760px; left: -160px; top: -120px;      background: radial-gradient(circle, #79A8BA 0%, #457187 55%, rgba(69,113,135,0) 100%); }
+    .bp-blob-2b { width: 760px; height: 760px; left: 30%;    top: 30%;          background: radial-gradient(circle, #457187 0%, #79A8BA 50%, rgba(121,168,186,0) 100%); }
+    .bp-blob-2c { width: 740px; height: 740px; right: -180px; bottom: -120px;  background: radial-gradient(circle, #79A8BA 0%, #457187 60%, rgba(69,113,135,0) 100%); }
 
-    /* Slide 3 — producers (forest greens) over deep green base */
-    .bp-slide-3 { background: #0F1F0E; }
-    .bp-blob-3a { width: 800px; height: 800px; left: -160px;  top: -120px; background: radial-gradient(circle, #4A6B3A 0%, rgba(74,107,58,0) 70%); }
-    .bp-blob-3b { width: 720px; height: 720px; right: -200px; bottom: -160px; background: radial-gradient(circle, #2D4A26 0%, rgba(45,74,38,0) 70%); }
+    /* Slide 3 — producers · green (#2D8E53) base + green gradient blobs (33A25F → 133C23) */
+    .bp-slide-3 { background: #2D8E53; }
+    .bp-blob-3a { width: 800px; height: 800px; left: -160px; top: -120px;      background: radial-gradient(circle, #33A25F 0%, #133C23 60%, rgba(19,60,35,0) 100%); }
+    .bp-blob-3b { width: 720px; height: 720px; right: -200px; bottom: -160px;  background: radial-gradient(circle, #133C23 0%, #33A25F 45%, rgba(51,162,95,0) 100%); }
 
-    /* Slide 4 — guestlist (deeper greens) */
-    .bp-slide-4 { background: #0A1A09; }
-    .bp-blob-4a { width: 820px; height: 820px; left: -180px;  top: -200px; background: radial-gradient(circle, #2D4A26 0%, rgba(45,74,38,0) 70%); }
-    .bp-blob-4b { width: 720px; height: 720px; right: -180px; bottom: -120px; background: radial-gradient(circle, #1A3018 0%, rgba(26,48,24,0) 70%); }
+    /* Slide 4 — guestlist · same green base, varied composition for visual lift */
+    .bp-slide-4 { background: #2D8E53; }
+    .bp-blob-4a { width: 820px; height: 820px; left: -180px; top: -200px;      background: radial-gradient(circle, #33A25F 0%, #133C23 55%, rgba(19,60,35,0) 100%); }
+    .bp-blob-4b { width: 720px; height: 720px; right: -180px; bottom: -120px;  background: radial-gradient(circle, #133C23 0%, #33A25F 50%, rgba(51,162,95,0) 100%); }
 
     /* ── Grain overlay ────────────────────────── */
     .bp-grain {
@@ -345,16 +345,18 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 1 typography ───────────────────── */
     .bp-eyebrow-pill {
       display: inline-block;
-      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.35);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      background: rgba(220,240,235,0.15);
+      border: 1px solid rgba(220,240,235,0.35);
       border-radius: 999px;
       padding: 6px 16px;
       margin-bottom: 32px;
       backdrop-filter: blur(8px);
     }
     .bp-hero-headline {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(56px, 11vw, 144px);
       font-weight: 900;
       line-height: 0.95;
@@ -362,30 +364,32 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 0 28px 0;
     }
     .bp-hero-subtitle {
+      font-family: 'Inter', sans-serif;
       font-size: clamp(17px, 2vw, 21px);
-      font-weight: 400; line-height: 1.5;
+      font-weight: 500; line-height: 1.5;
       max-width: 560px; margin: 0 auto;
       opacity: 0.95;
     }
 
     /* ── Slide 2 typography + marquee ─────────── */
     .bp-eyebrow {
-      font-size: 11px; letter-spacing: 0.2em;
-      text-transform: uppercase;
-      opacity: 0.7;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      opacity: 0.75;
       margin-bottom: 24px;
     }
     .bp-suppliers-headline {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(40px, 6.5vw, 88px);
-      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em;
+      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0;
       max-width: 1000px;
     }
     .bp-marquee-wrap {
       width: 100%; overflow: hidden;
-      border-top: 1px solid rgba(255,255,255,0.2);
-      border-bottom: 1px solid rgba(255,255,255,0.2);
+      border-top: 1px solid rgba(220,240,235,0.2);
+      border-bottom: 1px solid rgba(220,240,235,0.2);
       padding: 24px 0;
       position: relative; z-index: 5;
     }
@@ -395,9 +399,9 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-marquee-item {
       display: flex; align-items: center;
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(36px, 5vw, 64px);
-      font-weight: 700; letter-spacing: 0.02em;
+      font-weight: 900; letter-spacing: 0.02em;
       padding: 0 48px;
       flex-shrink: 0;
     }
@@ -415,34 +419,42 @@ const DEFAULT_CONTENT: Content = {
       gap: 64px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(48px, 8vw, 112px);
       font-weight: 900; line-height: 0.95;
       letter-spacing: -0.03em;
       margin: 0 0 24px 0;
     }
     .bp-producers-tagline {
-      font-family: 'Playfair Display', serif;
-      font-style: italic;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(20px, 2.4vw, 28px);
-      opacity: 0.85; margin: 0;
+      font-weight: 500;
+      opacity: 0.9; margin: 0;
     }
     .bp-producers-card {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(220,240,235,0.08);
+      border: 1px solid rgba(220,240,235,0.18);
       border-radius: 16px; padding: 32px;
       backdrop-filter: blur(12px);
     }
-    .bp-producers-body { font-size: 16px; line-height: 1.7; opacity: 0.95; margin: 0 0 20px 0; }
+    .bp-producers-body {
+      font-family: 'Inter', sans-serif;
+      font-size: 16px; font-weight: 500;
+      line-height: 1.7; opacity: 0.95; margin: 0 0 20px 0;
+    }
     .bp-producers-body:last-of-type { margin-bottom: 28px; }
     .bp-producers-steps { display: flex; flex-direction: column; gap: 12px; }
     .bp-producers-step { display: flex; align-items: baseline; gap: 16px; }
     .bp-producers-step-label {
+      font-family: 'Inter', sans-serif;
       font-size: 11px; font-weight: 700;
       letter-spacing: 0.15em; text-transform: uppercase;
-      opacity: 0.6; min-width: 80px;
+      opacity: 0.7; min-width: 80px;
     }
-    .bp-producers-step-text { font-size: 13px; opacity: 0.9; }
+    .bp-producers-step-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 500; opacity: 0.9;
+    }
 
     @media (max-width: 768px) {
       .bp-producers-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
@@ -452,18 +464,20 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 4 ──────────────────────────────── */
     .bp-slide-4-inner { max-width: 560px; width: 100%; }
     .bp-guestlist-headline {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
       font-size: clamp(36px, 5.5vw, 64px);
-      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em;
+      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0 0 16px 0;
     }
     .bp-guestlist-subtitle {
-      font-size: 16px; line-height: 1.6;
-      opacity: 0.85; margin: 0 0 36px 0;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px; font-weight: 500;
+      line-height: 1.6;
+      opacity: 0.9; margin: 0 0 36px 0;
     }
     .bp-guestlist-form {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(220,240,235,0.08);
+      border: 1px solid rgba(220,240,235,0.2);
       border-radius: 16px;
       padding: 28px;
       backdrop-filter: blur(12px);
@@ -477,65 +491,69 @@ const DEFAULT_CONTENT: Content = {
     .bp-form-block:has(.bp-form-select) { margin-bottom: 20px; }
     .bp-form-label {
       display: block;
-      font-size: 11px; font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
-      opacity: 0.7; margin-bottom: 6px;
+      opacity: 0.75; margin-bottom: 6px;
     }
     .bp-form-input {
       width: 100%; box-sizing: border-box;
       padding: 11px 14px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(220,240,235,0.1);
+      border: 1px solid rgba(220,240,235,0.25);
       border-radius: 8px;
-      color: #fff; font-size: 14px;
-      font-family: inherit;
+      color: #DCF0EB; font-size: 14px;
+      font-family: 'Inter', sans-serif; font-weight: 500;
       outline: none;
     }
-    .bp-form-input:focus { border-color: rgba(255,255,255,0.45); }
+    .bp-form-input::placeholder { color: rgba(220,240,235,0.45); }
+    .bp-form-input:focus { border-color: rgba(220,240,235,0.55); }
     .bp-form-select { cursor: pointer; appearance: none; }
-    .bp-form-select option { color: #1C1208; }
+    .bp-form-select option { color: #133C23; }
     .bp-form-error {
       margin: 10px 0 0;
-      font-size: 13px;
-      color: #FFC4D2;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 500;
+      color: #FFD3DD;
     }
     .bp-guestlist-submit {
       width: 100%;
       margin-top: 4px;
       padding: 14px 24px;
-      font-size: 15px; font-weight: 600;
-      font-family: inherit;
-      background: #fff; color: #1A3018;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px; font-weight: 700;
+      background: #DCF0EB; color: #133C23;
       border: none; border-radius: 999px;
       cursor: pointer;
       transition: all 0.2s;
     }
     .bp-guestlist-submit:disabled {
-      background: rgba(255,255,255,0.3);
-      color: rgba(255,255,255,0.6);
+      background: rgba(220,240,235,0.3);
+      color: rgba(220,240,235,0.6);
       cursor: not-allowed;
     }
     .bp-guestlist-success {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(220,240,235,0.1);
+      border: 1px solid rgba(220,240,235,0.3);
       border-radius: 16px;
       padding: 40px;
       backdrop-filter: blur(12px);
     }
     .bp-success-tick {
       width: 56px; height: 56px; border-radius: 50%;
-      background: rgba(255,255,255,0.15);
+      background: rgba(220,240,235,0.18);
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 18px; font-size: 28px;
     }
     .bp-success-headline {
-      font-family: 'Playfair Display', serif;
-      font-size: 26px; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      font-size: 26px; font-weight: 900;
       margin: 0 0 10px 0;
     }
     .bp-success-body {
-      font-size: 15px; line-height: 1.6;
-      opacity: 0.85; margin: 0;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px; font-weight: 500;
+      line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
     /* ── Bottom nav ───────────────────────────── */
@@ -547,22 +565,24 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-welcome-back, .bp-welcome-next, .bp-welcome-dots { pointer-events: auto; }
     .bp-welcome-back {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: #fff;
+      background: rgba(220,240,235,0.14);
+      border: 1px solid rgba(220,240,235,0.3);
+      color: #DCF0EB;
       padding: 10px 18px; border-radius: 999px;
-      font-size: 13px; font-weight: 500; font-family: inherit;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 500;
       cursor: pointer; backdrop-filter: blur(8px);
       display: inline-flex; align-items: center; gap: 8px;
       transition: all 0.2s;
     }
-    .bp-welcome-back:hover { background: rgba(255,255,255,0.18); }
+    .bp-welcome-back:hover { background: rgba(220,240,235,0.22); }
     .bp-welcome-back.hidden { opacity: 0; visibility: hidden; }
     .bp-welcome-next {
-      background: #fff; color: #1C1208;
+      background: #DCF0EB; color: #133C23;
       border: none;
       padding: 12px 24px; border-radius: 999px;
-      font-size: 14px; font-weight: 600; font-family: inherit;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px; font-weight: 700;
       cursor: pointer;
       display: inline-flex; align-items: center; gap: 8px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.15);
@@ -574,11 +594,11 @@ const DEFAULT_CONTENT: Content = {
     .bp-welcome-dot {
       width: 8px; height: 8px;
       border-radius: 999px; border: none;
-      background: rgba(255,255,255,0.4);
+      background: rgba(220,240,235,0.45);
       cursor: pointer; padding: 0;
       transition: width 0.3s, background 0.3s;
     }
-    .bp-welcome-dot.active { width: 28px; background: #fff; }
+    .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
