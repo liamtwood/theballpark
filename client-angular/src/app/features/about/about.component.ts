@@ -48,7 +48,7 @@ export class AboutComponent implements OnInit {
   readonly icons = { CircleDot, Sparkles };
   platformName = 'The Ballpark';
   creditLabel = 'Ball';
-  version = 'v1.1';
+  version = 'v1.10';
 
   constructor(private config: ConfigService) {}
   ngOnInit() {
