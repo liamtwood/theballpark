@@ -428,11 +428,11 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* ── Slide 3 ──────────────────────────────── */
-    .bp-slide-3-inner { max-width: 1200px; }
+    .bp-slide-3-inner { max-width: 1400px; }
     .bp-producers-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      gap: 64px; align-items: center; text-align: left;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 96px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
       font-family: 'Inter', sans-serif;
@@ -449,8 +449,8 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-producers-body {
       font-family: 'Inter', sans-serif;
-      font-size: 16px; font-weight: 500;
-      line-height: 1.7; opacity: 0.95; margin: 0 0 20px 0;
+      font-size: 20px; font-weight: 500;
+      line-height: 1.6; opacity: 0.95; margin: 0 0 20px 0;
     }
     .bp-producers-body:last-of-type { margin-bottom: 0; }
 
