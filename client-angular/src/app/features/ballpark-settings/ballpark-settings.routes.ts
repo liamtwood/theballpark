@@ -15,6 +15,10 @@ export const BALLPARK_SETTINGS_ROUTES: Routes = [
     loadComponent: () => import('./orgs/orgs.component').then(m => m.OrgsComponent)
   },
   {
+    path: 'early-access',
+    loadComponent: () => import('./early-access/early-access.component').then(m => m.EarlyAccessComponent)
+  },
+  {
     path: 'feedback',
     loadComponent: () => import('./feedback/feedback.component').then(m => m.FeedbackComponent)
   }

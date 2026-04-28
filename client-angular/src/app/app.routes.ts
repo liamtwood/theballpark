@@ -3,6 +3,13 @@ import { AppShellComponent } from './shared/components/app-shell/app-shell.compo
 import { devOnlyGuard } from './core/guards/dev-only.guard';
 
 export const routes: Routes = [
+  // ── PUBLIC ── (rendered standalone, outside the app shell)
+  {
+    path: 'welcome',
+    loadComponent: () => import('./public/welcome/welcome.component').then(m => m.WelcomeComponent)
+  },
+
+  // ── AUTHENTICATED APP ──
   {
     path: '',
     component: AppShellComponent,
@@ -96,6 +103,7 @@ export const routes: Routes = [
             { label: 'Categories', path: '/ballpark-settings/categories' },
             { label: 'Marketplace', path: '/ballpark-settings/marketplace' },
             { label: 'Orgs', path: '/ballpark-settings/orgs' },
+            { label: 'Early Access', path: '/ballpark-settings/early-access' },
             { label: 'Feedback', path: '/ballpark-settings/feedback' }
           ]
         }

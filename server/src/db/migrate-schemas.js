@@ -28,12 +28,16 @@ const migrate = async () => {
     console.log('Creating schemas...');
 
     // ── 1. Create schemas ────────────────────────────────────────────────
+    // marketing  → public welcome page + guestlist signups (single, not per-env)
+    // internal   → ops tables (project_log, etc.) — single, not per-env
     await client.query(`
       CREATE SCHEMA IF NOT EXISTS preview;
       CREATE SCHEMA IF NOT EXISTS master;
       CREATE SCHEMA IF NOT EXISTS shared;
+      CREATE SCHEMA IF NOT EXISTS marketing;
+      CREATE SCHEMA IF NOT EXISTS internal;
     `);
-    console.log('  Schemas created: preview, master, shared');
+    console.log('  Schemas created: preview, master, shared, marketing, internal');
 
     // ── 2. Create all tables in preview schema ───────────────────────────
     console.log('  Creating preview schema tables...');
@@ -398,6 +402,190 @@ const migrate = async () => {
       );
     `);
     console.log('  Shared schema tables created.');
+
+    // ── 5. Internal schema (ops tables, single instance) ─────────────────
+    console.log('  Creating internal schema tables...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS internal.project_log (
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        type        VARCHAR(20) NOT NULL,
+        area        VARCHAR(50),
+        title       TEXT NOT NULL,
+        description TEXT,
+        status      VARCHAR(20) DEFAULT 'done',
+        commit_ref  VARCHAR(40),
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS project_log_commit_ref_idx
+        ON internal.project_log (commit_ref);
+      CREATE INDEX IF NOT EXISTS project_log_created_idx
+        ON internal.project_log (created_at DESC);
+    `);
+    console.log('  Internal schema tables created.');
+
+    // ── 6. Marketing schema (public welcome page + signups) ──────────────
+    console.log('  Creating marketing schema tables...');
+    await client.query(`
+      -- Guestlist signups from /welcome
+      CREATE TABLE IF NOT EXISTS marketing.guestlist_signup (
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name        TEXT NOT NULL,
+        email       TEXT NOT NULL,
+        company     TEXT,
+        role        TEXT NOT NULL,
+        ip_address  TEXT,
+        user_agent  TEXT,
+        notified_at TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS guestlist_signup_email_uniq
+        ON marketing.guestlist_signup (lower(email));
+      CREATE INDEX IF NOT EXISTS guestlist_signup_created_idx
+        ON marketing.guestlist_signup (created_at DESC);
+
+      -- Editable copy on the welcome page
+      CREATE TABLE IF NOT EXISTS marketing.welcome_content (
+        key           TEXT PRIMARY KEY,
+        value         TEXT NOT NULL,
+        field_type    TEXT NOT NULL CHECK (field_type IN ('text', 'longtext', 'list')),
+        label         TEXT NOT NULL,
+        help_text     TEXT,
+        slide         INT  NOT NULL CHECK (slide BETWEEN 1 AND 4),
+        display_order INT  NOT NULL,
+        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by    UUID
+      );
+      CREATE INDEX IF NOT EXISTS welcome_content_slide_order_idx
+        ON marketing.welcome_content (slide, display_order);
+
+      -- Single-row settings table for notification config
+      CREATE TABLE IF NOT EXISTS marketing.welcome_settings (
+        id                  INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        notify_recipients   TEXT[] NOT NULL DEFAULT ARRAY['beth@theballpark.ai', 'megan@theballpark.ai'],
+        email_subject       TEXT NOT NULL DEFAULT '🎟 New Ballpark guestlist signup: {{name}}',
+        email_body_template TEXT NOT NULL,
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by          UUID
+      );
+    `);
+    console.log('  Marketing schema tables created.');
+
+    // ── 7. is_admin() function (referenced by RLS + Express middleware) ──
+    // Each env has its own users table. The function returns true if the
+    // user id has role='admin' in ANY env's users table — this is fine for
+    // the marketing schema which is cross-env. Express middleware uses the
+    // search_path-aware "users" table directly for per-env enforcement.
+    console.log('  Creating is_admin() function...');
+    await client.query(`
+      CREATE OR REPLACE FUNCTION public.is_admin(uid UUID)
+      RETURNS BOOLEAN
+      LANGUAGE SQL STABLE
+      AS $$
+        SELECT EXISTS (
+          SELECT 1 FROM public.users  WHERE id = uid AND role = 'admin'
+          UNION ALL
+          SELECT 1 FROM preview.users WHERE id = uid AND role = 'admin'
+          UNION ALL
+          SELECT 1 FROM master.users  WHERE id = uid AND role = 'admin'
+        );
+      $$;
+    `);
+    console.log('  is_admin() function created.');
+
+    // ── 8. RLS policies on marketing tables ──────────────────────────────
+    // Note: the Node server connects as the DB owner (bypasses RLS), so
+    // these policies are advisory until proper Supabase auth lands. They
+    // document intent and will activate the moment we switch to anon/auth
+    // tokens. Server-side admin enforcement is done via Express middleware.
+    console.log('  Applying RLS policies...');
+    await client.query(`
+      ALTER TABLE marketing.guestlist_signup ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE marketing.welcome_content  ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE marketing.welcome_settings ENABLE ROW LEVEL SECURITY;
+
+      DROP POLICY IF EXISTS "public can insert signups" ON marketing.guestlist_signup;
+      CREATE POLICY "public can insert signups" ON marketing.guestlist_signup
+        FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+      DROP POLICY IF EXISTS "public can read content" ON marketing.welcome_content;
+      CREATE POLICY "public can read content" ON marketing.welcome_content
+        FOR SELECT TO anon, authenticated USING (true);
+
+      DROP POLICY IF EXISTS "admins read signups" ON marketing.guestlist_signup;
+      CREATE POLICY "admins read signups" ON marketing.guestlist_signup
+        FOR SELECT TO authenticated USING (public.is_admin(auth.uid()));
+
+      DROP POLICY IF EXISTS "admins write content" ON marketing.welcome_content;
+      CREATE POLICY "admins write content" ON marketing.welcome_content
+        FOR UPDATE TO authenticated USING (public.is_admin(auth.uid()));
+
+      DROP POLICY IF EXISTS "admins read settings" ON marketing.welcome_settings;
+      CREATE POLICY "admins read settings" ON marketing.welcome_settings
+        FOR SELECT TO authenticated USING (public.is_admin(auth.uid()));
+
+      DROP POLICY IF EXISTS "admins write settings" ON marketing.welcome_settings;
+      CREATE POLICY "admins write settings" ON marketing.welcome_settings
+        FOR UPDATE TO authenticated USING (public.is_admin(auth.uid()));
+    `);
+    console.log('  RLS policies applied.');
+
+    // ── 9. Seed marketing.welcome_content + welcome_settings ─────────────
+    // Re-runnable: ON CONFLICT DO NOTHING preserves any admin edits.
+    console.log('  Seeding marketing content + settings...');
+    const SEED_CONTENT = [
+      // Slide 1 — Hero
+      ['hero.eyebrow',           'text',     'Coming soon · Event production reimagined', 'Eyebrow tag',  null, 1, 10],
+      ['hero.headline',           'longtext', 'REAL COSTS,\nREAL FAST.',                   'Headline',     'Use \\n for line breaks', 1, 20],
+      ['hero.subtitle',           'longtext', 'Turn your event brief into an accurate estimate in moments.', 'Subtitle', null, 1, 30],
+
+      // Slide 2 — Suppliers
+      ['suppliers.eyebrow',       'text',     'The network',                                                       'Eyebrow tag', null, 2, 10],
+      ['suppliers.headline',      'longtext', 'Powered by real costs from our network of incredible suppliers.',   'Headline',    null, 2, 20],
+      ['suppliers.categories',    'list',     'DESIGN,BUILD,VENUES,FURNITURE,AV,GRAPHICS,CATERING',                'Categories (marquee)', 'Comma-separated. Order = marquee order.', 2, 30],
+
+      // Slide 3 — Producers
+      ['producers.headline',      'longtext', "A PRODUCER'S BEST FRIEND.",                                                 'Headline', null, 3, 10],
+      ['producers.tagline',       'text',     'By producers, for creators.',                                                'Italic tagline', null, 3, 20],
+      ['producers.body_1',        'longtext', 'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.', 'Body paragraph 1', null, 3, 30],
+      ['producers.body_2',        'longtext', 'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.', 'Body paragraph 2', null, 3, 40],
+
+      // Slide 4 — Guestlist
+      ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
+      ['guestlist.headline',         'longtext', 'Those who get in early, get ahead.',                       'Headline',        null, 4, 20],
+      ['guestlist.subtitle',         'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Subtitle', null, 4, 30],
+      ['guestlist.cta_label',        'text',     'Add me to the guestlist',                                  'Submit button label', null, 4, 40],
+      ['guestlist.success_headline', 'text',     "You're on the guestlist.",                                  'Success headline', null, 4, 50],
+      ['guestlist.success_body',     'longtext', "We'll be in touch the moment Ballpark goes live, {{firstName}}.", 'Success body', "Use {{firstName}} for the registrant's first name", 4, 60],
+    ];
+    for (const [key, field_type, value, label, help_text, slide, display_order] of SEED_CONTENT) {
+      await client.query(
+        `INSERT INTO marketing.welcome_content (key, value, field_type, label, help_text, slide, display_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (key) DO NOTHING`,
+        [key, value, field_type, label, help_text, slide, display_order]
+      );
+    }
+
+    const DEFAULT_EMAIL_BODY = [
+      'A new person joined the Ballpark guestlist.',
+      '',
+      'Name:     {{name}}',
+      'Email:    {{email}}',
+      'Company:  {{company}}',
+      'Role:     {{role}}',
+      '',
+      'Registered: {{created_at}}',
+      '',
+      'View all signups → {{admin_url}}'
+    ].join('\n');
+
+    await client.query(
+      `INSERT INTO marketing.welcome_settings (id, email_body_template)
+       VALUES (1, $1)
+       ON CONFLICT (id) DO NOTHING`,
+      [DEFAULT_EMAIL_BODY]
+    );
+    console.log('  Marketing seed complete.');
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

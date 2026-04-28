@@ -44,6 +44,9 @@ import { environment } from '../../environments/environment';
         <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link bp-nav-link-admin">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
         </a>
+        <a href="/welcome" target="_blank" rel="noopener" class="bp-nav-link bp-nav-link-welcome" title="Open public welcome page in a new tab">
+          <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
+        </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>

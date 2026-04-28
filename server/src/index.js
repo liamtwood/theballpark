@@ -164,6 +164,10 @@ app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 
+// Marketing — public welcome page + guestlist signups
+app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup
+app.use('/api/admin', require('./routes/adminMarketing')); // admin-guarded
+
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {
   const key = process.env.UNSPLASH_ACCESS_KEY;
