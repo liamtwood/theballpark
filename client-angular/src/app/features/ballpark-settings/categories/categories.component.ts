@@ -513,14 +513,24 @@ export class CategoriesComponent implements OnInit {
   }
 
   onImageEdit(e: CatalogueEntity) {
-    if (this.selectedNamespace === 'area') return; // areas use icon/colour only
+    if (this.selectedNamespace === 'area') {
+      // Areas don't have cover images — redirect the pencil to the edit drawer
+      // (which has inline icon name + colour fields).
+      const area = this.areaCategories.find(a => a.id === e.id);
+      if (area) this.openEditArea(area);
+      return;
+    }
     const cat = this.allCategories.find(c => c.id === e.id);
     if (!cat) return;
     this.beginImageUpload(cat);
   }
 
   onCategoryImageEdit(ci: CategoryInfo) {
-    if (this.selectedNamespace === 'area') return;
+    if (this.selectedNamespace === 'area') {
+      const area = this.areaCategories.find(a => a.id === ci.id);
+      if (area) this.openEditArea(area);
+      return;
+    }
     const cat = this.allCategories.find(c => c.id === ci.id);
     if (!cat) return;
     this.beginImageUpload(cat);
