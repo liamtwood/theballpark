@@ -26,6 +26,10 @@ export interface FeedbackEntry {
   version?: string;
   shipped_date?: string;
   area?: string;
+  area_category_id?: string;
+  area_name?: string;
+  area_icon_name?: string;
+  area_icon_color?: string;
   created_at: string;
   category_name?: string;
   category_icon_name?: string;
@@ -74,7 +78,19 @@ export class FeedbackService {
     return this.api.get<FeedbackEntry[]>(`/feedback/issues${qs}`);
   }
   getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
-  getFeedbackCategories() { return this.api.get<FeedbackCategory[]>('/feedback/categories'); }
+  getFeedbackCategories(namespace?: string) {
+    const qs = namespace ? `?namespace=${namespace}` : '';
+    return this.api.get<FeedbackCategory[]>(`/feedback/categories${qs}`);
+  }
+  createFeedbackCategory(data: Partial<FeedbackCategory>) {
+    return this.api.post<FeedbackCategory>('/feedback/categories', data);
+  }
+  patchFeedbackCategory(id: string, data: Partial<FeedbackCategory>) {
+    return this.api.patch<FeedbackCategory>(`/feedback/categories/${id}`, data);
+  }
+  deleteFeedbackCategory(id: string) {
+    return this.api.delete<any>(`/feedback/categories/${id}`);
+  }
   create(data: Partial<FeedbackEntry>) { return this.api.post<FeedbackEntry>('/feedback', data); }
   patch(id: string, data: any) { return this.api.patch<FeedbackEntry>(`/feedback/${id}`, data); }
   remove(id: string) { return this.api.delete<any>(`/feedback/${id}`); }

@@ -432,8 +432,83 @@ const migrate = async () => {
 
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS area VARCHAR(50);
+
+      -- shared.feedback_categories now holds 3 namespaces: folder, issue, area.
+      -- Drop the single-column UNIQUE(name) constraint (auto-named
+      -- feedback_categories_name_key) and replace with UNIQUE(name, namespace)
+      -- so we can have e.g. 'Feedback' both as an issue category and an area.
+      ALTER TABLE shared.feedback_categories
+        DROP CONSTRAINT IF EXISTS feedback_categories_name_key;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS feedback_categories_name_namespace_key
+        ON shared.feedback_categories (name, namespace);
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS area_category_id UUID
+          REFERENCES shared.feedback_categories(id);
     `);
     console.log('  Shared schema tables created.');
+
+    // ── 4c. Backfill namespace on the original folder/issue rows ─────────
+    await client.query(`
+      UPDATE shared.feedback_categories
+         SET namespace = 'folder'
+       WHERE object_type = 'folder' AND namespace IS DISTINCT FROM 'folder';
+      UPDATE shared.feedback_categories
+         SET namespace = 'issue'
+       WHERE object_type = 'issue' AND namespace IS DISTINCT FROM 'issue';
+    `);
+
+    // ── 4d. Seed area rows in shared.feedback_categories (idempotent) ────
+    console.log('  Seeding shared.feedback_categories area rows...');
+    const AREA_CATEGORIES = [
+      { name: 'Auth',           icon_name: 'shield',           sort_order: 1 },
+      { name: 'Settings',       icon_name: 'settings',          sort_order: 2 },
+      { name: 'Dashboard',      icon_name: 'layout-dashboard',  sort_order: 3 },
+      { name: 'Projects',       icon_name: 'folder-open',       sort_order: 4 },
+      { name: 'Catalogue',      icon_name: 'layers',            sort_order: 5 },
+      { name: 'Suppliers',      icon_name: 'building-2',        sort_order: 6 },
+      { name: 'Balls',          icon_name: 'circle-dot',        sort_order: 7 },
+      { name: 'Payments',       icon_name: 'credit-card',       sort_order: 8 },
+      { name: 'Feedback',       icon_name: 'message-square',    sort_order: 9 },
+      { name: 'Mobile',         icon_name: 'smartphone',        sort_order: 10 },
+      { name: 'Notifications',  icon_name: 'bell',              sort_order: 11 },
+      { name: 'Technical',      icon_name: 'wrench',            sort_order: 12 },
+      { name: 'Marketing',      icon_name: 'globe',             sort_order: 13 },
+      { name: 'Design System',  icon_name: 'palette',           sort_order: 14 }
+    ];
+    for (const ac of AREA_CATEGORIES) {
+      await client.query(
+        `INSERT INTO shared.feedback_categories
+           (name, namespace, object_type, icon_name, icon_color, sort_order)
+         VALUES ($1, 'area', NULL, $2, 'var(--theme-bg)', $3)
+         ON CONFLICT (name, namespace) DO NOTHING`,
+        [ac.name, ac.icon_name, ac.sort_order]
+      );
+    }
+    console.log('  Area rows seeded.');
+
+    // ── 4e. Backfill shared.feedback.area_category_id ────────────────────
+    //       Maps the legacy area string (e.g. 'design') to the canonical
+    //       area name (e.g. 'Design System') via a small alias table, then
+    //       resolves to the row id. Leaves rows whose area is NULL or
+    //       unmapped (e.g. legacy 'categories') with area_category_id NULL.
+    await client.query(`
+      WITH alias AS (
+        SELECT * FROM (VALUES
+          ('design', 'Design System')
+        ) AS t(token, canonical)
+      )
+      UPDATE shared.feedback f
+         SET area_category_id = fc.id
+        FROM shared.feedback_categories fc
+        LEFT JOIN alias a ON LOWER(a.token) = LOWER(fc.name)
+       WHERE fc.namespace = 'area'
+         AND (LOWER(f.area) = LOWER(fc.name)
+              OR LOWER(f.area) = LOWER(a.token))
+         AND f.area_category_id IS NULL
+    `);
+    console.log('  shared.feedback.area_category_id backfilled.');
 
     // ── 4a. Seed shared.feedback_categories (idempotent via UNIQUE name) ─
     console.log('  Seeding shared.feedback_categories...');
@@ -454,9 +529,9 @@ const migrate = async () => {
       await client.query(
         `INSERT INTO shared.feedback_categories
            (name, object_type, icon_name, icon_color, tagline, description, sort_order, namespace)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'feedback')
-         ON CONFLICT (name) DO NOTHING`,
-        [fc.name, fc.object_type, fc.icon_name, fc.icon_color, fc.tagline, fc.description, fc.sort_order]
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (name, namespace) DO NOTHING`,
+        [fc.name, fc.object_type, fc.icon_name, fc.icon_color, fc.tagline, fc.description, fc.sort_order, fc.object_type]
       );
     }
     console.log('  Feedback categories seeded.');

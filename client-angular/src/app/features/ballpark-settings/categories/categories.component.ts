@@ -14,13 +14,17 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { CategoryService } from '../../../core/services/category.service';
+import { FeedbackService, FeedbackCategory } from '../../../core/services/feedback.service';
 import { Category, CatalogueEntity, CategoryInfo } from '../../../models';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
 
+type NamespaceId = 'all' | 'catalogue' | 'feedback' | 'area';
+
 interface NamespaceOption {
-  id: 'all' | 'catalogue' | 'feedback';
+  id: NamespaceId;
   label: string;
   icon: string;
   bg: string;
@@ -31,7 +35,7 @@ interface NamespaceOption {
   standalone: true,
   imports: [
     CommonModule, FormsModule, LucideAngularModule,
-    ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule,
+    ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule, InputNumberModule,
     DropdownModule, SelectButtonModule, SidebarModule, ChipsModule, TagModule, ToastModule,
     LoadingSpinnerComponent, CatalogueGridComponent, ImageUploadPanelComponent
   ],
@@ -135,7 +139,7 @@ interface NamespaceOption {
           </p-selectButton>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-4" *ngIf="!isAreaForm">
           <label class="bp-field-label">Parent category</label>
           <p-dropdown [(ngModel)]="form.parent_id" [options]="parentOptions"
             optionLabel="label" optionValue="value"
@@ -159,18 +163,44 @@ interface NamespaceOption {
           <textarea pInputTextarea [(ngModel)]="form.description" class="w-full bp-input-edit" [rows]="3" style="resize:none;" placeholder="Describe this category..."></textarea>
         </div>
 
-        <div class="mb-4" *ngIf="form.parent_id">
+        <div class="mb-4" *ngIf="!isAreaForm && form.parent_id">
           <label class="bp-field-label">Model</label>
           <input pInputText [(ngModel)]="form.model" class="w-full bp-input-edit" placeholder="A / B / C / D" maxlength="1"/>
           <div class="bp-field-hint">For A/B/C/D taxonomy — optional</div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-4" *ngIf="!isAreaForm">
           <label class="bp-field-label">Tags <span class="bp-field-hint-inline">— press Enter to add</span></label>
           <p-chips [(ngModel)]="form.tags" styleClass="w-full bp-input-edit" [allowDuplicate]="false" [addOnBlur]="true" placeholder="e.g. build, structure..."></p-chips>
         </div>
 
-        <div>
+        <div class="mb-4" *ngIf="isAreaForm">
+          <label class="bp-field-label">Icon</label>
+          <div class="bp-area-icon-row">
+            <div class="bp-area-icon-preview">
+              <lucide-icon *ngIf="form.icon_name" [name]="form.icon_name" [size]="20"></lucide-icon>
+              <span *ngIf="!form.icon_name" class="bp-muted-text">—</span>
+            </div>
+            <input pInputText [(ngModel)]="form.icon_name" class="flex-1 bp-input-edit"
+              placeholder="lucide icon name e.g. shield, compass"/>
+          </div>
+          <div class="bp-field-hint">Any Lucide icon name. Browse <a href="https://lucide.dev/icons" target="_blank">lucide.dev/icons</a>.</div>
+        </div>
+
+        <div class="mb-4" *ngIf="isAreaForm">
+          <label class="bp-field-label">Icon colour</label>
+          <input pInputText [(ngModel)]="form.icon_color" class="w-full bp-input-edit"
+            placeholder="var(--theme-bg) or var(--color-danger-bg)"/>
+          <div class="bp-field-hint">CSS variable — keep theme-aware. Defaults to var(--theme-bg).</div>
+        </div>
+
+        <div class="mb-4" *ngIf="isAreaForm">
+          <label class="bp-field-label">Sort order</label>
+          <p-inputNumber [(ngModel)]="form.sort_order" [showButtons]="true" [min]="0" inputStyleClass="w-full bp-input-edit"></p-inputNumber>
+          <div class="bp-field-hint">Controls left-to-right order in the area circles row</div>
+        </div>
+
+        <div *ngIf="!isAreaForm">
           <label class="bp-field-label">Status</label>
           <div class="flex items-center gap-3 mt-1">
             <p-inputSwitch [(ngModel)]="form.enabled"></p-inputSwitch>
@@ -203,7 +233,7 @@ interface NamespaceOption {
             </p-button>
           </div>
           <div class="flex gap-2">
-            <p-button label="Add image" icon="pi pi-image"
+            <p-button *ngIf="!isAreaForm" label="Add image" icon="pi pi-image"
               styleClass="p-button-outlined" (onClick)="showImagePanel = !showImagePanel">
             </p-button>
             <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeDrawer()"></p-button>
@@ -238,6 +268,16 @@ interface NamespaceOption {
     .bp-ns-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); font-family: var(--font-body); }
     .bp-ns-circle-btn.active .bp-ns-circle-label { color: var(--theme-accent); font-weight: 600; }
 
+    /* ── AREA ICON ROW ── */
+    .bp-area-icon-row { display: flex; gap: 8px; align-items: center; }
+    .bp-area-icon-preview {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid var(--color-border); background: var(--theme-bg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent); flex-shrink: 0;
+    }
+    .bp-muted-text { color: var(--color-text-muted); font-size: 11px; }
+
     /* ── ADD BUTTON ── */
     .bp-add-btn {
       display: flex; align-items: center; gap: 4px;
@@ -267,18 +307,23 @@ interface NamespaceOption {
 export class CategoriesComponent implements OnInit {
   loading = true;
   allCategories: Category[] = [];
-  selectedNamespace: 'all' | 'catalogue' | 'feedback' = 'all';
+  // Area rows live in shared.feedback_categories (cross-environment), loaded
+  // separately via FeedbackService when the 'area' namespace is selected.
+  areaCategories: FeedbackCategory[] = [];
+  selectedNamespace: NamespaceId = 'all';
   emptySet = new Set<string>();
 
   namespaces: NamespaceOption[] = [
     { id: 'all',       label: 'All',       icon: 'layers',         bg: 'var(--color-surface)' },
     { id: 'catalogue', label: 'Catalogue', icon: 'shopping-bag',   bg: 'var(--theme-bg)' },
-    { id: 'feedback',  label: 'Feedback',  icon: 'message-square', bg: 'var(--theme-bg)' }
+    { id: 'feedback',  label: 'Feedback',  icon: 'message-square', bg: 'var(--theme-bg)' },
+    { id: 'area',      label: 'Area',      icon: 'compass',        bg: 'var(--theme-bg)' }
   ];
 
   namespaceOptions = [
     { label: 'Catalogue', value: 'catalogue' },
-    { label: 'Feedback',  value: 'feedback'  }
+    { label: 'Feedback',  value: 'feedback'  },
+    { label: 'Area',      value: 'area'      }
   ];
 
   objectTypeOptions = [
@@ -307,19 +352,25 @@ export class CategoriesComponent implements OnInit {
 
   constructor(
     private catSvc: CategoryService,
+    private feedbackSvc: FeedbackService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    // Load both catalogue/feedback (per-env) and area (shared) in parallel.
+    let pending = 2;
+    const done = () => { if (--pending === 0) { this.loading = false; this.rebuild(); this.cdr.detectChanges(); } };
     this.catSvc.getAll().subscribe({
       next: (cats) => {
         this.allCategories = (cats || []).map((c: any) => ({ ...c, enabled: c.enabled !== false }));
-        this.rebuild();
-        this.loading = false;
-        this.cdr.detectChanges();
+        done();
       },
-      error: () => { this.loading = false; this.cdr.detectChanges(); }
+      error: () => done()
+    });
+    this.feedbackSvc.getFeedbackCategories('area').subscribe({
+      next: (areas) => { this.areaCategories = areas || []; done(); },
+      error: () => done()
     });
   }
 
@@ -327,18 +378,25 @@ export class CategoriesComponent implements OnInit {
     return {
       id: '', name: '', namespace: 'catalogue', object_type: 'folder',
       parent_id: null, tagline: '', description: '', model: '',
-      tags: [], enabled: true,
+      tags: [], enabled: true, sort_order: 0,
       cover_image_url: '', card_color: '', icon_name: '', icon_color: 'var(--theme-bg)'
     };
   }
 
-  setNamespace(ns: 'all' | 'catalogue' | 'feedback') {
+  // Convenience getter — drawer hides catalogue/feedback-only fields when true.
+  get isAreaForm(): boolean { return this.form?.namespace === 'area'; }
+
+  setNamespace(ns: NamespaceId) {
     this.selectedNamespace = ns;
     this.rebuild();
     this.cdr.detectChanges();
   }
 
   private rebuild() {
+    if (this.selectedNamespace === 'area') {
+      this.rebuildAreas();
+      return;
+    }
     const filtered = this.allCategories.filter(c =>
       this.selectedNamespace === 'all' || (c.namespace || 'catalogue') === this.selectedNamespace
     );
@@ -358,6 +416,36 @@ export class CategoriesComponent implements OnInit {
     this.parentOptions = this.allCategories
       .filter(c => !c.parent_id)
       .map(c => ({ label: `${c.name} (${c.namespace || 'catalogue'})`, value: c.id }));
+  }
+
+  private rebuildAreas() {
+    const sorted = [...this.areaCategories].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    this.circleCategories = sorted.map(a => ({
+      id: a.id,
+      name: a.name,
+      icon_name: a.icon_name,
+      icon_color: a.icon_color,
+      tagline: a.tagline,
+      description: a.description,
+      namespace: 'area'
+    }));
+    this.catEntities = sorted.map(a => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      icon: a.icon_name,
+      subtitle: `Area · sort ${a.sort_order ?? 0}`,
+      categoryLabel: 'area',
+      category_id: a.id,
+      specs: [
+        { label: 'Namespace',  value: 'area' },
+        { label: 'Sort order', value: String(a.sort_order ?? 0) },
+        { label: 'Icon',       value: a.icon_name || '—' }
+      ],
+      _raw: a
+    }));
+    this.availableTags = [];
+    this.parentOptions = [];
   }
 
   private toCategoryInfo(c: Category): CategoryInfo {
@@ -415,20 +503,46 @@ export class CategoriesComponent implements OnInit {
 
   onAction(e: CatalogueEntity) {
     // "Edit" button clicked in detail panel → open drawer
+    if (this.selectedNamespace === 'area') {
+      const area = this.areaCategories.find(a => a.id === e.id);
+      if (area) this.openEditArea(area);
+      return;
+    }
     const cat = this.allCategories.find(c => c.id === e.id);
     if (cat) this.openEdit(cat);
   }
 
   onImageEdit(e: CatalogueEntity) {
+    if (this.selectedNamespace === 'area') return; // areas use icon/colour only
     const cat = this.allCategories.find(c => c.id === e.id);
     if (!cat) return;
     this.beginImageUpload(cat);
   }
 
   onCategoryImageEdit(ci: CategoryInfo) {
+    if (this.selectedNamespace === 'area') return;
     const cat = this.allCategories.find(c => c.id === ci.id);
     if (!cat) return;
     this.beginImageUpload(cat);
+  }
+
+  private openEditArea(a: FeedbackCategory) {
+    this.form = {
+      ...this.emptyForm(),
+      id: a.id,
+      name: a.name || '',
+      namespace: 'area',
+      object_type: null,
+      parent_id: null,
+      tagline: a.tagline || '',
+      description: a.description || '',
+      sort_order: a.sort_order ?? 0,
+      icon_name: a.icon_name || '',
+      icon_color: a.icon_color || 'var(--theme-bg)'
+    };
+    this.showImagePanel = false;
+    this.showDrawer = true;
+    this.cdr.detectChanges();
   }
 
   private beginImageUpload(cat: Category) {
@@ -511,6 +625,8 @@ export class CategoriesComponent implements OnInit {
 
   submit() {
     if (!this.form.name?.trim() || !this.form.namespace) return;
+    if (this.form.namespace === 'area') return this.submitArea();
+
     const payload: any = {
       name: this.form.name.trim(),
       namespace: this.form.namespace,
@@ -545,9 +661,50 @@ export class CategoriesComponent implements OnInit {
     });
   }
 
+  private submitArea() {
+    const payload: Partial<FeedbackCategory> = {
+      name: this.form.name.trim(),
+      namespace: 'area',
+      object_type: undefined,  // server stores NULL for areas
+      tagline: this.form.tagline || undefined,
+      description: this.form.description || undefined,
+      icon_name: this.form.icon_name || undefined,
+      icon_color: this.form.icon_color || undefined,
+      sort_order: this.form.sort_order ?? 0
+    };
+    const obs = this.form.id
+      ? this.feedbackSvc.patchFeedbackCategory(this.form.id, payload)
+      : this.feedbackSvc.createFeedbackCategory(payload);
+    obs.subscribe({
+      next: (saved) => {
+        const idx = this.areaCategories.findIndex(a => a.id === saved.id);
+        if (idx > -1) this.areaCategories[idx] = saved;
+        else this.areaCategories = [...this.areaCategories, saved];
+        this.rebuild();
+        this.closeDrawer();
+        this.msg.add({ severity: 'success', summary: this.form.id ? 'Area saved' : 'Area created' });
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save area' })
+    });
+  }
+
   deleteCategory() {
     if (!this.form.id) return;
     const id = this.form.id;
+    if (this.form.namespace === 'area') {
+      this.feedbackSvc.deleteFeedbackCategory(id).subscribe({
+        next: () => {
+          this.areaCategories = this.areaCategories.filter(a => a.id !== id);
+          this.rebuild();
+          this.closeDrawer();
+          this.msg.add({ severity: 'success', summary: 'Area deleted' });
+          this.cdr.detectChanges();
+        },
+        error: () => this.msg.add({ severity: 'error', summary: 'Failed to delete area' })
+      });
+      return;
+    }
     this.catSvc.delete(id).subscribe({
       next: () => {
         this.allCategories = this.allCategories.filter(c => c.id !== id);

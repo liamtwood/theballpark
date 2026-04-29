@@ -375,24 +375,9 @@ export class FeedbackComponent implements OnInit {
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
-  // Lucide icon map per area — falls back to 'circle' for unknown areas.
-  private readonly areaIconMap: Record<string, string> = {
-    auth: 'shield',
-    projects: 'folder',
-    catalogue: 'shopping-bag',
-    suppliers: 'store',
-    feedback: 'message-square',
-    settings: 'settings',
-    technical: 'cpu',
-    mobile: 'smartphone',
-    payments: 'credit-card',
-    notifications: 'bell',
-    dashboard: 'layout-dashboard',
-    design: 'palette',
-    categories: 'tags',
-    marketing: 'megaphone',
-    balls: 'circle-dot'
-  };
+  // Loaded from shared.feedback_categories (namespace='area') on init.
+  // Used to resolve area name → icon for the circles row + per-row badge.
+  areaCategories: FeedbackCategory[] = [];
   typeOptions = [{ label: 'All types', value: '' }];
   pageOptions = [{ label: 'All pages', value: '' }];
   ownerOptions = [{ label: 'All owners', value: '' }, ...TEAM_MEMBERS.map(m => ({ label: m.name, value: m.name }))];
@@ -441,10 +426,12 @@ export class FeedbackComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    // Load all feedback categories in one call, then split by namespace.
     this.feedbackSvc.getFeedbackCategories().subscribe({
       next: (cats) => {
-        const issueCats = (cats || [])
-          .filter(c => c.object_type === 'issue')
+        const all = cats || [];
+        const issueCats = all
+          .filter(c => c.namespace === 'issue' || c.object_type === 'issue')
           .sort((a, b) => a.sort_order - b.sort_order)
           .map(c => ({
             id: c.name.toLowerCase().replace(/\s+/g, '_'),
@@ -456,6 +443,7 @@ export class FeedbackComponent implements OnInit {
           ...issueCats,
           { id: 'note', name: 'Notes', icon: 'file-text' }
         ];
+        this.areaCategories = all.filter(c => c.namespace === 'area');
         this.loadEntries();
       },
       error: () => { this.loadEntries(); }
@@ -488,15 +476,21 @@ export class FeedbackComponent implements OnInit {
           _raw: e
         }));
 
-        // Derive distinct areas → circles. Always include 'All' first.
-        const distinctAreas = [...new Set(topLevel.map(e => e.area).filter(Boolean) as string[])].sort();
+        // Build area circles from shared.feedback_categories (namespace='area'),
+        // showing only areas referenced by at least one entry. Falls back to
+        // the legacy `area` string when area_category_id is missing.
+        const referenced = new Set<string>();
+        topLevel.forEach(e => {
+          if (e.area_category_id) referenced.add(e.area_category_id);
+          else if (e.area) referenced.add(e.area.toLowerCase());
+        });
+        const sortedAreas = [...this.areaCategories].sort((a, b) => a.sort_order - b.sort_order);
+        const dbCircles = sortedAreas
+          .filter(a => referenced.has(a.id) || referenced.has(a.name.toLowerCase()))
+          .map(a => ({ id: a.id, label: a.name, icon: a.icon_name || 'circle' }));
         this.areaCircles = [
           { id: 'all', label: 'All', icon: 'layers' },
-          ...distinctAreas.map(a => ({
-            id: a,
-            label: a.charAt(0).toUpperCase() + a.slice(1),
-            icon: this.areaIconMap[a] || 'circle'
-          }))
+          ...dbCircles
         ];
 
         // Build dynamic filter options
@@ -536,7 +530,11 @@ export class FeedbackComponent implements OnInit {
   applyFilters() {
     this.filteredEntities = this.allEntities.filter(e => {
       const raw: FeedbackEntry = e._raw;
-      if (this.selectedArea !== 'all' && (raw.area || '') !== this.selectedArea) return false;
+      if (this.selectedArea !== 'all') {
+        const matchesId = raw.area_category_id === this.selectedArea;
+        const matchesLegacyName = (raw.area || '').toLowerCase() === this.selectedArea.toLowerCase();
+        if (!matchesId && !matchesLegacyName) return false;
+      }
       if (this.filterType && this.inferType(raw) !== this.filterType) return false;
       if (this.filterPage && raw.page_url !== this.filterPage) return false;
       if (this.filterOwner && raw.owner !== this.filterOwner) return false;
