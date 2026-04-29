@@ -423,6 +423,15 @@ const migrate = async () => {
 
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS version VARCHAR(10);
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS shipped_date DATE;
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS area VARCHAR(50);
     `);
     console.log('  Shared schema tables created.');
 

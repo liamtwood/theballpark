@@ -23,6 +23,9 @@ export interface FeedbackEntry {
   status?: string;
   object_type?: 'issue' | 'folder' | 'note';
   tags?: string[];
+  version?: string;
+  shipped_date?: string;
+  area?: string;
   created_at: string;
   category_name?: string;
   category_icon_name?: string;

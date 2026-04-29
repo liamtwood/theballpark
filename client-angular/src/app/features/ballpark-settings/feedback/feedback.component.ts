@@ -31,6 +31,21 @@ import { ToastModule } from 'primeng/toast';
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
+      <!-- AREA CIRCLES -->
+      <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1">
+        <div class="bp-fb-areas">
+          <button *ngFor="let a of areaCircles"
+            class="bp-fb-area-btn"
+            [class.active]="selectedArea === a.id"
+            (click)="setArea(a.id)">
+            <div class="bp-fb-area-circle">
+              <lucide-icon [name]="a.icon" [size]="22"></lucide-icon>
+            </div>
+            <span class="bp-fb-area-label">{{ a.label }}</span>
+          </button>
+        </div>
+      </div>
+
       <!-- FILTER BAR -->
       <div class="bp-fb-filters">
         <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
@@ -206,6 +221,27 @@ import { ToastModule } from 'primeng/toast';
   styles: [`
     .bp-empty-state { text-align: center; padding: 48px 24px; }
 
+    /* Area circles */
+    .bp-fb-areas-wrap { padding: 16px 28px 4px; border-bottom: 0.5px solid var(--color-border); }
+    .bp-fb-areas { display: flex; gap: 18px; justify-content: center; padding: 4px 4px 12px; flex-wrap: wrap; }
+    .bp-fb-area-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0; }
+    .bp-fb-area-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2.5px solid transparent; transition: border-color 0.15s;
+      color: var(--theme-accent); background: var(--theme-bg);
+      box-shadow: 0 0 0 0.5px var(--color-border);
+    }
+    .bp-fb-area-btn.active .bp-fb-area-circle {
+      border-color: var(--theme-accent);
+      box-shadow: 0 0 0 2px var(--theme-accent);
+    }
+    .bp-fb-area-label {
+      font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
+      font-family: var(--font-body); text-transform: capitalize;
+    }
+    .bp-fb-area-btn.active .bp-fb-area-label { color: var(--theme-accent); font-weight: 600; }
+
     /* Filter bar */
     .bp-fb-filters {
       display: flex; align-items: center; gap: 10px; padding: 12px 28px;
@@ -334,6 +370,29 @@ export class FeedbackComponent implements OnInit {
   filterPage = '';
   filterOwner = '';
   filterStatus = '';
+  selectedArea: string = 'all';
+  areaCircles: { id: string; label: string; icon: string }[] = [
+    { id: 'all', label: 'All', icon: 'layers' }
+  ];
+
+  // Lucide icon map per area — falls back to 'circle' for unknown areas.
+  private readonly areaIconMap: Record<string, string> = {
+    auth: 'shield',
+    projects: 'folder',
+    catalogue: 'shopping-bag',
+    suppliers: 'store',
+    feedback: 'message-square',
+    settings: 'settings',
+    technical: 'cpu',
+    mobile: 'smartphone',
+    payments: 'credit-card',
+    notifications: 'bell',
+    dashboard: 'layout-dashboard',
+    design: 'palette',
+    categories: 'tags',
+    marketing: 'megaphone',
+    balls: 'circle-dot'
+  };
   typeOptions = [{ label: 'All types', value: '' }];
   pageOptions = [{ label: 'All pages', value: '' }];
   ownerOptions = [{ label: 'All owners', value: '' }, ...TEAM_MEMBERS.map(m => ({ label: m.name, value: m.name }))];
@@ -414,16 +473,31 @@ export class FeedbackComponent implements OnInit {
           name: e.title,
           description: e.notes,
           subtitle: this.buildSubtitle(e),
+          badge: e.version || undefined,
           category_id: this.inferType(e),
           categoryLabel: this.inferType(e),
           icon: this.getTypeIcon(e),
           specs: [
+            ...(e.area ? [{ label: 'Area', value: e.area }] : []),
+            ...(e.version ? [{ label: 'Version', value: e.version }] : []),
+            ...(e.shipped_date ? [{ label: 'Shipped', value: this.formatDate(e.shipped_date) }] : []),
             ...(e.status ? [{ label: 'Status', value: e.status }] : []),
             ...(e.owner ? [{ label: 'Owner', value: e.owner }] : []),
             ...(e.page_url ? [{ label: 'Page', value: e.page_url }] : []),
           ],
           _raw: e
         }));
+
+        // Derive distinct areas → circles. Always include 'All' first.
+        const distinctAreas = [...new Set(topLevel.map(e => e.area).filter(Boolean) as string[])].sort();
+        this.areaCircles = [
+          { id: 'all', label: 'All', icon: 'layers' },
+          ...distinctAreas.map(a => ({
+            id: a,
+            label: a.charAt(0).toUpperCase() + a.slice(1),
+            icon: this.areaIconMap[a] || 'circle'
+          }))
+        ];
 
         // Build dynamic filter options
         const pages = [...new Set(topLevel.map(e => e.page_url).filter(Boolean) as string[])].sort();
@@ -446,15 +520,23 @@ export class FeedbackComponent implements OnInit {
 
   buildSubtitle(e: FeedbackEntry): string {
     const parts: string[] = [];
-    if (e.status && e.status !== 'open') parts.push(e.status.replace('_', ' '));
+    if (e.status === 'done' && e.shipped_date) parts.push(`Shipped ${this.formatDate(e.shipped_date)}`);
+    else if (e.status && e.status !== 'open') parts.push(e.status.replace('_', ' '));
+    if (e.area) parts.push(e.area);
     if (e.owner) parts.push(e.owner);
     if (e.page_url) parts.push(e.page_url);
     return parts.join(' · ');
   }
 
+  setArea(id: string) {
+    this.selectedArea = id;
+    this.applyFilters();
+  }
+
   applyFilters() {
     this.filteredEntities = this.allEntities.filter(e => {
       const raw: FeedbackEntry = e._raw;
+      if (this.selectedArea !== 'all' && (raw.area || '') !== this.selectedArea) return false;
       if (this.filterType && this.inferType(raw) !== this.filterType) return false;
       if (this.filterPage && raw.page_url !== this.filterPage) return false;
       if (this.filterOwner && raw.owner !== this.filterOwner) return false;

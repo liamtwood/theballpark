@@ -14,6 +14,9 @@ export interface CatalogueEntity {
   unit?: string;
   category_id?: string;
   categoryLabel?: string;
+  // Optional pill rendered next to the name (var(--theme-bg) background) —
+  // used for things like a feedback version tag (e.g. 'v1.7').
+  badge?: string;
   specs?: { label: string; value: string }[];
   // Parent reference (items link to their supplier)
   parentEntity?: { id: string; name: string; subtitle?: string; image_url?: string };

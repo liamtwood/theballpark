@@ -183,7 +183,10 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
               <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-list-initials">{{ e.name.charAt(0) }}</span>
             </div>
             <div class="bp-list-body">
-              <div class="bp-list-name">{{ e.name }}</div>
+              <div class="bp-list-name">
+                {{ e.name }}
+                <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+              </div>
               <div class="bp-list-sub" *ngIf="e.subtitle">{{ e.subtitle }}</div>
             </div>
             <div class="bp-list-right" *ngIf="e.price || e.priceRange">
@@ -224,7 +227,10 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
                 </div>
               </div>
               <div class="bp-item-card-body">
-                <div class="bp-item-card-name">{{ e.name }}</div>
+                <div class="bp-item-card-name">
+                  {{ e.name }}
+                  <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+                </div>
                 <div class="bp-item-card-price" *ngIf="e.price">
                   {{ e.price | gbp }}
                   <span class="bp-item-card-unit" *ngIf="e.unit">{{ e.unit }}</span>
@@ -420,7 +426,14 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-list-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-list-icon { color: var(--theme-accent); }
     .bp-list-body { flex: 1; min-width: 0; }
-    .bp-list-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+    .bp-list-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .bp-version-pill {
+      display: inline-flex; align-items: center;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+      padding: 1px 7px; border-radius: 10px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      font-family: var(--font-body);
+    }
     .bp-list-sub { font-size: 12px; color: var(--color-text-muted); }
     .bp-list-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
     .bp-list-price { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
@@ -439,7 +452,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-card-icon { color: var(--theme-accent); }
     .bp-item-card-body { padding: 10px 12px; }
-    .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; }
+    .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
     .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
