@@ -4,8 +4,8 @@
 // environment='dev'.
 //
 // Idempotent: skips any row whose title already exists in shared.feedback.
-// Adds shared.feedback.tags TEXT[] (TEXT[] DEFAULT '{}') if missing — there is
-// no tags column on the table yet and the user spec calls for one.
+// Resolves the Prompt category from shared.feedback_categories (cross-env);
+// requires migrate-schemas.js to have been run.
 //
 // Usage: node server/src/db/seed-feature-specs.js
 
@@ -298,28 +298,23 @@ VERSION: v2.1`
   });
 
   try {
-    // 1. Ensure tags column exists on shared.feedback
-    await pool.query(
-      `ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'`
-    );
-
-    // 2. Resolve Prompt category id (namespace=feedback) from the dev schema
-    //    (public.categories — feedback categories are seeded here by migrate.js)
+    // 1. Resolve Prompt category id from shared.feedback_categories
+    //    (cross-environment — populated by migrate-schemas.js).
     const cat = await pool.query(
-      `SELECT id FROM public.categories
-        WHERE namespace = 'feedback' AND name = 'Prompt' AND parent_id IS NULL
+      `SELECT id FROM shared.feedback_categories
+        WHERE name = 'Prompt' AND object_type = 'issue'
         LIMIT 1`
     );
     if (!cat.rowCount) {
       throw new Error(
-        `Prompt category not found in public.categories (namespace='feedback'). ` +
-        `Run server/src/db/migrate.js first to seed feedback categories.`
+        `Prompt category not found in shared.feedback_categories. ` +
+        `Run server/src/db/migrate-schemas.js first to create + seed the table.`
       );
     }
     const promptCategoryId = cat.rows[0].id;
     console.log(`Prompt category: ${promptCategoryId}`);
 
-    // 3. Insert specs (skip duplicates by title)
+    // 2. Insert specs (skip duplicates by title)
     let inserted = 0;
     let skipped = 0;
     for (const spec of SPECS) {
@@ -334,7 +329,7 @@ VERSION: v2.1`
       }
       await pool.query(
         `INSERT INTO shared.feedback
-           (category_id, title, notes, submitted_by, environment,
+           (feedback_category_id, title, notes, submitted_by, environment,
             object_type, type, status, tags)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [

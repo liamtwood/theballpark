@@ -10,7 +10,7 @@ import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subject, debounceTime } from 'rxjs';
-import { FeedbackService, FeedbackEntry, TEAM_MEMBERS, TeamMember } from '../../core/services/feedback.service';
+import { FeedbackService, FeedbackEntry, FeedbackCategory, TEAM_MEMBERS, TeamMember } from '../../core/services/feedback.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -427,7 +427,9 @@ export class FolderDetailComponent implements OnInit {
   agenda: string[] = [];
   eventDateObj: Date = new Date();
   team: TeamMember[] = TEAM_MEMBERS;
-  folderTypeOptions = ['minutes', 'sprint', 'test_run', 'workshop'];
+  // Loaded from shared.feedback_categories — folder types only,
+  // 'Note' excluded to match the existing meeting/folder UX.
+  folderTypeOptions: string[] = ['minutes', 'sprint', 'test_run', 'workshop'];
 
   get folderLabel(): string {
     const t = this.entry?.type || 'minutes';
@@ -469,6 +471,16 @@ export class FolderDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.feedbackSvc.getFeedbackCategories().subscribe({
+      next: (cats) => {
+        this.folderTypeOptions = (cats || [])
+          .filter(c => c.object_type === 'folder' && c.name !== 'Note')
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(c => c.name.toLowerCase().replace(/\s+/g, '_'));
+        this.cdr.detectChanges();
+      }
+    });
+
     const id = this.route.snapshot.params['id'];
     const load$ = id === 'today' ? this.feedbackSvc.getToday() : this.feedbackSvc.getById(id);
     load$.subscribe({

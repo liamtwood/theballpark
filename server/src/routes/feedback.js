@@ -5,6 +5,10 @@ router.get('/', async (req, res, next) => {
   try { res.json(await FeedbackService.getAll(req.query.object_type)); } catch (err) { next(err); }
 });
 
+router.get('/categories', async (req, res, next) => {
+  try { res.json(await FeedbackService.getCategories()); } catch (err) { next(err); }
+});
+
 router.get('/today', async (req, res, next) => {
   try { res.json(await FeedbackService.getToday()); } catch (err) { next(err); }
 });

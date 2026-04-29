@@ -400,8 +400,70 @@ const migrate = async () => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+
+      -- Feedback categories (cross-environment, single source of truth for
+      -- folder types like Minutes/Sprint and issue types like Bug/Prompt)
+      CREATE TABLE IF NOT EXISTS shared.feedback_categories (
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name        VARCHAR(100) NOT NULL UNIQUE,
+        object_type VARCHAR(20) CHECK (object_type IN ('folder','issue')),
+        icon_name   VARCHAR(50),
+        icon_color  VARCHAR(30) DEFAULT 'var(--theme-bg)',
+        tagline     VARCHAR(255),
+        description TEXT,
+        parent_id   UUID REFERENCES shared.feedback_categories(id),
+        sort_order  INTEGER DEFAULT 0,
+        namespace   VARCHAR(20) DEFAULT 'feedback',
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS feedback_category_id UUID
+          REFERENCES shared.feedback_categories(id);
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
     `);
     console.log('  Shared schema tables created.');
+
+    // ── 4a. Seed shared.feedback_categories (idempotent via UNIQUE name) ─
+    console.log('  Seeding shared.feedback_categories...');
+    const FEEDBACK_CATEGORIES = [
+      // Folders
+      { name: 'Minutes',     object_type: 'folder', icon_name: 'calendar',      icon_color: 'var(--theme-bg)',        tagline: 'Meeting notes and decisions',     description: 'Record meetings, decisions and follow-up actions.',           sort_order: 1 },
+      { name: 'Sprint',      object_type: 'folder', icon_name: 'zap',            icon_color: 'var(--theme-bg)',        tagline: 'Development sprint tracker',      description: 'Plan and track work across a development sprint.',            sort_order: 2 },
+      { name: 'Test Run',    object_type: 'folder', icon_name: 'flask-conical',  icon_color: 'var(--theme-bg)',        tagline: 'QA and testing sessions',         description: 'Record bugs and observations from a testing session.',        sort_order: 3 },
+      { name: 'Workshop',    object_type: 'folder', icon_name: 'users',          icon_color: 'var(--theme-bg)',        tagline: 'Working sessions and discovery',  description: 'Capture outputs from workshops and working sessions.',        sort_order: 4 },
+      { name: 'Note',        object_type: 'folder', icon_name: 'file-text',      icon_color: 'var(--theme-bg)',        tagline: 'General notes and documents',     description: 'A free-form note or reference document.',                     sort_order: 5 },
+      // Issues
+      { name: 'Bug',         object_type: 'issue',  icon_name: 'bug',            icon_color: 'var(--color-danger-bg)', tagline: 'Something is broken',             description: 'Log anything broken, inconsistent or behaving unexpectedly.', sort_order: 6 },
+      { name: 'Enhancement', object_type: 'issue',  icon_name: 'lightbulb',      icon_color: 'var(--theme-bg)',        tagline: 'Make it better',                  description: 'Feature requests, improvements and nice-to-haves.',           sort_order: 7 },
+      { name: 'Question',    object_type: 'issue',  icon_name: 'circle-help',    icon_color: 'var(--theme-bg)',        tagline: 'Something to discuss',            description: 'Open questions about the product, process or pricing.',      sort_order: 8 },
+      { name: 'Prompt',      object_type: 'issue',  icon_name: 'clipboard-pen',  icon_color: 'var(--theme-bg)',        tagline: 'A requirement or instruction',    description: 'Capture specific requirements and build instructions.',       sort_order: 9 }
+    ];
+    for (const fc of FEEDBACK_CATEGORIES) {
+      await client.query(
+        `INSERT INTO shared.feedback_categories
+           (name, object_type, icon_name, icon_color, tagline, description, sort_order, namespace)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'feedback')
+         ON CONFLICT (name) DO NOTHING`,
+        [fc.name, fc.object_type, fc.icon_name, fc.icon_color, fc.tagline, fc.description, fc.sort_order]
+      );
+    }
+    console.log('  Feedback categories seeded.');
+
+    // ── 4b. Backfill feedback_category_id on existing rows (best-effort
+    //       lowercase match on name, with underscore→space normalisation
+    //       so 'test_run' → 'Test Run'). Leaves rows whose `type` does not
+    //       map (e.g. 'agenda', 'action') with feedback_category_id NULL.
+    await client.query(`
+      UPDATE shared.feedback f
+      SET feedback_category_id = fc.id
+      FROM shared.feedback_categories fc
+      WHERE LOWER(REPLACE(f.type, '_', ' ')) = LOWER(fc.name)
+        AND f.feedback_category_id IS NULL
+    `);
+    console.log('  shared.feedback.feedback_category_id backfilled.');
 
     // ── 5. Internal schema (ops tables, single instance) ─────────────────
     console.log('  Creating internal schema tables...');
