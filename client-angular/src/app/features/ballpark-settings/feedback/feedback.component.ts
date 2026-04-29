@@ -14,8 +14,10 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ChipsModule } from 'primeng/chips';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService, SortMeta } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { TableModule } from 'primeng/table';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-feedback',
@@ -24,7 +26,8 @@ import { ToastModule } from 'primeng/toast';
     CommonModule, FormsModule, LucideAngularModule,
     LoadingSpinnerComponent, CatalogueGridComponent, FeedbackDialogComponent,
     SidebarModule, InputTextModule, ButtonModule, DropdownModule,
-    ChipsModule, CheckboxModule, ConfirmDialogModule, ToastModule
+    ChipsModule, CheckboxModule, ConfirmDialogModule, ToastModule,
+    TableModule, StatusBadgeComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -57,6 +60,14 @@ import { ToastModule } from 'primeng/toast';
         <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
           (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Status"></p-dropdown>
         <span class="bp-fb-filter-count">{{ filteredEntities.length }} of {{ allEntities.length }}</span>
+        <div class="bp-fb-view-toggle">
+          <button class="bp-fb-view-btn" [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'" title="Cards">
+            <lucide-icon name="layout-grid" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-fb-view-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table">
+            <lucide-icon name="list" [size]="14"></lucide-icon>
+          </button>
+        </div>
       </div>
 
       <!-- BULK ACTION BAR -->
@@ -72,7 +83,7 @@ import { ToastModule } from 'primeng/toast';
         </button>
       </div>
 
-      <app-catalogue-grid
+      <app-catalogue-grid *ngIf="viewMode === 'cards'"
         [entities]="filteredEntities"
         [categories]="filterCategories"
         entityType="feedback"
@@ -87,7 +98,62 @@ import { ToastModule } from 'primeng/toast';
         (actionClicked)="onEntitySelected($event)">
       </app-catalogue-grid>
 
-      <div *ngIf="!filteredEntities.length && !loading" class="bp-empty-state">
+      <!-- TABLE VIEW -->
+      <div *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
+        <p-table [value]="tableRows" styleClass="bp-table" sortMode="multiple"
+          [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="title">Title <p-sortIcon field="title"></p-sortIcon></th>
+              <th>Area</th>
+              <th pSortableColumn="priorityRank" style="width:120px">Priority <p-sortIcon field="priorityRank"></p-sortIcon></th>
+              <th pSortableColumn="statusRank" style="width:120px">Status <p-sortIcon field="statusRank"></p-sortIcon></th>
+              <th pSortableColumn="versionSortKey" style="width:160px">Version <p-sortIcon field="versionSortKey"></p-sortIcon></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr class="bp-fb-row" (click)="onTableRowClick(row)">
+              <td class="bp-fb-cell-title">{{ row.title }}</td>
+              <td>
+                <span class="bp-fb-area-pill" *ngIf="row.area_name">
+                  <lucide-icon *ngIf="row.area_icon_name" [name]="row.area_icon_name" [size]="12"></lucide-icon>
+                  {{ row.area_name }}
+                </span>
+                <span class="bp-muted-text" *ngIf="!row.area_name">—</span>
+              </td>
+              <td>
+                <span *ngIf="row.priority && row.status !== 'done'"
+                  class="bp-priority-pill"
+                  [class.bp-priority-critical]="row.priority === 'critical'"
+                  [class.bp-priority-high]="row.priority === 'high'"
+                  [class.bp-priority-medium]="row.priority === 'medium'"
+                  [class.bp-priority-low]="row.priority === 'low'">
+                  {{ row.priority | titlecase }}
+                </span>
+                <span class="bp-muted-text" *ngIf="!row.priority || row.status === 'done'">—</span>
+              </td>
+              <td>
+                <app-status-badge [status]="row.status || 'open'" [statusName]="row.status || 'open'"></app-status-badge>
+              </td>
+              <td>
+                <ng-container *ngIf="row.status === 'done'; else openVersion">
+                  <span class="bp-fb-shipped-date" *ngIf="row.shipped_date">{{ formatShipDate(row.shipped_date) }}</span>
+                  <span class="bp-fb-version-pill" *ngIf="row.version">{{ row.version }}</span>
+                </ng-container>
+                <ng-template #openVersion>
+                  <span class="bp-fb-version-pill" *ngIf="row.target_version">{{ row.target_version }}</span>
+                  <span class="bp-muted-text" *ngIf="!row.target_version">—</span>
+                </ng-template>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr><td colspan="5" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <div *ngIf="!filteredEntities.length && !loading && viewMode === 'cards'" class="bp-empty-state">
         <p class="bp-muted-text">No feedback entries match your filters.</p>
       </div>
     </ng-container>
@@ -125,6 +191,21 @@ import { ToastModule } from 'primeng/toast';
           <label class="bp-field-label">Status</label>
           <p-dropdown [(ngModel)]="editStatus" [options]="statusEditOptions" optionLabel="label" optionValue="value"
             styleClass="w-full" (onChange)="markDirty()"></p-dropdown>
+        </div>
+
+        <!-- Priority + Target version -->
+        <div class="bp-field-grid-2 mb-4">
+          <div>
+            <label class="bp-field-label">Priority</label>
+            <p-dropdown [(ngModel)]="editPriority" [options]="priorityEditOptions"
+              optionLabel="label" optionValue="value" [showClear]="true"
+              styleClass="w-full" (onChange)="markDirty()" placeholder="—"></p-dropdown>
+          </div>
+          <div>
+            <label class="bp-field-label">Target version</label>
+            <input pInputText [(ngModel)]="editTargetVersion" class="w-full bp-input-edit"
+              placeholder="e.g. v2.0" (ngModelChange)="markDirty()"/>
+          </div>
         </div>
 
         <!-- Owner -->
@@ -251,6 +332,63 @@ import { ToastModule } from 'primeng/toast';
     :host ::ng-deep .bp-fb-filter .p-dropdown { font-size: 12px !important; }
     .bp-fb-filter-count { font-size: 12px; color: var(--color-text-muted); margin-left: auto; }
 
+    /* View toggle (Cards / Table) */
+    .bp-fb-view-toggle { display: flex; gap: 4px; }
+    .bp-fb-view-btn {
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .bp-fb-view-btn:hover { color: var(--theme-accent); }
+    .bp-fb-view-btn.active { background: var(--theme-bg); border-color: var(--theme-accent); color: var(--theme-accent); }
+
+    /* Table view */
+    .bp-fb-table-wrap { padding: 12px 24px; }
+    :host ::ng-deep .bp-table .p-datatable-thead > tr > th {
+      background: var(--color-surface); color: var(--color-text-muted);
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 0.5px solid var(--color-border); padding: 10px 12px;
+    }
+    :host ::ng-deep .bp-table .p-datatable-tbody > tr {
+      cursor: pointer; transition: background 0.1s;
+    }
+    :host ::ng-deep .bp-table .p-datatable-tbody > tr:hover { background: var(--theme-bg); }
+    :host ::ng-deep .bp-table .p-datatable-tbody > tr > td {
+      padding: 10px 12px; font-size: 13px; color: var(--color-text-primary);
+      border-bottom: 0.5px solid var(--color-border); vertical-align: middle;
+    }
+    .bp-fb-cell-title { font-weight: 500; }
+
+    /* Area pill in table */
+    .bp-fb-area-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 10px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      font-size: 11px; font-weight: 500;
+    }
+
+    /* Priority pills */
+    .bp-priority-pill {
+      display: inline-flex; padding: 2px 8px; border-radius: 10px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .bp-priority-critical { background: var(--color-danger-bg); color: var(--color-danger-text); }
+    .bp-priority-high     { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
+    .bp-priority-medium   { background: var(--theme-bg); color: var(--theme-accent); }
+    .bp-priority-low      { color: var(--color-text-muted); }
+    .bp-muted-text        { color: var(--color-text-muted); font-size: 12px; }
+
+    /* Version cell — combines shipped_date + version pill */
+    .bp-fb-shipped-date {
+      font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
+    }
+    .bp-fb-version-pill {
+      display: inline-flex; padding: 1px 7px; border-radius: 10px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    }
+
     /* Bulk action bar */
     .bp-fb-bulk-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 28px;
@@ -375,6 +513,27 @@ export class FeedbackComponent implements OnInit {
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
+  // View toggle (Cards | Table). Cards mode keeps catalogue-grid's own
+  // List/Grid toggle inside it.
+  viewMode: 'cards' | 'table' = 'cards';
+
+  // Pre-projected rows for the p-table: pulls priority/version/area off
+  // _raw and adds numeric sort keys so PrimeNG's default sort works.
+  tableRows: any[] = [];
+
+  // Default sort: priority DESC then status ASC (open first, done last).
+  defaultTableSort: SortMeta[] = [
+    { field: 'priorityRank', order: -1 },
+    { field: 'statusRank',   order: 1 }
+  ];
+
+  private readonly priorityRanks: Record<string, number> = {
+    critical: 4, high: 3, medium: 2, low: 1
+  };
+  private readonly statusRanks: Record<string, number> = {
+    open: 0, in_progress: 1, done: 2, wont_fix: 3
+  };
+
   // Loaded from shared.feedback_categories (namespace='area') on init.
   // Used to resolve area name → icon for the circles row + per-row badge.
   areaCategories: FeedbackCategory[] = [];
@@ -401,7 +560,16 @@ export class FeedbackComponent implements OnInit {
   editStatus = 'open';
   editType = 'action';
   editTags: string[] = [];
+  editPriority: string | null = null;
+  editTargetVersion = '';
   isDirty = false;
+
+  priorityEditOptions = [
+    { label: 'Critical', value: 'critical' },
+    { label: 'High',     value: 'high'     },
+    { label: 'Medium',   value: 'medium'   },
+    { label: 'Low',      value: 'low'      }
+  ];
 
   typeEditOptions = [
     { label: 'Action', value: 'action', icon: 'check-square' },
@@ -541,8 +709,47 @@ export class FeedbackComponent implements OnInit {
       if (this.filterStatus && (raw.status || 'open') !== this.filterStatus) return false;
       return true;
     });
+    this.tableRows = this.filteredEntities.map(e => {
+      const r: FeedbackEntry = e._raw;
+      const status = r.status || 'open';
+      const priority = r.priority || null;
+      // Sort keys for the table — done rows fall to the bottom, then by
+      // shipped_date (older = lower); open rows order by target_version
+      // string (lex sort works for v2.0 < v2.1 < v2.10 only by accident, fine
+      // for our flat range).
+      const versionSortKey = status === 'done'
+        ? (r.shipped_date || '0000-00-00')
+        : (r.target_version || 'zzz');
+      return {
+        id: r.id,
+        title: r.title,
+        area_name: r.area_name,
+        area_icon_name: r.area_icon_name,
+        priority,
+        status,
+        priorityRank: priority ? (this.priorityRanks[priority] || 0) : 0,
+        statusRank: this.statusRanks[status] ?? 99,
+        version: r.version,
+        shipped_date: r.shipped_date,
+        target_version: r.target_version,
+        versionSortKey,
+        _raw: r
+      };
+    });
     this.selectedIds.clear();
     this.cdr.detectChanges();
+  }
+
+  onTableRowClick(row: any) {
+    // Mirrors the action button on the cards view — open the detail drawer.
+    const entity = this.allEntities.find(e => e.id === row.id);
+    if (entity) this.onEntitySelected(entity);
+  }
+
+  formatShipDate(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
   }
 
   inferType(e: FeedbackEntry): string {
@@ -577,6 +784,8 @@ export class FeedbackComponent implements OnInit {
       this.editStatus = this.selectedEntry.status || 'open';
       this.editType = this.inferType(this.selectedEntry);
       this.editTags = [];
+      this.editPriority = this.selectedEntry.priority || null;
+      this.editTargetVersion = this.selectedEntry.target_version || '';
       this.isDirty = false;
       this.showDrawer = true;
       this.feedbackSvc.getChildren(this.selectedEntry.id).subscribe({
@@ -596,6 +805,8 @@ export class FeedbackComponent implements OnInit {
       owner: this.editOwner || undefined,
       status: this.editStatus,
       type: this.editType,
+      priority: this.editPriority || null,
+      target_version: this.editTargetVersion?.trim() || null,
     } as any).subscribe({
       next: () => {
         this.isDirty = false;
@@ -674,6 +885,8 @@ export class FeedbackComponent implements OnInit {
     this.editStatus = child.status || 'open';
     this.editType = this.inferType(child);
     this.editTags = [];
+    this.editPriority = child.priority || null;
+    this.editTargetVersion = child.target_version || '';
     this.isDirty = false;
     this.childEntries = [];
     this.cdr.detectChanges();

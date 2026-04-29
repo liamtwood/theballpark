@@ -14,13 +14,30 @@ const BASE_SELECT = `
   LEFT JOIN shared.feedback_categories ac ON ac.id = f.area_category_id
 `;
 
-async function getAll(objectType) {
-  let query = BASE_SELECT;
+async function getAll(filters) {
+  // filters = { object_type?, priority?, target_version? }
+  const where = [];
   const params = [];
-  if (objectType) {
-    params.push(objectType);
-    query += ` WHERE f.object_type = $1`;
+  if (filters && typeof filters === 'object') {
+    if (filters.object_type) {
+      params.push(filters.object_type);
+      where.push(`f.object_type = $${params.length}`);
+    }
+    if (filters.priority) {
+      params.push(filters.priority);
+      where.push(`f.priority = $${params.length}`);
+    }
+    if (filters.target_version) {
+      params.push(filters.target_version);
+      where.push(`f.target_version = $${params.length}`);
+    }
+  } else if (typeof filters === 'string') {
+    // Backwards-compat — old call signature was getAll(objectType: string)
+    params.push(filters);
+    where.push(`f.object_type = $${params.length}`);
   }
+  let query = BASE_SELECT;
+  if (where.length) query += ' WHERE ' + where.join(' AND ');
   query += ' ORDER BY f.created_at DESC';
   const result = await pool.query(query, params);
   return result.rows;
@@ -168,7 +185,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date', 'priority', 'target_version'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;

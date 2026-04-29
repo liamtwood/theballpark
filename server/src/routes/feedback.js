@@ -2,7 +2,13 @@ const router = require('express').Router();
 const FeedbackService = require('../services/feedback.service');
 
 router.get('/', async (req, res, next) => {
-  try { res.json(await FeedbackService.getAll(req.query.object_type)); } catch (err) { next(err); }
+  try {
+    res.json(await FeedbackService.getAll({
+      object_type: req.query.object_type,
+      priority: req.query.priority,
+      target_version: req.query.target_version
+    }));
+  } catch (err) { next(err); }
 });
 
 router.get('/categories', async (req, res, next) => {

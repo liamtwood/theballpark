@@ -105,6 +105,19 @@ type FlowType = 'folder' | 'issue' | 'note' | null;
           </div>
         </div>
         <div class="mb-4">
+          <label class="bp-field-label">Priority</label>
+          <div class="bp-fb-priority-row">
+            <button *ngFor="let p of priorityOptions" type="button"
+              class="bp-fb-priority-pill"
+              [class]="'bp-fb-priority-' + p.value"
+              [class.active]="priority === p.value"
+              (click)="priority = p.value">
+              <span class="bp-fb-priority-dot" [class]="'bp-fb-priority-dot-' + p.value"></span>
+              {{ p.label }}
+            </button>
+          </div>
+        </div>
+        <div class="mb-4">
           <label class="bp-field-label">Title *</label>
           <input pInputText [(ngModel)]="title" class="w-full bp-input-edit" [placeholder]="issuePlaceholder"/>
         </div>
@@ -183,6 +196,21 @@ type FlowType = 'folder' | 'issue' | 'note' | null;
     }
     .bp-fb-sub-pill:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
     .bp-fb-sub-pill.active { border-color: var(--theme-accent); background: var(--theme-accent); color: var(--color-surface); }
+    .bp-fb-priority-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .bp-fb-priority-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px;
+      border: 1px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-secondary); font-size: 13px; font-weight: 500;
+      font-family: var(--font-body); cursor: pointer; transition: all 0.15s;
+    }
+    .bp-fb-priority-pill:hover { border-color: var(--theme-accent); }
+    .bp-fb-priority-pill.active { border-color: var(--theme-accent); background: var(--theme-bg); color: var(--theme-accent); }
+    .bp-fb-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .bp-fb-priority-dot-critical { background: var(--color-danger-text); }
+    .bp-fb-priority-dot-high     { background: var(--color-waiting-text); }
+    .bp-fb-priority-dot-medium   { background: var(--theme-accent); }
+    .bp-fb-priority-dot-low      { background: var(--color-text-muted); }
     .bp-fb-context { font-size: 12px; color: var(--color-text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 4px; }
     .bp-fb-context-cat { font-weight: 500; }
     .bp-owner-row { display: flex; gap: 8px; margin-top: 4px; }
@@ -225,6 +253,14 @@ export class FeedbackDialogComponent implements OnChanges {
   dueDate: Date | null = null;
   folderType = 'minutes';
   issueType = 'bug';
+  priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+
+  priorityOptions = [
+    { label: 'Critical', value: 'critical' as const },
+    { label: 'High',     value: 'high'     as const },
+    { label: 'Medium',   value: 'medium'   as const },
+    { label: 'Low',      value: 'low'      as const }
+  ];
 
   team: TeamMember[] = TEAM_MEMBERS;
 
@@ -331,6 +367,7 @@ export class FeedbackDialogComponent implements OnChanges {
       data.feedback_category_id = this.issueTypes.find(t => t.value === this.issueType)?.id;
       data.owner = this.owner || undefined;
       data.due_date = this.dueDate ? this.dueDate.toISOString().split('T')[0] : undefined;
+      data.priority = this.priority || undefined;
       if (this.parentId) data.parent_id = this.parentId;
     } else {
       data.object_type = 'note';
@@ -368,6 +405,7 @@ export class FeedbackDialogComponent implements OnChanges {
     this.dueDate = null;
     this.folderType = 'minutes';
     this.issueType = 'bug';
+    this.priority = 'medium';
     this.parentId = null;
     this.parentTitle = '';
     this.initialFlow = null;
