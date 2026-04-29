@@ -17,6 +17,7 @@ import { CategoryService } from '../../../core/services/category.service';
 import { FeedbackService, FeedbackCategory } from '../../../core/services/feedback.service';
 import { Category, CatalogueEntity, CategoryInfo } from '../../../models';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { registeredIconNames } from '../../../core/icons';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -194,7 +195,32 @@ interface NamespaceOption {
         </div>
 
         <div class="mb-4" *ngIf="isAreaForm">
-          <div class="bp-field-hint">Tip: click the pencil on an area circle to change its icon and colour.</div>
+          <label class="bp-field-label">Icon</label>
+          <div class="bp-area-icon-row">
+            <div class="bp-area-icon-preview">
+              <lucide-icon *ngIf="form.icon_name" [name]="form.icon_name" [size]="20"></lucide-icon>
+              <span *ngIf="!form.icon_name" class="bp-area-icon-empty">—</span>
+            </div>
+            <p-dropdown class="flex-1" [(ngModel)]="form.icon_name"
+              [options]="iconNameOptions" optionLabel="label" optionValue="value"
+              [filter]="true" filterBy="label" [showClear]="true"
+              styleClass="w-full bp-input-edit"
+              placeholder="Search icons (e.g. wrench, calendar)...">
+              <ng-template let-opt pTemplate="item">
+                <div class="bp-icon-opt">
+                  <lucide-icon [name]="opt.value" [size]="14"></lucide-icon>
+                  <span>{{ opt.label }}</span>
+                </div>
+              </ng-template>
+              <ng-template let-opt pTemplate="selectedItem">
+                <div class="bp-icon-opt" *ngIf="opt">
+                  <lucide-icon [name]="opt.value" [size]="14"></lucide-icon>
+                  <span>{{ opt.label }}</span>
+                </div>
+              </ng-template>
+            </p-dropdown>
+          </div>
+          <div class="bp-field-hint">Pulled from core/icons.ts — the single source of truth ({{ iconNameOptions.length }} icons available).</div>
         </div>
 
         <div *ngIf="!isAreaForm">
@@ -265,6 +291,18 @@ interface NamespaceOption {
     .bp-ns-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); font-family: var(--font-body); }
     .bp-ns-circle-btn.active .bp-ns-circle-label { color: var(--theme-accent); font-weight: 600; }
 
+    /* ── AREA ICON ROW (drawer) ── */
+    .bp-area-icon-row { display: flex; gap: 8px; align-items: center; }
+    .bp-area-icon-preview {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid var(--color-border); background: var(--theme-bg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent); flex-shrink: 0;
+    }
+    .bp-area-icon-empty { color: var(--color-text-muted); font-size: 11px; }
+    .bp-icon-opt { display: flex; align-items: center; gap: 8px; }
+    .bp-icon-opt lucide-icon { color: var(--theme-accent); }
+
     /* ── ADD BUTTON ── */
     .bp-add-btn {
       display: flex; align-items: center; gap: 4px;
@@ -328,6 +366,10 @@ export class CategoriesComponent implements OnInit {
   showImagePanel = false;
   form: any = this.emptyForm();
   parentOptions: { label: string; value: string }[] = [];
+
+  // Searchable dropdown options for the area drawer's icon picker.
+  // Sourced from core/icons.ts so adding an icon there flows through to here.
+  iconNameOptions = registeredIconNames().map(n => ({ label: n, value: n }));
 
   // Image upload (from grid circle/card edit on catalogue / feedback rows)
   uploadCatId = '';
