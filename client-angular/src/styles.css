@@ -101,7 +101,6 @@
 }
 [data-mode="dark"] .bp-hero {
   background: var(--theme-bg) !important;
-  border-color: var(--theme-border) !important;
 }
 [data-mode="dark"] .bp-section-title { color: var(--theme-accent) !important; }
 
@@ -497,7 +496,9 @@ lucide-icon svg {
 .bp-hero {
   background: var(--theme-bg);
   padding: 32px var(--section-pad) 0;
-  border-bottom: 0.5px solid var(--theme-border);
+}
+.bp-hero--no-tabs {
+  border-bottom: 0.5px solid var(--color-border);
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
@@ -517,7 +518,7 @@ lucide-icon svg {
   margin-bottom: 20px;
   display: block;
 }
-.bp-hero-tabs { display: flex; }
+.bp-hero-tabs { display: flex; border-bottom: 0.5px solid var(--color-border); }
 .bp-hero-tab {
   padding: 10px 20px;
   font-size: var(--text-sm);
