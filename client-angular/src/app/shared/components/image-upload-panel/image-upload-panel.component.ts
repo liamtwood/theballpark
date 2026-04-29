@@ -25,8 +25,8 @@ import { ModalComponent } from '../modal/modal.component';
 
       <!-- TAB BAR -->
       <div class="iup-tabs">
-        <button class="iup-tab" [class.active]="activeTab === 'upload'" (click)="activeTab = 'upload'">Upload</button>
-        <button class="iup-tab" [class.active]="activeTab === 'search'" (click)="activeTab = 'search'">Search</button>
+        <button *ngIf="mode === 'full'" class="iup-tab" [class.active]="activeTab === 'upload'" (click)="activeTab = 'upload'">Upload</button>
+        <button *ngIf="mode === 'full'" class="iup-tab" [class.active]="activeTab === 'search'" (click)="activeTab = 'search'">Search</button>
         <button class="iup-tab" [class.active]="activeTab === 'icon'" (click)="activeTab = 'icon'">Icon</button>
       </div>
 
@@ -338,7 +338,11 @@ import { ModalComponent } from '../modal/modal.component';
 export class ImageUploadPanelComponent implements OnInit {
   @Input() entityId = '';
   @Input() projectId = '';
-  @Input() type: 'project' | 'supplier' | 'category' | 'logo' | 'item' = 'project';
+  @Input() type: 'project' | 'supplier' | 'category' | 'logo' | 'item' | 'area' = 'project';
+  // 'full'      — Upload + Search + Icon tabs (default).
+  // 'icon-only' — only the Icon tab is shown. Used for area rows in
+  //               shared.feedback_categories which have no cover image.
+  @Input() mode: 'full' | 'icon-only' = 'full';
   @Input() subtitle = '';
   @Input() existingCoverUrl = '';
   @Input() existingLogoUrl = '';
@@ -418,7 +422,8 @@ export class ImageUploadPanelComponent implements OnInit {
     if (this.existingImageDisplay) this.imageDisplay = this.existingImageDisplay;
     if (this.existingIconName) this.selectedIconName = this.existingIconName;
     if (this.existingIconColor) this.selectedIconColor = this.existingIconColor;
-    if (this.searchTerm) {
+    if (this.mode === 'icon-only') this.activeTab = 'icon';
+    if (this.searchTerm && this.mode === 'full') {
       this.unsplashQuery = this.searchTerm;
       this.searchUnsplash();
     }
@@ -489,6 +494,32 @@ export class ImageUploadPanelComponent implements OnInit {
     this.processing = true;
     this.errorText = '';
     this.cdr.detectChanges();
+
+    // Icon-only short-circuit — used for area rows in shared.feedback_categories.
+    // No file upload, no Supabase storage, no per-env category PATCH. Just
+    // PATCH the icon fields directly on the shared row.
+    if (this.mode === 'icon-only' && this.type === 'area') {
+      try {
+        await firstValueFrom(this.api.patch(`/feedback/categories/${this.entityId}`, {
+          icon_name: this.selectedIconName || null,
+          icon_color: this.selectedIconColor || null
+        }));
+        this.imagesUpdated.emit({
+          coverUrl: '',
+          logoUrl: '',
+          iconName: this.selectedIconName || undefined,
+          iconColor: this.selectedIconColor || undefined
+        });
+        this.closed.emit();
+      } catch (err) {
+        console.error('Icon save failed:', err);
+        this.errorText = 'Save failed — please try again';
+      } finally {
+        this.processing = false;
+        this.cdr.detectChanges();
+      }
+      return;
+    }
 
     try {
       const bucket = (this.type === 'supplier' || this.type === 'item')
