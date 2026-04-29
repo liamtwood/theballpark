@@ -5,6 +5,7 @@ export interface FeedbackEntry {
   id: string;
   category_id?: string;
   subcategory_id?: string;
+  feedback_category_id?: string;
   title: string;
   notes?: string;
   page_url?: string;
@@ -21,10 +22,26 @@ export interface FeedbackEntry {
   description?: string;
   status?: string;
   object_type?: 'issue' | 'folder' | 'note';
+  tags?: string[];
   created_at: string;
   category_name?: string;
-  subcategory_name?: string;
+  category_icon_name?: string;
+  category_icon_color?: string;
+  category_object_type?: 'folder' | 'issue';
   children?: FeedbackEntry[];
+}
+
+export interface FeedbackCategory {
+  id: string;
+  name: string;
+  object_type: 'folder' | 'issue';
+  icon_name: string;
+  icon_color: string;
+  tagline?: string;
+  description?: string;
+  parent_id?: string | null;
+  sort_order: number;
+  namespace?: string;
 }
 
 export interface TeamMember {
@@ -54,6 +71,7 @@ export class FeedbackService {
     return this.api.get<FeedbackEntry[]>(`/feedback/issues${qs}`);
   }
   getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
+  getFeedbackCategories() { return this.api.get<FeedbackCategory[]>('/feedback/categories'); }
   create(data: Partial<FeedbackEntry>) { return this.api.post<FeedbackEntry>('/feedback', data); }
   patch(id: string, data: any) { return this.api.patch<FeedbackEntry>(`/feedback/${id}`, data); }
   remove(id: string) { return this.api.delete<any>(`/feedback/${id}`); }

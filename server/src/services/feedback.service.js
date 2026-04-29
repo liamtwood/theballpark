@@ -2,11 +2,12 @@ const pool = require('../db/pool');
 
 const BASE_SELECT = `
   SELECT f.*,
-         c.name  AS category_name,
-         sc.name AS subcategory_name
+         fc.name        AS category_name,
+         fc.icon_name   AS category_icon_name,
+         fc.icon_color  AS category_icon_color,
+         fc.object_type AS category_object_type
   FROM shared.feedback f
-  LEFT JOIN categories c  ON c.id  = f.category_id
-  LEFT JOIN categories sc ON sc.id = f.subcategory_id
+  LEFT JOIN shared.feedback_categories fc ON fc.id = f.feedback_category_id
 `;
 
 async function getAll(objectType) {
@@ -69,13 +70,38 @@ async function getChildren(parentId) {
 }
 
 async function create(data) {
-  const { category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, event_date, parent_id, agenda, type, meeting_time, description, object_type } = data;
+  const {
+    category_id, subcategory_id, feedback_category_id,
+    title, notes, page_url, submitted_by, environment,
+    owner, due_date, event_date, parent_id, agenda,
+    type, meeting_time, description, object_type, tags
+  } = data;
   const result = await pool.query(
-    `INSERT INTO shared.feedback (category_id, subcategory_id, title, notes, page_url, submitted_by, environment, owner, due_date, event_date, parent_id, agenda, type, meeting_time, description, object_type)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
-    [category_id || null, subcategory_id || null, title, notes || null, page_url || null, submitted_by || null, environment || 'preview', owner || null, due_date || null, event_date || null, parent_id || null, agenda || [], type || null, meeting_time || null, description || null, object_type || 'issue']
+    `INSERT INTO shared.feedback
+       (category_id, subcategory_id, feedback_category_id,
+        title, notes, page_url, submitted_by, environment,
+        owner, due_date, event_date, parent_id, agenda,
+        type, meeting_time, description, object_type, tags)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+     RETURNING *`,
+    [
+      category_id || null, subcategory_id || null, feedback_category_id || null,
+      title, notes || null, page_url || null, submitted_by || null, environment || 'preview',
+      owner || null, due_date || null, event_date || null, parent_id || null, agenda || [],
+      type || null, meeting_time || null, description || null, object_type || 'issue', tags || []
+    ]
   );
   return result.rows[0];
+}
+
+async function getCategories() {
+  const result = await pool.query(
+    `SELECT id, name, object_type, icon_name, icon_color,
+            tagline, description, parent_id, sort_order, namespace, created_at
+       FROM shared.feedback_categories
+       ORDER BY sort_order ASC`
+  );
+  return result.rows;
 }
 
 async function patch(id, data) {
@@ -83,7 +109,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'tags'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;
@@ -103,4 +129,4 @@ async function remove(id) {
   await pool.query('DELETE FROM shared.feedback WHERE id = $1', [id]);
 }
 
-module.exports = { getAll, getById, getFolders, getIssues, getToday, getChildren, create, patch, remove };
+module.exports = { getAll, getById, getFolders, getIssues, getToday, getChildren, create, patch, remove, getCategories };

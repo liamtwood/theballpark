@@ -9,7 +9,13 @@ import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
-import { FeedbackService, TEAM_MEMBERS, TeamMember } from '../../../core/services/feedback.service';
+import { FeedbackService, FeedbackCategory, TEAM_MEMBERS, TeamMember } from '../../../core/services/feedback.service';
+
+interface TypeOption { label: string; value: string; id: string; }
+
+function tokenize(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '_');
+}
 
 type FlowType = 'folder' | 'issue' | 'note' | null;
 
@@ -222,19 +228,11 @@ export class FeedbackDialogComponent implements OnChanges {
 
   team: TeamMember[] = TEAM_MEMBERS;
 
-  folderTypes = [
-    { label: 'Minutes', value: 'minutes' },
-    { label: 'Sprint', value: 'sprint' },
-    { label: 'Test Run', value: 'test_run' },
-    { label: 'Workshop', value: 'workshop' }
-  ];
-
-  issueTypes = [
-    { label: 'Bug', value: 'bug' },
-    { label: 'Enhancement', value: 'enhancement' },
-    { label: 'Question', value: 'question' },
-    { label: 'Prompt', value: 'prompt' }
-  ];
+  // Type options driven from shared.feedback_categories (loaded once).
+  // 'Note' folder type is intentionally excluded — the dialog has its own
+  // top-level Note flow (step === 'note').
+  folderTypes: TypeOption[] = [];
+  issueTypes: TypeOption[] = [];
 
   get dialogHeader(): string {
     switch (this.step) {
@@ -277,7 +275,22 @@ export class FeedbackDialogComponent implements OnChanges {
     private feedbackSvc: FeedbackService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+    this.feedbackSvc.getFeedbackCategories().subscribe({
+      next: (cats) => {
+        const toOption = (c: FeedbackCategory): TypeOption => ({ label: c.name, value: tokenize(c.name), id: c.id });
+        this.folderTypes = (cats || [])
+          .filter(c => c.object_type === 'folder' && c.name !== 'Note')
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(toOption);
+        this.issueTypes = (cats || [])
+          .filter(c => c.object_type === 'issue')
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(toOption);
+        this.cdr.detectChanges();
+      }
+    });
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['visible'] && this.visible) {
@@ -307,6 +320,7 @@ export class FeedbackDialogComponent implements OnChanges {
     if (this.step === 'folder') {
       data.object_type = 'folder';
       data.type = this.folderType;
+      data.feedback_category_id = this.folderTypes.find(t => t.value === this.folderType)?.id;
       data.event_date = this.eventDate ? this.eventDate.toISOString().split('T')[0] : undefined;
       if (this.folderType === 'minutes' || this.folderType === 'workshop') {
         data.agenda = [];
@@ -314,6 +328,7 @@ export class FeedbackDialogComponent implements OnChanges {
     } else if (this.step === 'issue') {
       data.object_type = 'issue';
       data.type = this.issueType;
+      data.feedback_category_id = this.issueTypes.find(t => t.value === this.issueType)?.id;
       data.owner = this.owner || undefined;
       data.due_date = this.dueDate ? this.dueDate.toISOString().split('T')[0] : undefined;
       if (this.parentId) data.parent_id = this.parentId;

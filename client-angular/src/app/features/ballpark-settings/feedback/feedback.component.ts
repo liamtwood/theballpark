@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { FeedbackService, FeedbackEntry, TEAM_MEMBERS } from '../../../core/services/feedback.service';
+import { FeedbackService, FeedbackEntry, FeedbackCategory, TEAM_MEMBERS } from '../../../core/services/feedback.service';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
@@ -322,13 +322,11 @@ export class FeedbackComponent implements OnInit {
   team = TEAM_MEMBERS;
   selectedIds = new Set<string>();
 
+  // Loaded from shared.feedback_categories on init. Aggregate 'folder' + 'note'
+  // pseudo-pills are added at the front (they cover any folder / any note row,
+  // not a single category).
   filterCategories: CategoryInfo[] = [
-    { id: 'folder', name: 'Folders', icon: 'folder-open' },
-    { id: 'bug', name: 'Bugs', icon: 'bug' },
-    { id: 'enhancement', name: 'Enhancements', icon: 'lightbulb' },
-    { id: 'question', name: 'Questions', icon: 'circle-help' },
-    { id: 'prompt', name: 'Prompts', icon: 'clipboard-pen' },
-    { id: 'note', name: 'Notes', icon: 'file-text' }
+    { id: 'folder', name: 'Folders', icon: 'folder-open' }
   ];
 
   // Filter state
@@ -383,7 +381,27 @@ export class FeedbackComponent implements OnInit {
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit() { this.loadEntries(); }
+  ngOnInit() {
+    this.feedbackSvc.getFeedbackCategories().subscribe({
+      next: (cats) => {
+        const issueCats = (cats || [])
+          .filter(c => c.object_type === 'issue')
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(c => ({
+            id: c.name.toLowerCase().replace(/\s+/g, '_'),
+            name: c.name + 's',
+            icon: c.icon_name
+          }));
+        this.filterCategories = [
+          { id: 'folder', name: 'Folders', icon: 'folder-open' },
+          ...issueCats,
+          { id: 'note', name: 'Notes', icon: 'file-text' }
+        ];
+        this.loadEntries();
+      },
+      error: () => { this.loadEntries(); }
+    });
+  }
 
   loadEntries() {
     this.feedbackSvc.getAll().subscribe({

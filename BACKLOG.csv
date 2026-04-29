@@ -1,6 +1,6 @@
 type,area,title,description,priority,status
-backlog,settings,"Move Marketplace Logo to Appearance tab","Move logo upload from Organisation tab to Appearance tab",high,todo
-backlog,settings,"Replace live preview panel with Preview dialog","Remove sticky preview panel. Add Preview button that opens hero mockup in app-modal (p-dialog, bp-modal styleClass)",high,todo
+backlog,settings,"Move Marketplace Logo to Appearance tab","Move logo upload from Organisation tab to Appearance tab",high,done
+backlog,settings,"Replace live preview panel with Preview dialog","Remove sticky preview panel. Add Preview button that opens hero mockup in app-modal (p-dialog, bp-modal styleClass)",high,done
 backlog,settings,"Pill text not uppercase","Add text-transform: uppercase to .bp-pill in styles.css",high,todo
 backlog,settings,"Invite member drawer","p-sidebar sliding from right, email input, standard parchment footer buttons",medium,todo
 backlog,settings,"Remove member confirm dialog","Confirm dialog before removing a team member",medium,todo
@@ -8,7 +8,7 @@ backlog,settings,"Category management — request new category flow","Producer r
 backlog,settings,"Role management","Ability to change member role including owner transfer",low,todo
 backlog,settings,"Category display — supplier count","Show supplier count per category on Categories tab",low,todo
 backlog,settings,"Subscription upgrade/downgrade flow","Add upgrade/downgrade flow when pricing confirmed with Beth & Megan",low,todo
-backlog,dashboard,"Migrate local badge classes to app-status-badge","dashboard.component.ts uses local .bp-badge-* classes. Migrate to app-status-badge. styles.css already updated.",high,todo
+backlog,dashboard,"Migrate local badge classes to app-status-badge","dashboard.component.ts uses local .bp-badge-* classes. Migrate to app-status-badge. styles.css already updated.",high,done
 backlog,auth,"Google SSO","v1.3 milestone. Enrollment flow already prototyped in React prototype.",high,todo
 backlog,projects,"Project list view","Tabular view of all projects with status, client, date, estimate",high,todo
 backlog,projects,"Create project — AI brief parser flow","3-step modal: Paste Brief → Review Project Details → Review Items. Split by category, infer implied costs, flag ambiguities.",high,todo
@@ -17,9 +17,9 @@ backlog,projects,"Project detail","Header, brief summary, category sections",med
 backlog,balls,"Send lead flow","Select suppliers per category, review items, confirm send, deduct Ball from balance",high,todo
 backlog,balls,"Ball balance — nav + transaction history","Live balance in nav, transaction history view",high,todo
 backlog,balls,"Quote comparison","Side-by-side supplier quotes with Ballpark reference line",medium,todo
-backlog,suppliers,"Supplier browse","Filter by category, search, save to shortlist",high,todo
-backlog,suppliers,"Supplier catalogue","Items with delivery/installed pricing toggle",high,todo
-backlog,suppliers,"Supplier design cards","Portrait style with portfolio images",medium,todo
+backlog,suppliers,"Supplier browse","Filter by category, search, save to shortlist",high,done
+backlog,suppliers,"Supplier catalogue","Items with delivery/installed pricing toggle",high,done
+backlog,suppliers,"Supplier design cards","Portrait style with portfolio images",medium,done
 backlog,supplier-product,"Lead inbox","Supplier-facing incoming leads with brief details",high,todo
 backlog,supplier-product,"Quote submission","Structured quote form for suppliers to respond to leads",high,todo
 backlog,supplier-product,"Catalogue management","Supplier add/edit catalogue items via drawer",medium,todo
@@ -35,3 +35,36 @@ backlog,marketing,"Auto-reply confirmation email to registrants","After signup, 
 backlog,marketing,"CAPTCHA / anti-spam beyond rate limiting","Currently only IP rate-limit (5/min) protects /api/guestlist/signup. Add hCaptcha or Turnstile if abuse becomes a problem.",low,todo
 backlog,marketing,"Mark signups as invited / converted","Once we go live, we'll want to track which signups have been emailed an invite and which have converted to active accounts.",medium,todo
 backlog,auth,"Server-side admin enforcement audit","Most existing /api/* routes have no auth check at all — the server connects with service-role pg credentials and any client can call any endpoint. The new /api/admin/* routes added an x-bp-user-id header check (matches existing client-side admin gate) but this is stop-gap. When Supabase auth lands, switch to JWT validation everywhere.",high,todo
+shipped,design-system,"Option D design system","Top nav, parchment hero, two-column body, theme presets (5), dark/light mode, Lucide icons, Playfair + Libre Franklin",high,done
+shipped,design-system,"AppShellComponent + ShellContextService","Single shell component, tabs/sidenav nav modes, hero alignment CSS variable, project pages own the hero",high,done
+shipped,design-system,"CSS-variable colour system","Replace hardcoded hex with --color-* variables across all components for dark-mode compliance",high,done
+shipped,design-system,"Tabbed image upload (Upload / Search / Icon)","Unified upload dialog with file upload, Unsplash search auto-populated with entity name, and Lucide icon picker",high,done
+shipped,design-system,"Mobile bottom nav","Context-sensitive bottom nav, switches on project entry, retains project context across navigation",high,done
+shipped,design-system,"Two-zone image upload (cover/logo)","Single panel handles cover + logo for items, suppliers, categories, orgs",medium,done
+shipped,categories,"Settings Categories tab","Image card grid, manage drawer with name/description/tags/image/status, persisted to Supabase",high,done
+shipped,categories,"Category hierarchy","parent_id, level, org_id columns + namespace isolation (catalogue / feedback / marketing)",high,done
+shipped,categories,"Category tags","Migration + seed + chip multi-select on category drawer",medium,done
+shipped,catalogue,"Catalogue page","Category circles, tag filter sidebar, items view with detail panel, list/card toggle, configurable label",high,done
+shipped,catalogue,"CatalogueGridComponent","Unified reusable grid for catalogue, supplier shop, org settings — items + suppliers, detail panel, search, edit + heart",high,done
+shipped,catalogue,"image_display cover/contain toggle","Per-item and per-supplier; items inherit supplier image_display when using supplier cover",medium,done
+shipped,catalogue,"Marketplace drill-down","Breadcrumb navigation, FORMAT + TYPE checkbox sidebar, A/B/C/D taxonomy switcher removed",medium,done
+shipped,catalogue,"Item detail page","Image, specs, add to project, request quote, heart",high,done
+shipped,catalogue,"Items external_url field","Three-level image fallback: item image_url → supplier cover → placeholder",low,done
+shipped,projects,"Project detail shell + Brief tab","Top tabs (Brief / Build / Estimate / Messages), brief financials, hero owns project context",high,done
+shipped,projects,"Build tab","Category brief + vendor selection + quote request flow, responsive CSS, estimate summary with budget indicator",high,done
+shipped,projects,"Project Messages tab","Email layout, status filter, category folders, per-message tagging, unified inbox component",high,done
+shipped,suppliers,"Supplier detail page","Catalogue grid + quote drawer + image upload via pencil",high,done
+shipped,suppliers,"Favourites system","Hearts on supplier and item cards, dedicated Favourites page with sub-tabs and search, backend table + routes",high,done
+shipped,suppliers,"Supplier two-slot image","Cover + logo image with auto-detect rendering; edit pen button on grid",medium,done
+shipped,feedback,"Feedback capture + grid","Capture dialog, shared.feedback table, grid view with status/filters/bulk actions/inline edit, type selector pills, page + logged-by display",high,done
+shipped,feedback,"Issue/Folder/Note model","Refactor with sprint support; Prompt as parent of Bug/Enhancement/Note",high,done
+shipped,meeting-notes,"Meeting notes page","/meeting/:id two-column layout with agenda, notes, actions, bugs, enhancements; edit dialog, agenda type, reorder, inline add, cascade delete",high,done
+shipped,marketing,"v1.9 welcome page","Public 3-slide welcome page with brand palette + Inter typography; SVG circle blur recipe; spec colour matrix",high,done
+shipped,marketing,"Guestlist signup system","Server route, marketing service, admin endpoints, IP rate-limit (5/min), Resend email notification, admin Early Access tab",high,done
+shipped,technical,"Multi-schema DB","preview / master / shared schemas with APP_SCHEMA env",high,done
+shipped,technical,"/api/health + Supabase keep-alive","Health endpoint and heartbeat to prevent Supabase free-tier pause",high,done
+shipped,technical,"Auto-create storage buckets","Server creates required buckets on startup if missing",medium,done
+shipped,technical,"seed-preview safety","Refusal guard prevents accidental wipes; unorphan recovery script",medium,done
+shipped,technical,"log-commit script","Pipes commits into internal.project_log",low,done
+shipped,technical,"Image processing service","Server-side processing with content-bounds detection for logo trimming",medium,done
+shipped,technical,"Service-layer backend","13 service files in server/src/services, thin controllers, centralised error handler, env-driven CORS, conditional SSL",high,done
