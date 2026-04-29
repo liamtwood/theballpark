@@ -30,6 +30,8 @@ export interface FeedbackEntry {
   area_name?: string;
   area_icon_name?: string;
   area_icon_color?: string;
+  priority?: 'critical' | 'high' | 'medium' | 'low' | null;
+  target_version?: string | null;
   created_at: string;
   category_name?: string;
   category_icon_name?: string;

@@ -433,6 +433,13 @@ const migrate = async () => {
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS area VARCHAR(50);
 
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium'
+        CHECK (priority IS NULL OR priority IN ('critical','high','medium','low'));
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS target_version VARCHAR(10);
+
       -- shared.feedback_categories now holds 3 namespaces: folder, issue, area.
       -- Drop the single-column UNIQUE(name) constraint (auto-named
       -- feedback_categories_name_key) and replace with UNIQUE(name, namespace)

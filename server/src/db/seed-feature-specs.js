@@ -681,6 +681,34 @@ function tagsFor(version) {
   return ['feature-spec', version.startsWith('v2') ? 'v2.0' : version];
 }
 
+// Per-spec priority + target_version. Keyed on title so it lives next to the
+// rest of the metadata without bloating each entry. Missing keys default to
+// { priority: null, target_version: null } — used for SHIPPED rows since
+// shipped_date + version already convey the same meaning.
+const SPEC_OVERRIDES = {
+  // HIGH priority, target_version='v2.0'
+  'User — Authentication':                          { priority: 'high',   target_version: 'v2.0' },
+  'Session — Auth Session':                         { priority: 'high',   target_version: 'v2.0' },
+  'Google SSO — Authentication':                    { priority: 'high',   target_version: 'v2.0' },
+  'Organisation — Tenant Management':               { priority: 'high',   target_version: 'v2.0' },
+  'Team Member — User Management':                  { priority: 'high',   target_version: 'v2.0' },
+  'Project — Project Management':                   { priority: 'high',   target_version: 'v2.0' },
+  'Estimate — Project Costing':                     { priority: 'high',   target_version: 'v2.0' },
+  'Estimate Item — Line Item':                      { priority: 'high',   target_version: 'v2.0' },
+  'Ball — Lead Credit':                             { priority: 'high',   target_version: 'v2.0' },
+  'Lead — Send Lead Flow':                          { priority: 'high',   target_version: 'v2.0' },
+  'Lead Inbox — Supplier Lead Management':          { priority: 'high',   target_version: 'v2.0' },
+  'Quote — Supplier Quote Submission':              { priority: 'high',   target_version: 'v2.0' },
+  'Catalogue Item — Supplier Catalogue Management': { priority: 'high',   target_version: 'v2.0' },
+  'Subscription — Plan Management':                 { priority: 'high',   target_version: 'v2.0' },
+  'Payment — Stripe Integration':                   { priority: 'high',   target_version: 'v2.0' },
+  'Mobile — Responsive Layout':                     { priority: 'high',   target_version: 'v2.0' },
+  // MEDIUM priority, target_version='v2.1'
+  'Notification — In-App + Email':                  { priority: 'medium', target_version: 'v2.1' },
+  'Image Sanitisation — AI Background Removal':     { priority: 'medium', target_version: 'v2.1' },
+  'Item Categories — Junction Table':               { priority: 'medium', target_version: 'v2.1' }
+};
+
 // Maps the legacy lowercase area token used in this file to the canonical
 // area name in shared.feedback_categories (namespace='area').
 const AREA_LABELS = {
@@ -750,6 +778,12 @@ const AREA_LABELS = {
     const upsert = async (entry, status) => {
       const tags = tagsFor(entry.version);
       const areaCategoryId = areaCategoryIdFor(entry.area);
+      // SHIPPED entries carry NULL priority + target_version (shipped_date
+      // + version convey what was already delivered). SPECS pull from the
+      // override map; missing entries default to medium/null target.
+      const override = SPEC_OVERRIDES[entry.title] || {};
+      const priority = status === 'done' ? null : (override.priority || null);
+      const targetVersion = status === 'done' ? null : (override.target_version || null);
       const existing = await pool.query(
         `SELECT id FROM shared.feedback WHERE title = $1 LIMIT 1`,
         [entry.title]
@@ -764,10 +798,12 @@ const AREA_LABELS = {
                   tags                 = $5,
                   version              = $6,
                   shipped_date         = $7,
-                  area                 = $8
-            WHERE id = $9`,
+                  area                 = $8,
+                  priority             = $9,
+                  target_version       = $10
+            WHERE id = $11`,
           [promptCategoryId, areaCategoryId, entry.notes, status, tags, entry.version,
-           entry.shipped_date || null, entry.area, existing.rows[0].id]
+           entry.shipped_date || null, entry.area, priority, targetVersion, existing.rows[0].id]
         );
         console.log(`updated:  ${entry.title}`);
         updated++;
@@ -776,12 +812,12 @@ const AREA_LABELS = {
           `INSERT INTO shared.feedback
              (feedback_category_id, area_category_id, title, notes, submitted_by,
               environment, object_type, type, status, tags,
-              version, shipped_date, area)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+              version, shipped_date, area, priority, target_version)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
           [
             promptCategoryId, areaCategoryId, entry.title, entry.notes, SUBMITTED_BY,
             ENVIRONMENT, OBJECT_TYPE, TYPE, status, tags,
-            entry.version, entry.shipped_date || null, entry.area
+            entry.version, entry.shipped_date || null, entry.area, priority, targetVersion
           ]
         );
         console.log(`inserted: ${entry.title}`);
