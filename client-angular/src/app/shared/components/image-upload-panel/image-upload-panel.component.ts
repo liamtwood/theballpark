@@ -8,6 +8,7 @@ import { ImageProcessingService } from '../../services/image-processing.service'
 import { StorageService } from '../../services/storage.service';
 import { ApiService } from '../../../core/services/api.service';
 import { ModalComponent } from '../modal/modal.component';
+import { registeredIconNames } from '../../../core/icons';
 
 @Component({
   selector: 'app-image-upload-panel',
@@ -184,9 +185,15 @@ import { ModalComponent } from '../modal/modal.component';
       <!-- Icon picker -->
       <div class="iup-section">
         <div class="iup-label">Lucide icon</div>
-        <div class="iup-hint-text">Select an icon to display when no image is set</div>
+        <div class="iup-hint-text">Pick a registered Lucide icon. Add new ones to client-angular/src/app/core/icons.ts.</div>
+        <div class="iup-icon-search">
+          <lucide-icon name="search" [size]="14" class="iup-icon-search-glyph"></lucide-icon>
+          <input class="iup-icon-search-input" [(ngModel)]="iconQuery"
+            placeholder="Search icons (e.g. wrench, calendar, layers)..." />
+          <span class="iup-icon-count">{{ filteredIconOptions.length }} / {{ iconOptions.length }}</span>
+        </div>
         <div class="iup-icon-grid">
-          <button *ngFor="let ic of iconOptions" class="iup-icon-btn"
+          <button *ngFor="let ic of filteredIconOptions" class="iup-icon-btn"
             [class.selected]="selectedIconName === ic"
             (click)="selectedIconName = ic">
             <lucide-icon [name]="ic" [size]="20"></lucide-icon>
@@ -289,9 +296,21 @@ import { ModalComponent } from '../modal/modal.component';
     .iup-spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .iup-error { font-size: 12px; color: #DC2626; margin-top: 10px; }
+    .iup-icon-search {
+      display: flex; align-items: center; gap: 8px; margin: 8px 0;
+      padding: 6px 10px; border: 1px solid var(--color-border);
+      border-radius: 8px; background: var(--color-surface);
+    }
+    .iup-icon-search:focus-within { border-color: var(--theme-accent); }
+    .iup-icon-search-glyph { color: var(--color-text-muted); flex-shrink: 0; }
+    .iup-icon-search-input {
+      flex: 1; border: none; outline: none; background: transparent;
+      font-size: 13px; font-family: inherit; color: var(--color-text-primary);
+    }
+    .iup-icon-count { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
     .iup-icon-grid {
       display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
-      max-height: 220px; overflow-y: auto; margin-bottom: 8px;
+      max-height: 320px; overflow-y: auto; margin-bottom: 8px;
     }
     .iup-icon-btn {
       display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -385,12 +404,15 @@ export class ImageUploadPanelComponent implements OnInit {
   unsplashSearched = false;
   selectedUnsplashUrl = '';
 
-  iconOptions = [
-    'utensils', 'music', 'mic', 'tv', 'building-2', 'flower-2',
-    'zap', 'truck', 'users', 'star', 'heart', 'camera', 'coffee',
-    'shopping-bag', 'map-pin', 'award', 'briefcase', 'globe',
-    'sparkles', 'wine', 'palette', 'layers'
-  ];
+  // Single source of truth — every icon registered in core/icons.ts is
+  // available to pick. Filtered live by `iconQuery` from the search input.
+  iconOptions: string[] = registeredIconNames();
+  iconQuery = '';
+  get filteredIconOptions(): string[] {
+    const q = this.iconQuery.trim().toLowerCase();
+    if (!q) return this.iconOptions;
+    return this.iconOptions.filter(n => n.includes(q));
+  }
   iconColors = [
     'var(--theme-bg)', 'var(--color-surface)',
     '#FEF3C7', '#DBEAFE', '#D1FAE5', '#FDE2E2', '#EDE9FE', '#FEE2E2'
