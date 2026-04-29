@@ -681,6 +681,27 @@ function tagsFor(version) {
   return ['feature-spec', version.startsWith('v2') ? 'v2.0' : version];
 }
 
+// Maps the legacy lowercase area token used in this file to the canonical
+// area name in shared.feedback_categories (namespace='area').
+const AREA_LABELS = {
+  auth: 'Auth',
+  settings: 'Settings',
+  dashboard: 'Dashboard',
+  projects: 'Projects',
+  catalogue: 'Catalogue',
+  suppliers: 'Suppliers',
+  balls: 'Balls',
+  payments: 'Payments',
+  feedback: 'Feedback',
+  mobile: 'Mobile',
+  notifications: 'Notifications',
+  technical: 'Technical',
+  marketing: 'Marketing',
+  design: 'Design System',
+  // Legacy alias — Settings → Categories Tab lives under the 'Settings' area.
+  categories: 'Settings'
+};
+
 (async () => {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -703,29 +724,49 @@ function tagsFor(version) {
     const promptCategoryId = cat.rows[0].id;
     console.log(`Prompt category: ${promptCategoryId}`);
 
+    // Resolve area_category_id by canonical name. Maps include 14 area rows
+    // seeded by migrate-schemas.js.
+    const areaRows = await pool.query(
+      `SELECT id, name FROM shared.feedback_categories WHERE namespace = 'area'`
+    );
+    const areaMap = {};
+    areaRows.rows.forEach(r => { areaMap[r.name] = r.id; });
+    if (!areaRows.rowCount) {
+      throw new Error(
+        `No area rows found in shared.feedback_categories. ` +
+        `Run server/src/db/migrate-schemas.js first to seed the area namespace.`
+      );
+    }
+    console.log(`Area categories loaded: ${areaRows.rowCount}`);
+
+    function areaCategoryIdFor(token) {
+      const canonical = AREA_LABELS[token];
+      return canonical ? (areaMap[canonical] || null) : null;
+    }
+
     let inserted = 0;
     let updated = 0;
 
     const upsert = async (entry, status) => {
       const tags = tagsFor(entry.version);
+      const areaCategoryId = areaCategoryIdFor(entry.area);
       const existing = await pool.query(
         `SELECT id FROM shared.feedback WHERE title = $1 LIMIT 1`,
         [entry.title]
       );
       if (existing.rowCount) {
-        // Update the new columns + status/tags/category, preserve original
-        // notes only if non-empty (allow refreshing the body too).
         await pool.query(
           `UPDATE shared.feedback
               SET feedback_category_id = $1,
-                  notes                = $2,
-                  status               = $3,
-                  tags                 = $4,
-                  version              = $5,
-                  shipped_date         = $6,
-                  area                 = $7
-            WHERE id = $8`,
-          [promptCategoryId, entry.notes, status, tags, entry.version,
+                  area_category_id     = $2,
+                  notes                = $3,
+                  status               = $4,
+                  tags                 = $5,
+                  version              = $6,
+                  shipped_date         = $7,
+                  area                 = $8
+            WHERE id = $9`,
+          [promptCategoryId, areaCategoryId, entry.notes, status, tags, entry.version,
            entry.shipped_date || null, entry.area, existing.rows[0].id]
         );
         console.log(`updated:  ${entry.title}`);
@@ -733,12 +774,12 @@ function tagsFor(version) {
       } else {
         await pool.query(
           `INSERT INTO shared.feedback
-             (feedback_category_id, title, notes, submitted_by,
+             (feedback_category_id, area_category_id, title, notes, submitted_by,
               environment, object_type, type, status, tags,
               version, shipped_date, area)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
           [
-            promptCategoryId, entry.title, entry.notes, SUBMITTED_BY,
+            promptCategoryId, areaCategoryId, entry.title, entry.notes, SUBMITTED_BY,
             ENVIRONMENT, OBJECT_TYPE, TYPE, status, tags,
             entry.version, entry.shipped_date || null, entry.area
           ]

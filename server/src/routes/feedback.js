@@ -6,7 +6,26 @@ router.get('/', async (req, res, next) => {
 });
 
 router.get('/categories', async (req, res, next) => {
-  try { res.json(await FeedbackService.getCategories()); } catch (err) { next(err); }
+  try { res.json(await FeedbackService.getCategories(req.query.namespace)); } catch (err) { next(err); }
+});
+
+router.post('/categories', async (req, res, next) => {
+  try { res.status(201).json(await FeedbackService.createCategory(req.body)); } catch (err) { next(err); }
+});
+
+router.patch('/categories/:id', async (req, res, next) => {
+  try {
+    const cat = await FeedbackService.patchCategory(req.params.id, req.body);
+    if (!cat) return res.status(404).json({ error: 'Not found' });
+    res.json(cat);
+  } catch (err) { next(err); }
+});
+
+router.delete('/categories/:id', async (req, res, next) => {
+  try {
+    await FeedbackService.removeCategory(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
 });
 
 router.get('/today', async (req, res, next) => {
