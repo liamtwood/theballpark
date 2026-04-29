@@ -96,6 +96,19 @@ interface NamespaceOption {
       (closed)="uploadCatId = ''">
     </app-image-upload-panel>
 
+    <!-- Icon-only panel for area rows (shared.feedback_categories) -->
+    <app-image-upload-panel
+      *ngIf="uploadAreaId"
+      [entityId]="uploadAreaId"
+      type="area"
+      mode="icon-only"
+      [existingIconName]="uploadAreaIconName"
+      [existingIconColor]="uploadAreaIconColor"
+      [searchTerm]="uploadAreaName"
+      (imagesUpdated)="onAreaIconUpdated($event)"
+      (closed)="uploadAreaId = ''">
+    </app-image-upload-panel>
+
     <!-- CATEGORY EDIT DRAWER -->
     <p-sidebar [(visible)]="showDrawer" position="right"
       styleClass="bp-drawer" [style]="{width:'480px'}"
@@ -175,29 +188,13 @@ interface NamespaceOption {
         </div>
 
         <div class="mb-4" *ngIf="isAreaForm">
-          <label class="bp-field-label">Icon</label>
-          <div class="bp-area-icon-row">
-            <div class="bp-area-icon-preview">
-              <lucide-icon *ngIf="form.icon_name" [name]="form.icon_name" [size]="20"></lucide-icon>
-              <span *ngIf="!form.icon_name" class="bp-muted-text">—</span>
-            </div>
-            <input pInputText [(ngModel)]="form.icon_name" class="flex-1 bp-input-edit"
-              placeholder="lucide icon name e.g. shield, compass"/>
-          </div>
-          <div class="bp-field-hint">Any Lucide icon name. Browse <a href="https://lucide.dev/icons" target="_blank">lucide.dev/icons</a>.</div>
-        </div>
-
-        <div class="mb-4" *ngIf="isAreaForm">
-          <label class="bp-field-label">Icon colour</label>
-          <input pInputText [(ngModel)]="form.icon_color" class="w-full bp-input-edit"
-            placeholder="var(--theme-bg) or var(--color-danger-bg)"/>
-          <div class="bp-field-hint">CSS variable — keep theme-aware. Defaults to var(--theme-bg).</div>
-        </div>
-
-        <div class="mb-4" *ngIf="isAreaForm">
           <label class="bp-field-label">Sort order</label>
           <p-inputNumber [(ngModel)]="form.sort_order" [showButtons]="true" [min]="0" inputStyleClass="w-full bp-input-edit"></p-inputNumber>
           <div class="bp-field-hint">Controls left-to-right order in the area circles row</div>
+        </div>
+
+        <div class="mb-4" *ngIf="isAreaForm">
+          <div class="bp-field-hint">Tip: click the pencil on an area circle to change its icon and colour.</div>
         </div>
 
         <div *ngIf="!isAreaForm">
@@ -268,16 +265,6 @@ interface NamespaceOption {
     .bp-ns-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); font-family: var(--font-body); }
     .bp-ns-circle-btn.active .bp-ns-circle-label { color: var(--theme-accent); font-weight: 600; }
 
-    /* ── AREA ICON ROW ── */
-    .bp-area-icon-row { display: flex; gap: 8px; align-items: center; }
-    .bp-area-icon-preview {
-      width: 36px; height: 36px; border-radius: 8px;
-      border: 1px solid var(--color-border); background: var(--theme-bg);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--theme-accent); flex-shrink: 0;
-    }
-    .bp-muted-text { color: var(--color-text-muted); font-size: 11px; }
-
     /* ── ADD BUTTON ── */
     .bp-add-btn {
       display: flex; align-items: center; gap: 4px;
@@ -342,13 +329,19 @@ export class CategoriesComponent implements OnInit {
   form: any = this.emptyForm();
   parentOptions: { label: string; value: string }[] = [];
 
-  // Image upload (from grid circle edit)
+  // Image upload (from grid circle/card edit on catalogue / feedback rows)
   uploadCatId = '';
   uploadCoverUrl = '';
   uploadCardColor = '';
   uploadIconName = '';
   uploadIconColor = '';
   uploadSearchTerm = '';
+
+  // Icon-only upload (for area rows in shared.feedback_categories)
+  uploadAreaId = '';
+  uploadAreaIconName = '';
+  uploadAreaIconColor = '';
+  uploadAreaName = '';
 
   constructor(
     private catSvc: CategoryService,
@@ -514,10 +507,8 @@ export class CategoriesComponent implements OnInit {
 
   onImageEdit(e: CatalogueEntity) {
     if (this.selectedNamespace === 'area') {
-      // Areas don't have cover images — redirect the pencil to the edit drawer
-      // (which has inline icon name + colour fields).
       const area = this.areaCategories.find(a => a.id === e.id);
-      if (area) this.openEditArea(area);
+      if (area) this.beginAreaIconEdit(area);
       return;
     }
     const cat = this.allCategories.find(c => c.id === e.id);
@@ -528,12 +519,31 @@ export class CategoriesComponent implements OnInit {
   onCategoryImageEdit(ci: CategoryInfo) {
     if (this.selectedNamespace === 'area') {
       const area = this.areaCategories.find(a => a.id === ci.id);
-      if (area) this.openEditArea(area);
+      if (area) this.beginAreaIconEdit(area);
       return;
     }
     const cat = this.allCategories.find(c => c.id === ci.id);
     if (!cat) return;
     this.beginImageUpload(cat);
+  }
+
+  private beginAreaIconEdit(a: FeedbackCategory) {
+    this.uploadAreaId = a.id;
+    this.uploadAreaIconName = a.icon_name || '';
+    this.uploadAreaIconColor = a.icon_color || 'var(--theme-bg)';
+    this.uploadAreaName = a.name;
+    this.cdr.detectChanges();
+  }
+
+  onAreaIconUpdated(event: { iconName?: string; iconColor?: string }) {
+    const a = this.areaCategories.find(x => x.id === this.uploadAreaId);
+    if (a) {
+      if (event.iconName !== undefined) a.icon_name = event.iconName;
+      if (event.iconColor !== undefined) a.icon_color = event.iconColor;
+      this.rebuild();
+    }
+    this.uploadAreaId = '';
+    this.cdr.detectChanges();
   }
 
   private openEditArea(a: FeedbackCategory) {
