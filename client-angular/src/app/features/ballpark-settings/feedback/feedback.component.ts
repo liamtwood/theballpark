@@ -134,6 +134,8 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
                 <th style="width:200px">Pages</th>
                 <th pSortableColumn="title">Title <p-sortIcon field="title"></p-sortIcon></th>
                 <th pSortableColumn="owner" style="width:90px">Owner <p-sortIcon field="owner"></p-sortIcon></th>
+                <th pSortableColumn="statusRank" style="width:120px">Status <p-sortIcon field="statusRank"></p-sortIcon></th>
+                <th pSortableColumn="versionSortKey" style="width:140px">Version <p-sortIcon field="versionSortKey"></p-sortIcon></th>
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-row>
@@ -166,10 +168,25 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
                   <app-avatar *ngIf="row.owner" [name]="row.owner" [size]="28"></app-avatar>
                   <span class="bp-muted-text" *ngIf="!row.owner">—</span>
                 </td>
+                <td>
+                  <app-status-badge [status]="row.status || 'open'"
+                    [statusName]="row.status || 'open'"></app-status-badge>
+                </td>
+                <td>
+                  <ng-container *ngIf="row.status === 'done'; else openVersion">
+                    <span class="bp-fb-shipped-date" *ngIf="row.shipped_date">{{ formatShipDate(row.shipped_date) }}</span>
+                    <span class="bp-fb-version-pill" *ngIf="row.version">{{ row.version }}</span>
+                    <span class="bp-muted-text" *ngIf="!row.version && !row.shipped_date">—</span>
+                  </ng-container>
+                  <ng-template #openVersion>
+                    <span class="bp-fb-version-pill" *ngIf="row.target_version">{{ row.target_version }}</span>
+                    <span class="bp-muted-text" *ngIf="!row.target_version">—</span>
+                  </ng-template>
+                </td>
               </tr>
             </ng-template>
             <ng-template pTemplate="emptymessage">
-              <tr><td colspan="5" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
+              <tr><td colspan="7" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
             </ng-template>
           </p-table>
         </div>
@@ -1110,6 +1127,12 @@ export class FeedbackComponent implements OnInit {
       const type = this.inferType(r);
       const typeOpt = this.typeEditOptions.find(t => t.value === type);
       const firstPage = (r.pages && r.pages[0]) || r.page_url || '';
+      // For sorting the Version column: done rows order by shipped_date
+      // (older first); open rows order by target_version string. The 'zzz'
+      // sentinel pushes rows with no target version to the end.
+      const versionSortKey = status === 'done'
+        ? (r.shipped_date || '0000-00-00')
+        : (r.target_version || 'zzz');
       return {
         id: r.id,
         title: r.title,
@@ -1127,6 +1150,7 @@ export class FeedbackComponent implements OnInit {
         version: r.version,
         shipped_date: r.shipped_date,
         target_version: r.target_version,
+        versionSortKey,
         _raw: r
       };
     });
