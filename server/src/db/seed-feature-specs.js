@@ -682,31 +682,36 @@ function tagsFor(version) {
 }
 
 // Per-spec priority + target_version. Keyed on title so it lives next to the
-// rest of the metadata without bloating each entry. Missing keys default to
-// { priority: null, target_version: null } — used for SHIPPED rows since
-// shipped_date + version already convey the same meaning.
+// rest of the metadata without bloating each entry. Priority is now an
+// INTEGER 1-5 (1 = highest). Missing keys default to { priority: null,
+// target_version: null } — used for SHIPPED rows since shipped_date +
+// version already convey the same meaning.
+//
+// Defaults from the agreed plan:
+//   v2.0 specs → priority = 1
+//   v2.1 specs → priority = 2
 const SPEC_OVERRIDES = {
-  // HIGH priority, target_version='v2.0'
-  'User — Authentication':                          { priority: 'high',   target_version: 'v2.0' },
-  'Session — Auth Session':                         { priority: 'high',   target_version: 'v2.0' },
-  'Google SSO — Authentication':                    { priority: 'high',   target_version: 'v2.0' },
-  'Organisation — Tenant Management':               { priority: 'high',   target_version: 'v2.0' },
-  'Team Member — User Management':                  { priority: 'high',   target_version: 'v2.0' },
-  'Project — Project Management':                   { priority: 'high',   target_version: 'v2.0' },
-  'Estimate — Project Costing':                     { priority: 'high',   target_version: 'v2.0' },
-  'Estimate Item — Line Item':                      { priority: 'high',   target_version: 'v2.0' },
-  'Ball — Lead Credit':                             { priority: 'high',   target_version: 'v2.0' },
-  'Lead — Send Lead Flow':                          { priority: 'high',   target_version: 'v2.0' },
-  'Lead Inbox — Supplier Lead Management':          { priority: 'high',   target_version: 'v2.0' },
-  'Quote — Supplier Quote Submission':              { priority: 'high',   target_version: 'v2.0' },
-  'Catalogue Item — Supplier Catalogue Management': { priority: 'high',   target_version: 'v2.0' },
-  'Subscription — Plan Management':                 { priority: 'high',   target_version: 'v2.0' },
-  'Payment — Stripe Integration':                   { priority: 'high',   target_version: 'v2.0' },
-  'Mobile — Responsive Layout':                     { priority: 'high',   target_version: 'v2.0' },
-  // MEDIUM priority, target_version='v2.1'
-  'Notification — In-App + Email':                  { priority: 'medium', target_version: 'v2.1' },
-  'Image Sanitisation — AI Background Removal':     { priority: 'medium', target_version: 'v2.1' },
-  'Item Categories — Junction Table':               { priority: 'medium', target_version: 'v2.1' }
+  // P1 — target_version='v2.0'
+  'User — Authentication':                          { priority: 1, target_version: 'v2.0' },
+  'Session — Auth Session':                         { priority: 1, target_version: 'v2.0' },
+  'Google SSO — Authentication':                    { priority: 1, target_version: 'v2.0' },
+  'Organisation — Tenant Management':               { priority: 1, target_version: 'v2.0' },
+  'Team Member — User Management':                  { priority: 1, target_version: 'v2.0' },
+  'Project — Project Management':                   { priority: 1, target_version: 'v2.0' },
+  'Estimate — Project Costing':                     { priority: 1, target_version: 'v2.0' },
+  'Estimate Item — Line Item':                      { priority: 1, target_version: 'v2.0' },
+  'Ball — Lead Credit':                             { priority: 1, target_version: 'v2.0' },
+  'Lead — Send Lead Flow':                          { priority: 1, target_version: 'v2.0' },
+  'Lead Inbox — Supplier Lead Management':          { priority: 1, target_version: 'v2.0' },
+  'Quote — Supplier Quote Submission':              { priority: 1, target_version: 'v2.0' },
+  'Catalogue Item — Supplier Catalogue Management': { priority: 1, target_version: 'v2.0' },
+  'Subscription — Plan Management':                 { priority: 1, target_version: 'v2.0' },
+  'Payment — Stripe Integration':                   { priority: 1, target_version: 'v2.0' },
+  'Mobile — Responsive Layout':                     { priority: 1, target_version: 'v2.0' },
+  // P2 — target_version='v2.1'
+  'Notification — In-App + Email':                  { priority: 2, target_version: 'v2.1' },
+  'Image Sanitisation — AI Background Removal':     { priority: 2, target_version: 'v2.1' },
+  'Item Categories — Junction Table':               { priority: 2, target_version: 'v2.1' }
 };
 
 // Maps the legacy lowercase area token used in this file to the canonical

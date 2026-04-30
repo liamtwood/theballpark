@@ -207,10 +207,11 @@ type FlowType = 'folder' | 'issue' | 'note' | null;
     .bp-fb-priority-pill:hover { border-color: var(--theme-accent); }
     .bp-fb-priority-pill.active { border-color: var(--theme-accent); background: var(--theme-bg); color: var(--theme-accent); }
     .bp-fb-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .bp-fb-priority-dot-critical { background: var(--color-danger-text); }
-    .bp-fb-priority-dot-high     { background: var(--color-waiting-text); }
-    .bp-fb-priority-dot-medium   { background: var(--theme-accent); }
-    .bp-fb-priority-dot-low      { background: var(--color-text-muted); }
+    .bp-fb-priority-dot-1 { background: var(--color-danger-text); }
+    .bp-fb-priority-dot-2 { background: var(--color-waiting-text); }
+    .bp-fb-priority-dot-3 { background: var(--theme-accent); }
+    .bp-fb-priority-dot-4 { background: var(--color-text-muted); }
+    .bp-fb-priority-dot-5 { background: var(--color-text-muted); opacity: 0.5; }
     .bp-fb-context { font-size: 12px; color: var(--color-text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 4px; }
     .bp-fb-context-cat { font-weight: 500; }
     .bp-owner-row { display: flex; gap: 8px; margin-top: 4px; }
@@ -253,13 +254,15 @@ export class FeedbackDialogComponent implements OnChanges {
   dueDate: Date | null = null;
   folderType = 'minutes';
   issueType = 'bug';
-  priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+  /** Integer 1-5, where 1 = highest priority. Default 3 (medium). */
+  priority: number = 3;
 
   priorityOptions = [
-    { label: 'Critical', value: 'critical' as const },
-    { label: 'High',     value: 'high'     as const },
-    { label: 'Medium',   value: 'medium'   as const },
-    { label: 'Low',      value: 'low'      as const }
+    { label: 'P1', value: 1 },
+    { label: 'P2', value: 2 },
+    { label: 'P3', value: 3 },
+    { label: 'P4', value: 4 },
+    { label: 'P5', value: 5 }
   ];
 
   team: TeamMember[] = TEAM_MEMBERS;
@@ -405,7 +408,7 @@ export class FeedbackDialogComponent implements OnChanges {
     this.dueDate = null;
     this.folderType = 'minutes';
     this.issueType = 'bug';
-    this.priority = 'medium';
+    this.priority = 3;
     this.parentId = null;
     this.parentTitle = '';
     this.initialFlow = null;

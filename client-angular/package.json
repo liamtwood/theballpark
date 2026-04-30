@@ -23,6 +23,7 @@
     "@angular/router": "^17.3.0",
     "autoprefixer": "^10.4.27",
     "lucide-angular": "^0.577.0",
+    "marked": "^18.0.2",
     "postcss": "^8.5.8",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",

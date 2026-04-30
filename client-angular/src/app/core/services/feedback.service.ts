@@ -30,14 +30,26 @@ export interface FeedbackEntry {
   area_name?: string;
   area_icon_name?: string;
   area_icon_color?: string;
-  priority?: 'critical' | 'high' | 'medium' | 'low' | null;
+  /** Integer 1-5, where 1 = highest priority (P1). NULL = unset / shipped. */
+  priority?: number | null;
   target_version?: string | null;
+  pages?: string[];
   created_at: string;
   category_name?: string;
   category_icon_name?: string;
   category_icon_color?: string;
   category_object_type?: 'folder' | 'issue';
   children?: FeedbackEntry[];
+  test_cases?: TestCase[];
+}
+
+export interface TestCase {
+  id: string;
+  notes: string;
+  status: 'pass' | 'fail' | 'skip';
+  owner?: string;
+  submitted_by?: string;
+  created_at: string;
 }
 
 export interface FeedbackCategory {
@@ -79,7 +91,13 @@ export class FeedbackService {
     const qs = folderId ? `?folder_id=${folderId}` : '';
     return this.api.get<FeedbackEntry[]>(`/feedback/issues${qs}`);
   }
-  getChildren(parentId: string) { return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children`); }
+  getChildren(parentId: string, type?: string) {
+    const qs = type ? `?type=${type}` : '';
+    return this.api.get<FeedbackEntry[]>(`/feedback/${parentId}/children${qs}`);
+  }
+  getTestCases(parentId: string) {
+    return this.api.get<TestCase[]>(`/feedback/${parentId}/children?type=test_case`);
+  }
   getFeedbackCategories(namespace?: string) {
     const qs = namespace ? `?namespace=${namespace}` : '';
     return this.api.get<FeedbackCategory[]>(`/feedback/categories${qs}`);
