@@ -31,6 +31,8 @@ type ViewMode = 'grid' | 'list' | 'table';
 type OptionalField = 'due_date' | 'tags' | 'linked';
 
 const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
+const TEST_CASE_CYCLE = ['pass', 'fail', 'skip'] as const;
+const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
 
 @Component({
   selector: 'app-feedback',
@@ -416,8 +418,9 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
           </div>
         </div>
 
-        <!-- TEST CASES — child notes (type=test_case) on this issue -->
-        <div class="bp-fb-tc-cell">
+        <!-- TEST CASES — child notes (type=test_case) on this issue.
+             Hidden when the open entry is itself a test case. -->
+        <div class="bp-fb-tc-cell" *ngIf="editType !== 'test_case'">
           <label class="bp-fb-cell-label">TEST CASES</label>
 
           <!-- List existing test cases -->
@@ -773,6 +776,26 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
       background: var(--color-surface); color: var(--color-text-muted);
       border-color: var(--color-border);
     }
+    .bp-fb-status-pill[data-status="pass"] {
+      background: var(--color-booked-bg); color: var(--color-booked-text);
+      border-color: var(--color-booked-border);
+    }
+    .bp-fb-status-pill[data-status="fail"] {
+      background: var(--color-danger-bg); color: var(--color-danger-text);
+      border-color: var(--color-danger-border, var(--color-danger-text));
+    }
+    .bp-fb-status-pill[data-status="skip"] {
+      background: var(--color-surface); color: var(--color-text-muted);
+      border-color: var(--color-border);
+    }
+    .bp-fb-status-pill[data-status="draft"] {
+      background: var(--color-quoted-bg); color: var(--color-quoted-text);
+      border-color: var(--color-quoted-border);
+    }
+    .bp-fb-status-pill[data-status="agreed"] {
+      background: var(--color-booked-bg); color: var(--color-booked-text);
+      border-color: var(--color-booked-border);
+    }
 
     /* Owner cycle pill — 11px to match siblings */
     .bp-fb-owner-pill {
@@ -910,27 +933,40 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
       padding: 8px 0;
     }
     .bp-fb-tc-row {
-      padding: 8px 0; border-bottom: 0.5px solid var(--color-border);
+      padding: 10px 0; border-bottom: 0.5px solid var(--color-border);
       cursor: pointer;
     }
     .bp-fb-tc-row:last-of-type { border-bottom: none; }
     .bp-fb-tc-row-head {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 10px;
     }
     .bp-fb-tc-status {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 16px; height: 16px;
+      width: 22px; height: 22px; border-radius: 999px;
+      flex-shrink: 0;
     }
-    .bp-fb-tc-status[data-status="pass"] { color: var(--color-booked-text); }
-    .bp-fb-tc-status[data-status="fail"] { color: var(--color-danger-text); }
-    .bp-fb-tc-status[data-status="skip"] { color: var(--color-text-muted); }
+    .bp-fb-tc-status[data-status="pass"] {
+      background: var(--color-booked-bg);
+      color: var(--color-booked-text);
+      border: 0.5px solid var(--color-booked-border);
+    }
+    .bp-fb-tc-status[data-status="fail"] {
+      background: var(--color-danger-bg);
+      color: var(--color-danger-text);
+      border: 0.5px solid var(--color-danger-border, var(--color-danger-text));
+    }
+    .bp-fb-tc-status[data-status="skip"] {
+      background: var(--color-background-secondary, var(--color-surface));
+      color: var(--color-text-muted);
+      border: 0.5px solid var(--color-border);
+    }
     .bp-fb-tc-date {
       font-size: 11px; color: var(--color-text-muted);
       margin-left: auto;
     }
     .bp-fb-tc-notes, .bp-fb-tc-notes-full {
       font-size: 12px; color: var(--color-text-primary);
-      margin-top: 4px; padding-left: 24px;
+      margin-top: 6px; padding-left: 32px;
       line-height: 1.45;
     }
     .bp-fb-tc-notes-full { white-space: pre-wrap; }
@@ -1148,6 +1184,7 @@ export class FeedbackComponent implements OnInit {
     { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb',     kind: 'issue' as const },
     { label: 'Question',    value: 'question',    icon: 'circle-help',   kind: 'issue' as const },
     { label: 'Prompt',      value: 'prompt',      icon: 'clipboard-pen', kind: 'issue' as const },
+    { label: 'Test Case',   value: 'test_case',   icon: 'check-square',  kind: 'issue' as const },
     { label: 'Minutes',     value: 'minutes',     icon: 'calendar',      kind: 'folder' as const },
     { label: 'Sprint',      value: 'sprint',      icon: 'zap',           kind: 'folder' as const },
     { label: 'Test Run',    value: 'test_run',    icon: 'flask-conical', kind: 'folder' as const }
@@ -1593,12 +1630,24 @@ export class FeedbackComponent implements OnInit {
 
   // ── Pill cycling ────────────────────────────────────────────────────────
   cycleStatus() {
-    const i = STATUS_CYCLE.indexOf(this.editStatus as any);
-    this.editStatus = STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length];
+    const cycle: readonly string[] = this.editType === 'test_case'
+      ? TEST_CASE_CYCLE
+      : this.editType === 'acceptance_criteria'
+        ? ACCEPTANCE_CYCLE
+        : STATUS_CYCLE;
+    const i = cycle.indexOf(this.editStatus);
+    this.editStatus = cycle[(i + 1) % cycle.length];
     this.markDirty();
   }
   statusLabel(s: string): string {
-    return this.statusEditOptions.find(o => o.value === s)?.label || s;
+    const known = this.statusEditOptions.find(o => o.value === s);
+    if (known) return known.label;
+    if (s === 'pass') return 'Pass';
+    if (s === 'fail') return 'Fail';
+    if (s === 'skip') return 'Skip';
+    if (s === 'draft') return 'Draft';
+    if (s === 'agreed') return 'Agreed';
+    return s;
   }
   cyclePriority() {
     const cur = this.editPriority ?? 0;

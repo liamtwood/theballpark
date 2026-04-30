@@ -18,8 +18,15 @@ export class AvatarComponent {
   @Input() size = 32;
 
   get initials(): string {
-    return this.name
-      .split(' ')
+    if (!this.name) return 'U';
+    const trimmed = this.name.trim();
+    // If a 2-letter initials code is passed directly (e.g. "LW"), use it.
+    // Distinguishes "LW" (initials) from "Liam" (name to derive from).
+    if (/^[A-Za-z]{2}$/.test(trimmed)) {
+      return trimmed.toUpperCase();
+    }
+    return trimmed
+      .split(/\s+/)
       .map(w => w[0])
       .join('')
       .slice(0, 2)
