@@ -18,6 +18,7 @@ import { ConfirmationService, MessageService, SortMeta } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { TableModule } from 'primeng/table';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { MarkdownEditorComponent } from '../../../shared/components/markdown-editor/markdown-editor.component';
 
 @Component({
   selector: 'app-feedback',
@@ -27,7 +28,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
     LoadingSpinnerComponent, CatalogueGridComponent, FeedbackDialogComponent,
     SidebarModule, InputTextModule, ButtonModule, DropdownModule,
     ChipsModule, CheckboxModule, ConfirmDialogModule, ToastModule,
-    TableModule, StatusBadgeComponent
+    TableModule, StatusBadgeComponent, MarkdownEditorComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -233,8 +234,12 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         </div>
         <div class="mb-4">
           <label class="bp-field-label">Notes</label>
-          <textarea pInputTextarea [(ngModel)]="editNotes" class="w-full bp-input-edit" [rows]="3"
-            style="resize:none;" (ngModelChange)="markDirty()"></textarea>
+          <app-markdown-editor
+            [value]="editNotes"
+            (valueChange)="editNotes = $event; markDirty()"
+            [rows]="10"
+            placeholder="Add notes, specs, requirements...">
+          </app-markdown-editor>
         </div>
 
         <div class="bp-field-grid-2 mb-4">

@@ -12,6 +12,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { Subject, debounceTime } from 'rxjs';
 import { FeedbackService, FeedbackEntry, FeedbackCategory, TEAM_MEMBERS, TeamMember } from '../../core/services/feedback.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { MarkdownEditorComponent } from '../../shared/components/markdown-editor/markdown-editor.component';
 
 @Component({
   selector: 'app-folder-detail',
@@ -20,7 +21,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     CommonModule, FormsModule, RouterModule, TitleCasePipe,
     InputTextModule, InputTextareaModule, CalendarModule, CheckboxModule,
     DialogModule, TooltipModule,
-    LucideAngularModule, LoadingSpinnerComponent
+    LucideAngularModule, LoadingSpinnerComponent, MarkdownEditorComponent
   ],
   template: `
     <app-loading *ngIf="loading"></app-loading>
@@ -98,9 +99,12 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <!-- NOTES -->
           <div class="bp-mtg-section bp-mtg-notes-section">
             <div class="bp-mtg-section-label">NOTES</div>
-            <textarea pInputTextarea class="bp-mtg-notes" [(ngModel)]="entry.notes"
-              (ngModelChange)="notesChanged$.next($event)"
-              placeholder="Session notes..."></textarea>
+            <app-markdown-editor
+              [value]="entry.notes || ''"
+              (valueChange)="entry.notes = $event; notesChanged$.next($event)"
+              [rows]="12"
+              placeholder="Session notes...">
+            </app-markdown-editor>
           </div>
         </div>
 
@@ -170,8 +174,12 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
         <div class="mb-4">
           <label class="bp-field-label">Description</label>
-          <textarea pInputTextarea [(ngModel)]="editDescription" class="w-full bp-input-edit" [rows]="3"
-            style="resize:none;" placeholder="Detail..."></textarea>
+          <app-markdown-editor
+            [value]="editDescription || ''"
+            (valueChange)="editDescription = $event"
+            [rows]="8"
+            placeholder="Describe this item — include format, what's included, lead times...">
+          </app-markdown-editor>
         </div>
 
         <div class="bp-field-grid-2">

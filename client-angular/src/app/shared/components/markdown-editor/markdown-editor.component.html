@@ -1,0 +1,46 @@
+<div class="bp-md-editor-host">
+  <label *ngIf="showLabel && label" class="bp-md-label">{{ label }}</label>
+
+  <div class="bp-md-editor">
+    <div class="bp-md-tabs">
+      <button type="button" class="bp-md-tab" [class.active]="activeTab === 'edit'"
+        (click)="setTab('edit')">Edit</button>
+      <button type="button" class="bp-md-tab" [class.active]="activeTab === 'preview'"
+        (click)="setTab('preview')">Preview</button>
+    </div>
+
+    <div class="bp-md-toolbar" *ngIf="activeTab === 'edit'">
+      <button type="button" class="bp-md-btn" (click)="bold()" title="Bold (Ctrl+B)"><strong>B</strong></button>
+      <button type="button" class="bp-md-btn" (click)="italic()" title="Italic (Ctrl+I)"><em>I</em></button>
+      <button type="button" class="bp-md-btn" (click)="strike()" title="Strikethrough"><del>S</del></button>
+      <span class="bp-md-sep"></span>
+      <button type="button" class="bp-md-btn" (click)="h1()" title="Heading 1">H1</button>
+      <button type="button" class="bp-md-btn" (click)="h2()" title="Heading 2">H2</button>
+      <button type="button" class="bp-md-btn" (click)="h3()" title="Heading 3">H3</button>
+      <span class="bp-md-sep"></span>
+      <button type="button" class="bp-md-btn" (click)="bulletList()" title="Bullet list">•</button>
+      <button type="button" class="bp-md-btn" (click)="numberedList()" title="Numbered list">1.</button>
+      <button type="button" class="bp-md-btn" (click)="todo()" title="Todo">☐</button>
+      <span class="bp-md-sep"></span>
+      <button type="button" class="bp-md-btn" (click)="blockquote()" title="Blockquote">”</button>
+      <button type="button" class="bp-md-btn" (click)="inlineCode()" title="Inline code (Ctrl+K)">&lt;/&gt;</button>
+      <button type="button" class="bp-md-btn" (click)="divider()" title="Divider">―</button>
+      <span class="bp-md-sep"></span>
+      <button type="button" class="bp-md-btn" (click)="table()" title="Insert table">
+        <lucide-icon name="table" [size]="13"></lucide-icon>
+      </button>
+    </div>
+
+    <textarea *ngIf="activeTab === 'edit'"
+      #ta
+      class="bp-md-textarea"
+      [rows]="rows"
+      [placeholder]="placeholder"
+      [value]="value"
+      (input)="onInput($event)"
+      (keydown)="onKeydown($event)">
+    </textarea>
+
+    <div *ngIf="activeTab === 'preview'" class="bp-md-preview" [innerHTML]="previewHtml"></div>
+  </div>
+</div>
