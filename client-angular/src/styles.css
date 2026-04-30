@@ -1045,19 +1045,20 @@ app-top-nav { flex-shrink: 0; }
   align-self: center;
 }
 
-/* Textarea */
+/* Textarea — body sans-serif. Monospace is reserved for code blocks rendered
+   in the preview pane (see .bp-md-preview code / pre below). */
 .bp-md-textarea {
   width: 100%;
   flex: 1;
   height: auto;
-  font-size: 12px;
+  font-size: 13px;
   padding: 10px 12px;
   border: none;
   outline: none;
   resize: none;
   background: var(--color-surface);
   color: var(--color-text-primary);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-body);
   line-height: 1.7;
 }
 .bp-md-textarea::placeholder { color: var(--color-text-muted); }

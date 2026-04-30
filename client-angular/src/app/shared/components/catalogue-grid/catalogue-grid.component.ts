@@ -241,11 +241,22 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             </div>
           </div>
         </ng-container>
+
+        <!-- TABLE VIEW — parent projects its own <p-table> here -->
+        <ng-container *ngIf="layout === 'table'">
+          <ng-content select="[catalogue-main]"></ng-content>
+        </ng-container>
       </div>
 
       <!-- ── RIGHT DETAIL PANEL ── -->
-      <div class="bp-cat-detail">
-        <ng-container *ngIf="selectedEntity">
+      <!-- Parent components (e.g. Feedback) project a custom panel via the
+           [catalogue-detail] slot. When useCustomDetail is true we show the
+           projected content and skip the built-in entity preview below. -->
+      <div class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
+        <ng-container *ngIf="useCustomDetail">
+          <ng-content select="[catalogue-detail]"></ng-content>
+        </ng-container>
+        <ng-container *ngIf="!useCustomDetail && selectedEntity">
           <!-- Hero image -->
           <div class="bp-detail-hero"
             [style.background-image]="getImageUrl(selectedEntity) && selectedEntity.image_display !== 'contain' ? 'url(' + getImageUrl(selectedEntity) + ')' : null"
@@ -319,8 +330,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           </div>
         </ng-container>
 
-        <!-- Empty state -->
-        <div *ngIf="!selectedEntity" class="bp-detail-empty">
+        <!-- Empty state — only shown when using the built-in detail. -->
+        <div *ngIf="!useCustomDetail && !selectedEntity" class="bp-detail-empty">
           <p>Select {{ entityLabel === 'item' ? 'an' : 'a' }} {{ entityLabel }} to preview</p>
         </div>
       </div>
@@ -379,6 +390,9 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 
     .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
     .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
+    /* Wider detail panel when the parent projects a custom one (e.g. the
+       feedback notes preview). Matches the drawer minimum (520px). */
+    .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
     .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
     .bp-cat-main { padding: 20px 28px; overflow-y: auto; min-width: 0; }
     .bp-cat-detail { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
@@ -532,11 +546,16 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   activeTag = '';
   searchQuery = '';
   // Default starting layout. Parent components that own a 3-way Grid/List/
-  // Table toggle (e.g. Feedback) hide the inner toggle and pass `card` or
-  // `list` through this input.
-  @Input() layout: 'list' | 'card' = 'card';
+  // Table toggle (e.g. Feedback) hide the inner toggle and pass the value
+  // through this input. 'table' is feedback-only — when set, the parent
+  // projects its own <p-table> via the [catalogue-main] content slot.
+  @Input() layout: 'list' | 'card' | 'table' = 'card';
   // When the parent owns the layout toggle externally, hide the inner one.
   @Input() showLayoutToggle = true;
+  // When the parent projects a custom right detail panel via the
+  // [catalogue-detail] slot, set this so we hide the built-in detail
+  // template (otherwise both render and stack).
+  @Input() useCustomDetail = false;
   filteredEntities: CatalogueEntity[] = [];
 
   // Drill-down state

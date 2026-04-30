@@ -2,6 +2,8 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { marked } from 'marked';
 import { FeedbackService, FeedbackEntry, FeedbackCategory, TEAM_MEMBERS } from '../../../core/services/feedback.service';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
@@ -23,9 +25,12 @@ import { TieredMenuModule } from 'primeng/tieredmenu';
 import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { MarkdownEditorComponent } from '../../../shared/components/markdown-editor/markdown-editor.component';
+import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 
 type ViewMode = 'grid' | 'list' | 'table';
 type OptionalField = 'due_date' | 'tags' | 'linked';
+
+const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
 
 @Component({
   selector: 'app-feedback',
@@ -36,7 +41,8 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
     SidebarModule, InputTextModule, ButtonModule, DropdownModule,
     ChipsModule, CheckboxModule, ConfirmDialogModule, ToastModule,
     TableModule, CalendarModule, SelectButtonModule, TieredMenuModule,
-    OverlayPanelModule, StatusBadgeComponent, MarkdownEditorComponent
+    OverlayPanelModule, StatusBadgeComponent, MarkdownEditorComponent,
+    AvatarComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -69,6 +75,8 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
         <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
           (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Status"></p-dropdown>
         <span class="bp-fb-filter-count">{{ filteredEntities.length }} of {{ allEntities.length }}</span>
+        <!-- Icon-only Grid/List/Table — same size + active styling as the
+             existing .bp-view-btn used inside catalogue-grid. -->
         <p-selectButton
           [options]="viewModeOptions"
           [(ngModel)]="viewMode"
@@ -77,7 +85,6 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
           styleClass="bp-fb-view-select">
           <ng-template let-item pTemplate>
             <lucide-icon [name]="item.icon" [size]="14"></lucide-icon>
-            <span class="ml-1">{{ item.label }}</span>
           </ng-template>
         </p-selectButton>
       </div>
@@ -95,11 +102,16 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
         </button>
       </div>
 
-      <app-catalogue-grid *ngIf="viewMode !== 'table'"
+      <!-- SINGLE catalogue-grid wraps all 3 view modes so the filter sidebar
+           and right detail panel stay in place across grid/list/table. The
+           table is projected via [catalogue-main]; the right preview is
+           projected via [catalogue-detail]. -->
+      <app-catalogue-grid
         [entities]="filteredEntities"
         [categories]="filterCategories"
-        [layout]="viewMode === 'grid' ? 'card' : 'list'"
+        [layout]="catalogueLayout()"
         [showLayoutToggle]="false"
+        [useCustomDetail]="true"
         entityType="feedback"
         entityLabel="entry"
         sectionTitle="FEEDBACK"
@@ -110,79 +122,130 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
         [totalCount]="filteredEntities.length"
         (entitySelected)="onEntityPreview($event)"
         (actionClicked)="onEntitySelected($event)">
-      </app-catalogue-grid>
 
-      <!-- TABLE VIEW -->
-      <div *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
-        <p-table [value]="tableRows" styleClass="bp-table" sortMode="multiple"
-          [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
-          <ng-template pTemplate="header">
-            <tr>
-              <th pSortableColumn="title">Title <p-sortIcon field="title"></p-sortIcon></th>
-              <th>Area</th>
-              <th pSortableColumn="prioritySortKey" style="width:90px">Priority <p-sortIcon field="prioritySortKey"></p-sortIcon></th>
-              <th pSortableColumn="statusRank" style="width:120px">Status <p-sortIcon field="statusRank"></p-sortIcon></th>
-              <th pSortableColumn="versionSortKey" style="width:160px">Version <p-sortIcon field="versionSortKey"></p-sortIcon></th>
-            </tr>
+        <!-- TABLE — only rendered when layout='table' -->
+        <div catalogue-main *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
+          <p-table [value]="tableRows" styleClass="bp-table" sortMode="multiple"
+            [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
+            <ng-template pTemplate="header">
+              <tr>
+                <th pSortableColumn="type" style="width:120px">Type <p-sortIcon field="type"></p-sortIcon></th>
+                <th pSortableColumn="area_name" style="width:140px">Area <p-sortIcon field="area_name"></p-sortIcon></th>
+                <th style="width:200px">Pages</th>
+                <th pSortableColumn="title">Title <p-sortIcon field="title"></p-sortIcon></th>
+                <th pSortableColumn="owner" style="width:90px">Owner <p-sortIcon field="owner"></p-sortIcon></th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-row>
+              <tr class="bp-fb-row"
+                [class.bp-fb-row-active]="previewEntry?.id === row.id"
+                (click)="onTableRowClick(row)">
+                <td>
+                  <span class="bp-fb-type-pill">
+                    <lucide-icon *ngIf="row.typeIcon" [name]="row.typeIcon" [size]="11"></lucide-icon>
+                    {{ row.typeLabel }}
+                  </span>
+                </td>
+                <td>
+                  <span class="bp-fb-area-pill" *ngIf="row.area_name">
+                    <lucide-icon *ngIf="row.area_icon_name" [name]="row.area_icon_name" [size]="14"></lucide-icon>
+                    {{ row.area_name }}
+                  </span>
+                  <span class="bp-muted-text" *ngIf="!row.area_name">—</span>
+                </td>
+                <td>
+                  <span *ngIf="row.firstPage" [title]="row.firstPage" class="bp-fb-page-cell">
+                    {{ row.firstPage.length > 30 ? (row.firstPage | slice:0:30) + '…' : row.firstPage }}
+                  </span>
+                  <span class="bp-muted-text" *ngIf="!row.firstPage">—</span>
+                </td>
+                <td class="bp-fb-cell-title" [title]="row.title">
+                  {{ row.title.length > 60 ? (row.title | slice:0:60) + '…' : row.title }}
+                </td>
+                <td>
+                  <app-avatar *ngIf="row.owner" [name]="row.owner" [size]="28"></app-avatar>
+                  <span class="bp-muted-text" *ngIf="!row.owner">—</span>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr><td colspan="5" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
+            </ng-template>
+          </p-table>
+        </div>
+
+        <!-- CUSTOM RIGHT DETAIL PANEL — feedback preview (rendered notes
+             + priority pill). Always projected; populated by row/card click. -->
+        <div catalogue-detail class="bp-fb-detail">
+          <ng-container *ngIf="previewEntry; else emptyDetail">
+            <div class="bp-fb-detail-eyebrow">{{ (inferType(previewEntry) || 'feedback') | uppercase }}</div>
+            <div class="bp-fb-detail-title">{{ previewEntry.title }}</div>
+            <div class="bp-fb-detail-meta" *ngIf="previewEntry.area_name">
+              <lucide-icon *ngIf="previewEntry.area_icon_name" [name]="previewEntry.area_icon_name" [size]="12"></lucide-icon>
+              {{ previewEntry.area_name }}
+            </div>
+
+            <div class="bp-md-preview bp-fb-detail-notes" [innerHTML]="previewHtml"></div>
+
+            <div class="bp-fb-detail-pills">
+              <span *ngIf="previewEntry.priority"
+                class="bp-priority-pill"
+                [class.bp-priority-pill--muted]="(previewEntry.status || 'open') === 'done'">
+                P{{ previewEntry.priority }}
+              </span>
+              <app-status-badge [status]="previewEntry.status || 'open'"
+                [statusName]="previewEntry.status || 'open'"></app-status-badge>
+              <span class="bp-fb-version-pill" *ngIf="previewEntry.target_version && previewEntry.status !== 'done'">
+                Target: {{ previewEntry.target_version }}
+              </span>
+              <span class="bp-fb-version-pill" *ngIf="previewEntry.version && previewEntry.status === 'done'">
+                Fixed: {{ previewEntry.version }}
+              </span>
+            </div>
+
+            <button class="bp-btn-save bp-fb-detail-edit" (click)="onEntitySelectedById(previewEntry.id)">
+              <lucide-icon name="square-pen" [size]="13"></lucide-icon> Edit
+            </button>
+          </ng-container>
+          <ng-template #emptyDetail>
+            <div class="bp-detail-empty">
+              <p>Select an entry to preview</p>
+            </div>
           </ng-template>
-          <ng-template pTemplate="body" let-row>
-            <tr class="bp-fb-row" (click)="onTableRowClick(row)">
-              <td class="bp-fb-cell-title" [title]="row.title">
-                {{ row.title.length > 40 ? (row.title | slice:0:40) + '…' : row.title }}
-              </td>
-              <td>
-                <span class="bp-fb-area-pill" *ngIf="row.area_name">
-                  <lucide-icon *ngIf="row.area_icon_name" [name]="row.area_icon_name" [size]="14"></lucide-icon>
-                  {{ row.area_name }}
-                </span>
-                <span class="bp-muted-text" *ngIf="!row.area_name">—</span>
-              </td>
-              <td>
-                <span *ngIf="row.priority && row.status !== 'done'"
-                  class="bp-priority-pill">
-                  P{{ row.priority }}
-                </span>
-                <span class="bp-muted-text" *ngIf="!row.priority || row.status === 'done'">—</span>
-              </td>
-              <td>
-                <app-status-badge [status]="row.status || 'open'" [statusName]="row.status || 'open'"></app-status-badge>
-              </td>
-              <td>
-                <ng-container *ngIf="row.status === 'done'; else openVersion">
-                  <span class="bp-fb-shipped-date" *ngIf="row.shipped_date">{{ formatShipDate(row.shipped_date) }}</span>
-                  <span class="bp-fb-version-pill" *ngIf="row.version">{{ row.version }}</span>
-                </ng-container>
-                <ng-template #openVersion>
-                  <span class="bp-fb-version-pill" *ngIf="row.target_version">{{ row.target_version }}</span>
-                  <span class="bp-muted-text" *ngIf="!row.target_version">—</span>
-                </ng-template>
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr><td colspan="5" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
-          </ng-template>
-        </p-table>
-      </div>
+        </div>
+      </app-catalogue-grid>
 
       <div *ngIf="!filteredEntities.length && !loading && viewMode !== 'table'" class="bp-empty-state">
         <p class="bp-muted-text">No feedback entries match your filters.</p>
       </div>
     </ng-container>
 
-    <!-- DETAIL DRAWER (400px) -->
+    <!-- DETAIL DRAWER (520px) -->
     <p-sidebar [(visible)]="showDrawer" position="right"
-      styleClass="bp-drawer bp-fb-drawer" [style]="{width:'400px'}"
+      styleClass="bp-drawer bp-fb-drawer" [style]="{width:'520px'}"
       [showCloseIcon]="false"
       (onHide)="closeDrawer()">
 
       <ng-template pTemplate="header">
         <div class="bp-fb-drawer-head" *ngIf="selectedEntry">
-          <!-- Top line: label + title + close -->
+          <!-- Top line: type eyebrow + inline-editable title + close -->
           <div class="bp-fb-drawer-toprow">
             <div class="bp-fb-drawer-titles">
-              <span class="bp-fb-drawer-eyebrow">FEEDBACK</span>
-              <div class="bp-fb-drawer-title">{{ editTitle || selectedEntry.title || 'Entry' }}</div>
+              <span class="bp-fb-drawer-eyebrow">{{ typeEyebrow() }}</span>
+              <input *ngIf="titleEditing"
+                #titleInput
+                pInputText
+                class="bp-fb-drawer-title-input"
+                [(ngModel)]="editTitle"
+                (blur)="finishTitleEdit()"
+                (keydown.enter)="finishTitleEdit()"
+                (keydown.escape)="cancelTitleEdit()"/>
+              <div *ngIf="!titleEditing"
+                class="bp-fb-drawer-title"
+                title="Click to edit"
+                (click)="startTitleEdit()">
+                {{ editTitle || 'Untitled' }}
+              </div>
             </div>
             <button class="bp-icon-btn" (click)="closeDrawer()" title="Close">
               <i class="pi pi-times"></i>
@@ -191,7 +254,7 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
 
           <!-- Pill row -->
           <div class="bp-fb-pill-row">
-            <!-- Type pill -->
+            <!-- Type pill (dropdown) -->
             <p-dropdown [(ngModel)]="editType"
               [options]="typeEditOptions"
               optionLabel="label" optionValue="value"
@@ -211,16 +274,12 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
               </ng-template>
             </p-dropdown>
 
-            <!-- Status pill -->
-            <p-dropdown [(ngModel)]="editStatus"
-              [options]="statusEditOptions"
-              optionLabel="label" optionValue="value"
-              styleClass="bp-fb-pill bp-fb-pill-blue"
-              (onChange)="markDirty()">
-              <ng-template pTemplate="selectedItem" let-item>
-                <span class="bp-fb-pill-content">{{ item?.label || 'Status' }}</span>
-              </ng-template>
-            </p-dropdown>
+            <!-- Status pill — click to cycle through statuses -->
+            <button type="button" class="bp-fb-status-pill"
+              [attr.data-status]="editStatus"
+              (click)="cycleStatus()">
+              {{ statusLabel(editStatus) }}
+            </button>
 
             <!-- Owner cycle pill -->
             <button type="button" class="bp-fb-owner-pill" (click)="cycleOwner()">
@@ -228,18 +287,11 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
               <span>{{ editOwner || 'Owner' }}</span>
             </button>
 
-            <!-- Priority pill -->
-            <p-dropdown [(ngModel)]="editPriority"
-              [options]="priorityEditOptions"
-              optionLabel="label" optionValue="value"
-              [showClear]="true"
-              styleClass="bp-fb-pill bp-fb-pill-amber"
-              placeholder="P—"
-              (onChange)="markDirty()">
-              <ng-template pTemplate="selectedItem" let-item>
-                <span class="bp-fb-pill-content">{{ item ? item.label : 'P—' }}</span>
-              </ng-template>
-            </p-dropdown>
+            <!-- Priority pill — click to cycle P1→P2→…→P5→P1 -->
+            <button type="button" class="bp-fb-priority-pill-btn"
+              (click)="cyclePriority()">
+              {{ editPriority ? 'P' + editPriority : 'P—' }}
+            </button>
 
             <!-- Add attribute -->
             <button type="button" class="bp-fb-pill-more"
@@ -250,15 +302,30 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
 
             <span class="bp-fb-pill-spacer"></span>
 
-            <!-- Target version pill -->
-            <span class="bp-fb-target-pill" *ngIf="editTargetVersion">
+            <!-- Target version pill — click to edit inline -->
+            <input *ngIf="versionEditing"
+              #versionInput
+              pInputText
+              class="bp-fb-version-input"
+              [(ngModel)]="editTargetVersion"
+              (blur)="finishVersionEdit()"
+              (keydown.enter)="finishVersionEdit()"
+              (keydown.escape)="cancelVersionEdit()"
+              placeholder="v2.0"/>
+            <button *ngIf="!versionEditing && editTargetVersion"
+              type="button"
+              class="bp-fb-target-pill"
+              (click)="startVersionEdit()"
+              title="Click to edit">
               {{ editStatus === 'done' ? 'Fixed: ' : 'Target: ' }}{{ editTargetVersion }}
-            </span>
-            <button type="button" class="bp-fb-pill-more"
-              (click)="versionMenu.toggle($event)" title="Set target version">
+            </button>
+            <button *ngIf="!versionEditing && !editTargetVersion"
+              type="button"
+              class="bp-fb-pill-more"
+              (click)="startVersionEdit()"
+              title="Set target version">
               <i class="pi pi-ellipsis-h"></i>
             </button>
-            <p-tieredMenu #versionMenu [model]="versionMenuItems" [popup]="true" appendTo="body"></p-tieredMenu>
           </div>
         </div>
       </ng-template>
@@ -305,16 +372,31 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
           </div>
         </div>
 
-        <!-- NOTES -->
+        <!-- NOTES — preview-first, click to edit, blur back to preview -->
         <div class="bp-fb-notes-cell">
           <label class="bp-fb-cell-label">NOTES</label>
-          <app-markdown-editor
-            [value]="editNotes"
-            (valueChange)="editNotes = $event; markDirty()"
-            [rows]="10"
-            [showLabel]="false"
-            placeholder="Add notes, specs, requirements...">
-          </app-markdown-editor>
+          <ng-container *ngIf="!notesEditing">
+            <div class="bp-md-preview bp-fb-notes-preview"
+                 [innerHTML]="editNotesPreviewHtml"
+                 (click)="startNotesEdit()"
+                 title="Click to edit"
+                 [class.bp-fb-notes-empty]="!editNotes">
+              <ng-container *ngIf="!editNotes">
+                <span class="bp-fb-notes-placeholder">Click to add notes…</span>
+              </ng-container>
+            </div>
+          </ng-container>
+          <div class="bp-fb-notes-editor-wrap"
+               *ngIf="notesEditing"
+               (focusout)="onNotesBlur($event)">
+            <app-markdown-editor
+              [value]="editNotes"
+              (valueChange)="onNotesChange($event)"
+              [rows]="10"
+              [showLabel]="false"
+              placeholder="Add notes, specs, requirements...">
+            </app-markdown-editor>
+          </div>
         </div>
 
         <!-- OPTIONAL: Due date -->
@@ -401,22 +483,26 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
     :host ::ng-deep .bp-fb-filter .p-dropdown { font-size: 12px !important; }
     .bp-fb-filter-count { font-size: 12px; color: var(--color-text-muted); margin-left: auto; }
 
-    /* View select (Grid / List / Table) — uses p-selectButton */
+    /* View select — icon-only Grid/List/Table. Mirrors .bp-view-btn from
+       catalogue-grid (30×30, parchment-active). */
     :host ::ng-deep .bp-fb-view-select .p-button {
-      padding: 6px 10px; font-size: 12px;
+      width: 30px; height: 30px; padding: 0;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
       color: var(--color-text-muted);
-      display: inline-flex; align-items: center; gap: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px;
     }
+    :host ::ng-deep .bp-fb-view-select .p-button + .p-button { margin-left: 4px; }
     :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
       background: var(--theme-bg);
-      border-color: var(--theme-accent);
+      border-color: var(--theme-border);
       color: var(--theme-accent);
     }
+    :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none; }
 
-    /* Table view */
-    .bp-fb-table-wrap { padding: 12px 24px; }
+    /* Table view — projected into catalogue-grid main slot */
+    .bp-fb-table-wrap { padding: 12px 8px; }
     :host ::ng-deep .bp-table .p-datatable-thead > tr > th {
       background: var(--color-surface); color: var(--color-text-muted);
       font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
@@ -426,12 +512,20 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
       cursor: pointer; transition: background 0.1s;
     }
     :host ::ng-deep .bp-table .p-datatable-tbody > tr:hover { background: var(--theme-bg); }
+    :host ::ng-deep .bp-table .p-datatable-tbody > tr.bp-fb-row-active { background: var(--theme-bg); }
     :host ::ng-deep .bp-table .p-datatable-tbody > tr > td {
       padding: 10px 12px; font-size: 13px; color: var(--color-text-primary);
       border-bottom: 0.5px solid var(--color-border); vertical-align: middle;
     }
     .bp-fb-cell-title { font-weight: 500; }
 
+    /* Type pill — small amber chip */
+    .bp-fb-type-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 10px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      font-size: 11px; font-weight: 500; text-transform: capitalize;
+    }
     /* Area pill in table */
     .bp-fb-area-pill {
       display: inline-flex; align-items: center; gap: 4px;
@@ -439,17 +533,20 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
       background: var(--theme-bg); color: var(--theme-accent);
       font-size: 11px; font-weight: 500;
     }
+    .bp-fb-page-cell { font-size: 12px; color: var(--color-text-secondary); }
 
-    /* Priority pill (open issues only) — P1-P5 amber */
+    /* Priority pill (open issues amber, done muted) */
     .bp-priority-pill {
       display: inline-flex; padding: 2px 8px; border-radius: 10px;
       font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
       background: var(--theme-bg); color: var(--theme-accent);
     }
+    .bp-priority-pill--muted {
+      background: var(--color-surface); color: var(--color-text-muted);
+    }
     .bp-muted-text { color: var(--color-text-muted); font-size: 12px; }
 
-    /* Version cell — combines shipped_date + version pill */
-    .bp-fb-shipped-date { font-size: 11px; color: var(--color-text-muted); margin-right: 6px; }
+    /* Version pill */
     .bp-fb-version-pill {
       display: inline-flex; padding: 1px 7px; border-radius: 10px;
       background: var(--theme-bg); color: var(--theme-accent);
@@ -473,7 +570,36 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
     .bp-fb-bulk-btn--danger:hover { border-color: var(--color-action-text); color: var(--color-action-text); }
 
     /* ─────────────────────────────────────────────────────────────────
-       DRAWER (400px wide) — parchment header with pill row + body grid
+       Right detail panel (projected into catalogue-grid)
+       ───────────────────────────────────────────────────────────────── */
+    .bp-fb-detail { padding: 20px 18px; height: 100%; overflow-y: auto; }
+    .bp-fb-detail-eyebrow {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--theme-accent); text-transform: uppercase;
+    }
+    .bp-fb-detail-title {
+      font-family: var(--font-display); font-size: 18px; font-weight: 400;
+      color: var(--color-text-primary); margin-top: 4px; line-height: 1.25;
+    }
+    .bp-fb-detail-meta {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--color-text-muted); margin-top: 6px;
+    }
+    .bp-fb-detail-notes { margin-top: 12px; max-height: calc(100vh - 360px); }
+    .bp-fb-detail-pills {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 14px;
+    }
+    .bp-fb-detail-edit {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 16px;
+    }
+    .bp-detail-empty {
+      padding: 40px 16px; text-align: center; color: var(--color-text-muted);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       DRAWER (520px wide) — parchment header with pill row + body grid
        ───────────────────────────────────────────────────────────────── */
 
     :host ::ng-deep .bp-fb-drawer .p-sidebar-content {
@@ -493,11 +619,18 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
       color: var(--theme-accent);
     }
     .bp-fb-drawer-title {
-      font-family: var(--font-display); font-size: 16px; font-weight: 400;
+      font-family: var(--font-display); font-size: 18px; font-weight: 400;
       line-height: 1.25; color: var(--color-text-primary);
-      margin-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
-      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      margin-top: 2px; cursor: text;
+      padding: 2px 4px; border-radius: 4px;
+    }
+    .bp-fb-drawer-title:hover { background: rgba(0,0,0,0.02); }
+    :host ::ng-deep .bp-fb-drawer-title-input {
+      font-family: var(--font-display); font-size: 18px; font-weight: 400;
+      width: 100%; margin-top: 2px;
+      background: var(--theme-bg);
+      border: 1px solid var(--theme-accent);
+      padding: 4px 8px; line-height: 1.25;
     }
 
     /* Pill row */
@@ -506,7 +639,7 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
     }
     .bp-fb-pill-spacer { flex: 1; }
 
-    /* p-dropdown rendered as a pill — shared base */
+    /* p-dropdown rendered as a pill — shared base, normalised to 11px */
     :host ::ng-deep .bp-fb-pill .p-dropdown {
       border-radius: 999px; min-width: 0; height: 24px;
       border: 0.5px solid transparent;
@@ -525,18 +658,34 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
     :host ::ng-deep .bp-fb-pill-amber .p-dropdown .p-dropdown-trigger {
       color: var(--theme-accent);
     }
-    :host ::ng-deep .bp-fb-pill-blue .p-dropdown {
-      background: var(--color-quoted-bg); color: var(--color-quoted-text);
-      border-color: var(--color-quoted-border);
-    }
-    :host ::ng-deep .bp-fb-pill-blue .p-dropdown .p-dropdown-label,
-    :host ::ng-deep .bp-fb-pill-blue .p-dropdown .p-dropdown-trigger {
-      color: var(--color-quoted-text);
-    }
     .bp-fb-pill-content { display: inline-flex; align-items: center; gap: 4px; }
     .bp-fb-pill-option { display: inline-flex; align-items: center; gap: 6px; }
 
-    /* Owner cycle pill */
+    /* Status pill — click to cycle; colour follows status. */
+    .bp-fb-status-pill {
+      height: 24px; padding: 0 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 500; cursor: pointer;
+      border: 0.5px solid transparent; font-family: var(--font-body);
+      display: inline-flex; align-items: center;
+    }
+    .bp-fb-status-pill[data-status="open"] {
+      background: var(--color-quoted-bg); color: var(--color-quoted-text);
+      border-color: var(--color-quoted-border);
+    }
+    .bp-fb-status-pill[data-status="in_progress"] {
+      background: var(--color-waiting-bg); color: var(--color-waiting-text);
+      border-color: var(--color-waiting-border);
+    }
+    .bp-fb-status-pill[data-status="done"] {
+      background: var(--color-booked-bg); color: var(--color-booked-text);
+      border-color: var(--color-booked-border);
+    }
+    .bp-fb-status-pill[data-status="wont_fix"] {
+      background: var(--color-surface); color: var(--color-text-muted);
+      border-color: var(--color-border);
+    }
+
+    /* Owner cycle pill — 11px to match siblings */
     .bp-fb-owner-pill {
       height: 24px; padding: 0 10px 0 2px; border-radius: 999px;
       background: var(--theme-bg); color: var(--theme-accent);
@@ -552,13 +701,31 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
       font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
     }
 
-    /* Target version pill (parchment, read-only display) */
+    /* Priority cycle pill — 11px */
+    .bp-fb-priority-pill-btn {
+      height: 24px; padding: 0 12px; border-radius: 999px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      font-family: var(--font-body);
+      display: inline-flex; align-items: center;
+    }
+
+    /* Target version pill — click to edit inline */
     .bp-fb-target-pill {
       height: 24px; padding: 0 10px; border-radius: 999px;
       background: var(--theme-bg); color: var(--theme-accent);
       border: 0.5px solid var(--theme-accent);
       display: inline-flex; align-items: center;
-      font-size: 11px; font-weight: 500;
+      font-size: 11px; font-weight: 500; cursor: pointer;
+      font-family: var(--font-body);
+    }
+    :host ::ng-deep .bp-fb-version-input {
+      width: 110px; height: 24px; font-size: 11px; padding: 0 8px;
+      border-radius: 999px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+      font-family: var(--font-body);
     }
 
     /* "..." overflow trigger */
@@ -624,17 +791,26 @@ type OptionalField = 'due_date' | 'tags' | 'linked';
       background: var(--color-surface);
     }
 
-    /* Notes — fills all remaining space */
+    /* Notes — fills all remaining space; preview-first */
     .bp-fb-notes-cell {
       flex: 1 1 auto; min-height: 0;
       padding: 14px 16px;
       display: flex; flex-direction: column;
       border-bottom: 0.5px solid var(--color-border);
     }
-    :host ::ng-deep .bp-fb-notes-cell app-markdown-editor {
+    .bp-fb-notes-preview {
+      flex: 1; overflow-y: auto; cursor: text;
+      padding: 10px 12px; background: var(--color-surface);
+      border: 0.5px solid var(--color-border); border-radius: 6px;
+      min-height: 220px;
+    }
+    .bp-fb-notes-empty { display: flex; align-items: center; justify-content: center; }
+    .bp-fb-notes-placeholder { color: var(--color-text-muted); font-size: 12px; }
+    .bp-fb-notes-editor-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    :host ::ng-deep .bp-fb-notes-editor-wrap app-markdown-editor {
       flex: 1; display: flex; flex-direction: column; height: 100%;
     }
-    :host ::ng-deep .bp-fb-notes-cell app-markdown-editor textarea { flex: 1; }
+    :host ::ng-deep .bp-fb-notes-editor-wrap app-markdown-editor textarea { flex: 1; }
 
     /* Optional fields */
     .bp-fb-opt-cell { padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); }
@@ -694,17 +870,16 @@ export class FeedbackComponent implements OnInit {
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
-  // 3-way SelectButton: Grid / List / Table
+  // 3-way SelectButton: Grid / List / Table — icon-only.
   viewMode: ViewMode = 'grid';
   viewModeOptions = [
-    { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layers' },
+    { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layout-grid' },
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
     { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
   ];
 
   tableRows: any[] = [];
 
-  // Default sort: priority ASC (1 first), then status open → done.
   defaultTableSort: SortMeta[] = [
     { field: 'prioritySortKey', order: 1 },
     { field: 'statusRank',      order: 1 }
@@ -732,8 +907,15 @@ export class FeedbackComponent implements OnInit {
   showDrawer = false;
   showActionDialog = false;
   selectedEntry: FeedbackEntry | null = null;
+
+  // Right detail panel preview (separate from drawer's edit state).
+  previewEntry: FeedbackEntry | null = null;
+  previewHtml: SafeHtml = '';
+
+  // Drawer edit state
   editTitle = '';
   editNotes = '';
+  editNotesPreviewHtml: SafeHtml = '';
   editOwner = '';
   editStatus = 'open';
   editType = 'bug';
@@ -747,7 +929,11 @@ export class FeedbackComponent implements OnInit {
   shownFields = new Set<OptionalField>();
   isDirty = false;
 
-  // Header dropdown options
+  // Inline-edit toggles
+  titleEditing = false;
+  versionEditing = false;
+  notesEditing = false;
+
   priorityEditOptions = [
     { label: 'P1', value: 1 },
     { label: 'P2', value: 2 },
@@ -756,7 +942,6 @@ export class FeedbackComponent implements OnInit {
     { label: 'P5', value: 5 }
   ];
 
-  // Combined Type options — issue types + folder types in one dropdown.
   typeEditOptions = [
     { label: 'Bug',         value: 'bug',         icon: 'bug',           kind: 'issue' as const },
     { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb',     kind: 'issue' as const },
@@ -774,27 +959,13 @@ export class FeedbackComponent implements OnInit {
     { label: "Won't Fix",   value: 'wont_fix' }
   ];
 
-  // Area dropdown — populated from shared.feedback_categories (namespace='area')
   areaDropdownOptions: { label: string; value: string; icon: string }[] = [];
 
-  // "Add attribute" menu — disables already-shown rows so a field can't be
-  // added twice.
   get addAttrMenuItems() {
     return [
-      { label: 'Due date',      icon: 'pi pi-calendar',    disabled: this.shownFields.has('due_date'), command: () => this.addField('due_date') },
-      { label: 'Tags',          icon: 'pi pi-tag',         disabled: this.shownFields.has('tags'),     command: () => this.addField('tags') },
-      { label: 'Linked folder', icon: 'pi pi-link',        disabled: this.shownFields.has('linked'),   command: () => this.addField('linked') }
-    ];
-  }
-
-  // Version menu
-  get versionMenuItems() {
-    return [
-      { label: 'v2.0', command: () => this.setTargetVersion('v2.0') },
-      { label: 'v2.1', command: () => this.setTargetVersion('v2.1') },
-      { label: 'v3.0', command: () => this.setTargetVersion('v3.0') },
-      { separator: true },
-      { label: 'Clear version', command: () => this.setTargetVersion(null) }
+      { label: 'Due date',      icon: 'pi pi-calendar', disabled: this.shownFields.has('due_date'), command: () => this.addField('due_date') },
+      { label: 'Tags',          icon: 'pi pi-tag',      disabled: this.shownFields.has('tags'),     command: () => this.addField('tags') },
+      { label: 'Linked folder', icon: 'pi pi-link',     disabled: this.shownFields.has('linked'),   command: () => this.addField('linked') }
     ];
   }
 
@@ -802,8 +973,15 @@ export class FeedbackComponent implements OnInit {
     private feedbackSvc: FeedbackService,
     private confirmSvc: ConfirmationService,
     private msg: MessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer
   ) {}
+
+  catalogueLayout(): 'list' | 'card' | 'table' {
+    if (this.viewMode === 'grid')  return 'card';
+    if (this.viewMode === 'list')  return 'list';
+    return 'table';
+  }
 
   ngOnInit() {
     this.feedbackSvc.getFeedbackCategories().subscribe({
@@ -884,6 +1062,12 @@ export class FeedbackComponent implements OnInit {
 
         this.applyFilters();
         this.loading = false;
+        // Refresh preview if the entry was deleted/updated.
+        if (this.previewEntry) {
+          const refreshed = topLevel.find(e => e.id === this.previewEntry!.id);
+          this.previewEntry = refreshed || null;
+          this.refreshPreviewHtml();
+        }
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
@@ -923,25 +1107,26 @@ export class FeedbackComponent implements OnInit {
       const r: FeedbackEntry = e._raw;
       const status = r.status || 'open';
       const priority = r.priority ?? null;
-      // Done rows fall to the bottom of the version sort; open rows order by
-      // target_version string (lex sort handles flat v2.0 < v2.1 < v3.0).
-      const versionSortKey = status === 'done'
-        ? (r.shipped_date || '0000-00-00')
-        : (r.target_version || 'zzz');
+      const type = this.inferType(r);
+      const typeOpt = this.typeEditOptions.find(t => t.value === type);
+      const firstPage = (r.pages && r.pages[0]) || r.page_url || '';
       return {
         id: r.id,
         title: r.title,
+        type,
+        typeLabel: typeOpt?.label || (type ? type.charAt(0).toUpperCase() + type.slice(1) : '—'),
+        typeIcon: typeOpt?.icon || this.getTypeIcon(r),
         area_name: r.area_name,
         area_icon_name: r.area_icon_name,
+        firstPage,
+        owner: r.owner || '',
         priority,
         status,
-        // 99 sentinel pushes priority-less rows to the end of an ASC sort.
         prioritySortKey: priority ?? 99,
         statusRank: this.statusRanks[status] ?? 99,
         version: r.version,
         shipped_date: r.shipped_date,
         target_version: r.target_version,
-        versionSortKey,
         _raw: r
       };
     });
@@ -950,7 +1135,15 @@ export class FeedbackComponent implements OnInit {
   }
 
   onTableRowClick(row: any) {
+    // Preview in the right panel AND open the drawer for editing.
     const entity = this.allEntities.find(e => e.id === row.id);
+    if (!entity) return;
+    this.setPreview(entity._raw as FeedbackEntry);
+    this.onEntitySelected(entity);
+  }
+
+  onEntitySelectedById(id: string) {
+    const entity = this.allEntities.find(e => e.id === id);
     if (entity) this.onEntitySelected(entity);
   }
 
@@ -968,17 +1161,36 @@ export class FeedbackComponent implements OnInit {
     return 'bug';
   }
 
+  // Single click in catalogue-grid (any layout) — populate the right panel.
+  // Folders still route to their dedicated page.
   onEntityPreview(entity: CatalogueEntity) {
-    const entry = entity._raw as FeedbackEntry;
-    if (entry?.object_type === 'folder') {
-      window.open('/folder/' + entry.id, '_blank');
+    const raw = entity._raw as FeedbackEntry | undefined;
+    if (raw?.object_type === 'folder') {
+      window.open('/folder/' + raw.id, '_blank');
+      return;
     }
+    if (raw) this.setPreview(raw);
   }
 
+  private setPreview(raw: FeedbackEntry) {
+    this.previewEntry = raw;
+    this.refreshPreviewHtml();
+    this.cdr.detectChanges();
+  }
+
+  private refreshPreviewHtml() {
+    if (!this.previewEntry?.notes) {
+      this.previewHtml = '';
+      return;
+    }
+    const html = marked.parse(this.previewEntry.notes, { async: false }) as string;
+    this.previewHtml = this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  // "View" action (button in built-in catalogue detail) → drawer.
   onEntitySelected(entity: CatalogueEntity) {
     this.selectedEntry = entity._raw || this.entries.find(e => e.id === entity.id) || null;
     if (this.selectedEntry) {
-      // Folder rows route to the dedicated meeting page.
       if (this.selectedEntry.event_date) {
         window.open('/folder/' + this.selectedEntry.id, '_blank');
         return;
@@ -986,6 +1198,7 @@ export class FeedbackComponent implements OnInit {
       const e = this.selectedEntry;
       this.editTitle = e.title;
       this.editNotes = e.notes || '';
+      this.refreshNotesPreviewHtml();
       this.editOwner = e.owner || '';
       this.editStatus = e.status || 'open';
       this.editType = this.inferType(e);
@@ -993,17 +1206,17 @@ export class FeedbackComponent implements OnInit {
       this.editPriority = e.priority ?? null;
       this.editTargetVersion = e.target_version || null;
       this.editAreaCategoryId = e.area_category_id || null;
-      // Seed pages: prefer pages[]; fall back to single page_url so legacy
-      // rows show their captured URL.
       this.editPages = (e.pages && e.pages.length)
         ? [...e.pages]
         : (e.page_url ? [e.page_url] : []);
       this.editDueDate = e.due_date ? new Date(e.due_date) : null;
       this.newPageInput = '';
-      // Pre-show optional fields if the row already has data for them.
       this.shownFields = new Set<OptionalField>();
       if (e.due_date)        this.shownFields.add('due_date');
       if (e.tags?.length)    this.shownFields.add('tags');
+      this.titleEditing = false;
+      this.versionEditing = false;
+      this.notesEditing = false;
       this.isDirty = false;
       this.showDrawer = true;
       this.cdr.detectChanges();
@@ -1012,8 +1225,99 @@ export class FeedbackComponent implements OnInit {
 
   markDirty() { this.isDirty = true; }
 
+  // ── Inline title edit ───────────────────────────────────────────────────
+  startTitleEdit() {
+    this.titleEditing = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>('.bp-fb-drawer-title-input');
+      el?.focus();
+      el?.select();
+    });
+  }
+  finishTitleEdit() {
+    if (!this.editTitle?.trim()) {
+      this.editTitle = this.selectedEntry?.title || '';
+    }
+    this.titleEditing = false;
+    this.markDirty();
+  }
+  cancelTitleEdit() {
+    this.editTitle = this.selectedEntry?.title || '';
+    this.titleEditing = false;
+  }
+
+  // ── Inline version edit ─────────────────────────────────────────────────
+  startVersionEdit() {
+    this.versionEditing = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>('.bp-fb-version-input');
+      el?.focus();
+      el?.select();
+    });
+  }
+  finishVersionEdit() {
+    this.editTargetVersion = this.editTargetVersion?.trim() || null;
+    this.versionEditing = false;
+    this.markDirty();
+  }
+  cancelVersionEdit() {
+    this.editTargetVersion = this.selectedEntry?.target_version || null;
+    this.versionEditing = false;
+  }
+
+  // ── Notes preview/edit toggle ───────────────────────────────────────────
+  startNotesEdit() {
+    this.notesEditing = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const el = document.querySelector<HTMLTextAreaElement>('.bp-fb-notes-editor-wrap textarea');
+      el?.focus();
+    });
+  }
+  onNotesChange(v: string) {
+    this.editNotes = v;
+    this.refreshNotesPreviewHtml();
+    this.markDirty();
+  }
+  // focusout fires before the next focusin lands; we wait a tick so clicking
+  // a toolbar button inside the editor doesn't bounce us back to preview.
+  onNotesBlur(ev: FocusEvent) {
+    const next = ev.relatedTarget as HTMLElement | null;
+    const wrap = (ev.currentTarget as HTMLElement);
+    if (next && wrap.contains(next)) return;
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (active && wrap.contains(active)) return;
+      this.notesEditing = false;
+      this.cdr.detectChanges();
+    }, 50);
+  }
+  private refreshNotesPreviewHtml() {
+    if (!this.editNotes) {
+      this.editNotesPreviewHtml = '';
+      return;
+    }
+    const html = marked.parse(this.editNotes, { async: false }) as string;
+    this.editNotesPreviewHtml = this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  // ── Pill cycling ────────────────────────────────────────────────────────
+  cycleStatus() {
+    const i = STATUS_CYCLE.indexOf(this.editStatus as any);
+    this.editStatus = STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length];
+    this.markDirty();
+  }
+  statusLabel(s: string): string {
+    return this.statusEditOptions.find(o => o.value === s)?.label || s;
+  }
+  cyclePriority() {
+    const cur = this.editPriority ?? 0;
+    this.editPriority = cur >= 5 || cur < 1 ? 1 : cur + 1;
+    this.markDirty();
+  }
   cycleOwner() {
-    // Cycles LW → BP → MG → JC → unassigned → LW…
     const order = [...TEAM_MEMBERS.map(m => m.name), ''];
     const idx = order.indexOf(this.editOwner || '');
     this.editOwner = order[(idx + 1) % order.length];
@@ -1026,9 +1330,9 @@ export class FeedbackComponent implements OnInit {
     return m?.initials || this.editOwner.substring(0, 2).toUpperCase();
   }
 
-  setTargetVersion(v: string | null) {
-    this.editTargetVersion = v;
-    this.markDirty();
+  typeEyebrow(): string {
+    const opt = this.typeEditOptions.find(t => t.value === this.editType);
+    return (opt?.label || this.editType || 'feedback').toUpperCase();
   }
 
   addField(f: OptionalField) {
@@ -1096,7 +1400,6 @@ export class FeedbackComponent implements OnInit {
     });
   }
 
-  // Bulk actions
   bulkMarkDone() {
     const ids = [...this.selectedIds];
     let done = 0;
@@ -1140,13 +1443,11 @@ export class FeedbackComponent implements OnInit {
     this.showDrawer = false;
     this.selectedEntry = null;
     this.isDirty = false;
+    this.titleEditing = false;
+    this.versionEditing = false;
+    this.notesEditing = false;
     this.shownFields.clear();
     this.cdr.detectChanges();
-  }
-
-  getInitials(name: string): string {
-    const member = this.team.find(m => m.name === name);
-    return member?.initials || name.substring(0, 2).toUpperCase();
   }
 
   getTypeIcon(entry: FeedbackEntry): string {
