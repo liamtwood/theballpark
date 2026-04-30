@@ -397,6 +397,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       padding: 0 !important;
       background: var(--theme-bg);
       border-bottom: 0.5px solid var(--theme-border, var(--color-border));
+      display: block !important;
     }
     :host ::ng-deep .bp-fbd .p-sidebar-content {
       display: flex; flex-direction: column;
@@ -534,7 +535,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
 
     /* ── Tabs ── */
     .bp-fbd-tabs {
-      display: flex; padding: 0 18px;
+      display: flex; justify-content: center; padding: 0;
       background: var(--color-surface);
       border-bottom: 0.5px solid var(--color-border);
       width: 100%;
