@@ -391,9 +391,30 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
           </div>
         </div>
 
-        <!-- NOTES — preview-first, click to edit, blur back to preview -->
-        <div class="bp-fb-notes-cell">
-          <label class="bp-fb-cell-label">NOTES</label>
+        <!-- TAB STRIP — Notes / Tests. Only shown for testable issue types
+             (bug, enhancement, prompt, question). Folders and test_case
+             entries skip the tabs and render notes inline below. -->
+        <div class="bp-fb-tabs" *ngIf="hasTabs()">
+          <button type="button"
+            class="bp-fb-tab"
+            [class.bp-fb-tab--active]="activeTab === 'notes'"
+            (click)="activeTab = 'notes'">
+            Notes
+          </button>
+          <button type="button"
+            class="bp-fb-tab"
+            [class.bp-fb-tab--active]="activeTab === 'tests'"
+            (click)="activeTab = 'tests'">
+            Tests
+            <span *ngIf="testCases.length" class="bp-fb-tab-count">{{ testCases.length }}</span>
+          </button>
+        </div>
+
+        <!-- NOTES — preview-first, click to edit, blur back to preview.
+             Always rendered when the entry has no tabs; otherwise rendered
+             only when the Notes tab is active. -->
+        <div class="bp-fb-notes-cell" *ngIf="!hasTabs() || activeTab === 'notes'">
+          <label class="bp-fb-cell-label" *ngIf="!hasTabs()">NOTES</label>
           <ng-container *ngIf="!notesEditing">
             <div class="bp-md-preview bp-fb-notes-preview"
                  [innerHTML]="editNotesPreviewHtml"
@@ -419,9 +440,8 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
         </div>
 
         <!-- TEST CASES — child notes (type=test_case) on this issue.
-             Hidden when the open entry is itself a test case. -->
-        <div class="bp-fb-tc-cell" *ngIf="editType !== 'test_case'">
-          <label class="bp-fb-cell-label">TEST CASES</label>
+             Rendered only when the Tests tab is active. -->
+        <div class="bp-fb-tc-cell" *ngIf="hasTabs() && activeTab === 'tests'">
 
           <!-- List existing test cases -->
           <div *ngIf="testCases.length === 0" class="bp-fb-tc-empty">
@@ -924,6 +944,39 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
     }
     :host ::ng-deep .bp-fb-notes-editor-wrap app-markdown-editor textarea { flex: 1; }
 
+    /* Drawer body tab strip — Notes / Tests */
+    .bp-fb-tabs {
+      display: flex; gap: 0; padding: 0 16px;
+      border-bottom: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .bp-fb-tab {
+      padding: 10px 14px;
+      background: none; border: none;
+      font-family: var(--font-body); font-size: 11px;
+      font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -0.5px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .bp-fb-tab:hover { color: var(--color-text-primary); }
+    .bp-fb-tab--active {
+      color: var(--theme-accent);
+      border-bottom-color: var(--theme-accent);
+    }
+    .bp-fb-tab-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 999px;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0;
+    }
+
     /* Test cases section */
     .bp-fb-tc-cell {
       padding: 14px 16px; border-bottom: 0.5px solid var(--color-border);
@@ -1170,6 +1223,9 @@ export class FeedbackComponent implements OnInit {
   newTcResult: 'pass' | 'fail' | 'skip' | null = null;
   tcNotesShake = false;
   tcResultShake = false;
+
+  // Drawer body tab — Notes / Tests. Only used when hasTabs() returns true.
+  activeTab: 'notes' | 'tests' = 'notes';
 
   priorityEditOptions = [
     { label: 'P1', value: 1 },
@@ -1468,9 +1524,15 @@ export class FeedbackComponent implements OnInit {
       this.expandedTestCaseId = null;
       this.newTcNotes = '';
       this.newTcResult = null;
+      this.activeTab = 'notes';
       this.loadTestCases();
       this.cdr.detectChanges();
     }
+  }
+
+  /** Tabs render only for testable issue types. */
+  hasTabs(): boolean {
+    return ['bug', 'enhancement', 'prompt', 'question'].includes(this.editType);
   }
 
   // ── Test cases ──────────────────────────────────────────────────────────
