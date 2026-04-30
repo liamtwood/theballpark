@@ -418,8 +418,9 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
           </div>
         </div>
 
-        <!-- TEST CASES — child notes (type=test_case) on this issue -->
-        <div class="bp-fb-tc-cell">
+        <!-- TEST CASES — child notes (type=test_case) on this issue.
+             Hidden when the open entry is itself a test case. -->
+        <div class="bp-fb-tc-cell" *ngIf="editType !== 'test_case'">
           <label class="bp-fb-cell-label">TEST CASES</label>
 
           <!-- List existing test cases -->
