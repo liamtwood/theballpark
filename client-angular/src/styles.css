@@ -416,6 +416,26 @@ lucide-icon svg {
 .bp-pill-in_progress { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
 .bp-dot-in_progress  { background: #3B82F6; }
 
+/* Feedback issue statuses */
+.bp-pill-open      { background: #FEF9C3; color: #854D0E; border: 0.5px solid #FDE047; }
+.bp-dot-open       { background: #CA8A04; }
+.bp-pill-done      { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-done       { background: #16A34A; }
+.bp-pill-wont_fix  { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-wont_fix   { background: #9CA3AF; }
+
+/* Test case results */
+.bp-pill-pass  { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-pass   { background: #16A34A; }
+.bp-pill-fail  { background: #FEE2E2; color: #991B1B; border: 0.5px solid #FCA5A5; }
+.bp-dot-fail   { background: #DC2626; }
+.bp-pill-skip  { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-skip   { background: #9CA3AF; }
+
+/* Acceptance criteria statuses */
+.bp-pill-agreed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
+.bp-dot-agreed  { background: #16A34A; }
+
 /* Team roles — no dot */
 .bp-pill-owner  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
 .bp-pill-member { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
