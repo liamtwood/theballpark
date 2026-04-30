@@ -490,7 +490,7 @@ const migrate = async () => {
         ADD CONSTRAINT feedback_status_check
           CHECK (status IS NULL OR status IN (
             'open', 'in_progress', 'done', 'wont_fix',
-            'pass', 'fail', 'skip', 'draft', 'agreed'
+            'pass', 'fail', 'skip', 'todo', 'draft', 'agreed'
           ));
     `);
     console.log('  Shared schema tables created.');

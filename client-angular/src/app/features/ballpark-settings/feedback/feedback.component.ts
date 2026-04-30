@@ -31,7 +31,7 @@ type ViewMode = 'grid' | 'list' | 'table';
 type OptionalField = 'due_date' | 'tags' | 'linked';
 
 const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
-const TEST_CASE_CYCLE = ['pass', 'fail', 'skip'] as const;
+const TEST_CASE_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
 const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
 
 @Component({
@@ -483,6 +483,12 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
               <div class="bp-fb-tc-results"
                 [class.bp-fb-tc-shake]="tcResultShake">
                 <button type="button"
+                  class="bp-fb-tc-result bp-fb-tc-result--todo"
+                  [class.bp-fb-tc-result--active]="newTcResult === 'todo'"
+                  (click)="newTcResult = 'todo'">
+                  <lucide-icon name="circle" [size]="11"></lucide-icon> To Do
+                </button>
+                <button type="button"
                   class="bp-fb-tc-result bp-fb-tc-result--pass"
                   [class.bp-fb-tc-result--active]="newTcResult === 'pass'"
                   (click)="newTcResult = 'pass'">
@@ -808,6 +814,10 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
       background: var(--color-surface); color: var(--color-text-muted);
       border-color: var(--color-border);
     }
+    .bp-fb-status-pill[data-status="todo"] {
+      background: var(--theme-bg); color: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
     .bp-fb-status-pill[data-status="draft"] {
       background: var(--color-quoted-bg); color: var(--color-quoted-text);
       border-color: var(--color-quoted-border);
@@ -1013,6 +1023,11 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
       color: var(--color-text-muted);
       border: 0.5px solid var(--color-border);
     }
+    .bp-fb-tc-status[data-status="todo"] {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+    }
     .bp-fb-tc-date {
       font-size: 11px; color: var(--color-text-muted);
       margin-left: auto;
@@ -1081,9 +1096,15 @@ const ACCEPTANCE_CYCLE = ['draft', 'agreed'] as const;
       color: var(--color-text-muted);
       border: 1.5px solid var(--color-border);
     }
+    .bp-fb-tc-result--todo.bp-fb-tc-result--active {
+      background: var(--theme-bg); color: var(--theme-accent);
+      border: 1.5px solid var(--theme-accent);
+    }
     .bp-fb-tc-add-btn {
       padding: 4px 12px; font-size: 11px; height: 24px;
       margin-left: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      line-height: 1;
     }
 
     @keyframes bp-fb-tc-shake {
@@ -1220,7 +1241,7 @@ export class FeedbackComponent implements OnInit {
   expandedTestCaseId: string | null = null;
   newTcNotes = '';
   newTcOwner = 'LW';
-  newTcResult: 'pass' | 'fail' | 'skip' | null = null;
+  newTcResult: 'pass' | 'fail' | 'skip' | 'todo' | null = null;
   tcNotesShake = false;
   tcResultShake = false;
 
@@ -1557,6 +1578,7 @@ export class FeedbackComponent implements OnInit {
   tcStatusIcon(status: string): string {
     if (status === 'pass') return 'check';
     if (status === 'fail') return 'x';
+    if (status === 'todo') return 'circle';
     return 'minus';
   }
 
@@ -1707,6 +1729,7 @@ export class FeedbackComponent implements OnInit {
     if (s === 'pass') return 'Pass';
     if (s === 'fail') return 'Fail';
     if (s === 'skip') return 'Skip';
+    if (s === 'todo') return 'To Do';
     if (s === 'draft') return 'Draft';
     if (s === 'agreed') return 'Agreed';
     return s;

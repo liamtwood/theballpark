@@ -431,6 +431,8 @@ lucide-icon svg {
 .bp-dot-fail   { background: #DC2626; }
 .bp-pill-skip  { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
 .bp-dot-skip   { background: #9CA3AF; }
+.bp-pill-todo  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
+.bp-dot-todo   { background: #C2410C; }
 
 /* Acceptance criteria statuses */
 .bp-pill-agreed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
