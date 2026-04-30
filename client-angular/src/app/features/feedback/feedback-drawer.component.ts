@@ -75,6 +75,9 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
               spellcheck="false"
               (blur)="commitTitle()"
               (keydown.enter)="$event.preventDefault(); titleEl.blur()">{{ editTitle }}</div>
+            <div class="bp-fbd-id-row">
+              <span class="bp-fbd-id-pill">{{ displayId() }}</span>
+            </div>
 
             <!-- Row 3: status, owner, priority + version -->
             <div class="bp-fbd-pills">
@@ -173,24 +176,80 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
             <div *ngIf="!testCases.length" class="bp-fbd-tc-empty">
               No test cases yet
             </div>
-            <div *ngFor="let tc of testCases" class="bp-fbd-tc-row">
-              <span class="bp-fbd-tc-status" [attr.data-status]="tc.status">
-                <lucide-icon [name]="tcIcon(tc.status)" [size]="12"></lucide-icon>
-              </span>
-              <app-avatar *ngIf="tc.owner" [name]="tc.owner" [size]="20"></app-avatar>
-              <div class="bp-fbd-tc-body">
-                <div class="bp-fbd-tc-meta">
-                  <span class="bp-fbd-tc-date">{{ formatTcDate(tc.created_at) }}</span>
+            <div *ngFor="let tc of testCases; trackBy: tcTrackBy"
+              class="bp-fbd-tc-row"
+              [class.bp-fbd-tc-row--editing]="editingTcId === tc.id"
+              [class.bp-fbd-tc-row--todo]="tc.status === 'todo'">
+              <ng-container *ngIf="editingTcId !== tc.id">
+                <span class="bp-fbd-tc-status" [attr.data-status]="tc.status">
+                  <lucide-icon [name]="tcIcon(tc.status)" [size]="12"></lucide-icon>
+                </span>
+                <app-avatar *ngIf="tc.owner" [name]="tc.owner" [size]="20"></app-avatar>
+                <div class="bp-fbd-tc-body" (click)="startEditTc(tc)">
+                  <div class="bp-fbd-tc-meta">
+                    <span class="bp-fbd-tc-date">{{ formatTcDate(tc.created_at) }}</span>
+                  </div>
+                  <div class="bp-fbd-tc-notes" *ngIf="tc.notes">{{ tc.notes }}</div>
+                  <div class="bp-fbd-tc-todo-label" *ngIf="tc.status === 'todo'">todo</div>
                 </div>
-                <div class="bp-fbd-tc-notes">{{ tc.notes }}</div>
+              </ng-container>
+
+              <!-- Inline edit -->
+              <div class="bp-fbd-tc-edit" *ngIf="editingTcId === tc.id">
+                <div class="bp-fbd-tc-edit-controls">
+                  <button type="button" class="bp-fbd-tc-status bp-fbd-tc-status--btn"
+                    [attr.data-status]="editTcStatus"
+                    (click)="cycleEditTcStatus()" title="Click to cycle status">
+                    <lucide-icon [name]="tcIcon(editTcStatus)" [size]="12"></lucide-icon>
+                  </button>
+                  <div class="bp-fbd-tc-owners">
+                    <button *ngFor="let m of team" type="button"
+                      class="bp-fbd-tc-owner"
+                      [class.bp-fbd-tc-owner--active]="editTcOwner === m.initials"
+                      (click)="editTcOwner = m.initials">{{ m.initials }}</button>
+                  </div>
+                  <span class="bp-fbd-spacer"></span>
+                  <button type="button" class="bp-fbd-tc-cancel" (click)="cancelEditTc()">Cancel</button>
+                  <button type="button" class="bp-fbd-tc-save" (click)="commitEditTc()">Save</button>
+                </div>
+                <textarea class="bp-fbd-tc-textarea"
+                  [(ngModel)]="editTcNotes" rows="3"
+                  [placeholder]="editTcStatus === 'todo' ? 'Describe what needs to be tested...' : 'What did you test and what happened?'"></textarea>
               </div>
             </div>
 
             <div class="bp-fbd-tc-divider"></div>
             <label class="bp-fbd-section-label">ADD TEST CASE</label>
+            <!-- Status selector FIRST -->
+            <div class="bp-fbd-tc-results bp-fbd-tc-results--add">
+              <button type="button"
+                class="bp-fbd-tc-result bp-fbd-tc-result--todo"
+                [class.bp-fbd-tc-result--active]="addTcResult === 'todo'"
+                (click)="addTcResult = 'todo'">
+                <lucide-icon name="circle" [size]="11"></lucide-icon> To Do
+              </button>
+              <button type="button"
+                class="bp-fbd-tc-result bp-fbd-tc-result--pass"
+                [class.bp-fbd-tc-result--active]="addTcResult === 'pass'"
+                (click)="addTcResult = 'pass'">
+                <lucide-icon name="check" [size]="11"></lucide-icon> Pass
+              </button>
+              <button type="button"
+                class="bp-fbd-tc-result bp-fbd-tc-result--fail"
+                [class.bp-fbd-tc-result--active]="addTcResult === 'fail'"
+                (click)="addTcResult = 'fail'">
+                <lucide-icon name="x" [size]="11"></lucide-icon> Fail
+              </button>
+              <button type="button"
+                class="bp-fbd-tc-result bp-fbd-tc-result--skip"
+                [class.bp-fbd-tc-result--active]="addTcResult === 'skip'"
+                (click)="addTcResult = 'skip'">
+                <lucide-icon name="minus" [size]="11"></lucide-icon> Skip
+              </button>
+            </div>
             <textarea class="bp-fbd-tc-textarea"
               [(ngModel)]="addTcNotes" rows="3"
-              placeholder="What did you test and what happened?"></textarea>
+              [placeholder]="addPlaceholder()"></textarea>
             <div class="bp-fbd-tc-controls">
               <div class="bp-fbd-tc-owners">
                 <button *ngFor="let m of team" type="button"
@@ -198,35 +257,10 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
                   [class.bp-fbd-tc-owner--active]="addTcOwner === m.initials"
                   (click)="addTcOwner = m.initials">{{ m.initials }}</button>
               </div>
-              <div class="bp-fbd-tc-results">
-                <button type="button"
-                  class="bp-fbd-tc-result bp-fbd-tc-result--todo"
-                  [class.bp-fbd-tc-result--active]="addTcResult === 'todo'"
-                  (click)="addTcResult = 'todo'">
-                  <lucide-icon name="circle" [size]="11"></lucide-icon> To Do
-                </button>
-                <button type="button"
-                  class="bp-fbd-tc-result bp-fbd-tc-result--pass"
-                  [class.bp-fbd-tc-result--active]="addTcResult === 'pass'"
-                  (click)="addTcResult = 'pass'">
-                  <lucide-icon name="check" [size]="11"></lucide-icon> Pass
-                </button>
-                <button type="button"
-                  class="bp-fbd-tc-result bp-fbd-tc-result--fail"
-                  [class.bp-fbd-tc-result--active]="addTcResult === 'fail'"
-                  (click)="addTcResult = 'fail'">
-                  <lucide-icon name="x" [size]="11"></lucide-icon> Fail
-                </button>
-                <button type="button"
-                  class="bp-fbd-tc-result bp-fbd-tc-result--skip"
-                  [class.bp-fbd-tc-result--active]="addTcResult === 'skip'"
-                  (click)="addTcResult = 'skip'">
-                  <lucide-icon name="minus" [size]="11"></lucide-icon> Skip
-                </button>
-                <button type="button" class="bp-fbd-tc-add-btn bp-btn-save"
-                  [disabled]="!addTcNotes.trim() || !addTcResult"
-                  (click)="submitTestCase()">Add</button>
-              </div>
+              <span class="bp-fbd-spacer"></span>
+              <button type="button" class="bp-fbd-tc-add-btn bp-btn-save"
+                [disabled]="!canAddTc()"
+                (click)="submitTestCase()">Add</button>
             </div>
           </ng-container>
 
@@ -414,6 +448,16 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
     .bp-fbd-title:focus {
       border-bottom-color: var(--theme-border, var(--color-border));
     }
+    .bp-fbd-id-row { margin-bottom: 8px; }
+    .bp-fbd-id-pill {
+      display: inline-flex; align-items: center;
+      padding: 1px 5px; border-radius: 4px;
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 10px;
+      color: var(--color-text-secondary);
+      background: var(--color-background-secondary, var(--color-surface));
+      border: 0.5px solid var(--color-border-tertiary, var(--color-border));
+    }
 
     .bp-fbd-pills {
       display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
@@ -563,6 +607,39 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       display: flex; gap: 8px; align-items: flex-start;
       padding: 8px 0;
       border-bottom: 0.5px solid var(--color-border);
+      cursor: pointer;
+    }
+    .bp-fbd-tc-row--editing { display: block; cursor: default; }
+    .bp-fbd-tc-todo-label {
+      font-size: 10px; color: var(--color-text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 4px;
+    }
+    .bp-fbd-tc-edit {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 4px 0;
+    }
+    .bp-fbd-tc-edit-controls {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .bp-fbd-tc-status--btn { cursor: pointer; }
+    .bp-fbd-tc-cancel {
+      padding: 4px 10px; font-size: 11px;
+      background: transparent;
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-secondary);
+      border-radius: 4px; cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .bp-fbd-tc-save {
+      padding: 4px 12px; font-size: 11px;
+      background: var(--theme-accent); color: #fff;
+      border: 1px solid var(--theme-accent);
+      border-radius: 4px; cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .bp-fbd-tc-results--add {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px;
     }
     .bp-fbd-tc-status {
       width: 18px; height: 18px; border-radius: 999px;
@@ -797,7 +874,13 @@ export class FeedbackDrawerComponent implements OnChanges {
   testCases: TestCase[] = [];
   addTcNotes = '';
   addTcOwner = 'LW';
-  addTcResult: 'todo' | 'pass' | 'fail' | 'skip' | null = null;
+  addTcResult: 'todo' | 'pass' | 'fail' | 'skip' = 'todo';
+
+  // Inline edit state for an existing test case
+  editingTcId: string | null = null;
+  editTcNotes = '';
+  editTcOwner: string | null = null;
+  editTcStatus: 'todo' | 'pass' | 'fail' | 'skip' = 'todo';
 
   typeOptions = [
     { label: 'Prompt',      value: 'prompt' },
@@ -866,7 +949,59 @@ export class FeedbackDrawerComponent implements OnChanges {
     this.versionEditing = false;
     this.isDirty = false;
     this.addTcNotes = '';
-    this.addTcResult = null;
+    this.addTcResult = 'todo';
+    this.editingTcId = null;
+  }
+
+  // ── Test case helpers ──
+  tcTrackBy(_i: number, tc: TestCase) { return tc.id; }
+  addPlaceholder(): string {
+    return this.addTcResult === 'todo'
+      ? 'Describe what needs to be tested...'
+      : 'What did you test and what happened?';
+  }
+  canAddTc(): boolean {
+    if (!this.addTcResult) return false;
+    if (this.addTcResult === 'todo') return true;
+    return !!this.addTcNotes.trim();
+  }
+
+  startEditTc(tc: TestCase) {
+    this.editingTcId = tc.id;
+    this.editTcNotes = tc.notes || '';
+    this.editTcOwner = tc.owner || 'LW';
+    this.editTcStatus = tc.status as any;
+    this.cdr.markForCheck();
+  }
+  cancelEditTc() {
+    this.editingTcId = null;
+    this.cdr.markForCheck();
+  }
+  cycleEditTcStatus() {
+    const cycle = ['todo', 'pass', 'fail', 'skip'] as const;
+    const i = cycle.indexOf(this.editTcStatus);
+    this.editTcStatus = cycle[(i + 1) % cycle.length];
+  }
+  commitEditTc() {
+    if (!this.editingTcId) return;
+    const id = this.editingTcId;
+    const patch = {
+      notes:  this.editTcNotes,
+      status: this.editTcStatus,
+      owner:  this.editTcOwner
+    };
+    this.feedbackSvc.patch(id, patch as any).subscribe({
+      next: updated => {
+        this.testCases = this.testCases.map(tc =>
+          tc.id === id
+            ? { ...tc, notes: updated.notes!, status: updated.status as any, owner: updated.owner }
+            : tc
+        );
+        this.editingTcId = null;
+        this.cdr.markForCheck();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed' })
+    });
   }
 
   private loadTestCases() {
@@ -892,6 +1027,16 @@ export class FeedbackDrawerComponent implements OnChanges {
 
   // ── Helpers ──
   isTestCase(): boolean { return this.editType === 'test_case'; }
+  displayId(): string {
+    if (!this.entry) return '';
+    const map: Record<string, string> = {
+      bug: 'BUG', enhancement: 'ENH', prompt: 'PRM', question: 'QST',
+      test_case: 'TST', note: 'NTE', folder: 'FLD'
+    };
+    const t = this.editType;
+    const prefix = map[t] || 'FBK';
+    return prefix + '-' + (this.entry.id || '').substring(0, 4).toUpperCase();
+  }
   showTestTab(): boolean {
     return ['bug', 'enhancement', 'prompt', 'question'].includes(this.editType);
   }
@@ -1073,9 +1218,9 @@ export class FeedbackDrawerComponent implements OnChanges {
 
   // ── Test cases ──
   submitTestCase() {
-    if (!this.entry) return;
+    if (!this.entry || !this.addTcResult) return;
+    if (!this.canAddTc()) return;
     const notes = (this.addTcNotes || '').trim();
-    if (!notes || !this.addTcResult) return;
     const owner = this.addTcOwner;
     this.feedbackSvc.create({
       parent_id: this.entry.id,
@@ -1097,7 +1242,7 @@ export class FeedbackDrawerComponent implements OnChanges {
           created_at: created.created_at
         }, ...this.testCases];
         this.addTcNotes = '';
-        this.addTcResult = null;
+        this.addTcResult = 'todo';
         this.cdr.markForCheck();
       },
       error: err => {
