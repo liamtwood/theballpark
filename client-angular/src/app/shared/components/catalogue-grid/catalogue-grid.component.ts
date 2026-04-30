@@ -36,7 +36,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     </div>
 
     <!-- CATEGORY CIRCLES (single row — level-0 or level-1 depending on drill state) -->
-    <div class="bp-cat-circles-wrap" *ngIf="categories.length">
+    <div class="bp-cat-circles-wrap" *ngIf="categories.length && showCategoryCircles">
       <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
         (click)="scrollCircles(-200)">
         <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
@@ -91,7 +91,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 
         <!-- Not drilled in: show category list -->
         <ng-container *ngIf="!drilledCategory">
-          <div class="bp-sidebar-sublabel">Category</div>
+          <div class="bp-sidebar-sublabel">{{ sidebarCategoryLabel }}</div>
           <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
             <span>All</span>
             <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
@@ -516,6 +516,11 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
+  /** When false, suppresses the top horizontal category-circle row.
+      Sidebar category list is unaffected. Default true (existing usages). */
+  @Input() showCategoryCircles: boolean = true;
+  /** Header text for the sidebar category section. Default "Category". */
+  @Input() sidebarCategoryLabel: string = 'Category';
   @Input() tags: string[] = [];
   @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';

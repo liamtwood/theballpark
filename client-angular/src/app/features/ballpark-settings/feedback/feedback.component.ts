@@ -94,6 +94,8 @@ type ViewMode = 'grid' | 'list' | 'table';
       <app-catalogue-grid
         [entities]="filteredEntities"
         [categories]="filterCategories"
+        [showCategoryCircles]="false"
+        sidebarCategoryLabel="Type"
         [layout]="catalogueLayout()"
         [showLayoutToggle]="false"
         [useCustomDetail]="false"
@@ -106,7 +108,8 @@ type ViewMode = 'grid' | 'list' | 'table';
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
         (entitySelected)="openDrawerFromEntity($event)"
-        (actionClicked)="openDrawerFromEntity($event)">
+        (actionClicked)="openDrawerFromEntity($event)"
+        (categoryChanged)="onTypeFilterChanged($event)">
 
         <!-- TABLE — only rendered when layout='table' -->
         <div catalogue-main *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
@@ -114,6 +117,7 @@ type ViewMode = 'grid' | 'list' | 'table';
             [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
             <ng-template pTemplate="header">
               <tr>
+                <th style="width:88px">ID</th>
                 <th pSortableColumn="type" style="width:120px">Type <p-sortIcon field="type"></p-sortIcon></th>
                 <th pSortableColumn="area_name" style="width:140px">Area <p-sortIcon field="area_name"></p-sortIcon></th>
                 <th style="width:200px">Pages</th>
@@ -121,10 +125,14 @@ type ViewMode = 'grid' | 'list' | 'table';
                 <th pSortableColumn="owner" style="width:90px">Owner <p-sortIcon field="owner"></p-sortIcon></th>
                 <th pSortableColumn="statusRank" style="width:120px">Status <p-sortIcon field="statusRank"></p-sortIcon></th>
                 <th pSortableColumn="versionSortKey" style="width:140px">Version <p-sortIcon field="versionSortKey"></p-sortIcon></th>
+                <th pSortableColumn="test_count" style="width:90px">Tests <p-sortIcon field="test_count"></p-sortIcon></th>
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-row>
               <tr class="bp-fb-row" (click)="openDrawerById(row.id)">
+                <td>
+                  <span class="bp-fb-id-pill">{{ row.displayId }}</span>
+                </td>
                 <td>
                   <span class="bp-fb-type-pill">
                     <lucide-icon *ngIf="row.typeIcon" [name]="row.typeIcon" [size]="11"></lucide-icon>
@@ -166,10 +174,18 @@ type ViewMode = 'grid' | 'list' | 'table';
                     <span class="bp-muted-text" *ngIf="!row.target_version">—</span>
                   </ng-template>
                 </td>
+                <td>
+                  <span *ngIf="row.test_todo_count > 0" class="bp-fb-tests-pill bp-fb-tests-pill--todo">
+                    {{ row.test_todo_count }} to do
+                  </span>
+                  <span *ngIf="!row.test_todo_count && row.test_count > 0"
+                    class="bp-fb-tests-pill bp-fb-tests-pill--done">✓</span>
+                  <span *ngIf="!row.test_count" class="bp-muted-text">—</span>
+                </td>
               </tr>
             </ng-template>
             <ng-template pTemplate="emptymessage">
-              <tr><td colspan="7" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
+              <tr><td colspan="9" class="bp-empty-state"><span class="bp-muted-text">No feedback entries match your filters.</span></td></tr>
             </ng-template>
           </p-table>
         </div>
@@ -286,6 +302,30 @@ type ViewMode = 'grid' | 'list' | 'table';
       background: var(--theme-bg); color: var(--theme-accent);
       font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
     }
+    .bp-fb-tests-pill {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 500;
+    }
+    .bp-fb-tests-pill--todo {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      border: 0.5px solid var(--theme-border, var(--color-border));
+    }
+    .bp-fb-tests-pill--done {
+      background: transparent;
+      color: var(--color-booked-text);
+      font-weight: 700;
+    }
+    .bp-fb-id-pill {
+      display: inline-flex; align-items: center;
+      padding: 1px 5px; border-radius: 4px;
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 10px;
+      color: var(--color-text-secondary);
+      background: var(--color-background-secondary, var(--color-surface));
+      border: 0.5px solid var(--color-border-tertiary, var(--color-border));
+    }
     .bp-fb-shipped-date {
       font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
     }
@@ -317,10 +357,19 @@ export class FeedbackComponent implements OnInit {
   selectedIds = new Set<string>();
 
   filterCategories: CategoryInfo[] = [
-    { id: 'folder', name: 'Folders', icon: 'folder-open' }
+    { id: 'bug',         name: 'Bug',         icon: 'bug' },
+    { id: 'enhancement', name: 'Enhancement', icon: 'lightbulb' },
+    { id: 'question',    name: 'Question',    icon: 'circle-help' },
+    { id: 'prompt',      name: 'Prompt',      icon: 'clipboard-pen' },
+    { id: 'note',        name: 'Note',        icon: 'file-text' },
+    { id: 'test_case',   name: 'Test Case',   icon: 'check-square' },
+    { id: 'folder',      name: 'Folder',      icon: 'folder-open' }
   ];
 
   filterType = '';
+  // Type filter coming from the catalogue-grid sidebar — drives the table
+  // view too (catalogue-grid only filters its own cards/list).
+  sidebarTypeFilter = 'all';
   filterPage = '';
   filterOwner = '';
   filterStatus = '';
@@ -377,6 +426,16 @@ export class FeedbackComponent implements OnInit {
     sprint: 'zap', test_run: 'flask-conical', test_case: 'check-square',
     folder: 'folder-open'
   };
+  idPrefixMap: Record<string, string> = {
+    bug: 'BUG', enhancement: 'ENH', prompt: 'PRM', question: 'QST',
+    test_case: 'TST', note: 'NTE', folder: 'FLD'
+  };
+
+  getDisplayId(entry: FeedbackEntry): string {
+    const t = this.inferType(entry);
+    const prefix = this.idPrefixMap[t] || 'FBK';
+    return prefix + '-' + (entry.id || '').substring(0, 4).toUpperCase();
+  }
 
   constructor(
     private feedbackSvc: FeedbackService,
@@ -392,23 +451,9 @@ export class FeedbackComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.feedbackSvc.getFeedbackCategories().subscribe({
+    this.feedbackSvc.getFeedbackCategories('area').subscribe({
       next: (cats) => {
-        const all = cats || [];
-        const issueCats = all
-          .filter(c => c.namespace === 'issue' || c.object_type === 'issue')
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map(c => ({
-            id: c.name.toLowerCase().replace(/\s+/g, '_'),
-            name: c.name + 's',
-            icon: c.icon_name
-          }));
-        this.filterCategories = [
-          { id: 'folder', name: 'Folders', icon: 'folder-open' },
-          ...issueCats,
-          { id: 'note', name: 'Notes', icon: 'file-text' }
-        ];
-        this.areaCategories = all.filter(c => c.namespace === 'area');
+        this.areaCategories = (cats || []).filter(c => c.namespace === 'area');
         this.loadEntries();
       },
       error: () => { this.loadEntries(); }
@@ -426,7 +471,7 @@ export class FeedbackComponent implements OnInit {
           name: e.title,
           description: e.notes,
           subtitle: this.buildSubtitle(e),
-          badge: e.version || undefined,
+          badge: this.getDisplayId(e),
           category_id: this.inferType(e),
           categoryLabel: this.inferType(e),
           icon: this.getTypeIcon(e),
@@ -497,6 +542,11 @@ export class FeedbackComponent implements OnInit {
     this.applyFilters();
   }
 
+  onTypeFilterChanged(catId: string) {
+    this.sidebarTypeFilter = catId || 'all';
+    this.applyFilters();
+  }
+
   applyFilters() {
     this.filteredEntities = this.allEntities.filter(e => {
       const raw: FeedbackEntry = e._raw;
@@ -506,6 +556,7 @@ export class FeedbackComponent implements OnInit {
         if (!matchesId && !matchesLegacyName) return false;
       }
       if (this.filterType && this.inferType(raw) !== this.filterType) return false;
+      if (this.sidebarTypeFilter !== 'all' && this.inferType(raw) !== this.sidebarTypeFilter) return false;
       if (this.filterPage && raw.page_url !== this.filterPage) return false;
       if (this.filterOwner && raw.owner !== this.filterOwner) return false;
       if (this.filterStatus && (raw.status || 'open') !== this.filterStatus) return false;
@@ -522,6 +573,7 @@ export class FeedbackComponent implements OnInit {
         : (r.target_version || 'zzz');
       return {
         id: r.id,
+        displayId: this.getDisplayId(r),
         title: r.title,
         type,
         typeLabel: this.typeLabelMap[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : '—'),
@@ -538,6 +590,8 @@ export class FeedbackComponent implements OnInit {
         shipped_date: r.shipped_date,
         target_version: r.target_version,
         versionSortKey,
+        test_count: r.test_count || 0,
+        test_todo_count: r.test_todo_count || 0,
         _raw: r
       };
     });

@@ -8,7 +8,12 @@ const BASE_SELECT = `
          fc.object_type AS category_object_type,
          ac.name        AS area_name,
          ac.icon_name   AS area_icon_name,
-         ac.icon_color  AS area_icon_color
+         ac.icon_color  AS area_icon_color,
+         (SELECT COUNT(*) FROM shared.feedback tc
+            WHERE tc.parent_id = f.id AND tc.type = 'test_case')::int AS test_count,
+         (SELECT COUNT(*) FROM shared.feedback tc
+            WHERE tc.parent_id = f.id AND tc.type = 'test_case'
+              AND tc.status = 'todo')::int AS test_todo_count
   FROM shared.feedback f
   LEFT JOIN shared.feedback_categories fc ON fc.id = f.feedback_category_id
   LEFT JOIN shared.feedback_categories ac ON ac.id = f.area_category_id

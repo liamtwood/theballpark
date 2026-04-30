@@ -41,12 +41,16 @@ export interface FeedbackEntry {
   category_object_type?: 'folder' | 'issue';
   children?: FeedbackEntry[];
   test_cases?: TestCase[];
+  /** Children with type='test_case'. Surfaced by every list query. */
+  test_count?: number;
+  /** Subset of test_count where status='todo'. */
+  test_todo_count?: number;
 }
 
 export interface TestCase {
   id: string;
   notes: string;
-  status: 'pass' | 'fail' | 'skip';
+  status: 'pass' | 'fail' | 'skip' | 'todo';
   owner?: string;
   submitted_by?: string;
   created_at: string;
