@@ -17,8 +17,15 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService, SortMeta } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { TableModule } from 'primeng/table';
+import { CalendarModule } from 'primeng/calendar';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { TieredMenuModule } from 'primeng/tieredmenu';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { MarkdownEditorComponent } from '../../../shared/components/markdown-editor/markdown-editor.component';
+
+type ViewMode = 'grid' | 'list' | 'table';
+type OptionalField = 'due_date' | 'tags' | 'linked';
 
 @Component({
   selector: 'app-feedback',
@@ -28,7 +35,8 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
     LoadingSpinnerComponent, CatalogueGridComponent, FeedbackDialogComponent,
     SidebarModule, InputTextModule, ButtonModule, DropdownModule,
     ChipsModule, CheckboxModule, ConfirmDialogModule, ToastModule,
-    TableModule, StatusBadgeComponent, MarkdownEditorComponent
+    TableModule, CalendarModule, SelectButtonModule, TieredMenuModule,
+    OverlayPanelModule, StatusBadgeComponent, MarkdownEditorComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -61,14 +69,17 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
         <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
           (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Status"></p-dropdown>
         <span class="bp-fb-filter-count">{{ filteredEntities.length }} of {{ allEntities.length }}</span>
-        <div class="bp-fb-view-toggle">
-          <button class="bp-fb-view-btn" [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'" title="Cards">
-            <lucide-icon name="layout-grid" [size]="14"></lucide-icon>
-          </button>
-          <button class="bp-fb-view-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table">
-            <lucide-icon name="list" [size]="14"></lucide-icon>
-          </button>
-        </div>
+        <p-selectButton
+          [options]="viewModeOptions"
+          [(ngModel)]="viewMode"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="bp-fb-view-select">
+          <ng-template let-item pTemplate>
+            <lucide-icon [name]="item.icon" [size]="14"></lucide-icon>
+            <span class="ml-1">{{ item.label }}</span>
+          </ng-template>
+        </p-selectButton>
       </div>
 
       <!-- BULK ACTION BAR -->
@@ -84,9 +95,11 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
         </button>
       </div>
 
-      <app-catalogue-grid *ngIf="viewMode === 'cards'"
+      <app-catalogue-grid *ngIf="viewMode !== 'table'"
         [entities]="filteredEntities"
         [categories]="filterCategories"
+        [layout]="viewMode === 'grid' ? 'card' : 'list'"
+        [showLayoutToggle]="false"
         entityType="feedback"
         entityLabel="entry"
         sectionTitle="FEEDBACK"
@@ -107,29 +120,27 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
             <tr>
               <th pSortableColumn="title">Title <p-sortIcon field="title"></p-sortIcon></th>
               <th>Area</th>
-              <th pSortableColumn="priorityRank" style="width:120px">Priority <p-sortIcon field="priorityRank"></p-sortIcon></th>
+              <th pSortableColumn="prioritySortKey" style="width:90px">Priority <p-sortIcon field="prioritySortKey"></p-sortIcon></th>
               <th pSortableColumn="statusRank" style="width:120px">Status <p-sortIcon field="statusRank"></p-sortIcon></th>
               <th pSortableColumn="versionSortKey" style="width:160px">Version <p-sortIcon field="versionSortKey"></p-sortIcon></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-row>
             <tr class="bp-fb-row" (click)="onTableRowClick(row)">
-              <td class="bp-fb-cell-title">{{ row.title }}</td>
+              <td class="bp-fb-cell-title" [title]="row.title">
+                {{ row.title.length > 40 ? (row.title | slice:0:40) + '…' : row.title }}
+              </td>
               <td>
                 <span class="bp-fb-area-pill" *ngIf="row.area_name">
-                  <lucide-icon *ngIf="row.area_icon_name" [name]="row.area_icon_name" [size]="12"></lucide-icon>
+                  <lucide-icon *ngIf="row.area_icon_name" [name]="row.area_icon_name" [size]="14"></lucide-icon>
                   {{ row.area_name }}
                 </span>
                 <span class="bp-muted-text" *ngIf="!row.area_name">—</span>
               </td>
               <td>
                 <span *ngIf="row.priority && row.status !== 'done'"
-                  class="bp-priority-pill"
-                  [class.bp-priority-critical]="row.priority === 'critical'"
-                  [class.bp-priority-high]="row.priority === 'high'"
-                  [class.bp-priority-medium]="row.priority === 'medium'"
-                  [class.bp-priority-low]="row.priority === 'low'">
-                  {{ row.priority | titlecase }}
+                  class="bp-priority-pill">
+                  P{{ row.priority }}
                 </span>
                 <span class="bp-muted-text" *ngIf="!row.priority || row.status === 'done'">—</span>
               </td>
@@ -154,137 +165,190 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
         </p-table>
       </div>
 
-      <div *ngIf="!filteredEntities.length && !loading && viewMode === 'cards'" class="bp-empty-state">
+      <div *ngIf="!filteredEntities.length && !loading && viewMode !== 'table'" class="bp-empty-state">
         <p class="bp-muted-text">No feedback entries match your filters.</p>
       </div>
     </ng-container>
 
-    <!-- Detail drawer -->
+    <!-- DETAIL DRAWER (400px) -->
     <p-sidebar [(visible)]="showDrawer" position="right"
-      styleClass="bp-drawer" [style]="{width:'480px'}"
+      styleClass="bp-drawer bp-fb-drawer" [style]="{width:'400px'}"
       [showCloseIcon]="false"
       (onHide)="closeDrawer()">
+
       <ng-template pTemplate="header">
-        <div class="bp-drawer-header-row">
-          <div class="bp-drawer-header">
-            <span class="bp-drawer-label">FEEDBACK</span>
-            <div class="bp-drawer-title">{{ selectedEntry?.title || 'Entry' }}</div>
+        <div class="bp-fb-drawer-head" *ngIf="selectedEntry">
+          <!-- Top line: label + title + close -->
+          <div class="bp-fb-drawer-toprow">
+            <div class="bp-fb-drawer-titles">
+              <span class="bp-fb-drawer-eyebrow">FEEDBACK</span>
+              <div class="bp-fb-drawer-title">{{ editTitle || selectedEntry.title || 'Entry' }}</div>
+            </div>
+            <button class="bp-icon-btn" (click)="closeDrawer()" title="Close">
+              <i class="pi pi-times"></i>
+            </button>
           </div>
-          <button class="bp-icon-btn" (click)="closeDrawer()" title="Close">
-            <i class="pi pi-times"></i>
-          </button>
+
+          <!-- Pill row -->
+          <div class="bp-fb-pill-row">
+            <!-- Type pill -->
+            <p-dropdown [(ngModel)]="editType"
+              [options]="typeEditOptions"
+              optionLabel="label" optionValue="value"
+              styleClass="bp-fb-pill bp-fb-pill-amber"
+              (onChange)="markDirty()">
+              <ng-template pTemplate="selectedItem" let-item>
+                <span class="bp-fb-pill-content">
+                  <lucide-icon *ngIf="item?.icon" [name]="item.icon" [size]="11"></lucide-icon>
+                  {{ item?.label || 'Type' }}
+                </span>
+              </ng-template>
+              <ng-template pTemplate="item" let-item>
+                <span class="bp-fb-pill-option">
+                  <lucide-icon *ngIf="item.icon" [name]="item.icon" [size]="12"></lucide-icon>
+                  {{ item.label }}
+                </span>
+              </ng-template>
+            </p-dropdown>
+
+            <!-- Status pill -->
+            <p-dropdown [(ngModel)]="editStatus"
+              [options]="statusEditOptions"
+              optionLabel="label" optionValue="value"
+              styleClass="bp-fb-pill bp-fb-pill-blue"
+              (onChange)="markDirty()">
+              <ng-template pTemplate="selectedItem" let-item>
+                <span class="bp-fb-pill-content">{{ item?.label || 'Status' }}</span>
+              </ng-template>
+            </p-dropdown>
+
+            <!-- Owner cycle pill -->
+            <button type="button" class="bp-fb-owner-pill" (click)="cycleOwner()">
+              <span class="bp-fb-owner-avatar">{{ ownerInitials() }}</span>
+              <span>{{ editOwner || 'Owner' }}</span>
+            </button>
+
+            <!-- Priority pill -->
+            <p-dropdown [(ngModel)]="editPriority"
+              [options]="priorityEditOptions"
+              optionLabel="label" optionValue="value"
+              [showClear]="true"
+              styleClass="bp-fb-pill bp-fb-pill-amber"
+              placeholder="P—"
+              (onChange)="markDirty()">
+              <ng-template pTemplate="selectedItem" let-item>
+                <span class="bp-fb-pill-content">{{ item ? item.label : 'P—' }}</span>
+              </ng-template>
+            </p-dropdown>
+
+            <!-- Add attribute -->
+            <button type="button" class="bp-fb-pill-more"
+              (click)="attrMenu.toggle($event)" title="Add attribute">
+              <i class="pi pi-ellipsis-h"></i>
+            </button>
+            <p-tieredMenu #attrMenu [model]="addAttrMenuItems" [popup]="true" appendTo="body"></p-tieredMenu>
+
+            <span class="bp-fb-pill-spacer"></span>
+
+            <!-- Target version pill -->
+            <span class="bp-fb-target-pill" *ngIf="editTargetVersion">
+              {{ editStatus === 'done' ? 'Fixed: ' : 'Target: ' }}{{ editTargetVersion }}
+            </span>
+            <button type="button" class="bp-fb-pill-more"
+              (click)="versionMenu.toggle($event)" title="Set target version">
+              <i class="pi pi-ellipsis-h"></i>
+            </button>
+            <p-tieredMenu #versionMenu [model]="versionMenuItems" [popup]="true" appendTo="body"></p-tieredMenu>
+          </div>
         </div>
       </ng-template>
-      <div class="bp-drawer-body" *ngIf="selectedEntry">
-        <!-- Type -->
-        <div class="mb-4">
-          <label class="bp-field-label">Type</label>
-          <div class="bp-type-row">
-            <button *ngFor="let t of typeEditOptions" class="bp-type-pill"
-              [class.active]="editType === t.value" (click)="editType = t.value; markDirty()">
-              <lucide-icon [name]="t.icon" [size]="12"></lucide-icon> {{ t.label }}
-            </button>
+
+      <!-- BODY -->
+      <div class="bp-fb-drawer-body" *ngIf="selectedEntry">
+        <!-- AREA + PAGES ROW -->
+        <div class="bp-fb-area-pages-row">
+          <div class="bp-fb-area-cell">
+            <label class="bp-fb-cell-label">AREA</label>
+            <p-dropdown [(ngModel)]="editAreaCategoryId"
+              [options]="areaDropdownOptions"
+              optionLabel="label" optionValue="value"
+              [showClear]="true"
+              styleClass="w-full bp-fb-area-dd"
+              placeholder="—"
+              (onChange)="markDirty()">
+              <ng-template pTemplate="selectedItem" let-item>
+                <span class="bp-fb-area-selected" *ngIf="item">
+                  <lucide-icon *ngIf="item.icon" [name]="item.icon" [size]="13"></lucide-icon>
+                  {{ item.label }}
+                </span>
+              </ng-template>
+              <ng-template pTemplate="item" let-item>
+                <span class="bp-fb-area-option">
+                  <lucide-icon *ngIf="item.icon" [name]="item.icon" [size]="13"></lucide-icon>
+                  {{ item.label }}
+                </span>
+              </ng-template>
+            </p-dropdown>
+          </div>
+          <div class="bp-fb-pages-cell">
+            <label class="bp-fb-cell-label">PAGES</label>
+            <div *ngFor="let p of editPages; let i = index" class="bp-fb-page-row">
+              <span class="bp-fb-page-url" [title]="p">{{ p }}</span>
+              <button type="button" class="bp-fb-page-x" (click)="removePage(i)">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <input pInputText [(ngModel)]="newPageInput"
+              class="w-full bp-fb-page-input"
+              placeholder="add page..."
+              (keydown.enter)="addPage()"/>
           </div>
         </div>
 
-        <!-- Status -->
-        <div class="mb-4">
-          <label class="bp-field-label">Status</label>
-          <p-dropdown [(ngModel)]="editStatus" [options]="statusEditOptions" optionLabel="label" optionValue="value"
-            styleClass="w-full" (onChange)="markDirty()"></p-dropdown>
-        </div>
-
-        <!-- Priority + Target version -->
-        <div class="bp-field-grid-2 mb-4">
-          <div>
-            <label class="bp-field-label">Priority</label>
-            <p-dropdown [(ngModel)]="editPriority" [options]="priorityEditOptions"
-              optionLabel="label" optionValue="value" [showClear]="true"
-              styleClass="w-full" (onChange)="markDirty()" placeholder="—"></p-dropdown>
-          </div>
-          <div>
-            <label class="bp-field-label">Target version</label>
-            <input pInputText [(ngModel)]="editTargetVersion" class="w-full bp-input-edit"
-              placeholder="e.g. v2.0" (ngModelChange)="markDirty()"/>
-          </div>
-        </div>
-
-        <!-- Owner -->
-        <div class="mb-4">
-          <label class="bp-field-label">Owner</label>
-          <div class="bp-owner-row">
-            <button *ngFor="let m of team" class="bp-owner-circle"
-              [class.active]="editOwner === m.name" (click)="editOwner = m.name; markDirty()">
-              {{ m.initials }}
-            </button>
-            <button class="bp-owner-circle" [class.active]="!editOwner"
-              (click)="editOwner = ''; markDirty()" title="Unassign">—</button>
-          </div>
-        </div>
-
-        <!-- Meeting date if present -->
-        <div class="mb-4" *ngIf="selectedEntry.event_date">
-          <label class="bp-field-label">Meeting date</label>
-          <input pInputText [value]="formatDate(selectedEntry.event_date)" class="w-full bp-field-readonly" readonly/>
-        </div>
-
-        <div class="mb-4">
-          <label class="bp-field-label">Title</label>
-          <input pInputText [(ngModel)]="editTitle" class="w-full bp-input-edit" (ngModelChange)="markDirty()"/>
-        </div>
-        <div class="mb-4">
-          <label class="bp-field-label">Notes</label>
+        <!-- NOTES -->
+        <div class="bp-fb-notes-cell">
+          <label class="bp-fb-cell-label">NOTES</label>
           <app-markdown-editor
             [value]="editNotes"
             (valueChange)="editNotes = $event; markDirty()"
             [rows]="10"
+            [showLabel]="false"
             placeholder="Add notes, specs, requirements...">
           </app-markdown-editor>
         </div>
 
-        <div class="bp-field-grid-2 mb-4">
-          <div>
-            <label class="bp-field-label">Page</label>
-            <input pInputText [value]="selectedEntry.page_url || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Date</label>
-            <input pInputText [value]="formatDateTime(selectedEntry.created_at)" class="w-full bp-field-readonly" readonly/>
-          </div>
+        <!-- OPTIONAL: Due date -->
+        <div *ngIf="shownFields.has('due_date')" class="bp-fb-opt-cell">
+          <label class="bp-fb-cell-label">DUE DATE</label>
+          <p-calendar [(ngModel)]="editDueDate" [showIcon]="true" dateFormat="dd M yy"
+            styleClass="w-full" inputStyleClass="w-full bp-input-edit"
+            (onSelect)="markDirty()" (onClearClick)="markDirty()" [showClear]="true">
+          </p-calendar>
         </div>
 
-        <!-- Tags -->
-        <div class="mb-4">
-          <label class="bp-field-label">Tags</label>
+        <!-- OPTIONAL: Tags -->
+        <div *ngIf="shownFields.has('tags')" class="bp-fb-opt-cell">
+          <label class="bp-fb-cell-label">TAGS</label>
           <p-chips [(ngModel)]="editTags" styleClass="w-full bp-input-edit" [addOnBlur]="true"
             placeholder="Add tag..." (ngModelChange)="markDirty()"></p-chips>
         </div>
 
-        <!-- Children / action items (meeting notes only) -->
-        <div *ngIf="childEntries.length && selectedEntry.event_date" class="mt-4">
-          <div class="bp-section-header mb-3">
-            <span class="bp-section-title">ACTION ITEMS</span>
-          </div>
-          <div *ngFor="let child of childEntries" class="bp-child-row" (click)="selectChild(child)">
-            <span class="bp-child-icon">
-              <lucide-icon [name]="getTypeIcon(child)" [size]="13"></lucide-icon>
-            </span>
-            <span class="bp-child-title">{{ child.title }}</span>
-            <span class="bp-child-owner" *ngIf="child.owner">{{ getInitials(child.owner) }}</span>
-            <span class="bp-child-due" *ngIf="child.due_date">{{ formatDate(child.due_date) }}</span>
-          </div>
+        <!-- OPTIONAL: Linked folders -->
+        <div *ngIf="shownFields.has('linked')" class="bp-fb-opt-cell">
+          <label class="bp-fb-cell-label">LINKED TO</label>
+          <div class="bp-muted-text" style="font-size:12px;">No folders linked yet.</div>
         </div>
 
-        <div *ngIf="selectedEntry.event_date" class="mt-4">
-          <button class="bp-add-action-btn" (click)="openAddAction()">
-            <i class="pi pi-plus" style="font-size:11px;"></i> Add action item
-          </button>
+        <!-- META -->
+        <div class="bp-fb-meta">
+          Logged by {{ selectedEntry.submitted_by || 'Unknown' }} ·
+          {{ formatDate(selectedEntry.created_at) }}
         </div>
       </div>
 
       <ng-template pTemplate="footer">
-        <div class="bp-drawer-footer">
-          <button class="bp-btn-delete" (click)="confirmDelete()">Delete</button>
+        <div class="bp-drawer-footer bp-fb-drawer-footer">
+          <button class="bp-fb-btn-delete" (click)="confirmDelete()">Delete</button>
           <span style="flex:1"></span>
           <button class="bp-btn-cancel" (click)="closeDrawer()">Cancel</button>
           <button class="bp-btn-save" [disabled]="!isDirty" (click)="saveDetail()">Save</button>
@@ -298,7 +362,7 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
       initialFlow="issue"
       [parentId]="selectedEntry?.id || ''"
       [parentTitle]="selectedEntry?.title || ''"
-      (submitted)="onActionAdded()">
+      (submitted)="loadEntries()">
     </app-feedback-dialog>
 
     <p-confirmDialog></p-confirmDialog>
@@ -337,16 +401,19 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
     :host ::ng-deep .bp-fb-filter .p-dropdown { font-size: 12px !important; }
     .bp-fb-filter-count { font-size: 12px; color: var(--color-text-muted); margin-left: auto; }
 
-    /* View toggle (Cards / Table) */
-    .bp-fb-view-toggle { display: flex; gap: 4px; }
-    .bp-fb-view-btn {
-      width: 30px; height: 30px; border-radius: 6px;
-      border: 0.5px solid var(--color-border); background: var(--color-surface);
-      color: var(--color-text-muted); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    /* View select (Grid / List / Table) — uses p-selectButton */
+    :host ::ng-deep .bp-fb-view-select .p-button {
+      padding: 6px 10px; font-size: 12px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-muted);
+      display: inline-flex; align-items: center; gap: 4px;
     }
-    .bp-fb-view-btn:hover { color: var(--theme-accent); }
-    .bp-fb-view-btn.active { background: var(--theme-bg); border-color: var(--theme-accent); color: var(--theme-accent); }
+    :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
+      background: var(--theme-bg);
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
 
     /* Table view */
     .bp-fb-table-wrap { padding: 12px 24px; }
@@ -373,21 +440,16 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
       font-size: 11px; font-weight: 500;
     }
 
-    /* Priority pills */
+    /* Priority pill (open issues only) — P1-P5 amber */
     .bp-priority-pill {
       display: inline-flex; padding: 2px 8px; border-radius: 10px;
-      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+      background: var(--theme-bg); color: var(--theme-accent);
     }
-    .bp-priority-critical { background: var(--color-danger-bg); color: var(--color-danger-text); }
-    .bp-priority-high     { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
-    .bp-priority-medium   { background: var(--theme-bg); color: var(--theme-accent); }
-    .bp-priority-low      { color: var(--color-text-muted); }
-    .bp-muted-text        { color: var(--color-text-muted); font-size: 12px; }
+    .bp-muted-text { color: var(--color-text-muted); font-size: 12px; }
 
     /* Version cell — combines shipped_date + version pill */
-    .bp-fb-shipped-date {
-      font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
-    }
+    .bp-fb-shipped-date { font-size: 11px; color: var(--color-text-muted); margin-right: 6px; }
     .bp-fb-version-pill {
       display: inline-flex; padding: 1px 7px; border-radius: 10px;
       background: var(--theme-bg); color: var(--theme-accent);
@@ -410,74 +472,186 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
     .bp-fb-bulk-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
     .bp-fb-bulk-btn--danger:hover { border-color: var(--color-action-text); color: var(--color-action-text); }
 
-    /* Status badge */
-    .bp-status-pill {
-      display: inline-flex; padding: 2px 8px; border-radius: 10px;
-      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
-    }
-    .bp-status-open { background: var(--color-quoted-bg); color: var(--color-quoted-text); }
-    .bp-status-in_progress { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
-    .bp-status-done { background: var(--color-booked-bg); color: var(--color-booked-text); }
-    .bp-status-wont_fix { background: var(--color-surface); color: var(--color-text-muted); }
+    /* ─────────────────────────────────────────────────────────────────
+       DRAWER (400px wide) — parchment header with pill row + body grid
+       ───────────────────────────────────────────────────────────────── */
 
-    /* Detail panel */
-    .bp-notes-block {
-      font-size: 13px; color: var(--color-text-secondary); line-height: 1.6;
-      padding: 10px 12px; background: var(--theme-bg); border-radius: 8px; white-space: pre-wrap;
+    :host ::ng-deep .bp-fb-drawer .p-sidebar-content {
+      display: flex; flex-direction: column; padding: 0; height: 100%;
     }
-    .bp-owner-row { display: flex; gap: 6px; margin-top: 4px; }
-    .bp-owner-circle {
-      width: 32px; height: 32px; border-radius: 50%; font-size: 10px; font-weight: 600;
-      border: 2px solid var(--color-border); background: var(--color-surface);
-      color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
-      display: flex; align-items: center; justify-content: center; font-family: var(--font-body);
+    :host ::ng-deep .bp-fb-drawer .p-sidebar-header {
+      background: var(--theme-bg); padding: 16px 20px 12px;
+      border-bottom: 0.5px solid var(--color-border);
     }
-    .bp-owner-circle:hover { border-color: var(--theme-accent); }
-    .bp-owner-circle.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
-    .bp-type-row { display: flex; flex-wrap: wrap; gap: 6px; }
-    .bp-type-pill {
-      display: flex; align-items: center; gap: 4px;
-      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
-      border: 1px solid var(--color-border); background: var(--color-surface);
-      color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
+
+    .bp-fb-drawer-head { width: 100%; }
+    .bp-fb-drawer-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+    .bp-fb-drawer-titles { flex: 1; min-width: 0; }
+    .bp-fb-drawer-eyebrow {
+      display: block; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--theme-accent);
+    }
+    .bp-fb-drawer-title {
+      font-family: var(--font-display); font-size: 16px; font-weight: 400;
+      line-height: 1.25; color: var(--color-text-primary);
+      margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+
+    /* Pill row */
+    .bp-fb-pill-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    }
+    .bp-fb-pill-spacer { flex: 1; }
+
+    /* p-dropdown rendered as a pill — shared base */
+    :host ::ng-deep .bp-fb-pill .p-dropdown {
+      border-radius: 999px; min-width: 0; height: 24px;
+      border: 0.5px solid transparent;
+      display: inline-flex; align-items: center;
+    }
+    :host ::ng-deep .bp-fb-pill .p-dropdown .p-dropdown-label {
+      padding: 0 8px; font-size: 11px; font-weight: 500;
+      display: inline-flex; align-items: center;
+    }
+    :host ::ng-deep .bp-fb-pill .p-dropdown .p-dropdown-trigger { width: 20px; }
+    :host ::ng-deep .bp-fb-pill-amber .p-dropdown {
+      background: var(--theme-bg); color: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
+    :host ::ng-deep .bp-fb-pill-amber .p-dropdown .p-dropdown-label,
+    :host ::ng-deep .bp-fb-pill-amber .p-dropdown .p-dropdown-trigger {
+      color: var(--theme-accent);
+    }
+    :host ::ng-deep .bp-fb-pill-blue .p-dropdown {
+      background: var(--color-quoted-bg); color: var(--color-quoted-text);
+      border-color: var(--color-quoted-border);
+    }
+    :host ::ng-deep .bp-fb-pill-blue .p-dropdown .p-dropdown-label,
+    :host ::ng-deep .bp-fb-pill-blue .p-dropdown .p-dropdown-trigger {
+      color: var(--color-quoted-text);
+    }
+    .bp-fb-pill-content { display: inline-flex; align-items: center; gap: 4px; }
+    .bp-fb-pill-option { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* Owner cycle pill */
+    .bp-fb-owner-pill {
+      height: 24px; padding: 0 10px 0 2px; border-radius: 999px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 500; cursor: pointer;
       font-family: var(--font-body);
     }
-    .bp-type-pill:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-type-pill.active { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
-    .bp-owner-display { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; color: var(--color-text-primary); }
-    .bp-owner-badge {
-      width: 28px; height: 28px; border-radius: 50%; font-size: 10px; font-weight: 600;
-      background: var(--theme-accent); color: #fff; display: flex; align-items: center; justify-content: center;
+    .bp-fb-owner-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--theme-accent); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
     }
-    .bp-child-row {
-      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-      border: 0.5px solid var(--color-border); border-radius: 8px; margin-bottom: 6px;
-      cursor: pointer; transition: border-color 0.15s;
+
+    /* Target version pill (parchment, read-only display) */
+    .bp-fb-target-pill {
+      height: 24px; padding: 0 10px; border-radius: 999px;
+      background: var(--theme-bg); color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 500;
     }
-    .bp-child-row:hover { border-color: var(--theme-accent); }
-    .bp-child-icon { color: var(--theme-accent); display: flex; }
-    .bp-child-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--color-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bp-child-owner {
-      width: 24px; height: 24px; border-radius: 50%; font-size: 9px; font-weight: 600;
-      background: var(--theme-accent); color: #fff; flex-shrink: 0;
+
+    /* "..." overflow trigger */
+    .bp-fb-pill-more {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-muted); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+    .bp-fb-pill-more:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+
+    /* Drawer body */
+    :host ::ng-deep .bp-fb-drawer .p-sidebar-content > div.bp-fb-drawer-body {
+      flex: 1 1 auto; min-height: 0;
+    }
+    .bp-fb-drawer-body {
+      display: flex; flex-direction: column;
+      padding: 0; height: 100%;
+    }
+
+    /* Area + Pages row — divided by 0.5px border */
+    .bp-fb-area-pages-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-fb-area-cell, .bp-fb-pages-cell { padding: 14px 16px; }
+    .bp-fb-area-cell { border-right: 0.5px solid var(--color-border); }
+    .bp-fb-cell-label {
+      display: block; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--color-text-muted); margin-bottom: 6px;
+    }
+    .bp-fb-area-selected, .bp-fb-area-option {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px;
+    }
+    :host ::ng-deep .bp-fb-area-dd .p-dropdown {
+      width: 100%; height: 28px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+    }
+
+    /* Pages list */
+    .bp-fb-page-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 3px 0;
+    }
+    .bp-fb-page-url {
+      flex: 1; color: var(--color-text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-fb-page-x {
+      width: 18px; height: 18px; border: none; background: none;
+      color: var(--color-text-muted); cursor: pointer; padding: 0;
       display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
     }
-    .bp-child-due { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
-    .bp-add-action-btn {
-      display: flex; align-items: center; gap: 4px;
-      padding: 6px 14px; font-size: 12px; font-weight: 500;
-      font-family: var(--font-body); border: 1px solid var(--theme-accent);
-      background: transparent; color: var(--theme-accent);
-      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    .bp-fb-page-x:hover { color: var(--color-action-text); }
+    :host ::ng-deep .bp-fb-page-input {
+      font-size: 12px; padding: 4px 8px; height: 26px;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
     }
-    .bp-add-action-btn:hover { background: var(--theme-accent); color: #fff; }
-    .bp-drawer-footer { display: flex; align-items: center; gap: 8px; padding: 0; }
-    .bp-btn-delete {
-      padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
-      border: 1px solid var(--color-border); background: transparent;
-      color: var(--color-text-muted); cursor: pointer; font-family: var(--font-body);
+
+    /* Notes — fills all remaining space */
+    .bp-fb-notes-cell {
+      flex: 1 1 auto; min-height: 0;
+      padding: 14px 16px;
+      display: flex; flex-direction: column;
+      border-bottom: 0.5px solid var(--color-border);
     }
-    .bp-btn-delete:hover { color: var(--color-action-text); border-color: var(--color-action-text); }
+    :host ::ng-deep .bp-fb-notes-cell app-markdown-editor {
+      flex: 1; display: flex; flex-direction: column; height: 100%;
+    }
+    :host ::ng-deep .bp-fb-notes-cell app-markdown-editor textarea { flex: 1; }
+
+    /* Optional fields */
+    .bp-fb-opt-cell { padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); }
+
+    /* Meta */
+    .bp-fb-meta {
+      padding: 12px 16px; font-size: 11px; color: var(--color-text-secondary);
+    }
+
+    /* Footer */
+    .bp-fb-drawer-footer { display: flex; align-items: center; gap: 8px; padding: 0; }
+    .bp-fb-btn-delete {
+      padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+      border: none; background: transparent;
+      color: var(--color-action-text); cursor: pointer; font-family: var(--font-body);
+    }
+    .bp-fb-btn-delete:hover { text-decoration: underline; }
     .bp-btn-cancel {
       padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500;
       border: 1px solid var(--color-border); background: transparent;
@@ -489,6 +663,12 @@ import { MarkdownEditorComponent } from '../../../shared/components/markdown-edi
       color: #fff; cursor: pointer; font-family: var(--font-body);
     }
     .bp-btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-icon-btn {
+      width: 28px; height: 28px; border: none; background: none;
+      color: var(--color-text-muted); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .bp-icon-btn:hover { color: var(--theme-accent); background: var(--theme-bg); border-radius: 4px; }
   `]
 })
 export class FeedbackComponent implements OnInit {
@@ -496,14 +676,10 @@ export class FeedbackComponent implements OnInit {
   allEntities: CatalogueEntity[] = [];
   filteredEntities: CatalogueEntity[] = [];
   entries: FeedbackEntry[] = [];
-  childEntries: FeedbackEntry[] = [];
   emptySet = new Set<string>();
   team = TEAM_MEMBERS;
   selectedIds = new Set<string>();
 
-  // Loaded from shared.feedback_categories on init. Aggregate 'folder' + 'note'
-  // pseudo-pills are added at the front (they cover any folder / any note row,
-  // not a single category).
   filterCategories: CategoryInfo[] = [
     { id: 'folder', name: 'Folders', icon: 'folder-open' }
   ];
@@ -518,29 +694,26 @@ export class FeedbackComponent implements OnInit {
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
-  // View toggle (Cards | Table). Cards mode keeps catalogue-grid's own
-  // List/Grid toggle inside it.
-  viewMode: 'cards' | 'table' = 'cards';
-
-  // Pre-projected rows for the p-table: pulls priority/version/area off
-  // _raw and adds numeric sort keys so PrimeNG's default sort works.
-  tableRows: any[] = [];
-
-  // Default sort: priority DESC then status ASC (open first, done last).
-  defaultTableSort: SortMeta[] = [
-    { field: 'priorityRank', order: -1 },
-    { field: 'statusRank',   order: 1 }
+  // 3-way SelectButton: Grid / List / Table
+  viewMode: ViewMode = 'grid';
+  viewModeOptions = [
+    { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layers' },
+    { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
+    { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
   ];
 
-  private readonly priorityRanks: Record<string, number> = {
-    critical: 4, high: 3, medium: 2, low: 1
-  };
+  tableRows: any[] = [];
+
+  // Default sort: priority ASC (1 first), then status open → done.
+  defaultTableSort: SortMeta[] = [
+    { field: 'prioritySortKey', order: 1 },
+    { field: 'statusRank',      order: 1 }
+  ];
+
   private readonly statusRanks: Record<string, number> = {
     open: 0, in_progress: 1, done: 2, wont_fix: 3
   };
 
-  // Loaded from shared.feedback_categories (namespace='area') on init.
-  // Used to resolve area name → icon for the circles row + per-row badge.
   areaCategories: FeedbackCategory[] = [];
   typeOptions = [{ label: 'All types', value: '' }];
   pageOptions = [{ label: 'All pages', value: '' }];
@@ -555,7 +728,7 @@ export class FeedbackComponent implements OnInit {
   ownerAssignOptions = TEAM_MEMBERS.map(m => ({ label: m.name, value: m.name }));
   bulkAssignOwner = '';
 
-  // Detail panel edit state
+  // Detail drawer state
   showDrawer = false;
   showActionDialog = false;
   selectedEntry: FeedbackEntry | null = null;
@@ -563,33 +736,67 @@ export class FeedbackComponent implements OnInit {
   editNotes = '';
   editOwner = '';
   editStatus = 'open';
-  editType = 'action';
+  editType = 'bug';
   editTags: string[] = [];
-  editPriority: string | null = null;
-  editTargetVersion = '';
+  editPriority: number | null = null;
+  editTargetVersion: string | null = null;
+  editAreaCategoryId: string | null = null;
+  editPages: string[] = [];
+  editDueDate: Date | null = null;
+  newPageInput = '';
+  shownFields = new Set<OptionalField>();
   isDirty = false;
 
+  // Header dropdown options
   priorityEditOptions = [
-    { label: 'Critical', value: 'critical' },
-    { label: 'High',     value: 'high'     },
-    { label: 'Medium',   value: 'medium'   },
-    { label: 'Low',      value: 'low'      }
+    { label: 'P1', value: 1 },
+    { label: 'P2', value: 2 },
+    { label: 'P3', value: 3 },
+    { label: 'P4', value: 4 },
+    { label: 'P5', value: 5 }
   ];
 
+  // Combined Type options — issue types + folder types in one dropdown.
   typeEditOptions = [
-    { label: 'Action', value: 'action', icon: 'check-square' },
-    { label: 'Bug', value: 'bug', icon: 'bug' },
-    { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb' },
-    { label: 'Question', value: 'question', icon: 'circle-help' },
-    { label: 'Note', value: 'note', icon: 'clipboard-pen' }
+    { label: 'Bug',         value: 'bug',         icon: 'bug',           kind: 'issue' as const },
+    { label: 'Enhancement', value: 'enhancement', icon: 'lightbulb',     kind: 'issue' as const },
+    { label: 'Question',    value: 'question',    icon: 'circle-help',   kind: 'issue' as const },
+    { label: 'Prompt',      value: 'prompt',      icon: 'clipboard-pen', kind: 'issue' as const },
+    { label: 'Minutes',     value: 'minutes',     icon: 'calendar',      kind: 'folder' as const },
+    { label: 'Sprint',      value: 'sprint',      icon: 'zap',           kind: 'folder' as const },
+    { label: 'Test Run',    value: 'test_run',    icon: 'flask-conical', kind: 'folder' as const }
   ];
 
   statusEditOptions = [
-    { label: 'Open', value: 'open' },
+    { label: 'Open',        value: 'open' },
     { label: 'In Progress', value: 'in_progress' },
-    { label: 'Done', value: 'done' },
-    { label: "Won't Fix", value: 'wont_fix' }
+    { label: 'Done',        value: 'done' },
+    { label: "Won't Fix",   value: 'wont_fix' }
   ];
+
+  // Area dropdown — populated from shared.feedback_categories (namespace='area')
+  areaDropdownOptions: { label: string; value: string; icon: string }[] = [];
+
+  // "Add attribute" menu — disables already-shown rows so a field can't be
+  // added twice.
+  get addAttrMenuItems() {
+    return [
+      { label: 'Due date',      icon: 'pi pi-calendar',    disabled: this.shownFields.has('due_date'), command: () => this.addField('due_date') },
+      { label: 'Tags',          icon: 'pi pi-tag',         disabled: this.shownFields.has('tags'),     command: () => this.addField('tags') },
+      { label: 'Linked folder', icon: 'pi pi-link',        disabled: this.shownFields.has('linked'),   command: () => this.addField('linked') }
+    ];
+  }
+
+  // Version menu
+  get versionMenuItems() {
+    return [
+      { label: 'v2.0', command: () => this.setTargetVersion('v2.0') },
+      { label: 'v2.1', command: () => this.setTargetVersion('v2.1') },
+      { label: 'v3.0', command: () => this.setTargetVersion('v3.0') },
+      { separator: true },
+      { label: 'Clear version', command: () => this.setTargetVersion(null) }
+    ];
+  }
 
   constructor(
     private feedbackSvc: FeedbackService,
@@ -599,7 +806,6 @@ export class FeedbackComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Load all feedback categories in one call, then split by namespace.
     this.feedbackSvc.getFeedbackCategories().subscribe({
       next: (cats) => {
         const all = cats || [];
@@ -617,6 +823,9 @@ export class FeedbackComponent implements OnInit {
           { id: 'note', name: 'Notes', icon: 'file-text' }
         ];
         this.areaCategories = all.filter(c => c.namespace === 'area');
+        this.areaDropdownOptions = [...this.areaCategories]
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(a => ({ label: a.name, value: a.id, icon: a.icon_name || 'circle' }));
         this.loadEntries();
       },
       error: () => { this.loadEntries(); }
@@ -649,9 +858,6 @@ export class FeedbackComponent implements OnInit {
           _raw: e
         }));
 
-        // Build area circles from shared.feedback_categories (namespace='area'),
-        // showing only areas referenced by at least one entry. Falls back to
-        // the legacy `area` string when area_category_id is missing.
         const referenced = new Set<string>();
         topLevel.forEach(e => {
           if (e.area_category_id) referenced.add(e.area_category_id);
@@ -666,7 +872,6 @@ export class FeedbackComponent implements OnInit {
           ...dbCircles
         ];
 
-        // Build dynamic filter options
         const pages = [...new Set(topLevel.map(e => e.page_url).filter(Boolean) as string[])].sort();
         this.pageOptions = [{ label: 'All pages', value: '' }, ...pages.map(p => ({ label: p, value: p }))];
         const types = [...new Set(topLevel.map(e => this.inferType(e)))];
@@ -717,11 +922,9 @@ export class FeedbackComponent implements OnInit {
     this.tableRows = this.filteredEntities.map(e => {
       const r: FeedbackEntry = e._raw;
       const status = r.status || 'open';
-      const priority = r.priority || null;
-      // Sort keys for the table — done rows fall to the bottom, then by
-      // shipped_date (older = lower); open rows order by target_version
-      // string (lex sort works for v2.0 < v2.1 < v2.10 only by accident, fine
-      // for our flat range).
+      const priority = r.priority ?? null;
+      // Done rows fall to the bottom of the version sort; open rows order by
+      // target_version string (lex sort handles flat v2.0 < v2.1 < v3.0).
       const versionSortKey = status === 'done'
         ? (r.shipped_date || '0000-00-00')
         : (r.target_version || 'zzz');
@@ -732,7 +935,8 @@ export class FeedbackComponent implements OnInit {
         area_icon_name: r.area_icon_name,
         priority,
         status,
-        priorityRank: priority ? (this.priorityRanks[priority] || 0) : 0,
+        // 99 sentinel pushes priority-less rows to the end of an ASC sort.
+        prioritySortKey: priority ?? 99,
         statusRank: this.statusRanks[status] ?? 99,
         version: r.version,
         shipped_date: r.shipped_date,
@@ -746,7 +950,6 @@ export class FeedbackComponent implements OnInit {
   }
 
   onTableRowClick(row: any) {
-    // Mirrors the action button on the cards view — open the detail drawer.
     const entity = this.allEntities.find(e => e.id === row.id);
     if (entity) this.onEntitySelected(entity);
   }
@@ -765,61 +968,118 @@ export class FeedbackComponent implements OnInit {
     return 'bug';
   }
 
-  // Preview (click row) — lets grid show built-in detail panel
   onEntityPreview(entity: CatalogueEntity) {
     const entry = entity._raw as FeedbackEntry;
     if (entry?.object_type === 'folder') {
       window.open('/folder/' + entry.id, '_blank');
     }
-    // Otherwise grid handles its own preview panel
   }
 
-  // View (click action button) — opens full edit drawer
   onEntitySelected(entity: CatalogueEntity) {
     this.selectedEntry = entity._raw || this.entries.find(e => e.id === entity.id) || null;
-    this.childEntries = [];
     if (this.selectedEntry) {
+      // Folder rows route to the dedicated meeting page.
       if (this.selectedEntry.event_date) {
         window.open('/folder/' + this.selectedEntry.id, '_blank');
         return;
       }
-      this.editTitle = this.selectedEntry.title;
-      this.editNotes = this.selectedEntry.notes || '';
-      this.editOwner = this.selectedEntry.owner || '';
-      this.editStatus = this.selectedEntry.status || 'open';
-      this.editType = this.inferType(this.selectedEntry);
-      this.editTags = [];
-      this.editPriority = this.selectedEntry.priority || null;
-      this.editTargetVersion = this.selectedEntry.target_version || '';
+      const e = this.selectedEntry;
+      this.editTitle = e.title;
+      this.editNotes = e.notes || '';
+      this.editOwner = e.owner || '';
+      this.editStatus = e.status || 'open';
+      this.editType = this.inferType(e);
+      this.editTags = e.tags || [];
+      this.editPriority = e.priority ?? null;
+      this.editTargetVersion = e.target_version || null;
+      this.editAreaCategoryId = e.area_category_id || null;
+      // Seed pages: prefer pages[]; fall back to single page_url so legacy
+      // rows show their captured URL.
+      this.editPages = (e.pages && e.pages.length)
+        ? [...e.pages]
+        : (e.page_url ? [e.page_url] : []);
+      this.editDueDate = e.due_date ? new Date(e.due_date) : null;
+      this.newPageInput = '';
+      // Pre-show optional fields if the row already has data for them.
+      this.shownFields = new Set<OptionalField>();
+      if (e.due_date)        this.shownFields.add('due_date');
+      if (e.tags?.length)    this.shownFields.add('tags');
       this.isDirty = false;
       this.showDrawer = true;
-      this.feedbackSvc.getChildren(this.selectedEntry.id).subscribe({
-        next: (children) => { this.childEntries = children || []; this.cdr.detectChanges(); }
-      });
       this.cdr.detectChanges();
     }
   }
 
   markDirty() { this.isDirty = true; }
 
+  cycleOwner() {
+    // Cycles LW → BP → MG → JC → unassigned → LW…
+    const order = [...TEAM_MEMBERS.map(m => m.name), ''];
+    const idx = order.indexOf(this.editOwner || '');
+    this.editOwner = order[(idx + 1) % order.length];
+    this.markDirty();
+  }
+
+  ownerInitials(): string {
+    if (!this.editOwner) return '—';
+    const m = this.team.find(t => t.name === this.editOwner);
+    return m?.initials || this.editOwner.substring(0, 2).toUpperCase();
+  }
+
+  setTargetVersion(v: string | null) {
+    this.editTargetVersion = v;
+    this.markDirty();
+  }
+
+  addField(f: OptionalField) {
+    this.shownFields.add(f);
+    this.cdr.detectChanges();
+  }
+
+  addPage() {
+    const v = this.newPageInput.trim();
+    if (!v) return;
+    if (!this.editPages.includes(v)) {
+      this.editPages = [...this.editPages, v];
+      this.markDirty();
+    }
+    this.newPageInput = '';
+  }
+
+  removePage(i: number) {
+    this.editPages = this.editPages.filter((_, idx) => idx !== i);
+    this.markDirty();
+  }
+
   saveDetail() {
     if (!this.selectedEntry) return;
+    const folderTypeValue = this.typeEditOptions.find(t => t.value === this.editType);
+    const objectType = folderTypeValue?.kind === 'folder' ? 'folder' : 'issue';
     this.feedbackSvc.patch(this.selectedEntry.id, {
       title: this.editTitle,
-      notes: this.editNotes || undefined,
-      owner: this.editOwner || undefined,
+      notes: this.editNotes || null,
+      owner: this.editOwner || null,
       status: this.editStatus,
       type: this.editType,
-      priority: this.editPriority || null,
-      target_version: this.editTargetVersion?.trim() || null,
+      object_type: objectType,
+      area_category_id: this.editAreaCategoryId,
+      priority: this.editPriority,
+      target_version: this.editTargetVersion,
+      pages: this.editPages,
+      tags: this.editTags,
+      due_date: this.editDueDate ? this.toIsoDate(this.editDueDate) : null
     } as any).subscribe({
       next: () => {
         this.isDirty = false;
-        this.msg.add({ severity: 'success', summary: 'Saved' });
+        this.msg.add({ severity: 'success', summary: 'Saved ✓' });
         this.loadEntries();
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private toIsoDate(d: Date): string {
+    return d.toISOString().split('T')[0];
   }
 
   confirmDelete() {
@@ -837,12 +1097,6 @@ export class FeedbackComponent implements OnInit {
   }
 
   // Bulk actions
-  toggleSelect(id: string) {
-    if (this.selectedIds.has(id)) this.selectedIds.delete(id);
-    else this.selectedIds.add(id);
-    this.cdr.detectChanges();
-  }
-
   bulkMarkDone() {
     const ids = [...this.selectedIds];
     let done = 0;
@@ -882,37 +1136,11 @@ export class FeedbackComponent implements OnInit {
     });
   }
 
-  selectChild(child: FeedbackEntry) {
-    this.selectedEntry = child;
-    this.editTitle = child.title;
-    this.editNotes = child.notes || '';
-    this.editOwner = child.owner || '';
-    this.editStatus = child.status || 'open';
-    this.editType = this.inferType(child);
-    this.editTags = [];
-    this.editPriority = child.priority || null;
-    this.editTargetVersion = child.target_version || '';
-    this.isDirty = false;
-    this.childEntries = [];
-    this.cdr.detectChanges();
-  }
-
-  openAddAction() { this.showActionDialog = true; this.cdr.detectChanges(); }
-
-  onActionAdded() {
-    if (this.selectedEntry) {
-      this.feedbackSvc.getChildren(this.selectedEntry.id).subscribe({
-        next: (children) => { this.childEntries = children || []; this.cdr.detectChanges(); }
-      });
-    }
-    this.loadEntries();
-  }
-
   closeDrawer() {
     this.showDrawer = false;
     this.selectedEntry = null;
-    this.childEntries = [];
     this.isDirty = false;
+    this.shownFields.clear();
     this.cdr.detectChanges();
   }
 
@@ -934,19 +1162,9 @@ export class FeedbackComponent implements OnInit {
     }
   }
 
-  getStatusClass(status: string): string {
-    return 'bp-status-' + (status || 'open');
-  }
-
   formatDate(iso: string): string {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-
-  formatDateTime(iso: string): string {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 }

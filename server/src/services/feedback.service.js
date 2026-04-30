@@ -95,22 +95,31 @@ async function create(data) {
     category_id, subcategory_id, feedback_category_id, area_category_id,
     title, notes, page_url, submitted_by, environment,
     owner, due_date, event_date, parent_id, agenda,
-    type, meeting_time, description, object_type, tags, area
+    type, meeting_time, description, object_type, tags, area,
+    priority, target_version, pages
   } = data;
+  // page_url is the legacy single-page string captured from the floating
+  // button; pages[] is the editable list of pages on the drawer. If pages
+  // is omitted but page_url is present, seed pages with [page_url].
+  const pagesArr = Array.isArray(pages) && pages.length
+    ? pages
+    : (page_url ? [page_url] : []);
   const result = await pool.query(
     `INSERT INTO shared.feedback
        (category_id, subcategory_id, feedback_category_id, area_category_id,
         title, notes, page_url, submitted_by, environment,
         owner, due_date, event_date, parent_id, agenda,
-        type, meeting_time, description, object_type, tags, area)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        type, meeting_time, description, object_type, tags, area,
+        priority, target_version, pages)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
      RETURNING *`,
     [
       category_id || null, subcategory_id || null, feedback_category_id || null, area_category_id || null,
       title, notes || null, page_url || null, submitted_by || null, environment || 'preview',
       owner || null, due_date || null, event_date || null, parent_id || null, agenda || [],
       type || null, meeting_time || null, description || null, object_type || 'issue', tags || [],
-      area || null
+      area || null,
+      priority == null ? null : priority, target_version || null, pagesArr
     ]
   );
   return result.rows[0];
@@ -185,7 +194,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date', 'priority', 'target_version'].includes(key)) {
+    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date', 'priority', 'target_version', 'pages', 'page_url'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;

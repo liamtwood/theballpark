@@ -30,8 +30,10 @@ export interface FeedbackEntry {
   area_name?: string;
   area_icon_name?: string;
   area_icon_color?: string;
-  priority?: 'critical' | 'high' | 'medium' | 'low' | null;
+  /** Integer 1-5, where 1 = highest priority (P1). NULL = unset / shipped. */
+  priority?: number | null;
   target_version?: string | null;
+  pages?: string[];
   created_at: string;
   category_name?: string;
   category_icon_name?: string;

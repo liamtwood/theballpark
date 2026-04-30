@@ -156,7 +156,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
-          <div class="bp-view-toggle">
+          <div class="bp-view-toggle" *ngIf="showLayoutToggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
             </button>
@@ -531,7 +531,12 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   activeChildCategory: string | null = null;
   activeTag = '';
   searchQuery = '';
-  layout: 'list' | 'card' = 'card';
+  // Default starting layout. Parent components that own a 3-way Grid/List/
+  // Table toggle (e.g. Feedback) hide the inner toggle and pass `card` or
+  // `list` through this input.
+  @Input() layout: 'list' | 'card' = 'card';
+  // When the parent owns the layout toggle externally, hide the inner one.
+  @Input() showLayoutToggle = true;
   filteredEntities: CatalogueEntity[] = [];
 
   // Drill-down state

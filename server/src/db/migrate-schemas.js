@@ -433,12 +433,19 @@ const migrate = async () => {
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS area VARCHAR(50);
 
+      -- priority is INTEGER 1-5 (1 = highest). Older deploys had a VARCHAR
+      -- column ('critical'/'high'/'medium'/'low') — see
+      -- migrate-feedback-priority-int.js for the conversion. This statement
+      -- only adds the column on a brand-new deploy.
       ALTER TABLE shared.feedback
-        ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium'
-        CHECK (priority IS NULL OR priority IN ('critical','high','medium','low'));
+        ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 3
+        CHECK (priority IS NULL OR (priority BETWEEN 1 AND 5));
 
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS target_version VARCHAR(10);
+
+      ALTER TABLE shared.feedback
+        ADD COLUMN IF NOT EXISTS pages TEXT[] DEFAULT '{}';
 
       -- shared.feedback_categories now holds 3 namespaces: folder, issue, area.
       -- Drop the single-column UNIQUE(name) constraint (auto-named
