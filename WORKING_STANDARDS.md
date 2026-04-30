@@ -872,6 +872,11 @@ v1.7   Feedback + categories — meeting notes, namespace hierarchy,
 v1.8   Image upload — tabbed dialog, Unsplash, Lucide icon picker
 v1.9   Welcome page — guestlist signup, Inter font, brand palette
 v1.10  Welcome polish — SVG circles, colour matrix
+v1.11  Feedback + markdown editor — priority + target_version,
+       tabular feedback view, app-markdown-editor (reusable rich
+       text editor with toolbar, preview, table support),
+       working standards: feature note standard + feature
+       logging rule
 v2.0   Auth + service refactor — Google SSO, JWT, route conventions,
        org-scoped services, role-based access (next)
 ```
