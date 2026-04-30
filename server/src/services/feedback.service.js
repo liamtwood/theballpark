@@ -141,6 +141,16 @@ async function create(data) {
   return result.rows[0];
 }
 
+async function getVersions() {
+  const result = await pool.query(
+    `SELECT DISTINCT version AS v FROM shared.feedback WHERE version IS NOT NULL
+     UNION
+     SELECT DISTINCT target_version AS v FROM shared.feedback WHERE target_version IS NOT NULL
+     ORDER BY v ASC`
+  );
+  return result.rows.map(r => r.v);
+}
+
 async function getCategories(namespace) {
   const result = await pool.query(
     `SELECT id, name, object_type, icon_name, icon_color,
@@ -210,7 +220,7 @@ async function patch(id, data) {
   const values = [];
   let idx = 1;
   for (const [key, val] of Object.entries(data)) {
-    if (['title', 'notes', 'owner', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date', 'priority', 'target_version', 'pages', 'page_url'].includes(key)) {
+    if (['title', 'notes', 'owner', 'submitted_by', 'due_date', 'event_date', 'agenda', 'completed', 'type', 'meeting_time', 'description', 'status', 'object_type', 'feedback_category_id', 'area_category_id', 'tags', 'area', 'version', 'shipped_date', 'priority', 'target_version', 'pages', 'page_url', 'environment'].includes(key)) {
       fields.push(`${key} = $${idx}`);
       values.push(val);
       idx++;
@@ -232,6 +242,7 @@ async function remove(id) {
 
 module.exports = {
   getAll, getById, getFolders, getIssues, getToday, getChildren,
+  getVersions,
   create, patch, remove,
   getCategories, createCategory, patchCategory, removeCategory
 };

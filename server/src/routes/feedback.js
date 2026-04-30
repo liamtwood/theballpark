@@ -38,6 +38,10 @@ router.get('/today', async (req, res, next) => {
   try { res.json(await FeedbackService.getToday()); } catch (err) { next(err); }
 });
 
+router.get('/versions', async (req, res, next) => {
+  try { res.json(await FeedbackService.getVersions()); } catch (err) { next(err); }
+});
+
 router.get('/folders', async (req, res, next) => {
   try { res.json(await FeedbackService.getFolders()); } catch (err) { next(err); }
 });

@@ -98,6 +98,9 @@ export class FeedbackService {
   getTestCases(parentId: string) {
     return this.api.get<TestCase[]>(`/feedback/${parentId}/children?type=test_case`);
   }
+  getVersions() {
+    return this.api.get<string[]>('/feedback/versions');
+  }
   getFeedbackCategories(namespace?: string) {
     const qs = namespace ? `?namespace=${namespace}` : '';
     return this.api.get<FeedbackCategory[]>(`/feedback/categories${qs}`);
