@@ -460,6 +460,38 @@ const migrate = async () => {
       ALTER TABLE shared.feedback
         ADD COLUMN IF NOT EXISTS area_category_id UUID
           REFERENCES shared.feedback_categories(id);
+
+      -- Normalise legacy type values that pre-date the check constraint:
+      -- 'action'/'agenda' were in-meeting child rows (now 'note'); 'Call'
+      -- and 'Meeting' were ad-hoc folder labels (now 'minutes').
+      UPDATE shared.feedback SET type = 'note'
+        WHERE type IN ('action', 'agenda');
+      UPDATE shared.feedback SET type = 'minutes'
+        WHERE type IN ('Call', 'Meeting');
+
+      -- Type constraint — extended for test_case + acceptance_criteria
+      -- (children of issues used by the test-cases drawer section).
+      ALTER TABLE shared.feedback
+        DROP CONSTRAINT IF EXISTS feedback_type_check;
+      ALTER TABLE shared.feedback
+        ADD CONSTRAINT feedback_type_check
+          CHECK (type IS NULL OR type IN (
+            'bug', 'enhancement', 'question', 'prompt', 'note',
+            'minutes', 'test_run', 'sprint', 'workshop',
+            'test_case', 'acceptance_criteria'
+          ));
+
+      -- Status constraint — extended with pass/fail/skip (test cases) and
+      -- draft/agreed (acceptance criteria) on top of the existing issue
+      -- statuses.
+      ALTER TABLE shared.feedback
+        DROP CONSTRAINT IF EXISTS feedback_status_check;
+      ALTER TABLE shared.feedback
+        ADD CONSTRAINT feedback_status_check
+          CHECK (status IS NULL OR status IN (
+            'open', 'in_progress', 'done', 'wont_fix',
+            'pass', 'fail', 'skip', 'draft', 'agreed'
+          ));
     `);
     console.log('  Shared schema tables created.');
 
@@ -537,7 +569,8 @@ const migrate = async () => {
       { name: 'Bug',         object_type: 'issue',  icon_name: 'bug',            icon_color: 'var(--color-danger-bg)', tagline: 'Something is broken',             description: 'Log anything broken, inconsistent or behaving unexpectedly.', sort_order: 6 },
       { name: 'Enhancement', object_type: 'issue',  icon_name: 'lightbulb',      icon_color: 'var(--theme-bg)',        tagline: 'Make it better',                  description: 'Feature requests, improvements and nice-to-haves.',           sort_order: 7 },
       { name: 'Question',    object_type: 'issue',  icon_name: 'circle-help',    icon_color: 'var(--theme-bg)',        tagline: 'Something to discuss',            description: 'Open questions about the product, process or pricing.',      sort_order: 8 },
-      { name: 'Prompt',      object_type: 'issue',  icon_name: 'clipboard-pen',  icon_color: 'var(--theme-bg)',        tagline: 'A requirement or instruction',    description: 'Capture specific requirements and build instructions.',       sort_order: 9 }
+      { name: 'Prompt',      object_type: 'issue',  icon_name: 'clipboard-pen',  icon_color: 'var(--theme-bg)',        tagline: 'A requirement or instruction',    description: 'Capture specific requirements and build instructions.',       sort_order: 9 },
+      { name: 'Test Case',   object_type: 'issue',  icon_name: 'check-square',   icon_color: 'var(--theme-bg)',        tagline: 'Test result on an issue',         description: 'A pass/fail/skip observation logged against an issue.',       sort_order: 10 }
     ];
     for (const fc of FEEDBACK_CATEGORIES) {
       await client.query(

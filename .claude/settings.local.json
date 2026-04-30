@@ -108,7 +108,10 @@
       "WebFetch(domain:www.artdecuisine.org)",
       "WebFetch(domain:www.juliacharleseventmanagement.co.uk)",
       "WebFetch(domain:crushcocktailbars.com)",
-      "WebFetch(domain:cinemattag.com)"
+      "WebFetch(domain:cinemattag.com)",
+      "Bash(NODE_PATH=C:/projects/ballpark/server/node_modules node -e \"process.chdir\\('C:/projects/ballpark'\\); require\\('dotenv'\\).config\\({ path: 'C:/projects/ballpark/.env' }\\);\")",
+      "Bash(NODE_PATH=C:/projects/ballpark/server/node_modules node C:/projects/ballpark/.claude/worktrees/angry-ride-226e39/server/src/db/migrate-schemas.js)",
+      "Bash(./node_modules/.bin/ng build *)"
     ]
   },
   "enableAllProjectMcpServers": true,

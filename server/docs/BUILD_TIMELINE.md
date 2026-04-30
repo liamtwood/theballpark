@@ -343,6 +343,7 @@ a single row.
 | —       | 2026-04-24 | Stability + sidebar                                 | `/api/health` + Supabase keep-alive, seed-preview refusal guard + unorphan recovery script, marketplace sidebar FORMAT + TYPE sections |
 | v1.9    | 2026-04-27 | Welcome + guestlist                                 | Public welcome page (3-slide layout, Inter typography, brand palette) + guestlist signup system (server route, marketing service, admin endpoints) |
 | v1.10   | 2026-04-28 | Welcome polish                                      | Slide-3 layout (2-col copy with glass card / wider left column), SVG circle blur recipe, spec colour matrix, Inter typography refinements |
+| v1.11   | 2026-04-30 | Feedback system overhaul                            | Category namespace='area' in shared.feedback_categories; feedback drawer redesign (type/status/priority/version pills, area+pages row, markdown notes preview-first); tabular view with Type/Area/Pages/Title/Owner columns; **test cases** — child entries with pass/fail/skip inline log; acceptance criteria spec added to backlog; **app-markdown-editor** shared component; feature-spec entries reformatted to WORKING_STANDARDS format; WORKING_STANDARDS updated (Feature Note Standard + feature logging rule) |
 
 ---
 

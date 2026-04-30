@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
-import { FeedbackService, FeedbackEntry, FeedbackCategory, TEAM_MEMBERS } from '../../../core/services/feedback.service';
+import { FeedbackService, FeedbackEntry, FeedbackCategory, TestCase, TEAM_MEMBERS } from '../../../core/services/feedback.service';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
@@ -413,6 +413,78 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
               [showLabel]="false"
               placeholder="Add notes, specs, requirements...">
             </app-markdown-editor>
+          </div>
+        </div>
+
+        <!-- TEST CASES — child notes (type=test_case) on this issue -->
+        <div class="bp-fb-tc-cell">
+          <label class="bp-fb-cell-label">TEST CASES</label>
+
+          <!-- List existing test cases -->
+          <div *ngIf="testCases.length === 0" class="bp-fb-tc-empty">
+            No test cases yet
+          </div>
+          <div *ngFor="let tc of testCases" class="bp-fb-tc-row"
+            [class.bp-fb-tc-row--expanded]="expandedTestCaseId === tc.id"
+            (click)="toggleTestCase(tc.id)">
+            <div class="bp-fb-tc-row-head">
+              <span class="bp-fb-tc-status" [attr.data-status]="tc.status">
+                <lucide-icon [name]="tcStatusIcon(tc.status)" [size]="14"></lucide-icon>
+              </span>
+              <app-avatar *ngIf="tc.owner" [name]="tc.owner" [size]="24"></app-avatar>
+              <span class="bp-fb-tc-date">{{ formatTcDate(tc.created_at) }}</span>
+            </div>
+            <div class="bp-fb-tc-notes" *ngIf="expandedTestCaseId !== tc.id">
+              {{ tc.notes && tc.notes.length > 80 ? (tc.notes | slice:0:80) + '…' : tc.notes }}
+            </div>
+            <div class="bp-fb-tc-notes-full" *ngIf="expandedTestCaseId === tc.id">{{ tc.notes }}</div>
+          </div>
+
+          <!-- Inline add form -->
+          <div class="bp-fb-tc-add">
+            <textarea class="bp-fb-tc-textarea"
+              [(ngModel)]="newTcNotes"
+              [class.bp-fb-tc-shake]="tcNotesShake"
+              rows="3"
+              placeholder="What did you test and what happened?"></textarea>
+            <div class="bp-fb-tc-controls">
+              <div class="bp-fb-tc-owners">
+                <button type="button"
+                  *ngFor="let m of team"
+                  class="bp-fb-tc-owner"
+                  [class.bp-fb-tc-owner--active]="newTcOwner === m.initials"
+                  (click)="newTcOwner = m.initials">
+                  {{ m.initials }}
+                </button>
+              </div>
+              <div class="bp-fb-tc-results"
+                [class.bp-fb-tc-shake]="tcResultShake">
+                <button type="button"
+                  class="bp-fb-tc-result bp-fb-tc-result--pass"
+                  [class.bp-fb-tc-result--active]="newTcResult === 'pass'"
+                  (click)="newTcResult = 'pass'">
+                  <lucide-icon name="check" [size]="11"></lucide-icon> Pass
+                </button>
+                <button type="button"
+                  class="bp-fb-tc-result bp-fb-tc-result--fail"
+                  [class.bp-fb-tc-result--active]="newTcResult === 'fail'"
+                  (click)="newTcResult = 'fail'">
+                  <lucide-icon name="x" [size]="11"></lucide-icon> Fail
+                </button>
+                <button type="button"
+                  class="bp-fb-tc-result bp-fb-tc-result--skip"
+                  [class.bp-fb-tc-result--active]="newTcResult === 'skip'"
+                  (click)="newTcResult = 'skip'">
+                  <lucide-icon name="minus" [size]="11"></lucide-icon> Skip
+                </button>
+                <button type="button"
+                  class="bp-btn-save bp-fb-tc-add-btn"
+                  [disabled]="!newTcNotes.trim() || !newTcResult"
+                  (click)="addTestCase()">
+                  Add
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -829,6 +901,109 @@ const STATUS_CYCLE = ['open', 'in_progress', 'done', 'wont_fix'] as const;
     }
     :host ::ng-deep .bp-fb-notes-editor-wrap app-markdown-editor textarea { flex: 1; }
 
+    /* Test cases section */
+    .bp-fb-tc-cell {
+      padding: 14px 16px; border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-fb-tc-empty {
+      font-size: 12px; font-style: italic; color: var(--color-text-muted);
+      padding: 8px 0;
+    }
+    .bp-fb-tc-row {
+      padding: 8px 0; border-bottom: 0.5px solid var(--color-border);
+      cursor: pointer;
+    }
+    .bp-fb-tc-row:last-of-type { border-bottom: none; }
+    .bp-fb-tc-row-head {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bp-fb-tc-status {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+    }
+    .bp-fb-tc-status[data-status="pass"] { color: var(--color-booked-text); }
+    .bp-fb-tc-status[data-status="fail"] { color: var(--color-danger-text); }
+    .bp-fb-tc-status[data-status="skip"] { color: var(--color-text-muted); }
+    .bp-fb-tc-date {
+      font-size: 11px; color: var(--color-text-muted);
+      margin-left: auto;
+    }
+    .bp-fb-tc-notes, .bp-fb-tc-notes-full {
+      font-size: 12px; color: var(--color-text-primary);
+      margin-top: 4px; padding-left: 24px;
+      line-height: 1.45;
+    }
+    .bp-fb-tc-notes-full { white-space: pre-wrap; }
+
+    /* Inline add form */
+    .bp-fb-tc-add {
+      margin-top: 12px;
+    }
+    .bp-fb-tc-textarea {
+      width: 100%;
+      font-family: var(--font-sans);
+      border: 0.5px solid var(--color-border);
+      background: var(--color-background-secondary);
+      border-radius: var(--border-radius-md);
+      font-size: 12px; padding: 8px;
+      color: var(--color-text-primary);
+      resize: vertical;
+    }
+    .bp-fb-tc-textarea:focus {
+      outline: none; border-color: var(--theme-accent);
+    }
+    .bp-fb-tc-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-top: 8px; flex-wrap: wrap;
+    }
+    .bp-fb-tc-owners { display: flex; gap: 4px; }
+    .bp-fb-tc-owner {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-secondary); cursor: pointer;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
+      font-family: var(--font-body);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .bp-fb-tc-owner--active {
+      border: 1.5px solid var(--theme-accent);
+      background: var(--theme-bg); color: var(--theme-accent);
+    }
+    .bp-fb-tc-results { display: flex; gap: 4px; align-items: center; }
+    .bp-fb-tc-result {
+      display: inline-flex; align-items: center; gap: 3px;
+      height: 22px; padding: 0 8px; border-radius: 999px;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-size: 10px; font-weight: 600; cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .bp-fb-tc-result--pass.bp-fb-tc-result--active {
+      background: var(--color-booked-bg); color: var(--color-booked-text);
+      border: 1.5px solid var(--color-booked-border);
+    }
+    .bp-fb-tc-result--fail.bp-fb-tc-result--active {
+      background: var(--color-danger-bg); color: var(--color-danger-text);
+      border: 1.5px solid var(--color-danger-border, var(--color-danger-text));
+    }
+    .bp-fb-tc-result--skip.bp-fb-tc-result--active {
+      background: var(--color-background-secondary);
+      color: var(--color-text-muted);
+      border: 1.5px solid var(--color-border);
+    }
+    .bp-fb-tc-add-btn {
+      padding: 4px 12px; font-size: 11px; height: 24px;
+      margin-left: 4px;
+    }
+
+    @keyframes bp-fb-tc-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .bp-fb-tc-shake { animation: bp-fb-tc-shake 0.25s ease-in-out; }
+
     /* Optional fields */
     .bp-fb-opt-cell { padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); }
 
@@ -950,6 +1125,15 @@ export class FeedbackComponent implements OnInit {
   titleEditing = false;
   versionEditing = false;
   notesEditing = false;
+
+  // Test cases (child entries with type='test_case' on the open issue)
+  testCases: TestCase[] = [];
+  expandedTestCaseId: string | null = null;
+  newTcNotes = '';
+  newTcOwner = 'LW';
+  newTcResult: 'pass' | 'fail' | 'skip' | null = null;
+  tcNotesShake = false;
+  tcResultShake = false;
 
   priorityEditOptions = [
     { label: 'P1', value: 1 },
@@ -1243,8 +1427,88 @@ export class FeedbackComponent implements OnInit {
       this.notesEditing = false;
       this.isDirty = false;
       this.showDrawer = true;
+      this.testCases = [];
+      this.expandedTestCaseId = null;
+      this.newTcNotes = '';
+      this.newTcResult = null;
+      this.loadTestCases();
       this.cdr.detectChanges();
     }
+  }
+
+  // ── Test cases ──────────────────────────────────────────────────────────
+  loadTestCases() {
+    if (!this.selectedEntry) return;
+    this.feedbackSvc.getTestCases(this.selectedEntry.id).subscribe({
+      next: (tcs) => {
+        this.testCases = tcs || [];
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.testCases = [];
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  toggleTestCase(id: string) {
+    this.expandedTestCaseId = this.expandedTestCaseId === id ? null : id;
+  }
+
+  tcStatusIcon(status: string): string {
+    if (status === 'pass') return 'check';
+    if (status === 'fail') return 'x';
+    return 'minus';
+  }
+
+  formatTcDate(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  }
+
+  addTestCase() {
+    if (!this.selectedEntry) return;
+    const notes = this.newTcNotes.trim();
+    if (!notes) {
+      this.tcNotesShake = true;
+      setTimeout(() => { this.tcNotesShake = false; this.cdr.detectChanges(); }, 300);
+      return;
+    }
+    if (!this.newTcResult) {
+      this.tcResultShake = true;
+      setTimeout(() => { this.tcResultShake = false; this.cdr.detectChanges(); }, 300);
+      return;
+    }
+    const ownerInitials = this.newTcOwner;
+    this.feedbackSvc.create({
+      parent_id: this.selectedEntry.id,
+      type: 'test_case',
+      object_type: 'issue',
+      title: 'Test Case',
+      status: this.newTcResult,
+      owner: ownerInitials,
+      submitted_by: ownerInitials,
+      notes
+    } as any).subscribe({
+      next: (created: any) => {
+        this.testCases = [...this.testCases, {
+          id: created.id,
+          notes: created.notes,
+          status: created.status,
+          owner: created.owner,
+          submitted_by: created.submitted_by,
+          created_at: created.created_at
+        }];
+        this.newTcNotes = '';
+        this.newTcResult = null;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        const detail = err?.error?.error || err?.message || 'Failed to add test case';
+        this.msg.add({ severity: 'error', summary: 'Test case add failed', detail });
+      }
+    });
   }
 
   markDirty() { this.isDirty = true; }
@@ -1471,6 +1735,10 @@ export class FeedbackComponent implements OnInit {
     this.versionEditing = false;
     this.notesEditing = false;
     this.shownFields.clear();
+    this.testCases = [];
+    this.expandedTestCaseId = null;
+    this.newTcNotes = '';
+    this.newTcResult = null;
     this.cdr.detectChanges();
   }
 

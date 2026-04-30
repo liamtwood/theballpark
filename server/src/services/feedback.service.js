@@ -45,7 +45,17 @@ async function getAll(filters) {
 
 async function getById(id) {
   const result = await pool.query(BASE_SELECT + ' WHERE f.id = $1', [id]);
-  return result.rows[0] || null;
+  const entry = result.rows[0];
+  if (!entry) return null;
+  const cases = await pool.query(
+    `SELECT id, notes, status, owner, submitted_by, created_at
+       FROM shared.feedback
+      WHERE parent_id = $1 AND type = 'test_case'
+      ORDER BY created_at ASC`,
+    [id]
+  );
+  entry.test_cases = cases.rows;
+  return entry;
 }
 
 async function getFolders() {
@@ -82,10 +92,16 @@ async function getToday() {
   return ins.rows[0];
 }
 
-async function getChildren(parentId) {
+async function getChildren(parentId, type) {
+  const params = [parentId];
+  let where = 'f.parent_id = $1';
+  if (type) {
+    params.push(type);
+    where += ` AND f.type = $${params.length}`;
+  }
   const result = await pool.query(
-    BASE_SELECT + ' WHERE f.parent_id = $1 ORDER BY f.created_at ASC',
-    [parentId]
+    BASE_SELECT + ' WHERE ' + where + ' ORDER BY f.created_at ASC',
+    params
   );
   return result.rows;
 }
