@@ -134,14 +134,14 @@ type DetailMode = 'inline' | 'drawer';
         <!-- AREA CIRCLES + FILTER BAR + BULK BAR — projected so they sit
              between the hero and the 3-col body. -->
         <div catalogue-before-body>
-          <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1">
+          <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1" [attr.data-circle-size]="circleSize">
             <div class="bp-fb-areas">
               <button *ngFor="let a of areaCircles"
                 class="bp-fb-area-btn"
                 [class.active]="selectedArea === a.id"
                 (click)="setArea(a.id)">
                 <div class="bp-fb-area-circle">
-                  <lucide-icon [name]="a.icon" [size]="22"></lucide-icon>
+                  <lucide-icon [name]="a.icon" [size]="areaIconSize"></lucide-icon>
                 </div>
                 <span class="bp-fb-area-label">{{ a.label }}</span>
               </button>
@@ -303,12 +303,20 @@ type DetailMode = 'inline' | 'drawer';
   styles: [`
     .bp-empty-state { text-align: center; padding: 48px 24px; }
 
-    /* Area circles */
-    .bp-fb-areas-wrap { padding: 16px 28px 4px; border-bottom: 0.5px solid var(--color-border); }
+    /* Area circles — size driven by [data-circle-size] from the config strip. */
+    .bp-fb-areas-wrap {
+      padding: 16px 28px 4px; border-bottom: 0.5px solid var(--color-border);
+      --bp-fb-area-w: 72px;
+    }
+    .bp-fb-areas-wrap[data-circle-size="sm"] { --bp-fb-area-w: 56px; }
+    .bp-fb-areas-wrap[data-circle-size="md"] { --bp-fb-area-w: 72px; }
+    .bp-fb-areas-wrap[data-circle-size="lg"] { --bp-fb-area-w: 96px; }
     .bp-fb-areas { display: flex; gap: 18px; justify-content: center; padding: 4px 4px 12px; flex-wrap: wrap; }
     .bp-fb-area-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0; }
     .bp-fb-area-circle {
-      width: 56px; height: 56px; border-radius: 50%;
+      width: var(--bp-fb-area-w, 72px); height: var(--bp-fb-area-w, 72px);
+      transition: width 0.18s, height 0.18s;
+      border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       border: 2.5px solid transparent; transition: border-color 0.15s;
       color: var(--theme-accent); background: var(--theme-bg);
@@ -526,6 +534,13 @@ export class FeedbackComponent implements OnInit {
     if (!this.selectedArea || this.selectedArea === 'all') return '';
     const a = this.areaCircles.find(c => c.id === this.selectedArea);
     return a?.label || '';
+  }
+
+  /** Lucide icon size for area circles — scales with circleSize. */
+  get areaIconSize(): number {
+    if (this.circleSize === 'sm') return 20;
+    if (this.circleSize === 'md') return 26;
+    return 34;
   }
 
   private readonly LS = {
