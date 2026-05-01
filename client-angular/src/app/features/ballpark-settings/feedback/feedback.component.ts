@@ -140,7 +140,9 @@ type DetailMode = 'inline' | 'drawer';
                 class="bp-fb-area-btn"
                 [class.active]="selectedArea === a.id"
                 (click)="setArea(a.id)">
-                <div class="bp-fb-area-circle">
+                <div class="bp-fb-area-circle"
+                  [class.bp-fb-area-circle--colored]="!!a.iconColor"
+                  [style.background-color]="a.iconColor || null">
                   <lucide-icon [name]="a.icon" [size]="areaIconSize"></lucide-icon>
                 </div>
                 <span class="bp-fb-area-label">{{ a.label }}</span>
@@ -315,12 +317,19 @@ type DetailMode = 'inline' | 'drawer';
     .bp-fb-area-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0; }
     .bp-fb-area-circle {
       width: var(--bp-fb-area-w, 72px); height: var(--bp-fb-area-w, 72px);
-      transition: width 0.18s, height 0.18s;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      border: 2.5px solid transparent; transition: border-color 0.15s;
+      border: 2.5px solid transparent;
+      transition: width 0.18s, height 0.18s, border-color 0.15s;
       color: var(--theme-accent); background: var(--theme-bg);
       box-shadow: 0 0 0 0.5px var(--color-border);
+    }
+    /* Coloured-area variant: when icon_color is set on the area, the
+       inline style fills the circle. Keep the lucide stroke white for
+       legibility against any hue, and drop the neutral ring shadow. */
+    .bp-fb-area-circle.bp-fb-area-circle--colored {
+      color: var(--color-surface);
+      box-shadow: none;
     }
     .bp-fb-area-btn.active .bp-fb-area-circle {
       border-color: var(--theme-accent);
@@ -511,7 +520,7 @@ export class FeedbackComponent implements OnInit {
   filterOwner = '';
   filterStatus = '';
   selectedArea: string = 'all';
-  areaCircles: { id: string; label: string; icon: string }[] = [
+  areaCircles: { id: string; label: string; icon: string; iconColor?: string }[] = [
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
@@ -714,7 +723,12 @@ export class FeedbackComponent implements OnInit {
         const sortedAreas = [...this.areaCategories].sort((a, b) => a.sort_order - b.sort_order);
         const dbCircles = sortedAreas
           .filter(a => referenced.has(a.id) || referenced.has(a.name.toLowerCase()))
-          .map(a => ({ id: a.id, label: a.name, icon: a.icon_name || 'circle' }));
+          .map(a => ({
+            id: a.id,
+            label: a.name,
+            icon: a.icon_name || 'circle',
+            iconColor: a.icon_color || ''
+          }));
         this.areaCircles = [
           { id: 'all', label: 'All', icon: 'layers' },
           ...dbCircles
