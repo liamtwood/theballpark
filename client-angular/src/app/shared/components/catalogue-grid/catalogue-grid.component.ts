@@ -175,6 +175,24 @@ export type DetailSize = 'sm' | 'md' | 'lg';
 
       <!-- ── MAIN ── -->
       <div class="bp-cat-main">
+
+        <!-- BREADCRUMB — always visible. Parent segments are clickable
+             when drilled and reset to top via onBreadcrumbBack(). -->
+        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot">
+          <ng-container *ngIf="!isCrumbDrilled; else crumbsDrilled">
+            <span class="bp-crumb-root">{{ resolvedBreadcrumbRoot }}</span>
+            <span class="bp-crumb-sep">›</span>
+            <span class="bp-crumb-active">{{ resolvedBreadcrumbAll }}</span>
+          </ng-container>
+          <ng-template #crumbsDrilled>
+            <button class="bp-crumb-link" (click)="onBreadcrumbBack()">{{ resolvedBreadcrumbRoot }}</button>
+            <span class="bp-crumb-sep">›</span>
+            <button class="bp-crumb-link" (click)="onBreadcrumbBack()">{{ resolvedBreadcrumbAll }}</button>
+            <span class="bp-crumb-sep">›</span>
+            <span class="bp-crumb-active">{{ resolvedBreadcrumbActive }}</span>
+          </ng-template>
+        </nav>
+
         <div class="bp-cat-section-header">
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
@@ -489,6 +507,23 @@ export type DetailSize = 'sm' | 'md' | 'lg';
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox .p-checkbox-box { width: 16px !important; height: 16px !important; border-radius: 3px !important; }
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox.p-checkbox-checked .p-checkbox-box { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
 
+    /* Breadcrumb at the top of the main column. Always visible; parent
+       segments become clickable when drilled. */
+    .bp-main-crumbs {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 6px; margin-bottom: 12px;
+      font-family: var(--font-body); font-size: 11px;
+    }
+    .bp-crumb-root, .bp-crumb-sep, .bp-crumb-link {
+      color: var(--color-text-muted);
+    }
+    .bp-crumb-link {
+      background: none; border: none; padding: 0; cursor: pointer;
+      font-family: inherit; font-size: inherit;
+    }
+    .bp-crumb-link:hover { color: var(--theme-accent); }
+    .bp-crumb-active { color: var(--color-text-primary); font-weight: 500; }
+
     .bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
     .bp-cat-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
     .bp-cat-section-count { font-size: 12px; color: var(--color-text-muted); flex: 1; }
@@ -598,6 +633,16 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
   @Input() detailSize: DetailSize = 'md';
+  /** Always-visible breadcrumb row at the top of the main column.
+      Default: derives root from sidebarCategoryLabel and "All …" segment
+      from a naive plural; the active segment falls back to the internal
+      drilledCategory state.
+      Pages whose drill state lives outside catalogue-grid (e.g. feedback's
+      area circles) override these via inputs and listen to
+      (breadcrumbBackClicked) to reset their own state. */
+  @Input() breadcrumbRoot: string = '';
+  @Input() breadcrumbAll: string = '';
+  @Input() breadcrumbActive: string = '';
   @Input() tags: string[] = [];
   @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
@@ -618,6 +663,10 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Output() parentClicked = new EventEmitter<CatalogueEntity>();
   @Output() categoryChanged = new EventEmitter<string>();
   @Output() drillChanged = new EventEmitter<string | null>();
+  /** Fires when the user clicks a parent segment in the main-column
+      breadcrumb (root or "All …"). Pages that own drill state externally
+      should reset that state in response. */
+  @Output() breadcrumbBackClicked = new EventEmitter<void>();
   @Output() tagChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
   @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
@@ -654,6 +703,47 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     if (this.circleSize === 'sm') return 20;
     if (this.circleSize === 'md') return 26;
     return 34;
+  }
+
+  /** Resolved root segment for the main-column breadcrumb (uppercase). */
+  get resolvedBreadcrumbRoot(): string {
+    return (this.breadcrumbRoot || this.sidebarCategoryLabel || '').toUpperCase();
+  }
+
+  /** Resolved "All …" segment. Naive plural if not overridden. */
+  get resolvedBreadcrumbAll(): string {
+    if (this.breadcrumbAll) return this.breadcrumbAll;
+    const root = this.breadcrumbRoot || this.sidebarCategoryLabel || '';
+    if (!root) return '';
+    // y → ies after a consonant (Category → Categories), else +s.
+    const plural = /[^aeiou]y$/i.test(root) ? root.slice(0, -1) + 'ies' : root + 's';
+    return 'All ' + plural;
+  }
+
+  /** Resolved active segment — explicit override wins, otherwise the
+      internal drilled category (or its child) name. */
+  get resolvedBreadcrumbActive(): string {
+    if (this.breadcrumbActive) return this.breadcrumbActive;
+    if (this.activeChildCategory) {
+      const child = this.categories.find(c => c.id === this.activeChildCategory);
+      if (child) return child.name;
+    }
+    return this.drilledCategory?.name || '';
+  }
+
+  /** Whether the breadcrumb has a third (drilled) segment to render. */
+  get isCrumbDrilled(): boolean {
+    return !!this.resolvedBreadcrumbActive;
+  }
+
+  /** Click handler for the parent breadcrumb segments. Resets the
+      internal drill state if catalogue-grid owns it, then emits so
+      external owners can reset their own state. */
+  onBreadcrumbBack() {
+    if (!this.breadcrumbActive && this.drilledCategory) {
+      this.drillOut();
+    }
+    this.breadcrumbBackClicked.emit();
   }
 
   get childCategories(): CategoryInfo[] {

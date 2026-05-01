@@ -63,13 +63,17 @@ type DetailMode = 'inline' | 'drawer';
         [pageSubtitle]="feedbackSubtitle"
         [circleSize]="circleSize"
         [detailSize]="detailSize"
+        [breadcrumbRoot]="'AREA'"
+        [breadcrumbAll]="'All Areas'"
+        [breadcrumbActive]="selectedAreaLabel"
         [favouriteIds]="emptySet"
         [showEdit]="false"
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
-        (categoryChanged)="onTypeFilterChanged($event)">
+        (categoryChanged)="onTypeFilterChanged($event)"
+        (breadcrumbBackClicked)="setArea('all')">
 
         <!-- Per-page config strip controls (toggled by cog in top-nav) -->
         <div config-content class="bp-cfg-row">
@@ -515,6 +519,13 @@ export class FeedbackComponent implements OnInit {
     const n = this.entries.length;
     const areas = Math.max(0, this.areaCircles.length - 1);
     return `${n} entries across ${areas} areas · roadmap, bugs, prompts & tests`;
+  }
+
+  /** Display label for the currently-selected area; '' when on "All". */
+  get selectedAreaLabel(): string {
+    if (!this.selectedArea || this.selectedArea === 'all') return '';
+    const a = this.areaCircles.find(c => c.id === this.selectedArea);
+    return a?.label || '';
   }
 
   private readonly LS = {
