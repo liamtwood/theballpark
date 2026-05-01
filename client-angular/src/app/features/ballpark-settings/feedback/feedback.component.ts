@@ -77,7 +77,7 @@ type DetailMode = 'inline' | 'drawer';
 
         <!-- Per-page config strip controls (toggled by cog in top-nav) -->
         <div config-content class="bp-cfg-row">
-          <span class="bp-cfg-lab">Theme</span>
+          <span class="bp-cfg-lab">THEME</span>
           <p-selectButton
             [options]="themeOptions"
             [(ngModel)]="theme"
@@ -91,9 +91,9 @@ type DetailMode = 'inline' | 'drawer';
           </p-selectButton>
 
           <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">Circle</span>
+          <span class="bp-cfg-lab">CIRCLE SIZE</span>
           <p-selectButton
-            [options]="sizeOptions"
+            [options]="circleSizeOptions"
             [(ngModel)]="circleSize"
             (onChange)="persistConfig()"
             optionLabel="label"
@@ -101,7 +101,7 @@ type DetailMode = 'inline' | 'drawer';
             styleClass="bp-cfg-seg"></p-selectButton>
 
           <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">View</span>
+          <span class="bp-cfg-lab">VIEW</span>
           <p-selectButton
             [options]="cfgViewOptions"
             [(ngModel)]="viewMode"
@@ -111,9 +111,9 @@ type DetailMode = 'inline' | 'drawer';
             styleClass="bp-cfg-seg"></p-selectButton>
 
           <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">Detail</span>
+          <span class="bp-cfg-lab">DETAIL SIZE</span>
           <p-selectButton
-            [options]="sizeOptions"
+            [options]="detailSizeOptions"
             [(ngModel)]="detailSize"
             (onChange)="persistConfig()"
             optionLabel="label"
@@ -121,7 +121,7 @@ type DetailMode = 'inline' | 'drawer';
             styleClass="bp-cfg-seg"></p-selectButton>
 
           <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">Mode</span>
+          <span class="bp-cfg-lab">DETAIL MODE</span>
           <p-selectButton
             [options]="detailModeOptions"
             [(ngModel)]="detailMode"
@@ -451,7 +451,9 @@ type DetailMode = 'inline' | 'drawer';
       font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
     }
 
-    /* Config strip layout — labels + segmented controls in a row. */
+    /* Config strip layout — labels + segmented controls in a row.
+       The !important flags here intentionally win against the global
+       .p-button declarations in styles.css, which are also !important. */
     .bp-cfg-row { display: contents; }
     .bp-cfg-lab {
       font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
@@ -463,28 +465,50 @@ type DetailMode = 'inline' | 'drawer';
     .bp-cfg-swatch {
       display: inline-block; width: 18px; height: 18px; border-radius: 50%;
     }
-    :host ::ng-deep .bp-cfg-seg .p-button {
-      padding: 4px 12px; font-size: 12px;
-      background: var(--color-surface); color: var(--color-text-muted);
+    /* Segmented size/view buttons — flush together inside one rounded
+       outline; active mode = solid theme-accent + white. */
+    :host ::ng-deep .bp-cfg-seg.p-selectbutton {
+      display: inline-flex;
       border: 0.5px solid var(--color-border);
-      font-family: var(--font-body);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button {
+      padding: 4px 12px !important;
+      height: 28px !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      background: var(--color-surface) !important;
+      color: var(--color-text-secondary) !important;
+      border: none !important;
+      border-radius: 0 !important;
+      font-family: var(--font-body) !important;
     }
     :host ::ng-deep .bp-cfg-seg .p-button.p-highlight {
-      background: var(--theme-accent); color: var(--color-surface);
-      border-color: var(--theme-accent); font-weight: 600;
+      background: var(--theme-accent) !important;
+      color: var(--color-surface) !important;
+      font-weight: 600 !important;
     }
-    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none; }
+    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none !important; }
+    /* Theme swatches — round, gapped (no shared outline). Selected swatch
+       gets a high-contrast ring around the colour. */
+    :host ::ng-deep .bp-cfg-swatches.p-selectbutton {
+      display: inline-flex; gap: 8px;
+    }
     :host ::ng-deep .bp-cfg-swatches .p-button {
-      padding: 4px 6px;
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
+      padding: 0 !important;
+      height: 22px !important; width: 22px !important;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 50% !important;
     }
     :host ::ng-deep .bp-cfg-swatches .p-button.p-highlight {
-      background: var(--color-surface);
-      box-shadow: 0 0 0 2px var(--color-text-primary);
-      border-color: var(--color-surface);
+      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
+      background: transparent !important;
     }
-    :host ::ng-deep .bp-cfg-swatches .p-button:focus { box-shadow: 0 0 0 2px var(--color-text-primary); }
+    :host ::ng-deep .bp-cfg-swatches .p-button:focus {
+      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
+    }
 
     /* Bulk action bar */
     .bp-fb-bulk-bar {
@@ -583,10 +607,15 @@ export class FeedbackComponent implements OnInit {
     { label: 'Ocean',   value: 'ocean' as ThemeSwatch,   color: '#2563EB' },
     { label: 'Slate',   value: 'slate' as ThemeSwatch,   color: '#64748B' }
   ];
-  sizeOptions = [
-    { label: 'S', value: 'sm' as CircleSize },
-    { label: 'M', value: 'md' as CircleSize },
-    { label: 'L', value: 'lg' as CircleSize }
+  circleSizeOptions = [
+    { label: 'Small · 56',  value: 'sm' as CircleSize },
+    { label: 'Medium · 72', value: 'md' as CircleSize },
+    { label: 'Large · 96',  value: 'lg' as CircleSize }
+  ];
+  detailSizeOptions = [
+    { label: 'Small · 260',  value: 'sm' as DetailSize },
+    { label: 'Medium · 320', value: 'md' as DetailSize },
+    { label: 'Large · 420',  value: 'lg' as DetailSize }
   ];
   cfgViewOptions = [
     { label: 'Card',  value: 'grid' as ViewMode },
