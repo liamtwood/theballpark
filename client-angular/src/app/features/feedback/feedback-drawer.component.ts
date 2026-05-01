@@ -264,112 +264,133 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
             </div>
           </ng-container>
 
-          <!-- ── Attributes ── -->
+          <!-- ── Attributes (each group rendered as a clearly-defined card,
+                  matching the Settings → Organisation pattern) ── -->
           <ng-container *ngIf="activeTab === 'attributes'">
-            <h4 class="bp-fbd-group">Classification</h4>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Type</label>
-              <p-dropdown [(ngModel)]="editType" [options]="typeOptions"
-                optionLabel="label" optionValue="value"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Area</label>
-              <p-dropdown [(ngModel)]="editAreaCategoryId" [options]="areaOptions"
-                optionLabel="label" optionValue="value" [showClear]="true"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Environment</label>
-              <p-dropdown [(ngModel)]="editEnvironment" [options]="envOptions"
-                optionLabel="label" optionValue="value"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-
-            <h4 class="bp-fbd-group">Planning</h4>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Status</label>
-              <p-dropdown [(ngModel)]="editStatus" [options]="statusOptionsForType()"
-                optionLabel="label" optionValue="value"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-            <div class="bp-fbd-attr" *ngIf="!isTestCase()">
-              <label class="bp-fbd-attr-label">Priority</label>
-              <p-dropdown [(ngModel)]="editPriority" [options]="priorityOptions"
-                optionLabel="label" optionValue="value" [showClear]="true"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Owner</label>
-              <p-dropdown [(ngModel)]="editOwner" [options]="ownerOptions"
-                optionLabel="label" optionValue="value" [showClear]="true"
-                (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
-            </div>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Due date</label>
-              <input pInputText [(ngModel)]="editDueDate"
-                placeholder="dd MMM yyyy"
-                (input)="markDirty()" class="bp-fbd-input"/>
-            </div>
-
-            <h4 class="bp-fbd-group">Version</h4>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Target version</label>
-              <input list="bp-fbd-versions-attr" pInputText
-                [(ngModel)]="editTargetVersion"
-                placeholder="e.g. v2.0"
-                (input)="markDirty()" class="bp-fbd-input"/>
-            </div>
-            <ng-container *ngIf="editStatus === 'done'">
-              <div class="bp-fbd-attr">
-                <label class="bp-fbd-attr-label">Shipped version</label>
-                <input list="bp-fbd-versions-attr" pInputText
-                  [(ngModel)]="editVersion" placeholder="—"
-                  (input)="markDirty()" class="bp-fbd-input"/>
+            <div class="bp-fbd-group-card">
+              <div class="bp-fbd-group-head">
+                <span class="bp-fbd-group-title">Classification</span>
               </div>
               <div class="bp-fbd-attr">
-                <label class="bp-fbd-attr-label">Shipped date</label>
-                <input pInputText [(ngModel)]="editShippedDate"
+                <label class="bp-fbd-attr-label">Type</label>
+                <p-dropdown [(ngModel)]="editType" [options]="typeOptions"
+                  optionLabel="label" optionValue="value"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Area</label>
+                <p-dropdown [(ngModel)]="editAreaCategoryId" [options]="areaOptions"
+                  optionLabel="label" optionValue="value" [showClear]="true"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Environment</label>
+                <p-dropdown [(ngModel)]="editEnvironment" [options]="envOptions"
+                  optionLabel="label" optionValue="value"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+            </div>
+
+            <div class="bp-fbd-group-card">
+              <div class="bp-fbd-group-head">
+                <span class="bp-fbd-group-title">Planning</span>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Status</label>
+                <p-dropdown [(ngModel)]="editStatus" [options]="statusOptionsForType()"
+                  optionLabel="label" optionValue="value"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+              <div class="bp-fbd-attr" *ngIf="!isTestCase()">
+                <label class="bp-fbd-attr-label">Priority</label>
+                <p-dropdown [(ngModel)]="editPriority" [options]="priorityOptions"
+                  optionLabel="label" optionValue="value" [showClear]="true"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Owner</label>
+                <p-dropdown [(ngModel)]="editOwner" [options]="ownerOptions"
+                  optionLabel="label" optionValue="value" [showClear]="true"
+                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Due date</label>
+                <input pInputText [(ngModel)]="editDueDate"
                   placeholder="dd MMM yyyy"
                   (input)="markDirty()" class="bp-fbd-input"/>
               </div>
-            </ng-container>
-            <datalist id="bp-fbd-versions-attr">
-              <option *ngFor="let v of versions" [value]="v"></option>
-            </datalist>
+            </div>
 
-            <h4 class="bp-fbd-group">Context</h4>
-            <div class="bp-fbd-attr bp-fbd-attr--block">
-              <label class="bp-fbd-attr-label">Pages</label>
-              <div class="bp-fbd-pages">
-                <div *ngFor="let p of editPages; let i = index" class="bp-fbd-page-row">
-                  <span class="bp-fbd-page-url" [title]="p">{{ p }}</span>
-                  <button type="button" class="bp-fbd-page-x" (click)="removePage(i)">
-                    <i class="pi pi-times"></i>
-                  </button>
+            <div class="bp-fbd-group-card">
+              <div class="bp-fbd-group-head">
+                <span class="bp-fbd-group-title">Version</span>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Target version</label>
+                <input list="bp-fbd-versions-attr" pInputText
+                  [(ngModel)]="editTargetVersion"
+                  placeholder="e.g. v2.0"
+                  (input)="markDirty()" class="bp-fbd-input"/>
+              </div>
+              <ng-container *ngIf="editStatus === 'done'">
+                <div class="bp-fbd-attr">
+                  <label class="bp-fbd-attr-label">Shipped version</label>
+                  <input list="bp-fbd-versions-attr" pInputText
+                    [(ngModel)]="editVersion" placeholder="—"
+                    (input)="markDirty()" class="bp-fbd-input"/>
                 </div>
-                <input pInputText [(ngModel)]="newPageInput"
-                  placeholder="add page url..."
-                  (keydown.enter)="addPage()"
-                  class="bp-fbd-input"/>
+                <div class="bp-fbd-attr">
+                  <label class="bp-fbd-attr-label">Shipped date</label>
+                  <input pInputText [(ngModel)]="editShippedDate"
+                    placeholder="dd MMM yyyy"
+                    (input)="markDirty()" class="bp-fbd-input"/>
+                </div>
+              </ng-container>
+              <datalist id="bp-fbd-versions-attr">
+                <option *ngFor="let v of versions" [value]="v"></option>
+              </datalist>
+            </div>
+
+            <div class="bp-fbd-group-card">
+              <div class="bp-fbd-group-head">
+                <span class="bp-fbd-group-title">Context</span>
+              </div>
+              <div class="bp-fbd-attr bp-fbd-attr--block">
+                <label class="bp-fbd-attr-label">Pages</label>
+                <div class="bp-fbd-pages">
+                  <div *ngFor="let p of editPages; let i = index" class="bp-fbd-page-row">
+                    <span class="bp-fbd-page-url" [title]="p">{{ p }}</span>
+                    <button type="button" class="bp-fbd-page-x" (click)="removePage(i)">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
+                  <input pInputText [(ngModel)]="newPageInput"
+                    placeholder="add page url..."
+                    (keydown.enter)="addPage()"
+                    class="bp-fbd-input"/>
+                </div>
+              </div>
+              <div class="bp-fbd-attr bp-fbd-attr--block">
+                <label class="bp-fbd-attr-label">Tags</label>
+                <p-chips [(ngModel)]="editTags" placeholder="add tag..."
+                  [addOnBlur]="true"
+                  (ngModelChange)="markDirty()"
+                  styleClass="bp-fbd-chips"></p-chips>
               </div>
             </div>
-            <div class="bp-fbd-attr bp-fbd-attr--block">
-              <label class="bp-fbd-attr-label">Tags</label>
-              <p-chips [(ngModel)]="editTags" placeholder="add tag..."
-                [addOnBlur]="true"
-                (ngModelChange)="markDirty()"
-                styleClass="bp-fbd-chips"></p-chips>
-            </div>
 
-            <h4 class="bp-fbd-group">Meta</h4>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Logged by</label>
-              <span class="bp-fbd-readonly">{{ entry.submitted_by || '—' }}</span>
-            </div>
-            <div class="bp-fbd-attr">
-              <label class="bp-fbd-attr-label">Submitted</label>
-              <span class="bp-fbd-readonly">{{ formatDate(entry.created_at) }}</span>
+            <div class="bp-fbd-group-card bp-fbd-group-card--meta">
+              <div class="bp-fbd-group-head">
+                <span class="bp-fbd-group-title">Meta</span>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Logged by</label>
+                <span class="bp-fbd-readonly">{{ entry.submitted_by || '—' }}</span>
+              </div>
+              <div class="bp-fbd-attr">
+                <label class="bp-fbd-attr-label">Submitted</label>
+                <span class="bp-fbd-readonly">{{ formatDate(entry.created_at) }}</span>
+              </div>
             </div>
           </ng-container>
         </div>
@@ -752,14 +773,26 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       line-height: 1;
     }
 
-    /* ── Attributes ── */
-    .bp-fbd-group {
-      margin: 0 0 8px; padding-top: 14px;
-      font-size: 10px; font-weight: 600;
-      color: var(--theme-accent);
-      text-transform: uppercase; letter-spacing: 0.06em;
+    /* ── Attributes (card pattern, mirrors Settings → Organisation) ── */
+    .bp-fbd-group-card {
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-surface);
+      padding: 12px 14px;
+      margin-bottom: 12px;
     }
-    .bp-fbd-group:first-child { padding-top: 0; }
+    .bp-fbd-group-card:last-child { margin-bottom: 0; }
+    .bp-fbd-group-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-fbd-group-title {
+      font-size: 11px; font-weight: 600;
+      color: var(--theme-accent);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
     .bp-fbd-attr {
       display: grid; grid-template-columns: 110px 1fr;
       gap: 10px; align-items: center; padding: 4px 0;
