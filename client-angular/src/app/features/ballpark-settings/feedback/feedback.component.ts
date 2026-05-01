@@ -141,7 +141,7 @@ type DetailMode = 'inline' | 'drawer';
                 [class.active]="selectedArea === a.id"
                 (click)="setArea(a.id)">
                 <div class="bp-fb-area-circle"
-                  [style.color]="a.iconColor || null">
+                  [style.background-color]="a.iconColor || null">
                   <lucide-icon [name]="a.icon" [size]="areaIconSize"></lucide-icon>
                 </div>
                 <span class="bp-fb-area-label">{{ a.label }}</span>
@@ -323,9 +323,10 @@ type DetailMode = 'inline' | 'drawer';
       color: var(--theme-accent); background: var(--theme-bg);
       box-shadow: 0 0 0 0.5px var(--color-border);
     }
-    /* When icon_color is set on the area, an inline style overrides
-       the color property so the lucide stroke takes that hue while
-       the parchment fill stays unchanged. */
+    /* When icon_color is set on the area, an inline style fills the
+       circle with that hue (it's the "icon background" in the area
+       form). The lucide stroke keeps the theme-accent default so the
+       icon stays legible on top of the fill. */
     .bp-fb-area-btn.active .bp-fb-area-circle {
       border-color: var(--theme-accent);
       box-shadow: 0 0 0 2px var(--theme-accent);
