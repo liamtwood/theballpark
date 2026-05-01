@@ -22,6 +22,7 @@ export class ConfigService {
     projectLabel: 'Event',
     creditLabel: 'Ball',
     catalogueLabel: 'Catalogue',
+    feedbackLabel: 'Feedback',
     themeName: 'amber',
     mode: 'system',
     heroAlign: 'center',
@@ -47,6 +48,7 @@ export class ConfigService {
   get projectLabel(): string { return this.config.projectLabel; }
   get creditLabel(): string { return this.config.creditLabel; }
   get catalogueLabel(): string { return this.config.catalogueLabel || 'Catalogue'; }
+  get feedbackLabel(): string { return this.config.feedbackLabel || 'Feedback'; }
   get logoUrl(): string { return this.config.logoUrl || ''; }
   get heroAlign(): string { return this.config.heroAlign || 'center'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }

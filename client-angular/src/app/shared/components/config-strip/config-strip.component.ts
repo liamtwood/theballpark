@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef
+  Component, OnInit, OnDestroy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
@@ -21,7 +21,6 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
   selector: 'app-config-strip',
   standalone: true,
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bp-config-strip" *ngIf="isOpen">
       <ng-content></ng-content>
@@ -54,7 +53,7 @@ export class ConfigStripComponent implements OnInit, OnDestroy {
     this.svc.register();
     this.sub = this.svc.open$.subscribe(open => {
       this.isOpen = open;
-      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     });
   }
 

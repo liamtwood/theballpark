@@ -23,4 +23,5 @@ export interface PlatformConfig {
   navMode?: 'tabs' | 'sidenav';
   fontPairing?: string;
   catalogueLabel?: string;
+  feedbackLabel?: string;
 }

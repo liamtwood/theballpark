@@ -10,6 +10,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import {
   CatalogueGridComponent, CircleSize, DetailSize
 } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  PageConfigTogglesComponent, ThemeSwatch, DetailMode
+} from '../../../shared/components/page-config-toggles/page-config-toggles.component';
+import { ConfigService } from '../../../core/services/config.service';
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -23,9 +27,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { FeedbackDrawerComponent } from '../../feedback/feedback-drawer.component';
 
-type ViewMode = 'grid' | 'list' | 'table';
-type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
-type DetailMode = 'inline' | 'drawer';
+type ViewMode = 'card' | 'list' | 'table';
 
 @Component({
   selector: 'app-feedback',
@@ -36,7 +38,7 @@ type DetailMode = 'inline' | 'drawer';
     InputTextModule, DropdownModule, ButtonModule, ConfirmDialogModule, ToastModule,
     TableModule, SelectButtonModule,
     StatusBadgeComponent, AvatarComponent,
-    FeedbackDrawerComponent
+    FeedbackDrawerComponent, PageConfigTogglesComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -54,15 +56,17 @@ type DetailMode = 'inline' | 'drawer';
         [layout]="catalogueLayout()"
         [showLayoutToggle]="false"
         [useCustomDetail]="false"
+        [useCustomMain]="true"
         entityType="feedback"
         entityLabel="entry"
         sectionTitle="FEEDBACK"
         actionLabel="Open"
         [pageLabel]="'BALLPARK SETTINGS'"
-        [pageTitle]="'Feedback'"
+        [pageTitle]="pageLabel"
         [pageSubtitle]="feedbackSubtitle"
         [circleSize]="circleSize"
         [detailSize]="detailSize"
+        [detailMode]="detailMode"
         [breadcrumbRoot]="'AREA'"
         [breadcrumbAll]="'All Areas'"
         [breadcrumbActive]="selectedAreaLabel"
@@ -75,61 +79,20 @@ type DetailMode = 'inline' | 'drawer';
         (categoryChanged)="onTypeFilterChanged($event)"
         (breadcrumbBackClicked)="setArea('all')">
 
-        <!-- Per-page config strip controls (toggled by cog in top-nav) -->
-        <div config-content class="bp-cfg-row">
-          <span class="bp-cfg-lab">THEME</span>
-          <p-selectButton
-            [options]="themeOptions"
-            [(ngModel)]="theme"
-            (onChange)="onThemeChange()"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="bp-cfg-swatches">
-            <ng-template let-opt pTemplate>
-              <span class="bp-cfg-swatch" [style.background]="opt.color"></span>
-            </ng-template>
-          </p-selectButton>
-
-          <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">CIRCLE SIZE</span>
-          <p-selectButton
-            [options]="circleSizeOptions"
-            [(ngModel)]="circleSize"
-            (onChange)="persistConfig()"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="bp-cfg-seg"></p-selectButton>
-
-          <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">VIEW</span>
-          <p-selectButton
-            [options]="cfgViewOptions"
-            [(ngModel)]="viewMode"
-            (onChange)="persistConfig()"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="bp-cfg-seg"></p-selectButton>
-
-          <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">DETAIL SIZE</span>
-          <p-selectButton
-            [options]="detailSizeOptions"
-            [(ngModel)]="detailSize"
-            (onChange)="persistConfig()"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="bp-cfg-seg"></p-selectButton>
-
-          <span class="bp-cfg-divider"></span>
-          <span class="bp-cfg-lab">DETAIL MODE</span>
-          <p-selectButton
-            [options]="detailModeOptions"
-            [(ngModel)]="detailMode"
-            (onChange)="persistConfig()"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="bp-cfg-seg"></p-selectButton>
-        </div>
+        <!-- Shared config strip controls (toggled by cog in top-nav) -->
+        <app-page-config-toggles config-content
+          [(pageLabel)]="pageLabel"
+          (pageLabelChange)="onPageLabelChange($event)"
+          [(theme)]="theme"
+          (themeChange)="onThemeChange()"
+          [(circleSize)]="circleSize"
+          (circleSizeChange)="persistConfig()"
+          [(view)]="viewMode"
+          (viewChange)="persistConfig()"
+          [(detailSize)]="detailSize"
+          (detailSizeChange)="persistConfig()"
+          [(detailMode)]="detailMode"
+          (detailModeChange)="persistConfig()"></app-page-config-toggles>
 
         <!-- AREA CIRCLES + FILTER BAR + BULK BAR — projected so they sit
              between the hero and the 3-col body. -->
@@ -451,65 +414,6 @@ type DetailMode = 'inline' | 'drawer';
       font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
     }
 
-    /* Config strip layout — labels + segmented controls in a row.
-       The !important flags here intentionally win against the global
-       .p-button declarations in styles.css, which are also !important. */
-    .bp-cfg-row { display: contents; }
-    .bp-cfg-lab {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--color-text-muted);
-    }
-    .bp-cfg-divider {
-      width: 1px; height: 22px; background: var(--color-border);
-    }
-    .bp-cfg-swatch {
-      display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-    }
-    /* Segmented size/view buttons — flush together inside one rounded
-       outline; active mode = solid theme-accent + white. */
-    :host ::ng-deep .bp-cfg-seg.p-selectbutton {
-      display: inline-flex;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button {
-      padding: 4px 12px !important;
-      height: 28px !important;
-      font-size: 12px !important;
-      font-weight: 500 !important;
-      background: var(--color-surface) !important;
-      color: var(--color-text-secondary) !important;
-      border: none !important;
-      border-radius: 0 !important;
-      font-family: var(--font-body) !important;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button.p-highlight {
-      background: var(--theme-accent) !important;
-      color: var(--color-surface) !important;
-      font-weight: 600 !important;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none !important; }
-    /* Theme swatches — round, gapped (no shared outline). Selected swatch
-       gets a high-contrast ring around the colour. */
-    :host ::ng-deep .bp-cfg-swatches.p-selectbutton {
-      display: inline-flex; gap: 8px;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button {
-      padding: 0 !important;
-      height: 22px !important; width: 22px !important;
-      background: transparent !important;
-      border: none !important;
-      border-radius: 50% !important;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button.p-highlight {
-      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
-      background: transparent !important;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button:focus {
-      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
-    }
-
     /* Bulk action bar */
     .bp-fb-bulk-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 28px;
@@ -560,7 +464,7 @@ export class FeedbackComponent implements OnInit {
 
   viewMode: ViewMode = 'table';
   viewModeOptions = [
-    { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layout-grid' },
+    { label: 'Grid',  value: 'card' as ViewMode,  icon: 'layout-grid' },
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
     { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
   ];
@@ -599,33 +503,6 @@ export class FeedbackComponent implements OnInit {
   // Drawer is the only fully-supported detail mode for feedback today.
   // The toggle persists user choice for when inline detail lands.
   detailMode: DetailMode = 'drawer';
-
-  themeOptions = [
-    { label: 'Amber',   value: '' as ThemeSwatch,        color: 'var(--theme-accent)' },
-    { label: 'Emerald', value: 'emerald' as ThemeSwatch, color: '#00B84A' },
-    { label: 'Pink',    value: 'pink' as ThemeSwatch,    color: '#FF0066' },
-    { label: 'Ocean',   value: 'ocean' as ThemeSwatch,   color: '#2563EB' },
-    { label: 'Slate',   value: 'slate' as ThemeSwatch,   color: '#64748B' }
-  ];
-  circleSizeOptions = [
-    { label: 'Small · 56',  value: 'sm' as CircleSize },
-    { label: 'Medium · 72', value: 'md' as CircleSize },
-    { label: 'Large · 96',  value: 'lg' as CircleSize }
-  ];
-  detailSizeOptions = [
-    { label: 'Small · 260',  value: 'sm' as DetailSize },
-    { label: 'Medium · 320', value: 'md' as DetailSize },
-    { label: 'Large · 420',  value: 'lg' as DetailSize }
-  ];
-  cfgViewOptions = [
-    { label: 'Card',  value: 'grid' as ViewMode },
-    { label: 'List',  value: 'list' as ViewMode },
-    { label: 'Table', value: 'table' as ViewMode }
-  ];
-  detailModeOptions = [
-    { label: 'Inline',  value: 'inline' as DetailMode },
-    { label: 'Drawer',  value: 'drawer' as DetailMode }
-  ];
 
   tableRows: any[] = [];
 
@@ -679,7 +556,14 @@ export class FeedbackComponent implements OnInit {
     return prefix + '-' + (entry.id || '').substring(0, 4).toUpperCase();
   }
 
+  // Page label is org-wide via ConfigService.feedbackLabel — kept in
+  // sync via configService.config$ in ngOnInit.
+  pageLabel = 'Feedback';
+
+  /** Drives the hero subtitle and stays as-is when no entries loaded. */
+
   constructor(
+    private configSvc: ConfigService,
     private feedbackSvc: FeedbackService,
     private confirmSvc: ConfirmationService,
     private msg: MessageService,
@@ -687,13 +571,20 @@ export class FeedbackComponent implements OnInit {
   ) {}
 
   catalogueLayout(): 'list' | 'card' | 'table' {
-    if (this.viewMode === 'grid')  return 'card';
+    if (this.viewMode === 'card')  return 'card';
     if (this.viewMode === 'list')  return 'list';
     return 'table';
   }
 
   ngOnInit() {
     this.loadConfig();
+    this.pageLabel = this.configSvc.feedbackLabel;
+    this.configSvc.config$.subscribe(cfg => {
+      if (cfg.feedbackLabel && cfg.feedbackLabel !== this.pageLabel) {
+        this.pageLabel = cfg.feedbackLabel;
+        this.cdr.detectChanges();
+      }
+    });
     this.feedbackSvc.getFeedbackCategories('area').subscribe({
       next: (cats) => {
         this.areaCategories = (cats || []).filter(c => c.namespace === 'area');
@@ -722,6 +613,11 @@ export class FeedbackComponent implements OnInit {
   onThemeChange() {
     this.applyTheme();
     this.persistConfig();
+  }
+  /** Page label is org-wide — write through to ConfigService so the
+      top-nav and admin terminology editor see the change too. */
+  onPageLabelChange(label: string) {
+    this.configSvc.update({ feedbackLabel: label });
   }
   private applyTheme() {
     if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);

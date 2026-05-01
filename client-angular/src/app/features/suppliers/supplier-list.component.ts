@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { SelectButtonModule } from 'primeng/selectbutton';
 import { SupplierService } from '../../core/services/supplier.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
@@ -17,16 +16,17 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import {
   CatalogueGridComponent, CircleSize, DetailSize
 } from '../../shared/components/catalogue-grid/catalogue-grid.component';
-
-type Layout = 'card' | 'list';
-type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
+import {
+  PageConfigTogglesComponent, Layout, DetailMode, ThemeSwatch
+} from '../../shared/components/page-config-toggles/page-config-toggles.component';
 
 @Component({
   selector: 'app-supplier-list',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterModule, LucideAngularModule, SelectButtonModule,
-    LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent
+    CommonModule, FormsModule, RouterModule, LucideAngularModule,
+    LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
+    PageConfigTogglesComponent
   ],
   template: `
     <div class="bp-page">
@@ -46,6 +46,7 @@ type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
           [pageSubtitle]="catalogueSubtitle"
           [circleSize]="circleSize"
           [detailSize]="detailSize"
+          [detailMode]="detailMode"
           [layout]="layout"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
@@ -63,51 +64,20 @@ type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
               (click)="switchMode('suppliers')">Suppliers</button>
           </div>
 
-          <!-- Per-page config strip controls (toggled by cog in top-nav) -->
-          <div config-content class="bp-cfg-row">
-            <span class="bp-cfg-lab">THEME</span>
-            <p-selectButton
-              [options]="themeOptions"
-              [(ngModel)]="theme"
-              (onChange)="onThemeChange()"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="bp-cfg-swatches">
-              <ng-template let-opt pTemplate>
-                <span class="bp-cfg-swatch" [style.background]="opt.color"></span>
-              </ng-template>
-            </p-selectButton>
-
-            <span class="bp-cfg-divider"></span>
-            <span class="bp-cfg-lab">CIRCLE SIZE</span>
-            <p-selectButton
-              [options]="circleSizeOptions"
-              [(ngModel)]="circleSize"
-              (onChange)="persistConfig()"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="bp-cfg-seg"></p-selectButton>
-
-            <span class="bp-cfg-divider"></span>
-            <span class="bp-cfg-lab">VIEW</span>
-            <p-selectButton
-              [options]="viewOptions"
-              [(ngModel)]="layout"
-              (onChange)="persistConfig()"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="bp-cfg-seg"></p-selectButton>
-
-            <span class="bp-cfg-divider"></span>
-            <span class="bp-cfg-lab">DETAIL SIZE</span>
-            <p-selectButton
-              [options]="detailSizeOptions"
-              [(ngModel)]="detailSize"
-              (onChange)="persistConfig()"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="bp-cfg-seg"></p-selectButton>
-          </div>
+          <!-- Shared config strip controls (toggled by cog in top-nav) -->
+          <app-page-config-toggles config-content
+            [(pageLabel)]="catalogueTitle"
+            (pageLabelChange)="onPageLabelChange($event)"
+            [(theme)]="theme"
+            (themeChange)="onThemeChange()"
+            [(circleSize)]="circleSize"
+            (circleSizeChange)="persistConfig()"
+            [(view)]="layout"
+            (viewChange)="persistConfig()"
+            [(detailSize)]="detailSize"
+            (detailSizeChange)="persistConfig()"
+            [(detailMode)]="detailMode"
+            (detailModeChange)="persistConfig()"></app-page-config-toggles>
         </app-catalogue-grid>
       </ng-container>
 
@@ -152,65 +122,6 @@ type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
     .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
     .bp-toggle-btn.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
-
-    /* Config strip layout — labels + segmented controls in a row.
-       The !important flags here intentionally win against the global
-       .p-button declarations in styles.css, which are also !important. */
-    .bp-cfg-row { display: contents; }
-    .bp-cfg-lab {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--color-text-muted);
-    }
-    .bp-cfg-divider {
-      width: 1px; height: 22px; background: var(--color-border);
-    }
-    .bp-cfg-swatch {
-      display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-    }
-    /* Segmented size/view buttons — flush together inside one rounded
-       outline; active mode = solid theme-accent + white. */
-    :host ::ng-deep .bp-cfg-seg.p-selectbutton {
-      display: inline-flex;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button {
-      padding: 4px 12px !important;
-      height: 28px !important;
-      font-size: 12px !important;
-      font-weight: 500 !important;
-      background: var(--color-surface) !important;
-      color: var(--color-text-secondary) !important;
-      border: none !important;
-      border-radius: 0 !important;
-      font-family: var(--font-body) !important;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button.p-highlight {
-      background: var(--theme-accent) !important;
-      color: var(--color-surface) !important;
-      font-weight: 600 !important;
-    }
-    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none !important; }
-    /* Theme swatches — round, gapped (no shared outline). Selected swatch
-       gets a high-contrast ring around the colour. */
-    :host ::ng-deep .bp-cfg-swatches.p-selectbutton {
-      display: inline-flex; gap: 8px;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button {
-      padding: 0 !important;
-      height: 22px !important; width: 22px !important;
-      background: transparent !important;
-      border: none !important;
-      border-radius: 50% !important;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button.p-highlight {
-      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
-      background: transparent !important;
-    }
-    :host ::ng-deep .bp-cfg-swatches .p-button:focus {
-      box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
-    }
   `]
 })
 export class SupplierListComponent implements OnInit, OnDestroy {
@@ -229,7 +140,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
 
-  // Hero copy (passed to CatalogueGridComponent)
+  // Hero copy (passed to CatalogueGridComponent). The page label is
+  // org-wide via ConfigService.catalogueLabel — kept in sync via
+  // configService.config$ subscription in ngOnInit.
   catalogueTitle = 'Catalogue';
   get catalogueSubtitle(): string {
     const noun = this.viewMode === 'suppliers' ? 'suppliers' : 'items';
@@ -238,40 +151,21 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     return `${count} ${noun} across ${cats} categories · vetted UK suppliers`;
   }
 
-  // Config strip state — persisted to localStorage with the
-  // ballpark:marketplace:* key namespace.
+  // Layout-only config strip state — persisted per-user to localStorage
+  // with the ballpark:marketplace:* key namespace. Page label lives in
+  // ConfigService (org-wide), not here.
   private readonly LS = {
     theme:      'ballpark:marketplace:theme',
     circleSize: 'ballpark:marketplace:circleSize',
     detailSize: 'ballpark:marketplace:detailSize',
-    layout:     'ballpark:marketplace:layout'
+    layout:     'ballpark:marketplace:layout',
+    detailMode: 'ballpark:marketplace:detailMode'
   };
   theme: ThemeSwatch = '';
   circleSize: CircleSize = 'lg';
   detailSize: DetailSize = 'md';
   layout: Layout = 'card';
-
-  themeOptions = [
-    { label: 'Amber',   value: '' as ThemeSwatch,        color: 'var(--theme-accent)' },
-    { label: 'Emerald', value: 'emerald' as ThemeSwatch, color: '#00B84A' },
-    { label: 'Pink',    value: 'pink' as ThemeSwatch,    color: '#FF0066' },
-    { label: 'Ocean',   value: 'ocean' as ThemeSwatch,   color: '#2563EB' },
-    { label: 'Slate',   value: 'slate' as ThemeSwatch,   color: '#64748B' }
-  ];
-  circleSizeOptions = [
-    { label: 'Small · 56',  value: 'sm' as CircleSize },
-    { label: 'Medium · 72', value: 'md' as CircleSize },
-    { label: 'Large · 96',  value: 'lg' as CircleSize }
-  ];
-  detailSizeOptions = [
-    { label: 'Small · 260',  value: 'sm' as DetailSize },
-    { label: 'Medium · 320', value: 'md' as DetailSize },
-    { label: 'Large · 420',  value: 'lg' as DetailSize }
-  ];
-  viewOptions = [
-    { label: 'Card', value: 'card' as Layout },
-    { label: 'List', value: 'list' as Layout }
-  ];
+  detailMode: DetailMode = 'inline';
 
   // Image upload
   categoryUploadId = '';
@@ -317,6 +211,13 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadConfig();
+    this.catalogueTitle = this.configSvc.catalogueLabel;
+    this.configSvc.config$.subscribe(cfg => {
+      if (cfg.catalogueLabel && cfg.catalogueLabel !== this.catalogueTitle) {
+        this.catalogueTitle = cfg.catalogueLabel;
+        this.cdr.detectChanges();
+      }
+    });
     const label = this.configSvc.catalogueLabel.toUpperCase();
     const projectId = this.route.snapshot.queryParams['projectId'];
     if (projectId) {
@@ -381,14 +282,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   // ── Config strip persistence ──────────────────────────────────────────
   loadConfig() {
-    const t = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
+    const t  = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
     const cs = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
     const ds = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
     const ly = (localStorage.getItem(this.LS.layout) || 'card') as Layout;
+    const dm = (localStorage.getItem(this.LS.detailMode) || 'inline') as DetailMode;
     this.theme = t;
     this.circleSize = cs;
     this.detailSize = ds;
     this.layout = ly;
+    this.detailMode = dm;
     this.applyTheme();
   }
   persistConfig() {
@@ -396,10 +299,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     localStorage.setItem(this.LS.circleSize, this.circleSize);
     localStorage.setItem(this.LS.detailSize, this.detailSize);
     localStorage.setItem(this.LS.layout, this.layout);
+    localStorage.setItem(this.LS.detailMode, this.detailMode);
   }
   onThemeChange() {
     this.applyTheme();
     this.persistConfig();
+  }
+  /** Page label is org-wide — write through to ConfigService so the
+      top-nav and admin terminology editor see the change too. */
+  onPageLabelChange(label: string) {
+    this.configSvc.update({ catalogueLabel: label });
   }
   private applyTheme() {
     if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);

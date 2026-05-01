@@ -291,6 +291,91 @@ lucide-icon svg {
 }
 
 /* ============================================
+   PAGE CONFIG STRIP — shared chrome for the cog-driven config toggles
+   used by marketplace + feedback. Lives globally so both pages
+   render an identical strip; controls are in app-page-config-toggles.
+   The !important flags here win against the generic .p-button block
+   above, which is also !important.
+   ============================================ */
+.bp-cfg-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.bp-cfg-lab {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+.bp-cfg-divider {
+  width: 1px; height: 22px; background: var(--color-border);
+}
+.bp-cfg-swatch {
+  display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+}
+
+/* PAGE LABEL input — sized to sit alongside the segmented buttons. */
+input.bp-cfg-page-label.p-inputtext {
+  height: 28px !important;
+  width: 160px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-family: var(--font-body) !important;
+  background: var(--color-surface) !important;
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: 6px !important;
+  color: var(--color-text-primary) !important;
+}
+input.bp-cfg-page-label.p-inputtext:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent) !important;
+}
+
+/* Segmented size/view buttons — flush together in a shared rounded
+   outline; active mode = solid theme-accent + white. */
+.bp-cfg-seg.p-selectbutton {
+  display: inline-flex;
+  border: 0.5px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bp-cfg-seg .p-button {
+  padding: 4px 12px !important;
+  height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text-secondary) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-family: var(--font-body) !important;
+}
+.bp-cfg-seg .p-button.p-highlight {
+  background: var(--theme-accent) !important;
+  color: var(--color-surface) !important;
+  font-weight: 600 !important;
+}
+.bp-cfg-seg .p-button:focus { box-shadow: none !important; }
+
+/* Theme swatches — round, gapped (no shared outline). Selected swatch
+   gets a high-contrast ring around the colour. */
+.bp-cfg-swatches.p-selectbutton {
+  display: inline-flex; gap: 8px;
+}
+.bp-cfg-swatches .p-button {
+  padding: 0 !important;
+  height: 22px !important; width: 22px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
+.bp-cfg-swatches .p-button.p-highlight {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
+  background: transparent !important;
+}
+.bp-cfg-swatches .p-button:focus {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-primary) !important;
+}
+
+/* ============================================
    DARK MODE SURFACE OVERRIDES
    ============================================ */
 [data-mode="dark"] .p-tabview,

@@ -14,6 +14,7 @@ import { ConfigStripComponent } from '../config-strip/config-strip.component';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
+export type DetailMode = 'inline' | 'drawer';
 
 @Component({
   selector: 'app-catalogue-grid',
@@ -102,7 +103,9 @@ export type DetailSize = 'sm' | 'md' | 'lg';
     <ng-content select="[catalogue-before-body]"></ng-content>
 
     <!-- THREE-COLUMN BODY -->
-    <div class="bp-cat-body bp-cat-body--detail" [attr.data-detail-size]="detailSize">
+    <div class="bp-cat-body bp-cat-body--detail"
+      [attr.data-detail-size]="detailSize"
+      [class.bp-cat-body--no-inline-detail]="hideInlineDetail">
 
       <!-- ── SIDEBAR ── -->
       <div class="bp-cat-sidebar">
@@ -283,17 +286,48 @@ export type DetailSize = 'sm' | 'md' | 'lg';
           </div>
         </ng-container>
 
-        <!-- TABLE VIEW — parent projects its own <p-table> here -->
+        <!-- TABLE VIEW — projected when useCustomMain, otherwise a basic
+             auto-table generated from entities[]. -->
         <ng-container *ngIf="layout === 'table'">
-          <ng-content select="[catalogue-main]"></ng-content>
+          <ng-content *ngIf="useCustomMain" select="[catalogue-main]"></ng-content>
+          <div *ngIf="!useCustomMain && filteredEntities.length" class="bp-cat-fallback-table-wrap">
+            <table class="bp-cat-fallback-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th *ngIf="anyEntityHasSubtitle">Subtitle</th>
+                  <th *ngIf="anyEntityHasCategoryLabel">Category</th>
+                  <th *ngIf="anyEntityHasPrice">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let e of filteredEntities"
+                    [class.bp-fallback-row-selected]="selectedEntity?.id === e.id"
+                    (click)="select(e)">
+                  <td class="bp-fallback-cell-name">{{ e.name }}</td>
+                  <td *ngIf="anyEntityHasSubtitle" class="bp-fallback-cell-muted">{{ e.subtitle || '—' }}</td>
+                  <td *ngIf="anyEntityHasCategoryLabel" class="bp-fallback-cell-muted">{{ e.categoryLabel || '—' }}</td>
+                  <td *ngIf="anyEntityHasPrice">
+                    <ng-container *ngIf="e.priceRange">
+                      {{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}
+                    </ng-container>
+                    <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
+                    <span *ngIf="!e.priceRange && !e.price" class="bp-fallback-cell-muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </ng-container>
       </div>
 
       <!-- ── RIGHT DETAIL PANEL ── -->
       <!-- Parent components (e.g. Feedback) project a custom panel via the
            [catalogue-detail] slot. When useCustomDetail is true we show the
-           projected content and skip the built-in entity preview below. -->
-      <div class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
+           projected content and skip the built-in entity preview below.
+           Hidden entirely in table+drawer mode — the page's own drawer
+           handles detail there. -->
+      <div *ngIf="!hideInlineDetail" class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
         <ng-container *ngIf="useCustomDetail">
           <ng-content select="[catalogue-detail]"></ng-content>
         </ng-container>
@@ -473,6 +507,14 @@ export type DetailSize = 'sm' | 'md' | 'lg';
     /* Wider detail panel when the parent projects a custom one (e.g. the
        feedback notes preview). Matches the drawer minimum (520px). */
     .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
+    /* Detail-mode = drawer in table view: suppress the third column so
+       the main fills the width and the page's own drawer slides in. */
+    .bp-cat-body--detail.bp-cat-body--no-inline-detail,
+    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="sm"],
+    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="md"],
+    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
+      grid-template-columns: 260px 1fr;
+    }
     .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
     .bp-cat-main { padding: 20px 28px; overflow-y: auto; min-width: 0; }
     .bp-cat-detail { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
@@ -557,6 +599,39 @@ export type DetailSize = 'sm' | 'md' | 'lg';
     .bp-list-unit { font-size: 10px; color: var(--color-text-muted); }
     .bp-row-chev { color: var(--color-text-muted); flex-shrink: 0; }
 
+    /* FALLBACK TABLE (auto-generated when useCustomMain is false). */
+    .bp-cat-fallback-table-wrap {
+      border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden;
+      background: var(--color-surface);
+    }
+    .bp-cat-fallback-table {
+      width: 100%; border-collapse: collapse;
+      font-family: var(--font-body);
+    }
+    .bp-cat-fallback-table thead th {
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      text-align: left; padding: 10px 12px;
+      border-bottom: 0.5px solid var(--color-border);
+      white-space: nowrap;
+    }
+    .bp-cat-fallback-table tbody td {
+      padding: 9px 12px; font-size: 12.5px;
+      color: var(--color-text-primary);
+      border-bottom: 0.5px solid var(--color-border);
+      vertical-align: middle;
+    }
+    .bp-cat-fallback-table tbody tr {
+      cursor: pointer; transition: background 0.1s;
+    }
+    .bp-cat-fallback-table tbody tr:hover { background: var(--theme-bg); }
+    .bp-cat-fallback-table tbody tr.bp-fallback-row-selected { background: var(--theme-bg); }
+    .bp-cat-fallback-table tbody tr:last-child td { border-bottom: none; }
+    .bp-fallback-cell-name { font-weight: 500; }
+    .bp-fallback-cell-muted { color: var(--color-text-muted); }
+
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
     .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
@@ -633,6 +708,11 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
   @Input() detailSize: DetailSize = 'md';
+  /** Detail rendering mode. When 'drawer' AND layout is 'table', the
+      inline right column is hidden so the page's own drawer (e.g.
+      app-feedback-drawer) is the only detail surface. In 'inline' mode
+      or any non-table layout the inline column is always shown. */
+  @Input() detailMode: DetailMode = 'inline';
   /** Always-visible breadcrumb row at the top of the main column.
       Default: derives root from sidebarCategoryLabel and "All …" segment
       from a naive plural; the active segment falls back to the internal
@@ -687,6 +767,10 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   // [catalogue-detail] slot, set this so we hide the built-in detail
   // template (otherwise both render and stack).
   @Input() useCustomDetail = false;
+  // When the parent projects a custom table via the [catalogue-main]
+  // slot (e.g. feedback's <p-table>), set this so the fallback table
+  // generated from entities[] is suppressed.
+  @Input() useCustomMain = false;
   filteredEntities: CatalogueEntity[] = [];
 
   // Drill-down state
@@ -704,6 +788,18 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     if (this.circleSize === 'md') return 26;
     return 34;
   }
+
+  /** True when the inline detail panel should be suppressed — only
+      happens in table view + drawer mode. The page's own drawer takes
+      over from there. */
+  get hideInlineDetail(): boolean {
+    return this.layout === 'table' && this.detailMode === 'drawer';
+  }
+
+  /** Column visibility hints for the fallback auto-table. */
+  get anyEntityHasSubtitle(): boolean { return this.filteredEntities.some(e => !!e.subtitle); }
+  get anyEntityHasCategoryLabel(): boolean { return this.filteredEntities.some(e => !!e.categoryLabel); }
+  get anyEntityHasPrice(): boolean { return this.filteredEntities.some(e => !!e.price || !!e.priceRange); }
 
   /** Resolved root segment for the main-column breadcrumb (uppercase). */
   get resolvedBreadcrumbRoot(): string {

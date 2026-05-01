@@ -37,13 +37,13 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="store" [size]="14"></lucide-icon> Marketplace
+          <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
         </a>
         <a routerLink="/projects" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="folder-open" [size]="14"></lucide-icon> Projects
         </a>
         <a routerLink="/ballpark-settings/feedback" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> Feedback
+          <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> {{ feedbackLabel }}
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
@@ -52,7 +52,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
         </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
-        <button *ngIf="hasConfig" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
+        <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
@@ -215,9 +215,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
   tagline      = 'Exhibition Costing';
   creditLabel  = 'Ball';
   catalogueLabel = 'Catalogue';
+  feedbackLabel  = 'Feedback';
   ballsBalance = 0;
   orgName      = '';
   isDark       = false;
+  isAdmin      = false;
   version      = environment.version;
   inProject    = false;
   projectId    = '';
@@ -256,6 +258,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (cfg.tagline)     this.tagline     = cfg.tagline;
       if (cfg.creditLabel) this.creditLabel = cfg.creditLabel;
       if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
+      if (cfg.feedbackLabel)  this.feedbackLabel  = cfg.feedbackLabel;
       this.cdr.detectChanges();
     });
 
@@ -263,6 +266,16 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.ballsBalance = org.balls_balance || 0;
+        this.cdr.detectChanges();
+      }
+    });
+
+    // Mirror app-shell's pattern: first user record is treated as the
+    // current user, so admin role gates the cog the same way it gates
+    // admin-only nav groups.
+    this.orgService.getUsers().subscribe((users: any[]) => {
+      if (users?.length) {
+        this.isAdmin = users[0].role === 'admin' || users[0].is_platform_admin === true;
         this.cdr.detectChanges();
       }
     });
