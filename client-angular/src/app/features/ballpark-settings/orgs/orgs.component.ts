@@ -40,9 +40,9 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         (entitySelected)="onEntitySelected($event)"
         (actionClicked)="onAction($event)"
         (imageEditRequested)="onImageEdit($event)">
-        <button catalogue-toggles class="bp-add-btn" (click)="openAddDrawer()">
-          <i class="pi pi-plus" style="font-size:11px;"></i> Add Org
-        </button>
+        <p-button catalogue-toggles label="+ Add org"
+          styleClass="p-button-outlined bp-section-add-btn"
+          (onClick)="openAddDrawer()"></p-button>
       </app-catalogue-grid>
     </ng-container>
 
@@ -168,14 +168,12 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
     <p-toast></p-toast>
   `,
   styles: [`
-    .bp-add-btn {
-      display: flex; align-items: center; gap: 4px;
-      padding: 5px 14px; font-size: 12px; font-weight: 500;
-      font-family: var(--font-body); border: 1px solid var(--theme-accent);
-      background: transparent; color: var(--theme-accent);
-      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    /* Section-header add button — sized to match the view-toggle row. */
+    :host ::ng-deep .bp-section-add-btn .p-button {
+      height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
     }
-    .bp-add-btn:hover { background: var(--theme-accent); color: #fff; }
   `]
 })
 export class OrgsComponent implements OnInit {

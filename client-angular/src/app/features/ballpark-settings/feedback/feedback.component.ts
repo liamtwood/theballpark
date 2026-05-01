@@ -175,7 +175,7 @@ type DetailMode = 'inline' | 'drawer';
 
         <!-- Section header right-side controls: Add + view toggle. -->
         <div catalogue-toggles class="bp-fb-header-actions">
-          <p-button label="+ Add" styleClass="p-button-outlined bp-fb-add-btn"
+          <p-button label="+ Add entry" styleClass="p-button-outlined bp-fb-add-btn"
             (onClick)="openAddDialog()"></p-button>
           <p-selectButton
             [options]="viewModeOptions"

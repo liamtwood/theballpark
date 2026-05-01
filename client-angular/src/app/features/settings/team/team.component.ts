@@ -75,6 +75,9 @@ interface InviteCode {
             <div class="bp-section-header">
               <span class="bp-section-title">MEMBERS</span>
               <div class="flex items-center gap-2">
+                <p-button label="+ Invite member"
+                  styleClass="p-button-outlined bp-section-add-btn"
+                  (onClick)="inviteMember()"></p-button>
                 <div class="bp-view-toggle">
                   <button class="bp-view-btn" [class.active]="teamView==='list'" (click)="teamView='list'" title="List view">
                     <i class="pi pi-bars"></i>
@@ -83,7 +86,6 @@ interface InviteCode {
                     <i class="pi pi-th-large"></i>
                   </button>
                 </div>
-                <p-button label="Invite member" icon="pi pi-plus" styleClass="p-button-outlined" (onClick)="inviteMember()"></p-button>
               </div>
             </div>
 
@@ -295,6 +297,13 @@ interface InviteCode {
     .bp-view-toggle { display: flex; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-view-btn    { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: var(--color-surface); cursor: pointer; color: var(--color-text-muted); font-size: 13px; transition: all 0.15s; }
     .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
+
+    /* Section-header add button — sized to match the view-toggle row. */
+    :host ::ng-deep .bp-section-add-btn .p-button {
+      height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
+    }
 
     /* ── MEMBERS ── */
     .bp-member-row           { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }

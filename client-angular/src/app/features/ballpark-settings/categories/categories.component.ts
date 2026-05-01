@@ -77,9 +77,9 @@ interface NamespaceOption {
         (actionClicked)="onAction($event)"
         (imageEditRequested)="onImageEdit($event)"
         (categoryImageEditRequested)="onCategoryImageEdit($event)">
-        <button catalogue-toggles class="bp-add-btn" (click)="openAdd()">
-          <i class="pi pi-plus" style="font-size:11px;"></i> Add category
-        </button>
+        <p-button catalogue-toggles label="+ Add category"
+          styleClass="p-button-outlined bp-section-add-btn"
+          (onClick)="openAdd()"></p-button>
       </app-catalogue-grid>
     </ng-container>
 
@@ -304,14 +304,12 @@ interface NamespaceOption {
     .bp-icon-opt lucide-icon { color: var(--theme-accent); }
 
     /* ── ADD BUTTON ── */
-    .bp-add-btn {
-      display: flex; align-items: center; gap: 4px;
-      padding: 5px 14px; font-size: 12px; font-weight: 500;
-      font-family: var(--font-body); border: 1px solid var(--theme-accent);
-      background: transparent; color: var(--theme-accent);
-      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    /* Section-header add button — sized to match the view-toggle row. */
+    :host ::ng-deep .bp-section-add-btn .p-button {
+      height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
     }
-    .bp-add-btn:hover { background: var(--theme-accent); color: #fff; }
 
     /* ── FIELD HINT ── */
     .bp-field-hint { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
