@@ -355,21 +355,35 @@ type DetailMode = 'inline' | 'drawer';
       font-size: 12px; font-weight: 500;
       font-family: var(--font-body);
     }
-    :host ::ng-deep .bp-fb-view-select .p-button {
-      width: 30px; height: 30px; padding: 0;
-      background: var(--color-surface);
+    /* View toggle — segmented group, single border around all buttons.
+       Matches the team-page bp-view-toggle pattern: shared outline,
+       no inter-button gap, theme-bg fill on the active mode. The
+       !important flags match the global .p-button overrides in
+       styles.css so this scoped rule wins. */
+    :host ::ng-deep .bp-fb-view-select {
+      display: inline-flex;
       border: 0.5px solid var(--color-border);
-      color: var(--color-text-muted);
-      display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px;
+      overflow: hidden;
     }
-    :host ::ng-deep .bp-fb-view-select .p-button + .p-button { margin-left: 4px; }
+    :host ::ng-deep .bp-fb-view-select .p-button {
+      width: 30px !important;
+      height: 28px !important;
+      padding: 0 !important;
+      background: var(--color-surface) !important;
+      border: none !important;
+      color: var(--color-text-muted) !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0 !important;
+      font-size: 13px !important;
+    }
     :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
-      background: var(--theme-bg);
-      border-color: var(--theme-border);
-      color: var(--theme-accent);
+      background: var(--theme-bg) !important;
+      color: var(--theme-accent) !important;
     }
-    :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none; }
+    :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none !important; }
 
     /* Table */
     .bp-fb-table-wrap { padding: 12px 8px; }
