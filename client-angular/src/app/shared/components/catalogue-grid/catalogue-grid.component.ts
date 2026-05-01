@@ -401,11 +401,17 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-sidebar-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
     .bp-sidebar-search-input { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-size: 12px !important; }
     .bp-sidebar-sublabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 8px; }
-    .bp-sidebar-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); background: none; border: none; border-radius: 6px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+    .bp-sidebar-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); background: none; border: none; border-radius: var(--border-radius-md, 6px); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
     .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
-    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
-    .bp-sidebar-count { font-size: 11px; color: var(--color-text-muted); background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; }
-    .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; }
+    .bp-sidebar-count {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      background: var(--color-background-secondary, var(--color-surface));
+      border: 0.5px solid var(--color-border);
+      border-radius: 20px;
+      padding: 1px 7px;
+    }
     .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-sidebar-back:hover { opacity: 0.75; }
 
