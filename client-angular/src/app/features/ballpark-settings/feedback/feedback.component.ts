@@ -11,6 +11,7 @@ import { CatalogueGridComponent } from '../../../shared/components/catalogue-gri
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
+import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService, SortMeta } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
@@ -28,7 +29,7 @@ type ViewMode = 'grid' | 'list' | 'table';
   imports: [
     CommonModule, FormsModule, LucideAngularModule,
     LoadingSpinnerComponent, CatalogueGridComponent, FeedbackDialogComponent,
-    InputTextModule, DropdownModule, ConfirmDialogModule, ToastModule,
+    InputTextModule, DropdownModule, ButtonModule, ConfirmDialogModule, ToastModule,
     TableModule, SelectButtonModule,
     StatusBadgeComponent, AvatarComponent,
     FeedbackDrawerComponent
@@ -56,24 +57,13 @@ type ViewMode = 'grid' | 'list' | 'table';
       <!-- FILTER BAR -->
       <div class="bp-fb-filters">
         <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Type"></p-dropdown>
+          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All types"></p-dropdown>
         <p-dropdown [(ngModel)]="filterPage" [options]="pageOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Page"></p-dropdown>
+          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All pages"></p-dropdown>
         <p-dropdown [(ngModel)]="filterOwner" [options]="ownerOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Owner"></p-dropdown>
+          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All owners"></p-dropdown>
         <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="Status"></p-dropdown>
-        <span class="bp-fb-filter-count">{{ filteredEntities.length }} of {{ allEntities.length }}</span>
-        <p-selectButton
-          [options]="viewModeOptions"
-          [(ngModel)]="viewMode"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="bp-fb-view-select">
-          <ng-template let-item pTemplate>
-            <lucide-icon [name]="item.icon" [size]="14"></lucide-icon>
-          </ng-template>
-        </p-selectButton>
+          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All statuses"></p-dropdown>
       </div>
 
       <!-- BULK ACTION BAR -->
@@ -110,6 +100,22 @@ type ViewMode = 'grid' | 'list' | 'table';
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
         (categoryChanged)="onTypeFilterChanged($event)">
+
+        <!-- Section header right-side controls: Add + view toggle. -->
+        <div catalogue-toggles class="bp-fb-header-actions">
+          <p-button label="+ Add" styleClass="p-button-outlined bp-fb-add-btn"
+            (onClick)="openAddDialog()"></p-button>
+          <p-selectButton
+            [options]="viewModeOptions"
+            [(ngModel)]="viewMode"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-fb-view-select">
+            <ng-template let-item pTemplate>
+              <lucide-icon [name]="item.icon" [size]="14"></lucide-icon>
+            </ng-template>
+          </p-selectButton>
+        </div>
 
         <!-- TABLE — only rendered when layout='table' -->
         <div catalogue-main *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
@@ -254,9 +260,17 @@ type ViewMode = 'grid' | 'list' | 'table';
     }
     :host ::ng-deep .bp-fb-filter { min-width: 130px; }
     :host ::ng-deep .bp-fb-filter .p-dropdown { font-size: 12px !important; }
-    .bp-fb-filter-count { font-size: 12px; color: var(--color-text-muted); margin-left: auto; }
 
-    /* View select */
+    /* Section-header actions: Add button + view toggle */
+    .bp-fb-header-actions {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-left: auto;
+    }
+    :host ::ng-deep .bp-fb-add-btn .p-button {
+      height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
+    }
     :host ::ng-deep .bp-fb-view-select .p-button {
       width: 30px; height: 30px; padding: 0;
       background: var(--color-surface);
@@ -387,7 +401,7 @@ export class FeedbackComponent implements OnInit {
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
-  viewMode: ViewMode = 'grid';
+  viewMode: ViewMode = 'table';
   viewModeOptions = [
     { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layout-grid' },
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
@@ -629,6 +643,13 @@ export class FeedbackComponent implements OnInit {
   onDrawerSaved(updated: FeedbackEntry) {
     this.selectedEntry = updated;
     this.loadEntries();
+  }
+
+  openAddDialog() {
+    // Same dialog the floating capture button uses; clearing selectedEntry
+    // first so it doesn't auto-attach as a parent.
+    this.selectedEntry = null;
+    this.showActionDialog = true;
   }
 
   onDrawerDeleted(_id: string) {
