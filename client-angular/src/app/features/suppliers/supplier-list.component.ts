@@ -1,7 +1,9 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import { SupplierService } from '../../core/services/supplier.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
@@ -12,13 +14,18 @@ import { ConfigService } from '../../core/services/config.service';
 import { Org, CatalogueEntity, CategoryInfo } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
-import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  CatalogueGridComponent, CircleSize, DetailSize
+} from '../../shared/components/catalogue-grid/catalogue-grid.component';
+
+type Layout = 'card' | 'list';
+type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
 
 @Component({
   selector: 'app-supplier-list',
   standalone: true,
   imports: [
-    CommonModule, RouterModule, LucideAngularModule,
+    CommonModule, FormsModule, RouterModule, LucideAngularModule, SelectButtonModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent
   ],
   template: `
@@ -34,6 +41,12 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
+          [pageLabel]="'MARKETPLACE'"
+          [pageTitle]="catalogueTitle"
+          [pageSubtitle]="catalogueSubtitle"
+          [circleSize]="circleSize"
+          [detailSize]="detailSize"
+          [layout]="layout"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
@@ -48,6 +61,52 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
               (click)="switchMode('items')">Items</button>
             <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'"
               (click)="switchMode('suppliers')">Suppliers</button>
+          </div>
+
+          <!-- Per-page config strip controls (toggled by cog in top-nav) -->
+          <div config-content class="bp-cfg-row">
+            <span class="bp-cfg-lab">Theme</span>
+            <p-selectButton
+              [options]="themeOptions"
+              [(ngModel)]="theme"
+              (onChange)="onThemeChange()"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="bp-cfg-swatches">
+              <ng-template let-opt pTemplate>
+                <span class="bp-cfg-swatch" [style.background]="opt.color"></span>
+              </ng-template>
+            </p-selectButton>
+
+            <span class="bp-cfg-divider"></span>
+            <span class="bp-cfg-lab">Circle</span>
+            <p-selectButton
+              [options]="sizeOptions"
+              [(ngModel)]="circleSize"
+              (onChange)="persistConfig()"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="bp-cfg-seg"></p-selectButton>
+
+            <span class="bp-cfg-divider"></span>
+            <span class="bp-cfg-lab">View</span>
+            <p-selectButton
+              [options]="viewOptions"
+              [(ngModel)]="layout"
+              (onChange)="persistConfig()"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="bp-cfg-seg"></p-selectButton>
+
+            <span class="bp-cfg-divider"></span>
+            <span class="bp-cfg-lab">Detail</span>
+            <p-selectButton
+              [options]="sizeOptions"
+              [(ngModel)]="detailSize"
+              (onChange)="persistConfig()"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="bp-cfg-seg"></p-selectButton>
           </div>
         </app-catalogue-grid>
       </ng-container>
@@ -93,6 +152,41 @@ import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/c
     .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
     .bp-toggle-btn.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
+
+    /* Config strip layout — labels + segmented controls in a row. */
+    .bp-cfg-row { display: contents; }
+    .bp-cfg-lab {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--color-text-muted);
+    }
+    .bp-cfg-divider {
+      width: 1px; height: 22px; background: var(--color-border);
+    }
+    .bp-cfg-swatch {
+      display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button {
+      padding: 4px 12px; font-size: 12px;
+      background: var(--color-surface); color: var(--color-text-muted);
+      border: 0.5px solid var(--color-border);
+      font-family: var(--font-body);
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button.p-highlight {
+      background: var(--theme-accent); color: var(--color-surface);
+      border-color: var(--theme-accent); font-weight: 600;
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none; }
+    :host ::ng-deep .bp-cfg-swatches .p-button {
+      padding: 4px 6px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+    }
+    :host ::ng-deep .bp-cfg-swatches .p-button.p-highlight {
+      background: var(--color-surface);
+      box-shadow: 0 0 0 2px var(--color-text-primary);
+      border-color: var(--color-surface);
+    }
+    :host ::ng-deep .bp-cfg-swatches .p-button:focus { box-shadow: 0 0 0 2px var(--color-text-primary); }
   `]
 })
 export class SupplierListComponent implements OnInit, OnDestroy {
@@ -110,6 +204,45 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
+
+  // Hero copy (passed to CatalogueGridComponent)
+  catalogueTitle = 'Catalogue';
+  get catalogueSubtitle(): string {
+    const noun = this.viewMode === 'suppliers' ? 'suppliers' : 'items';
+    const count = this.viewMode === 'suppliers' ? this.suppliers.length : this.totalItems;
+    const cats = this.categories.filter(c => !c.parent_id).length;
+    return `${count} ${noun} across ${cats} categories · vetted UK suppliers`;
+  }
+
+  // Config strip state — persisted to localStorage with the
+  // ballpark:marketplace:* key namespace.
+  private readonly LS = {
+    theme:      'ballpark:marketplace:theme',
+    circleSize: 'ballpark:marketplace:circleSize',
+    detailSize: 'ballpark:marketplace:detailSize',
+    layout:     'ballpark:marketplace:layout'
+  };
+  theme: ThemeSwatch = '';
+  circleSize: CircleSize = 'lg';
+  detailSize: DetailSize = 'md';
+  layout: Layout = 'card';
+
+  themeOptions = [
+    { label: 'Amber',   value: '' as ThemeSwatch,        color: 'var(--theme-accent)' },
+    { label: 'Emerald', value: 'emerald' as ThemeSwatch, color: '#00B84A' },
+    { label: 'Pink',    value: 'pink' as ThemeSwatch,    color: '#FF0066' },
+    { label: 'Ocean',   value: 'ocean' as ThemeSwatch,   color: '#2563EB' },
+    { label: 'Slate',   value: 'slate' as ThemeSwatch,   color: '#64748B' }
+  ];
+  sizeOptions = [
+    { label: 'S', value: 'sm' as CircleSize },
+    { label: 'M', value: 'md' as CircleSize },
+    { label: 'L', value: 'lg' as CircleSize }
+  ];
+  viewOptions = [
+    { label: 'Card', value: 'card' as Layout },
+    { label: 'List', value: 'list' as Layout }
+  ];
 
   // Image upload
   categoryUploadId = '';
@@ -154,6 +287,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.loadConfig();
     const label = this.configSvc.catalogueLabel.toUpperCase();
     const projectId = this.route.snapshot.queryParams['projectId'];
     if (projectId) {
@@ -215,6 +349,33 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() { this.shellCtx.reset(); }
+
+  // ── Config strip persistence ──────────────────────────────────────────
+  loadConfig() {
+    const t = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
+    const cs = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
+    const ds = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
+    const ly = (localStorage.getItem(this.LS.layout) || 'card') as Layout;
+    this.theme = t;
+    this.circleSize = cs;
+    this.detailSize = ds;
+    this.layout = ly;
+    this.applyTheme();
+  }
+  persistConfig() {
+    localStorage.setItem(this.LS.theme, this.theme);
+    localStorage.setItem(this.LS.circleSize, this.circleSize);
+    localStorage.setItem(this.LS.detailSize, this.detailSize);
+    localStorage.setItem(this.LS.layout, this.layout);
+  }
+  onThemeChange() {
+    this.applyTheme();
+    this.persistConfig();
+  }
+  private applyTheme() {
+    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
+    else document.documentElement.removeAttribute('data-theme');
+  }
 
   // ── Data mapping ──────────────────────────────────────────────────────
 

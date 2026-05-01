@@ -7,7 +7,9 @@ import {
 } from '../../../core/services/feedback.service';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  CatalogueGridComponent, CircleSize, DetailSize
+} from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -22,6 +24,8 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
 import { FeedbackDrawerComponent } from '../../feedback/feedback-drawer.component';
 
 type ViewMode = 'grid' | 'list' | 'table';
+type ThemeSwatch = '' | 'emerald' | 'pink' | 'ocean' | 'slate';
+type DetailMode = 'inline' | 'drawer';
 
 @Component({
   selector: 'app-feedback',
@@ -39,48 +43,9 @@ type ViewMode = 'grid' | 'list' | 'table';
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
-      <!-- AREA CIRCLES -->
-      <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1">
-        <div class="bp-fb-areas">
-          <button *ngFor="let a of areaCircles"
-            class="bp-fb-area-btn"
-            [class.active]="selectedArea === a.id"
-            (click)="setArea(a.id)">
-            <div class="bp-fb-area-circle">
-              <lucide-icon [name]="a.icon" [size]="22"></lucide-icon>
-            </div>
-            <span class="bp-fb-area-label">{{ a.label }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- FILTER BAR -->
-      <div class="bp-fb-filters">
-        <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All types"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterPage" [options]="pageOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All pages"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterOwner" [options]="ownerOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All owners"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All statuses"></p-dropdown>
-      </div>
-
-      <!-- BULK ACTION BAR -->
-      <div class="bp-fb-bulk-bar" *ngIf="selectedIds.size > 0">
-        <span class="bp-fb-bulk-count">{{ selectedIds.size }} selected</span>
-        <button class="bp-fb-bulk-btn" (click)="bulkMarkDone()">
-          <lucide-icon name="check" [size]="12"></lucide-icon> Mark done
-        </button>
-        <p-dropdown [(ngModel)]="bulkAssignOwner" [options]="ownerAssignOptions" optionLabel="label" optionValue="value"
-          (onChange)="bulkAssign()" styleClass="bp-fb-filter" placeholder="Assign to..."></p-dropdown>
-        <button class="bp-fb-bulk-btn bp-fb-bulk-btn--danger" (click)="bulkDelete()">
-          <lucide-icon name="x" [size]="12"></lucide-icon> Delete
-        </button>
-      </div>
-
       <!-- catalogue-grid wraps grid/list/table. No detail panel — single
-           click opens the drawer directly. -->
+           click opens the drawer directly. Hero, config strip, and the
+           area-circles/filter/bulk row are all projected through. -->
       <app-catalogue-grid
         [entities]="filteredEntities"
         [categories]="filterCategories"
@@ -93,6 +58,11 @@ type ViewMode = 'grid' | 'list' | 'table';
         entityLabel="entry"
         sectionTitle="FEEDBACK"
         actionLabel="Open"
+        [pageLabel]="'BALLPARK SETTINGS'"
+        [pageTitle]="'Feedback'"
+        [pageSubtitle]="feedbackSubtitle"
+        [circleSize]="circleSize"
+        [detailSize]="detailSize"
         [favouriteIds]="emptySet"
         [showEdit]="false"
         [showFavourite]="false"
@@ -100,6 +70,103 @@ type ViewMode = 'grid' | 'list' | 'table';
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
         (categoryChanged)="onTypeFilterChanged($event)">
+
+        <!-- Per-page config strip controls (toggled by cog in top-nav) -->
+        <div config-content class="bp-cfg-row">
+          <span class="bp-cfg-lab">Theme</span>
+          <p-selectButton
+            [options]="themeOptions"
+            [(ngModel)]="theme"
+            (onChange)="onThemeChange()"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-cfg-swatches">
+            <ng-template let-opt pTemplate>
+              <span class="bp-cfg-swatch" [style.background]="opt.color"></span>
+            </ng-template>
+          </p-selectButton>
+
+          <span class="bp-cfg-divider"></span>
+          <span class="bp-cfg-lab">Circle</span>
+          <p-selectButton
+            [options]="sizeOptions"
+            [(ngModel)]="circleSize"
+            (onChange)="persistConfig()"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-cfg-seg"></p-selectButton>
+
+          <span class="bp-cfg-divider"></span>
+          <span class="bp-cfg-lab">View</span>
+          <p-selectButton
+            [options]="cfgViewOptions"
+            [(ngModel)]="viewMode"
+            (onChange)="persistConfig()"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-cfg-seg"></p-selectButton>
+
+          <span class="bp-cfg-divider"></span>
+          <span class="bp-cfg-lab">Detail</span>
+          <p-selectButton
+            [options]="sizeOptions"
+            [(ngModel)]="detailSize"
+            (onChange)="persistConfig()"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-cfg-seg"></p-selectButton>
+
+          <span class="bp-cfg-divider"></span>
+          <span class="bp-cfg-lab">Mode</span>
+          <p-selectButton
+            [options]="detailModeOptions"
+            [(ngModel)]="detailMode"
+            (onChange)="persistConfig()"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="bp-cfg-seg"></p-selectButton>
+        </div>
+
+        <!-- AREA CIRCLES + FILTER BAR + BULK BAR — projected so they sit
+             between the hero and the 3-col body. -->
+        <div catalogue-before-body>
+          <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1">
+            <div class="bp-fb-areas">
+              <button *ngFor="let a of areaCircles"
+                class="bp-fb-area-btn"
+                [class.active]="selectedArea === a.id"
+                (click)="setArea(a.id)">
+                <div class="bp-fb-area-circle">
+                  <lucide-icon [name]="a.icon" [size]="22"></lucide-icon>
+                </div>
+                <span class="bp-fb-area-label">{{ a.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bp-fb-filters">
+            <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All types"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterPage" [options]="pageOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All pages"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterOwner" [options]="ownerOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All owners"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All statuses"></p-dropdown>
+          </div>
+
+          <div class="bp-fb-bulk-bar" *ngIf="selectedIds.size > 0">
+            <span class="bp-fb-bulk-count">{{ selectedIds.size }} selected</span>
+            <button class="bp-fb-bulk-btn" (click)="bulkMarkDone()">
+              <lucide-icon name="check" [size]="12"></lucide-icon> Mark done
+            </button>
+            <p-dropdown [(ngModel)]="bulkAssignOwner" [options]="ownerAssignOptions" optionLabel="label" optionValue="value"
+              (onChange)="bulkAssign()" styleClass="bp-fb-filter" placeholder="Assign to..."></p-dropdown>
+            <button class="bp-fb-bulk-btn bp-fb-bulk-btn--danger" (click)="bulkDelete()">
+              <lucide-icon name="x" [size]="12"></lucide-icon> Delete
+            </button>
+          </div>
+        </div>
 
         <!-- Section header right-side controls: Add + view toggle. -->
         <div catalogue-toggles class="bp-fb-header-actions">
@@ -353,6 +420,41 @@ type ViewMode = 'grid' | 'list' | 'table';
       font-size: 11px; color: var(--color-text-muted); margin-right: 6px;
     }
 
+    /* Config strip layout — labels + segmented controls in a row. */
+    .bp-cfg-row { display: contents; }
+    .bp-cfg-lab {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--color-text-muted);
+    }
+    .bp-cfg-divider {
+      width: 1px; height: 22px; background: var(--color-border);
+    }
+    .bp-cfg-swatch {
+      display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button {
+      padding: 4px 12px; font-size: 12px;
+      background: var(--color-surface); color: var(--color-text-muted);
+      border: 0.5px solid var(--color-border);
+      font-family: var(--font-body);
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button.p-highlight {
+      background: var(--theme-accent); color: var(--color-surface);
+      border-color: var(--theme-accent); font-weight: 600;
+    }
+    :host ::ng-deep .bp-cfg-seg .p-button:focus { box-shadow: none; }
+    :host ::ng-deep .bp-cfg-swatches .p-button {
+      padding: 4px 6px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+    }
+    :host ::ng-deep .bp-cfg-swatches .p-button.p-highlight {
+      background: var(--color-surface);
+      box-shadow: 0 0 0 2px var(--color-text-primary);
+      border-color: var(--color-surface);
+    }
+    :host ::ng-deep .bp-cfg-swatches .p-button:focus { box-shadow: 0 0 0 2px var(--color-text-primary); }
+
     /* Bulk action bar */
     .bp-fb-bulk-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 28px;
@@ -406,6 +508,49 @@ export class FeedbackComponent implements OnInit {
     { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layout-grid' },
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
     { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
+  ];
+
+  // ── Hero copy + config strip state (persisted to localStorage) ──
+  get feedbackSubtitle(): string {
+    const n = this.entries.length;
+    const areas = Math.max(0, this.areaCircles.length - 1);
+    return `${n} entries across ${areas} areas · roadmap, bugs, prompts & tests`;
+  }
+
+  private readonly LS = {
+    theme:      'ballpark:feedback:theme',
+    circleSize: 'ballpark:feedback:circleSize',
+    detailSize: 'ballpark:feedback:detailSize',
+    viewMode:   'ballpark:feedback:viewMode',
+    detailMode: 'ballpark:feedback:detailMode'
+  };
+  theme: ThemeSwatch = '';
+  circleSize: CircleSize = 'md';
+  detailSize: DetailSize = 'md';
+  // Drawer is the only fully-supported detail mode for feedback today.
+  // The toggle persists user choice for when inline detail lands.
+  detailMode: DetailMode = 'drawer';
+
+  themeOptions = [
+    { label: 'Amber',   value: '' as ThemeSwatch,        color: 'var(--theme-accent)' },
+    { label: 'Emerald', value: 'emerald' as ThemeSwatch, color: '#00B84A' },
+    { label: 'Pink',    value: 'pink' as ThemeSwatch,    color: '#FF0066' },
+    { label: 'Ocean',   value: 'ocean' as ThemeSwatch,   color: '#2563EB' },
+    { label: 'Slate',   value: 'slate' as ThemeSwatch,   color: '#64748B' }
+  ];
+  sizeOptions = [
+    { label: 'S', value: 'sm' as CircleSize },
+    { label: 'M', value: 'md' as CircleSize },
+    { label: 'L', value: 'lg' as CircleSize }
+  ];
+  cfgViewOptions = [
+    { label: 'Card',  value: 'grid' as ViewMode },
+    { label: 'List',  value: 'list' as ViewMode },
+    { label: 'Table', value: 'table' as ViewMode }
+  ];
+  detailModeOptions = [
+    { label: 'Inline',  value: 'inline' as DetailMode },
+    { label: 'Drawer',  value: 'drawer' as DetailMode }
   ];
 
   tableRows: any[] = [];
@@ -474,6 +619,7 @@ export class FeedbackComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadConfig();
     this.feedbackSvc.getFeedbackCategories('area').subscribe({
       next: (cats) => {
         this.areaCategories = (cats || []).filter(c => c.namespace === 'area');
@@ -481,6 +627,31 @@ export class FeedbackComponent implements OnInit {
       },
       error: () => { this.loadEntries(); }
     });
+  }
+
+  // ── Config strip persistence ──────────────────────────────────────────
+  loadConfig() {
+    this.theme      = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
+    this.circleSize = (localStorage.getItem(this.LS.circleSize) || 'md') as CircleSize;
+    this.detailSize = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
+    this.viewMode   = (localStorage.getItem(this.LS.viewMode)   || 'table') as ViewMode;
+    this.detailMode = (localStorage.getItem(this.LS.detailMode) || 'drawer') as DetailMode;
+    this.applyTheme();
+  }
+  persistConfig() {
+    localStorage.setItem(this.LS.theme,      this.theme);
+    localStorage.setItem(this.LS.circleSize, this.circleSize);
+    localStorage.setItem(this.LS.detailSize, this.detailSize);
+    localStorage.setItem(this.LS.viewMode,   this.viewMode);
+    localStorage.setItem(this.LS.detailMode, this.detailMode);
+  }
+  onThemeChange() {
+    this.applyTheme();
+    this.persistConfig();
+  }
+  private applyTheme() {
+    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
+    else document.documentElement.removeAttribute('data-theme');
   }
 
   loadEntries() {

@@ -3,10 +3,11 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, FolderOpen, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, Store, FolderOpen, MessageSquareWarning, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
+import { ConfigStripService } from '../core/services/config-strip.service';
 import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
@@ -36,18 +37,18 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
+          <lucide-icon name="store" [size]="14"></lucide-icon> Marketplace
         </a>
-        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+        <a routerLink="/projects" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="folder-open" [size]="14"></lucide-icon> Projects
         </a>
-        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link bp-nav-link-admin">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
-        </a>
-        <a href="/welcome" target="_blank" rel="noopener" class="bp-nav-link bp-nav-link-welcome" title="Open public welcome page in a new tab">
-          <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
+        <a routerLink="/ballpark-settings/feedback" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> Feedback
         </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
+        <button *ngIf="hasConfig" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
+          <lucide-icon name="settings" [size]="14"></lucide-icon>
+        </button>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
@@ -220,17 +221,23 @@ export class TopNavComponent implements OnInit, OnDestroy {
   get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
   get projectMessagesQueryParams(): any { return {}; }
 
+  hasConfig    = false;
+
   private sub?: Subscription;
   private routerSub?: Subscription;
   private ctxSub?: Subscription;
+  private cfgStripSub?: Subscription;
 
   constructor(
     private configService: ConfigService,
     private orgService: OrgService,
     private shellCtx: ShellContextService,
+    private configStrip: ConfigStripService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  toggleConfigStrip() { this.configStrip.toggle(); }
 
   ngOnInit() {
     this.sub = this.configService.config$.subscribe(cfg => {
@@ -287,6 +294,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
     const saved = localStorage.getItem('bp-mode');
     this.isDark = saved === 'dark';
     this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
+
+    this.cfgStripSub = this.configStrip.hasConfig$.subscribe(has => {
+      this.hasConfig = has;
+      this.cdr.detectChanges();
+    });
   }
 
   toggleMode() {
@@ -300,5 +312,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
     this.routerSub?.unsubscribe();
     this.ctxSub?.unsubscribe();
+    this.cfgStripSub?.unsubscribe();
   }
 }

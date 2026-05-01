@@ -10,6 +10,10 @@ import {
 } from 'lucide-angular';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
+import { ConfigStripComponent } from '../config-strip/config-strip.component';
+
+export type CircleSize = 'sm' | 'md' | 'lg';
+export type DetailSize = 'sm' | 'md' | 'lg';
 
 @Component({
   selector: 'app-catalogue-grid',
@@ -17,9 +21,23 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   imports: [
     CommonModule, FormsModule,
     InputTextModule, ButtonModule, CheckboxModule,
-    LucideAngularModule, GbpPipe
+    LucideAngularModule, GbpPipe, ConfigStripComponent
   ],
   template: `
+    <!-- CONFIG STRIP — toggled from cog in top-nav. Page projects its own
+         control widgets via [config-content]. -->
+    <app-config-strip>
+      <ng-content select="[config-content]"></ng-content>
+    </app-config-strip>
+
+    <!-- HERO — page-driven via pageLabel/pageTitle/pageSubtitle inputs.
+         Hidden when no title set (preserves orgs/categories/etc). -->
+    <div class="bp-page-hero" *ngIf="pageTitle">
+      <div class="bp-page-hero-eyebrow" *ngIf="pageLabel">{{ pageLabel }}</div>
+      <h1 class="bp-page-hero-title">{{ pageTitle }}</h1>
+      <div class="bp-page-hero-sub" *ngIf="pageSubtitle">{{ pageSubtitle }}</div>
+    </div>
+
     <!-- BACK BUTTON -->
     <div class="bp-grid-back-wrap" *ngIf="showBack">
       <button class="bp-grid-back-btn" (click)="onBack()">
@@ -36,7 +54,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     </div>
 
     <!-- CATEGORY CIRCLES (single row — level-0 or level-1 depending on drill state) -->
-    <div class="bp-cat-circles-wrap" *ngIf="categories.length && showCategoryCircles">
+    <div class="bp-cat-circles-wrap" *ngIf="categories.length && showCategoryCircles" [attr.data-circle-size]="circleSize">
       <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
         (click)="scrollCircles(-200)">
         <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
@@ -47,7 +65,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
           [class.active]="!drilledCategory ? activeCategory === 'all' : !activeChildCategory"
           (click)="!drilledCategory ? setCategory('all') : setChildCategory(null)">
           <div class="bp-cat-circle bp-cat-circle--all">
-            <lucide-icon name="layers" [size]="22"></lucide-icon>
+            <lucide-icon name="layers" [size]="circleIconSize"></lucide-icon>
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
@@ -62,8 +80,8 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
             [class.bp-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
             [class.bp-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
             <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-cat-circle-logo-img"/>
-            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="28" class="bp-cat-circle-lucide"></lucide-icon>
-            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="22" class="bp-cat-circle-icon"></lucide-icon>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="circleIconSize" class="bp-cat-circle-lucide"></lucide-icon>
+            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="circleIconSize" class="bp-cat-circle-icon"></lucide-icon>
             <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
             <button *ngIf="showEdit" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
               <lucide-icon name="square-pen" [size]="12"></lucide-icon>
@@ -78,8 +96,13 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
       </button>
     </div>
 
+    <!-- BEFORE-BODY SLOT — pages project content that should sit between
+         the hero/circles and the 3-col body (e.g. feedback area circles,
+         filter bar, bulk-action bar). -->
+    <ng-content select="[catalogue-before-body]"></ng-content>
+
     <!-- THREE-COLUMN BODY -->
-    <div class="bp-cat-body bp-cat-body--detail">
+    <div class="bp-cat-body bp-cat-body--detail" [attr.data-detail-size]="detailSize">
 
       <!-- ── SIDEBAR ── -->
       <div class="bp-cat-sidebar">
@@ -340,6 +363,31 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
   styles: [`
     :host { display: block; }
 
+    /* ── PAGE HERO ── (rendered when pageTitle is set) */
+    .bp-page-hero {
+      background: var(--theme-bg);
+      padding: 36px 40px;
+      text-align: center;
+      border-bottom: 0.5px solid var(--theme-border);
+    }
+    .bp-page-hero-eyebrow {
+      font-size: 11px; font-weight: 600;
+      color: var(--theme-text);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 10px;
+      font-family: var(--font-body);
+    }
+    .bp-page-hero-title {
+      font-family: var(--font-display);
+      font-size: 44px; font-weight: 400; letter-spacing: -0.02em;
+      margin: 0 0 6px; line-height: 1.05;
+      color: var(--color-text-primary);
+    }
+    .bp-page-hero-sub {
+      font-size: 13px; color: var(--theme-text);
+      font-family: var(--font-body);
+    }
+
     .bp-grid-back-wrap { padding: 12px 28px 0; }
     .bp-grid-back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-grid-back-btn:hover { opacity: 0.75; }
@@ -351,7 +399,15 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-breadcrumb-sep { color: var(--color-text-muted); }
     .bp-breadcrumb-current { font-weight: 500; color: var(--color-text-primary); }
 
-    .bp-cat-circles-wrap { padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border); position: relative; display: flex; align-items: flex-start; min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible; }
+    .bp-cat-circles-wrap {
+      padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border);
+      position: relative; display: flex; align-items: flex-start;
+      min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible;
+      --bp-circle-w: 96px;
+    }
+    .bp-cat-circles-wrap[data-circle-size="sm"] { --bp-circle-w: 56px; }
+    .bp-cat-circles-wrap[data-circle-size="md"] { --bp-circle-w: 72px; }
+    .bp-cat-circles-wrap[data-circle-size="lg"] { --bp-circle-w: 96px; }
     .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
     .bp-circles-arrow {
       width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
@@ -365,7 +421,7 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
     .bp-circles-arrow--right { margin-left: 8px; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
-    .bp-cat-circle { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
+    .bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
     .bp-cat-circle--all { background-color: var(--color-surface); }
     .bp-cat-circle--no-image { background-color: var(--theme-bg); }
     .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
@@ -390,6 +446,12 @@ import { CatalogueEntity, CategoryInfo } from '../../../models';
 
     .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
     .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
+    /* Detail panel width — driven by [data-detail-size]. sm/md/lg = 260/320/420.
+       Default (no attribute) keeps the historical 260px so existing pages are
+       unaffected. */
+    .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
+    .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
+    .bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
     /* Wider detail panel when the parent projects a custom one (e.g. the
        feedback notes preview). Matches the drawer minimum (520px). */
     .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
@@ -527,6 +589,15 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() showCategoryCircles: boolean = true;
   /** Header text for the sidebar category section. Default "Category". */
   @Input() sidebarCategoryLabel: string = 'Category';
+  /** Hero block — eyebrow, h1 title, subtitle. Hero only renders when
+      pageTitle is set; pages that don't want a hero leave it blank. */
+  @Input() pageLabel: string = '';
+  @Input() pageTitle: string = '';
+  @Input() pageSubtitle: string = '';
+  /** Circle strip size — sm/md/lg map to 56/72/96px circles. */
+  @Input() circleSize: CircleSize = 'lg';
+  /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
+  @Input() detailSize: DetailSize = 'md';
   @Input() tags: string[] = [];
   @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
@@ -576,6 +647,13 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
 
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
+  }
+
+  /** Lucide icon size for the circle strip — scales with circleSize input. */
+  get circleIconSize(): number {
+    if (this.circleSize === 'sm') return 20;
+    if (this.circleSize === 'md') return 26;
+    return 34;
   }
 
   get childCategories(): CategoryInfo[] {
