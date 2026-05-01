@@ -117,7 +117,7 @@ async function create(data) {
     title, notes, page_url, submitted_by, environment,
     owner, due_date, event_date, parent_id, agenda,
     type, meeting_time, description, object_type, tags, area,
-    priority, target_version, pages
+    priority, target_version, pages, status
   } = data;
   // page_url is the legacy single-page string captured from the floating
   // button; pages[] is the editable list of pages on the drawer. If pages
@@ -131,8 +131,8 @@ async function create(data) {
         title, notes, page_url, submitted_by, environment,
         owner, due_date, event_date, parent_id, agenda,
         type, meeting_time, description, object_type, tags, area,
-        priority, target_version, pages)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        priority, target_version, pages, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, COALESCE($24, 'open'))
      RETURNING *`,
     [
       category_id || null, subcategory_id || null, feedback_category_id || null, area_category_id || null,
@@ -140,7 +140,7 @@ async function create(data) {
       owner || null, due_date || null, event_date || null, parent_id || null, agenda || [],
       type || null, meeting_time || null, description || null, object_type || 'issue', tags || [],
       area || null,
-      priority == null ? null : priority, target_version || null, pagesArr
+      priority == null ? null : priority, target_version || null, pagesArr, status || null
     ]
   );
   return result.rows[0];

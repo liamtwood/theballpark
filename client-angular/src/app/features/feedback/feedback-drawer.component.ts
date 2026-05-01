@@ -1003,15 +1003,44 @@ export class FeedbackDrawerComponent implements OnChanges {
     });
   }
 
+  /** Track which entry is currently hydrated so a refresh of the same id
+      doesn't reset UI state (active tab, editor mode, add-form draft). */
+  private hydratedEntryId: string | null = null;
+
   ngOnChanges(changes: SimpleChanges) {
-    if ((changes['entry'] || changes['visible']) && this.visible && this.entry) {
-      this.hydrate(this.entry);
-      this.loadTestCases();
+    // Closing — drop the hydrated marker so a re-open does a fresh hydrate.
+    if (changes['visible'] && !this.visible) {
+      this.hydratedEntryId = null;
+      return;
+    }
+    if (!this.visible || !this.entry) return;
+    if (changes['entry'] || changes['visible']) {
+      const sameEntry = this.hydratedEntryId === this.entry.id;
+      if (sameEntry) {
+        // Refresh — preserve tab + edit state, just sync editable fields.
+        this.refreshFields(this.entry);
+      } else {
+        this.hydrate(this.entry);
+        this.loadTestCases();
+        this.hydratedEntryId = this.entry.id;
+      }
     }
   }
 
   // ── Hydration ──
   private hydrate(e: FeedbackEntry) {
+    this.refreshFields(e);
+    this.activeTab = 'notes';
+    this.notesEditing = false;
+    this.versionEditing = false;
+    this.isDirty = false;
+    this.addTcNotes = '';
+    this.addTcResult = 'todo';
+    this.editingTcId = null;
+  }
+
+  /** Re-sync editable fields from the entry without disturbing UI state. */
+  private refreshFields(e: FeedbackEntry) {
     this.editTitle = e.title || '';
     this.editType = e.type || (e.object_type === 'note' ? 'note' : 'bug');
     this.editStatus = e.status || 'open';
@@ -1027,13 +1056,6 @@ export class FeedbackDrawerComponent implements OnChanges {
     this.editPages = [...(e.pages || (e.page_url ? [e.page_url] : []))];
     this.editNotes = e.notes || '';
     this.refreshNotesHtml();
-    this.activeTab = 'notes';
-    this.notesEditing = false;
-    this.versionEditing = false;
-    this.isDirty = false;
-    this.addTcNotes = '';
-    this.addTcResult = 'todo';
-    this.editingTcId = null;
   }
 
   // ── Test case helpers ──
