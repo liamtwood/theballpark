@@ -268,97 +268,100 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
             </div>
           </ng-container>
 
-          <!-- ── Attributes (each group rendered as a clearly-defined card,
-                  matching the Settings → Organisation pattern) ── -->
+          <!-- ── Attributes — flat sections (Settings → Organisation pattern):
+                  amber group label, flat rows separated by 0.5px dividers,
+                  no card boxes. ── -->
           <ng-container *ngIf="activeTab === 'attributes'">
-            <div class="bp-fbd-group-card">
-              <div class="bp-fbd-group-head">
-                <span class="bp-fbd-group-title">Classification</span>
-              </div>
+            <section class="bp-fbd-group">
+              <h4 class="bp-fbd-group-label">Classification</h4>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Type</label>
                 <p-dropdown [(ngModel)]="editType" [options]="typeOptions"
                   optionLabel="label" optionValue="value"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Area</label>
                 <p-dropdown [(ngModel)]="editAreaCategoryId" [options]="areaOptions"
-                  optionLabel="label" optionValue="value" [showClear]="true"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  optionLabel="label" optionValue="value"
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Environment</label>
                 <p-dropdown [(ngModel)]="editEnvironment" [options]="envOptions"
                   optionLabel="label" optionValue="value"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
-            </div>
+            </section>
 
-            <div class="bp-fbd-group-card">
-              <div class="bp-fbd-group-head">
-                <span class="bp-fbd-group-title">Planning</span>
-              </div>
+            <section class="bp-fbd-group">
+              <h4 class="bp-fbd-group-label">Planning</h4>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Status</label>
                 <p-dropdown [(ngModel)]="editStatus" [options]="statusOptionsForType()"
                   optionLabel="label" optionValue="value"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
               <div class="bp-fbd-attr" *ngIf="!isTestCase()">
                 <label class="bp-fbd-attr-label">Priority</label>
                 <p-dropdown [(ngModel)]="editPriority" [options]="priorityOptions"
-                  optionLabel="label" optionValue="value" [showClear]="true"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  optionLabel="label" optionValue="value"
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Owner</label>
                 <p-dropdown [(ngModel)]="editOwner" [options]="ownerOptions"
-                  optionLabel="label" optionValue="value" [showClear]="true"
-                  (onChange)="markDirty()" styleClass="bp-fbd-dd"></p-dropdown>
+                  optionLabel="label" optionValue="value"
+                  [showClear]="false"
+                  (onChange)="markDirty()" styleClass="w-full bp-fbd-dd"></p-dropdown>
               </div>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Due date</label>
                 <input pInputText [(ngModel)]="editDueDate"
                   placeholder="dd MMM yyyy"
-                  (input)="markDirty()" class="bp-fbd-input"/>
+                  (input)="markDirty()"
+                  class="w-full bp-fbd-input"/>
               </div>
-            </div>
+            </section>
 
-            <div class="bp-fbd-group-card">
-              <div class="bp-fbd-group-head">
-                <span class="bp-fbd-group-title">Version</span>
-              </div>
+            <section class="bp-fbd-group">
+              <h4 class="bp-fbd-group-label">Version</h4>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Target version</label>
                 <input list="bp-fbd-versions-attr" pInputText
                   [(ngModel)]="editTargetVersion"
                   placeholder="e.g. v2.0"
-                  (input)="markDirty()" class="bp-fbd-input"/>
+                  (input)="markDirty()"
+                  class="w-full bp-fbd-input"/>
               </div>
               <ng-container *ngIf="editStatus === 'done'">
                 <div class="bp-fbd-attr">
                   <label class="bp-fbd-attr-label">Shipped version</label>
                   <input list="bp-fbd-versions-attr" pInputText
                     [(ngModel)]="editVersion" placeholder="—"
-                    (input)="markDirty()" class="bp-fbd-input"/>
+                    (input)="markDirty()"
+                    class="w-full bp-fbd-input"/>
                 </div>
                 <div class="bp-fbd-attr">
                   <label class="bp-fbd-attr-label">Shipped date</label>
                   <input pInputText [(ngModel)]="editShippedDate"
                     placeholder="dd MMM yyyy"
-                    (input)="markDirty()" class="bp-fbd-input"/>
+                    (input)="markDirty()"
+                    class="w-full bp-fbd-input"/>
                 </div>
               </ng-container>
               <datalist id="bp-fbd-versions-attr">
                 <option *ngFor="let v of versions" [value]="v"></option>
               </datalist>
-            </div>
+            </section>
 
-            <div class="bp-fbd-group-card">
-              <div class="bp-fbd-group-head">
-                <span class="bp-fbd-group-title">Context</span>
-              </div>
+            <section class="bp-fbd-group">
+              <h4 class="bp-fbd-group-label">Context</h4>
               <div class="bp-fbd-attr bp-fbd-attr--block">
                 <label class="bp-fbd-attr-label">Pages</label>
                 <div class="bp-fbd-pages">
@@ -371,7 +374,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
                   <input pInputText [(ngModel)]="newPageInput"
                     placeholder="add page url..."
                     (keydown.enter)="addPage()"
-                    class="bp-fbd-input"/>
+                    class="w-full bp-fbd-input"/>
                 </div>
               </div>
               <div class="bp-fbd-attr bp-fbd-attr--block">
@@ -379,14 +382,12 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
                 <p-chips [(ngModel)]="editTags" placeholder="add tag..."
                   [addOnBlur]="true"
                   (ngModelChange)="markDirty()"
-                  styleClass="bp-fbd-chips"></p-chips>
+                  styleClass="w-full bp-fbd-chips"></p-chips>
               </div>
-            </div>
+            </section>
 
-            <div class="bp-fbd-group-card bp-fbd-group-card--meta">
-              <div class="bp-fbd-group-head">
-                <span class="bp-fbd-group-title">Meta</span>
-              </div>
+            <section class="bp-fbd-group">
+              <h4 class="bp-fbd-group-label">Meta</h4>
               <div class="bp-fbd-attr">
                 <label class="bp-fbd-attr-label">Logged by</label>
                 <span class="bp-fbd-readonly">{{ entry.submitted_by || '—' }}</span>
@@ -395,7 +396,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
                 <label class="bp-fbd-attr-label">Submitted</label>
                 <span class="bp-fbd-readonly">{{ formatDate(entry.created_at) }}</span>
               </div>
-            </div>
+            </section>
           </ng-container>
         </div>
 
@@ -804,61 +805,75 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       line-height: 1;
     }
 
-    /* ── Attributes (card pattern, mirrors Settings → Organisation) ── */
-    .bp-fbd-group-card {
-      border: 0.5px solid var(--color-border);
-      border-radius: 8px;
-      background: var(--color-surface);
-      padding: 12px 14px;
-      margin-bottom: 12px;
-    }
-    .bp-fbd-group-card:last-child { margin-bottom: 0; }
-    .bp-fbd-group-head {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-fbd-group-title {
-      font-size: 11px; font-weight: 600;
+    /* ── Attributes — flat sections, Settings → Organisation pattern.
+          Amber group label + flat rows separated by 0.5px dividers. ── */
+    .bp-fbd-group { display: block; }
+    .bp-fbd-group-label {
+      margin: 0;
+      padding: 16px 0 6px;
+      font-family: var(--font-sans);
+      font-size: 10px; font-weight: 600;
       color: var(--theme-accent);
       text-transform: uppercase; letter-spacing: 0.08em;
     }
+    .bp-fbd-group:first-child .bp-fbd-group-label { padding-top: 8px; }
     .bp-fbd-attr {
-      display: grid; grid-template-columns: 110px 1fr;
-      gap: 10px; align-items: center; padding: 4px 0;
+      display: flex; align-items: center;
+      padding: 8px 0; gap: 16px;
+      border-bottom: 0.5px solid var(--color-border);
+      font-family: var(--font-sans);
     }
-    .bp-fbd-attr--block {
-      grid-template-columns: 110px 1fr;
-      align-items: flex-start;
-    }
+    .bp-fbd-attr--block { align-items: flex-start; }
+    .bp-fbd-group .bp-fbd-attr:last-child { border-bottom: none; }
     .bp-fbd-attr-label {
-      font-size: 11px; color: var(--color-text-secondary);
-      font-family: var(--font-body);
+      width: 110px; flex-shrink: 0;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--color-text-secondary);
     }
+    .bp-fbd-attr > p-dropdown,
+    .bp-fbd-attr > input,
+    .bp-fbd-attr > p-chips,
+    .bp-fbd-attr > .bp-fbd-pages,
+    .bp-fbd-attr > .bp-fbd-readonly { flex: 1; min-width: 0; }
     .bp-fbd-readonly {
-      font-size: 12px; color: var(--color-text-primary);
-      font-family: var(--font-body);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--color-text-primary);
     }
+
+    /* p-dropdown — match the rest of the app (parchment-bordered, 28px,
+       flat input look). */
+    :host ::ng-deep .bp-fbd-dd.p-dropdown,
     :host ::ng-deep .bp-fbd-dd .p-dropdown {
       width: 100%; height: 28px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
+      border-radius: 4px;
+      font-family: var(--font-sans) !important;
     }
-    :host ::ng-deep .bp-fbd-dd .p-dropdown .p-dropdown-label {
-      font-size: 12px; padding: 0 8px;
+    :host ::ng-deep .bp-fbd-dd .p-dropdown-label {
+      font-family: var(--font-sans) !important;
+      font-size: 12px;
+      padding: 0 8px;
       display: inline-flex; align-items: center;
+      color: var(--color-text-primary);
     }
+    :host ::ng-deep .bp-fbd-dd .p-dropdown-trigger { width: 28px; }
+
     :host ::ng-deep .bp-fbd-input {
       width: 100%; height: 28px; padding: 0 8px;
+      font-family: var(--font-sans);
       font-size: 12px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
       border-radius: 4px;
-      font-family: var(--font-body);
+      color: var(--color-text-primary);
     }
+
     .bp-fbd-pages {
       display: flex; flex-direction: column; gap: 4px;
+      font-family: var(--font-sans);
     }
     .bp-fbd-page-row {
       display: flex; align-items: center; gap: 6px;
@@ -874,11 +889,14 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       color: var(--color-text-muted); cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
     }
+    :host ::ng-deep .bp-fbd-chips.p-chips,
     :host ::ng-deep .bp-fbd-chips .p-chips,
     :host ::ng-deep .bp-fbd-chips .p-inputtext {
       width: 100%; min-height: 28px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
+      border-radius: 4px;
+      font-family: var(--font-sans);
       font-size: 12px;
     }
 
