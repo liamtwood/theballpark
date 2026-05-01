@@ -181,9 +181,13 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
               [class.bp-fbd-tc-row--editing]="editingTcId === tc.id"
               [class.bp-fbd-tc-row--todo]="tc.status === 'todo'">
               <ng-container *ngIf="editingTcId !== tc.id">
-                <span class="bp-fbd-tc-status" [attr.data-status]="tc.status">
-                  <lucide-icon [name]="tcIcon(tc.status)" [size]="12"></lucide-icon>
-                </span>
+                <button type="button" class="bp-fbd-tc-pill"
+                  [attr.data-status]="tc.status"
+                  (click)="cycleTcStatus(tc, $event)"
+                  title="Click to cycle status">
+                  <lucide-icon [name]="tcIcon(tc.status)" [size]="11"></lucide-icon>
+                  <span>{{ statusLabel(tc.status) }}</span>
+                </button>
                 <app-avatar *ngIf="tc.owner" [name]="tc.owner" [size]="20"></app-avatar>
                 <div class="bp-fbd-tc-body" (click)="startEditTc(tc)">
                   <div class="bp-fbd-tc-meta">
@@ -684,6 +688,33 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       background: var(--theme-bg); color: var(--theme-accent);
       border: 0.5px solid var(--theme-accent);
     }
+    /* Clickable status pill on test case rows — replaces the icon-only
+       circle. Click cycles todo → pass → fail → skip with PATCH. */
+    .bp-fbd-tc-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 22px; padding: 0 10px; border-radius: 999px;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      cursor: pointer; flex-shrink: 0;
+      border: 0.5px solid transparent;
+    }
+    .bp-fbd-tc-pill:hover { filter: brightness(0.97); }
+    .bp-fbd-tc-pill[data-status="pass"] {
+      background: var(--color-booked-bg); color: var(--color-booked-text);
+      border-color: var(--color-booked-border);
+    }
+    .bp-fbd-tc-pill[data-status="fail"] {
+      background: var(--color-danger-bg); color: var(--color-danger-text);
+      border-color: var(--color-danger-border, var(--color-danger-text));
+    }
+    .bp-fbd-tc-pill[data-status="skip"] {
+      background: var(--color-surface); color: var(--color-text-muted);
+      border-color: var(--color-border);
+    }
+    .bp-fbd-tc-pill[data-status="todo"] {
+      background: var(--theme-bg); color: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
     .bp-fbd-tc-body { flex: 1; min-width: 0; }
     .bp-fbd-tc-meta {
       display: flex; justify-content: flex-end; align-items: center;
@@ -998,6 +1029,22 @@ export class FeedbackDrawerComponent implements OnChanges {
     if (!this.addTcResult) return false;
     if (this.addTcResult === 'todo') return true;
     return !!this.addTcNotes.trim();
+  }
+
+  cycleTcStatus(tc: TestCase, event: Event) {
+    event.stopPropagation();
+    const cycle = ['todo', 'pass', 'fail', 'skip'] as const;
+    const i = cycle.indexOf(tc.status);
+    const next = cycle[(i + 1) % cycle.length];
+    this.feedbackSvc.patch(tc.id, { status: next } as any).subscribe({
+      next: () => {
+        this.testCases = this.testCases.map(x =>
+          x.id === tc.id ? { ...x, status: next } : x
+        );
+        this.cdr.markForCheck();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed' })
+    });
   }
 
   startEditTc(tc: TestCase) {
