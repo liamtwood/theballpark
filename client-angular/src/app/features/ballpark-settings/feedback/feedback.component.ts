@@ -324,8 +324,8 @@ type DetailMode = 'inline' | 'drawer';
       box-shadow: 0 0 0 0.5px var(--color-border);
     }
     /* When icon_color is set on the area, an inline style overrides
-       `color` so the lucide stroke takes that hue while the parchment
-       fill stays unchanged. */
+       the color property so the lucide stroke takes that hue while
+       the parchment fill stays unchanged. */
     .bp-fb-area-btn.active .bp-fb-area-circle {
       border-color: var(--theme-accent);
       box-shadow: 0 0 0 2px var(--theme-accent);
