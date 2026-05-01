@@ -1042,6 +1042,10 @@ export class FeedbackDrawerComponent implements OnChanges {
           x.id === tc.id ? { ...x, status: next } : x
         );
         this.cdr.markForCheck();
+        // Notify the parent page so the Tests column refreshes
+        // (test_todo_count / test_count change when a child row's
+        // status changes).
+        if (this.entry) this.saved.emit(this.entry);
       },
       error: () => this.msg.add({ severity: 'error', summary: 'Save failed' })
     });
@@ -1080,6 +1084,7 @@ export class FeedbackDrawerComponent implements OnChanges {
         );
         this.editingTcId = null;
         this.cdr.markForCheck();
+        if (this.entry) this.saved.emit(this.entry);
       },
       error: () => this.msg.add({ severity: 'error', summary: 'Save failed' })
     });
@@ -1325,6 +1330,7 @@ export class FeedbackDrawerComponent implements OnChanges {
         this.addTcNotes = '';
         this.addTcResult = 'todo';
         this.cdr.markForCheck();
+        if (this.entry) this.saved.emit(this.entry);
       },
       error: err => {
         const detail = err?.error?.error || err?.message || 'Failed to add test case';

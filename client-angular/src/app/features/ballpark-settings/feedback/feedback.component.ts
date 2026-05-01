@@ -175,12 +175,19 @@ type ViewMode = 'grid' | 'list' | 'table';
                   </ng-template>
                 </td>
                 <td>
-                  <span *ngIf="row.test_todo_count > 0" class="bp-fb-tests-pill bp-fb-tests-pill--todo">
+                  <!-- Open todos drive an action; otherwise the feature is
+                       considered tested if any test cases exist. -->
+                  <span *ngIf="row.test_todo_count > 0" class="bp-fb-tests-pill bp-fb-tests-pill--todo"
+                    title="Open test cases to do">
                     {{ row.test_todo_count }} to do
                   </span>
                   <span *ngIf="!row.test_todo_count && row.test_count > 0"
-                    class="bp-fb-tests-pill bp-fb-tests-pill--done">✓</span>
-                  <span *ngIf="!row.test_count" class="bp-muted-text">—</span>
+                    class="bp-fb-tests-pill bp-fb-tests-pill--done"
+                    title="All test cases have been run">
+                    ✓ Tested
+                  </span>
+                  <span *ngIf="!row.test_count" class="bp-muted-text"
+                    title="No test cases yet">—</span>
                 </td>
               </tr>
             </ng-template>
@@ -313,9 +320,11 @@ type ViewMode = 'grid' | 'list' | 'table';
       border: 0.5px solid var(--theme-border, var(--color-border));
     }
     .bp-fb-tests-pill--done {
-      background: transparent;
+      background: var(--color-booked-bg);
       color: var(--color-booked-text);
-      font-weight: 700;
+      border: 0.5px solid var(--color-booked-border);
+      font-weight: 600;
+      gap: 3px;
     }
     .bp-fb-id-pill {
       display: inline-flex; align-items: center;
