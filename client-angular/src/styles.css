@@ -291,6 +291,71 @@ lucide-icon svg {
 }
 
 /* ============================================
+   STANDARD TABLE — used by both the catalogue-grid auto-fallback
+   table and feedback's projected <p-table>. Wrap any table in
+   .bp-table-wrap to get the rounded-outline shell; add .bp-table
+   to the table itself (or to the p-table styleClass) for the row
+   typography, hover, and selection treatment.
+   ============================================ */
+.bp-table-wrap {
+  border: 0.5px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+/* Header — applies to both raw <thead> rows and PrimeNG's datatable. */
+.bp-table thead th,
+.bp-table .p-datatable-thead > tr > th {
+  background: var(--color-surface) !important;
+  color: var(--color-text-muted) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  text-align: left;
+  padding: 10px 12px !important;
+  border-bottom: 0.5px solid var(--color-border) !important;
+  white-space: nowrap;
+}
+
+/* Body rows. */
+.bp-table tbody td,
+.bp-table .p-datatable-tbody > tr > td {
+  padding: 9px 12px !important;
+  font-size: 12.5px !important;
+  color: var(--color-text-primary) !important;
+  border-bottom: 0.5px solid var(--color-border) !important;
+  vertical-align: middle;
+}
+.bp-table tbody tr,
+.bp-table .p-datatable-tbody > tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.bp-table tbody tr:hover,
+.bp-table .p-datatable-tbody > tr:hover {
+  background: var(--theme-bg) !important;
+}
+.bp-table tbody tr.bp-row-selected,
+.bp-table .p-datatable-tbody > tr.bp-row-selected,
+.bp-table .p-datatable-tbody > tr.p-highlight {
+  background: var(--theme-bg) !important;
+}
+.bp-table tbody tr:last-child td,
+.bp-table .p-datatable-tbody > tr:last-child td {
+  border-bottom: none !important;
+}
+.bp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+}
+/* Helper text colours used inside cells. */
+.bp-table .bp-cell-name { font-weight: 500; }
+.bp-table .bp-cell-muted { color: var(--color-text-muted); }
+
+/* ============================================
    PAGE CONFIG STRIP — shared chrome for the cog-driven config toggles
    used by marketplace + feedback. Lives globally so both pages
    render an identical strip; controls are in app-page-config-toggles.

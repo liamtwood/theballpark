@@ -290,8 +290,8 @@ export type DetailMode = 'inline' | 'drawer';
              auto-table generated from entities[]. -->
         <ng-container *ngIf="layout === 'table'">
           <ng-content *ngIf="useCustomMain" select="[catalogue-main]"></ng-content>
-          <div *ngIf="!useCustomMain && filteredEntities.length" class="bp-cat-fallback-table-wrap">
-            <table class="bp-cat-fallback-table">
+          <div *ngIf="!useCustomMain && filteredEntities.length" class="bp-table-wrap">
+            <table class="bp-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -302,17 +302,17 @@ export type DetailMode = 'inline' | 'drawer';
               </thead>
               <tbody>
                 <tr *ngFor="let e of filteredEntities"
-                    [class.bp-fallback-row-selected]="selectedEntity?.id === e.id"
+                    [class.bp-row-selected]="selectedEntity?.id === e.id"
                     (click)="select(e)">
-                  <td class="bp-fallback-cell-name">{{ e.name }}</td>
-                  <td *ngIf="anyEntityHasSubtitle" class="bp-fallback-cell-muted">{{ e.subtitle || '—' }}</td>
-                  <td *ngIf="anyEntityHasCategoryLabel" class="bp-fallback-cell-muted">{{ e.categoryLabel || '—' }}</td>
+                  <td class="bp-cell-name">{{ e.name }}</td>
+                  <td *ngIf="anyEntityHasSubtitle" class="bp-cell-muted">{{ e.subtitle || '—' }}</td>
+                  <td *ngIf="anyEntityHasCategoryLabel" class="bp-cell-muted">{{ e.categoryLabel || '—' }}</td>
                   <td *ngIf="anyEntityHasPrice">
                     <ng-container *ngIf="e.priceRange">
                       {{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}
                     </ng-container>
                     <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
-                    <span *ngIf="!e.priceRange && !e.price" class="bp-fallback-cell-muted">—</span>
+                    <span *ngIf="!e.priceRange && !e.price" class="bp-cell-muted">—</span>
                   </td>
                 </tr>
               </tbody>
@@ -599,38 +599,9 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-list-unit { font-size: 10px; color: var(--color-text-muted); }
     .bp-row-chev { color: var(--color-text-muted); flex-shrink: 0; }
 
-    /* FALLBACK TABLE (auto-generated when useCustomMain is false). */
-    .bp-cat-fallback-table-wrap {
-      border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden;
-      background: var(--color-surface);
-    }
-    .bp-cat-fallback-table {
-      width: 100%; border-collapse: collapse;
-      font-family: var(--font-body);
-    }
-    .bp-cat-fallback-table thead th {
-      background: var(--color-surface);
-      color: var(--color-text-muted);
-      font-size: 10px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      text-align: left; padding: 10px 12px;
-      border-bottom: 0.5px solid var(--color-border);
-      white-space: nowrap;
-    }
-    .bp-cat-fallback-table tbody td {
-      padding: 9px 12px; font-size: 12.5px;
-      color: var(--color-text-primary);
-      border-bottom: 0.5px solid var(--color-border);
-      vertical-align: middle;
-    }
-    .bp-cat-fallback-table tbody tr {
-      cursor: pointer; transition: background 0.1s;
-    }
-    .bp-cat-fallback-table tbody tr:hover { background: var(--theme-bg); }
-    .bp-cat-fallback-table tbody tr.bp-fallback-row-selected { background: var(--theme-bg); }
-    .bp-cat-fallback-table tbody tr:last-child td { border-bottom: none; }
-    .bp-fallback-cell-name { font-weight: 500; }
-    .bp-fallback-cell-muted { color: var(--color-text-muted); }
+    /* (Auto-fallback table renders via the global .bp-table-wrap /
+       .bp-table standard in styles.css — same look as the projected
+       <p-table> on feedback.) */
 
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }

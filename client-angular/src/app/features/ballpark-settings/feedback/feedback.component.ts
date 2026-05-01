@@ -153,7 +153,7 @@ type ViewMode = 'card' | 'list' | 'table';
         </div>
 
         <!-- TABLE — only rendered when layout='table' -->
-        <div catalogue-main *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
+        <div catalogue-main *ngIf="viewMode === 'table'" class="bp-table-wrap bp-fb-table-wrap">
           <p-table [value]="tableRows" styleClass="bp-table" sortMode="multiple"
             [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
             <ng-template pTemplate="header">
@@ -348,21 +348,8 @@ type ViewMode = 'card' | 'list' | 'table';
     }
     :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none !important; }
 
-    /* Table */
-    .bp-fb-table-wrap { padding: 12px 8px; }
-    :host ::ng-deep .bp-table .p-datatable-thead > tr > th {
-      background: var(--color-surface); color: var(--color-text-muted);
-      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-      border-bottom: 0.5px solid var(--color-border); padding: 10px 12px;
-    }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr {
-      cursor: pointer; transition: background 0.1s;
-    }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr:hover { background: var(--theme-bg); }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr > td {
-      padding: 10px 12px; font-size: 13px; color: var(--color-text-primary);
-      border-bottom: 0.5px solid var(--color-border); vertical-align: middle;
-    }
+    /* Table — chrome lives in styles.css under .bp-table / .bp-table-wrap;
+       only the page-specific cell helpers stay here. */
     .bp-fb-cell-title { font-weight: 500; }
 
     .bp-fb-type-pill {
