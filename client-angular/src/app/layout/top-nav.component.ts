@@ -45,6 +45,12 @@ import { environment } from '../../environments/environment';
         <a routerLink="/ballpark-settings/feedback" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> Feedback
         </a>
+        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+        </a>
+        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link bp-nav-link-admin">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
+        </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
