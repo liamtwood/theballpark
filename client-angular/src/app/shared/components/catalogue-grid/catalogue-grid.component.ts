@@ -431,8 +431,8 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-page-hero-title {
       font-family: var(--font-display);
-      font-size: 44px; font-weight: 400; letter-spacing: -0.02em;
-      margin: 0 0 6px; line-height: 1.05;
+      font-size: 36px; font-weight: 400; letter-spacing: -0.02em;
+      margin: 0 0 6px; line-height: 1.1;
       color: var(--color-text-primary);
     }
     .bp-page-hero-sub {

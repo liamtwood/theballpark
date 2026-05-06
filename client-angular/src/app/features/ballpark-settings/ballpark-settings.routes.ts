@@ -20,9 +20,8 @@ export const BALLPARK_SETTINGS_ROUTES: Routes = [
   },
   {
     path: 'feedback',
-    loadComponent: () => import('./feedback/feedback.component').then(m => m.FeedbackComponent),
-    // Feedback owns its own hero via catalogue-grid inputs — suppress the
-    // shared PLATFORM SETTINGS hero/tab bar.
-    data: { pageLabel: '', tabs: [], hideHero: true }
+    loadComponent: () => import('./feedback/feedback.component').then(m => m.FeedbackComponent)
+    // Page sets hero via ShellContextService (heroSub = feedbackLabel);
+    // tabs come from the parent ballpark-settings route.
   }
 ];

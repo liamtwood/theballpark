@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -14,6 +14,7 @@ import {
   PageConfigTogglesComponent, ThemeSwatch, DetailMode
 } from '../../../shared/components/page-config-toggles/page-config-toggles.component';
 import { ConfigService } from '../../../core/services/config.service';
+import { ShellContextService } from '../../../core/services/shell-context.service';
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -61,9 +62,6 @@ type ViewMode = 'card' | 'list' | 'table';
         entityLabel="entry"
         sectionTitle="FEEDBACK"
         actionLabel="Open"
-        [pageLabel]="'BALLPARK SETTINGS'"
-        [pageTitle]="pageLabel"
-        [pageSubtitle]="feedbackSubtitle"
         [circleSize]="circleSize"
         [detailSize]="detailSize"
         [detailMode]="detailMode"
@@ -418,7 +416,7 @@ type ViewMode = 'card' | 'list' | 'table';
     .bp-fb-bulk-btn--danger:hover { border-color: var(--color-action-text); color: var(--color-action-text); }
   `]
 })
-export class FeedbackComponent implements OnInit {
+export class FeedbackComponent implements OnInit, OnDestroy {
   loading = true;
   allEntities: CatalogueEntity[] = [];
   filteredEntities: CatalogueEntity[] = [];
@@ -455,13 +453,6 @@ export class FeedbackComponent implements OnInit {
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
     { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
   ];
-
-  // ── Hero copy + config strip state (persisted to localStorage) ──
-  get feedbackSubtitle(): string {
-    const n = this.entries.length;
-    const areas = Math.max(0, this.areaCircles.length - 1);
-    return `${n} entries across ${areas} areas · roadmap, bugs, prompts & tests`;
-  }
 
   /** Display label for the currently-selected area; '' when on "All". */
   get selectedAreaLabel(): string {
@@ -554,6 +545,7 @@ export class FeedbackComponent implements OnInit {
     private feedbackSvc: FeedbackService,
     private confirmSvc: ConfirmationService,
     private msg: MessageService,
+    private shellCtx: ShellContextService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -566,11 +558,15 @@ export class FeedbackComponent implements OnInit {
   ngOnInit() {
     this.loadConfig();
     this.pageLabel = this.configSvc.feedbackLabel;
+    // Defer past NavigationEnd — AppShell resets shellCtx after child
+    // ngOnInit, so a synchronous set would be wiped.
+    setTimeout(() => this.applyShellHero(), 0);
     this.configSvc.config$.subscribe(cfg => {
       if (cfg.feedbackLabel && cfg.feedbackLabel !== this.pageLabel) {
         this.pageLabel = cfg.feedbackLabel;
-        this.cdr.detectChanges();
       }
+      this.applyShellHero();
+      this.cdr.detectChanges();
     });
     this.feedbackSvc.getFeedbackCategories('area').subscribe({
       next: (cats) => {
@@ -578,6 +574,17 @@ export class FeedbackComponent implements OnInit {
         this.loadEntries();
       },
       error: () => { this.loadEntries(); }
+    });
+  }
+
+  ngOnDestroy() { this.shellCtx.reset(); }
+
+  private applyShellHero() {
+    this.shellCtx.set({
+      heroTitle: this.configSvc.platformName,
+      heroSub: this.configSvc.feedbackLabel.toUpperCase(),
+      pills: [],
+      tabs: []
     });
   }
 

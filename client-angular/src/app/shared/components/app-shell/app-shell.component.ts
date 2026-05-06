@@ -18,7 +18,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   imports: [CommonModule, TitleCasePipe, TagModule, LucideAngularModule, RouterModule, RouterOutlet],
   template: `
     <!-- HERO -->
-    <div class="bp-hero" [class.bp-hero--no-tabs]="!activeTabs.length" *ngIf="!hideHero">
+    <div class="bp-hero" *ngIf="!hideHero">
 
       <!-- PILLS -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">

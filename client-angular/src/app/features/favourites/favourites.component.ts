@@ -164,7 +164,7 @@ export class FavouritesComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      this.shellCtx.set({ heroTitle: org?.name || 'Favourites', heroSub: 'Favourites', pills: [], tabs: [] });
+      this.shellCtx.set({ heroTitle: org?.name || 'Favourites', heroSub: 'FAVOURITES', pills: [], tabs: [] });
       this.cdr.detectChanges();
     });
     this.load();

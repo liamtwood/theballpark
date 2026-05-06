@@ -41,9 +41,6 @@ import {
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
-          [pageLabel]="'MARKETPLACE'"
-          [pageTitle]="catalogueTitle"
-          [pageSubtitle]="catalogueSubtitle"
           [circleSize]="circleSize"
           [detailSize]="detailSize"
           [detailMode]="detailMode"
@@ -140,16 +137,11 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
 
-  // Hero copy (passed to CatalogueGridComponent). The page label is
-  // org-wide via ConfigService.catalogueLabel — kept in sync via
-  // configService.config$ subscription in ngOnInit.
+  // Editable page label bound to the config strip. Kept in sync with
+  // ConfigService.catalogueLabel (org-wide) via the config$ subscription
+  // in ngOnInit. The hero subtitle on the global app-shell hero also
+  // mirrors this label (uppercased) and re-renders on change.
   catalogueTitle = 'Catalogue';
-  get catalogueSubtitle(): string {
-    const noun = this.viewMode === 'suppliers' ? 'suppliers' : 'items';
-    const count = this.viewMode === 'suppliers' ? this.suppliers.length : this.totalItems;
-    const cats = this.categories.filter(c => !c.parent_id).length;
-    return `${count} ${noun} across ${cats} categories · vetted UK suppliers`;
-  }
 
   // Layout-only config strip state — persisted per-user to localStorage
   // with the ballpark:marketplace:* key namespace. Page label lives in
@@ -212,27 +204,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadConfig();
     this.catalogueTitle = this.configSvc.catalogueLabel;
-    this.configSvc.config$.subscribe(cfg => {
-      if (cfg.catalogueLabel && cfg.catalogueLabel !== this.catalogueTitle) {
-        this.catalogueTitle = cfg.catalogueLabel;
-        this.cdr.detectChanges();
-      }
-    });
-    const label = this.configSvc.catalogueLabel.toUpperCase();
+
     const projectId = this.route.snapshot.queryParams['projectId'];
     if (projectId) {
       this.projectSvc.getById(projectId).subscribe(p => {
-        this.shellCtx.set({
-          heroTitle: this.configSvc.platformName,
-          heroSub: label,
-          pills: p ? [p.event_name || p.name || ''] : [],
-          tabs: []
-        });
-        this.cdr.detectChanges();
+        this.applyShellHero(p ? [p.event_name || p.name || ''] : []);
       });
     } else {
-      this.shellCtx.set({ heroTitle: this.configSvc.platformName, heroSub: label, pills: [], tabs: [] });
+      // Defer past NavigationEnd — AppShell's router subscription resets
+      // shellCtx on every navigation, so a synchronous set in ngOnInit
+      // would be wiped immediately afterwards.
+      setTimeout(() => this.applyShellHero([]), 0);
     }
+
+    this.configSvc.config$.subscribe(cfg => {
+      const label = cfg.catalogueLabel || this.configSvc.catalogueLabel;
+      if (label && label !== this.catalogueTitle) {
+        this.catalogueTitle = label;
+      }
+      this.applyShellHero(this.shellCtx.current.pills || []);
+      this.cdr.detectChanges();
+    });
 
     this.loadCategoryCounts();
     this.categorySvc.getAll('catalogue').subscribe({
@@ -279,6 +271,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() { this.shellCtx.reset(); }
+
+  private applyShellHero(pills: string[]) {
+    this.shellCtx.set({
+      heroTitle: this.configSvc.platformName,
+      heroSub: this.configSvc.catalogueLabel.toUpperCase(),
+      pills,
+      tabs: []
+    });
+  }
 
   // ── Config strip persistence ──────────────────────────────────────────
   loadConfig() {

@@ -44,9 +44,8 @@ export const routes: Routes = [
       {
         path: 'suppliers',
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
-        // Hero is owned by the page (catalogue-grid renders it from the
-        // pageLabel/pageTitle/pageSubtitle inputs) — suppress the global hero.
-        data: { pageLabel: '', tabs: [], hideHero: true }
+        // Page sets hero via ShellContextService (heroSub = catalogueLabel).
+        data: { pageLabel: '', tabs: [] }
       },
       {
         path: 'suppliers/:id',

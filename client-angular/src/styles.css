@@ -664,13 +664,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
      organisation, team, subscription, categories, marketplace
    ============================================================= */
 
-/* ── HERO BANNER ── */
+/* ── HERO BANNER ──
+   Single standard across the whole app. Pills > title > subtitle > tabs.
+   Border-bottom lives on .bp-hero-tabs only — never on the hero container. */
 .bp-hero {
   background: var(--theme-bg);
   padding: 32px var(--section-pad) 0;
-}
-.bp-hero--no-tabs {
-  border-bottom: 0.5px solid var(--color-border);
 }
 .bp-hero-org-name {
   font-family: var(--font-display);

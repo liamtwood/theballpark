@@ -398,7 +398,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Write to ShellContextService — tabs use callback not routing
         this.shellCtx.set({
           heroTitle: org.name,
-          heroSub: 'Projects',
+          heroSub: 'PROJECTS',
           pills: [],
           tabs: [],
         });
