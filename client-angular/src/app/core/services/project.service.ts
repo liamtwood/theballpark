@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { ApiService } from './api.service';
-import { Project } from '../../models';
+import { Project, ProjectCategory } from '../../models';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
@@ -16,4 +16,15 @@ export class ProjectService {
   delete(id: string) { return this.api.delete<Project>(`/projects/${id}`); }
   getByOrg(orgId: string) { return this.api.get<Project[]>(`/projects?org_id=${orgId}`); }
   triggerRefresh() { this.refreshSubject.next(); }
+
+  // ── Brief tab — scope picker + per-category briefs ──
+  getCategories(projectId: string) {
+    return this.api.get<ProjectCategory[]>(`/projects/${projectId}/categories`);
+  }
+  upsertCategory(projectId: string, categoryId: string, data: { requirement_brief?: string; ballpark_budget?: number | null }) {
+    return this.api.patch<ProjectCategory>(`/projects/${projectId}/categories/${categoryId}`, data);
+  }
+  removeCategory(projectId: string, categoryId: string) {
+    return this.api.delete<ProjectCategory>(`/projects/${projectId}/categories/${categoryId}`);
+  }
 }

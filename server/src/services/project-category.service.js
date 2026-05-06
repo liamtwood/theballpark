@@ -100,4 +100,85 @@ async function softDelete(id) {
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, softDelete, calcDerivedFields };
+// ── Brief tab — scope picker + per-category briefs ────────────────────
+//
+// upsert/getByProject/remove operate on the (project_id, category_id)
+// pair so the Brief tab can toggle scope and edit briefs without
+// tracking project_categories.id on the client. Cost fields are not
+// touched here — they're owned by the Estimate tab. See update() above
+// for the existing cost-aware path.
+
+async function getByProject(projectId) {
+  const result = await pool.query(
+    `SELECT pc.*,
+            c.name            AS category_name,
+            c.icon_name       AS category_icon_name,
+            c.icon_color      AS category_icon_color,
+            c.cover_image_url AS category_cover_image_url,
+            c.sort_order      AS category_sort_order
+     FROM project_categories pc
+     JOIN categories c ON c.id = pc.category_id
+     WHERE pc.project_id = $1 AND pc.is_active = true
+     ORDER BY c.sort_order ASC, pc.created_at ASC`,
+    [projectId]
+  );
+  return result.rows;
+}
+
+async function upsert(projectId, categoryId, data) {
+  const requirement_brief = data.requirement_brief !== undefined ? data.requirement_brief : null;
+  const ballpark_budget   = data.ballpark_budget   !== undefined ? data.ballpark_budget   : null;
+
+  // INSERT ... ON CONFLICT requires a unique constraint on
+  // (project_id, category_id). A composite constraint isn't guaranteed
+  // historically, so we do a SELECT-then-INSERT/UPDATE round-trip.
+  const existing = await pool.query(
+    `SELECT id FROM project_categories
+     WHERE project_id = $1 AND category_id = $2 AND is_active = true
+     LIMIT 1`,
+    [projectId, categoryId]
+  );
+
+  if (existing.rows.length) {
+    const result = await pool.query(
+      `UPDATE project_categories SET
+        requirement_brief = COALESCE($1, requirement_brief),
+        ballpark_budget   = COALESCE($2, ballpark_budget),
+        updated_at = NOW()
+       WHERE id = $3 RETURNING *`,
+      [requirement_brief, ballpark_budget, existing.rows[0].id]
+    );
+    return result.rows[0];
+  }
+
+  const inserted = await pool.query(
+    `INSERT INTO project_categories
+       (project_id, category_id, requirement_brief, ballpark_budget)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [projectId, categoryId, requirement_brief, ballpark_budget]
+  );
+  return inserted.rows[0];
+}
+
+async function remove(projectId, categoryId) {
+  // Hard delete on the brief picker — toggling off should clear the row
+  // entirely, not leave inactive ghosts behind that confuse subsequent
+  // selections. recalcTotals only looks at is_active rows so the project
+  // totals stay correct either way.
+  const result = await pool.query(
+    `DELETE FROM project_categories
+     WHERE project_id = $1 AND category_id = $2
+     RETURNING *`,
+    [projectId, categoryId]
+  );
+  if (result.rows.length) {
+    await ProjectService.recalcTotals(projectId);
+  }
+  return result.rows[0] || null;
+}
+
+module.exports = {
+  getAll, getById, create, update, softDelete, calcDerivedFields,
+  getByProject, upsert, remove
+};

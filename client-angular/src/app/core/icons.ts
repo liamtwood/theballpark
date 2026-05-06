@@ -54,7 +54,7 @@ import {
   Table, Tag, Terminal, Ticket, Timer, Trash2, TrendingUp, Trophy, Truck, Tv,
   Upload, User, Users, Utensils,
   Video, Volleyball,
-  Warehouse, Wine, Wrench,
+  WandSparkles, Warehouse, Wine, Wrench,
   X, Zap
 } from 'lucide-angular';
 
@@ -95,7 +95,7 @@ export const ICON_REGISTRY = {
   Table, Tag, Terminal, Ticket, Timer, Trash2, TrendingUp, Trophy, Truck, Tv,
   Upload, User, Users, Utensils,
   Video, Volleyball,
-  Warehouse, Wine, Wrench,
+  WandSparkles, Warehouse, Wine, Wrench,
   X, Zap
 } as const;
 

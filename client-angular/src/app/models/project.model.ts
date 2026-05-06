@@ -29,6 +29,9 @@ export interface Project {
   total_base_cost?: number;
   total_client_cost?: number;
   tier?: string;
+  event_type?: string;
+  duration_days?: number;
+  po_ref?: string;
   status_id?: string;
   status_name?: string;
   status_color?: string;
@@ -49,6 +52,7 @@ export interface ProjectCategory {
   description?: string;
   requirement_brief?: string;
   requirement_detail?: string;
+  ballpark_budget?: number;
   ballpark_cost: number;
   base_cost: number;
   contingency_pct: number;
@@ -64,5 +68,10 @@ export interface ProjectCategory {
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  category_name?: string;
+  category_icon_name?: string;
+  category_icon_color?: string;
+  category_cover_image_url?: string;
+  category_sort_order?: number;
   is_active: boolean;
 }

@@ -115,7 +115,12 @@
       "Bash(npm install *)",
       "mcp__Claude_Preview__preview_start",
       "Read(//c/projects/ballpark/server/**)",
-      "Bash(cp /c/projects/ballpark/server/.env /c/projects/ballpark/.claude/worktrees/frosty-hamilton-bf1b39/server/.env)"
+      "Bash(cp /c/projects/ballpark/server/.env /c/projects/ballpark/.claude/worktrees/frosty-hamilton-bf1b39/server/.env)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s \"http://localhost:3001/api/projects\")",
+      "Bash(python -c \"import sys, json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('rows:', len\\(d\\)\\); print\\('keys:', list\\(d[0].keys\\(\\)\\)[:8] if d else 'empty'\\)\")",
+      "Bash(curl -s \"http://localhost:3001/api/categories?namespace=catalogue\")",
+      "Bash(python -c \"import sys, json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('delete ok, returned id=', d.get\\('id', 'N/A'\\)[:8]\\)\")"
     ]
   },
   "enableAllProjectMcpServers": true,

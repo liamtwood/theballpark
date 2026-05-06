@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const ProjectService = require('../services/project.service');
+const ProjectCategoryService = require('../services/project-category.service');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -37,6 +38,36 @@ router.delete('/:id', async (req, res, next) => {
     const project = await ProjectService.softDelete(req.params.id);
     if (!project) return res.status(404).json({ error: 'Not found' });
     res.json(project);
+  } catch (err) { next(err); }
+});
+
+// ── Brief tab — scope picker + per-category briefs ───────────────────
+//
+// The Brief tab edits the (project, category) pairing directly. PATCH
+// upserts the row (insert or update by composite key). DELETE clears
+// the row when the user deselects a category.
+
+router.get('/:projectId/categories', async (req, res, next) => {
+  try { res.json(await ProjectCategoryService.getByProject(req.params.projectId)); }
+  catch (err) { next(err); }
+});
+
+router.patch('/:projectId/categories/:categoryId', async (req, res, next) => {
+  try {
+    const pc = await ProjectCategoryService.upsert(
+      req.params.projectId, req.params.categoryId, req.body || {}
+    );
+    res.json(pc);
+  } catch (err) { next(err); }
+});
+
+router.delete('/:projectId/categories/:categoryId', async (req, res, next) => {
+  try {
+    const pc = await ProjectCategoryService.remove(
+      req.params.projectId, req.params.categoryId
+    );
+    if (!pc) return res.status(404).json({ error: 'Not found' });
+    res.json(pc);
   } catch (err) { next(err); }
 });
 
