@@ -12,6 +12,7 @@
 :root {
   --font-display: 'Playfair Display', serif;
   --font-body: 'Libre Franklin', sans-serif;
+  --font-sans: 'Libre Franklin', sans-serif;
 
   /* Theme colours — amber default (overridden by ConfigService) */
   --theme-accent: #D97706;

@@ -1,10 +1,13 @@
 import {
-  Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef
+  Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef,
+  ElementRef, ViewChild, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { forkJoin } from 'rxjs';
+import { marked } from 'marked';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -175,7 +178,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
               <input pInputText [value]="formatDate(form.event_date) || '—'" *ngIf="!editing.logistics"
                 class="bp-brief-finput" readonly/>
               <p-calendar *ngIf="editing.logistics"
-                [(ngModel)]="eventDateModel"
+                [(ngModel)]="eventDate"
                 dateFormat="d M yy"
                 [showIcon]="true"
                 appendTo="body"
@@ -264,22 +267,48 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
         <hr class="bp-brief-divider">
 
         <!-- ── PROJECT BRIEF ── -->
+        <!-- Click-to-edit. View mode renders the brief as marked HTML; click
+             anywhere on the preview (or empty placeholder) flips to edit
+             mode with the markdown editor + toolbar. Done button or click
+             outside the editor returns to view mode. Autosaves while
+             editing on every value change with an 800ms debounce. -->
         <div class="bp-brief-sec">
           <div class="bp-brief-sec-h">
             <span class="bp-brief-sec-label">PROJECT BRIEF</span>
-            <button class="bp-brief-parse" (click)="parseBrief()">
-              <lucide-icon name="wand-sparkles" [size]="12"></lucide-icon>
-              Parse brief
-            </button>
+            <div class="bp-brief-brief-actions">
+              <button class="bp-brief-parse" (click)="parseBrief($event)">
+                <lucide-icon name="wand-sparkles" [size]="12"></lucide-icon>
+                Parse brief
+              </button>
+              <button *ngIf="briefEditing" class="bp-brief-done" (click)="exitBriefEdit($event)">
+                Done
+              </button>
+            </div>
           </div>
 
-          <app-markdown-editor
-            [value]="form.raw_brief_text || ''"
-            (valueChange)="onBriefValueChange($event)"
-            placeholder="Paste or write the event brief here..."
-            [rows]="6"
-            [showLabel]="false">
-          </app-markdown-editor>
+          <ng-container *ngIf="!briefEditing">
+            <div class="bp-brief-md-view bp-md-preview"
+              (click)="enterBriefEdit($event)"
+              *ngIf="form.raw_brief_text; else briefEmpty"
+              [innerHTML]="briefHtml">
+            </div>
+            <ng-template #briefEmpty>
+              <div class="bp-brief-md-view bp-brief-md-empty"
+                (click)="enterBriefEdit($event)">
+                Click to add your project brief...
+              </div>
+            </ng-template>
+          </ng-container>
+
+          <div #briefEditor *ngIf="briefEditing" class="bp-brief-md-edit">
+            <app-markdown-editor
+              [value]="form.raw_brief_text || ''"
+              (valueChange)="onBriefValueChange($event)"
+              placeholder="Paste or write the event brief here..."
+              [rows]="6"
+              [showLabel]="false">
+            </app-markdown-editor>
+          </div>
         </div>
 
         <hr class="bp-brief-divider">
@@ -436,7 +465,10 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
       box-shadow: none !important;
     }
 
-    /* ── PARSE BUTTON (pill, parchment + amber border) ── */
+    /* ── BRIEF SECTION ACTIONS (Parse + Done) ── */
+    .bp-brief-brief-actions { display: inline-flex; align-items: center; gap: 8px; }
+
+    /* PARSE BUTTON (pill, parchment + amber border) */
     .bp-brief-parse {
       display: inline-flex; align-items: center; gap: 6px;
       height: 28px; padding: 0 12px;
@@ -450,6 +482,36 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
       transition: background 0.15s, color 0.15s;
     }
     .bp-brief-parse:hover { background: var(--theme-accent); color: var(--color-surface); }
+
+    /* DONE BUTTON (solid amber) — mirrors the parse-pill height/radius. */
+    .bp-brief-done {
+      display: inline-flex; align-items: center;
+      height: 28px; padding: 0 14px;
+      border: 0.5px solid var(--theme-accent);
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border-radius: 14px;
+      font-size: 11.5px; font-weight: 600;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-brief-done:hover { background: var(--theme-text); border-color: var(--theme-text); }
+
+    /* ── BRIEF VIEW MODE (rendered markdown) ── */
+    .bp-brief-md-view {
+      cursor: text;
+      min-height: 60px;
+      padding: 8px 0;
+      font-family: var(--font-sans);
+      color: var(--color-text-primary);
+      line-height: 1.7;
+    }
+    .bp-brief-md-empty {
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+    .bp-brief-md-edit { /* wrapper used by ViewChild + click-outside check */ }
 
     /* ── CIRCLE STRIP ── */
     .bp-brief-strip-wrap { display: flex; align-items: center; gap: 8px; }
@@ -576,18 +638,17 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
     }
     .bp-brief-row-prompt {
       width: 100%;
-      font-family: var(--font-display);
+      font-family: var(--font-sans);
       font-size: 13.5px;
-      color: var(--color-text-secondary);
+      color: var(--color-text-primary);
       line-height: 1.55;
-      letter-spacing: -0.005em;
       background: transparent;
       border: none; outline: none; resize: none;
       padding: 0; margin: 0;
       font-weight: 400;
     }
     .bp-brief-row-prompt::placeholder {
-      color: var(--color-text-muted);
+      color: var(--color-text-secondary);
       font-style: italic;
     }
     .bp-brief-row-actions { display: flex; align-items: flex-start; gap: 4px; flex-shrink: 0; }
@@ -639,20 +700,22 @@ export class BriefComponent implements OnInit, OnDestroy {
   projectCategories: ProjectCategory[] = [];
   selectedCategoryIds = new Set<string>();
 
+  // ── Project brief click-to-edit ──
+  briefEditing = false;
+  briefHtml: SafeHtml = '';
+  @ViewChild('briefEditor') briefEditorRef?: ElementRef<HTMLElement>;
+
   editing = { details: false, type: false, logistics: false, financials: false };
   private snapshots: Record<SectionKey, Partial<Project>> = {
     details: {}, type: {}, logistics: {}, financials: {}
   };
 
-  // p-calendar binds Date, but the project stores ISO/string. Sync via getter/setter.
-  get eventDateModel(): Date | null {
-    if (!this.form.event_date) return null;
-    const d = new Date(this.form.event_date as any);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  set eventDateModel(value: Date | null) {
-    this.form.event_date = value ? value.toISOString() : undefined;
-  }
+  // p-calendar binds Date, project stores ISO. Use a plain backing field —
+  // a getter that returns `new Date(...)` on every read sends a fresh
+  // reference into p-calendar each CD cycle, which sets ngModel back, which
+  // triggers another CD pass — infinite loop, app freezes. Sync explicitly
+  // when the project loads, when entering Logistics edit, and on save.
+  eventDate: Date | null = null;
 
   // Per-row autosave debouncers (categoryId → timeout handle).
   private rowSaveTimers = new Map<string, any>();
@@ -684,6 +747,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private projSvc: ProjectService,
     private catSvc: CategoryService,
     private msg: MessageService,
+    private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -742,6 +806,19 @@ export class BriefComponent implements OnInit, OnDestroy {
       default_contingency_pct: p.default_contingency_pct,
       raw_brief_text:          p.raw_brief_text,
     };
+    this.syncEventDate();
+    this.refreshBriefPreview();
+  }
+
+  private syncEventDate() {
+    if (!this.form.event_date) { this.eventDate = null; return; }
+    const d = new Date(this.form.event_date as any);
+    this.eventDate = isNaN(d.getTime()) ? null : d;
+  }
+
+  private refreshBriefPreview() {
+    const html = marked.parse(this.form.raw_brief_text || '', { async: false }) as string;
+    this.briefHtml = this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   private applyProjectCategories(rows: ProjectCategory[]) {
@@ -752,17 +829,24 @@ export class BriefComponent implements OnInit, OnDestroy {
   // ── Section edit controls ──
   startEdit(section: SectionKey) {
     this.snapshots[section] = { ...this.form };
+    // Re-sync the calendar field whenever Logistics enters edit so the
+    // p-calendar shows the current ISO value as a Date.
+    if (section === 'logistics') this.syncEventDate();
     this.editing[section] = true;
     this.cdr.markForCheck();
   }
 
   cancelEdit(section: SectionKey) {
     Object.assign(this.form, this.snapshots[section]);
+    if (section === 'logistics') this.syncEventDate();
     this.editing[section] = false;
     this.cdr.markForCheck();
   }
 
   saveSection(section: SectionKey) {
+    if (section === 'logistics') {
+      this.form.event_date = this.eventDate ? this.eventDate.toISOString() : undefined;
+    }
     this.saving = true;
     this.projSvc.update(this.pid, this.form).subscribe({
       next: p => {
@@ -782,23 +866,62 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── Project brief click-to-edit ──
+  enterBriefEdit(ev: MouseEvent) {
+    // Stop propagation so the document:click listener doesn't immediately
+    // close the editor we're about to open.
+    ev.stopPropagation();
+    if (this.briefEditing) return;
+    this.briefEditing = true;
+    this.cdr.markForCheck();
+  }
+
+  exitBriefEdit(ev?: MouseEvent) {
+    if (ev) ev.stopPropagation();
+    if (!this.briefEditing) return;
+    // Flush any pending autosave so the latest text persists.
+    if (this.briefSaveTimer) {
+      clearTimeout(this.briefSaveTimer);
+      this.briefSaveTimer = null;
+      this.persistBrief(this.form.raw_brief_text || '');
+    }
+    this.briefEditing = false;
+    this.refreshBriefPreview();
+    this.cdr.markForCheck();
+  }
+
+  // Click-outside-to-exit. Skipped while not editing so it's free; uses
+  // ViewChild ref + .contains() so toolbar / preview-tab clicks INSIDE
+  // the editor don't close it.
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(ev: MouseEvent) {
+    if (!this.briefEditing) return;
+    const ref = this.briefEditorRef?.nativeElement;
+    if (!ref) return;
+    if (ref.contains(ev.target as Node)) return;
+    this.exitBriefEdit();
+  }
+
   // ── Project brief autosave (markdown editor) ──
   onBriefValueChange(value: string) {
     this.form.raw_brief_text = value;
     if (this.briefSaveTimer) clearTimeout(this.briefSaveTimer);
     this.briefSaveTimer = setTimeout(() => {
       this.briefSaveTimer = null;
-      this.projSvc.update(this.pid, { raw_brief_text: value || '' }).subscribe({
-        next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1200 }),
-        error: () => this.msg.add({ severity: 'error', summary: 'Failed to save brief', life: 3000 })
-      });
+      this.persistBrief(value);
     }, 800);
   }
 
-  parseBrief() {
+  private persistBrief(value: string) {
+    this.projSvc.update(this.pid, { raw_brief_text: value || '' }).subscribe({
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1200 }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save brief', life: 3000 })
+    });
+  }
+
+  parseBrief(ev?: MouseEvent) {
     // Stub — AI brief parsing lives behind this in a later release.
-    // eslint-disable-next-line no-console
-    console.log('parse brief');
+    if (ev) ev.stopPropagation();
     this.msg.add({ severity: 'info', summary: 'AI parsing coming soon', life: 2000 });
   }
 

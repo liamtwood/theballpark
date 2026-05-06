@@ -120,7 +120,13 @@
       "Bash(curl -s \"http://localhost:3001/api/projects\")",
       "Bash(python -c \"import sys, json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('rows:', len\\(d\\)\\); print\\('keys:', list\\(d[0].keys\\(\\)\\)[:8] if d else 'empty'\\)\")",
       "Bash(curl -s \"http://localhost:3001/api/categories?namespace=catalogue\")",
-      "Bash(python -c \"import sys, json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('delete ok, returned id=', d.get\\('id', 'N/A'\\)[:8]\\)\")"
+      "Bash(python -c \"import sys, json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('delete ok, returned id=', d.get\\('id', 'N/A'\\)[:8]\\)\")",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4300/)",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(taskkill //F //PID 2060 //T)",
+      "Bash(taskkill //F //PID 45760 //T)"
     ]
   },
   "enableAllProjectMcpServers": true,
