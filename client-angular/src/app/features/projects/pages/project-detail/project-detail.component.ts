@@ -45,6 +45,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   private readonly PROJECT_TABS = [
     { label: 'Brief',     path: '' },  // path set dynamically with pid
     { label: 'Build',     path: '' },
+    { label: 'Supplier',  path: '' },
     { label: 'Estimate',  path: '' },
   ];
 
@@ -78,6 +79,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     const tabs = [
       { label: 'Brief',     path: `/projects/${this.pid}/brief` },
       { label: 'Build',     path: `/projects/${this.pid}/build` },
+      { label: 'Supplier',  path: `/projects/${this.pid}/supplier` },
       { label: 'Estimate',  path: `/projects/${this.pid}/estimate` },
     ];
 
