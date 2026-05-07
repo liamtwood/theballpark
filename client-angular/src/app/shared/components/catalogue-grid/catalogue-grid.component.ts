@@ -99,6 +99,12 @@ export type DetailMode = 'inline' | 'drawer';
         (click)="scrollCircles(200)">
         <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
       </button>
+      <!-- Build mode — toggle between scoped-only and all-categories.
+           Hidden in marketplace mode. -->
+      <button *ngIf="projectContext" class="bp-circles-toggle"
+        (click)="toggleShowAllCategories()">
+        {{ showAllCategories ? 'Show scoped only' : 'Show all categories' }}
+      </button>
     </div>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
@@ -451,12 +457,23 @@ export type DetailMode = 'inline' | 'drawer';
             </textarea>
           </div>
 
-          <!-- Specific category active → category description (read-only)
-               + per-project category brief (with pencil). -->
+          <!-- Specific category active → category circle + name header
+               + per-project category brief (with pencil). The platform
+               categories.description is intentionally NOT shown in build
+               mode (lives only on the marketplace card). -->
           <ng-container *ngIf="activeCategory !== 'all' && currentCategoryInfo as cat">
-            <div *ngIf="cat.description" class="bp-brief-card bp-brief-card--cat-desc">
-              <div class="bp-brief-card-eyebrow">{{ cat.name | uppercase }}</div>
-              <p class="bp-brief-card-text">{{ cat.description }}</p>
+            <div class="bp-brief-cat-header">
+              <div class="bp-brief-cat-circle"
+                [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
+                [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
+                [class.bp-brief-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
+                [class.bp-brief-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
+                <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-brief-cat-circle-logo-img"/>
+                <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="22" class="bp-brief-cat-circle-lucide"></lucide-icon>
+                <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="22" class="bp-brief-cat-circle-icon"></lucide-icon>
+                <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-brief-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
+              </div>
+              <div class="bp-brief-cat-name">{{ cat.name }}</div>
             </div>
 
             <div class="bp-brief-card bp-brief-card--req">
@@ -579,6 +596,15 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-circles-arrow:hover { border-color: var(--theme-accent); }
     .bp-circles-arrow--left { margin-right: 8px; }
     .bp-circles-arrow--right { margin-left: 8px; }
+    /* Build mode — scoped/all toggle, sits to the right of the strip. */
+    .bp-circles-toggle {
+      flex-shrink: 0;
+      margin: 32px 0 0 12px;
+      background: none; border: none; padding: 4px 0; cursor: pointer;
+      font-family: var(--font-body); font-size: 12px; font-weight: 500;
+      color: var(--theme-accent); white-space: nowrap;
+    }
+    .bp-circles-toggle:hover { opacity: 0.75; }
     .bp-cat-circles::-webkit-scrollbar { display: none; }
     .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
     .bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
@@ -798,6 +824,40 @@ export type DetailMode = 'inline' | 'drawer';
       font-size: 11px; color: var(--color-text-muted);
       margin-top: 10px;
     }
+
+    /* Build mode — category header above the requirement_brief.
+       Mirrors the strip's circle visual (image / icon / initial) so
+       the user has a clear anchor for whose brief they're editing. */
+    .bp-brief-cat-header {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px;
+      padding: 20px 16px 12px;
+    }
+    .bp-brief-cat-circle {
+      width: 64px; height: 64px; border-radius: 50%;
+      background-size: cover; background-position: center;
+      background-color: var(--color-surface);
+      box-shadow: 0 0 0 0.5px var(--color-border);
+      border: 2.5px solid var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--color-text-muted); position: relative;
+      flex-shrink: 0;
+    }
+    .bp-brief-cat-circle--no-image { background-color: var(--theme-bg); }
+    .bp-brief-cat-circle--logo { background: var(--theme-bg); }
+    .bp-brief-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; }
+    .bp-brief-cat-circle-icon { color: var(--theme-accent); }
+    .bp-brief-cat-circle-lucide { color: var(--color-text-muted); }
+    .bp-brief-cat-circle-initials {
+      font-size: 22px; font-weight: 600;
+      color: var(--theme-accent); font-family: var(--font-display);
+    }
+    .bp-brief-cat-name {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 400;
+      color: var(--color-text-primary);
+      text-align: center;
+    }
     .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; }
     .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
     .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
@@ -923,6 +983,10 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
       currently being edited (only one editor open at a time). */
   editingCategoryBriefId = '';
   categoryBriefDraft = '';
+  /** Build tab — when projectContext is set, default to scoped-only
+      categories in the strip. Toggle to reveal all platform categories
+      so the user can scope new ones in. Marketplace mode ignores this. */
+  showAllCategories = false;
   // Default starting layout. Parent components that own a 3-way Grid/List/
   // Table toggle (e.g. Feedback) hide the inner toggle and pass the value
   // through this input. 'table' is feedback-only — when set, the parent
@@ -1039,6 +1103,20 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
     this.cdr.detectChanges();
   }
 
+  toggleShowAllCategories() {
+    this.showAllCategories = !this.showAllCategories;
+    // If we just hid the unscoped cats and the active one became
+    // invisible, bounce back to "All" so the strip + preview stay
+    // coherent.
+    if (this.projectContext && !this.showAllCategories) {
+      if (this.activeCategory !== 'all' && !this.scopedCategoryIds.has(this.activeCategory)) {
+        this.drillOut();
+      }
+    }
+    setTimeout(() => this.checkScrollArrows(), 0);
+    this.cdr.detectChanges();
+  }
+
   /** Column visibility hints for the fallback auto-table. */
   get anyEntityHasSubtitle(): boolean { return this.filteredEntities.some(e => !!e.subtitle); }
   get anyEntityHasCategoryLabel(): boolean { return this.filteredEntities.some(e => !!e.categoryLabel); }
@@ -1095,7 +1173,16 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   }
 
   get displayedCircles(): CategoryInfo[] {
-    return this.drilledCategory ? this.childCategories : this.parentCategories;
+    let cats = this.drilledCategory ? this.childCategories : this.parentCategories;
+    // Build mode default — only show categories scoped to this project,
+    // with a "Show all" toggle to reveal the rest. The "+ scope it in"
+    // gesture relies on the user first toggling all on, then clicking
+    // a greyed circle.
+    if (this.projectContext && !this.showAllCategories) {
+      const scoped = this.scopedCategoryIds;
+      cats = cats.filter(c => scoped.has(c.id));
+    }
+    return cats;
   }
 
   @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
