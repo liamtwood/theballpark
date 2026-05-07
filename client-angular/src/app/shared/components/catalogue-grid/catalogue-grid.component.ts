@@ -1,10 +1,11 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
+import { forkJoin } from 'rxjs';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
   ChevronRight, ChevronLeft, MapPin, SquarePen
@@ -12,6 +13,7 @@ import {
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext } from '../../../models';
 import { ConfigStripComponent } from '../config-strip/config-strip.component';
+import { CodelistService } from '../../../core/services/codelist.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -249,7 +251,7 @@ export type DetailMode = 'inline' | 'drawer';
             <div class="bp-list-right" *ngIf="e.price || e.priceRange">
               <div class="bp-list-price" *ngIf="e.priceRange">{{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}</div>
               <div class="bp-list-price" *ngIf="e.price && !e.priceRange">{{ e.price | gbp }}</div>
-              <div class="bp-list-unit" *ngIf="e.unit">{{ e.unit }}</div>
+              <div class="bp-list-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</div>
             </div>
             <button *ngIf="showFavourite" class="bp-heart-btn" [class.active]="favouriteIds.has(e.id)"
               (click)="onToggleFav($event, e)">
@@ -290,7 +292,7 @@ export type DetailMode = 'inline' | 'drawer';
                 </div>
                 <div class="bp-item-card-price" *ngIf="e.price">
                   {{ e.price | gbp }}
-                  <span class="bp-item-card-unit" *ngIf="e.unit">{{ e.unit }}</span>
+                  <span class="bp-item-card-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</span>
                 </div>
                 <div class="bp-item-card-supplier" *ngIf="e.subtitle && !e.price">{{ e.subtitle }}</div>
                 <div class="bp-item-card-supplier" *ngIf="e.subtitle && e.price">{{ e.subtitle }}</div>
@@ -377,7 +379,7 @@ export type DetailMode = 'inline' | 'drawer';
                 <span class="bp-detail-price">{{ selectedEntity.priceRange.max | gbp }}</span>
               </ng-container>
               <span class="bp-detail-price" *ngIf="!selectedEntity.priceRange">{{ selectedEntity.price | gbp }}</span>
-              <span class="bp-detail-price-unit" *ngIf="selectedEntity.unit">{{ selectedEntity.unit }}</span>
+              <span class="bp-detail-price-unit" *ngIf="selectedEntity.unit">{{ unitDisplay(selectedEntity.unit) }}</span>
             </div>
 
             <!-- Description -->
@@ -891,7 +893,7 @@ export type DetailMode = 'inline' | 'drawer';
     }
   `]
 })
-export class CatalogueGridComponent implements OnChanges, AfterViewInit {
+export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   /** When false, suppresses the top horizontal category-circle row.
@@ -1189,7 +1191,21 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   canScrollLeft = false;
   canScrollRight = false;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private codelistSvc: CodelistService
+  ) {}
+
+  ngOnInit() {
+    forkJoin({
+      units: this.codelistSvc.getByName('item_unit'),
+      timeUnits: this.codelistSvc.getByName('item_time_unit')
+    }).subscribe(() => this.cdr.detectChanges());
+  }
+
+  unitDisplay(code?: string | null): string {
+    return code ? this.codelistSvc.getDisplay(code) : '';
+  }
 
   ngAfterViewInit() { this.checkScrollArrows(); }
 

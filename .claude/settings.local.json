@@ -126,7 +126,15 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4300/)",
       "mcp__Claude_in_Chrome__navigate",
       "Bash(taskkill //F //PID 2060 //T)",
-      "Bash(taskkill //F //PID 45760 //T)"
+      "Bash(taskkill //F //PID 45760 //T)",
+      "Bash(ls C:/projects/ballpark/server/node_modules/pg 2>&1 | head -3; ls C:/projects/ballpark/node_modules/pg 2>&1 | head -3)",
+      "Bash(set NODE_PATH=C:/projects/ballpark/server/node_modules)",
+      "PowerShell(if \\(-not \\(Test-Path 'client-angular\\\\node_modules'\\)\\) { New-Item -ItemType Junction -Path 'client-angular\\\\node_modules' -Target 'C:\\\\projects\\\\ballpark\\\\client-angular\\\\node_modules' | Out-Null; Write-Output 'junction created' } else { Write-Output 'already exists' })",
+      "Bash(ls client-angular/node_modules/@angular-devkit 2>&1 | head -5)",
+      "Bash(cd /c/projects/ballpark/.claude/worktrees/stoic-gould-ea6ed5 && pwd && ls client-angular/tsconfig.app.json)",
+      "Bash(ls C:/projects/ballpark/client-angular/node_modules/typescript/bin/ 2>&1)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)"
     ]
   },
   "enableAllProjectMcpServers": true,

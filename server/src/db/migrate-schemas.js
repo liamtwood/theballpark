@@ -492,6 +492,35 @@ const migrate = async () => {
             'open', 'in_progress', 'done', 'wont_fix',
             'pass', 'fail', 'skip', 'todo', 'draft', 'agreed'
           ));
+
+      -- Codelists — shared key/value lookup table for platform-wide reference
+      -- data (item units, time units, future: event_type, tier, visibility).
+      CREATE TABLE IF NOT EXISTS shared.codelists (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        list_name VARCHAR(100) NOT NULL,
+        code VARCHAR(50) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        symbol VARCHAR(20),
+        meta JSONB DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(list_name, code)
+      );
+
+      INSERT INTO shared.codelists (list_name, code, label, symbol, sort_order, is_system) VALUES
+        ('item_unit',      'unit',      'Units',          NULL, 1, true),
+        ('item_unit',      'cover',     'Covers',         NULL, 2, true),
+        ('item_unit',      'head',      'Per Head',       'pp', 3, true),
+        ('item_unit',      'sqm',       'Square Metres',  'm²', 4, true),
+        ('item_unit',      'sqft',      'Square Feet',    'ft²', 5, true),
+        ('item_unit',      'linear_m',  'Linear Metres',  'm',  6, true),
+        ('item_time_unit', 'day',       'Days',           NULL, 1, true),
+        ('item_time_unit', 'hour',      'Hours',          'hr', 2, true),
+        ('item_time_unit', 'event',     'Per Event',      NULL, 3, true),
+        ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
 

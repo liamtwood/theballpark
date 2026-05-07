@@ -9,12 +9,14 @@ import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, Heart, ChevronRight, MapPin } from 'lucide-angular';
+import { forkJoin } from 'rxjs';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { OrgService } from '../../core/services/org.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CodelistService } from '../../core/services/codelist.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { Project } from '../../models';
@@ -60,7 +62,7 @@ import { Project } from '../../models';
 
         <div class="bp-item-price-row" *ngIf="item.base_price">
           <span class="bp-item-price">{{ item.base_price | gbp }}</span>
-          <span class="bp-item-price-label" *ngIf="item.unit">per {{ item.unit }}</span>
+          <span class="bp-item-price-label" *ngIf="item.unit">per {{ unitDisplay(item.unit) }}</span>
         </div>
 
         <!-- DESCRIPTION -->
@@ -291,9 +293,14 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
     private orgSvc: OrgService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private codelistSvc: CodelistService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  unitDisplay(code?: string | null): string {
+    return code ? this.codelistSvc.getDisplay(code) : '';
+  }
 
   ngOnInit() {
     this.itemId     = this.route.snapshot.paramMap.get('itemId') || '';
@@ -309,6 +316,11 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) { this.ballsBalance = org.balls_balance || 0; this.cdr.detectChanges(); }
     });
+
+    forkJoin({
+      units: this.codelistSvc.getByName('item_unit'),
+      timeUnits: this.codelistSvc.getByName('item_time_unit')
+    }).subscribe(() => this.cdr.detectChanges());
 
     this.projectSvc.getAll().subscribe({
       next: projects => {
