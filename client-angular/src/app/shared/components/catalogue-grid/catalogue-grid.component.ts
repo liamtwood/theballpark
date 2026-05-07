@@ -207,6 +207,9 @@ export type DetailMode = 'inline' | 'drawer';
             <button class="bp-view-btn" [class.active]="layout === 'card'" (click)="layout = 'card'">
               <lucide-icon name="layers" [size]="14"></lucide-icon>
             </button>
+            <button class="bp-view-btn" [class.active]="layout === 'table'" (click)="layout = 'table'">
+              <lucide-icon name="table" [size]="14"></lucide-icon>
+            </button>
           </div>
         </div>
 
