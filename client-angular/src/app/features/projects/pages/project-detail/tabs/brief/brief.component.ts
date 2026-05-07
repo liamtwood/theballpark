@@ -45,12 +45,15 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
       <div class="bp-brief-body">
 
         <div class="bp-brief-sec">
-          <div class="bp-brief-sec-h">
-            <span class="bp-brief-sec-label">IN SCOPE</span>
-            <span class="bp-brief-sec-hint">Select the categories needed for this event</span>
+          <!-- Header constrained for line-length readability -->
+          <div class="bp-brief-inner">
+            <div class="bp-brief-sec-h">
+              <span class="bp-brief-sec-label">IN SCOPE</span>
+              <span class="bp-brief-sec-hint">Select the categories needed for this event</span>
+            </div>
           </div>
 
-          <!-- Circle picker -->
+          <!-- Circle picker — full viewport width, matches marketplace -->
           <div class="bp-brief-strip-wrap">
             <button class="bp-brief-arrow"
               (click)="scrollStrip(-1)"
@@ -63,7 +66,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
                 [class.on]="isSelected(c.id)"
                 (click)="toggleCategory(c)">
                 <span class="bp-brief-circle">
-                  <lucide-icon *ngIf="c.icon_name" [name]="c.icon_name" [size]="22"></lucide-icon>
+                  <lucide-icon *ngIf="c.icon_name" [name]="c.icon_name" [size]="34"></lucide-icon>
                   <span *ngIf="!c.icon_name" class="bp-brief-circle-letter">{{ (c.name || '?').charAt(0) }}</span>
                 </span>
                 <span class="bp-brief-cn">{{ c.name }}</span>
@@ -76,51 +79,56 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
             </button>
           </div>
 
-          <div class="bp-brief-count-bar">
-            <span><strong>{{ selectedCategoryIds.size }}</strong> categories selected</span>
-            <span class="bp-brief-count-hint">Click any line to edit · wand rewrites from project brief</span>
-          </div>
+          <!-- Below-strip content constrained -->
+          <div class="bp-brief-inner">
+            <div class="bp-brief-count-bar">
+              <span><strong>{{ selectedCategoryIds.size }}</strong> categories selected</span>
+              <span class="bp-brief-count-hint">Click any line to edit · wand rewrites from project brief</span>
+            </div>
 
-          <!-- Per-category briefs -->
-          <div class="bp-brief-rows" *ngIf="orderedCategoryRows.length">
-            <div *ngFor="let row of orderedCategoryRows; trackBy: trackByCatId" class="bp-brief-row">
-              <span class="bp-brief-row-icn">
-                <lucide-icon *ngIf="row.category_icon_name"
-                  [name]="row.category_icon_name" [size]="14"></lucide-icon>
-                <span *ngIf="!row.category_icon_name">{{ (row.category_name || '?').charAt(0) }}</span>
-              </span>
-              <div class="bp-brief-row-body">
-                <div class="bp-brief-row-title">
-                  {{ row.category_name }}
-                  <span class="bp-brief-row-pen">Brief</span>
+            <!-- Per-category briefs -->
+            <div class="bp-brief-rows" *ngIf="orderedCategoryRows.length">
+              <div *ngFor="let row of orderedCategoryRows; trackBy: trackByCatId" class="bp-brief-row">
+                <span class="bp-brief-row-icn">
+                  <lucide-icon *ngIf="row.category_icon_name"
+                    [name]="row.category_icon_name" [size]="14"></lucide-icon>
+                  <span *ngIf="!row.category_icon_name">{{ (row.category_name || '?').charAt(0) }}</span>
+                </span>
+                <div class="bp-brief-row-body">
+                  <div class="bp-brief-row-title">
+                    {{ row.category_name }}
+                    <span class="bp-brief-row-pen">Brief</span>
+                  </div>
+                  <textarea
+                    class="bp-brief-row-prompt"
+                    rows="2"
+                    [value]="row.requirement_brief || ''"
+                    [placeholder]="'What you need from ' + (row.category_name || 'this category').toLowerCase() + ' suppliers — keep it short, 2–3 lines.'"
+                    (blur)="onRowBriefBlur(row, $event)"></textarea>
                 </div>
-                <textarea
-                  class="bp-brief-row-prompt"
-                  rows="2"
-                  [value]="row.requirement_brief || ''"
-                  [placeholder]="'What you need from ' + (row.category_name || 'this category').toLowerCase() + ' suppliers — keep it short, 2–3 lines.'"
-                  (blur)="onRowBriefBlur(row, $event)"></textarea>
-              </div>
-              <div class="bp-brief-row-actions">
-                <button class="bp-brief-wand" (click)="rewriteRow(row)" title="Rewrite from project brief">
-                  <lucide-icon name="wand-sparkles" [size]="13"></lucide-icon>
-                </button>
+                <div class="bp-brief-row-actions">
+                  <button class="bp-brief-wand" (click)="rewriteRow(row)" title="Rewrite from project brief">
+                    <lucide-icon name="wand-sparkles" [size]="13"></lucide-icon>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          <div *ngIf="!orderedCategoryRows.length" class="bp-brief-empty">
-            No categories selected yet — pick one above to start scoping.
+            <div *ngIf="!orderedCategoryRows.length" class="bp-brief-empty">
+              No categories selected yet — pick one above to start scoping.
+            </div>
           </div>
         </div>
 
-        <!-- ── FOOTER ── -->
-        <div class="bp-brief-footer">
-          <span class="bp-brief-footer-l">{{ selectedCategoryIds.size }} categories selected</span>
-          <p-button label="Start building →"
-            styleClass="p-button-outlined"
-            [disabled]="selectedCategoryIds.size === 0"
-            (onClick)="goToBuild()">
-          </p-button>
+        <!-- ── FOOTER ── (constrained) -->
+        <div class="bp-brief-inner">
+          <div class="bp-brief-footer">
+            <span class="bp-brief-footer-l">{{ selectedCategoryIds.size }} categories selected</span>
+            <p-button label="Start building →"
+              styleClass="p-button-outlined"
+              [disabled]="selectedCategoryIds.size === 0"
+              (onClick)="goToBuild()">
+            </p-button>
+          </div>
         </div>
 
       </div>
@@ -129,17 +137,24 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
     <p-toast></p-toast>
   `,
   styles: [`
-    .bp-brief-body { max-width: 860px; margin: 0 auto; padding: 28px 40px 100px; }
+    /* Body is full-bleed; constrained sections wrap themselves in
+       .bp-brief-inner so the strip can match marketplace's full
+       viewport width while readable text stays at 860px. */
+    .bp-brief-body { padding: 28px 0 100px; }
+    .bp-brief-inner { max-width: 860px; margin: 0 auto; padding: 0 40px; }
 
     .bp-brief-sec        { margin-bottom: 24px; }
     .bp-brief-sec-h      { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
     .bp-brief-sec-label  { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--theme-accent); }
     .bp-brief-sec-hint   { font-size: 11.5px; color: var(--color-text-secondary); }
 
-    /* ── CIRCLE STRIP ── */
-    .bp-brief-strip-wrap { display: flex; align-items: center; gap: 8px; }
+    /* ── CIRCLE STRIP ── matches marketplace padding/sizing */
+    .bp-brief-strip-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 28px 0;
+    }
     .bp-brief-strip {
-      display: flex; gap: 18px;
+      display: flex; gap: 20px;
       overflow-x: auto;
       padding: 6px 4px 14px;
       flex: 1; min-width: 0;
@@ -170,7 +185,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
       font-family: var(--font-body);
     }
     .bp-brief-circle {
-      width: 64px; height: 64px;
+      width: 96px; height: 96px;
       border-radius: 50%;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
@@ -195,25 +210,25 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
     .bp-brief-ci.on .bp-brief-circle::after {
       content: '';
       position: absolute;
-      width: 18px; height: 18px;
+      width: 20px; height: 20px;
       border-radius: 50%;
       background: var(--theme-accent);
-      transform: translate(22px, -22px);
+      transform: translate(34px, -34px);
       box-shadow: 0 0 0 2px var(--color-surface);
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: center;
-      background-size: 11px 11px;
+      background-size: 12px 12px;
     }
     .bp-brief-circle-letter {
       font-family: var(--font-display);
-      font-size: 22px; font-weight: 600;
+      font-size: 30px; font-weight: 600;
       color: inherit;
     }
     .bp-brief-cn {
       font-size: 11px; font-weight: 500;
       color: var(--color-text-secondary);
-      text-align: center; max-width: 88px; line-height: 1.3;
+      text-align: center; max-width: 96px; line-height: 1.3;
     }
     .bp-brief-ci.on .bp-brief-cn { color: var(--theme-accent); font-weight: 600; }
 
