@@ -43,10 +43,12 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   pid = '';
 
   private readonly PROJECT_TABS = [
-    { label: 'Brief',     path: '' },  // path set dynamically with pid
-    { label: 'Build',     path: '' },
-    { label: 'Supplier',  path: '' },
-    { label: 'Estimate',  path: '' },
+    { label: 'Event',       path: '' },  // path set dynamically with pid
+    { label: 'Brief',       path: '' },
+    { label: 'Marketplace', path: '' },
+    { label: 'Build',       path: '' },
+    { label: 'Estimate',    path: '' },
+    { label: 'Messages',    path: '' },
   ];
 
   constructor(
@@ -76,11 +78,17 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
+    // Marketplace label points at /build (catalogue-grid). Build label
+    // points at /supplier (legacy vendor selection / request quotes).
+    // Slugs unchanged per the "no other changes" instruction; only
+    // labels + tab order shifted.
     const tabs = [
-      { label: 'Brief',     path: `/projects/${this.pid}/brief` },
-      { label: 'Build',     path: `/projects/${this.pid}/build` },
-      { label: 'Supplier',  path: `/projects/${this.pid}/supplier` },
-      { label: 'Estimate',  path: `/projects/${this.pid}/estimate` },
+      { label: 'Event',       path: `/projects/${this.pid}/event` },
+      { label: 'Brief',       path: `/projects/${this.pid}/brief` },
+      { label: 'Marketplace', path: `/projects/${this.pid}/build` },
+      { label: 'Build',       path: `/projects/${this.pid}/supplier` },
+      { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
+      { label: 'Messages',    path: `/projects/${this.pid}/messages` },
     ];
 
     // Pills: client name + venue
