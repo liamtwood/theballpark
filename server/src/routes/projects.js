@@ -71,6 +71,20 @@ router.delete('/:projectId/categories/:categoryId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Build tab — soft toggle a category's project scope. body: { active: boolean }
+// Distinct from the DELETE above (Brief tab's hard delete). Preserves
+// requirement_brief across un-scope → re-scope so users don't lose work.
+router.put('/:projectId/categories/:categoryId/scope', async (req, res, next) => {
+  try {
+    const active = req.body?.active !== false;
+    const pc = await ProjectCategoryService.setScope(
+      req.params.projectId, req.params.categoryId, active
+    );
+    if (!pc && !active) return res.status(404).json({ error: 'Not found' });
+    res.json(pc);
+  } catch (err) { next(err); }
+});
+
 // PATCH /:id/images — update project image URLs and card color
 router.patch('/:id/images', async (req, res, next) => {
   try {

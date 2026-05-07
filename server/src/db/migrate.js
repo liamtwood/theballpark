@@ -291,6 +291,9 @@ const migrate = async () => {
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_name VARCHAR(50);
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon_color VARCHAR(30) DEFAULT 'var(--theme-bg)';
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS object_type VARCHAR(20);
+      -- Category description shown in marketplace card + Build tab brief preview.
+      -- Original CREATE includes description, this guards older schemas.
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;
 
       -- Feedback hierarchy columns
       ALTER TABLE shared.feedback ADD COLUMN IF NOT EXISTS owner VARCHAR(100);

@@ -44,6 +44,20 @@ export interface Project {
   updated_at: string;
 }
 
+/**
+ * Build tab — context passed into CatalogueGridComponent so the inline
+ * detail panel can show the project / per-category brief alongside the
+ * usual item preview, and so the circle strip can grey unscoped
+ * categories. When null the grid renders in standard marketplace mode.
+ */
+export interface ProjectContext {
+  projectId: string;
+  /** Project-level brief (projects.raw_brief_text). Shown when "All" is active. */
+  projectBrief: string;
+  /** Active project_categories rows for this project, keyed off category_id. */
+  projectCategories: ProjectCategory[];
+}
+
 export interface ProjectCategory {
   id: string;
   project_id: string;

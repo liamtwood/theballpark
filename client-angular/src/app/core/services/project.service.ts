@@ -27,4 +27,10 @@ export class ProjectService {
   removeCategory(projectId: string, categoryId: string) {
     return this.api.delete<ProjectCategory>(`/projects/${projectId}/categories/${categoryId}`);
   }
+  // Build tab — soft toggle. Preserves requirement_brief across un-scope → re-scope.
+  setCategoryScope(projectId: string, categoryId: string, active: boolean) {
+    return this.api.put<ProjectCategory>(
+      `/projects/${projectId}/categories/${categoryId}/scope`, { active }
+    );
+  }
 }

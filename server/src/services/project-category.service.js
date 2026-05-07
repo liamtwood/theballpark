@@ -178,7 +178,42 @@ async function remove(projectId, categoryId) {
   return result.rows[0] || null;
 }
 
+// Build tab — soft-toggle scope so requirement_brief survives a round trip
+// of un-scope → re-scope. Insert if missing, flip is_active if present.
+// Distinct from remove() above which is the Brief tab's hard delete.
+async function setScope(projectId, categoryId, active) {
+  const existing = await pool.query(
+    `SELECT id FROM project_categories
+     WHERE project_id = $1 AND category_id = $2
+     LIMIT 1`,
+    [projectId, categoryId]
+  );
+
+  if (existing.rows.length) {
+    const result = await pool.query(
+      `UPDATE project_categories
+       SET is_active = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [active, existing.rows[0].id]
+    );
+    await ProjectService.recalcTotals(projectId);
+    return result.rows[0];
+  }
+
+  if (!active) return null;
+
+  const inserted = await pool.query(
+    `INSERT INTO project_categories (project_id, category_id, is_active)
+     VALUES ($1, $2, true)
+     RETURNING *`,
+    [projectId, categoryId]
+  );
+  await ProjectService.recalcTotals(projectId);
+  return inserted.rows[0];
+}
+
 module.exports = {
   getAll, getById, create, update, softDelete, calcDerivedFields,
-  getByProject, upsert, remove
+  getByProject, upsert, remove, setScope
 };

@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, S
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import {
@@ -9,7 +10,7 @@ import {
   ChevronRight, ChevronLeft, MapPin, SquarePen
 } from 'lucide-angular';
 import { GbpPipe } from '../../pipes/gbp.pipe';
-import { CatalogueEntity, CategoryInfo } from '../../../models';
+import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext } from '../../../models';
 import { ConfigStripComponent } from '../config-strip/config-strip.component';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
@@ -21,7 +22,7 @@ export type DetailMode = 'inline' | 'drawer';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    InputTextModule, ButtonModule, CheckboxModule,
+    InputTextModule, InputTextareaModule, ButtonModule, CheckboxModule,
     LucideAngularModule, GbpPipe, ConfigStripComponent
   ],
   template: `
@@ -70,10 +71,13 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
-        <!-- Category circles -->
+        <!-- Category circles. In project (Build) mode, categories not in
+             projectContext.projectCategories render greyed; clicking one
+             emits categoryScopeChange so the parent scopes it in. -->
         <button *ngFor="let cat of displayedCircles"
           class="bp-cat-circle-btn"
           [class.active]="!drilledCategory ? activeCategory === cat.id : activeChildCategory === cat.id"
+          [class.bp-cat-circle-btn--unscoped]="!!projectContext && !isCategoryScoped(cat.id)"
           (click)="onCircleClick(cat)">
           <div class="bp-cat-circle"
             [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
@@ -84,7 +88,7 @@ export type DetailMode = 'inline' | 'drawer';
             <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="circleIconSize" class="bp-cat-circle-lucide"></lucide-icon>
             <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="circleIconSize" class="bp-cat-circle-icon"></lucide-icon>
             <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
-            <button *ngIf="showEdit" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
+            <button *ngIf="showEdit && !projectContext" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
               <lucide-icon name="square-pen" [size]="12"></lucide-icon>
             </button>
           </div>
@@ -408,8 +412,109 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
         </ng-container>
 
-        <!-- Empty state — only shown when using the built-in detail. -->
-        <div *ngIf="!useCustomDetail && !selectedEntity" class="bp-detail-empty">
+        <!-- ── PROJECT BRIEF / CATEGORY BRIEF (Build tab) ── -->
+        <!-- When projectContext is set and no item is selected, show the
+             relevant brief in place of the empty state. -->
+        <ng-container *ngIf="!useCustomDetail && !selectedEntity && projectContext">
+          <!-- "All" view → project brief card -->
+          <div *ngIf="activeCategory === 'all'" class="bp-brief-card">
+            <div class="bp-brief-card-h">
+              <span class="bp-brief-card-eyebrow">PROJECT BRIEF</span>
+              <button *ngIf="!editingProjectBrief" class="bp-icon-btn"
+                (click)="startEditProjectBrief()" title="Edit project brief">
+                <lucide-icon name="square-pen" [size]="12"></lucide-icon>
+              </button>
+              <ng-container *ngIf="editingProjectBrief">
+                <button class="bp-icon-btn bp-icon-save"
+                  (click)="saveProjectBrief()" title="Save">
+                  <i class="pi pi-check"></i>
+                </button>
+                <button class="bp-icon-btn bp-icon-cancel"
+                  (click)="cancelEditProjectBrief()" title="Cancel">
+                  <i class="pi pi-times"></i>
+                </button>
+              </ng-container>
+            </div>
+            <ng-container *ngIf="!editingProjectBrief">
+              <p *ngIf="projectContext.projectBrief" class="bp-brief-card-text bp-brief-card-text--project">
+                {{ projectContext.projectBrief }}
+              </p>
+              <p *ngIf="!projectContext.projectBrief" class="bp-brief-card-empty">
+                No project brief yet — click the pencil to add one.
+              </p>
+            </ng-container>
+            <textarea *ngIf="editingProjectBrief" pInputTextarea
+              class="bp-brief-card-edit"
+              [(ngModel)]="projectBriefDraft"
+              [rows]="6"
+              placeholder="Describe the project at a high level…">
+            </textarea>
+          </div>
+
+          <!-- Specific category active → category description (read-only)
+               + per-project category brief (with pencil). -->
+          <ng-container *ngIf="activeCategory !== 'all' && currentCategoryInfo as cat">
+            <div *ngIf="cat.description" class="bp-brief-card bp-brief-card--cat-desc">
+              <div class="bp-brief-card-eyebrow">{{ cat.name | uppercase }}</div>
+              <p class="bp-brief-card-text">{{ cat.description }}</p>
+            </div>
+
+            <div class="bp-brief-card bp-brief-card--req">
+              <div class="bp-brief-card-h">
+                <span class="bp-brief-card-eyebrow">EDIT BRIEF</span>
+                <button *ngIf="!isEditingCategoryBrief(cat.id)" class="bp-icon-btn"
+                  (click)="startEditCategoryBrief(cat.id)" title="Edit brief">
+                  <lucide-icon name="square-pen" [size]="12"></lucide-icon>
+                </button>
+                <ng-container *ngIf="isEditingCategoryBrief(cat.id)">
+                  <button class="bp-icon-btn bp-icon-save"
+                    (click)="saveCategoryBrief(cat.id)" title="Save">
+                    <i class="pi pi-check"></i>
+                  </button>
+                  <button class="bp-icon-btn bp-icon-cancel"
+                    (click)="cancelEditCategoryBrief()" title="Cancel">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </ng-container>
+              </div>
+              <ng-container *ngIf="!isEditingCategoryBrief(cat.id)">
+                <p *ngIf="getRequirementBrief(cat.id) as brief" class="bp-brief-card-text bp-brief-card-text--req">
+                  {{ brief }}
+                </p>
+                <p *ngIf="!getRequirementBrief(cat.id)" class="bp-brief-card-empty">
+                  No brief for this category yet — click the pencil to add one.
+                </p>
+              </ng-container>
+              <textarea *ngIf="isEditingCategoryBrief(cat.id)" pInputTextarea
+                class="bp-brief-card-edit"
+                [(ngModel)]="categoryBriefDraft"
+                [rows]="6"
+                placeholder="What you need from suppliers in this category…">
+              </textarea>
+            </div>
+          </ng-container>
+        </ng-container>
+
+        <!-- ── MARKETPLACE CATEGORY CARD (no projectContext) ── -->
+        <!-- When a category is active and the platform has a description
+             for it, surface the description + counts in the empty preview
+             slot. Silent if no description (per spec). -->
+        <ng-container *ngIf="!useCustomDetail && !selectedEntity && !projectContext && activeCategory !== 'all' && currentCategoryInfo as cat">
+          <div *ngIf="cat.description" class="bp-brief-card bp-brief-card--cat-desc">
+            <div class="bp-brief-card-eyebrow">{{ cat.name | uppercase }}</div>
+            <p class="bp-brief-card-text">{{ cat.description }}</p>
+            <div class="bp-brief-card-counts">
+              <span>{{ filteredEntities.length }} {{ filteredEntities.length === 1 ? entityLabel : entityLabel + 's' }}</span>
+              <span *ngIf="entityType === 'item' && supplierCount > 0">
+                · {{ supplierCount }} supplier{{ supplierCount === 1 ? '' : 's' }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Empty state — only shown when using the built-in detail and
+             no brief / category card is rendering above. -->
+        <div *ngIf="!useCustomDetail && !selectedEntity && !projectContext && (activeCategory === 'all' || !currentCategoryInfo?.description)" class="bp-detail-empty">
           <p>Select {{ entityLabel === 'item' ? 'an' : 'a' }} {{ entityLabel }} to preview</p>
         </div>
       </div>
@@ -498,6 +603,13 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
     .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
     .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
+
+    /* Build mode — categories not in project_categories render greyed.
+       Click still works (parent emits scope-in via categoryScopeChange). */
+    .bp-cat-circle-btn--unscoped .bp-cat-circle { filter: grayscale(0.85); opacity: 0.45; }
+    .bp-cat-circle-btn--unscoped .bp-cat-circle-label { color: var(--color-text-muted); font-weight: 500; }
+    .bp-cat-circle-btn--unscoped:hover .bp-cat-circle { filter: grayscale(0.4); opacity: 0.75; }
+    .bp-cat-circle-btn--unscoped:hover .bp-cat-circle-label { color: var(--color-text-secondary); }
 
     .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
     .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
@@ -632,6 +744,60 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* DETAIL PANEL */
     .bp-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 13px; color: var(--color-text-muted); padding: 40px 20px; text-align: center; }
+
+    /* Brief / category cards in the detail panel — shown when no item is
+       selected. Build mode renders the project / category brief; the
+       marketplace renders a category-description card. */
+    .bp-brief-card {
+      padding: 16px 20px;
+      border-bottom: 0.5px solid var(--color-border);
+      font-family: var(--font-body);
+    }
+    .bp-brief-card-h {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .bp-brief-card-eyebrow {
+      flex: 1;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-brief-card-text {
+      font-family: var(--font-body);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+      max-height: 220px;
+      overflow-y: auto;
+      margin: 0;
+    }
+    /* Per-spec — requirement_brief renders with an amber left border and
+       reads as "your" content within the card stack. */
+    .bp-brief-card-text--req {
+      padding-left: 10px;
+      border-left: 2px solid var(--theme-accent);
+    }
+    .bp-brief-card-text--project {
+      color: var(--color-text-secondary);
+    }
+    .bp-brief-card-empty {
+      font-size: 12px; font-style: italic;
+      color: var(--color-text-muted);
+      margin: 0;
+    }
+    .bp-brief-card-edit {
+      width: 100%;
+      font-size: 12px; line-height: 1.6;
+      font-family: var(--font-body);
+    }
+    .bp-brief-card--cat-desc { background: var(--theme-bg); }
+    .bp-brief-card--cat-desc .bp-brief-card-text { color: var(--color-text-primary); }
+    .bp-brief-card-counts {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--color-text-muted);
+      margin-top: 10px;
+    }
     .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; }
     .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
     .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
@@ -709,6 +875,14 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Input() backLabel = 'Back to catalogue';
   @Input() totalCount = 0;
 
+  /** Build tab — when set, the inline detail panel shows the project / per-
+      category brief in place of the empty state, the circle strip greys
+      categories not currently scoped to the project, and clicking a
+      greyed circle emits categoryScopeChange so the parent can persist
+      it via project-category.service.setScope(). Null = standard
+      marketplace behaviour. */
+  @Input() projectContext: ProjectContext | null = null;
+
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
   @Output() backClicked = new EventEmitter<void>();
   @Output() favouriteToggled = new EventEmitter<string>();
@@ -717,6 +891,14 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   @Output() parentClicked = new EventEmitter<CatalogueEntity>();
   @Output() categoryChanged = new EventEmitter<string>();
   @Output() drillChanged = new EventEmitter<string | null>();
+  /** Build tab — fires when the user clicks an unscoped circle (active=true)
+      or removes scope via the future ✕ affordance (active=false). The
+      parent persists via projectSvc.setCategoryScope(). */
+  @Output() categoryScopeChange = new EventEmitter<{ categoryId: string; active: boolean }>();
+  /** Build tab — pencil-edit save on the project brief card. */
+  @Output() projectBriefChange = new EventEmitter<string>();
+  /** Build tab — pencil-edit save on a per-category requirement_brief. */
+  @Output() categoryBriefChange = new EventEmitter<{ categoryId: string; brief: string }>();
   /** Fires when the user clicks a parent segment in the main-column
       breadcrumb (root or "All …"). Pages that own drill state externally
       should reset that state in response. */
@@ -730,6 +912,17 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   activeChildCategory: string | null = null;
   activeTag = '';
   searchQuery = '';
+
+  // ── Build tab — inline brief edit state ─────────────────────────────
+  // The catalogue-grid owns the editing UX (textarea + tick/cross) and
+  // emits the value out on save. Persistence lives in the parent (Build
+  // component → project.service).
+  editingProjectBrief = false;
+  projectBriefDraft = '';
+  /** Empty when not editing; otherwise the category_id whose brief is
+      currently being edited (only one editor open at a time). */
+  editingCategoryBriefId = '';
+  categoryBriefDraft = '';
   // Default starting layout. Parent components that own a 3-way Grid/List/
   // Table toggle (e.g. Feedback) hide the inner toggle and pass the value
   // through this input. 'table' is feedback-only — when set, the parent
@@ -768,6 +961,82 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
       over from there. */
   get hideInlineDetail(): boolean {
     return this.layout === 'table' && this.detailMode === 'drawer';
+  }
+
+  /** Build tab — id set of categories currently scoped to the project. */
+  get scopedCategoryIds(): Set<string> {
+    if (!this.projectContext) return new Set();
+    return new Set(this.projectContext.projectCategories.map(pc => pc.category_id));
+  }
+
+  isCategoryScoped(catId: string): boolean {
+    return this.scopedCategoryIds.has(catId);
+  }
+
+  /** Resolves the active circle id (or active child) to the category
+      object so the brief / marketplace card can show its name + description. */
+  get currentCategoryInfo(): CategoryInfo | null {
+    const id = this.activeChildCategory || (this.activeCategory !== 'all' ? this.activeCategory : '');
+    if (!id) return null;
+    return this.categories.find(c => c.id === id) || null;
+  }
+
+  /** Current per-project requirement brief for the active category, if scoped. */
+  getRequirementBrief(catId: string): string {
+    if (!this.projectContext) return '';
+    const pc = this.projectContext.projectCategories.find(p => p.category_id === catId);
+    return pc?.requirement_brief || '';
+  }
+
+  isEditingCategoryBrief(catId: string): boolean {
+    return this.editingCategoryBriefId === catId;
+  }
+
+  /** Marketplace card — count of distinct supplier ids represented in the
+      currently filtered items. Zero if entityType is not 'item'. */
+  get supplierCount(): number {
+    if (this.entityType !== 'item') return 0;
+    const ids = new Set<string>();
+    for (const e of this.filteredEntities) {
+      const sid = e.parentEntity?.id || e._raw?.org_id;
+      if (sid) ids.add(sid);
+    }
+    return ids.size;
+  }
+
+  // ── Brief edit handlers ─────────────────────────────────────────────
+  startEditProjectBrief() {
+    this.projectBriefDraft = this.projectContext?.projectBrief || '';
+    this.editingProjectBrief = true;
+    this.cdr.detectChanges();
+  }
+  saveProjectBrief() {
+    const value = (this.projectBriefDraft || '').trim();
+    this.projectBriefChange.emit(value);
+    this.editingProjectBrief = false;
+    this.cdr.detectChanges();
+  }
+  cancelEditProjectBrief() {
+    this.editingProjectBrief = false;
+    this.projectBriefDraft = '';
+    this.cdr.detectChanges();
+  }
+
+  startEditCategoryBrief(catId: string) {
+    this.categoryBriefDraft = this.getRequirementBrief(catId);
+    this.editingCategoryBriefId = catId;
+    this.cdr.detectChanges();
+  }
+  saveCategoryBrief(catId: string) {
+    const brief = (this.categoryBriefDraft || '').trim();
+    this.categoryBriefChange.emit({ categoryId: catId, brief });
+    this.editingCategoryBriefId = '';
+    this.cdr.detectChanges();
+  }
+  cancelEditCategoryBrief() {
+    this.editingCategoryBriefId = '';
+    this.categoryBriefDraft = '';
+    this.cdr.detectChanges();
   }
 
   /** Column visibility hints for the fallback auto-table. */
@@ -882,6 +1151,12 @@ export class CatalogueGridComponent implements OnChanges, AfterViewInit {
   // ── Circle click handler ──────────────────────────────────────────────
 
   onCircleClick(cat: CategoryInfo) {
+    // Build tab — clicking a greyed (unscoped) circle scopes it in.
+    // Parent persists; we still set it active so the brief card renders.
+    if (this.projectContext && !this.isCategoryScoped(cat.id)) {
+      this.categoryScopeChange.emit({ categoryId: cat.id, active: true });
+    }
+
     if (this.drilledCategory) {
       // We're in drill-down mode — clicking a child circle
       this.setChildCategory(cat.id);

@@ -4,7 +4,7 @@ export { User } from './user.model';
 export { Client } from './client.model';
 export { Category } from './category.model';
 export { Item } from './item.model';
-export { Project, ProjectCategory } from './project.model';
+export { Project, ProjectCategory, ProjectContext } from './project.model';
 export { Estimate, EstimateItem } from './estimate.model';
 export { Message } from './message.model';
 export { BallsTransaction } from './balls-transaction.model';
