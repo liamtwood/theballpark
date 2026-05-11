@@ -524,7 +524,7 @@ const migrate = async () => {
       INSERT INTO shared.codelists (list_name, code, label, symbol, sort_order, is_system) VALUES
         ('item_unit',      'unit',      'Units',          NULL, 1, true),
         ('item_unit',      'cover',     'Covers',         NULL, 2, true),
-        ('item_unit',      'head',      'Per Head',       'pp', 3, true),
+        ('item_unit',      'head',      'Head',           NULL, 3, true),
         ('item_unit',      'sqm',       'Square Metres',  'm²', 4, true),
         ('item_unit',      'sqft',      'Square Feet',    'ft²', 5, true),
         ('item_unit',      'linear_m',  'Linear Metres',  'm',  6, true),
@@ -543,9 +543,9 @@ const migrate = async () => {
         ('item_unit',      'table',     'Table',          NULL, 19, true),
         ('item_time_unit', 'day',       'Days',           NULL, 1, true),
         ('item_time_unit', 'hour',      'Hours',          'hr', 2, true),
-        ('item_time_unit', 'event',     'Per Event',      NULL, 3, true),
+        ('item_time_unit', 'event',     'Event',          NULL, 3, true),
         ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true),
-        ('item_time_unit', 'month',     'Month',          '/mo', 5, true)
+        ('item_time_unit', 'month',     'Month',          NULL, 5, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
