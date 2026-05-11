@@ -150,114 +150,117 @@ const seed = async () => {
     console.log('  Categories seeded.');
 
     // ── Items (5 per category) ────────────────────────────────────────────
-    // [name, description, unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier]
+    // [name, description, unit, time_unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier]
+    // unit / time_unit hold bare codelist codes (shared.codelists) — display
+    // adds the "per " prefix at render time. time_unit is null for most items;
+    // set for rental cadences (e.g. unit='pallet', time_unit='month').
     const itemsByCategory = [
       // 0 - Stand Structure (Warehouse)
       [
-        ['Shell Scheme Panel Wall',       'Standard aluminium shell scheme walling panel (1m x 2.5m), white infill.',           'per panel',  85,    65,    120,   5,   2.5,  'basic'],
-        ['Space-Only Stand Build',        'Custom space-only stand build including walls, fascia and basic structure.',          'per sqm',    195,   150,   280,   14,  1.0,  'mid'],
-        ['Double-Deck Structure',         'Two-storey exhibition structure with staircase, upper meeting area and balustrade.', 'per sqm',    450,   380,   600,   21,  1.0,  'premium'],
-        ['Modular Re-usable System',      'Lightweight modular aluminium frame system, reconfigurable for multiple shows.',     'per sqm',    160,   120,   220,   10,  1.0,  'mid'],
-        ['Bespoke Architectural Feature', 'Custom CNC-cut or 3D-formed architectural feature element for stand centrepiece.',  'per item',   2200,  1500,  4500,  21,  null, 'premium'],
+        ['Shell Scheme Panel Wall',       'Standard aluminium shell scheme walling panel (1m x 2.5m), white infill.',           'panel', null,  85,    65,    120,   5,   2.5,  'basic'],
+        ['Space-Only Stand Build',        'Custom space-only stand build including walls, fascia and basic structure.',          'sqm', null,    195,   150,   280,   14,  1.0,  'mid'],
+        ['Double-Deck Structure',         'Two-storey exhibition structure with staircase, upper meeting area and balustrade.', 'sqm', null,    450,   380,   600,   21,  1.0,  'premium'],
+        ['Modular Re-usable System',      'Lightweight modular aluminium frame system, reconfigurable for multiple shows.',     'sqm', null,    160,   120,   220,   10,  1.0,  'mid'],
+        ['Bespoke Architectural Feature', 'Custom CNC-cut or 3D-formed architectural feature element for stand centrepiece.',  'item', null,   2200,  1500,  4500,  21,  null, 'premium'],
       ],
       // 1 - Construction & Build (Hammer)
       [
-        ['Basic Joinery Package',         'Standard MDF construction, painted finish, simple counter and storage unit.',        'per sqm',    120,   90,    170,   10,  1.0,  'basic'],
-        ['Custom Carpentry Build',        'Bespoke joinery including counters, shelving, display plinths and concealed storage.','per sqm',   210,   160,   300,   14,  1.0,  'mid'],
-        ['Premium Spray-Finish Build',    'High-end lacquer or automotive spray finish on all timber elements.',               'per sqm',    320,   250,   450,   14,  1.0,  'premium'],
-        ['On-Site Installation Labour',   'Skilled installation crew for build-up day including tools and site management.',    'per day',    650,   480,   850,   3,   null, 'mid'],
-        ['De-rig & Disposal',             'Post-show breakdown, waste removal and skip hire.',                                 'per sqm',    45,    30,    75,    1,   1.0,  'basic'],
+        ['Basic Joinery Package',         'Standard MDF construction, painted finish, simple counter and storage unit.',        'sqm', null,    120,   90,    170,   10,  1.0,  'basic'],
+        ['Custom Carpentry Build',        'Bespoke joinery including counters, shelving, display plinths and concealed storage.','sqm', null,   210,   160,   300,   14,  1.0,  'mid'],
+        ['Premium Spray-Finish Build',    'High-end lacquer or automotive spray finish on all timber elements.',               'sqm', null,    320,   250,   450,   14,  1.0,  'premium'],
+        ['On-Site Installation Labour',   'Skilled installation crew for build-up day including tools and site management.',    'day', null,    650,   480,   850,   3,   null, 'mid'],
+        ['De-rig & Disposal',             'Post-show breakdown, waste removal and skip hire.',                                 'sqm', null,    45,    30,    75,    1,   1.0,  'basic'],
       ],
       // 2 - Flooring (Grid3x3)
       [
-        ['Standard Carpet Tiles',         'Loop-pile carpet tiles in a choice of 12 colours, laid on double-sided tape.',       'per sqm',    18,    12,    28,    5,   1.0,  'basic'],
-        ['Raised Platform Floor',         'Raised access flooring system with adjustable pedestals, 150mm height.',            'per sqm',    65,    48,    95,    7,   1.0,  'mid'],
-        ['Luxury Vinyl Plank (LVP)',      'High-end wood-effect luxury vinyl plank, click-lock installation.',                 'per sqm',    42,    32,    58,    7,   1.0,  'mid'],
-        ['Resin Pour Floor',              'Seamless poured resin finish in custom colour, high-gloss or matte.',               'per sqm',    95,    75,    140,   10,  1.0,  'premium'],
-        ['Branded Floor Graphic',         'Full-colour digitally printed floor vinyl with anti-slip laminate.',                 'per sqm',    55,    40,    80,    7,   1.0,  'mid'],
+        ['Standard Carpet Tiles',         'Loop-pile carpet tiles in a choice of 12 colours, laid on double-sided tape.',       'sqm', null,    18,    12,    28,    5,   1.0,  'basic'],
+        ['Raised Platform Floor',         'Raised access flooring system with adjustable pedestals, 150mm height.',            'sqm', null,    65,    48,    95,    7,   1.0,  'mid'],
+        ['Luxury Vinyl Plank (LVP)',      'High-end wood-effect luxury vinyl plank, click-lock installation.',                 'sqm', null,    42,    32,    58,    7,   1.0,  'mid'],
+        ['Resin Pour Floor',              'Seamless poured resin finish in custom colour, high-gloss or matte.',               'sqm', null,    95,    75,    140,   10,  1.0,  'premium'],
+        ['Branded Floor Graphic',         'Full-colour digitally printed floor vinyl with anti-slip laminate.',                 'sqm', null,    55,    40,    80,    7,   1.0,  'mid'],
       ],
       // 3 - Lighting (Lightbulb)
       [
-        ['LED Spotlight (Track)',         'Adjustable LED spotlight on track rail, warm white 3000K, 20W.',                     'per unit',   35,    22,    55,    5,   null, 'basic'],
-        ['LED Strip Lighting',            'Recessed or surface-mounted LED strip, RGB or tuneable white, per linear metre.',    'per m',      28,    18,    45,    5,   null, 'mid'],
-        ['Feature Pendant Light',         'Designer pendant or suspended feature light for stand focal point.',                 'per unit',   180,   120,   350,   10,  null, 'premium'],
-        ['Backlit Fabric Lightbox',       'SEG fabric lightbox with internal LED array, single-sided, per sqm of face.',       'per sqm',    145,   110,   200,   10,  1.0,  'mid'],
-        ['Intelligent Lighting Rig',      'DMX-controlled moving heads, wash lights and programmed lighting show.',            'per day',    850,   600,   1400,  14,  null, 'premium'],
+        ['LED Spotlight (Track)',         'Adjustable LED spotlight on track rail, warm white 3000K, 20W.',                     'unit', null,   35,    22,    55,    5,   null, 'basic'],
+        ['LED Strip Lighting',            'Recessed or surface-mounted LED strip, RGB or tuneable white, per linear metre.',    'linear_m', null,      28,    18,    45,    5,   null, 'mid'],
+        ['Feature Pendant Light',         'Designer pendant or suspended feature light for stand focal point.',                 'unit', null,   180,   120,   350,   10,  null, 'premium'],
+        ['Backlit Fabric Lightbox',       'SEG fabric lightbox with internal LED array, single-sided, per sqm of face.',       'sqm', null,    145,   110,   200,   10,  1.0,  'mid'],
+        ['Intelligent Lighting Rig',      'DMX-controlled moving heads, wash lights and programmed lighting show.',            'day', null,    850,   600,   1400,  14,  null, 'premium'],
       ],
       // 4 - AV & Technology (Monitor)
       [
-        ['43" LCD Display',               '43-inch commercial-grade LCD screen with floor stand or wall bracket.',              'per unit',   220,   160,   320,   5,   null, 'basic'],
-        ['55" 4K LED Screen',             '55-inch 4K UHD commercial display with media player and content loading.',          'per unit',   380,   280,   520,   5,   null, 'mid'],
-        ['LED Video Wall',                'Seamless LED video wall (2.5mm pixel pitch), including processor and rigging.',      'per sqm',    950,   750,   1400,  14,  1.0,  'premium'],
-        ['Interactive Touch Screen',      '55" multi-touch display with custom interactive software or presentation.',         'per unit',   650,   480,   900,   10,  null, 'mid'],
-        ['iPad Kiosk with Lead Capture',  'Secure iPad stand with custom lead-capture app, badge scanner integration.',        'per unit',   175,   120,   250,   7,   null, 'basic'],
+        ['43" LCD Display',               '43-inch commercial-grade LCD screen with floor stand or wall bracket.',              'unit', null,   220,   160,   320,   5,   null, 'basic'],
+        ['55" 4K LED Screen',             '55-inch 4K UHD commercial display with media player and content loading.',          'unit', null,   380,   280,   520,   5,   null, 'mid'],
+        ['LED Video Wall',                'Seamless LED video wall (2.5mm pixel pitch), including processor and rigging.',      'sqm', null,    950,   750,   1400,  14,  1.0,  'premium'],
+        ['Interactive Touch Screen',      '55" multi-touch display with custom interactive software or presentation.',         'unit', null,   650,   480,   900,   10,  null, 'mid'],
+        ['iPad Kiosk with Lead Capture',  'Secure iPad stand with custom lead-capture app, badge scanner integration.',        'unit', null,   175,   120,   250,   7,   null, 'basic'],
       ],
       // 5 - Furniture & Fixtures (Armchair)
       [
-        ['Folding Chair',                 'Padded folding chair in black or white, clean and event-ready.',                     'per unit',   8,     5,     15,    3,   null, 'basic'],
-        ['Lounge Sofa (3-seat)',          'Contemporary fabric or leather-look 3-seat sofa for meeting areas.',                'per unit',   185,   130,   280,   5,   null, 'mid'],
-        ['High Poseur Table & Stools',    'Poseur bar table (110cm) with two matching bar stools, white or black.',            'per set',    95,    65,    140,   5,   null, 'mid'],
-        ['Custom Reception Counter',      'Bespoke branded reception desk with internal storage and cable management.',        'per unit',   850,   600,   1400,  14,  null, 'premium'],
-        ['Display Plinth (Illuminated)',  'Acrylic or MDF display plinth with internal LED illumination, 400x400mm top.',     'per unit',   120,   80,    200,   7,   null, 'mid'],
+        ['Folding Chair',                 'Padded folding chair in black or white, clean and event-ready.',                     'unit', null,   8,     5,     15,    3,   null, 'basic'],
+        ['Lounge Sofa (3-seat)',          'Contemporary fabric or leather-look 3-seat sofa for meeting areas.',                'unit', null,   185,   130,   280,   5,   null, 'mid'],
+        ['High Poseur Table & Stools',    'Poseur bar table (110cm) with two matching bar stools, white or black.',            'set', null,    95,    65,    140,   5,   null, 'mid'],
+        ['Custom Reception Counter',      'Bespoke branded reception desk with internal storage and cable management.',        'unit', null,   850,   600,   1400,  14,  null, 'premium'],
+        ['Display Plinth (Illuminated)',  'Acrylic or MDF display plinth with internal LED illumination, 400x400mm top.',     'unit', null,   120,   80,    200,   7,   null, 'mid'],
       ],
       // 6 - Graphics & Signage (Image)
       [
-        ['Roller Banner (850mm)',         'Standard pull-up roller banner, single-sided, printed on anti-curl media.',          'per unit',   65,    40,    95,    3,   null, 'basic'],
-        ['Large-Format Wall Graphic',     'Digitally printed self-adhesive vinyl wall wrap, installed on-site.',               'per sqm',    55,    38,    80,    5,   1.0,  'mid'],
-        ['Fabric Tension Display',        'Dye-sublimation printed fabric on lightweight aluminium SEG frame.',                'per sqm',    85,    60,    130,   7,   1.0,  'mid'],
-        ['3D Fabricated Lettering',       'CNC-routed or laser-cut acrylic/timber 3D letters, painted or vinyl-faced.',        'per letter', 45,    25,    120,   10,  null, 'premium'],
-        ['Hanging Banner (Overhead)',     'Circular or rectangular suspended fabric banner with aluminium frame and rigging.',  'per unit',   750,   500,   1200,  14,  null, 'premium'],
+        ['Roller Banner (850mm)',         'Standard pull-up roller banner, single-sided, printed on anti-curl media.',          'unit', null,   65,    40,    95,    3,   null, 'basic'],
+        ['Large-Format Wall Graphic',     'Digitally printed self-adhesive vinyl wall wrap, installed on-site.',               'sqm', null,    55,    38,    80,    5,   1.0,  'mid'],
+        ['Fabric Tension Display',        'Dye-sublimation printed fabric on lightweight aluminium SEG frame.',                'sqm', null,    85,    60,    130,   7,   1.0,  'mid'],
+        ['3D Fabricated Lettering',       'CNC-routed or laser-cut acrylic/timber 3D letters, painted or vinyl-faced.',        'letter', null, 45,    25,    120,   10,  null, 'premium'],
+        ['Hanging Banner (Overhead)',     'Circular or rectangular suspended fabric banner with aluminium frame and rigging.',  'unit', null,   750,   500,   1200,  14,  null, 'premium'],
       ],
       // 7 - Catering & Hospitality (UtensilsCrossed)
       [
-        ['Tea & Coffee Station',          'Self-serve tea, coffee and biscuit station for up to 50 guests per day.',           'per day',    120,   80,    180,   3,   null, 'basic'],
-        ['Barista Coffee Service',        'Professional barista with espresso machine, branded cups, unlimited servings.',     'per day',    450,   350,   650,   7,   null, 'mid'],
-        ['Canape & Drinks Reception',     'Evening canapé package with prosecco, beer and soft drinks for 50 guests.',        'per event',  1800,  1200,  2800,  10,  null, 'premium'],
-        ['Working Lunch Platters',        'Sandwich, wrap and salad platters delivered to stand, serves 10.',                  'per platter', 95,   65,    140,   3,   null, 'mid'],
-        ['Branded Water Bottles',         'Custom-labelled 500ml water bottles, minimum order 100.',                           'per 100',    85,    60,    130,   7,   null, 'basic'],
+        ['Tea & Coffee Station',          'Self-serve tea, coffee and biscuit station for up to 50 guests per day.',           'day', null,    120,   80,    180,   3,   null, 'basic'],
+        ['Barista Coffee Service',        'Professional barista with espresso machine, branded cups, unlimited servings.',     'day', null,    450,   350,   650,   7,   null, 'mid'],
+        ['Canape & Drinks Reception',     'Evening canapé package with prosecco, beer and soft drinks for 50 guests.',        'event', null,  1800,  1200,  2800,  10,  null, 'premium'],
+        ['Working Lunch Platters',        'Sandwich, wrap and salad platters delivered to stand, serves 10.',                  'platter', null, 95,   65,    140,   3,   null, 'mid'],
+        ['Branded Water Bottles',         'Custom-labelled 500ml water bottles, minimum order 100.',                           'each', null,    85,    60,    130,   7,   null, 'basic'],
       ],
       // 8 - Health & Safety (Shield)
       [
-        ['Risk Assessment & Method Statement', 'Full RAMS document preparation for venue submission.',                         'per project', 350,  250,   500,   7,   null, 'mid'],
-        ['Fire Marshal (Show Days)',       'Qualified fire marshal on-site during open show days.',                             'per day',    280,   200,   400,   5,   null, 'mid'],
-        ['First Aid Cover',               'Qualified first aider on-site with first aid kit and incident reporting.',          'per day',    220,   160,   320,   5,   null, 'basic'],
-        ['Structural Calculations',        'Structural engineer sign-off for double-deck or suspended elements.',              'per project', 750,  500,   1200,  14,  null, 'premium'],
-        ['Accessibility Compliance Audit', 'DDA/accessibility review of stand design with recommendations report.',            'per project', 450,  300,   650,   10,  null, 'premium'],
+        ['Risk Assessment & Method Statement', 'Full RAMS document preparation for venue submission.',                         'project', null, 350,  250,   500,   7,   null, 'mid'],
+        ['Fire Marshal (Show Days)',       'Qualified fire marshal on-site during open show days.',                             'day', null,    280,   200,   400,   5,   null, 'mid'],
+        ['First Aid Cover',               'Qualified first aider on-site with first aid kit and incident reporting.',          'day', null,    220,   160,   320,   5,   null, 'basic'],
+        ['Structural Calculations',        'Structural engineer sign-off for double-deck or suspended elements.',              'project', null, 750,  500,   1200,  14,  null, 'premium'],
+        ['Accessibility Compliance Audit', 'DDA/accessibility review of stand design with recommendations report.',            'project', null, 450,  300,   650,   10,  null, 'premium'],
       ],
       // 9 - Entertainment (Music)
       [
-        ['Product Demo Presenter',        'Professional presenter to host live product demonstrations on stand.',               'per day',    650,   450,   900,   7,   null, 'mid'],
-        ['DJ & Sound System',             'DJ with professional PA system for stand atmosphere or party event.',                'per day',    550,   380,   800,   7,   null, 'mid'],
-        ['VR Experience Setup',           'Virtual reality headsets (x4) with custom branded VR experience content.',           'per day',    1200,  850,   1800,  21,  null, 'premium'],
-        ['Magician / Close-Up Entertainer','Professional close-up magician to draw and engage visitors on stand.',             'per day',    480,   350,   700,   5,   null, 'mid'],
-        ['Photo Booth (Branded)',         'Custom branded photo booth with instant prints, digital sharing and data capture.',  'per day',    650,   450,   950,   10,  null, 'basic'],
+        ['Product Demo Presenter',        'Professional presenter to host live product demonstrations on stand.',               'day', null,    650,   450,   900,   7,   null, 'mid'],
+        ['DJ & Sound System',             'DJ with professional PA system for stand atmosphere or party event.',                'day', null,    550,   380,   800,   7,   null, 'mid'],
+        ['VR Experience Setup',           'Virtual reality headsets (x4) with custom branded VR experience content.',           'day', null,    1200,  850,   1800,  21,  null, 'premium'],
+        ['Magician / Close-Up Entertainer','Professional close-up magician to draw and engage visitors on stand.',             'day', null,    480,   350,   700,   5,   null, 'mid'],
+        ['Photo Booth (Branded)',         'Custom branded photo booth with instant prints, digital sharing and data capture.',  'day', null,    650,   450,   950,   10,  null, 'basic'],
       ],
       // 10 - Logistics & Transport (Truck)
       [
-        ['UK Freight (Single Pallet)',    'Next-day UK pallet delivery to venue, including tail-lift.',                         'per pallet', 85,    55,    130,   2,   null, 'basic'],
-        ['Exhibition Freight (Full Load)','Dedicated vehicle for full stand freight, London to UK venue.',                      'per load',   650,   450,   950,   3,   null, 'mid'],
-        ['International Freight (EU)',    'Road freight to European venue including customs documentation.',                    'per cbm',    120,   85,    200,   10,  null, 'mid'],
-        ['Secure Storage (Monthly)',      'Climate-controlled secure warehouse storage for stand components.',                  'per pallet/mo', 45, 30,    70,    1,   null, 'basic'],
-        ['On-Site Forklift & Handling',   'Forklift hire with operator for build-up and breakdown days.',                       'per day',    380,   280,   550,   3,   null, 'premium'],
+        ['UK Freight (Single Pallet)',    'Next-day UK pallet delivery to venue, including tail-lift.',                         'pallet', null, 85,    55,    130,   2,   null, 'basic'],
+        ['Exhibition Freight (Full Load)','Dedicated vehicle for full stand freight, London to UK venue.',                      'load', null,   650,   450,   950,   3,   null, 'mid'],
+        ['International Freight (EU)',    'Road freight to European venue including customs documentation.',                    'cbm', null,    120,   85,    200,   10,  null, 'mid'],
+        ['Secure Storage (Monthly)',      'Climate-controlled secure warehouse storage for stand components.',                  'pallet', 'month', 45, 30,    70,    1,   null, 'basic'],
+        ['On-Site Forklift & Handling',   'Forklift hire with operator for build-up and breakdown days.',                       'day', null,    380,   280,   550,   3,   null, 'premium'],
       ],
       // 11 - Staffing (Users)
       [
-        ['Brand Ambassador',              'Experienced exhibition brand ambassador, briefed and branded.',                      'per day',    220,   160,   320,   5,   null, 'basic'],
-        ['Receptionist / Host',           'Professional front-of-stand receptionist for visitor welcome and registration.',     'per day',    250,   180,   350,   5,   null, 'mid'],
-        ['Multilingual Translator',       'On-stand translator fluent in two or more languages.',                              'per day',    380,   280,   520,   7,   null, 'premium'],
-        ['Technical Stand Crew',          'Skilled AV or technical crew member for on-stand equipment management.',             'per day',    320,   240,   450,   5,   null, 'mid'],
-        ['Security Officer (SIA)',        'SIA-licensed security officer for stand or event security.',                         'per day',    260,   200,   380,   3,   null, 'basic'],
+        ['Brand Ambassador',              'Experienced exhibition brand ambassador, briefed and branded.',                      'day', null,    220,   160,   320,   5,   null, 'basic'],
+        ['Receptionist / Host',           'Professional front-of-stand receptionist for visitor welcome and registration.',     'day', null,    250,   180,   350,   5,   null, 'mid'],
+        ['Multilingual Translator',       'On-stand translator fluent in two or more languages.',                              'day', null,    380,   280,   520,   7,   null, 'premium'],
+        ['Technical Stand Crew',          'Skilled AV or technical crew member for on-stand equipment management.',             'day', null,    320,   240,   450,   5,   null, 'mid'],
+        ['Security Officer (SIA)',        'SIA-licensed security officer for stand or event security.',                         'day', null,    260,   200,   380,   3,   null, 'basic'],
       ],
     ];
 
     const allItemIds = []; // allItemIds[catIndex][itemIndex]
     for (let ci = 0; ci < itemsByCategory.length; ci++) {
       const catItemIds = [];
-      for (const [name, description, unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier] of itemsByCategory[ci]) {
+      for (const [name, description, unit, time_unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier] of itemsByCategory[ci]) {
         const res = await client.query(
-          `INSERT INTO items (org_id, category_id, name, description, unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-          [supplierId, categoryIds[ci], name, description, unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier]
+          `INSERT INTO items (org_id, category_id, name, description, unit, time_unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+          [supplierId, categoryIds[ci], name, description, unit, time_unit, base_price, min_price, max_price, lead_time_days, coverage_area, tier]
         );
         catItemIds.push(res.rows[0].id);
       }

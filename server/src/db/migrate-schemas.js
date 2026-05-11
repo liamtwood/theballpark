@@ -156,6 +156,7 @@ const migrate = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         unit VARCHAR(50),
+        time_unit VARCHAR(50),
         base_price NUMERIC(12,2),
         min_price NUMERIC(12,2),
         max_price NUMERIC(12,2),
@@ -334,6 +335,17 @@ const migrate = async () => {
       CREATE TABLE IF NOT EXISTS master.balls_transactions (LIKE preview.balls_transactions INCLUDING ALL);
     `);
     console.log('  Master schema tables created.');
+
+    // ── 3b. Idempotent column additions ──────────────────────────────────
+    // items.time_unit lets a row store a rental cadence (e.g. unit='pallet',
+    // time_unit='month' → "per pallet / month"). Applied to all three env
+    // schemas so existing tables pick it up on re-run.
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
+    `);
+    console.log('  items.time_unit ensured on public/preview/master.');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
@@ -516,10 +528,24 @@ const migrate = async () => {
         ('item_unit',      'sqm',       'Square Metres',  'm²', 4, true),
         ('item_unit',      'sqft',      'Square Feet',    'ft²', 5, true),
         ('item_unit',      'linear_m',  'Linear Metres',  'm',  6, true),
+        ('item_unit',      'each',      'Each',           'ea', 7, true),
+        ('item_unit',      'package',   'Package',        NULL, 8, true),
+        ('item_unit',      'set',       'Set',            NULL, 9, true),
+        ('item_unit',      'project',   'Project',        NULL, 10, true),
+        ('item_unit',      'item',      'Item',           NULL, 11, true),
+        ('item_unit',      'pair',      'Pair',           NULL, 12, true),
+        ('item_unit',      'panel',     'Panel',          NULL, 13, true),
+        ('item_unit',      'platter',   'Platter',        NULL, 14, true),
+        ('item_unit',      'letter',    'Letter',         NULL, 15, true),
+        ('item_unit',      'load',      'Load',           NULL, 16, true),
+        ('item_unit',      'pallet',    'Pallet',         NULL, 17, true),
+        ('item_unit',      'cbm',       'Cubic Metres',   'm³', 18, true),
+        ('item_unit',      'table',     'Table',          NULL, 19, true),
         ('item_time_unit', 'day',       'Days',           NULL, 1, true),
         ('item_time_unit', 'hour',      'Hours',          'hr', 2, true),
         ('item_time_unit', 'event',     'Per Event',      NULL, 3, true),
-        ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true)
+        ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true),
+        ('item_time_unit', 'month',     'Month',          '/mo', 5, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

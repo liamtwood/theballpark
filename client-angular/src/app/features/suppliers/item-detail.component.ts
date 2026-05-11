@@ -62,7 +62,7 @@ import { Project } from '../../models';
 
         <div class="bp-item-price-row" *ngIf="item.base_price">
           <span class="bp-item-price">{{ item.base_price | gbp }}</span>
-          <span class="bp-item-price-label" *ngIf="item.unit">per {{ unitDisplay(item.unit) }}</span>
+          <span class="bp-item-price-label" *ngIf="item.unit">per {{ unitWithTime(item.unit, item.time_unit) }}</span>
         </div>
 
         <!-- DESCRIPTION -->
@@ -300,6 +300,17 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
 
   unitDisplay(code?: string | null): string {
     return code ? this.codelistSvc.getDisplay(code) : '';
+  }
+
+  /** Composite unit + time_unit display. Time-only rental items append
+      " / <time_unit display>" so a row stored as unit='pallet',
+      time_unit='month' renders as e.g. "Pallet / /mo". The caller is
+      expected to prefix "per " in the template. */
+  unitWithTime(unitCode?: string | null, timeUnitCode?: string | null): string {
+    const u = this.unitDisplay(unitCode);
+    if (!timeUnitCode) return u;
+    const t = this.unitDisplay(timeUnitCode);
+    return u && t ? `${u} / ${t}` : (u || t);
   }
 
   ngOnInit() {
