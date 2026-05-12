@@ -65,18 +65,21 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
            TODO: gate the edit pencil on ownership once auth lands. -->
       <ng-container *ngIf="activeTab === 'home'">
 
-        <!-- Cover banner — clean, no logo overlap. -->
-        <div class="bp-supplier-cover"
-             [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-             [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-          <button class="bp-supplier-cover-edit"
-                  (click)="openSupplierEditDrawer()"
-                  title="Edit supplier details">
-            <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-          </button>
-        </div>
-
         <div class="bp-supplier-home">
+
+          <!-- Cover banner — lives in the same 720px column as the rest of
+               the Home content. background-size: contain so the image is
+               never zoomed/cropped (any aspect-ratio gap shows the theme
+               background). -->
+          <div class="bp-supplier-cover"
+               [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
+               [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
+            <button class="bp-supplier-cover-edit"
+                    (click)="openSupplierEditDrawer()"
+                    title="Edit supplier details">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+            </button>
+          </div>
 
           <!-- Identity row — small initial avatar + name + location.
                Sits in the same centred column as the description below. -->
@@ -353,15 +356,20 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
 
     /* ── HOME TAB ───────────────────────────────────────────────────── */
 
-    /* Full-width cover banner with rounded bottom corners. Edit pencil
-       sits absolute top-right of the cover (not the page). */
+    /* Cover banner sits inside the 720px content column. background-size
+       is contain so the image displays at its natural aspect ratio — any
+       letterboxing falls back to the theme background colour. Edit
+       pencil overlays the top-right corner. */
     .bp-supplier-cover {
       position: relative;
       width: 100%;
       height: 200px;
-      border-radius: 0 0 16px 16px;
-      background-size: cover;
+      border-radius: 12px;
+      background-size: contain;
+      background-repeat: no-repeat;
       background-position: center;
+      background-color: var(--theme-bg);
+      margin-bottom: 20px;
     }
     .bp-supplier-cover--empty {
       background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
@@ -388,7 +396,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-home {
       max-width: 720px;
       margin: 0 auto;
-      padding: 24px 28px 32px;
+      padding: 28px;
     }
 
     /* Identity row: small avatar circle + name + location.
