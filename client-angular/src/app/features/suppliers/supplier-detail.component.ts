@@ -757,31 +757,46 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   buildCategories() {
-    const map: Record<string, CategoryInfo> = {};
-    for (const item of this.catalogueItems) {
-      const key = item.category_id || 'other';
-      if (!map[key]) {
-        // Look up the full category record (loaded separately) so the
-        // circle strip in catalogue-grid can render cover/logo/icon
-        // exactly like the marketplace — items only carry id + name,
-        // so without this merge the circles render as bare initials.
-        const cat = this.allCatalogueCategories.find(c => c.id === key);
-        map[key] = {
-          id: key,
-          name: cat?.name || item.category_name || 'Other',
-          cover_image_url: cat?.cover_image_url,
-          logo_url: cat?.logo_url,
-          icon_name: cat?.icon_name,
-          icon_color: cat?.icon_color,
-          parent_id: cat?.parent_id,
-          tagline: cat?.tagline,
-          description: cat?.description,
-          count: 0
-        };
-      }
-      map[key].count = (map[key].count || 0) + 1;
+    // Mirror the marketplace's supplier-list pattern: pass the full
+    // catalogue category tree (top-level + subcategories) so the grid
+    // can render top-level circles and drill into children on click.
+    // Counts are scoped to THIS supplier — for each item, walk up the
+    // parent_id chain and increment every ancestor (so a top-level
+    // "Catering" card reflects all 5 sub-category items beneath it).
+    if (!this.allCatalogueCategories.length) {
+      // Categories haven't loaded yet — keep the current value to avoid
+      // flicker; buildCategories() is re-run from the categories
+      // subscribe once data arrives.
+      return;
     }
-    this.categories = Object.values(map);
+
+    const counts: Record<string, number> = {};
+    for (const item of this.catalogueItems) {
+      let current = this.allCatalogueCategories.find(c => c.id === item.category_id);
+      let guard = 6;
+      while (current && guard-- > 0) {
+        counts[current.id] = (counts[current.id] || 0) + 1;
+        if (!current.parent_id) break;
+        const parentId: string = current.parent_id;
+        current = this.allCatalogueCategories.find(c => c.id === parentId);
+      }
+    }
+
+    this.categories = this.allCatalogueCategories
+      .filter(c => (c as any).enabled !== false)
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        cover_image_url: c.cover_image_url,
+        logo_url: c.logo_url,
+        icon_name: c.icon_name,
+        icon_color: c.icon_color,
+        parent_id: c.parent_id || undefined,
+        tagline: c.tagline,
+        description: c.description,
+        model: c.model || 'A',
+        count: counts[c.id] || 0
+      }));
   }
 
   /** Build the Home tab's grouped subcategory cards.
