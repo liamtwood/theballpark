@@ -136,7 +136,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
             </div>
           </div>
 
-          <!-- Contact 2×2 icon grid — moved below the catalogue preview. -->
+          <!-- Contact info heading — matches the parent-category header
+               style used by the sub-catalogue sections above. -->
+          <div class="bp-home-cat-header" *ngIf="hasAnyContact()">CONTACT INFO</div>
+
+          <!-- Contact 2×2 icon grid -->
           <div class="bp-supplier-contact-grid" *ngIf="hasAnyContact()">
             <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
               <div class="bp-contact-tile-icon">
@@ -357,8 +361,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     /* ── HOME TAB ───────────────────────────────────────────────────── */
 
     /* Cover banner sits inside the 720px content column. background-size
-       is contain so the image displays at its natural aspect ratio — any
-       letterboxing falls back to the theme background colour. Edit
+       is contain so the image displays at its natural aspect ratio. No
+       container fill — any letterboxing shows through to the page. Edit
        pencil overlays the top-right corner. */
     .bp-supplier-cover {
       position: relative;
@@ -368,7 +372,6 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      background-color: var(--theme-bg);
       margin-bottom: 20px;
     }
     .bp-supplier-cover--empty {
