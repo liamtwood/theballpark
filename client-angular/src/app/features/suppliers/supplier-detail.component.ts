@@ -228,16 +228,14 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [showEdit]="true"
           [showItemEdit]="true"
           [showFavourite]="true"
-          [showBack]="true"
-          backLabel="Back to catalogue"
+          [showBack]="false"
           [totalCount]="itemEntities.length"
           sectionTitle="CATALOGUE"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
-          (actionClicked)="onAction($event)"
-          (backClicked)="goBack()">
+          (actionClicked)="onAction($event)">
           <div catalogue-toggles class="bp-cat-actions">
             <!-- Mirror the project Build tab's scoped/all toggle so suppliers
                  can opt to see categories they don't have items in (e.g. if
@@ -717,7 +715,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       next: (suppliers: any[]) => {
         this.supplier = suppliers.find(s => s.id === this.sid) || null;
         if (this.supplier) {
-          this.shellCtx.set({ heroTitle: this.supplier.name, heroSub: this.supplier.city || 'London', pills: [], tabs: [] });
+          this.shellCtx.set({
+            heroTitle: this.supplier.name,
+            heroSub: this.supplier.city || 'London',
+            pills: [],
+            tabs: [],
+            back: { label: 'Back to catalogue', onBack: () => this.goBack() }
+          });
         }
         this.cdr.detectChanges();
       }
@@ -1032,7 +1036,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       heroTitle: this.supplier.name,
       heroSub: this.supplier.city || 'London',
       pills: [],
-      tabs: []
+      tabs: [],
+      back: { label: 'Back to catalogue', onBack: () => this.goBack() }
     });
     this.cdr.detectChanges();
   }

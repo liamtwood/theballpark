@@ -20,6 +20,17 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- HERO -->
     <div class="bp-hero" *ngIf="!hideHero">
 
+      <!-- Optional left-aligned back link, vertically centred in the hero.
+           Pages opt-in via shellCtx.set({ back: { label, onBack } }).
+           Wrapped in an *ngIf="as" pattern because this.ctx is nullable
+           on routes that don't use the hero. -->
+      <ng-container *ngIf="ctx?.back as back">
+        <button type="button" class="bp-hero-back" (click)="back.onBack()">
+          <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
+          <span>{{ back.label }}</span>
+        </button>
+      </ng-container>
+
       <!-- PILLS -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
         <ng-container *ngFor="let pill of heroPills">
@@ -77,7 +88,33 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-    .bp-hero          { flex-shrink: 0; }
+    .bp-hero          { flex-shrink: 0; position: relative; }
+
+    /* Optional back link on the hero's left edge. Vertically centred
+       against the hero's full height; offset is var(--section-pad) so it
+       aligns with the page's left content gutter. */
+    .bp-hero-back {
+      position: absolute;
+      left: var(--section-pad, 28px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none; border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      padding: 4px 0;
+      white-space: nowrap;
+    }
+    .bp-hero-back:hover { opacity: 0.75; }
+    @media (max-width: 600px) {
+      /* Hide the back label on narrow screens — keep the chevron only. */
+      .bp-hero-back span { display: none; }
+    }
 
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }

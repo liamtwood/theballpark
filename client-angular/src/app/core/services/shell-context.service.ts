@@ -6,6 +6,15 @@ export interface ShellTab {
   path: string;
 }
 
+/** Optional "back" link shown on the LEFT of the shell hero, vertically
+    centered. Pages set this via shellCtx.set({ back: {...} }) and the
+    shell handles rendering + positioning so individual feature pages
+    don't have to reach into the hero's layout. */
+export interface ShellBack {
+  label: string;
+  onBack: () => void;
+}
+
 export interface ShellContext {
   heroTitle:    string;
   heroSub:      string;
@@ -17,6 +26,8 @@ export interface ShellContext {
   onTabClick?:  (tab: ShellTab) => void;
   // Active tab override — used when tabs don't map to routes
   activeTabPath?: string;
+  /** Optional back link on the hero's left edge. Cleared on every reset(). */
+  back?: ShellBack;
 }
 
 const DEFAULT_CONTEXT: ShellContext = {
