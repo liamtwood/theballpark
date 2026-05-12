@@ -81,11 +81,11 @@ interface SupplierForm {
           <label class="bp-field-label">Description</label>
           <textarea pInputTextarea
                     [(ngModel)]="form.description"
-                    class="w-full bp-input-edit"
+                    class="w-full bp-input-edit bp-input-textarea-lg"
                     [autoResize]="true"
-                    [rows]="4"
-                    placeholder="What this supplier does, who they work with..."></textarea>
-          <div class="bp-field-hint">Markdown supported on the Home tab.</div>
+                    [rows]="10"
+                    placeholder="What this supplier does, who they work with, capabilities, geographic coverage, notable clients or projects..."></textarea>
+          <div class="bp-field-hint">A few paragraphs work well. Plain text for now — markdown rendering on the Home tab lands next.</div>
         </div>
 
         <!-- ═══ ADDRESS ═══ -->
@@ -262,6 +262,14 @@ interface SupplierForm {
       line-height: 1.4;
     }
     .bp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Large textarea — explicit min-height so the description field
+       is comfortable to write into. autoResize lets it grow further. */
+    :host ::ng-deep .bp-input-textarea-lg {
+      min-height: 220px;
+      line-height: 1.5;
+      resize: vertical;
+    }
 
     /* VAT toggle row */
     .bp-vat-toggle {
