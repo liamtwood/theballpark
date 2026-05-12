@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -96,6 +96,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
       <app-item-drawer
         [(visible)]="showItemDrawer"
         [item]="editingItem"
+        [prefill]="addPrefill"
         (saved)="onItemSaved($event)"
         (cancelled)="onItemDrawerCancelled()">
       </app-item-drawer>
@@ -216,6 +217,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   ownsCatalogue = false;
   showItemDrawer = false;
   editingItem: Item | null = null;
+  /** Seed values passed to the drawer in add mode. Computed from the
+      catalogue-grid's current category filter on each Add click so the
+      drawer lands pre-populated with the user's contextual view. */
+  addPrefill: { category_id?: string; subcategory_id?: string } | null = null;
+
+  @ViewChild(CatalogueGridComponent) private catGrid?: CatalogueGridComponent;
 
   constructor(
     private route: ActivatedRoute,
@@ -349,8 +356,29 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   openAddItemDrawer() {
     this.editingItem = null;
+    this.addPrefill = this.computeAddPrefill();
     this.showItemDrawer = true;
     this.cdr.detectChanges();
+  }
+
+  /** Read the catalogue-grid's current filter state and translate it into
+      the drawer's prefill shape. activeCategory is always a top-level id
+      (or 'all'); when drilled, drilledCategory carries the parent and
+      activeChildCategory may hold the selected subcategory.
+      Returns null when there's nothing useful to pre-populate. */
+  private computeAddPrefill(): { category_id?: string; subcategory_id?: string } | null {
+    const grid = this.catGrid;
+    if (!grid) return null;
+    let category_id: string | undefined;
+    let subcategory_id: string | undefined;
+    if (grid.drilledCategory) {
+      category_id = grid.drilledCategory.id;
+      if (grid.activeChildCategory) subcategory_id = grid.activeChildCategory;
+    } else if (grid.activeCategory && grid.activeCategory !== 'all') {
+      category_id = grid.activeCategory;
+    }
+    if (!category_id && !subcategory_id) return null;
+    return { category_id, subcategory_id };
   }
 
   openEditItemDrawer(item: Item) {

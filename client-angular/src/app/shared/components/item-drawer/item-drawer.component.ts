@@ -517,6 +517,12 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   /** null = add mode; populated Item = edit mode. */
   @Input() item: Item | null = null;
   @Input() visible = false;
+  /** Optional seed values applied in ADD mode only. Used to pre-populate
+      the category dropdown(s) from the parent's current view filter — e.g.
+      the supplier catalogue page passes the user's active category so a
+      new item lands in the right place without re-typing.
+      Ignored when `item` is set (edit mode populates from the item itself). */
+  @Input() prefill: { category_id?: string; subcategory_id?: string } | null = null;
 
   @Output() saved = new EventEmitter<Item>();
   @Output() cancelled = new EventEmitter<void>();
@@ -573,6 +579,12 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       this.populateForm();
       if (this.currentOrg) this.loadLineageOptions(this.currentOrg.id);
     }
+    // When `prefill` changes while in add mode (item still null), re-seed
+    // the form. This catches the supplier-detail flow where the parent
+    // recomputes prefill from the current grid filter before each Add.
+    if (changes['prefill'] && !changes['prefill'].firstChange && !this.item) {
+      this.populateForm();
+    }
   }
 
   // ── Form lifecycle ───────────────────────────────────────────────────
@@ -604,6 +616,19 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     if (!this.item) {
       this.form = this.emptyForm();
       this.subcategories = [];
+      // Apply any add-mode prefill — typically the parent's active
+      // category filter. category_id seeds the parent dropdown and
+      // primes the subcategory list; subcategory_id (optional) seeds
+      // the child dropdown afterwards.
+      if (this.prefill) {
+        if (this.prefill.category_id) {
+          this.form.category_id = this.prefill.category_id;
+          this.refreshSubcategories(this.prefill.category_id);
+        }
+        if (this.prefill.subcategory_id) {
+          this.form.subcategory_id = this.prefill.subcategory_id;
+        }
+      }
       return;
     }
     // Edit mode — split DB category_id back into category/subcategory.
