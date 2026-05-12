@@ -616,17 +616,40 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     if (!this.item) {
       this.form = this.emptyForm();
       this.subcategories = [];
-      // Apply any add-mode prefill — typically the parent's active
-      // category filter. category_id seeds the parent dropdown and
-      // primes the subcategory list; subcategory_id (optional) seeds
-      // the child dropdown afterwards.
+      // Apply any add-mode prefill. The caller may pass either a top-level
+      // category id or a subcategory id (e.g. supplier-detail's grid uses
+      // a flat list and stores the most-specific id in activeCategory).
+      // We resolve to the drawer's split shape using allCategories — same
+      // logic the edit-mode branch below uses.
       if (this.prefill) {
-        if (this.prefill.category_id) {
-          this.form.category_id = this.prefill.category_id;
-          this.refreshSubcategories(this.prefill.category_id);
+        // Local const so the narrowing survives across closures (the
+        // `c => c.id === ...` arrow body re-widens this.prefill in TS).
+        const pre = this.prefill;
+        let category_id: string | null = null;
+        let subcategory_id: string | null = null;
+
+        if (pre.subcategory_id) {
+          subcategory_id = pre.subcategory_id;
+          const sub = this.allCategories.find(c => c.id === subcategory_id);
+          category_id = sub?.parent_id || pre.category_id || null;
+        } else if (pre.category_id) {
+          const cat = this.allCategories.find(c => c.id === pre.category_id);
+          if (cat?.parent_id) {
+            // Caller passed a subcategory id in category_id — split it.
+            category_id = cat.parent_id;
+            subcategory_id = cat.id;
+          } else {
+            // Top-level (or unresolved — fall back to as-is).
+            category_id = pre.category_id;
+          }
         }
-        if (this.prefill.subcategory_id) {
-          this.form.subcategory_id = this.prefill.subcategory_id;
+
+        if (category_id) {
+          this.form.category_id = category_id;
+          this.refreshSubcategories(category_id);
+        }
+        if (subcategory_id) {
+          this.form.subcategory_id = subcategory_id;
         }
       }
       return;
