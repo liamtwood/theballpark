@@ -13,8 +13,10 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
+import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { Category } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -136,45 +138,93 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       </ng-container>
 
       <!-- ═══ STORE TAB ═══════════════════════════════════════════════
-           The existing catalogue grid + add/upload buttons + item drawer
-           + image upload — unchanged behaviour, just gated by tab. -->
+           Two-level: category cards landing → catalogue grid drill-in.
+           A real shopfront browse: pick a department first, then browse
+           that department's items. -->
       <ng-container *ngIf="activeTab === 'store'">
-        <app-catalogue-grid
-          [entities]="itemEntities"
-          [categories]="categories"
-          entityType="item"
-          entityLabel="item"
-          [actionLabel]="'View →'"
-          [favouriteIds]="itemFavIds"
-          [showEdit]="true"
-          [showItemEdit]="true"
-          [showFavourite]="true"
-          [showBack]="true"
-          backLabel="Back to catalogue"
-          [totalCount]="itemEntities.length"
-          sectionTitle="CATALOGUE"
-          (entitySelected)="onEntitySelected($event)"
-          (favouriteToggled)="onFavToggled($event)"
-          (imageEditRequested)="onImageEdit($event)"
-          (itemEditRequested)="onItemEditRequested($event)"
-          (actionClicked)="onAction($event)"
-          (backClicked)="goBack()">
-          <div catalogue-toggles class="bp-cat-actions">
-            <p-button label="+ Add item"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="openAddItemDrawer()">
-            </p-button>
-            <p-button label="Upload" icon="pi pi-upload"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="fileInput.click()">
-            </p-button>
-            <input #fileInput type="file"
-                   accept=".xls,.xlsx,.csv"
-                   (change)="onCatalogueUploadSelected($event)"
-                   style="display:none"/>
-          </div>
-        </app-catalogue-grid>
 
+        <!-- ── LEVEL 1: category cards ───────────────────────────────── -->
+        <ng-container *ngIf="!drilledCategory">
+          <div class="bp-store-empty" *ngIf="!supplierCategories.length">
+            This supplier hasn't published any items yet.
+          </div>
+          <div class="bp-store-cards-grid" *ngIf="supplierCategories.length">
+            <button type="button" class="bp-store-cat-card"
+                    *ngFor="let cat of supplierCategories"
+                    (click)="drillIntoCategory(cat)">
+              <div class="bp-store-cat-card-img"
+                   [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
+                   [class.bp-store-cat-card-img--fallback]="!cat.cover_image_url">
+                <span *ngIf="!cat.cover_image_url" class="bp-store-cat-card-initial">
+                  {{ cat.name.charAt(0) }}
+                </span>
+              </div>
+              <div class="bp-store-cat-card-body">
+                <div class="bp-store-cat-card-name">{{ cat.name }}</div>
+                <div class="bp-store-cat-card-count">
+                  {{ cat.count }} {{ cat.count === 1 ? 'item' : 'items' }}
+                </div>
+                <div class="bp-store-cat-card-desc" *ngIf="cat.description">
+                  {{ cat.description.length > 120 ? (cat.description | slice:0:120) + '…' : cat.description }}
+                </div>
+              </div>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- ── LEVEL 2: drilled catalogue grid ───────────────────────── -->
+        <ng-container *ngIf="drilledCategory">
+          <div class="bp-store-drilled">
+            <button type="button" class="bp-store-back" (click)="drillOut()">
+              <i class="pi pi-arrow-left"></i>
+              <span>Back to categories</span>
+            </button>
+            <div class="bp-store-drilled-header">
+              <div class="bp-store-drilled-title">{{ drilledCategory.name }}</div>
+              <div class="bp-store-drilled-count">
+                {{ drilledItems.length }} {{ drilledItems.length === 1 ? 'item' : 'items' }}
+              </div>
+            </div>
+          </div>
+
+          <app-catalogue-grid
+            [entities]="drilledItems"
+            [categories]="drilledSubcategories"
+            entityType="item"
+            entityLabel="item"
+            [actionLabel]="'View →'"
+            [favouriteIds]="itemFavIds"
+            [showEdit]="true"
+            [showItemEdit]="true"
+            [showFavourite]="true"
+            [showBack]="false"
+            [totalCount]="drilledItems.length"
+            sectionTitle="CATALOGUE"
+            (entitySelected)="onEntitySelected($event)"
+            (favouriteToggled)="onFavToggled($event)"
+            (imageEditRequested)="onImageEdit($event)"
+            (itemEditRequested)="onItemEditRequested($event)"
+            (actionClicked)="onAction($event)">
+            <div catalogue-toggles class="bp-cat-actions">
+              <p-button label="+ Add item"
+                styleClass="p-button-outlined bp-section-add-btn"
+                (onClick)="openAddItemDrawer()">
+              </p-button>
+              <p-button label="Upload" icon="pi pi-upload"
+                styleClass="p-button-outlined bp-section-add-btn"
+                (onClick)="fileInput.click()">
+              </p-button>
+              <input #fileInput type="file"
+                     accept=".xls,.xlsx,.csv"
+                     (change)="onCatalogueUploadSelected($event)"
+                     style="display:none"/>
+            </div>
+          </app-catalogue-grid>
+        </ng-container>
+
+        <!-- Item drawer + image upload panel are mounted once and stay
+             reachable from both levels (the pencil only fires from drilled
+             grid today, but the drawer should survive a drillOut()). -->
         <app-item-drawer
           [(visible)]="showItemDrawer"
           [item]="editingItem"
@@ -320,16 +370,25 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-logo {
       width: 80px; height: 80px;
       border-radius: 50%;
-      background-size: cover;
+      /* Logo display — use contain + no-repeat so vector marks and tight
+         crops sit properly within the circle. White inset background gives
+         the same "padding" feel the spec called out without needing to
+         swap to an <img> element. */
+      background-size: 64%;
+      background-repeat: no-repeat;
       background-position: center;
+      background-color: var(--color-surface);
       border: 3px solid var(--color-surface);
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       display: flex; align-items: center; justify-content: center;
-      background-color: var(--theme-bg);
       color: var(--theme-accent);
       font-family: var(--font-display);
       font-size: 32px;
       font-weight: 400;
+    }
+    .bp-supplier-logo--initials {
+      /* No image — fall back to the parchment ring + initial. */
+      background-color: var(--theme-bg);
     }
 
     .bp-supplier-desc {
@@ -367,6 +426,118 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-row-value { color: var(--color-text-primary); word-break: break-word; }
     .bp-supplier-link { color: var(--theme-accent); text-decoration: none; }
     .bp-supplier-link:hover { text-decoration: underline; }
+
+    /* ── STORE TAB ─ Level 1 (category cards) ───────────────────────── */
+    .bp-store-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding: 24px 28px;
+      max-width: 880px;
+      margin: 0 auto;
+    }
+    .bp-store-empty {
+      text-align: center;
+      color: var(--color-text-muted);
+      padding: 60px 24px;
+      font-size: 13px;
+    }
+    .bp-store-cat-card {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: var(--color-surface);
+      border-radius: 12px;
+      border: 0.5px solid var(--color-border);
+      overflow: hidden;
+      cursor: pointer;
+      padding: 0;
+      transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .bp-store-cat-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+      border-color: var(--theme-border);
+    }
+    .bp-store-cat-card-img {
+      width: 100%;
+      height: 160px;
+      background-size: cover;
+      background-position: center;
+      background-color: var(--theme-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bp-store-cat-card-img--fallback {
+      background: linear-gradient(135deg, var(--theme-bg) 0%, var(--theme-border) 100%);
+    }
+    .bp-store-cat-card-initial {
+      font-family: var(--font-display);
+      font-size: 48px;
+      color: var(--theme-accent);
+      opacity: 0.6;
+    }
+    .bp-store-cat-card-body { padding: 14px 16px 16px; }
+    .bp-store-cat-card-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      margin-bottom: 2px;
+    }
+    .bp-store-cat-card-count {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-bottom: 6px;
+    }
+    .bp-store-cat-card-desc {
+      font-size: 12.5px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── STORE TAB ─ Level 2 (drilled) ──────────────────────────────── */
+    .bp-store-drilled {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 16px 28px 0;
+    }
+    .bp-store-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--theme-accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-family: var(--font-body);
+    }
+    .bp-store-back:hover { text-decoration: underline; }
+    .bp-store-drilled-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin: 8px 0 16px;
+    }
+    .bp-store-drilled-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+    }
+    .bp-store-drilled-count {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+    }
+
+    @media (max-width: 720px) {
+      .bp-store-cards-grid { grid-template-columns: 1fr; padding: 16px; }
+    }
   `]
 })
 export class SupplierDetailComponent implements OnInit, OnDestroy {
@@ -403,6 +574,24 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   // Supplier edit drawer state.
   showSupplierDrawer = false;
+
+  // ── Store tab two-level state ─────────────────────────────────────────
+  /** Full catalogue categories from CategoryService (joined with items
+      to enrich each Store card with cover image, description, etc.). */
+  allCatalogueCategories: Category[] = [];
+  /** Top-level categories present in this supplier's catalogue, enriched
+      with cover_image_url / description / item count rolled up across
+      their subcategories. Rendered as the Store landing cards. */
+  supplierCategories: CategoryInfo[] = [];
+  /** When set, Store tab shows the catalogue-grid filtered to this
+      category's branch (it + its subcategories). null → landing cards. */
+  drilledCategory: CategoryInfo | null = null;
+  /** Pre-filtered item entities for the drilled category — passed to
+      catalogue-grid as [entities]. */
+  drilledItems: CatalogueEntity[] = [];
+  /** Subcategories of the drilled category — passed to catalogue-grid
+      as [categories] so the circle strip + sidebar filter further. */
+  drilledSubcategories: CategoryInfo[] = [];
   /** Seed values passed to the drawer in add mode. Computed from the
       catalogue-grid's current category filter on each Add click so the
       drawer lands pre-populated with the user's contextual view. */
@@ -416,6 +605,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private projectSvc: ProjectService,
     private favSvc: FavouriteService,
     private orgSvc: OrgService,
+    private categorySvc: CategoryService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
     private msg: MessageService,
@@ -461,10 +651,23 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         this.catalogueItems = items || [];
         this.mapItems();
         this.buildCategories();
+        this.buildSupplierCategoryCards();
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
+    });
+
+    // Load the full catalogue category hierarchy so the Store landing
+    // cards can show real cover images / descriptions / tagline (the
+    // existing item-level join only carries category_name + id).
+    this.categorySvc.getAll('catalogue').subscribe({
+      next: (cats: Category[]) => {
+        this.allCatalogueCategories = cats || [];
+        // Re-build cards once both data sources are in.
+        this.buildSupplierCategoryCards();
+        this.cdr.detectChanges();
+      }
     });
 
     this.favSvc.itemFavIds$.subscribe(ids => {
@@ -503,6 +706,110 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       map[key].count++;
     }
     this.categories = Object.values(map);
+  }
+
+  // ── Store landing cards ──────────────────────────────────────────────
+
+  /** Resolve an item's top-level ancestor category id by walking up
+      parent_id chains through allCatalogueCategories. Items can be on a
+      leaf subcategory (e.g. "Sit-down Dining" → parent "Catering"); the
+      Store landing only shows top-level cards, so subcategory items roll
+      up to their root. */
+  private topLevelAncestorId(categoryId: string | null | undefined): string | null {
+    if (!categoryId) return null;
+    if (!this.allCatalogueCategories.length) return categoryId;
+    let current = this.allCatalogueCategories.find(c => c.id === categoryId);
+    // Defensive cap on walk depth — Ballpark uses 1 level today but guard
+    // against accidental cycles or future deeper trees.
+    let guard = 6;
+    while (current && current.parent_id && guard-- > 0) {
+      current = this.allCatalogueCategories.find(c => c.id === current!.parent_id);
+    }
+    return current?.id || categoryId;
+  }
+
+  /** Build supplierCategories: one card per top-level category that has
+      at least one item in this supplier's catalogue. Item counts are
+      rolled up across subcategories so a supplier with 6 items spread
+      across Catering > Sit-down Dining + Catering > Buffet sees a single
+      "Catering · 6 items" card. */
+  buildSupplierCategoryCards() {
+    if (!this.catalogueItems.length || !this.allCatalogueCategories.length) {
+      this.supplierCategories = [];
+      return;
+    }
+    const counts: Record<string, number> = {};
+    for (const item of this.catalogueItems) {
+      const topId = this.topLevelAncestorId(item.category_id);
+      if (!topId) continue;
+      counts[topId] = (counts[topId] || 0) + 1;
+    }
+    const cards: CategoryInfo[] = [];
+    for (const [id, count] of Object.entries(counts)) {
+      const cat = this.allCatalogueCategories.find(c => c.id === id);
+      if (!cat) continue;
+      cards.push({
+        id: cat.id,
+        name: cat.name,
+        cover_image_url: cat.cover_image_url,
+        icon_name: cat.icon_name,
+        icon_color: cat.icon_color,
+        tagline: cat.tagline,
+        description: cat.description,
+        parent_id: cat.parent_id,
+        count
+      });
+    }
+    // Sort by sort_order if available, then alphabetic.
+    cards.sort((a, b) => a.name.localeCompare(b.name));
+    this.supplierCategories = cards;
+  }
+
+  // ── Drill-in / drill-out ─────────────────────────────────────────────
+
+  drillIntoCategory(cat: CategoryInfo) {
+    this.drilledCategory = cat;
+    this.computeDrilledViews();
+    this.cdr.detectChanges();
+  }
+
+  drillOut() {
+    this.drilledCategory = null;
+    this.drilledItems = [];
+    this.drilledSubcategories = [];
+    this.cdr.detectChanges();
+  }
+
+  /** Recompute drilledItems + drilledSubcategories based on the current
+      drilledCategory. Called on every drill-in (and could be called again
+      after a save if items are re-fetched). */
+  private computeDrilledViews() {
+    if (!this.drilledCategory) {
+      this.drilledItems = [];
+      this.drilledSubcategories = [];
+      return;
+    }
+    const rootId = this.drilledCategory.id;
+    const subIds = new Set(
+      this.allCatalogueCategories
+        .filter(c => c.parent_id === rootId)
+        .map(c => c.id)
+    );
+    const includeIds = new Set([rootId, ...subIds]);
+    this.drilledItems = this.itemEntities.filter(e => e.category_id && includeIds.has(e.category_id));
+    this.drilledSubcategories = this.allCatalogueCategories
+      .filter(c => c.parent_id === rootId)
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        cover_image_url: c.cover_image_url,
+        icon_name: c.icon_name,
+        icon_color: c.icon_color,
+        parent_id: c.parent_id,
+        tagline: c.tagline,
+        description: c.description,
+        count: this.itemEntities.filter(e => e.category_id === c.id).length
+      }));
   }
 
   // ── Event handlers ────────────────────────────────────────────────────
@@ -553,16 +860,27 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       activeChildCategory may hold the selected subcategory.
       Returns null when there's nothing useful to pre-populate. */
   private computeAddPrefill(): { category_id?: string; subcategory_id?: string } | null {
-    const grid = this.catGrid;
-    if (!grid) return null;
     let category_id: string | undefined;
     let subcategory_id: string | undefined;
-    if (grid.drilledCategory) {
+
+    // Inner state — when the user has clicked a subcategory circle inside
+    // the drilled catalogue-grid, prefer that as the most-specific hint.
+    const grid = this.catGrid;
+    if (grid?.drilledCategory) {
       category_id = grid.drilledCategory.id;
       if (grid.activeChildCategory) subcategory_id = grid.activeChildCategory;
-    } else if (grid.activeCategory && grid.activeCategory !== 'all') {
+    } else if (grid?.activeCategory && grid.activeCategory !== 'all') {
       category_id = grid.activeCategory;
     }
+
+    // Outer state — Store landing → drilled category card. When the inner
+    // grid has nothing selected, fall back to the page-level drilled
+    // category. The drawer resolves a child id back to (parent, child),
+    // so passing either a top-level or subcategory id is safe.
+    if (!category_id && !subcategory_id && this.drilledCategory) {
+      category_id = this.drilledCategory.id;
+    }
+
     if (!category_id && !subcategory_id) return null;
     return { category_id, subcategory_id };
   }
@@ -583,12 +901,16 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   onItemSaved(_item: Item) {
-    // Refresh the catalogue so the grid reflects the new/updated row.
+    // Refresh the catalogue so both the landing cards and the drilled
+    // grid reflect the new/updated row.
     this.supplierSvc.getCatalogue(this.sid).subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
         this.buildCategories();
+        this.buildSupplierCategoryCards();
+        // If we're currently drilled, recompute the filtered slice too.
+        if (this.drilledCategory) this.computeDrilledViews();
         this.cdr.detectChanges();
       }
     });
