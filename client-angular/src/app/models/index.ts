@@ -12,3 +12,4 @@ export { ParsedBrief } from './parsed-brief.model';
 export { ThemePreset, PlatformConfig } from './config.model';
 export { CatalogueEntity, CategoryInfo } from './catalogue.model';
 export { Codelist } from './codelist.model';
+export { ProjectItem, SelectionType } from './project-item.model';

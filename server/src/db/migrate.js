@@ -49,6 +49,7 @@ const migrate = async () => {
         vat_number VARCHAR(50),
         default_margin_pct NUMERIC(5,2),
         default_contingency_pct NUMERIC(5,2),
+        auto_publish_items BOOLEAN DEFAULT true,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -212,7 +213,12 @@ const migrate = async () => {
         updated_by UUID
       );
 
-      -- Estimate Items
+      -- Estimate Items — v1.13 production schema:
+      --   offer_price (deal-specific proposal, locks when approved_at set),
+      --   budget_price (agency expectation), ballpark_snapshot (catalogue
+      --   anchor at request time), inspired_by_item_id (FK SET NULL),
+      --   approved_at + approved_by, duration, unit, time_unit, attributes.
+      --   total_price = quantity × duration × offer_price.
       CREATE TABLE IF NOT EXISTS estimate_items (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         estimate_id UUID REFERENCES estimates(id) ON DELETE CASCADE,
@@ -221,7 +227,16 @@ const migrate = async () => {
         name VARCHAR(255),
         description TEXT,
         quantity NUMERIC(10,2) DEFAULT 1,
-        unit_price NUMERIC(12,2) DEFAULT 0,
+        offer_price NUMERIC(12,2) DEFAULT 0,
+        budget_price NUMERIC(12,2),
+        ballpark_snapshot NUMERIC(12,2),
+        inspired_by_item_id UUID REFERENCES items(id) ON DELETE SET NULL,
+        approved_at TIMESTAMPTZ,
+        approved_by UUID,
+        duration NUMERIC,
+        unit VARCHAR(50),
+        time_unit VARCHAR(50),
+        attributes JSONB DEFAULT '{}',
         total_price NUMERIC(12,2) DEFAULT 0,
         supplier_org_id UUID REFERENCES orgs(id),
         shortlisted BOOLEAN DEFAULT false,
@@ -231,6 +246,19 @@ const migrate = async () => {
         created_by UUID,
         updated_by UUID
       );
+
+      -- Project Items — v1.13 cart (selected/liked).
+      CREATE TABLE IF NOT EXISTS project_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+        project_category_id UUID REFERENCES project_categories(id) ON DELETE SET NULL,
+        selection_type VARCHAR(20) DEFAULT 'selected'
+          CHECK (selection_type IN ('selected', 'liked')),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
+        ON project_items(project_id, item_id);
 
       -- Messages
       CREATE TABLE IF NOT EXISTS messages (

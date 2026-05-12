@@ -164,6 +164,7 @@ app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/codelists', require('./routes/codelists'));
+app.use('/api/project-items', require('./routes/projectItems'));
 
 // Marketing — public welcome page + guestlist signups
 app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup

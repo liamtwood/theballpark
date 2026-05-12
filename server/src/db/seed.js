@@ -350,7 +350,7 @@ const seed = async () => {
 
     // Estimate items for project 1 (pick realistic items from each category)
     const est1ItemData = [
-      // [proj1CatIdx, itemCatIdx, itemIdx, qty, unit_price]
+      // [proj1CatIdx, itemCatIdx, itemIdx, qty, offer_price]
       [0, 0, 1, 72,  195],   // Space-Only Stand Build 72sqm
       [0, 0, 2, 18,  450],   // Double-Deck Structure 18sqm upper
       [1, 3, 0, 40,  35],    // LED Spotlights x40
@@ -372,10 +372,13 @@ const seed = async () => {
       [5, 11, 3, 6,  320],   // Technical crew 2x3 days
     ];
 
-    for (const [pcIdx, catIdx, itemIdx, qty, unit_price] of est1ItemData) {
-      const total_price = +(qty * unit_price).toFixed(2);
+    for (const [pcIdx, catIdx, itemIdx, qty, offer_price] of est1ItemData) {
+      // v1.13: total_price = quantity × duration × offer_price.
+      // Seed data has no duration, so duration defaults to 1 and the
+      // legacy seed math (qty × offer_price) is preserved.
+      const total_price = +(qty * offer_price).toFixed(2);
       await client.query(
-        `INSERT INTO estimate_items (estimate_id, project_category_id, item_id, name, description, quantity, unit_price, total_price, supplier_org_id, shortlisted, status_id)
+        `INSERT INTO estimate_items (estimate_id, project_category_id, item_id, name, description, quantity, offer_price, total_price, supplier_org_id, shortlisted, status_id)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           est1Id,
@@ -383,7 +386,7 @@ const seed = async () => {
           allItemIds[catIdx][itemIdx],
           itemsByCategory[catIdx][itemIdx][0],
           itemsByCategory[catIdx][itemIdx][1],
-          qty, unit_price, total_price,
+          qty, offer_price, total_price,
           supplierId, true,
           statusIds['estimate_draft'],
         ]
@@ -481,10 +484,11 @@ const seed = async () => {
       [4, 7, 4, 2,  85],     // Branded Water Bottles 200
     ];
 
-    for (const [pcIdx, catIdx, itemIdx, qty, unit_price] of est2ItemData) {
-      const total_price = +(qty * unit_price).toFixed(2);
+    for (const [pcIdx, catIdx, itemIdx, qty, offer_price] of est2ItemData) {
+      // v1.13: total_price = quantity × duration × offer_price (duration=1).
+      const total_price = +(qty * offer_price).toFixed(2);
       await client.query(
-        `INSERT INTO estimate_items (estimate_id, project_category_id, item_id, name, description, quantity, unit_price, total_price, supplier_org_id, shortlisted, status_id)
+        `INSERT INTO estimate_items (estimate_id, project_category_id, item_id, name, description, quantity, offer_price, total_price, supplier_org_id, shortlisted, status_id)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           est2Id,
@@ -492,7 +496,7 @@ const seed = async () => {
           allItemIds[catIdx][itemIdx],
           itemsByCategory[catIdx][itemIdx][0],
           itemsByCategory[catIdx][itemIdx][1],
-          qty, unit_price, total_price,
+          qty, offer_price, total_price,
           supplierId, false,
           statusIds['estimate_draft'],
         ]

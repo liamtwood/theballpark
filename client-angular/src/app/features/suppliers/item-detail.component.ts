@@ -17,6 +17,7 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 import { OrgService } from '../../core/services/org.service';
 import { ConfigService } from '../../core/services/config.service';
 import { CodelistService } from '../../core/services/codelist.service';
+import { ProjectItemService } from '../../core/services/project-item.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { Project } from '../../models';
@@ -294,6 +295,7 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
     private configService: ConfigService,
     private shellCtx: ShellContextService,
     private codelistSvc: CodelistService,
+    private projectItemSvc: ProjectItemService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -380,10 +382,36 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
   openQuote() { this.quoteBrief = ''; this.showQuoteDrawer = true; }
 
   addToProject() {
-    // TODO: wire to project-category service to add item to estimate
-    this.showAddDrawer = false;
-    this.msg.add({ severity: 'success', summary: 'Added to project', detail: `${this.item?.name} added to your estimate.`, life: 3000 });
-    this.cdr.detectChanges();
+    if (!this.item || !this.selectedProjectId) {
+      this.msg.add({ severity: 'warn', summary: 'Pick a project', detail: 'Choose a project first.', life: 3000 });
+      return;
+    }
+    this.projectItemSvc.add(
+      this.selectedProjectId,
+      this.item.id,
+      'selected',
+      this.item.category_id
+    ).subscribe({
+      next: () => {
+        this.showAddDrawer = false;
+        this.msg.add({
+          severity: 'success',
+          summary: 'Added to project',
+          detail: `${this.item?.name} added`,
+          life: 3000
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.msg.add({
+          severity: 'error',
+          summary: 'Failed',
+          detail: 'Could not add item to project',
+          life: 4000
+        });
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   sendQuote() {
