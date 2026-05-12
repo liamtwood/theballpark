@@ -220,7 +220,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       <ng-container *ngIf="activeTab === 'store'">
         <app-catalogue-grid
           [entities]="itemEntities"
-          [categories]="categories"
+          [categories]="displayStoreCategories"
           entityType="item"
           entityLabel="item"
           [actionLabel]="'View →'"
@@ -239,6 +239,13 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (actionClicked)="onAction($event)"
           (backClicked)="goBack()">
           <div catalogue-toggles class="bp-cat-actions">
+            <!-- Mirror the project Build tab's scoped/all toggle so suppliers
+                 can opt to see categories they don't have items in (e.g. if
+                 they're about to add into a new one via + Add item). -->
+            <button type="button" class="bp-store-scope-toggle"
+                    (click)="toggleShowAllStoreCategories()">
+              {{ showAllStoreCategories ? 'Show scoped only' : 'Show all categories' }}
+            </button>
             <p-button label="+ Add item"
               styleClass="p-button-outlined bp-section-add-btn"
               (onClick)="openAddItemDrawer()">
@@ -348,6 +355,14 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       font-size: 12px; font-weight: 500;
       font-family: var(--font-body);
     }
+    /* Scoped/all categories toggle — matches the catalogue-grid's own
+       .bp-circles-toggle look (text link, accent colour). */
+    .bp-store-scope-toggle {
+      background: none; border: none; padding: 4px 8px; cursor: pointer;
+      font-family: var(--font-body); font-size: 12px; font-weight: 500;
+      color: var(--theme-accent); white-space: nowrap;
+    }
+    .bp-store-scope-toggle:hover { opacity: 0.75; }
 
     /* ── Home/Store tab bar ───────────────────────────────────────────
        Reuses .bp-hero-tabs / .bp-hero-tab from styles.css. We just
@@ -637,6 +652,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // Supplier edit drawer state.
   showSupplierDrawer = false;
 
+  /** Store tab — when false (default) only show categories the supplier
+      has items in (plus their ancestors so drill works). When true, show
+      the full catalogue tree like the marketplace browse. Mirrors the
+      "Show all categories" / "Show scoped only" pattern from the project
+      Build tab. */
+  showAllStoreCategories = false;
+
   // Home tab — subcategory cards grouped by parent. Built from items'
   // category_ids merged with the full catalogue category hierarchy so
   // each section can show its parent name as a header.
@@ -797,6 +819,22 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         model: c.model || 'A',
         count: counts[c.id] || 0
       }));
+  }
+
+  /** Categories actually passed to <app-catalogue-grid>. Scoped view
+      (default) keeps only entries with count > 0 — since counts walk up
+      the ancestor chain in buildCategories(), this naturally includes
+      both leaf categories the supplier has items in AND their parents
+      (so the drill path works). Show-all reveals the full enabled tree
+      to match the marketplace browse. */
+  get displayStoreCategories(): CategoryInfo[] {
+    if (this.showAllStoreCategories) return this.categories;
+    return this.categories.filter(c => (c.count || 0) > 0);
+  }
+
+  toggleShowAllStoreCategories() {
+    this.showAllStoreCategories = !this.showAllStoreCategories;
+    this.cdr.detectChanges();
   }
 
   /** Build the Home tab's grouped subcategory cards.
