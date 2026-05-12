@@ -38,12 +38,26 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- Own-supplier action row — only shown when current org owns this catalogue -->
-      <div class="bp-own-actions" *ngIf="ownsCatalogue">
-        <p-button label="Add item" icon="pi pi-plus"
+      <!-- Catalogue action row — Add item (drawer) + Upload (xls picker).
+           TODO: gate this on ownership (currentUser.org_id === supplier.id)
+           once real auth lands. Currently always visible in dev so the
+           drawer + upload picker are reachable. -->
+      <div class="bp-own-actions">
+        <p-button label="+ Add item"
           styleClass="p-button-outlined bp-section-add-btn"
           (onClick)="openAddItemDrawer()">
         </p-button>
+        <p-button label="Upload" icon="pi pi-upload"
+          styleClass="p-button-outlined bp-section-add-btn"
+          (onClick)="fileInput.click()">
+        </p-button>
+        <!-- Hidden file input; the Upload button click forwards to it.
+             Stub for now — onFileSelected just toasts the filename. Real
+             xls parsing wires later. -->
+        <input #fileInput type="file"
+               accept=".xls,.xlsx,.csv"
+               (change)="onCatalogueUploadSelected($event)"
+               style="display:none"/>
       </div>
 
       <!-- SUPPLIER CATALOGUE via reusable grid.
@@ -158,7 +172,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
     :host ::ng-deep .bp-drawer-bottom { border-radius: 16px 16px 0 0; }
-    .bp-own-actions { display: flex; justify-content: flex-end; padding: 12px 28px 0; }
+    .bp-own-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 28px 0; }
   `]
 })
 export class SupplierDetailComponent implements OnInit, OnDestroy {
@@ -356,6 +370,25 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   onItemDrawerCancelled() {
     this.editingItem = null;
+  }
+
+  /** Catalogue xls upload — stub for now. We capture the chosen file and
+      acknowledge it so the user knows the picker fires; real parsing
+      (xlsx → bulk item create) wires later. Resets the input so the same
+      file can be re-picked next time. */
+  onCatalogueUploadSelected(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    this.msg.add({
+      severity: 'info',
+      summary: 'File selected',
+      detail: `${file.name} — upload wiring coming next.`,
+      life: 4000
+    });
+    // Reset so picking the same file again still fires change.
+    input.value = '';
+    this.cdr.detectChanges();
   }
 
   onItemImageUpdated(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }) {
