@@ -356,6 +356,15 @@ export type DetailMode = 'inline' | 'drawer';
                  [src]="getImageUrl(selectedEntity)!" [alt]="selectedEntity.name" class="bp-detail-hero-logo-img"/>
             <span *ngIf="!getImageUrl(selectedEntity)"
                   class="bp-detail-hero-initials">{{ selectedEntity.name.charAt(0) }}</span>
+            <!-- Item edit pencil — opt-in via [showItemEdit]. Only renders
+                 for items, never categories/orgs. Click emits
+                 itemEditRequested so the parent can open its drawer. -->
+            <button *ngIf="showItemEdit && entityType === 'item'"
+                    class="bp-detail-edit-btn"
+                    (click)="onItemEditClick($event)"
+                    title="Edit item">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+            </button>
           </div>
 
           <div class="bp-detail-body">
@@ -860,7 +869,17 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-primary);
       text-align: center;
     }
-    .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; }
+    .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; position: relative; }
+    .bp-detail-edit-btn {
+      position: absolute; top: 10px; right: 10px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--color-surface); border: 0.5px solid var(--theme-border);
+      border-radius: 50%; cursor: pointer; color: var(--theme-accent);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .bp-detail-edit-btn:hover { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
     .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
     .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
@@ -932,6 +951,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() actionLabel: string = 'View';
   @Input() favouriteIds: Set<string> = new Set();
   @Input() showEdit = true;
+  /** Show an "edit item" pencil overlay on the inline detail panel's hero
+      image. Opt-in: defaults false so categories / orgs / feedback grids
+      don't get a stray pencil. Only renders when entityType === 'item'. */
+  @Input() showItemEdit = false;
   @Input() showFavourite = true;
   @Input() showBack = false;
   @Input() backLabel = 'Back to catalogue';
@@ -949,6 +972,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Output() backClicked = new EventEmitter<void>();
   @Output() favouriteToggled = new EventEmitter<string>();
   @Output() imageEditRequested = new EventEmitter<CatalogueEntity>();
+  /** Fires when the inline detail panel's edit pencil is clicked. Only
+      emits when [showItemEdit]=true; carries the currently selected entity. */
+  @Output() itemEditRequested = new EventEmitter<CatalogueEntity>();
   @Output() actionClicked = new EventEmitter<CatalogueEntity>();
   @Output() parentClicked = new EventEmitter<CatalogueEntity>();
   @Output() categoryChanged = new EventEmitter<string>();
@@ -1413,6 +1439,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
   onAction(e: CatalogueEntity) {
     this.actionClicked.emit(e);
+  }
+
+  /** Inline-detail item edit pencil click. Stops propagation so the hero
+      click handler (if any) doesn't fire, then emits the entity for the
+      parent's drawer to open. */
+  onItemEditClick(event: MouseEvent) {
+    event.stopPropagation();
+    if (this.selectedEntity) this.itemEditRequested.emit(this.selectedEntity);
   }
 
   onParentClick(e: CatalogueEntity) {

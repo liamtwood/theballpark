@@ -46,15 +46,19 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
         </p-button>
       </div>
 
-      <!-- SUPPLIER CATALOGUE via reusable grid -->
+      <!-- SUPPLIER CATALOGUE via reusable grid.
+           showItemEdit surfaces the inline-detail edit pencil so users
+           can open the item drawer without first navigating to the
+           full-page item detail route. -->
       <app-catalogue-grid
         [entities]="itemEntities"
         [categories]="categories"
         entityType="item"
         entityLabel="item"
-        [actionLabel]="ownsCatalogue ? 'Edit →' : 'View →'"
+        [actionLabel]="'View →'"
         [favouriteIds]="itemFavIds"
         [showEdit]="true"
+        [showItemEdit]="true"
         [showFavourite]="true"
         [showBack]="true"
         backLabel="Back to catalogue"
@@ -63,12 +67,15 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
         (entitySelected)="onEntitySelected($event)"
         (favouriteToggled)="onFavToggled($event)"
         (imageEditRequested)="onImageEdit($event)"
+        (itemEditRequested)="onItemEditRequested($event)"
         (actionClicked)="onAction($event)"
         (backClicked)="goBack()">
       </app-catalogue-grid>
 
-      <!-- Item add/edit drawer — mounted at page level so it works regardless of grid state -->
-      <app-item-drawer *ngIf="ownsCatalogue"
+      <!-- Item add/edit drawer — always mounted so the inline-panel pencil
+           can open it regardless of the ownsCatalogue / auth state.
+           TODO: gate this on ownership once real auth lands. -->
+      <app-item-drawer
         [(visible)]="showItemDrawer"
         [item]="editingItem"
         (saved)="onItemSaved($event)"
@@ -323,6 +330,15 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.editingItem = item;
     this.showItemDrawer = true;
     this.cdr.detectChanges();
+  }
+
+  /** Fired from catalogue-grid's inline-detail edit pencil. The grid
+      surfaces a CatalogueEntity (display projection); we need the raw
+      item row for the drawer's pre-population so we look it up in
+      catalogueItems and delegate to openEditItemDrawer. */
+  onItemEditRequested(entity: CatalogueEntity) {
+    const raw = this.catalogueItems.find(i => i.id === entity.id);
+    if (raw) this.openEditItemDrawer(raw as Item);
   }
 
   onItemSaved(_item: Item) {
