@@ -38,32 +38,19 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- Catalogue action row — Add item (drawer) + Upload (xls picker).
-           TODO: gate this on ownership (currentUser.org_id === supplier.id)
-           once real auth lands. Currently always visible in dev so the
-           drawer + upload picker are reachable. -->
-      <div class="bp-own-actions">
-        <p-button label="+ Add item"
-          styleClass="p-button-outlined bp-section-add-btn"
-          (onClick)="openAddItemDrawer()">
-        </p-button>
-        <p-button label="Upload" icon="pi pi-upload"
-          styleClass="p-button-outlined bp-section-add-btn"
-          (onClick)="fileInput.click()">
-        </p-button>
-        <!-- Hidden file input; the Upload button click forwards to it.
-             Stub for now — onFileSelected just toasts the filename. Real
-             xls parsing wires later. -->
-        <input #fileInput type="file"
-               accept=".xls,.xlsx,.csv"
-               (change)="onCatalogueUploadSelected($event)"
-               style="display:none"/>
-      </div>
-
       <!-- SUPPLIER CATALOGUE via reusable grid.
            showItemEdit surfaces the inline-detail edit pencil so users
            can open the item drawer without first navigating to the
-           full-page item detail route. -->
+           full-page item detail route.
+
+           The Add item + Upload buttons project through the
+           [catalogue-toggles] content slot, which sits inline in the
+           section header next to the list/card/table view-toggle —
+           matches the standard "actions next to display choices" layout.
+
+           TODO: gate the action buttons on ownership
+           (currentUser.org_id === supplier.id) once real auth lands.
+           Currently always visible in dev. -->
       <app-catalogue-grid
         [entities]="itemEntities"
         [categories]="categories"
@@ -84,6 +71,23 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
         (itemEditRequested)="onItemEditRequested($event)"
         (actionClicked)="onAction($event)"
         (backClicked)="goBack()">
+        <div catalogue-toggles class="bp-cat-actions">
+          <p-button label="+ Add item"
+            styleClass="p-button-outlined bp-section-add-btn"
+            (onClick)="openAddItemDrawer()">
+          </p-button>
+          <p-button label="Upload" icon="pi pi-upload"
+            styleClass="p-button-outlined bp-section-add-btn"
+            (onClick)="fileInput.click()">
+          </p-button>
+          <!-- Hidden file input; Upload button click forwards to it.
+               Stub — onCatalogueUploadSelected toasts filename; real xls
+               parsing wires later. -->
+          <input #fileInput type="file"
+                 accept=".xls,.xlsx,.csv"
+                 (change)="onCatalogueUploadSelected($event)"
+                 style="display:none"/>
+        </div>
       </app-catalogue-grid>
 
       <!-- Item add/edit drawer — always mounted so the inline-panel pencil
@@ -172,7 +176,16 @@ import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
     :host ::ng-deep .bp-drawer-bottom { border-radius: 16px 16px 0 0; }
-    .bp-own-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 28px 0; }
+
+    /* Action group projected into catalogue-grid's [catalogue-toggles]
+       slot. Sits inline in the section header, between the entity count
+       and the list/card/table view-toggle. */
+    .bp-cat-actions { display: flex; gap: 8px; align-items: center; }
+    :host ::ng-deep .bp-section-add-btn .p-button {
+      height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
+    }
   `]
 })
 export class SupplierDetailComponent implements OnInit, OnDestroy {
