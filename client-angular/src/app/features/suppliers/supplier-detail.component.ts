@@ -13,8 +13,10 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
+import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { Category } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -53,14 +55,17 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       </div>
 
       <!-- ═══ HOME TAB ════════════════════════════════════════════════
-           Approved design: full-width cover banner with rounded bottom +
-           edit pencil overlay, logo as <img> circle overlapping cover,
-           name + tagline, description, 2×2 contact icon grid.
+           Layout (top → bottom):
+             1. Cover banner (full-width, rounded bottom) + edit pencil
+             2. Identity row — small initial-circle avatar + name + location
+             3. Centered company logo (logo_url) — if set
+             4. Description
+             5. Subcategory cards grouped by parent category header
+             6. Contact 2×2 icon grid + VAT footer
            TODO: gate the edit pencil on ownership once auth lands. -->
       <ng-container *ngIf="activeTab === 'home'">
 
-        <!-- Cover banner — full width, rounded bottom corners, edit
-             pencil top-right. -->
+        <!-- Cover banner — clean, no logo overlap. -->
         <div class="bp-supplier-cover"
              [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
              [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
@@ -72,32 +77,63 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
         </div>
 
         <div class="bp-supplier-home">
-          <!-- Profile bar: logo circle overlapping cover bottom, name + tagline below -->
-          <div class="bp-supplier-profile">
-            <div class="bp-supplier-logo">
-              <img *ngIf="supplier.logo_url"
-                   [src]="supplier.logo_url"
-                   [alt]="supplier.name + ' logo'"
-                   class="bp-supplier-logo-img"/>
-              <span *ngIf="!supplier.logo_url" class="bp-supplier-logo-initial">
-                {{ supplier.name.charAt(0) }}
-              </span>
+
+          <!-- Identity row — small initial avatar + name + location.
+               Sits in the same centred column as the description below. -->
+          <div class="bp-supplier-identity">
+            <div class="bp-supplier-avatar">
+              <span class="bp-supplier-avatar-initial">{{ supplier.name.charAt(0) }}</span>
             </div>
-            <h1 class="bp-supplier-name">{{ supplier.name }}</h1>
-            <div class="bp-supplier-tagline" *ngIf="supplierTagline()">
-              {{ supplierTagline() }}
+            <div class="bp-supplier-identity-body">
+              <div class="bp-supplier-name">{{ supplier.name }}</div>
+              <div class="bp-supplier-location" *ngIf="supplierTagline()">
+                {{ supplierTagline() }}
+              </div>
             </div>
           </div>
 
-          <!-- Description (plain text for now — markdown renderer adds later) -->
+          <!-- Centred company logo — uses logo_url, displayed prominently
+               above the description. Hidden when no logo_url is set. -->
+          <div class="bp-supplier-logo-block" *ngIf="supplier.logo_url">
+            <img [src]="supplier.logo_url"
+                 [alt]="supplier.name + ' logo'"
+                 class="bp-supplier-logo-img"/>
+          </div>
+
+          <!-- Description -->
           <p class="bp-supplier-desc" *ngIf="supplier.description">{{ supplier.description }}</p>
           <p class="bp-supplier-desc bp-supplier-desc--muted" *ngIf="!supplier.description">
             No description yet.
           </p>
 
-          <!-- Contact 2×2 icon grid — each tile only renders when its
-               value is present. Address rolls in city + country so we
-               keep the grid at four tiles max. -->
+          <!-- Subcategory card sections — one section per parent category
+               the supplier has items under. Each section: parent name
+               header + card grid of subcategories in use. -->
+          <div class="bp-home-cats" *ngIf="homeCategoryGroups.length">
+            <div class="bp-home-cat-group" *ngFor="let group of homeCategoryGroups">
+              <div class="bp-home-cat-header">{{ group.parentName | uppercase }}</div>
+              <div class="bp-home-cat-grid">
+                <button type="button" class="bp-home-cat-card"
+                        *ngFor="let sub of group.subcategories">
+                  <div class="bp-home-cat-card-img"
+                       [style.background-image]="sub.cover_image_url ? 'url(' + sub.cover_image_url + ')' : null"
+                       [class.bp-home-cat-card-img--fallback]="!sub.cover_image_url">
+                    <span *ngIf="!sub.cover_image_url" class="bp-home-cat-card-initial">
+                      {{ sub.name.charAt(0) }}
+                    </span>
+                  </div>
+                  <div class="bp-home-cat-card-body">
+                    <div class="bp-home-cat-card-name">{{ sub.name }}</div>
+                    <div class="bp-home-cat-card-count">
+                      {{ sub.count }} {{ sub.count === 1 ? 'item' : 'items' }}
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact 2×2 icon grid — moved below the catalogue preview. -->
           <div class="bp-supplier-contact-grid" *ngIf="hasAnyContact()">
             <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
               <div class="bp-contact-tile-icon">
@@ -150,8 +186,6 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
             </a>
           </div>
 
-          <!-- VAT as a small line below the grid — not prominent enough
-               to deserve its own contact tile. -->
           <div class="bp-supplier-vat"
                *ngIf="supplier.vat_registered || supplier.vat_number">
             VAT
@@ -354,56 +388,58 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-home {
       max-width: 720px;
       margin: 0 auto;
-      padding: 0 28px 32px;
+      padding: 24px 28px 32px;
     }
 
-    /* Profile bar — logo circle overlaps the cover bottom by ~half its
-       height; name + tagline sit below. */
-    .bp-supplier-profile {
-      margin-top: -40px;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .bp-supplier-logo {
-      width: 80px; height: 80px;
-      border-radius: 50%;
-      background: var(--color-surface);
-      border: 3px solid var(--color-surface);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      display: inline-flex;
+    /* Identity row: small avatar circle + name + location.
+       Sits at the top of the description column. */
+    .bp-supplier-identity {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      margin-bottom: 12px;
+      gap: 12px;
+      margin-bottom: 24px;
     }
-    .bp-supplier-logo-img {
-      width: 100%; height: 100%;
-      object-fit: contain;
-      padding: 8px;
-      background: var(--color-surface);
-      box-sizing: border-box;
+    .bp-supplier-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
-    .bp-supplier-logo-initial {
+    .bp-supplier-avatar-initial {
       color: var(--theme-accent);
       font-family: var(--font-display);
-      font-size: 32px;
+      font-size: 18px;
       font-weight: 400;
-      background: var(--theme-bg);
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
     }
+    .bp-supplier-identity-body { min-width: 0; }
     .bp-supplier-name {
       font-family: var(--font-display);
-      font-size: 28px;
+      font-size: 20px;
       font-weight: 400;
       color: var(--color-text-primary);
-      margin: 0 0 4px;
       line-height: 1.2;
     }
-    .bp-supplier-tagline {
-      font-size: 13px;
+    .bp-supplier-location {
+      font-size: 12px;
       color: var(--color-text-muted);
+      margin-top: 2px;
       letter-spacing: 0.02em;
+    }
+
+    /* Centred company logo above the description. Only renders when
+       supplier.logo_url is set. */
+    .bp-supplier-logo-block {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 8px 0 24px;
+    }
+    .bp-supplier-logo-img {
+      max-height: 120px;
+      max-width: 240px;
+      object-fit: contain;
     }
 
     /* Description */
@@ -411,11 +447,80 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       font-size: 14px;
       line-height: 1.6;
       color: var(--color-text-primary);
-      margin: 16px 0 24px;
+      margin: 0 0 28px;
       white-space: pre-wrap;
       text-align: left;
     }
     .bp-supplier-desc--muted { color: var(--color-text-muted); font-style: italic; }
+
+    /* Sub-catalogue cards grouped by parent category. */
+    .bp-home-cats { margin-bottom: 28px; }
+    .bp-home-cat-group + .bp-home-cat-group { margin-top: 24px; }
+    .bp-home-cat-header {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--theme-accent);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      border-bottom: 0.5px solid var(--theme-border);
+      font-family: var(--font-body);
+    }
+    .bp-home-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .bp-home-cat-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 10px;
+      overflow: hidden;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      font-family: inherit;
+    }
+    .bp-home-cat-card:hover {
+      border-color: var(--theme-accent);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+    .bp-home-cat-card-img {
+      width: 100%;
+      height: 96px;
+      background-size: cover;
+      background-position: center;
+      background-color: var(--theme-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bp-home-cat-card-img--fallback {
+      background: linear-gradient(135deg, var(--theme-bg) 0%, var(--theme-border) 100%);
+    }
+    .bp-home-cat-card-initial {
+      font-family: var(--font-display);
+      font-size: 32px;
+      color: var(--theme-accent);
+      opacity: 0.6;
+    }
+    .bp-home-cat-card-body { padding: 10px 12px 12px; }
+    .bp-home-cat-card-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      line-height: 1.25;
+      margin-bottom: 3px;
+    }
+    .bp-home-cat-card-count {
+      font-size: 11px;
+      color: var(--color-text-muted);
+    }
 
     /* Contact 2×2 icon grid */
     .bp-supplier-contact-grid {
@@ -477,7 +582,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
 
     @media (max-width: 600px) {
       .bp-supplier-contact-grid { grid-template-columns: 1fr; }
-      .bp-supplier-name { font-size: 24px; }
+      .bp-home-cat-grid { grid-template-columns: repeat(2, 1fr); }
+      .bp-supplier-name { font-size: 18px; }
+    }
+    @media (max-width: 420px) {
+      .bp-home-cat-grid { grid-template-columns: 1fr; }
     }
 
   `]
@@ -516,6 +625,17 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   // Supplier edit drawer state.
   showSupplierDrawer = false;
+
+  // Home tab — subcategory cards grouped by parent. Built from items'
+  // category_ids merged with the full catalogue category hierarchy so
+  // each section can show its parent name as a header.
+  homeCategoryGroups: Array<{
+    parentName: string;
+    subcategories: CategoryInfo[];
+  }> = [];
+  /** Full catalogue category hierarchy from CategoryService — only used
+      on the Home tab to resolve parent_id chains for the grouped cards. */
+  private allCatalogueCategories: Category[] = [];
   /** Seed values passed to the drawer in add mode. Computed from the
       catalogue-grid's current category filter on each Add click so the
       drawer lands pre-populated with the user's contextual view. */
@@ -529,6 +649,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private projectSvc: ProjectService,
     private favSvc: FavouriteService,
     private orgSvc: OrgService,
+    private categorySvc: CategoryService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
     private msg: MessageService,
@@ -574,10 +695,21 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         this.catalogueItems = items || [];
         this.mapItems();
         this.buildCategories();
+        this.buildHomeCategoryGroups();
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
+    });
+
+    // Full catalogue category hierarchy — only needed by the Home tab to
+    // resolve parent_id chains for grouped subcategory cards.
+    this.categorySvc.getAll('catalogue').subscribe({
+      next: (cats: Category[]) => {
+        this.allCatalogueCategories = cats || [];
+        this.buildHomeCategoryGroups();
+        this.cdr.detectChanges();
+      }
     });
 
     this.favSvc.itemFavIds$.subscribe(ids => {
@@ -616,6 +748,67 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       map[key].count++;
     }
     this.categories = Object.values(map);
+  }
+
+  /** Build the Home tab's grouped subcategory cards.
+      For each item's category_id, resolve to its parent (or use itself if
+      top-level). Then group subcategories by parent name. Each group
+      renders as: parent header + a card per subcategory.
+      Skipped silently until BOTH items and the full category hierarchy
+      have loaded — buildHomeCategoryGroups() is called from both subscribe
+      blocks so it runs whichever arrives last. */
+  buildHomeCategoryGroups() {
+    if (!this.catalogueItems.length || !this.allCatalogueCategories.length) {
+      this.homeCategoryGroups = [];
+      return;
+    }
+
+    // First: per item.category_id → enriched subcategory CategoryInfo
+    // (with the full record's cover/description and a rolled-up count).
+    const subMap: Record<string, CategoryInfo> = {};
+    for (const item of this.catalogueItems) {
+      const id = item.category_id;
+      if (!id) continue;
+      if (!subMap[id]) {
+        const cat = this.allCatalogueCategories.find(c => c.id === id);
+        subMap[id] = {
+          id,
+          name: cat?.name || item.category_name || 'Other',
+          cover_image_url: cat?.cover_image_url,
+          icon_name: cat?.icon_name,
+          icon_color: cat?.icon_color,
+          tagline: cat?.tagline,
+          description: cat?.description,
+          parent_id: cat?.parent_id,
+          count: 0
+        };
+      }
+      subMap[id].count = (subMap[id].count || 0) + 1;
+    }
+
+    // Group by parent — items on a top-level category get themselves as
+    // both the parent header and the only card (rare but possible).
+    const groupMap: Record<string, { parentName: string; subcategories: CategoryInfo[] }> = {};
+    for (const sub of Object.values(subMap)) {
+      let parentId = sub.parent_id || sub.id;
+      let parentName = sub.name;
+      if (sub.parent_id) {
+        const parent = this.allCatalogueCategories.find(c => c.id === sub.parent_id);
+        if (parent) parentName = parent.name;
+      }
+      if (!groupMap[parentId]) {
+        groupMap[parentId] = { parentName, subcategories: [] };
+      }
+      groupMap[parentId].subcategories.push(sub);
+    }
+
+    // Sort: groups alphabetic by parent name; cards alphabetic by sub name.
+    const groups = Object.values(groupMap);
+    for (const g of groups) {
+      g.subcategories.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    groups.sort((a, b) => a.parentName.localeCompare(b.parentName));
+    this.homeCategoryGroups = groups;
   }
 
 
@@ -697,12 +890,14 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   onItemSaved(_item: Item) {
-    // Refresh the catalogue so the grid reflects the new/updated row.
+    // Refresh the catalogue so the grid AND the Home subcategory cards
+    // reflect the new/updated row.
     this.supplierSvc.getCatalogue(this.sid).subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
         this.buildCategories();
+        this.buildHomeCategoryGroups();
         this.cdr.detectChanges();
       }
     });
