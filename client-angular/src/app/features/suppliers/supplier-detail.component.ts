@@ -718,6 +718,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.categorySvc.getAll('catalogue').subscribe({
       next: (cats: Category[]) => {
         this.allCatalogueCategories = cats || [];
+        // Re-run buildCategories so the Store circle strip picks up the
+        // cover_image_url / logo_url / icon_name from the full records.
+        // (The items API only carries id + name, so the first call from
+        // the items subscribe builds bare entries.)
+        this.buildCategories();
         this.buildHomeCategoryGroups();
         this.cdr.detectChanges();
       }
@@ -752,11 +757,29 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   buildCategories() {
-    const map: Record<string, { id: string; name: string; count: number }> = {};
+    const map: Record<string, CategoryInfo> = {};
     for (const item of this.catalogueItems) {
       const key = item.category_id || 'other';
-      if (!map[key]) map[key] = { id: key, name: item.category_name || 'Other', count: 0 };
-      map[key].count++;
+      if (!map[key]) {
+        // Look up the full category record (loaded separately) so the
+        // circle strip in catalogue-grid can render cover/logo/icon
+        // exactly like the marketplace — items only carry id + name,
+        // so without this merge the circles render as bare initials.
+        const cat = this.allCatalogueCategories.find(c => c.id === key);
+        map[key] = {
+          id: key,
+          name: cat?.name || item.category_name || 'Other',
+          cover_image_url: cat?.cover_image_url,
+          logo_url: cat?.logo_url,
+          icon_name: cat?.icon_name,
+          icon_color: cat?.icon_color,
+          parent_id: cat?.parent_id,
+          tagline: cat?.tagline,
+          description: cat?.description,
+          count: 0
+        };
+      }
+      map[key].count = (map[key].count || 0) + 1;
     }
     this.categories = Object.values(map);
   }
