@@ -8,7 +8,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, Heart, ChevronRight, MapPin } from 'lucide-angular';
+import { LucideAngularModule, Heart, ChevronRight, MapPin, SquarePen } from 'lucide-angular';
 import { forkJoin } from 'rxjs';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -20,7 +20,8 @@ import { CodelistService } from '../../core/services/codelist.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { Project } from '../../models';
+import { ItemDrawerComponent } from '../../shared/components/item-drawer/item-drawer.component';
+import { Project, Item } from '../../models';
 
 @Component({
   selector: 'app-item-detail',
@@ -29,7 +30,7 @@ import { Project } from '../../models';
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent
+    GbpPipe, LoadingSpinnerComponent, ItemDrawerComponent
   ],
   providers: [MessageService],
   template: `
@@ -47,7 +48,13 @@ import { Project } from '../../models';
       </div>
 
       <!-- PARCHMENT HERO -->
+      <!-- TODO: gate the edit pencil on ownership once real auth lands
+           (currentUser.org_id === item.org_id). Currently unrestricted so
+           the drawer is reachable in dev. -->
       <div class="bp-item-hero">
+        <button class="bp-item-hero-edit" (click)="openEdit()" title="Edit item">
+          <lucide-icon name="square-pen" [size]="16"></lucide-icon>
+        </button>
         <div class="bp-item-hero-cat">{{ item.category_name }}</div>
         <h1 class="bp-item-hero-name">{{ item.name }}</h1>
       </div>
@@ -204,6 +211,14 @@ import { Project } from '../../models';
       </ng-template>
     </p-sidebar>
 
+    <!-- ITEM EDIT DRAWER -->
+    <app-item-drawer
+      [(visible)]="showItemDrawer"
+      [item]="editingItem"
+      (saved)="onItemSaved($event)"
+      (cancelled)="editingItem = null">
+    </app-item-drawer>
+
     <p-toast></p-toast>
     </div>
   `,
@@ -216,9 +231,18 @@ import { Project } from '../../models';
     .bp-hero-heart.active { color: #E11D48; }
 
     /* PARCHMENT HERO */
-    .bp-item-hero { background: var(--theme-bg); padding: 14px 16px 16px; border-bottom: 0.5px solid var(--theme-border); }
+    .bp-item-hero { background: var(--theme-bg); padding: 14px 16px 16px; border-bottom: 0.5px solid var(--theme-border); position: relative; }
     .bp-item-hero-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
-    .bp-item-hero-name { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; margin: 0; }
+    .bp-item-hero-name { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; margin: 0; padding-right: 40px; }
+    .bp-item-hero-edit {
+      position: absolute; top: 12px; right: 12px;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--color-surface); border: 0.5px solid var(--theme-border);
+      border-radius: 50%; cursor: pointer; color: var(--theme-accent);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-item-hero-edit:hover { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
 
     /* CONTENT */
     .bp-item-content { padding: 16px; }
@@ -282,6 +306,12 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
   quoteBrief = '';
   ballsBalance = 0;
   creditLabel = 'Ball';
+
+  // Item edit drawer state. editingItem is set to the current item when the
+  // pencil opens, null when closing. Mirrors the supplier-detail pattern.
+  showItemDrawer = false;
+  editingItem: Item | null = null;
+
   private itemId = '';
   private supplierId = '';
 
@@ -380,6 +410,26 @@ export class ItemDetailComponent implements OnInit, OnDestroy {
 
   openAddToProject() { this.showAddDrawer = true; }
   openQuote() { this.quoteBrief = ''; this.showQuoteDrawer = true; }
+
+  // ── Item edit drawer ─────────────────────────────────────────────────
+
+  openEdit() {
+    if (!this.item) return;
+    this.editingItem = this.item as Item;
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemSaved(updated: Item) {
+    // Merge the saved row over the current item, preserving joined fields
+    // (category_name, supplier_*) that the catalogue endpoint hydrates but
+    // item PUT doesn't return.
+    if (this.item && updated && updated.id === this.item.id) {
+      this.item = { ...this.item, ...updated };
+    }
+    this.editingItem = null;
+    this.cdr.detectChanges();
+  }
 
   addToProject() {
     if (!this.item || !this.selectedProjectId) {
