@@ -55,28 +55,39 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       </div>
 
       <!-- ═══ HOME TAB ════════════════════════════════════════════════
-           Profile page: cover, logo, description, contact card.
-           Edit pencil top-right (always visible in dev — TODO gate on
-           currentOrg.id === supplier.id when auth lands). -->
+           Approved design: full-width cover banner with rounded bottom +
+           edit pencil overlay, logo as <img> circle overlapping cover,
+           name + tagline, description, 2×2 contact icon grid.
+           TODO: gate the edit pencil on ownership once auth lands. -->
       <ng-container *ngIf="activeTab === 'home'">
-        <div class="bp-supplier-home">
 
-          <button class="bp-supplier-home-edit"
+        <!-- Cover banner — full width, rounded bottom corners, edit
+             pencil top-right. -->
+        <div class="bp-supplier-cover"
+             [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
+             [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
+          <button class="bp-supplier-cover-edit"
                   (click)="openSupplierEditDrawer()"
                   title="Edit supplier details">
             <lucide-icon name="square-pen" [size]="14"></lucide-icon>
           </button>
+        </div>
 
-          <!-- Cover image / logo / initials fallback -->
-          <div class="bp-supplier-cover"
-               [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-               [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-            <div class="bp-supplier-logo-wrap" *ngIf="supplier.logo_url || !supplier.cover_image_url">
-              <div class="bp-supplier-logo"
-                   [style.background-image]="supplier.logo_url ? 'url(' + supplier.logo_url + ')' : null"
-                   [class.bp-supplier-logo--initials]="!supplier.logo_url">
-                <span *ngIf="!supplier.logo_url">{{ supplier.name.charAt(0) }}</span>
-              </div>
+        <div class="bp-supplier-home">
+          <!-- Profile bar: logo circle overlapping cover bottom, name + tagline below -->
+          <div class="bp-supplier-profile">
+            <div class="bp-supplier-logo">
+              <img *ngIf="supplier.logo_url"
+                   [src]="supplier.logo_url"
+                   [alt]="supplier.name + ' logo'"
+                   class="bp-supplier-logo-img"/>
+              <span *ngIf="!supplier.logo_url" class="bp-supplier-logo-initial">
+                {{ supplier.name.charAt(0) }}
+              </span>
+            </div>
+            <h1 class="bp-supplier-name">{{ supplier.name }}</h1>
+            <div class="bp-supplier-tagline" *ngIf="supplierTagline()">
+              {{ supplierTagline() }}
             </div>
           </div>
 
@@ -86,44 +97,70 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
             No description yet.
           </p>
 
-          <!-- Contact card — two-column grid, skip null rows -->
-          <div class="bp-supplier-card" *ngIf="hasAnyContact()">
-            <div class="bp-supplier-row" *ngIf="supplier.address">
-              <span class="bp-supplier-row-label">Address</span>
-              <span class="bp-supplier-row-value">{{ supplier.address }}</span>
+          <!-- Contact 2×2 icon grid — each tile only renders when its
+               value is present. Address rolls in city + country so we
+               keep the grid at four tiles max. -->
+          <div class="bp-supplier-contact-grid" *ngIf="hasAnyContact()">
+            <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
+              <div class="bp-contact-tile-icon">
+                <lucide-icon name="map-pin" [size]="16"></lucide-icon>
+              </div>
+              <div class="bp-contact-tile-body">
+                <div class="bp-contact-tile-label">Address</div>
+                <div class="bp-contact-tile-value">
+                  <span *ngIf="supplier.address">{{ supplier.address }}</span>
+                  <span *ngIf="supplier.address && (supplier.city || supplier.country)"><br/></span>
+                  <span *ngIf="supplier.city">{{ supplier.city }}</span><span *ngIf="supplier.city && supplier.country">, </span><span *ngIf="supplier.country">{{ supplier.country }}</span>
+                </div>
+              </div>
             </div>
-            <div class="bp-supplier-row" *ngIf="supplier.city">
-              <span class="bp-supplier-row-label">City</span>
-              <span class="bp-supplier-row-value">{{ supplier.city }}</span>
-            </div>
-            <div class="bp-supplier-row" *ngIf="supplier.country">
-              <span class="bp-supplier-row-label">Country</span>
-              <span class="bp-supplier-row-value">{{ supplier.country }}</span>
-            </div>
-            <div class="bp-supplier-row" *ngIf="supplier.phone">
-              <span class="bp-supplier-row-label">Phone</span>
-              <a class="bp-supplier-row-value bp-supplier-link"
-                 [href]="'tel:' + supplier.phone">{{ supplier.phone }}</a>
-            </div>
-            <div class="bp-supplier-row" *ngIf="supplier.email">
-              <span class="bp-supplier-row-label">Email</span>
-              <a class="bp-supplier-row-value bp-supplier-link"
-                 [href]="'mailto:' + supplier.email">{{ supplier.email }}</a>
-            </div>
-            <div class="bp-supplier-row" *ngIf="supplier.website">
-              <span class="bp-supplier-row-label">Website</span>
-              <a class="bp-supplier-row-value bp-supplier-link"
-                 [href]="supplier.website" target="_blank" rel="noopener">{{ supplier.website }}</a>
-            </div>
-            <div class="bp-supplier-row">
-              <span class="bp-supplier-row-label">VAT</span>
-              <span class="bp-supplier-row-value">
-                <ng-container *ngIf="supplier.vat_registered">
-                  Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
-                </ng-container>
-                <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
-              </span>
-            </div>
+
+            <a class="bp-contact-tile bp-contact-tile--link"
+               *ngIf="supplier.phone"
+               [href]="'tel:' + supplier.phone">
+              <div class="bp-contact-tile-icon">
+                <lucide-icon name="phone" [size]="16"></lucide-icon>
+              </div>
+              <div class="bp-contact-tile-body">
+                <div class="bp-contact-tile-label">Phone</div>
+                <div class="bp-contact-tile-value">{{ supplier.phone }}</div>
+              </div>
+            </a>
+
+            <a class="bp-contact-tile bp-contact-tile--link"
+               *ngIf="supplier.email"
+               [href]="'mailto:' + supplier.email">
+              <div class="bp-contact-tile-icon">
+                <lucide-icon name="mail" [size]="16"></lucide-icon>
+              </div>
+              <div class="bp-contact-tile-body">
+                <div class="bp-contact-tile-label">Email</div>
+                <div class="bp-contact-tile-value">{{ supplier.email }}</div>
+              </div>
+            </a>
+
+            <a class="bp-contact-tile bp-contact-tile--link"
+               *ngIf="supplier.website"
+               [href]="supplier.website" target="_blank" rel="noopener">
+              <div class="bp-contact-tile-icon">
+                <lucide-icon name="globe" [size]="16"></lucide-icon>
+              </div>
+              <div class="bp-contact-tile-body">
+                <div class="bp-contact-tile-label">Website</div>
+                <div class="bp-contact-tile-value">{{ supplier.website }}</div>
+              </div>
+            </a>
+          </div>
+
+          <!-- VAT as a small line below the grid — not prominent enough
+               to deserve its own contact tile. -->
+          <div class="bp-supplier-vat"
+               *ngIf="supplier.vat_registered || supplier.vat_number">
+            VAT
+            <ng-container *ngIf="supplier.vat_registered">
+              Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
+            </ng-container>
+            <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
           </div>
         </div>
 
@@ -330,102 +367,167 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     }
 
     /* ── HOME TAB ───────────────────────────────────────────────────── */
-    .bp-supplier-home {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 28px;
-      position: relative;
-    }
-    .bp-supplier-home-edit {
-      position: absolute; top: 20px; right: 20px;
-      width: 32px; height: 32px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--color-surface); border: 0.5px solid var(--theme-border);
-      border-radius: 50%; cursor: pointer; color: var(--theme-accent);
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      z-index: 2;
-    }
-    .bp-supplier-home-edit:hover {
-      background: var(--theme-accent); border-color: var(--theme-accent);
-      color: var(--color-surface);
-    }
 
+    /* Full-width cover banner with rounded bottom corners. Edit pencil
+       sits absolute top-right of the cover (not the page). */
     .bp-supplier-cover {
       position: relative;
+      width: 100%;
       height: 200px;
-      border-radius: 12px;
+      border-radius: 0 0 16px 16px;
       background-size: cover;
       background-position: center;
-      border: 0.5px solid var(--color-border);
-      margin-bottom: 48px;
     }
     .bp-supplier-cover--empty {
       background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
     }
-    .bp-supplier-logo-wrap {
-      position: absolute;
-      left: 24px;
-      bottom: -32px;
+    .bp-supplier-cover-edit {
+      position: absolute; top: 14px; right: 14px;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--color-surface);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--theme-accent);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      z-index: 2;
+    }
+    .bp-supplier-cover-edit:hover {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: var(--color-surface);
+    }
+
+    .bp-supplier-home {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 28px 32px;
+    }
+
+    /* Profile bar — logo circle overlaps the cover bottom by ~half its
+       height; name + tagline sit below. */
+    .bp-supplier-profile {
+      margin-top: -40px;
+      margin-bottom: 20px;
+      text-align: center;
     }
     .bp-supplier-logo {
       width: 80px; height: 80px;
       border-radius: 50%;
-      /* Logo display — use contain + no-repeat so vector marks and tight
-         crops sit properly within the circle. White inset background gives
-         the same "padding" feel the spec called out without needing to
-         swap to an <img> element. */
-      background-size: 64%;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-color: var(--color-surface);
+      background: var(--color-surface);
       border: 3px solid var(--color-surface);
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      display: flex; align-items: center; justify-content: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .bp-supplier-logo-img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      padding: 8px;
+      background: var(--color-surface);
+      box-sizing: border-box;
+    }
+    .bp-supplier-logo-initial {
       color: var(--theme-accent);
       font-family: var(--font-display);
       font-size: 32px;
       font-weight: 400;
+      background: var(--theme-bg);
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
     }
-    .bp-supplier-logo--initials {
-      /* No image — fall back to the parchment ring + initial. */
-      background-color: var(--theme-bg);
+    .bp-supplier-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      margin: 0 0 4px;
+      line-height: 1.2;
+    }
+    .bp-supplier-tagline {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
     }
 
+    /* Description */
     .bp-supplier-desc {
       font-size: 14px;
       line-height: 1.6;
       color: var(--color-text-primary);
-      margin: 0 0 20px;
+      margin: 16px 0 24px;
       white-space: pre-wrap;
+      text-align: left;
     }
     .bp-supplier-desc--muted { color: var(--color-text-muted); font-style: italic; }
 
-    .bp-supplier-card {
+    /* Contact 2×2 icon grid */
+    .bp-supplier-contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .bp-contact-tile {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
       background: var(--theme-bg);
       border: 0.5px solid var(--theme-border);
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .bp-supplier-row {
-      display: grid;
-      grid-template-columns: 100px 1fr;
-      gap: 12px;
-      padding: 8px 0;
-      font-size: 13px;
-      border-bottom: 0.5px solid var(--theme-border);
+    .bp-contact-tile--link { cursor: pointer; }
+    .bp-contact-tile--link:hover {
+      border-color: var(--theme-accent);
+      background: var(--color-surface);
     }
-    .bp-supplier-row:last-child { border-bottom: none; }
-    .bp-supplier-row-label {
-      color: var(--color-text-muted);
-      font-size: 11px;
-      font-weight: 500;
+    .bp-contact-tile-icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 0.5px solid var(--theme-border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      flex-shrink: 0;
+    }
+    .bp-contact-tile-body { flex: 1; min-width: 0; }
+    .bp-contact-tile-label {
+      font-size: 10px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding-top: 2px;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
     }
-    .bp-supplier-row-value { color: var(--color-text-primary); word-break: break-word; }
-    .bp-supplier-link { color: var(--theme-accent); text-decoration: none; }
-    .bp-supplier-link:hover { text-decoration: underline; }
+    .bp-contact-tile-value {
+      font-size: 13px;
+      color: var(--color-text-primary);
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .bp-supplier-vat {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 14px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .bp-supplier-contact-grid { grid-template-columns: 1fr; }
+      .bp-supplier-name { font-size: 24px; }
+    }
 
     /* ── STORE TAB ─ Level 1 (category cards) ───────────────────────── */
     .bp-store-cards-grid {
@@ -710,57 +812,43 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   // ── Store landing cards ──────────────────────────────────────────────
 
-  /** Resolve an item's top-level ancestor category id by walking up
-      parent_id chains through allCatalogueCategories. Items can be on a
-      leaf subcategory (e.g. "Sit-down Dining" → parent "Catering"); the
-      Store landing only shows top-level cards, so subcategory items roll
-      up to their root. */
-  private topLevelAncestorId(categoryId: string | null | undefined): string | null {
-    if (!categoryId) return null;
-    if (!this.allCatalogueCategories.length) return categoryId;
-    let current = this.allCatalogueCategories.find(c => c.id === categoryId);
-    // Defensive cap on walk depth — Ballpark uses 1 level today but guard
-    // against accidental cycles or future deeper trees.
-    let guard = 6;
-    while (current && current.parent_id && guard-- > 0) {
-      current = this.allCatalogueCategories.find(c => c.id === current!.parent_id);
-    }
-    return current?.id || categoryId;
-  }
-
-  /** Build supplierCategories: one card per top-level category that has
-      at least one item in this supplier's catalogue. Item counts are
-      rolled up across subcategories so a supplier with 6 items spread
-      across Catering > Sit-down Dining + Catering > Buffet sees a single
-      "Catering · 6 items" card. */
+  /** Build supplierCategories: one card per category that the supplier
+      has items in, using items.category_id directly (no roll-up).
+      Subcategories are the meaningful unit — items live on leaves like
+      "Sit-Down Dining", "Bowl Food & Sharing", etc. The full category
+      record (cover image, description, tagline) is merged in from
+      allCatalogueCategories so cards can show rich content; if the
+      catalogue list hasn't loaded yet, we still build minimal cards
+      from item.category_name so the page isn't empty. */
   buildSupplierCategoryCards() {
-    if (!this.catalogueItems.length || !this.allCatalogueCategories.length) {
+    if (!this.catalogueItems.length) {
       this.supplierCategories = [];
       return;
     }
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { count: number; name: string }> = {};
     for (const item of this.catalogueItems) {
-      const topId = this.topLevelAncestorId(item.category_id);
-      if (!topId) continue;
-      counts[topId] = (counts[topId] || 0) + 1;
+      const id = item.category_id;
+      if (!id) continue;
+      if (!counts[id]) counts[id] = { count: 0, name: item.category_name || '' };
+      counts[id].count++;
     }
     const cards: CategoryInfo[] = [];
-    for (const [id, count] of Object.entries(counts)) {
+    for (const [id, { count, name: fallbackName }] of Object.entries(counts)) {
       const cat = this.allCatalogueCategories.find(c => c.id === id);
-      if (!cat) continue;
       cards.push({
-        id: cat.id,
-        name: cat.name,
-        cover_image_url: cat.cover_image_url,
-        icon_name: cat.icon_name,
-        icon_color: cat.icon_color,
-        tagline: cat.tagline,
-        description: cat.description,
-        parent_id: cat.parent_id,
+        id,
+        // Prefer the full record's name (canonical capitalisation), fall
+        // back to the items-join name while categories are still loading.
+        name: cat?.name || fallbackName || 'Other',
+        cover_image_url: cat?.cover_image_url,
+        icon_name: cat?.icon_name,
+        icon_color: cat?.icon_color,
+        tagline: cat?.tagline,
+        description: cat?.description,
+        parent_id: cat?.parent_id,
         count
       });
     }
-    // Sort by sort_order if available, then alphabetic.
     cards.sort((a, b) => a.name.localeCompare(b.name));
     this.supplierCategories = cards;
   }
@@ -923,16 +1011,22 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   // ── Home tab + supplier edit drawer ──────────────────────────────────
 
-  /** Does this supplier have at least one contact-card row worth showing?
-      Address/city/country/phone/email/website are optional; VAT always
-      shows (Registered / Not registered). */
+  /** Does the supplier have at least one tile to render in the contact
+      grid? VAT lives on its own line below now, so it doesn't gate this. */
   hasAnyContact(): boolean {
     const s = this.supplier;
     if (!s) return false;
-    return !!(s.address || s.city || s.country || s.phone || s.email || s.website) || true;
-    // Note: returning true unconditionally because the VAT row always
-    // renders. The early checks remain so a future caller can flip the
-    // VAT-always-shown rule by dropping the `|| true`.
+    return !!(s.address || s.city || s.country || s.phone || s.email || s.website);
+  }
+
+  /** Tagline shown under the supplier name in the profile bar. Currently
+      derives from city + country since `Org.tagline` doesn't exist yet —
+      can swap to a real field when one's added to the org model. */
+  supplierTagline(): string {
+    const s = this.supplier;
+    if (!s) return '';
+    if (s.city && s.country) return `${s.city}, ${s.country}`;
+    return s.city || s.country || '';
   }
 
   openSupplierEditDrawer() {
