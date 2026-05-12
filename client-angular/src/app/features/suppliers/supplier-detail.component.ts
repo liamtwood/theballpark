@@ -19,7 +19,8 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
-import { Project, CatalogueEntity, CategoryInfo } from '../../models';
+import { ItemDrawerComponent } from '../../shared/components/item-drawer/item-drawer.component';
+import { Project, CatalogueEntity, CategoryInfo, Item } from '../../models';
 
 @Component({
   selector: 'app-supplier-detail',
@@ -28,7 +29,8 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent
+    GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
+    ItemDrawerComponent
   ],
   providers: [MessageService],
   template: `
@@ -36,13 +38,21 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
+      <!-- Own-supplier action row — only shown when current org owns this catalogue -->
+      <div class="bp-own-actions" *ngIf="ownsCatalogue">
+        <p-button label="Add item" icon="pi pi-plus"
+          styleClass="p-button-outlined bp-section-add-btn"
+          (onClick)="openAddItemDrawer()">
+        </p-button>
+      </div>
+
       <!-- SUPPLIER CATALOGUE via reusable grid -->
       <app-catalogue-grid
         [entities]="itemEntities"
         [categories]="categories"
         entityType="item"
         entityLabel="item"
-        [actionLabel]="'View →'"
+        [actionLabel]="ownsCatalogue ? 'Edit →' : 'View →'"
         [favouriteIds]="itemFavIds"
         [showEdit]="true"
         [showFavourite]="true"
@@ -56,6 +66,14 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
         (actionClicked)="onAction($event)"
         (backClicked)="goBack()">
       </app-catalogue-grid>
+
+      <!-- Item add/edit drawer — mounted at page level so it works regardless of grid state -->
+      <app-item-drawer *ngIf="ownsCatalogue"
+        [(visible)]="showItemDrawer"
+        [item]="editingItem"
+        (saved)="onItemSaved($event)"
+        (cancelled)="onItemDrawerCancelled()">
+      </app-item-drawer>
 
       <!-- Image upload panel for items -->
       <app-image-upload-panel
@@ -133,6 +151,7 @@ import { Project, CatalogueEntity, CategoryInfo } from '../../models';
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
     :host ::ng-deep .bp-drawer-bottom { border-radius: 16px 16px 0 0; }
+    .bp-own-actions { display: flex; justify-content: flex-end; padding: 12px 28px 0; }
   `]
 })
 export class SupplierDetailComponent implements OnInit, OnDestroy {
@@ -159,6 +178,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   uploadCoverUrl = '';
   uploadImageDisplay: 'cover' | 'contain' = 'cover';
 
+  // Item add/edit drawer — only used when current org owns the catalogue
+  ownsCatalogue = false;
+  showItemDrawer = false;
+  editingItem: Item | null = null;
+
   constructor(
     private route: ActivatedRoute,
     private supplierSvc: SupplierService,
@@ -180,7 +204,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) { this.ballsBalance = org.balls_balance || 0; this.cdr.detectChanges(); }
+      if (org) {
+        this.ballsBalance = org.balls_balance || 0;
+        this.ownsCatalogue = org.id === this.sid;
+        this.cdr.detectChanges();
+      }
     });
 
     this.projectSvc.getAll().subscribe({
@@ -270,9 +298,48 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   onAction(entity: CatalogueEntity) {
+    // Own-supplier view: tapping the row CTA opens the edit drawer pre-populated.
+    // Edit-pencil-on-shared-item-detail is the eventual trigger (deferred until
+    // the shared item-detail component lands); for now we re-use actionClicked.
+    if (this.ownsCatalogue) {
+      const raw = this.catalogueItems.find(i => i.id === entity.id);
+      if (raw) this.openEditItemDrawer(raw as Item);
+      return;
+    }
     const params: any = {};
     if (this.selectedProjectId) params['projectId'] = this.selectedProjectId;
     this.router.navigate(['/suppliers', this.sid, 'items', entity.id], { queryParams: params });
+  }
+
+  // ── Item drawer wiring ────────────────────────────────────────────────
+
+  openAddItemDrawer() {
+    this.editingItem = null;
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  openEditItemDrawer(item: Item) {
+    this.editingItem = item;
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemSaved(_item: Item) {
+    // Refresh the catalogue so the grid reflects the new/updated row.
+    this.supplierSvc.getCatalogue(this.sid).subscribe({
+      next: (items: any[]) => {
+        this.catalogueItems = items || [];
+        this.mapItems();
+        this.buildCategories();
+        this.cdr.detectChanges();
+      }
+    });
+    this.editingItem = null;
+  }
+
+  onItemDrawerCancelled() {
+    this.editingItem = null;
   }
 
   onItemImageUpdated(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }) {

@@ -78,40 +78,62 @@ async function getById(id) {
 
 async function create(data) {
   const {
-    org_id, category_id, name, description, unit,
-    base_price, min_price, max_price, lead_time_days,
-    coverage_area, tier, tags, image_url
+    org_id, category_id, name, description,
+    unit, time_unit, base_price, min_price, max_price,
+    lead_time_days, coverage_area, tier, tags,
+    image_url, image_display, external_url,
+    derived_from_id, parent_item_id, attributes
   } = data;
   const result = await pool.query(
     `INSERT INTO items
-      (org_id, category_id, name, description, unit, base_price, min_price,
-       max_price, lead_time_days, coverage_area, tier, tags, image_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [org_id, category_id, name, description, unit, base_price, min_price,
-     max_price, lead_time_days, coverage_area, tier, tags || [], image_url]
+      (org_id, category_id, name, description,
+       unit, time_unit, base_price, min_price, max_price,
+       lead_time_days, coverage_area, tier, tags,
+       image_url, image_display, external_url,
+       derived_from_id, parent_item_id, attributes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+     RETURNING *`,
+    [org_id, category_id, name, description,
+     unit, time_unit || null, base_price, min_price, max_price,
+     lead_time_days, coverage_area, tier, tags || [],
+     image_url, image_display || 'cover', external_url || null,
+     derived_from_id || null, parent_item_id || null, attributes || {}]
   );
   return result.rows[0];
 }
 
+// Columns the caller is allowed to update through this endpoint.
+// Order does not matter; this is just the whitelist.
+const UPDATABLE_COLS = [
+  'org_id', 'category_id', 'name', 'description',
+  'unit', 'time_unit', 'base_price', 'min_price', 'max_price',
+  'lead_time_days', 'coverage_area', 'tier', 'tags',
+  'image_url', 'image_display', 'external_url',
+  'derived_from_id', 'parent_item_id', 'attributes'
+];
+
 async function update(id, data) {
-  const {
-    org_id, category_id, name, description, unit,
-    base_price, min_price, max_price, lead_time_days,
-    coverage_area, tier, tags, image_url, image_display
-  } = data;
+  // Dynamic SET — only touch columns the caller actually sent. This means
+  // `null` *is* a meaningful value (used by the drawer to clear an optional
+  // FK like derived_from_id) while an omitted key leaves the column alone.
+  const sets = [];
+  const params = [];
+  for (const col of UPDATABLE_COLS) {
+    if (Object.prototype.hasOwnProperty.call(data, col)) {
+      params.push(data[col]);
+      sets.push(`${col} = $${params.length}`);
+    }
+  }
+  if (sets.length === 0) {
+    // No updatable keys — return the existing row so callers get a sensible
+    // result instead of NULL.
+    return getById(id);
+  }
+  sets.push('updated_at = NOW()');
+  params.push(id);
   const result = await pool.query(
-    `UPDATE items SET
-      org_id = COALESCE($1, org_id), category_id = COALESCE($2, category_id),
-      name = COALESCE($3, name), description = COALESCE($4, description),
-      unit = COALESCE($5, unit), base_price = COALESCE($6, base_price),
-      min_price = COALESCE($7, min_price), max_price = COALESCE($8, max_price),
-      lead_time_days = COALESCE($9, lead_time_days), coverage_area = COALESCE($10, coverage_area),
-      tier = COALESCE($11, tier), tags = COALESCE($12, tags),
-      image_url = COALESCE($13, image_url), image_display = COALESCE($14, image_display),
-      updated_at = NOW()
-     WHERE id = $15 RETURNING *`,
-    [org_id, category_id, name, description, unit, base_price, min_price,
-     max_price, lead_time_days, coverage_area, tier, tags, image_url, image_display, id]
+    `UPDATE items SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
+    params
   );
   return result.rows[0] || null;
 }

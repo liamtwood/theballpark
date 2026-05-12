@@ -157,6 +157,9 @@ const migrate = async () => {
         description TEXT,
         unit VARCHAR(50),
         time_unit VARCHAR(50),
+        derived_from_id UUID REFERENCES preview.items(id),
+        parent_item_id UUID REFERENCES preview.items(id),
+        attributes JSONB DEFAULT '{}',
         base_price NUMERIC(12,2),
         min_price NUMERIC(12,2),
         max_price NUMERIC(12,2),
@@ -338,14 +341,29 @@ const migrate = async () => {
 
     // ── 3b. Idempotent column additions ──────────────────────────────────
     // items.time_unit lets a row store a rental cadence (e.g. unit='pallet',
-    // time_unit='month' → "per pallet / month"). Applied to all three env
-    // schemas so existing tables pick it up on re-run.
+    // time_unit='month' → "per pallet / month").
+    // items.derived_from_id / parent_item_id support the lineage drawer
+    // section — "born from" + "variant of a product family" — both FK self.
+    // items.attributes is a JSONB bag for future per-item metadata.
+    // Applied to all three env schemas so existing tables pick changes up.
     await client.query(`
-      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
-      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
-      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS time_unit VARCHAR(50);
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES public.items(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES preview.items(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES master.items(id);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES public.items(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES preview.items(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES master.items(id);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
     `);
-    console.log('  items.time_unit ensured on public/preview/master.');
+    console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes).');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
