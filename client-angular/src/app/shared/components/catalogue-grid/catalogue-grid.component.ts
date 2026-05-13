@@ -55,8 +55,11 @@ export type DetailMode = 'inline' | 'drawer';
       </button>
     </div>
 
-    <!-- BREADCRUMB (when drilled into a category) -->
-    <div class="bp-breadcrumb" *ngIf="drilledCategory">
+    <!-- BREADCRUMB (when drilled into a category).
+         Hidden in project mode — the strip stays on top-level
+         categories there (no drill navigation to summarise),
+         so the crumb would read as noise. -->
+    <div class="bp-breadcrumb" *ngIf="drilledCategory && !projectContext">
       <button class="bp-breadcrumb-link" (click)="drillOut()">All Categories</button>
       <lucide-icon name="chevron-right" [size]="12" class="bp-breadcrumb-sep"></lucide-icon>
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
@@ -196,7 +199,9 @@ export type DetailMode = 'inline' | 'drawer';
 
         <!-- BREADCRUMB — always visible. Parent segments are clickable
              when drilled and reset to top via onBreadcrumbBack(). -->
-        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot">
+        <!-- Main-column breadcrumb — hidden in project mode for the same
+             reason as the top one (no drill nav, so the crumb is noise). -->
+        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext">
           <ng-container *ngIf="!isCrumbDrilled; else crumbsDrilled">
             <span class="bp-crumb-root">{{ resolvedBreadcrumbRoot }}</span>
             <span class="bp-crumb-sep">›</span>
