@@ -4,6 +4,12 @@ const pool = require('../db/pool');
 // recorded on a project before any pricing exists. See v1.13 schema.
 
 async function getByProject(projectId) {
+  // v1.18: also return `i.category_id AS item_category_id` so the Build
+  // tab can bucket project_items under a project_category whose category
+  // matches the item's category — even when an older project_items row
+  // was created without project_category_id set (the v1.17 catalogue-grid
+  // detail-panel + button didn't pass it through). New writes still go
+  // through add() with project_category_id when the caller has it.
   const result = await pool.query(
     `SELECT pi.*,
             i.name,
@@ -12,7 +18,8 @@ async function getByProject(projectId) {
             i.time_unit,
             i.image_url,
             i.tier,
-            c.name AS category_name
+            i.category_id     AS item_category_id,
+            c.name            AS category_name
        FROM project_items pi
        LEFT JOIN items      i ON pi.item_id     = i.id
        LEFT JOIN categories c ON i.category_id  = c.id

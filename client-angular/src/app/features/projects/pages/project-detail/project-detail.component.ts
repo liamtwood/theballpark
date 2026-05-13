@@ -42,12 +42,14 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   loading = true;
   pid = '';
 
+  // v1.18: Build/Estimate merged. Tab bar simplified to:
+  //   Event · Brief · Marketplace · Build · Messages
+  // (Estimate dropped — its summary is now the right column of Build.)
   private readonly PROJECT_TABS = [
     { label: 'Event',       path: '' },  // path set dynamically with pid
     { label: 'Brief',       path: '' },
     { label: 'Marketplace', path: '' },
     { label: 'Build',       path: '' },
-    { label: 'Estimate',    path: '' },
     { label: 'Messages',    path: '' },
   ];
 
@@ -78,16 +80,16 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // Marketplace label points at /build (catalogue-grid). Build label
-    // points at /supplier (legacy vendor selection / request quotes).
-    // Slugs unchanged per the "no other changes" instruction; only
-    // labels + tab order shifted.
+    // v1.18 tab bar — slugs now match their labels semantically:
+    //   Marketplace → /marketplace (catalogue-grid in project context)
+    //   Build       → /build       (compressed cards + estimate summary)
+    // The legacy /supplier (vendor selection) and /estimate routes are
+    // kept for safety but no longer surfaced in the bar.
     const tabs = [
       { label: 'Event',       path: `/projects/${this.pid}/event` },
       { label: 'Brief',       path: `/projects/${this.pid}/brief` },
-      { label: 'Marketplace', path: `/projects/${this.pid}/build` },
-      { label: 'Build',       path: `/projects/${this.pid}/supplier` },
-      { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
+      { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
+      { label: 'Build',       path: `/projects/${this.pid}/build` },
       { label: 'Messages',    path: `/projects/${this.pid}/messages` },
     ];
 
