@@ -2,7 +2,7 @@ import {
   Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -78,7 +78,9 @@ import {
       (viewRequested)="onViewItem($event)"
       (itemEditRequested)="onItemEditRequested($event)"
       (addToProject)="onAddToProject($event)"
-      (removeFromProject)="onRemoveFromProject($event)">
+      (removeFromProject)="onRemoveFromProject($event)"
+      (briefUpdated)="onContextBriefUpdated($event)"
+      (openEstimate)="onOpenEstimate()">
     </app-catalogue-grid>
 
     <!-- Item drawer — view (read-only) and edit (own-org items only).
@@ -123,6 +125,7 @@ export class MarketplaceComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private projectSvc: ProjectService,
     private projectItemSvc: ProjectItemService,
     private categorySvc: CategoryService,
@@ -294,6 +297,29 @@ export class MarketplaceComponent implements OnInit {
         this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
       }
     });
+  }
+
+  // ── v1.22 context-panel events ───────────────────────────────────────
+
+  /** Inline brief edit on the category-context-panel — persists the
+      new requirement_brief on project_categories. Same endpoint the
+      Brief tab uses. */
+  onContextBriefUpdated(e: { categoryId: string; brief: string }) {
+    this.projectSvc.upsertCategory(this.projectId, e.categoryId, { requirement_brief: e.brief }).subscribe({
+      next: () => {
+        this.refreshProjectCategories();
+        this.msg.add({ severity: 'success', summary: 'Brief saved', life: 1500 });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
+      }
+    });
+  }
+
+  /** "Open estimate →" link in the panel footer → route to the
+      Build/Estimate tab. Post-v1.18b that's /estimate. */
+  onOpenEstimate() {
+    this.router.navigate(['/projects', this.projectId, 'estimate']);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────

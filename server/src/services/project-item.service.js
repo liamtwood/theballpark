@@ -10,6 +10,11 @@ async function getByProject(projectId) {
   // was created without project_category_id set (the v1.17 catalogue-grid
   // detail-panel + button didn't pass it through). New writes still go
   // through add() with project_category_id when the caller has it.
+  //
+  // v1.22: also return i.lead_time_days and the joined supplier (org)
+  // name. The redesigned category-context-panel surfaces both — the
+  // "longest lead" summary and the per-row "{supplier} · {N} days
+  // lead" subtitle.
   const result = await pool.query(
     `SELECT pi.*,
             i.name,
@@ -18,11 +23,14 @@ async function getByProject(projectId) {
             i.time_unit,
             i.image_url,
             i.tier,
+            i.lead_time_days,
             i.category_id     AS item_category_id,
-            c.name            AS category_name
+            c.name            AS category_name,
+            o.name            AS supplier_name
        FROM project_items pi
        LEFT JOIN items      i ON pi.item_id     = i.id
        LEFT JOIN categories c ON i.category_id  = c.id
+       LEFT JOIN orgs       o ON i.org_id       = o.id
       WHERE pi.project_id = $1
       ORDER BY pi.created_at ASC`,
     [projectId]

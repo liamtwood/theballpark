@@ -601,7 +601,9 @@ export type DetailMode = 'inline' | 'drawer';
              Renders whenever a specific category is active and no item
              is selected — in all three contexts. Replaces both the
              previous per-category brief card (project mode) and the
-             marketplace category description card. -->
+             marketplace category description card.
+             v1.22: passes projectTotal (computed across ALL categories)
+             plus the briefUpdated and openEstimate events through. -->
         <ng-container *ngIf="!useCustomDetail && !selectedEntity && currentCategoryInfo as cat">
           <app-category-context-panel
             [category]="cat"
@@ -612,10 +614,13 @@ export type DetailMode = 'inline' | 'drawer';
             [likedItems]="getCategoryLikedItems()"
             [context]="panelContext"
             [categoryTotal]="getCategoryTotal()"
+            [projectTotal]="getProjectTotal()"
             (itemClicked)="onContextItemClicked($event)"
             (itemRemoved)="onContextItemRemoved($event)"
             (itemMoved)="onContextItemMoved($event)"
-            (browseClicked)="onContextBrowseClicked()">
+            (browseClicked)="onContextBrowseClicked()"
+            (briefUpdated)="onContextBriefUpdated($event)"
+            (openEstimate)="onContextOpenEstimate()">
           </app-category-context-panel>
         </ng-container>
 
@@ -1192,6 +1197,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Output() addToProject = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
   @Output() removeFromProject = new EventEmitter<{ entity: CatalogueEntity }>();
   @Output() viewRequested = new EventEmitter<CatalogueEntity>();
+
+  /** v1.22 — context panel events.
+        briefUpdated → parent persists the new requirement_brief via
+                       ProjectService.upsertCategory().
+        openEstimate → parent navigates to the Build/Estimate tab.
+      Both are simple pass-throughs from the category-context-panel. */
+  @Output() briefUpdated = new EventEmitter<{ categoryId: string; brief: string }>();
+  @Output() openEstimate = new EventEmitter<void>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
@@ -1771,6 +1784,16 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       .reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
   }
 
+  /** v1.22: sum of selected items' base_price across ALL categories
+      in the project. Different from getCategoryTotal() which scopes
+      to the current category. The redesigned panel shows this in the
+      pinned footer ("Project total £X"). */
+  getProjectTotal(): number {
+    return this.projectItems
+      .filter(pi => pi.selection_type === 'selected')
+      .reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+  }
+
   private itemMatchesCategory(pi: ProjectItem, catId: string): boolean {
     if (pi.item_category_id === catId) return true;
     // Walk up the parent chain — items in subcategories of `catId`
@@ -1822,6 +1845,22 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       needed. */
   onContextBrowseClicked() {
     this.drillOut();
+  }
+
+  /** v1.22 — inline brief edit on the context panel. The parent
+      (marketplace.component.ts) persists via upsertCategory(); we
+      include the active category_id in the emitted payload so the
+      parent doesn't need to track it separately. */
+  onContextBriefUpdated(brief: string) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.briefUpdated.emit({ categoryId: catId, brief });
+  }
+
+  /** v1.22 — "Open estimate →" link click. Bubble to the parent which
+      handles routing (the Build/Estimate tab path can vary per page). */
+  onContextOpenEstimate() {
+    this.openEstimate.emit();
   }
 
   /** v1.20: convenience getter — show the in-grid + / ♡ project-cart
