@@ -129,26 +129,29 @@ type CardTab = 'items' | 'brief';
                                [name]="row.category_icon_name"
                                [size]="18"></lucide-icon>
                   <span *ngIf="!row.category_icon_name" class="bp-build-card-initial">
-                    {{ (row.category_name || '?').charAt(0) }}
+                    {{ rowInitial(row) }}
                   </span>
                 </span>
 
                 <div class="bp-build-card-body">
-                  <div class="bp-build-card-name">{{ row.category_name || row.name || '—' }}</div>
+                  <div class="bp-build-card-name">{{ rowName(row) }}</div>
                   <div class="bp-build-card-meta">
                     <ng-container *ngIf="row.selectedCount || row.likedCount; else noItems">
-                      <span *ngIf="row.selectedCount">
-                        {{ row.selectedCount }} selected
+                      <!-- v1.18b: icon-based counts (✓ N  ♡ N) replace the
+                           wordier "N selected · N liked" pattern — more
+                           scannable per QC. -->
+                      <span *ngIf="row.selectedCount" class="bp-build-count">
+                        <lucide-icon name="check" [size]="11"></lucide-icon>
+                        {{ row.selectedCount }}
                       </span>
-                      <span *ngIf="row.selectedCount && row.likedCount" class="bp-build-card-sep">·</span>
-                      <span *ngIf="row.likedCount" class="bp-build-card-liked">
-                        {{ row.likedCount }} liked
+                      <span *ngIf="row.likedCount" class="bp-build-count bp-build-count--liked">
+                        <lucide-icon name="heart" [size]="11"></lucide-icon>
+                        {{ row.likedCount }}
                       </span>
                     </ng-container>
                     <ng-template #noItems>
                       <span class="bp-build-card-empty-text">No items yet</span>
                     </ng-template>
-                    <span class="bp-build-card-sep" *ngIf="row.selectedCount || row.likedCount">·</span>
                     <span class="bp-build-brief-dot"
                           [class.filled]="hasBrief(row)"
                           [title]="hasBrief(row) ? 'Brief written' : 'No brief yet'">
@@ -329,15 +332,21 @@ type CardTab = 'items' | 'brief';
           <aside class="bp-build-estimate">
             <div class="bp-build-est-title">Estimate</div>
 
-            <!-- Category cost rows -->
+            <!-- Category cost rows. Mirrors the compressed card's
+                 icon-then-name pattern; falls back to an initial letter
+                 when the category has no icon_name (matches Brief tab). -->
             <div class="bp-build-est-cats">
               <div *ngFor="let row of categoryRows; trackBy: trackByRowId"
                    class="bp-build-est-cat">
-                <lucide-icon *ngIf="row.category_icon_name"
-                             [name]="row.category_icon_name"
-                             [size]="13"
-                             class="bp-build-est-cat-icon"></lucide-icon>
-                <span class="bp-build-est-cat-name">{{ row.category_name || row.name }}</span>
+                <span class="bp-build-est-cat-icn">
+                  <lucide-icon *ngIf="row.category_icon_name"
+                               [name]="row.category_icon_name"
+                               [size]="13"></lucide-icon>
+                  <span *ngIf="!row.category_icon_name">{{ rowInitial(row) }}</span>
+                </span>
+                <span class="bp-build-est-cat-name" [title]="rowName(row)">
+                  {{ rowName(row) }}
+                </span>
                 <span class="bp-build-est-cat-cost"
                       [class.muted]="!row.selectedCost">
                   {{ row.selectedCost ? (row.selectedCost | gbp) : '—' }}
@@ -482,9 +491,11 @@ type CardTab = 'items' | 'brief';
     }
 
     /* ── TWO-COLUMN GRID ─────────────────────────────────────────── */
+    /* v1.18b: right column bumped 280→320 so category names breathe.
+       The estimate panel itself sets the same explicit width below. */
     .bp-build-grid {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 320px;
       gap: 24px;
       align-items: start;
     }
@@ -543,11 +554,20 @@ type CardTab = 'items' | 'brief';
       font-size: 11px;
       color: var(--color-text-muted);
       margin-top: 2px;
-      display: flex; align-items: center; gap: 5px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .bp-build-card-liked { color: #E11D48; }
+    /* v1.18b: icon-and-number count chips replace the "N selected · N liked"
+       text counts — more scannable. ✓ = selected (theme accent),
+       ♡ = liked (red). */
+    .bp-build-count {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-count--liked { color: var(--color-danger); }
     .bp-build-card-empty-text { font-style: italic; }
-    .bp-build-card-sep { color: var(--color-text-muted); }
     .bp-build-brief-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
@@ -760,10 +780,12 @@ type CardTab = 'items' | 'brief';
     }
 
     /* ── ESTIMATE SUMMARY PANEL ──────────────────────────────────── */
+    /* v1.18b: width matched to grid column (320px). Padding adjusted
+       so category names get more room before truncating. */
     .bp-build-estimate {
       position: sticky;
       top: 20px;
-      width: 280px;
+      width: 320px;
       padding: 16px 18px;
       border: 0.5px solid var(--color-border);
       border-radius: 10px;
@@ -776,19 +798,29 @@ type CardTab = 'items' | 'brief';
       color: var(--color-text-primary);
       margin-bottom: 12px;
     }
-    .bp-build-est-cats { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .bp-build-est-cats { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
     .bp-build-est-cat {
       display: grid;
-      grid-template-columns: 14px 1fr auto;
+      grid-template-columns: 18px 1fr auto;
       align-items: center;
       gap: 8px;
-      padding: 5px 0;
+      padding: 6px 0;
       font-size: 12px;
       color: var(--color-text-primary);
       border-bottom: 0.5px solid var(--color-border);
     }
     .bp-build-est-cat:last-child { border-bottom: none; }
-    .bp-build-est-cat-icon { color: var(--theme-accent); }
+    /* v1.18b: icon-or-initial container — keeps the column aligned
+       whether a category has icon_name or only an initial fallback. */
+    .bp-build-est-cat-icn {
+      width: 18px; height: 18px;
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 600;
+      flex-shrink: 0;
+    }
     .bp-build-est-cat-name {
       min-width: 0; overflow: hidden;
       text-overflow: ellipsis; white-space: nowrap;
@@ -990,7 +1022,13 @@ export class BuildComponent implements OnInit {
 
     forkJoin({
       project:        this.projectSvc.getById(pid),
-      projectCats:    this.projectCategorySvc.getByProject(pid),
+      // Use ProjectService.getCategories — it hits /projects/:pid/categories
+      // which calls the joined ProjectCategoryService.getByProject() on the
+      // server, returning category_name, category_icon_name, etc. The
+      // shorter projectCategorySvc.getByProject() goes via /project-categories?
+      // project_id=X which calls the un-joined getAll() and leaves the
+      // category fields undefined — that was the v1.18a "? icon" bug.
+      projectCats:    this.projectSvc.getCategories(pid),
       cart:           this.projectItemSvc.getByProject(pid),
       allCategories:  this.categorySvc.getAll('catalogue'),
       org:            this.orgSvc.getCurrentOrg()
@@ -1246,6 +1284,21 @@ export class BuildComponent implements OnInit {
   }
 
   // ── Display helpers ──────────────────────────────────────────────────
+
+  /** Best-available display name for a project_category row. Prefers the
+      joined categories.name (v1.18b: now reliably populated via the
+      /projects/:pid/categories endpoint), then the project_categories.name
+      column, then a generic fallback. Guarantees the user never sees a
+      bare "—" for a card title. */
+  rowName(row: BuildCategoryRow): string {
+    return (row.category_name?.trim() || row.name?.trim() || 'Uncategorised');
+  }
+
+  /** Single-letter initial for the estimate-panel icon column when a
+      category has no icon_name. Matches Brief tab's pattern. */
+  rowInitial(row: BuildCategoryRow): string {
+    return (this.rowName(row).charAt(0) || '?').toUpperCase();
+  }
 
   unitLabel(code: string | null | undefined): string {
     return code ? this.codelistSvc.getDisplay(code) : '';

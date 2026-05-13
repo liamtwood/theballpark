@@ -157,7 +157,10 @@
       "Bash(git -C /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d fetch origin)",
       "Bash(git -C /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d rebase origin/dev)",
       "Bash(git -C /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d stash -u)",
-      "Bash(git -C /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d stash pop)"
+      "Bash(git -C /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d stash pop)",
+      "Bash(git -C /c/projects/ballpark add server/src/db/seed-v1.18.js)",
+      "Bash(git -C /c/projects/ballpark commit -m ' *)",
+      "Bash(git -C /c/projects/ballpark push origin dev)"
     ]
   },
   "enableAllProjectMcpServers": true,
