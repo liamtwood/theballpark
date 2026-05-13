@@ -109,10 +109,14 @@ export type DetailMode = 'inline' | 'drawer';
         (click)="scrollCircles(200)">
         <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
       </button>
-      <!-- v1.21: scoped-only / show-all toggle removed. Project-mode
-           strip is now hard-locked to top-level in-scope categories;
-           the Brief tab is the canonical place to add a new category
-           to scope, so an in-grid escape hatch is no longer needed. -->
+      <!-- Project-mode strip toggle — flips the circle strip between
+           in-scope-only (default) and all top-level categories
+           (unscoped ones render greyed via .bp-cat-circle-btn--unscoped).
+           The sidebar parent-list stays scoped-only regardless. -->
+      <button *ngIf="projectContext" class="bp-circles-toggle"
+        (click)="toggleShowAllCategories()">
+        {{ showAllCategories ? 'Show scoped only' : 'Show all categories' }}
+      </button>
     </div>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
@@ -140,7 +144,9 @@ export type DetailMode = 'inline' | 'drawer';
             <span>All</span>
             <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
           </button>
-          <button *ngFor="let cat of parentCategories"
+          <!-- sidebarParentCategories filters to in-scope only in
+               project mode; identical to parentCategories otherwise. -->
+          <button *ngFor="let cat of sidebarParentCategories"
             class="bp-sidebar-item"
             [class.active]="activeCategory === cat.id"
             (click)="setCategory(cat.id)">
@@ -1377,28 +1383,47 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     );
   }
 
+  /** Top-level categories whose tree contains at least one
+      project_categories row (handles sub-cat scoping by walking up to
+      the parent). Used by both the circle strip and the sidebar
+      parent-list in project mode. */
+  private inScopeParentCategories(): CategoryInfo[] {
+    if (!this.projectContext) return this.parentCategories;
+    const topInScope = new Set<string>();
+    for (const pc of this.projectContext.projectCategories) {
+      const topId = this.topLevelId(pc.category_id);
+      if (topId) topInScope.add(topId);
+    }
+    return this.parentCategories.filter(c => topInScope.has(c.id));
+  }
+
   get displayedCircles(): CategoryInfo[] {
-    // v1.21: in project mode the strip is HARD-LOCKED to top-level
-    // in-scope categories. Two consequences:
-    //   1. Sub-categories never appear in the circles when the user
-    //      drills into a parent (they live in the sidebar's FORMAT
-    //      checkbox section instead).
-    //   2. We compute "in scope" by walking up from each
-    //      project_categories.category_id to its top-level ancestor —
-    //      so a project that scoped a sub-category (e.g. 'Canapes')
-    //      via the Brief tab still gets its parent ('Catering') in
-    //      the strip.
+    // Project mode:
+    //   - default       → top-level in-scope only (never sub-cats; those
+    //                      live in the sidebar FORMAT section).
+    //   - showAllCategories=true → every top-level category, with
+    //                      unscoped ones greyed via the existing
+    //                      .bp-cat-circle-btn--unscoped class. Clicking
+    //                      a greyed circle still scopes it in via the
+    //                      onCircleClick handler.
     if (this.projectContext) {
-      const topInScope = new Set<string>();
-      for (const pc of this.projectContext.projectCategories) {
-        const topId = this.topLevelId(pc.category_id);
-        if (topId) topInScope.add(topId);
-      }
-      return this.parentCategories.filter(c => topInScope.has(c.id));
+      return this.showAllCategories
+        ? this.parentCategories
+        : this.inScopeParentCategories();
     }
 
     // Marketplace / supplier default — drill behaviour unchanged.
     return this.drilledCategory ? this.childCategories : this.parentCategories;
+  }
+
+  /** Categories shown in the sidebar's parent-list (visible when not
+      drilled). In project mode the list is always in-scope only,
+      regardless of the circle-strip toggle — the sidebar's job is to
+      summarise what's actually part of the project, never to surface
+      the full catalogue. */
+  get sidebarParentCategories(): CategoryInfo[] {
+    if (!this.projectContext) return this.parentCategories;
+    return this.inScopeParentCategories();
   }
 
   /** Walk up the parent chain to find a category's top-level ancestor.
