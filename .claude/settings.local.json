@@ -161,7 +161,8 @@
       "Bash(git -C /c/projects/ballpark add server/src/db/seed-v1.18.js)",
       "Bash(git -C /c/projects/ballpark commit -m ' *)",
       "Bash(git -C /c/projects/ballpark push origin dev)",
-      "Bash(cd /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d && ls client-angular/src/app/features/suppliers/)"
+      "Bash(cd /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d && ls client-angular/src/app/features/suppliers/)",
+      "Bash(git push *)"
     ]
   },
   "enableAllProjectMcpServers": true,

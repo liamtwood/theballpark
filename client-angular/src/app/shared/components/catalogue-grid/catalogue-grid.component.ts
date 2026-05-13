@@ -258,6 +258,28 @@ export type DetailMode = 'inline' | 'drawer';
               <div class="bp-list-price" *ngIf="e.price && !e.priceRange">{{ e.price | gbp }}</div>
               <div class="bp-list-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</div>
             </div>
+
+            <!-- v1.20: in-row + / ♡ project-cart actions. Same gates as
+                 the detail-panel cluster (agency + item + projectId).
+                 stopPropagation so clicking the icon doesn't also
+                 select the row. -->
+            <ng-container *ngIf="showCartActions">
+              <button type="button"
+                      class="bp-cart-btn"
+                      [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
+                      (click)="onCartAddClick($event, e)"
+                      [title]="getSelectionType(e.id) === 'selected' ? 'Remove from project' : 'Add to project'">
+                <lucide-icon name="plus" [size]="14"></lucide-icon>
+              </button>
+              <button type="button"
+                      class="bp-cart-btn"
+                      [class.bp-cart-btn--liked]="getSelectionType(e.id) === 'liked'"
+                      (click)="onCartLikeClick($event, e)"
+                      [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
+                <lucide-icon name="heart" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+
             <button *ngIf="showFavourite" class="bp-heart-btn" [class.active]="favouriteIds.has(e.id)"
               (click)="onToggleFav($event, e)">
               <lucide-icon name="heart" [size]="16"></lucide-icon>
@@ -281,6 +303,24 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
+                  <!-- v1.20: + / ♡ project-cart on the card image
+                       (agency + item + projectId). Active state fills
+                       amber for selected, red for liked — same
+                       semantics as the Estimate-tab count chips. -->
+                  <button *ngIf="showCartActions" type="button"
+                          class="bp-grid-action-btn"
+                          [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
+                          (click)="onCartAddClick($event, e)"
+                          [title]="getSelectionType(e.id) === 'selected' ? 'Remove from project' : 'Add to project'">
+                    <lucide-icon name="plus" [size]="14"></lucide-icon>
+                  </button>
+                  <button *ngIf="showCartActions" type="button"
+                          class="bp-grid-action-btn"
+                          [class.bp-cart-btn--liked]="getSelectionType(e.id) === 'liked'"
+                          (click)="onCartLikeClick($event, e)"
+                          [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
+                    <lucide-icon name="heart" [size]="14"></lucide-icon>
+                  </button>
                   <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
                     <lucide-icon name="square-pen" [size]="14"></lucide-icon>
                   </button>
@@ -803,6 +843,52 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-heart-btn { background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 2px; display: flex; align-items: center; transition: color 0.15s; }
     .bp-heart-btn:hover { color: #E11D48; }
     .bp-heart-btn.active { color: #E11D48; }
+
+    /* v1.20: in-list project-cart buttons (+ / ♡). Sit between price
+       and chevron in the list-row layout. Card-image variant reuses
+       .bp-grid-action-btn for sizing; only the active-state modifiers
+       below are shared between both views. */
+    .bp-cart-btn {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .bp-cart-btn:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    /* Active modifiers shared across list-row (.bp-cart-btn) and
+       card-image (.bp-grid-action-btn) buttons. + selected fills
+       amber; ♡ liked fills red to match the Estimate-tab count
+       chips (--theme-accent vs --color-danger). */
+    .bp-cart-btn--selected,
+    .bp-grid-action-btn.bp-cart-btn--selected {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-cart-btn--selected:hover,
+    .bp-grid-action-btn.bp-cart-btn--selected:hover {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-cart-btn--liked,
+    .bp-grid-action-btn.bp-cart-btn--liked {
+      background: var(--color-danger);
+      border-color: var(--color-danger);
+      color: var(--color-surface);
+    }
+    .bp-cart-btn--liked:hover,
+    .bp-grid-action-btn.bp-cart-btn--liked:hover {
+      background: var(--color-danger);
+      color: var(--color-surface);
+    }
 
     /* DETAIL PANEL */
     .bp-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 13px; color: var(--color-text-muted); padding: 40px 20px; text-align: center; }
@@ -1680,6 +1766,30 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       needed. */
   onContextBrowseClicked() {
     this.drillOut();
+  }
+
+  /** v1.20: convenience getter — show the in-grid + / ♡ project-cart
+      buttons when (a) we're rendering items, (b) the current org is an
+      agency (suppliers don't add to projects), and (c) a projectId is
+      bound. Same gating as the detail-panel cluster but expressed once
+      here so both the list rows and card images can reuse it. */
+  get showCartActions(): boolean {
+    return this.entityType === 'item'
+      && this.isAgency
+      && !!this.projectId;
+  }
+
+  /** + click on a list row or card — stop the row/card click from
+      firing (which would select the entity) and delegate to the
+      existing toggle. */
+  onCartAddClick(event: MouseEvent, entity: CatalogueEntity) {
+    event.stopPropagation();
+    this.onAddToProject(entity);
+  }
+
+  onCartLikeClick(event: MouseEvent, entity: CatalogueEntity) {
+    event.stopPropagation();
+    this.onLikeForProject(entity);
   }
 
   /** + button — adds the item to the project as 'selected', or removes
