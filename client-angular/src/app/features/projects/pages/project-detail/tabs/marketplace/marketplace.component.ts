@@ -71,6 +71,7 @@ import {
       [projectItems]="projectItems"
       [currentOrgId]="currentOrgId"
       [currentOrgType]="currentOrgType"
+      panelContext="project"
       (categoryScopeChange)="onCategoryScopeChange($event)"
       (projectBriefChange)="onProjectBriefChange($event)"
       (categoryBriefChange)="onCategoryBriefChange($event)"

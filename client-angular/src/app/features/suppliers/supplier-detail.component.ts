@@ -236,6 +236,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
           [currentOrgType]="currentOrgType"
+          panelContext="supplier"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"

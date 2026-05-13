@@ -14,6 +14,9 @@ import {
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext, ProjectItem } from '../../../models';
 import { ConfigStripComponent } from '../config-strip/config-strip.component';
+import {
+  CategoryContextPanelComponent, CategoryContextMode
+} from '../category-context-panel/category-context-panel.component';
 import { CodelistService } from '../../../core/services/codelist.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
@@ -26,7 +29,8 @@ export type DetailMode = 'inline' | 'drawer';
   imports: [
     CommonModule, FormsModule,
     InputTextModule, InputTextareaModule, ButtonModule, CheckboxModule,
-    LucideAngularModule, GbpPipe, ConfigStripComponent
+    LucideAngularModule, GbpPipe, ConfigStripComponent,
+    CategoryContextPanelComponent
   ],
   template: `
     <!-- CONFIG STRIP — toggled from cog in top-nav. Page projects its own
@@ -529,81 +533,41 @@ export type DetailMode = 'inline' | 'drawer';
             </textarea>
           </div>
 
-          <!-- Specific category active → category circle + name header
-               + per-project category brief (with pencil). The platform
-               categories.description is intentionally NOT shown in build
-               mode (lives only on the marketplace card). -->
-          <ng-container *ngIf="activeCategory !== 'all' && currentCategoryInfo as cat">
-            <div class="bp-brief-cat-header">
-              <div class="bp-brief-cat-circle"
-                [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
-                [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
-                [class.bp-brief-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
-                [class.bp-brief-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
-                <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-brief-cat-circle-logo-img"/>
-                <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="22" class="bp-brief-cat-circle-lucide"></lucide-icon>
-                <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="22" class="bp-brief-cat-circle-icon"></lucide-icon>
-                <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-brief-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
-              </div>
-              <div class="bp-brief-cat-name">{{ cat.name }}</div>
-            </div>
-
-            <div class="bp-brief-card bp-brief-card--req">
-              <div class="bp-brief-card-h">
-                <span class="bp-brief-card-eyebrow">EDIT BRIEF</span>
-                <button *ngIf="!isEditingCategoryBrief(cat.id)" class="bp-icon-btn"
-                  (click)="startEditCategoryBrief(cat.id)" title="Edit brief">
-                  <lucide-icon name="square-pen" [size]="12"></lucide-icon>
-                </button>
-                <ng-container *ngIf="isEditingCategoryBrief(cat.id)">
-                  <button class="bp-icon-btn bp-icon-save"
-                    (click)="saveCategoryBrief(cat.id)" title="Save">
-                    <i class="pi pi-check"></i>
-                  </button>
-                  <button class="bp-icon-btn bp-icon-cancel"
-                    (click)="cancelEditCategoryBrief()" title="Cancel">
-                    <i class="pi pi-times"></i>
-                  </button>
-                </ng-container>
-              </div>
-              <ng-container *ngIf="!isEditingCategoryBrief(cat.id)">
-                <p *ngIf="getRequirementBrief(cat.id) as brief" class="bp-brief-card-text bp-brief-card-text--req">
-                  {{ brief }}
-                </p>
-                <p *ngIf="!getRequirementBrief(cat.id)" class="bp-brief-card-empty">
-                  No brief for this category yet — click the pencil to add one.
-                </p>
-              </ng-container>
-              <textarea *ngIf="isEditingCategoryBrief(cat.id)" pInputTextarea
-                class="bp-brief-card-edit"
-                [(ngModel)]="categoryBriefDraft"
-                [rows]="6"
-                placeholder="What you need from suppliers in this category…">
-              </textarea>
-            </div>
-          </ng-container>
+          <!-- v1.19: per-category branch handed off to
+               <app-category-context-panel> below so all three contexts
+               (project / marketplace / supplier) render through a
+               single component. The old inline-pencil brief edit lived
+               here in v1.18 — now the brief is edited on Brief and
+               Estimate tabs, so the right-panel is a read-only context
+               view. -->
         </ng-container>
 
-        <!-- ── MARKETPLACE CATEGORY CARD (no projectContext) ── -->
-        <!-- When a category is active and the platform has a description
-             for it, surface the description + counts in the empty preview
-             slot. Silent if no description (per spec). -->
-        <ng-container *ngIf="!useCustomDetail && !selectedEntity && !projectContext && activeCategory !== 'all' && currentCategoryInfo as cat">
-          <div *ngIf="cat.description" class="bp-brief-card bp-brief-card--cat-desc">
-            <div class="bp-brief-card-eyebrow">{{ cat.name | uppercase }}</div>
-            <p class="bp-brief-card-text">{{ cat.description }}</p>
-            <div class="bp-brief-card-counts">
-              <span>{{ filteredEntities.length }} {{ filteredEntities.length === 1 ? entityLabel : entityLabel + 's' }}</span>
-              <span *ngIf="entityType === 'item' && supplierCount > 0">
-                · {{ supplierCount }} supplier{{ supplierCount === 1 ? '' : 's' }}
-              </span>
-            </div>
-          </div>
+        <!-- ── v1.19 CATEGORY CONTEXT PANEL ──────────────────────────
+             Renders whenever a specific category is active and no item
+             is selected — in all three contexts. Replaces both the
+             previous per-category brief card (project mode) and the
+             marketplace category description card. -->
+        <ng-container *ngIf="!useCustomDetail && !selectedEntity && currentCategoryInfo as cat">
+          <app-category-context-panel
+            [category]="cat"
+            [briefText]="ctxBriefText"
+            [briefDetail]="ctxBriefDetail"
+            [budgetPrice]="ctxBudget"
+            [selectedItems]="getCategorySelectedItems()"
+            [likedItems]="getCategoryLikedItems()"
+            [context]="panelContext"
+            [categoryTotal]="getCategoryTotal()"
+            (itemClicked)="onContextItemClicked($event)"
+            (itemRemoved)="onContextItemRemoved($event)"
+            (itemMoved)="onContextItemMoved($event)"
+            (browseClicked)="onContextBrowseClicked()">
+          </app-category-context-panel>
         </ng-container>
 
-        <!-- Empty state — only shown when using the built-in detail and
-             no brief / category card is rendering above. -->
-        <div *ngIf="!useCustomDetail && !selectedEntity && !projectContext && (activeCategory === 'all' || !currentCategoryInfo?.description)" class="bp-detail-empty">
+        <!-- Empty state — no category active and no projectContext.
+             (Project-context "All" view still renders the project
+             brief card above.) -->
+        <div *ngIf="!useCustomDetail && !selectedEntity && !currentCategoryInfo && !projectContext" class="bp-detail-empty">
           <p>Select {{ entityLabel === 'item' ? 'an' : 'a' }} {{ entityLabel }} to preview</p>
         </div>
       </div>
@@ -1077,6 +1041,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() projectItems: ProjectItem[] = [];
   @Input() currentOrgId: string | null = null;
   @Input() currentOrgType: string | null = null;
+
+  /** v1.19 — context-panel mode. Drives:
+        - Empty-state copy in the context panel
+        - Whether the "Browse marketplace" link renders
+      In 'project' mode the panel also reads briefText/budget from
+      projectContext.projectCategories; in 'marketplace' / 'supplier'
+      mode the panel falls back to the category description. */
+  @Input() panelContext: CategoryContextMode = 'marketplace';
 
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
   @Output() backClicked = new EventEmitter<void>();
@@ -1601,6 +1573,113 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   getSelectionType(itemId: string): 'selected' | 'liked' | null {
     const pi = this.projectItems.find(p => p.item_id === itemId);
     return pi ? pi.selection_type : null;
+  }
+
+  // ── v1.19 category-context panel data ────────────────────────────────
+
+  /** Project_category row for the currently active category, if any.
+      The context panel reads brief / detail / budget off this. */
+  private get currentProjectCategory(): ProjectCategory | null {
+    if (!this.projectContext || !this.currentCategoryInfo) return null;
+    return this.projectContext.projectCategories
+      .find(c => c.category_id === this.currentCategoryInfo!.id) || null;
+  }
+
+  /** Brief text for the active category (project mode only). Falls
+      back to null so the panel renders the platform category
+      description in non-project modes. */
+  get ctxBriefText(): string | null {
+    if (this.panelContext !== 'project') return null;
+    return this.currentProjectCategory?.requirement_brief?.trim() || null;
+  }
+
+  get ctxBriefDetail(): string | null {
+    if (this.panelContext !== 'project') return null;
+    return this.currentProjectCategory?.requirement_detail?.trim() || null;
+  }
+
+  get ctxBudget(): number | null {
+    if (this.panelContext !== 'project') return null;
+    const v = this.currentProjectCategory?.ballpark_budget;
+    return v != null ? Number(v) : null;
+  }
+
+  /** Items in this category that the project has selected. Matches by
+      item_category_id directly, or by walking up the parent chain so
+      sub-category items show under the parent's panel too. Liked /
+      selected share the same matcher and only differ in selection_type. */
+  getCategorySelectedItems(): ProjectItem[] {
+    const id = this.currentCategoryInfo?.id;
+    if (!id) return [];
+    return this.projectItems.filter(pi =>
+      pi.selection_type === 'selected' && this.itemMatchesCategory(pi, id)
+    );
+  }
+
+  getCategoryLikedItems(): ProjectItem[] {
+    const id = this.currentCategoryInfo?.id;
+    if (!id) return [];
+    return this.projectItems.filter(pi =>
+      pi.selection_type === 'liked' && this.itemMatchesCategory(pi, id)
+    );
+  }
+
+  getCategoryTotal(): number {
+    return this.getCategorySelectedItems()
+      .reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+  }
+
+  private itemMatchesCategory(pi: ProjectItem, catId: string): boolean {
+    if (pi.item_category_id === catId) return true;
+    // Walk up the parent chain — items in subcategories of `catId`
+    // should also appear under the parent's context panel.
+    let current = this.categories.find(c => c.id === pi.item_category_id);
+    let guard = 6;
+    while (current && current.parent_id && guard-- > 0) {
+      if (current.parent_id === catId) return true;
+      current = this.categories.find(c => c.id === current!.parent_id);
+    }
+    return false;
+  }
+
+  // ── v1.19 context panel event handlers ───────────────────────────────
+
+  /** A user clicked a project_item row in the context panel — resolve
+      it back to the matching CatalogueEntity (so the existing
+      selectedEntity flow takes over) and switch the right panel to
+      item detail. */
+  onContextItemClicked(item: any) {
+    const id = item?.item_id || item?.id;
+    if (!id) return;
+    const match = this.entities.find(e => e.id === id);
+    if (match) this.select(match);
+  }
+
+  /** × on a context-panel row. Reuses the existing removeFromProject
+      emitter so parents don't need new wiring. */
+  onContextItemRemoved(item: any) {
+    const id = item?.item_id || item?.id;
+    if (!id) return;
+    const match = this.entities.find(e => e.id === id);
+    if (match) this.removeFromProject.emit({ entity: match });
+  }
+
+  /** Move-up / move-to-liked. Reuses the addToProject emitter — its
+      upsert semantics (unique index on project_id + item_id) mean
+      flipping types mutates the existing row rather than creating
+      duplicates. */
+  onContextItemMoved(event: { item: any; toType: 'selected' | 'liked' }) {
+    const id = event.item?.item_id || event.item?.id;
+    if (!id) return;
+    const match = this.entities.find(e => e.id === id);
+    if (match) this.addToProject.emit({ entity: match, type: event.toType });
+  }
+
+  /** "Browse marketplace" link → clear the active category so the user
+      sees the full catalogue again. Self-contained; no parent wiring
+      needed. */
+  onContextBrowseClicked() {
+    this.drillOut();
   }
 
   /** + button — adds the item to the project as 'selected', or removes

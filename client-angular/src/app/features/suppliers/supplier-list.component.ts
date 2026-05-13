@@ -53,6 +53,7 @@ import {
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
           [currentOrgType]="currentOrgType"
+          panelContext="marketplace"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
