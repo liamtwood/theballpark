@@ -864,29 +864,23 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--theme-accent);
     }
     /* Active modifiers shared across list-row (.bp-cart-btn) and
-       card-image (.bp-grid-action-btn) buttons. + selected fills
-       amber; ♡ liked fills red to match the Estimate-tab count
-       chips (--theme-accent vs --color-danger). */
+       card-image (.bp-grid-action-btn) buttons. Both states read as
+       "this item is in the project" — same amber fill on +
+       (selected) and ♡ (liked), matching the detail-panel cluster
+       so the language is consistent everywhere. */
     .bp-cart-btn--selected,
-    .bp-grid-action-btn.bp-cart-btn--selected {
+    .bp-cart-btn--liked,
+    .bp-grid-action-btn.bp-cart-btn--selected,
+    .bp-grid-action-btn.bp-cart-btn--liked {
       background: var(--theme-accent);
       border-color: var(--theme-accent);
       color: var(--color-surface);
     }
     .bp-cart-btn--selected:hover,
-    .bp-grid-action-btn.bp-cart-btn--selected:hover {
-      background: var(--theme-accent);
-      color: var(--color-surface);
-    }
-    .bp-cart-btn--liked,
-    .bp-grid-action-btn.bp-cart-btn--liked {
-      background: var(--color-danger);
-      border-color: var(--color-danger);
-      color: var(--color-surface);
-    }
     .bp-cart-btn--liked:hover,
+    .bp-grid-action-btn.bp-cart-btn--selected:hover,
     .bp-grid-action-btn.bp-cart-btn--liked:hover {
-      background: var(--color-danger);
+      background: var(--theme-accent);
       color: var(--color-surface);
     }
 
