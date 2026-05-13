@@ -15,6 +15,10 @@ async function getByProject(projectId) {
   // name. The redesigned category-context-panel surfaces both — the
   // "longest lead" summary and the per-row "{supplier} · {N} days
   // lead" subtitle.
+  //
+  // v1.23: also return c.icon_name AS category_icon_name so the
+  // shared category-card-header can render an icon when the project_item
+  // is grouped without re-joining categories on the client.
   const result = await pool.query(
     `SELECT pi.*,
             i.name,
@@ -26,6 +30,7 @@ async function getByProject(projectId) {
             i.lead_time_days,
             i.category_id     AS item_category_id,
             c.name            AS category_name,
+            c.icon_name       AS category_icon_name,
             o.name            AS supplier_name
        FROM project_items pi
        LEFT JOIN items      i ON pi.item_id     = i.id

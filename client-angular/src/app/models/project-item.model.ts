@@ -27,4 +27,8 @@ export interface ProjectItem {
   /** v1.22: joined from orgs (the item's supplier) for the per-row
       "{supplier} · {N} days lead" subtitle. */
   supplier_name?: string;
+  /** v1.23: joined from categories so the shared category header can
+      render an icon next to the project_item's category without a
+      separate categories lookup. */
+  category_icon_name?: string;
 }

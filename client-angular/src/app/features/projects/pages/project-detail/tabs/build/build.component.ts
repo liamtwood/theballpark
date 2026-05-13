@@ -28,6 +28,8 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../../../../../shared/components/item-drawer/item-drawer.component';
+import { ProjectItemRowComponent } from '../../../../../../shared/components/project-item-row/project-item-row.component';
+import { CategoryCardHeaderComponent } from '../../../../../../shared/components/category-card-header/category-card-header.component';
 
 /**
  * Project Build tab — v1.18 unified Build/Estimate view.
@@ -62,7 +64,7 @@ interface BuildCategoryRow extends ProjectCategory {
   budgetDraft: number | null;
 }
 
-type CardTab = 'items' | 'brief';
+type CardTab = 'items' | 'wishlist' | 'brief';
 
 @Component({
   selector: 'app-build',
@@ -73,7 +75,8 @@ type CardTab = 'items' | 'brief';
     ButtonModule, InputTextModule, InputTextareaModule, InputNumberModule,
     ToastModule, LucideAngularModule,
     LoadingSpinnerComponent, StatusBadgeComponent,
-    GbpPipe, ItemDrawerComponent
+    GbpPipe, ItemDrawerComponent,
+    ProjectItemRowComponent, CategoryCardHeaderComponent
   ],
   providers: [MessageService],
   template: `
@@ -152,7 +155,13 @@ type CardTab = 'items' | 'brief';
                       </span>
                     </ng-container>
                     <ng-template #noItems>
-                      <span class="bp-build-card-empty-text">No items yet</span>
+                      <!-- v1.21: contextual empty-state link.
+                           Stops click propagation so the card doesn't
+                           toggle expand at the same time. -->
+                      <span class="bp-build-card-empty-text"
+                            (click)="onBrowseMarketplace(row); $event.stopPropagation()">
+                        + Add {{ rowNameLower(row) }}
+                      </span>
                     </ng-template>
                     <span class="bp-build-brief-dot"
                           [class.filled]="hasBrief(row)"
@@ -179,15 +188,27 @@ type CardTab = 'items' | 'brief';
               <!-- ── Expanded body (one row at a time) ────────────── -->
               <div *ngIf="expandedCategoryId === row.id" class="bp-build-card-exp">
 
-                <!-- Tab bar: Items / Brief (underline style). -->
+                <!-- Tab bar — three tabs: Items / Wishlist / Brief.
+                     v1.21: matches the Marketplace right-rail panel's
+                     tab structure for a unified design language. -->
                 <div class="bp-build-card-tabs">
                   <button type="button"
                           class="bp-build-card-tab"
                           [class.active]="activeCardTab === 'items'"
                           (click)="activeCardTab = 'items'">
                     Items
-                    <span *ngIf="row.selectedCount + row.likedCount as n"
-                          class="bp-build-card-tab-count">{{ n }}</span>
+                    <span *ngIf="row.selectedCount" class="bp-build-card-tab-count">
+                      {{ row.selectedCount }}
+                    </span>
+                  </button>
+                  <button type="button"
+                          class="bp-build-card-tab"
+                          [class.active]="activeCardTab === 'wishlist'"
+                          (click)="activeCardTab = 'wishlist'">
+                    Wishlist
+                    <span *ngIf="row.likedCount" class="bp-build-card-tab-count">
+                      {{ row.likedCount }}
+                    </span>
                   </button>
                   <button type="button"
                           class="bp-build-card-tab"
@@ -199,77 +220,61 @@ type CardTab = 'items' | 'brief';
 
                 <!-- ═══ ITEMS TAB ═══ -->
                 <ng-container *ngIf="activeCardTab === 'items'">
-
-                  <!-- Selected items -->
-                  <div *ngIf="selectedItemsFor(row).length" class="bp-build-items-sec">
-                    <div *ngFor="let pi of selectedItemsFor(row); trackBy: trackByItemId"
-                         class="bp-build-item-row">
-                      <app-status-badge *ngIf="pi.tier" [statusName]="tierLabel(pi.tier)"></app-status-badge>
-                      <div class="bp-build-item-name">{{ pi.name }}</div>
-                      <div class="bp-build-item-price">
-                        <ng-container *ngIf="pi.base_price">
-                          <span class="bp-build-item-unit-line" *ngIf="pi.unit && unitLabel(pi.unit)">
-                            1 × {{ pi.base_price | gbp }}
-                          </span>
-                          <span class="bp-build-item-total">{{ pi.base_price | gbp }}</span>
-                        </ng-container>
-                      </div>
-                      <div class="bp-build-item-actions">
-                        <button type="button" class="bp-build-item-act"
-                                title="View item"
-                                (click)="onViewItem(pi)">
-                          <lucide-icon name="eye" [size]="13"></lucide-icon>
-                        </button>
-                        <button type="button" class="bp-build-item-act"
-                                title="Move to liked"
-                                (click)="onMoveToLiked(pi)">
-                          <lucide-icon name="heart" [size]="13"></lucide-icon>
-                        </button>
-                        <button type="button" class="bp-build-item-act bp-build-item-act--danger"
-                                title="Remove from project"
-                                (click)="onRemoveItem(pi)">
-                          <lucide-icon name="x" [size]="13"></lucide-icon>
-                        </button>
-                      </div>
+                  <ng-container *ngIf="selectedItemsFor(row).length; else itemsEmpty">
+                    <app-project-item-row *ngFor="let pi of selectedItemsFor(row); trackBy: trackByItemId"
+                      [item]="pi"
+                      mode="selected"
+                      [compact]="false"
+                      (clicked)="onViewItem($event)"
+                      (removed)="onRemoveItem($event)"
+                      (movedToWishlist)="onMoveToLiked($event)">
+                    </app-project-item-row>
+                  </ng-container>
+                  <ng-template #itemsEmpty>
+                    <div class="bp-build-items-empty">
+                      No items selected — use the link below to add some from
+                      the marketplace.
                     </div>
-                  </div>
+                  </ng-template>
 
-                  <!-- Liked items (lighter visual treatment). -->
-                  <div *ngIf="likedItemsFor(row).length" class="bp-build-items-sec bp-build-items-sec--liked">
-                    <div class="bp-build-items-sec-label">Liked</div>
-                    <div *ngFor="let pi of likedItemsFor(row); trackBy: trackByItemId"
-                         class="bp-build-item-row bp-build-item-row--liked">
-                      <lucide-icon name="heart" [size]="12" class="bp-build-item-heart"></lucide-icon>
-                      <div class="bp-build-item-name">{{ pi.name }}</div>
-                      <div class="bp-build-item-price">
-                        <span *ngIf="pi.base_price" class="bp-build-item-total">{{ pi.base_price | gbp }}</span>
-                      </div>
-                      <div class="bp-build-item-actions">
-                        <button type="button" class="bp-build-item-act"
-                                title="Move up to selected"
-                                (click)="onMoveToSelected(pi)">
-                          <lucide-icon name="arrow-up" [size]="13"></lucide-icon>
-                        </button>
-                        <button type="button" class="bp-build-item-act bp-build-item-act--danger"
-                                title="Remove from project"
-                                (click)="onRemoveItem(pi)">
-                          <lucide-icon name="x" [size]="13"></lucide-icon>
-                        </button>
-                      </div>
+                  <!-- Items tab footer: Add more (left) · Longest lead (right). -->
+                  <div class="bp-build-tab-foot">
+                    <button type="button" class="bp-build-browse-link"
+                            (click)="onBrowseMarketplace(row)">
+                      <lucide-icon name="plus" [size]="13"></lucide-icon>
+                      Add more {{ rowNameLower(row) }}
+                    </button>
+                    <span *ngIf="longestLeadFor(row) > 0" class="bp-build-lead-foot">
+                      <lucide-icon name="clock" [size]="11"></lucide-icon>
+                      Longest lead {{ longestLeadFor(row) }} days
+                    </span>
+                  </div>
+                </ng-container>
+
+                <!-- ═══ WISHLIST TAB ═══
+                     Slightly tinted section per the shared design; rows
+                     render in wishlist mode (Confirm button promotes to
+                     selected, × removes). -->
+                <ng-container *ngIf="activeCardTab === 'wishlist'">
+                  <div class="bp-build-wish-hint" *ngIf="likedItemsFor(row).length">
+                    awaiting client approval
+                  </div>
+                  <ng-container *ngIf="likedItemsFor(row).length; else wishEmpty">
+                    <app-project-item-row *ngFor="let pi of likedItemsFor(row); trackBy: trackByItemId"
+                      [item]="pi"
+                      mode="wishlist"
+                      [compact]="false"
+                      (clicked)="onViewItem($event)"
+                      (removed)="onRemoveItem($event)"
+                      (confirmed)="onMoveToSelected($event)">
+                    </app-project-item-row>
+                  </ng-container>
+                  <ng-template #wishEmpty>
+                    <div class="bp-build-items-empty">
+                      No wishlist items — heart an item from the marketplace
+                      to add it here.
                     </div>
-                  </div>
-
-                  <!-- Empty + Browse marketplace CTA. -->
-                  <div *ngIf="!selectedItemsFor(row).length && !likedItemsFor(row).length"
-                       class="bp-build-items-empty">
-                    No items selected — browse the marketplace to add.
-                  </div>
-
-                  <button type="button" class="bp-build-browse-link"
-                          (click)="onBrowseMarketplace(row)">
-                    <lucide-icon name="plus" [size]="13"></lucide-icon>
-                    Browse marketplace
-                  </button>
+                  </ng-template>
                 </ng-container>
 
                 <!-- ═══ BRIEF TAB ═══ -->
@@ -369,7 +374,7 @@ type CardTab = 'items' | 'brief';
                 <span>{{ delivery | gbp }}</span>
               </div>
               <div class="bp-build-est-row">
-                <span>Contingency ({{ contingencyPct }}%)</span>
+                <span>Contingency ({{ contingencyPct | number:'1.0-2' }}%)</span>
                 <span>{{ contingency | gbp }}</span>
               </div>
             </div>
@@ -381,7 +386,7 @@ type CardTab = 'items' | 'brief';
             </div>
 
             <div class="bp-build-est-margin">
-              <span>At {{ marginPct }}% margin</span>
+              <span>At {{ marginPct | number:'1.0-2' }}% margin</span>
               <span class="bp-build-est-client-total">
                 {{ clientTotal | gbp }} client total
               </span>
@@ -571,7 +576,14 @@ type CardTab = 'items' | 'brief';
       font-variant-numeric: tabular-nums;
     }
     .bp-build-count--liked { color: var(--color-danger); }
-    .bp-build-card-empty-text { font-style: italic; }
+    .bp-build-card-empty-text {
+      font-style: italic;
+      color: var(--theme-accent);
+      cursor: pointer;
+      font-weight: 500;
+      font-style: normal;
+    }
+    .bp-build-card-empty-text:hover { opacity: 0.75; }
     .bp-build-brief-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
@@ -729,6 +741,34 @@ type CardTab = 'items' | 'brief';
       font-family: var(--font-body);
     }
     .bp-build-browse-link:hover { opacity: 0.75; }
+
+    /* v1.21: Items tab footer — Add more (left) + Longest lead (right). */
+    .bp-build-tab-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 8px;
+      margin-top: 8px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-build-lead-foot {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+    }
+
+    /* Wishlist hint — sits above the rows, mirrors the panel pattern. */
+    .bp-build-wish-hint {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--color-text-muted);
+      text-align: right;
+      padding: 4px 0 8px;
+    }
 
     /* ── BRIEF TAB ───────────────────────────────────────────────── */
     .bp-build-brief-field { margin-bottom: 12px; }
@@ -1164,12 +1204,38 @@ export class BuildComponent implements OnInit {
       this.expandedCategoryId = null;
     } else {
       this.expandedCategoryId = row.id;
-      // Default tab: Items if any items exist on this row, else Brief.
-      this.activeCardTab = (row.selectedCount + row.likedCount > 0)
-        ? 'items'
-        : (this.hasBrief(row) ? 'brief' : 'items');
+      // Default tab choice — prefer the tab with content:
+      //   selected items → Items
+      //   liked only      → Wishlist
+      //   brief written   → Brief
+      //   nothing         → Items (clearest empty-state route to add)
+      if (row.selectedCount > 0) {
+        this.activeCardTab = 'items';
+      } else if (row.likedCount > 0) {
+        this.activeCardTab = 'wishlist';
+      } else if (this.hasBrief(row)) {
+        this.activeCardTab = 'brief';
+      } else {
+        this.activeCardTab = 'items';
+      }
     }
     this.cdr.detectChanges();
+  }
+
+  /** Lowercase name for the "Add more {name}" CTA. */
+  rowNameLower(row: BuildCategoryRow): string {
+    return (row.category_name || row.name || 'items').toLowerCase();
+  }
+
+  /** Max lead_time_days across the row's selected items. 0 hides the
+      "Longest lead N days" footnote in the Items tab. */
+  longestLeadFor(row: BuildCategoryRow): number {
+    let max = 0;
+    for (const pi of this.selectedItemsFor(row)) {
+      const d = Number(pi.lead_time_days);
+      if (!isNaN(d) && d > max) max = d;
+    }
+    return max;
   }
 
   // ── Items tab actions ────────────────────────────────────────────────
