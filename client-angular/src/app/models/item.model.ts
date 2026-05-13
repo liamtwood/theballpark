@@ -25,6 +25,10 @@ export interface Item {
   tags?: string[];
   image_url?: string | null;
   image_display?: 'cover' | 'contain';
+  /** v1.17: ordered gallery of up to 8 images. `image_url` continues to be
+      written from `images[0]` (or the entry where is_hero=true) on every
+      save for backward compat with existing card / detail surfaces. */
+  images?: Array<{ url: string; sort_order: number; is_hero: boolean }>;
   external_url?: string | null;
   is_active: boolean;
 }

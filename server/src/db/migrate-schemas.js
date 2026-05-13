@@ -403,6 +403,16 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
 
+      -- v1.17: items.images JSONB array — up to 8 images per item, ordered
+      -- by sort_order, one flagged is_hero=true. Drives the new Images tab
+      -- in the item drawer (8-slot grid). Backward compat: image_url is
+      -- still kept in sync with images[0].url on every save so card and
+      -- detail surfaces keep working until they migrate to images[].
+      --   shape: [{ url, sort_order, is_hero }]
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+
       -- estimate_items drift reconciliation. The legacy CREATE block had
       -- `unit VARCHAR(50)` and `is_active BOOLEAN` columns that were dropped
       -- in dev out-of-band; `shortlisted` + `status_id` were added at the
@@ -499,7 +509,7 @@ const migrate = async () => {
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
       ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
     `);
-    console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes).');
+    console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
     console.log('  project_items table + unique index ensured.');

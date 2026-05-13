@@ -9,15 +9,21 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 
 import { ProjectService } from '../../../../../../core/services/project.service';
+import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { SupplierService } from '../../../../../../core/services/supplier.service';
+import { OrgService } from '../../../../../../core/services/org.service';
 import {
-  Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo
+  Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
+  Item, ProjectItem
 } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import {
   CatalogueGridComponent
 } from '../../../../../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  ItemDrawerComponent, ItemDrawerMode
+} from '../../../../../../shared/components/item-drawer/item-drawer.component';
 
 /**
  * Project Build tab — reuses CatalogueGridComponent in project context.
@@ -41,7 +47,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, LucideAngularModule, ToastModule,
-    LoadingSpinnerComponent, CatalogueGridComponent
+    LoadingSpinnerComponent, CatalogueGridComponent, ItemDrawerComponent
   ],
   providers: [MessageService],
   template: `
@@ -58,10 +64,28 @@ import {
       [showEdit]="false"
       [showFavourite]="false"
       [totalCount]="itemEntities.length"
+      [projectId]="projectId"
+      [projectItems]="projectItems"
+      [currentOrgId]="currentOrgId"
+      [currentOrgType]="currentOrgType"
       (categoryScopeChange)="onCategoryScopeChange($event)"
       (projectBriefChange)="onProjectBriefChange($event)"
-      (categoryBriefChange)="onCategoryBriefChange($event)">
+      (categoryBriefChange)="onCategoryBriefChange($event)"
+      (viewRequested)="onViewItem($event)"
+      (itemEditRequested)="onItemEditRequested($event)"
+      (addToProject)="onAddToProject($event)"
+      (removeFromProject)="onRemoveFromProject($event)">
     </app-catalogue-grid>
+
+    <!-- Item drawer — view (read-only) and edit (own-org items only).
+         v1.17: same component handles both via the [mode] input. -->
+    <app-item-drawer
+      [(visible)]="showItemDrawer"
+      [mode]="drawerMode"
+      [item]="drawerItem"
+      (saved)="onItemSaved($event)"
+      (cancelled)="drawerItem = null">
+    </app-item-drawer>
 
     <p-toast></p-toast>
   `,
@@ -73,15 +97,33 @@ export class BuildComponent implements OnInit {
   categories: CategoryInfo[] = [];
   itemEntities: CatalogueEntity[] = [];
 
+  /** Raw item rows from the supplier API — keyed by id for fast lookup
+      when the detail panel emits view/edit and we need the full Item to
+      pass to the drawer. */
+  private rawItems: any[] = [];
+
+  // v1.17 project-cart context — bound through to catalogue-grid so the
+  // + / ♡ buttons reflect existing selections.
+  projectItems: ProjectItem[] = [];
+  currentOrgId: string | null = null;
+  currentOrgType: string | null = null;
+
+  // v1.17 item drawer state — shared instance handles view + edit.
+  showItemDrawer = false;
+  drawerMode: ItemDrawerMode = 'view';
+  drawerItem: Item | null = null;
+
   private project: Project | null = null;
   private projectCategories: ProjectCategory[] = [];
-  private projectId = '';
+  projectId = '';
 
   constructor(
     private route: ActivatedRoute,
     private projectSvc: ProjectService,
+    private projectItemSvc: ProjectItemService,
     private categorySvc: CategoryService,
     private supplierSvc: SupplierService,
+    private orgSvc: OrgService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -101,18 +143,80 @@ export class BuildComponent implements OnInit {
       project:    this.projectSvc.getById(pid),
       projectCat: this.projectSvc.getCategories(pid),
       categories: this.categorySvc.getAll('catalogue'),
-      items:      this.supplierSvc.getItems({})
+      items:      this.supplierSvc.getItems({}),
+      cart:       this.projectItemSvc.getByProject(pid),
+      org:        this.orgSvc.getCurrentOrg()
     }).subscribe({
-      next: ({ project, projectCat, categories, items }) => {
+      next: ({ project, projectCat, categories, items, cart, org }) => {
         this.project = project || null;
         this.projectCategories = (projectCat || []).filter(p => p.is_active);
         this.categories = this.mapCategories(categories || []);
-        this.itemEntities = this.mapItems(items || []);
+        this.rawItems = items || [];
+        this.itemEntities = this.mapItems(this.rawItems);
+        this.projectItems = cart || [];
+        if (org) {
+          this.currentOrgId = org.id;
+          this.currentOrgType = org.type || null;
+        }
         this.rebuildContext();
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
+    });
+  }
+
+  // ── v1.17 detail-panel action handlers ───────────────────────────────
+
+  onViewItem(entity: CatalogueEntity) {
+    const raw = this.rawItems.find(i => i.id === entity.id);
+    if (!raw) return;
+    this.drawerItem = raw as Item;
+    this.drawerMode = 'view';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemEditRequested(entity: CatalogueEntity) {
+    const raw = this.rawItems.find(i => i.id === entity.id);
+    if (!raw) return;
+    this.drawerItem = raw as Item;
+    this.drawerMode = 'edit';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemSaved(_item: Item) {
+    // Refresh the catalogue (a save may have changed images / price /
+    // category that the grid needs to re-render).
+    this.supplierSvc.getItems({}).subscribe(items => {
+      this.rawItems = items || [];
+      this.itemEntities = this.mapItems(this.rawItems);
+      this.cdr.detectChanges();
+    });
+    this.drawerItem = null;
+  }
+
+  onAddToProject(event: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    if (!this.projectId) return;
+    this.projectItemSvc.add(this.projectId, event.entity.id, event.type).subscribe({
+      next: () => this.refreshCart(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
+  }
+
+  onRemoveFromProject(event: { entity: CatalogueEntity }) {
+    if (!this.projectId) return;
+    this.projectItemSvc.remove(this.projectId, event.entity.id).subscribe({
+      next: () => this.refreshCart(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Remove failed', life: 3000 })
+    });
+  }
+
+  private refreshCart() {
+    this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+      this.projectItems = rows || [];
+      this.cdr.detectChanges();
     });
   }
 

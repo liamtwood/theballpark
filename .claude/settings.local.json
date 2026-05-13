@@ -137,7 +137,11 @@
       "Read(//tmp/**)",
       "Bash(cd /c/projects/ballpark/client-angular && node node_modules/@angular/cli/bin/ng.js build 2>&1 | grep -E \"\\(Application bundle|Output location|Error|error TS|✘ \\\\[ERROR|✘ |FAIL\\)\" | head -30)",
       "Bash(git add *)",
-      "Bash(echo \"--- searching worktree ---\" *)"
+      "Bash(echo \"--- searching worktree ---\" *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\projects\\\\ballpark\\\\.claude\\\\worktrees\\\\modest-swartz-6b688d\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs basename -a)",
+      "Bash(npm run *)"
     ]
   },
   "enableAllProjectMcpServers": true,

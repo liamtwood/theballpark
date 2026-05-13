@@ -8,14 +8,18 @@ import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
 import { ProjectService } from '../../core/services/project.service';
+import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
-import { Org, CatalogueEntity, CategoryInfo } from '../../models';
+import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import {
   CatalogueGridComponent, CircleSize, DetailSize
 } from '../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  ItemDrawerComponent, ItemDrawerMode
+} from '../../shared/components/item-drawer/item-drawer.component';
 import {
   PageConfigTogglesComponent, Layout, DetailMode, ThemeSwatch
 } from '../../shared/components/page-config-toggles/page-config-toggles.component';
@@ -26,7 +30,7 @@ import {
   imports: [
     CommonModule, FormsModule, RouterModule, LucideAngularModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    PageConfigTogglesComponent
+    ItemDrawerComponent, PageConfigTogglesComponent
   ],
   template: `
     <div class="bp-page">
@@ -45,6 +49,10 @@ import {
           [detailSize]="detailSize"
           [detailMode]="detailMode"
           [layout]="layout"
+          [projectId]="projectId"
+          [projectItems]="projectItems"
+          [currentOrgId]="currentOrgId"
+          [currentOrgType]="currentOrgType"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
@@ -53,7 +61,11 @@ import {
           (categoryChanged)="onCategoryChanged($event)"
           (tagChanged)="onTagChanged($event)"
           (searchChanged)="onSearchChanged($event)"
-          (categoryImageEditRequested)="onCategoryImageEdit($event)">
+          (categoryImageEditRequested)="onCategoryImageEdit($event)"
+          (viewRequested)="onViewItem($event)"
+          (itemEditRequested)="onItemEditRequested($event)"
+          (addToProject)="onAddToProject($event)"
+          (removeFromProject)="onRemoveFromProject($event)">
           <div catalogue-toggles class="bp-cat-toggle-wrap">
             <button class="bp-toggle-btn" [class.active]="viewMode === 'items'"
               (click)="switchMode('items')">Items</button>
@@ -113,6 +125,16 @@ import {
         (imagesUpdated)="onCategoryImageUpdated($event)"
         (closed)="categoryUploadId = ''">
       </app-image-upload-panel>
+
+      <!-- v1.17: item drawer for view (always) + edit (own-org items only).
+           Same component switches modes via the [mode] input. -->
+      <app-item-drawer
+        [(visible)]="showItemDrawer"
+        [mode]="drawerMode"
+        [item]="drawerItem"
+        (saved)="onItemSaved($event)"
+        (cancelled)="drawerItem = null">
+      </app-item-drawer>
     </div>
   `,
   styles: [`
@@ -174,6 +196,18 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   supplierEntities: CatalogueEntity[] = [];
   itemEntities: CatalogueEntity[] = [];
 
+  // ── v1.17 project-cart + drawer state ───────────────────────────────
+  /** projectId from ?projectId= query param. When set, the detail panel's
+      + / ♡ buttons wire to ProjectItemService for this project. */
+  projectId: string | null = null;
+  projectItems: ProjectItem[] = [];
+  currentOrgId: string | null = null;
+  currentOrgType: string | null = null;
+  /** Item drawer state — shared mount handles view + edit. */
+  showItemDrawer = false;
+  drawerMode: ItemDrawerMode = 'view';
+  drawerItem: Item | null = null;
+
   get entityType(): 'item' | 'supplier' {
     return this.viewMode === 'suppliers' ? 'supplier' : 'item';
   }
@@ -186,6 +220,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private favSvc: FavouriteService,
     private orgSvc: OrgService,
     private projectSvc: ProjectService,
+    private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
     private route: ActivatedRoute,
@@ -205,10 +240,27 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.loadConfig();
     this.catalogueTitle = this.configSvc.catalogueLabel;
 
+    // Resolve the current org once on init — drives currentOrgId/Type for
+    // the catalogue-grid detail-panel actions (agency vs supplier; isOwner).
+    this.orgSvc.getCurrentOrg().subscribe(org => {
+      if (org) {
+        this.currentOrgId = org.id;
+        this.currentOrgType = org.type || null;
+        this.cdr.detectChanges();
+      }
+    });
+
     const projectId = this.route.snapshot.queryParams['projectId'];
+    this.projectId = projectId || null;
     if (projectId) {
       this.projectSvc.getById(projectId).subscribe(p => {
         this.applyShellHero(p ? [p.event_name || p.name || ''] : []);
+      });
+      // Load the cart so the detail-panel +/♡ buttons reflect existing
+      // selections on first paint.
+      this.projectItemSvc.getByProject(projectId).subscribe(rows => {
+        this.projectItems = rows || [];
+        this.cdr.detectChanges();
       });
     } else {
       // Defer past NavigationEnd — AppShell's router subscription resets
@@ -527,5 +579,55 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.categories = [...this.categories];
     this.categoryUploadId = '';
     this.cdr.detectChanges();
+  }
+
+  // ── v1.17 detail-panel action handlers ───────────────────────────────
+
+  onViewItem(entity: CatalogueEntity) {
+    const raw = this.rawItems.find(i => i.id === entity.id);
+    if (!raw) return;
+    this.drawerItem = raw as Item;
+    this.drawerMode = 'view';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemEditRequested(entity: CatalogueEntity) {
+    const raw = this.rawItems.find(i => i.id === entity.id);
+    if (!raw) return;
+    this.drawerItem = raw as Item;
+    this.drawerMode = 'edit';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  onItemSaved(_item: Item) {
+    // Reload items so the updated row reflects in the grid + detail panel.
+    this.loadItems();
+    this.drawerItem = null;
+  }
+
+  onAddToProject(event: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    if (!this.projectId) return;
+    this.projectItemSvc.add(this.projectId, event.entity.id, event.type).subscribe({
+      next: () => this.refreshCart(),
+      error: () => {}
+    });
+  }
+
+  onRemoveFromProject(event: { entity: CatalogueEntity }) {
+    if (!this.projectId) return;
+    this.projectItemSvc.remove(this.projectId, event.entity.id).subscribe({
+      next: () => this.refreshCart(),
+      error: () => {}
+    });
+  }
+
+  private refreshCart() {
+    if (!this.projectId) return;
+    this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+      this.projectItems = rows || [];
+      this.cdr.detectChanges();
+    });
   }
 }

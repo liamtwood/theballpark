@@ -305,6 +305,11 @@ const migrate = async () => {
       -- Add image_display to items
       ALTER TABLE items ADD COLUMN IF NOT EXISTS image_display VARCHAR(10) DEFAULT 'cover';
 
+      -- v1.17: items.images JSONB array (up to 8 images per item).
+      -- Shape: [{ url, sort_order, is_hero }]. image_url stays populated
+      -- from images[0].url for backward compat on existing display surfaces.
+      ALTER TABLE items ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]';
+
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);

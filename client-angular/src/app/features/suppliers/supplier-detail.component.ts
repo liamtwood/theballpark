@@ -11,17 +11,18 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule, MapPin, ChevronRight, Heart, SquarePen, Globe, Phone, Mail } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
+import { ProjectItemService } from '../../core/services/project-item.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
-import { Category } from '../../models';
+import { Category, ProjectItem } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
-import { ItemDrawerComponent } from '../../shared/components/item-drawer/item-drawer.component';
+import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
 import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models';
 
@@ -226,15 +227,22 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [actionLabel]="'View →'"
           [favouriteIds]="itemFavIds"
           [showEdit]="true"
-          [showItemEdit]="true"
-          [showFavourite]="true"
+          [showItemEdit]="false"
+          [showFavourite]="false"
           [showBack]="false"
           [totalCount]="itemEntities.length"
           sectionTitle="CATALOGUE"
+          [projectId]="selectedProjectId || null"
+          [projectItems]="projectItems"
+          [currentOrgId]="currentOrgId"
+          [currentOrgType]="currentOrgType"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
+          (viewRequested)="onViewItem($event)"
+          (addToProject)="onAddToProject($event)"
+          (removeFromProject)="onRemoveFromProject($event)"
           (actionClicked)="onAction($event)">
           <div catalogue-toggles class="bp-cat-actions">
             <!-- Mirror the project Build tab's scoped/all toggle so suppliers
@@ -261,7 +269,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
 
         <app-item-drawer
           [(visible)]="showItemDrawer"
-          [item]="editingItem"
+          [mode]="drawerMode"
+          [item]="drawerItem"
           [prefill]="addPrefill"
           (saved)="onItemSaved($event)"
           (cancelled)="onItemDrawerCancelled()">
@@ -639,10 +648,24 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   uploadCoverUrl = '';
   uploadImageDisplay: 'cover' | 'contain' = 'cover';
 
-  // Item add/edit drawer — only used when current org owns the catalogue
+  // Item drawer — v1.17: now driven by an explicit mode input so the
+  // same component handles add / edit / view from a single mount.
   ownsCatalogue = false;
   showItemDrawer = false;
-  editingItem: Item | null = null;
+  drawerMode: ItemDrawerMode = 'add';
+  /** Item passed to the drawer in edit + view modes. null for add. */
+  drawerItem: Item | null = null;
+
+  // ── v1.17 project-cart context for the detail action cluster ───────
+  /** Project_items snapshot for the active project (if one is selected
+      via ?projectId= query param). Drives the + / ♡ active state on the
+      detail panel's action buttons. */
+  projectItems: ProjectItem[] = [];
+  /** Current user's org id (drives isOwner — gates the ✎ edit button). */
+  currentOrgId: string | null = null;
+  /** Current user's org type — 'agency' or 'supplier'. Agencies see the
+      +/♡ buttons; suppliers don't. */
+  currentOrgType: string | null = null;
 
   // Home / Store tabs — default 'home'. Page-local state, not routed.
   activeTab: 'home' | 'store' = 'home';
@@ -678,6 +701,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private supplierSvc: SupplierService,
     private projectSvc: ProjectService,
+    private projectItemSvc: ProjectItemService,
     private favSvc: FavouriteService,
     private orgSvc: OrgService,
     private categorySvc: CategoryService,
@@ -699,9 +723,17 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       if (org) {
         this.ballsBalance = org.balls_balance || 0;
         this.ownsCatalogue = org.id === this.sid;
+        this.currentOrgId = org.id;
+        this.currentOrgType = org.type || null;
         this.cdr.detectChanges();
       }
     });
+
+    // If a project is in context (via ?projectId=…), load its cart so the
+    // detail-panel + / ♡ buttons reflect existing selections immediately.
+    if (this.selectedProjectId) {
+      this.loadProjectItems(this.selectedProjectId);
+    }
 
     this.projectSvc.getAll().subscribe({
       next: projects => {
@@ -939,7 +971,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // ── Item drawer wiring ────────────────────────────────────────────────
 
   openAddItemDrawer() {
-    this.editingItem = null;
+    this.drawerItem = null;
+    this.drawerMode = 'add';
     this.addPrefill = this.computeAddPrefill();
     this.showItemDrawer = true;
     this.cdr.detectChanges();
@@ -966,7 +999,17 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   openEditItemDrawer(item: Item) {
-    this.editingItem = item;
+    this.drawerItem = item;
+    this.drawerMode = 'edit';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
+  }
+
+  /** v1.17 — open the drawer in read-only view mode. Triggered by the
+      eye icon in catalogue-grid's detail panel. */
+  openViewItemDrawer(item: Item) {
+    this.drawerItem = item;
+    this.drawerMode = 'view';
     this.showItemDrawer = true;
     this.cdr.detectChanges();
   }
@@ -978,6 +1021,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   onItemEditRequested(entity: CatalogueEntity) {
     const raw = this.catalogueItems.find(i => i.id === entity.id);
     if (raw) this.openEditItemDrawer(raw as Item);
+  }
+
+  /** v1.17 — fired from the eye icon on the detail panel. */
+  onViewItem(entity: CatalogueEntity) {
+    const raw = this.catalogueItems.find(i => i.id === entity.id);
+    if (raw) this.openViewItemDrawer(raw as Item);
   }
 
   onItemSaved(_item: Item) {
@@ -992,11 +1041,68 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
-    this.editingItem = null;
+    this.drawerItem = null;
   }
 
   onItemDrawerCancelled() {
-    this.editingItem = null;
+    this.drawerItem = null;
+  }
+
+  // ── v1.17 project-cart wiring ─────────────────────────────────────────
+
+  private loadProjectItems(projectId: string) {
+    this.projectItemSvc.getByProject(projectId).subscribe({
+      next: rows => {
+        this.projectItems = rows || [];
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** + / ♡ upsert handler. The service uses ON CONFLICT on the unique
+      (project_id, item_id) index so flipping types mutates the same row
+      rather than creating duplicates. */
+  onAddToProject(event: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    if (!this.selectedProjectId) {
+      this.msg.add({
+        severity: 'warn',
+        summary: 'No project selected',
+        detail: 'Open this supplier with ?projectId=… to add items to a project.',
+        life: 4000
+      });
+      return;
+    }
+    this.projectItemSvc.add(this.selectedProjectId, event.entity.id, event.type).subscribe({
+      next: () => {
+        // Refresh the snapshot — the service cache has already been
+        // upserted but we want the bound array reference to change so
+        // OnPush downstream re-renders the +/♡ active state.
+        this.loadProjectItems(this.selectedProjectId);
+        this.msg.add({
+          severity: 'success',
+          summary: event.type === 'liked' ? 'Liked for project' : 'Added to project',
+          life: 2000
+        });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
+      }
+    });
+  }
+
+  /** Toggle-off — clicking + on a selected (or ♡ on a liked) item removes
+      it from the project entirely. */
+  onRemoveFromProject(event: { entity: CatalogueEntity }) {
+    if (!this.selectedProjectId) return;
+    this.projectItemSvc.remove(this.selectedProjectId, event.entity.id).subscribe({
+      next: () => {
+        this.loadProjectItems(this.selectedProjectId);
+        this.msg.add({ severity: 'success', summary: 'Removed from project', life: 2000 });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Remove failed', life: 3000 });
+      }
+    });
   }
 
   // ── Home tab + supplier edit drawer ──────────────────────────────────

@@ -13,7 +13,7 @@ import { SidebarModule } from 'primeng/sidebar';
 import { ChipsModule } from 'primeng/chips';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, GitBranch, X } from 'lucide-angular';
+import { LucideAngularModule, GitBranch, X, Plus, Image } from 'lucide-angular';
 import { forkJoin, Observable } from 'rxjs';
 
 import { Item, Codelist, Category, Org } from '../../../models';
@@ -23,11 +23,19 @@ import { ItemService } from '../../../core/services/item.service';
 import { OrgService } from '../../../core/services/org.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
+import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
 
 type LeadTimeUnit = 'days' | 'weeks';
 type TierValue = 'basic' | 'mid' | 'premium' | null;
+export type ItemDrawerMode = 'add' | 'edit' | 'view';
 
 interface TierOption { value: 'basic' | 'mid' | 'premium'; label: string; }
+
+interface ItemImage {
+  url: string;
+  sort_order: number;
+  is_hero: boolean;
+}
 
 interface ItemForm {
   name: string;
@@ -48,6 +56,10 @@ interface ItemForm {
   image_display: 'cover' | 'contain';
   tags: string[];
   external_url: string | null;
+  /** v1.17: ordered gallery (8 slots). Maintained client-side; on save we
+      send the whole array and the server keeps image_url in sync with
+      whichever entry is is_hero (or images[0]) for backward compat. */
+  images: ItemImage[];
 }
 
 const TIER_OPTIONS: TierOption[] = [
@@ -55,6 +67,9 @@ const TIER_OPTIONS: TierOption[] = [
   { value: 'mid',     label: 'Signature' },
   { value: 'premium', label: 'Premium' }
 ];
+
+const IMAGE_SLOT_COUNT = 8;
+type DrawerTab = 'details' | 'index' | 'images';
 
 @Component({
   selector: 'app-item-drawer',
@@ -65,7 +80,7 @@ const TIER_OPTIONS: TierOption[] = [
     SidebarModule, ButtonModule, InputTextModule, InputNumberModule,
     DropdownModule, ChipsModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, MarkdownEditorComponent
+    GbpPipe, MarkdownEditorComponent, ImageUploadPanelComponent
   ],
   providers: [MessageService],
   template: `
@@ -73,7 +88,7 @@ const TIER_OPTIONS: TierOption[] = [
                (visibleChange)="onVisibleChange($event)"
                position="right"
                styleClass="bp-drawer"
-               [style]="{width:'480px'}"
+               [style]="{width:'520px'}"
                [showCloseIcon]="false"
                (onHide)="onCancel()">
 
@@ -81,7 +96,7 @@ const TIER_OPTIONS: TierOption[] = [
         <div class="bp-drawer-header-row">
           <div class="bp-drawer-header">
             <span class="bp-drawer-label">CATALOGUE</span>
-            <div class="bp-drawer-title">{{ item ? 'Edit item' : 'Add item' }}</div>
+            <div class="bp-drawer-title">{{ headerTitle }}</div>
           </div>
           <button class="bp-icon-btn" (click)="onCancel()" title="Close">
             <i class="pi pi-times"></i>
@@ -89,284 +104,452 @@ const TIER_OPTIONS: TierOption[] = [
         </div>
       </ng-template>
 
+      <!-- ── TAB BAR ──────────────────────────────────────────────────
+           Underline-style tabs matching the project / supplier hero tab
+           pattern (see .bp-hero-tabs in styles.css). Scoped locally so
+           the in-drawer strip doesn't fight the page-level hero tabs. -->
+      <div class="bp-drawer-tabs">
+        <button class="bp-drawer-tab"
+                [class.active]="activeTab === 'details'"
+                (click)="activeTab = 'details'"
+                type="button">
+          Details
+        </button>
+        <button class="bp-drawer-tab"
+                [class.active]="activeTab === 'index'"
+                (click)="activeTab = 'index'"
+                type="button">
+          Index
+        </button>
+        <button class="bp-drawer-tab"
+                [class.active]="activeTab === 'images'"
+                (click)="activeTab = 'images'"
+                type="button">
+          Images
+        </button>
+      </div>
+
       <div class="bp-drawer-body">
 
-        <!-- Derived-from info bar -->
-        <div *ngIf="form.derived_from_id as dfId" class="bp-derived-bar">
-          <lucide-icon name="git-branch" [size]="14"></lucide-icon>
-          <span class="bp-derived-text">
-            Derived from
-            <span class="bp-derived-name">{{ derivedFromName(dfId) }}</span>
-          </span>
-        </div>
+        <!-- ═══════════════ TAB 1: DETAILS ═══════════════ -->
+        <ng-container *ngIf="activeTab === 'details'">
 
-        <!-- ═══ DETAILS ═══ -->
-        <div class="bp-section-h">DETAILS</div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Item name *</label>
-          <input pInputText
-                 [(ngModel)]="form.name"
-                 class="w-full bp-input-edit"
-                 placeholder='e.g. 55" LED TV Screen'/>
-        </div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Description</label>
-          <app-markdown-editor
-            [(value)]="form.description"
-            [showLabel]="false"
-            [rows]="6"
-            placeholder="Describe what's included...">
-          </app-markdown-editor>
-        </div>
-
-        <div class="bp-grid-2">
           <div class="bp-field">
-            <label class="bp-field-label">Category *</label>
-            <p-dropdown [(ngModel)]="form.category_id"
-                        [options]="topCategories"
-                        optionLabel="name"
-                        optionValue="id"
-                        (onChange)="onCategoryChange()"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="Select category">
-            </p-dropdown>
+            <label class="bp-field-label">Item name <span *ngIf="!isView">*</span></label>
+            <input *ngIf="!isView" pInputText
+                   [(ngModel)]="form.name"
+                   class="w-full bp-input-edit"
+                   placeholder='e.g. 55&quot; LED TV Screen'/>
+            <div *ngIf="isView" class="bp-readonly-value">{{ form.name || '—' }}</div>
           </div>
+
           <div class="bp-field">
-            <label class="bp-field-label">Subcategory</label>
-            <p-dropdown [(ngModel)]="form.subcategory_id"
-                        [options]="subcategories"
-                        optionLabel="name"
-                        optionValue="id"
-                        [disabled]="!form.category_id || subcategories.length === 0"
-                        [showClear]="true"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="None">
-            </p-dropdown>
+            <label class="bp-field-label">Description</label>
+            <app-markdown-editor *ngIf="!isView"
+              [(value)]="form.description"
+              [showLabel]="false"
+              [rows]="6"
+              placeholder="Describe what's included...">
+            </app-markdown-editor>
+            <div *ngIf="isView" class="bp-readonly-value bp-readonly-value--multiline">
+              {{ form.description || '—' }}
+            </div>
           </div>
-        </div>
 
-        <div class="bp-field">
-          <label class="bp-field-label">Tier</label>
-          <div class="bp-tier-pills">
-            <button *ngFor="let t of tierOptions"
-                    type="button"
-                    class="bp-tier-pill"
-                    [class.bp-tier-pill--active]="form.tier === t.value"
-                    (click)="toggleTier(t.value)">
-              {{ t.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Lead time</label>
           <div class="bp-grid-2">
-            <p-inputNumber [(ngModel)]="form.lead_time_value"
-                           [min]="0"
-                           [showButtons]="false"
-                           inputStyleClass="w-full bp-input-edit">
-            </p-inputNumber>
-            <p-dropdown [(ngModel)]="form.lead_time_unit"
-                        [options]="leadTimeUnits"
-                        optionLabel="label"
-                        optionValue="value"
-                        styleClass="w-full bp-input-edit">
-            </p-dropdown>
-          </div>
-        </div>
-
-        <!-- ═══ PRICING ═══ -->
-        <div class="bp-section-h">PRICING</div>
-
-        <div class="bp-grid-2">
-          <div class="bp-field">
-            <label class="bp-field-label">Unit *</label>
-            <p-dropdown [(ngModel)]="form.unit"
-                        [options]="units"
-                        optionLabel="label"
-                        optionValue="code"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="Select unit">
-            </p-dropdown>
-          </div>
-          <div class="bp-field">
-            <label class="bp-field-label">Time unit</label>
-            <p-dropdown [(ngModel)]="form.time_unit"
-                        [options]="timeUnits"
-                        optionLabel="label"
-                        optionValue="code"
-                        [showClear]="true"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="None">
-            </p-dropdown>
-          </div>
-        </div>
-
-        <div class="bp-grid-3">
-          <div class="bp-field">
-            <label class="bp-field-label">Min price</label>
-            <div class="bp-money-input">
-              <span class="bp-money-prefix">£</span>
-              <input pInputText
-                     type="number"
-                     min="0"
-                     [(ngModel)]="form.min_price"
-                     class="w-full bp-input-edit bp-input-money"
-                     placeholder="0"/>
+            <div class="bp-field">
+              <label class="bp-field-label">Category <span *ngIf="!isView">*</span></label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.category_id"
+                          [options]="topCategories"
+                          optionLabel="name"
+                          optionValue="id"
+                          (onChange)="onCategoryChange()"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="Select category">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">{{ categoryLabel(form.category_id) || '—' }}</div>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Subcategory</label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.subcategory_id"
+                          [options]="subcategories"
+                          optionLabel="name"
+                          optionValue="id"
+                          [disabled]="!form.category_id || subcategories.length === 0"
+                          [showClear]="true"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="None">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">{{ categoryLabel(form.subcategory_id) || '—' }}</div>
             </div>
           </div>
+
           <div class="bp-field">
-            <label class="bp-field-label">Ballpark *</label>
-            <div class="bp-money-input bp-money-input--accent">
-              <span class="bp-money-prefix">£</span>
-              <input pInputText
-                     type="number"
-                     min="0"
-                     [(ngModel)]="form.base_price"
-                     class="w-full bp-input-edit bp-input-money bp-input-money--accent"
-                     placeholder="0"/>
+            <label class="bp-field-label">Lead time</label>
+            <div class="bp-grid-2" *ngIf="!isView">
+              <p-inputNumber [(ngModel)]="form.lead_time_value"
+                             [min]="0"
+                             [showButtons]="false"
+                             inputStyleClass="w-full bp-input-edit">
+              </p-inputNumber>
+              <p-dropdown [(ngModel)]="form.lead_time_unit"
+                          [options]="leadTimeUnits"
+                          optionLabel="label"
+                          optionValue="value"
+                          styleClass="w-full bp-input-edit">
+              </p-dropdown>
+            </div>
+            <div *ngIf="isView" class="bp-readonly-value">
+              <ng-container *ngIf="form.lead_time_value != null">
+                {{ form.lead_time_value }} {{ form.lead_time_unit }}
+              </ng-container>
+              <ng-container *ngIf="form.lead_time_value == null">—</ng-container>
             </div>
           </div>
-          <div class="bp-field">
-            <label class="bp-field-label">Max price</label>
-            <div class="bp-money-input">
-              <span class="bp-money-prefix">£</span>
-              <input pInputText
-                     type="number"
-                     min="0"
-                     [(ngModel)]="form.max_price"
-                     class="w-full bp-input-edit bp-input-money"
-                     placeholder="0"/>
+
+          <div class="bp-grid-2">
+            <div class="bp-field">
+              <label class="bp-field-label">Unit <span *ngIf="!isView">*</span></label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.unit"
+                          [options]="units"
+                          optionLabel="label"
+                          optionValue="code"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="Select unit">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">{{ unitLabel(form.unit) || '—' }}</div>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Time unit</label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.time_unit"
+                          [options]="timeUnits"
+                          optionLabel="label"
+                          optionValue="code"
+                          [showClear]="true"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="None">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">{{ unitLabel(form.time_unit) || '—' }}</div>
             </div>
           </div>
-        </div>
 
-        <div class="bp-helper-text" *ngIf="form.base_price && form.unit">
-          Agencies see <strong>{{ form.base_price | gbp }} per {{ unitLabel(form.unit) }}</strong> in the marketplace.
-          <span *ngIf="form.min_price && form.max_price">
-            Range: {{ form.min_price | gbp }} – {{ form.max_price | gbp }}.
-          </span>
-        </div>
+          <div class="bp-grid-3">
+            <div class="bp-field">
+              <label class="bp-field-label">Min price</label>
+              <div *ngIf="!isView" class="bp-money-input">
+                <span class="bp-money-prefix">£</span>
+                <input pInputText
+                       type="number"
+                       min="0"
+                       [(ngModel)]="form.min_price"
+                       class="w-full bp-input-edit bp-input-money"
+                       placeholder="0"/>
+              </div>
+              <div *ngIf="isView" class="bp-readonly-value">
+                {{ form.min_price != null ? (form.min_price | gbp) : '—' }}
+              </div>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Ballpark <span *ngIf="!isView">*</span></label>
+              <div *ngIf="!isView" class="bp-money-input bp-money-input--accent">
+                <span class="bp-money-prefix">£</span>
+                <input pInputText
+                       type="number"
+                       min="0"
+                       [(ngModel)]="form.base_price"
+                       class="w-full bp-input-edit bp-input-money bp-input-money--accent"
+                       placeholder="0"/>
+              </div>
+              <div *ngIf="isView" class="bp-readonly-value bp-readonly-value--accent">
+                {{ form.base_price != null ? (form.base_price | gbp) : '—' }}
+              </div>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Max price</label>
+              <div *ngIf="!isView" class="bp-money-input">
+                <span class="bp-money-prefix">£</span>
+                <input pInputText
+                       type="number"
+                       min="0"
+                       [(ngModel)]="form.max_price"
+                       class="w-full bp-input-edit bp-input-money"
+                       placeholder="0"/>
+              </div>
+              <div *ngIf="isView" class="bp-readonly-value">
+                {{ form.max_price != null ? (form.max_price | gbp) : '—' }}
+              </div>
+            </div>
+          </div>
 
-        <!-- Summary card -->
-        <div class="bp-summary-card" *ngIf="form.base_price && form.unit">
-          <div class="bp-summary-row">
-            <span class="bp-summary-label">Marketplace price</span>
-            <span class="bp-summary-value bp-summary-value--big">{{ form.base_price | gbp }}</span>
+          <div class="bp-helper-text" *ngIf="!isView && form.base_price && form.unit">
+            Agencies see <strong>{{ form.base_price | gbp }} per {{ unitLabel(form.unit) }}</strong> in the marketplace.
+            <span *ngIf="form.min_price && form.max_price">
+              Range: {{ form.min_price | gbp }} – {{ form.max_price | gbp }}.
+            </span>
           </div>
-          <div class="bp-summary-row">
-            <span class="bp-summary-label">Per</span>
-            <span class="bp-summary-value">{{ unitLabel(form.unit) }}</span>
-          </div>
-          <div class="bp-summary-row" *ngIf="form.min_price && form.max_price">
-            <span class="bp-summary-label">Price range</span>
-            <span class="bp-summary-value">{{ form.min_price | gbp }} – {{ form.max_price | gbp }}</span>
-          </div>
-          <div class="bp-summary-row" *ngIf="form.time_unit">
-            <span class="bp-summary-label">Billed</span>
-            <span class="bp-summary-value">{{ unitLabel(form.time_unit) }}</span>
-          </div>
-        </div>
 
-        <!-- ═══ LINEAGE ═══ -->
-        <div class="bp-section-h">LINEAGE</div>
+          <!-- Summary card (always shown when there's something to summarise) -->
+          <div class="bp-summary-card" *ngIf="form.base_price && form.unit">
+            <div class="bp-summary-row">
+              <span class="bp-summary-label">Marketplace price</span>
+              <span class="bp-summary-value bp-summary-value--big">{{ form.base_price | gbp }}</span>
+            </div>
+            <div class="bp-summary-row">
+              <span class="bp-summary-label">Per</span>
+              <span class="bp-summary-value">{{ unitLabel(form.unit) }}</span>
+            </div>
+            <div class="bp-summary-row" *ngIf="form.min_price && form.max_price">
+              <span class="bp-summary-label">Price range</span>
+              <span class="bp-summary-value">{{ form.min_price | gbp }} – {{ form.max_price | gbp }}</span>
+            </div>
+            <div class="bp-summary-row" *ngIf="form.time_unit">
+              <span class="bp-summary-label">Billed</span>
+              <span class="bp-summary-value">{{ unitLabel(form.time_unit) }}</span>
+            </div>
+          </div>
 
-        <div class="bp-grid-2">
+        </ng-container>
+
+        <!-- ═══════════════ TAB 2: INDEX ═══════════════ -->
+        <ng-container *ngIf="activeTab === 'index'">
+
+          <!-- Derived-from info bar sits at top of Index — the lineage tab. -->
+          <div *ngIf="form.derived_from_id as dfId" class="bp-derived-bar">
+            <lucide-icon name="git-branch" [size]="14"></lucide-icon>
+            <span class="bp-derived-text">
+              Derived from
+              <span class="bp-derived-name">{{ derivedFromName(dfId) }}</span>
+            </span>
+          </div>
+
           <div class="bp-field">
-            <label class="bp-field-label">Derived from</label>
-            <p-dropdown [(ngModel)]="form.derived_from_id"
-                        [options]="lineageOptions"
-                        optionLabel="name"
-                        optionValue="id"
-                        [showClear]="true"
-                        [filter]="true"
-                        filterBy="name"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="None">
-            </p-dropdown>
+            <label class="bp-field-label">Tier</label>
+            <div *ngIf="!isView" class="bp-tier-pills">
+              <button *ngFor="let t of tierOptions"
+                      type="button"
+                      class="bp-tier-pill"
+                      [class.bp-tier-pill--active]="form.tier === t.value"
+                      (click)="toggleTier(t.value)">
+                {{ t.label }}
+              </button>
+            </div>
+            <div *ngIf="isView" class="bp-readonly-value">
+              <span *ngIf="form.tier" class="bp-tier-badge">{{ tierLabel(form.tier) }}</span>
+              <span *ngIf="!form.tier">—</span>
+            </div>
           </div>
+
+          <div class="bp-grid-2">
+            <div class="bp-field">
+              <label class="bp-field-label">Derived from</label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.derived_from_id"
+                          [options]="lineageOptions"
+                          optionLabel="name"
+                          optionValue="id"
+                          [showClear]="true"
+                          [filter]="true"
+                          filterBy="name"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="None">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">
+                {{ form.derived_from_id ? derivedFromName(form.derived_from_id) : '—' }}
+              </div>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Parent item</label>
+              <p-dropdown *ngIf="!isView" [(ngModel)]="form.parent_item_id"
+                          [options]="lineageOptions"
+                          optionLabel="name"
+                          optionValue="id"
+                          [showClear]="true"
+                          [filter]="true"
+                          filterBy="name"
+                          styleClass="w-full bp-input-edit"
+                          placeholder="None (standalone)">
+              </p-dropdown>
+              <div *ngIf="isView" class="bp-readonly-value">
+                {{ form.parent_item_id ? derivedFromName(form.parent_item_id) : '—' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-helper-text" *ngIf="!isView">
+            Derived = born from another item. Parent = variant of a product family.
+          </div>
+
           <div class="bp-field">
-            <label class="bp-field-label">Parent item</label>
-            <p-dropdown [(ngModel)]="form.parent_item_id"
-                        [options]="lineageOptions"
-                        optionLabel="name"
-                        optionValue="id"
-                        [showClear]="true"
-                        [filter]="true"
-                        filterBy="name"
-                        styleClass="w-full bp-input-edit"
-                        placeholder="None (standalone)">
-            </p-dropdown>
+            <label class="bp-field-label">
+              Tags
+              <span *ngIf="!isView" class="bp-field-hint-inline">— press Enter to add</span>
+            </label>
+            <p-chips *ngIf="!isView" [(ngModel)]="form.tags"
+                     styleClass="w-full bp-input-edit"
+                     [allowDuplicate]="false"
+                     [addOnBlur]="true"
+                     placeholder="e.g. led, screen, rental...">
+            </p-chips>
+            <div *ngIf="isView" class="bp-readonly-chips">
+              <span *ngFor="let tag of form.tags" class="bp-readonly-chip">{{ tag }}</span>
+              <span *ngIf="!form.tags.length" class="bp-readonly-value">—</span>
+            </div>
           </div>
-        </div>
 
-        <div class="bp-helper-text">
-          Derived = born from another item. Parent = variant of a product family.
-        </div>
-
-        <!-- ═══ MEDIA & TAGS ═══ -->
-        <div class="bp-section-h">MEDIA &amp; TAGS</div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Image URL</label>
-          <input pInputText
-                 [(ngModel)]="form.image_url"
-                 class="w-full bp-input-edit"
-                 placeholder="https://..."/>
-          <div class="bp-image-preview" *ngIf="form.image_url">
-            <img [src]="form.image_url" [alt]="form.name || 'preview'"
-                 class="bp-image-thumb"
-                 [class.bp-image-thumb--contain]="form.image_display === 'contain'"/>
+          <div class="bp-field">
+            <label class="bp-field-label">External URL</label>
+            <input *ngIf="!isView" pInputText
+                   [(ngModel)]="form.external_url"
+                   class="w-full bp-input-edit"
+                   placeholder="https://..."/>
+            <div *ngIf="isView" class="bp-readonly-value">
+              <a *ngIf="form.external_url" [href]="form.external_url"
+                 target="_blank" rel="noopener" class="bp-readonly-link">
+                {{ form.external_url }}
+              </a>
+              <span *ngIf="!form.external_url">—</span>
+            </div>
           </div>
-          <div class="bp-field-hint">
-            Full image upload (Unsplash / drag-drop) comes next — for now paste a direct URL.
+
+        </ng-container>
+
+        <!-- ═══════════════ TAB 3: IMAGES ═══════════════ -->
+        <ng-container *ngIf="activeTab === 'images'">
+
+          <!-- Add mode — items must be saved first so the upload panel has
+               an entityId for the storage path. Keep this scoped to add
+               mode; edit + view always render the grid. -->
+          <div *ngIf="mode === 'add'" class="bp-images-empty-state">
+            <lucide-icon name="image" [size]="22" class="bp-images-empty-icon"></lucide-icon>
+            <div class="bp-images-empty-title">Save the item first</div>
+            <div class="bp-images-empty-sub">
+              Image uploads are stored against the item ID. Save your item, then re-open
+              it from the catalogue to manage its image gallery.
+            </div>
           </div>
-        </div>
 
-        <div class="bp-field">
-          <label class="bp-field-label">Tags <span class="bp-field-hint-inline">— press Enter to add</span></label>
-          <p-chips [(ngModel)]="form.tags"
-                   styleClass="w-full bp-input-edit"
-                   [allowDuplicate]="false"
-                   [addOnBlur]="true"
-                   placeholder="e.g. led, screen, rental...">
-          </p-chips>
-        </div>
+          <ng-container *ngIf="mode !== 'add'">
+            <div class="bp-images-helper">
+              First image is the <strong>Hero</strong> — shown on cards and the detail panel.
+              Up to {{ imageSlotCount }} images per item.
+            </div>
 
-        <div class="bp-field">
-          <label class="bp-field-label">External URL</label>
-          <input pInputText
-                 [(ngModel)]="form.external_url"
-                 class="w-full bp-input-edit"
-                 placeholder="https://..."/>
-        </div>
+            <div class="bp-images-grid">
+              <ng-container *ngFor="let slot of imageSlots; let i = index">
+                <!-- Empty slot — clickable add zone (suppressed in view). -->
+                <button *ngIf="!form.images[i] && !isView"
+                        type="button"
+                        class="bp-img-slot bp-img-slot--empty"
+                        (click)="openImageUpload(i)">
+                  <lucide-icon name="plus" [size]="18"></lucide-icon>
+                  <span class="bp-img-slot-label">{{ i === 0 ? 'Add hero' : 'Add image' }}</span>
+                </button>
+
+                <!-- View-mode empty slot — non-clickable placeholder. -->
+                <div *ngIf="!form.images[i] && isView"
+                     class="bp-img-slot bp-img-slot--empty bp-img-slot--readonly">
+                  <lucide-icon name="image" [size]="16"></lucide-icon>
+                </div>
+
+                <!-- Filled slot — thumbnail + remove × (suppressed in view). -->
+                <div *ngIf="form.images[i] as img"
+                     class="bp-img-slot bp-img-slot--filled"
+                     [class.bp-img-slot--hero]="i === 0"
+                     [class.bp-img-slot--readonly]="isView"
+                     (click)="!isView && openImageUpload(i)"
+                     [attr.title]="isView ? null : 'Click to replace'">
+                  <img [src]="img.url" [alt]="form.name || 'item image'"/>
+                  <span *ngIf="i === 0" class="bp-img-slot-hero-tag">HERO</span>
+                  <button *ngIf="!isView"
+                          type="button"
+                          class="bp-img-slot-remove"
+                          (click)="removeImage($event, i)"
+                          title="Remove image">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+
+        </ng-container>
 
       </div>
 
       <ng-template pTemplate="footer">
         <div class="bp-drawer-footer-row">
-          <p-button label="Cancel"
-                    styleClass="bp-btn-cancel"
-                    (onClick)="onCancel()">
-          </p-button>
-          <p-button [label]="item ? 'Save changes' : 'Save item'"
-                    styleClass="bp-btn-save"
-                    [disabled]="!isValid() || saving"
-                    [loading]="saving"
-                    (onClick)="onSave()">
-          </p-button>
+          <ng-container *ngIf="!isView">
+            <p-button label="Cancel"
+                      styleClass="bp-btn-cancel"
+                      (onClick)="onCancel()">
+            </p-button>
+            <p-button [label]="saveLabel"
+                      styleClass="bp-btn-save"
+                      [disabled]="!isValid() || saving"
+                      [loading]="saving"
+                      (onClick)="onSave()">
+            </p-button>
+          </ng-container>
+          <ng-container *ngIf="isView">
+            <p-button label="Close"
+                      styleClass="bp-btn-save"
+                      (onClick)="onCancel()">
+            </p-button>
+          </ng-container>
         </div>
       </ng-template>
     </p-sidebar>
+
+    <!-- Image upload modal — mounted only when a slot is being filled. The
+         panel is itself a <p-dialog> (via app-modal), so we just toggle the
+         *ngIf. type='item' + entityId=this.item.id targets the items bucket
+         and PATCHes image_url on save (we capture the URL into our local
+         images[] array on the way past). -->
+    <app-image-upload-panel
+      *ngIf="imageUploadOpen && item"
+      [entityId]="item.id"
+      type="item"
+      [existingCoverUrl]="existingSlotUrl()"
+      [existingImageDisplay]="form.image_display"
+      (imagesUpdated)="onImageUploaded($event)"
+      (closed)="closeImageUpload()">
+    </app-image-upload-panel>
 
     <p-toast></p-toast>
   `,
   styles: [`
     :host { display: contents; }
 
-    /* Section headers — uppercase 10px with bottom rule, matching other drawers. */
+    /* ── DRAWER TABS ─────────────────────────────────────────────────
+       Underline tabs matching the project / supplier hero tab pattern.
+       Live in the drawer body's container, not on the parchment header.
+       Tab bar is sticky-ish — it stays put while the body scrolls. */
+    .bp-drawer-tabs {
+      display: flex; gap: 0;
+      padding: 0 24px;
+      border-bottom: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .bp-drawer-tab {
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -0.5px;
+    }
+    .bp-drawer-tab:hover { color: var(--color-text-primary); }
+    .bp-drawer-tab.active {
+      color: var(--theme-accent);
+      border-bottom-color: var(--theme-accent);
+    }
+
+    /* Section headers — uppercase 10px with bottom rule (kept for legacy
+       in-section dividers; v1.17 the tabs replace top-level sections). */
     .bp-section-h {
       font-size: 10px;
       font-weight: 700;
@@ -378,7 +561,6 @@ const TIER_OPTIONS: TierOption[] = [
       border-bottom: 0.5px solid var(--color-border);
       font-family: var(--font-body);
     }
-    .bp-section-h:first-child { padding-top: 0; }
 
     .bp-field { margin-bottom: 14px; }
     .bp-field-label {
@@ -402,6 +584,56 @@ const TIER_OPTIONS: TierOption[] = [
 
     .bp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .bp-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    /* ── READ-ONLY DISPLAY ──────────────────────────────────────────
+       View mode replaces inputs with text. We keep the visual rhythm
+       (height, spacing) so the layout doesn't jitter when toggling. */
+    .bp-readonly-value {
+      font-size: 13px;
+      color: var(--color-text-primary);
+      padding: 7px 0;
+      line-height: 1.5;
+      font-family: var(--font-body);
+      min-height: 32px;
+    }
+    .bp-readonly-value--multiline {
+      white-space: pre-wrap;
+      padding: 8px 0;
+    }
+    .bp-readonly-value--accent {
+      color: var(--theme-accent);
+      font-weight: 600;
+    }
+    .bp-readonly-link {
+      color: var(--theme-accent);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .bp-readonly-link:hover { text-decoration: underline; }
+    .bp-readonly-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+    .bp-readonly-chip {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 20px;
+      font-family: var(--font-body);
+    }
+    .bp-tier-badge {
+      display: inline-flex; align-items: center;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--color-surface);
+      background: var(--theme-accent);
+      border-radius: 20px;
+      font-family: var(--font-body);
+    }
 
     /* Tier pills */
     .bp-tier-pills { display: flex; gap: 6px; }
@@ -494,16 +726,119 @@ const TIER_OPTIONS: TierOption[] = [
     }
     .bp-derived-name { color: var(--theme-accent); font-weight: 600; }
 
-    /* Image preview */
-    .bp-image-preview { margin-top: 8px; }
-    .bp-image-thumb {
-      width: 100%;
-      max-height: 120px;
-      border-radius: 8px;
-      object-fit: cover;
+    /* ── IMAGES TAB ─────────────────────────────────────────────────
+       4-column × 2-row grid of square slots. Empty slots show a dashed
+       border + plus icon; filled slots show a thumbnail with a remove ×.
+       The first slot wears a HERO tag — its image is the one written
+       back to image_url on save. */
+    .bp-images-helper {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .bp-images-helper strong { color: var(--theme-accent); font-weight: 600; }
+
+    .bp-images-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .bp-img-slot {
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+      background: var(--color-surface);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-family: var(--font-body);
+      padding: 0;
+    }
+    .bp-img-slot--empty {
+      border: 1.5px dashed var(--color-border);
+      color: var(--color-text-muted);
+    }
+    .bp-img-slot--empty:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+    }
+    .bp-img-slot--readonly { cursor: default; }
+    .bp-img-slot--readonly:hover {
+      border-color: var(--color-border);
+      color: var(--color-text-muted);
+      background: var(--color-surface);
+    }
+    .bp-img-slot-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .bp-img-slot--filled {
       border: 0.5px solid var(--color-border);
     }
-    .bp-image-thumb--contain { object-fit: contain; background: var(--theme-bg); }
+    .bp-img-slot--filled img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .bp-img-slot--hero { border-color: var(--theme-accent); }
+    .bp-img-slot-hero-tag {
+      position: absolute;
+      bottom: 6px; left: 6px;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--color-surface);
+      background: var(--theme-accent);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .bp-img-slot-remove {
+      position: absolute;
+      top: 4px; right: 4px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .bp-img-slot-remove:hover {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
+    /* Add-mode notice for the Images tab */
+    .bp-images-empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      gap: 10px;
+    }
+    .bp-images-empty-icon { color: var(--color-text-muted); }
+    .bp-images-empty-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--color-text-primary);
+    }
+    .bp-images-empty-sub {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      line-height: 1.55;
+      max-width: 320px;
+    }
 
     /* Footer row */
     .bp-drawer-footer-row {
@@ -514,14 +849,23 @@ const TIER_OPTIONS: TierOption[] = [
   `]
 })
 export class ItemDrawerComponent implements OnInit, OnChanges {
-  /** null = add mode; populated Item = edit mode. */
+  /** v1.17: explicit mode replaces the older item-is-null sentinel.
+      - 'add'  → empty form, save → POST /items
+      - 'edit' → pre-populated, save → PUT /items/:id
+      - 'view' → pre-populated, all inputs disabled, Close button only.
+      The legacy behaviour (mode='add' when item is null, 'edit' otherwise)
+      is still respected if parents haven't yet been updated — see
+      ngOnChanges. */
+  @Input() mode: ItemDrawerMode = 'add';
+
+  /** null in add mode; populated Item in edit/view mode. */
   @Input() item: Item | null = null;
   @Input() visible = false;
   /** Optional seed values applied in ADD mode only. Used to pre-populate
       the category dropdown(s) from the parent's current view filter — e.g.
       the supplier catalogue page passes the user's active category so a
       new item lands in the right place without re-typing.
-      Ignored when `item` is set (edit mode populates from the item itself). */
+      Ignored when `item` is set (edit/view modes populate from the item). */
   @Input() prefill: { category_id?: string; subcategory_id?: string } | null = null;
 
   @Output() saved = new EventEmitter<Item>();
@@ -538,11 +882,25 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   currentOrg: Org | null = null;
   saving = false;
 
+  /** Active tab inside the drawer — Details by default. Reset to Details
+      whenever the drawer is re-opened with a new item so the user lands
+      where they expect. */
+  activeTab: DrawerTab = 'details';
+
+  /** Image upload state — when a slot is clicked we open the panel and
+      remember which slot the returned URL should fill. */
+  imageUploadOpen = false;
+  uploadSlotIndex = 0;
+
   readonly tierOptions = TIER_OPTIONS;
   readonly leadTimeUnits = [
     { value: 'days' as LeadTimeUnit,  label: 'Days' },
     { value: 'weeks' as LeadTimeUnit, label: 'Weeks' }
   ];
+  readonly imageSlotCount = IMAGE_SLOT_COUNT;
+  /** Static array used as ngFor iterator — gives us 8 indices to lay out
+      the grid regardless of how many images the item has. */
+  readonly imageSlots = Array.from({ length: IMAGE_SLOT_COUNT });
 
   constructor(
     private codelistSvc: CodelistService,
@@ -582,9 +940,37 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     // When `prefill` changes while in add mode (item still null), re-seed
     // the form. This catches the supplier-detail flow where the parent
     // recomputes prefill from the current grid filter before each Add.
-    if (changes['prefill'] && !changes['prefill'].firstChange && !this.item) {
+    if (changes['prefill'] && !changes['prefill'].firstChange && this.mode === 'add') {
       this.populateForm();
     }
+    // When `mode` changes (parent toggles view↔edit on the same item),
+    // reset the active tab so the user lands on Details.
+    if (changes['mode'] && !changes['mode'].firstChange) {
+      this.activeTab = 'details';
+    }
+    // When the drawer opens, default to the Details tab regardless of
+    // previous state.
+    if (changes['visible'] && changes['visible'].currentValue
+        && !changes['visible'].previousValue) {
+      this.activeTab = 'details';
+    }
+  }
+
+  // ── Mode helpers ─────────────────────────────────────────────────────
+
+  /** True when the drawer should render every field as read-only text. */
+  get isView(): boolean { return this.mode === 'view'; }
+
+  /** Title rendered in the parchment header. */
+  get headerTitle(): string {
+    if (this.mode === 'view') return 'Item details';
+    if (this.mode === 'edit') return 'Edit item';
+    return 'Add item';
+  }
+
+  /** Footer button label for save (edit vs add). */
+  get saveLabel(): string {
+    return this.mode === 'edit' ? 'Save changes' : 'Save item';
   }
 
   // ── Form lifecycle ───────────────────────────────────────────────────
@@ -608,12 +994,36 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       image_url: null,
       image_display: 'cover',
       tags: [],
-      external_url: null
+      external_url: null,
+      images: []
     };
   }
 
+  /** Build the local form.images[] from the item we're editing/viewing.
+      Prefers the new `images` JSONB array; falls back to `image_url`
+      (single-image legacy) so older items still render an image in the
+      drawer's hero slot. */
+  private imagesFromItem(item: Item): ItemImage[] {
+    const raw = (item as any).images;
+    if (Array.isArray(raw) && raw.length) {
+      return raw
+        .filter((r: any) => r && r.url)
+        .map((r: any, i: number) => ({
+          url: r.url,
+          sort_order: typeof r.sort_order === 'number' ? r.sort_order : i,
+          is_hero: !!r.is_hero || i === 0
+        }))
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .slice(0, IMAGE_SLOT_COUNT);
+    }
+    if (item.image_url) {
+      return [{ url: item.image_url, sort_order: 0, is_hero: true }];
+    }
+    return [];
+  }
+
   private populateForm(): void {
-    if (!this.item) {
+    if (this.mode === 'add') {
       this.form = this.emptyForm();
       this.subcategories = [];
       // Apply any add-mode prefill. The caller may pass either a top-level
@@ -654,7 +1064,17 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       }
       return;
     }
-    // Edit mode — split DB category_id back into category/subcategory.
+
+    // edit / view modes — populate from this.item.
+    if (!this.item) {
+      // Defensive: parent set mode=edit/view but no item yet. Leave the
+      // form empty until the item arrives.
+      this.form = this.emptyForm();
+      this.subcategories = [];
+      return;
+    }
+
+    // Split DB category_id back into category/subcategory.
     const itemCat = this.allCategories.find(c => c.id === this.item!.category_id);
     let category_id: string | null = null;
     let subcategory_id: string | null = null;
@@ -694,7 +1114,8 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       image_url: this.item.image_url ?? null,
       image_display: (this.item.image_display === 'contain') ? 'contain' : 'cover',
       tags: Array.isArray(this.item.tags) ? [...this.item.tags] : [],
-      external_url: this.item.external_url ?? null
+      external_url: this.item.external_url ?? null,
+      images: this.imagesFromItem(this.item)
     };
     if (category_id) this.refreshSubcategories(category_id);
   }
@@ -722,6 +1143,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   }
 
   toggleTier(value: 'basic' | 'mid' | 'premium'): void {
+    if (this.isView) return;
     this.form.tier = this.form.tier === value ? null : value;
   }
 
@@ -729,13 +1151,98 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     return code ? this.codelistSvc.getDisplay(code) : '';
   }
 
+  tierLabel(tier: TierValue): string {
+    return this.tierOptions.find(t => t.value === tier)?.label || '';
+  }
+
+  /** Resolve a category id back to its display name. Used by view mode
+      where we don't render the dropdown but still need the human label. */
+  categoryLabel(id: string | null): string {
+    if (!id) return '';
+    return this.allCategories.find(c => c.id === id)?.name || '';
+  }
+
   derivedFromName(id: string): string {
     return this.lineageOptions.find(o => o.id === id)?.name || '…';
+  }
+
+  // ── Images tab ───────────────────────────────────────────────────────
+
+  /** Click handler for an image slot (empty or filled). Opens the upload
+      panel and remembers which slot the returned URL should fill. */
+  openImageUpload(slotIndex: number): void {
+    if (this.isView || this.mode === 'add') return;
+    this.uploadSlotIndex = slotIndex;
+    this.imageUploadOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeImageUpload(): void {
+    this.imageUploadOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Resolve the URL already in the slot being filled — passed to the
+      ImageUploadPanel as `existingCoverUrl` so the user sees their current
+      image and can choose to replace it. */
+  existingSlotUrl(): string {
+    const slot = this.form.images[this.uploadSlotIndex];
+    return slot && slot.url ? slot.url : '';
+  }
+
+  /** Capture the URL ImageUploadPanel emits and write it to the local
+      form.images[] at the slot we opened. The panel itself PATCHes
+      image_url on the item too — harmless, since on drawer save we
+      overwrite both image_url + images[] with the right values. */
+  onImageUploaded(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }): void {
+    if (!event.coverUrl) {
+      // No URL returned (e.g. user removed the existing image). Treat as
+      // a remove on the slot we opened.
+      this.removeImageAt(this.uploadSlotIndex);
+      this.closeImageUpload();
+      return;
+    }
+    const i = this.uploadSlotIndex;
+    const updated: ItemImage[] = [...this.form.images];
+    updated[i] = {
+      url: event.coverUrl,
+      sort_order: i,
+      is_hero: i === 0
+    };
+    this.form.images = this.normaliseImages(updated);
+    if (event.imageDisplay) this.form.image_display = event.imageDisplay;
+    this.closeImageUpload();
+  }
+
+  /** Remove an image from a specific slot. Subsequent images keep their
+      slot — we don't shift up so the user's mental model of "this is the
+      hero" stays stable until they explicitly reorder. */
+  removeImage(event: MouseEvent, slotIndex: number): void {
+    event.stopPropagation();
+    this.removeImageAt(slotIndex);
+  }
+  private removeImageAt(slotIndex: number): void {
+    const updated: ItemImage[] = [...this.form.images];
+    updated[slotIndex] = undefined as any;
+    this.form.images = this.normaliseImages(updated);
+    this.cdr.markForCheck();
+  }
+
+  /** Compact a sparse images[] array down to a dense ordered list,
+      re-stamp sort_order, and set is_hero on the first entry. */
+  private normaliseImages(input: (ItemImage | undefined)[]): ItemImage[] {
+    const filtered = input.filter((i): i is ItemImage => !!i && !!i.url);
+    return filtered.map((img, i) => ({
+      url: img.url,
+      sort_order: i,
+      is_hero: i === 0
+    }));
   }
 
   // ── Validation ───────────────────────────────────────────────────────
 
   isValid(): boolean {
+    if (this.isView) return false; // view mode never saves
     return !!(
       this.form.name && this.form.name.trim().length > 0 &&
       this.form.category_id &&
@@ -747,7 +1254,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   // ── Save / cancel ────────────────────────────────────────────────────
 
   onSave(): void {
-    if (!this.isValid()) return;
+    if (this.isView || !this.isValid()) return;
     this.saving = true;
     this.cdr.markForCheck();
 
@@ -761,10 +1268,20 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       leadTimeDays = leadTimeDays * 7;
     }
 
+    // Compute the legacy image_url from the new images[] so the server
+    // doesn't need to figure it out — first is_hero, else images[0].
+    // (Server also computes this defensively; we send it explicitly so
+    // the response back to the parent reflects the right value without
+    // a re-fetch.)
+    const heroUrl = this.form.images.find(i => i.is_hero)?.url
+                  ?? this.form.images[0]?.url
+                  ?? null;
+
     const payload: Partial<Item> & {
       derived_from_id?: string | null;
       parent_item_id?: string | null;
       external_url?: string | null;
+      images?: ItemImage[];
     } = {
       name: this.form.name.trim(),
       description: this.form.description || '',
@@ -778,16 +1295,18 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       max_price: this.form.max_price ?? undefined,
       derived_from_id: this.form.derived_from_id,
       parent_item_id: this.form.parent_item_id,
-      image_url: this.form.image_url,
+      image_url: heroUrl,
       image_display: this.form.image_display,
       tags: this.form.tags,
-      external_url: this.form.external_url
+      external_url: this.form.external_url,
+      images: this.form.images
     };
 
     let op$: Observable<Item>;
-    if (this.item) {
+    if (this.mode === 'edit' && this.item) {
       op$ = this.itemSvc.update(this.item.id, payload);
     } else {
+      // add mode
       if (!this.currentOrg) {
         this.saving = false;
         this.msg.add({
@@ -807,7 +1326,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
         this.saving = false;
         this.msg.add({
           severity: 'success',
-          summary: this.item ? 'Item updated' : 'Item created',
+          summary: this.mode === 'edit' ? 'Item updated' : 'Item created',
           detail: result.name,
           life: 3000
         });
@@ -819,7 +1338,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
         this.saving = false;
         this.msg.add({
           severity: 'error',
-          summary: this.item ? 'Failed to update item' : 'Failed to create item',
+          summary: this.mode === 'edit' ? 'Failed to update item' : 'Failed to create item',
           life: 4000
         });
         this.cdr.markForCheck();

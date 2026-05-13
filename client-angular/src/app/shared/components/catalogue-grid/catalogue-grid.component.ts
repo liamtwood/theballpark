@@ -11,7 +11,7 @@ import {
   ChevronRight, ChevronLeft, MapPin, SquarePen
 } from 'lucide-angular';
 import { GbpPipe } from '../../pipes/gbp.pipe';
-import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext } from '../../../models';
+import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext, ProjectItem } from '../../../models';
 import { ConfigStripComponent } from '../config-strip/config-strip.component';
 import { CodelistService } from '../../../core/services/codelist.service';
 
@@ -356,10 +356,63 @@ export type DetailMode = 'inline' | 'drawer';
                  [src]="getImageUrl(selectedEntity)!" [alt]="selectedEntity.name" class="bp-detail-hero-logo-img"/>
             <span *ngIf="!getImageUrl(selectedEntity)"
                   class="bp-detail-hero-initials">{{ selectedEntity.name.charAt(0) }}</span>
-            <!-- Item edit pencil — opt-in via [showItemEdit]. Only renders
-                 for items, never categories/orgs. Click emits
-                 itemEditRequested so the parent can open its drawer. -->
-            <button *ngIf="showItemEdit && entityType === 'item'"
+
+            <!-- ── v1.17 Action cluster ───────────────────────────────
+                 Four circular icon buttons in the hero's top-right.
+                   + (add to project)   — agency only, toggles selected
+                   ♡ (like for project) — agency only, toggles liked
+                   ✎ (edit)             — own org items only, opens drawer
+                                          in edit mode
+                   👁 (view)             — always visible, opens drawer in
+                                          view mode
+                 Add and like toggle the same project_items row through
+                 ProjectItemService.upsert — the cart pattern from v1.13. -->
+            <div *ngIf="entityType === 'item'" class="bp-detail-actions">
+              <!-- Add to project (agency only) -->
+              <button *ngIf="isAgency"
+                      type="button"
+                      class="bp-detail-action"
+                      [class.active]="getSelectionType(selectedEntity.id) === 'selected'"
+                      (click)="onAddToProject(selectedEntity)"
+                      [title]="getSelectionType(selectedEntity.id) === 'selected'
+                               ? 'Remove from project'
+                               : 'Add to project'">
+                <i class="pi pi-plus"></i>
+              </button>
+              <!-- Like for project (agency only) -->
+              <button *ngIf="isAgency"
+                      type="button"
+                      class="bp-detail-action"
+                      [class.active]="getSelectionType(selectedEntity.id) === 'liked'"
+                      (click)="onLikeForProject(selectedEntity)"
+                      [title]="getSelectionType(selectedEntity.id) === 'liked'
+                               ? 'Remove from project'
+                               : 'Like for project'">
+                <i class="pi pi-heart"
+                   [class.pi-heart-fill]="getSelectionType(selectedEntity.id) === 'liked'"></i>
+              </button>
+              <!-- Edit (own org items only) -->
+              <button *ngIf="isOwner(selectedEntity)"
+                      type="button"
+                      class="bp-detail-action"
+                      (click)="onEditItem(selectedEntity)"
+                      title="Edit item">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <!-- View (always) -->
+              <button type="button"
+                      class="bp-detail-action"
+                      (click)="onViewItem(selectedEntity)"
+                      title="View details">
+                <i class="pi pi-eye"></i>
+              </button>
+            </div>
+
+            <!-- Legacy item-edit pencil. Kept for parents that still set
+                 [showItemEdit] without the new project-context inputs.
+                 Suppressed when the new action cluster is in play
+                 (entityType==='item') to avoid two pencils. -->
+            <button *ngIf="showItemEdit && entityType !== 'item'"
                     class="bp-detail-edit-btn"
                     (click)="onItemEditClick($event)"
                     title="Edit item">
@@ -880,6 +933,43 @@ export type DetailMode = 'inline' | 'drawer';
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .bp-detail-edit-btn:hover { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
+
+    /* ── v1.17 Detail action cluster ────────────────────────────────
+       Four circular icon buttons in the hero's top-right (+ / ♡ / ✎ / 👁).
+       The hero container is already position:relative so absolute
+       positioning anchors correctly. Active state fills amber to signal
+       project membership / liked state. Hover lifts to amber accent. */
+    .bp-detail-actions {
+      display: flex; gap: 6px;
+      position: absolute;
+      top: 10px; right: 10px;
+      z-index: 2;
+    }
+    .bp-detail-action {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .bp-detail-action:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    .bp-detail-action.active {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-detail-action.active:hover {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
     .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
     .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
@@ -968,6 +1058,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       marketplace behaviour. */
   @Input() projectContext: ProjectContext | null = null;
 
+  /** v1.17 — project-cart context for the inline detail panel's action
+      cluster (+ / ♡ / ✎ / 👁). Optional: when not set, only the View
+      button renders (no project selection, no ownership-gated edit).
+      - projectId       → required to wire +/♡ to ProjectItemService.
+      - projectItems    → snapshot of project_items for membership/state.
+      - currentOrgId    → drives ownership (isOwner) for the edit pencil.
+      - currentOrgType  → 'agency' shows +/♡; 'supplier' hides them. */
+  @Input() projectId: string | null = null;
+  @Input() projectItems: ProjectItem[] = [];
+  @Input() currentOrgId: string | null = null;
+  @Input() currentOrgType: string | null = null;
+
   @Output() entitySelected = new EventEmitter<CatalogueEntity>();
   @Output() backClicked = new EventEmitter<void>();
   @Output() favouriteToggled = new EventEmitter<string>();
@@ -994,6 +1096,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Output() tagChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
   @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
+
+  /** v1.17 — project-cart actions on the inline detail panel.
+      addToProject       → user clicked + or ♡ on an item not yet in the
+                            project. Emits the entity + the selection
+                            type the parent should upsert.
+      removeFromProject  → user clicked + or ♡ on an item already in the
+                            project with the same type (toggle off).
+      viewRequested      → user clicked the eye icon — parent should open
+                            its item drawer in view mode. */
+  @Output() addToProject = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
+  @Output() removeFromProject = new EventEmitter<{ entity: CatalogueEntity }>();
+  @Output() viewRequested = new EventEmitter<CatalogueEntity>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
@@ -1447,6 +1561,62 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   onItemEditClick(event: MouseEvent) {
     event.stopPropagation();
     if (this.selectedEntity) this.itemEditRequested.emit(this.selectedEntity);
+  }
+
+  // ── v1.17 detail-panel action cluster ────────────────────────────────
+
+  /** Agencies see add/like (+/♡); suppliers don't (they own the items). */
+  get isAgency(): boolean {
+    return this.currentOrgType === 'agency';
+  }
+
+  /** True when the current org owns this item — gates the edit pencil. */
+  isOwner(entity: CatalogueEntity): boolean {
+    if (!this.currentOrgId) return false;
+    const orgId = (entity as any).org_id || entity._raw?.org_id;
+    return !!orgId && orgId === this.currentOrgId;
+  }
+
+  /** Selection state for an item in the current project, or null. Drives
+      the active state on the + / ♡ buttons. */
+  getSelectionType(itemId: string): 'selected' | 'liked' | null {
+    const pi = this.projectItems.find(p => p.item_id === itemId);
+    return pi ? pi.selection_type : null;
+  }
+
+  /** + button — adds the item to the project as 'selected', or removes
+      it if it's already there with the same type. Parent persists. */
+  onAddToProject(entity: CatalogueEntity) {
+    const current = this.getSelectionType(entity.id);
+    if (current === 'selected') {
+      this.removeFromProject.emit({ entity });
+    } else {
+      this.addToProject.emit({ entity, type: 'selected' });
+    }
+  }
+
+  /** ♡ button — toggles the 'liked' selection. Same upsert path: clicking
+      ♡ on a 'selected' item flips it to 'liked' (one row per item via
+      the unique index on project_items). */
+  onLikeForProject(entity: CatalogueEntity) {
+    const current = this.getSelectionType(entity.id);
+    if (current === 'liked') {
+      this.removeFromProject.emit({ entity });
+    } else {
+      this.addToProject.emit({ entity, type: 'liked' });
+    }
+  }
+
+  /** 👁 button — open the item drawer in view (read-only) mode. */
+  onViewItem(entity: CatalogueEntity) {
+    this.viewRequested.emit(entity);
+  }
+
+  /** ✎ button — open the item drawer in edit mode. Re-uses the existing
+      itemEditRequested emitter so parents that already listen for the
+      pencil don't need to wire a second handler. */
+  onEditItem(entity: CatalogueEntity) {
+    this.itemEditRequested.emit(entity);
   }
 
   onParentClick(e: CatalogueEntity) {
