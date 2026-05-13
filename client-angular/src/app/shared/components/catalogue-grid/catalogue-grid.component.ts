@@ -106,12 +106,10 @@ export type DetailMode = 'inline' | 'drawer';
         (click)="scrollCircles(200)">
         <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
       </button>
-      <!-- Build mode — toggle between scoped-only and all-categories.
-           Hidden in marketplace mode. -->
-      <button *ngIf="projectContext" class="bp-circles-toggle"
-        (click)="toggleShowAllCategories()">
-        {{ showAllCategories ? 'Show scoped only' : 'Show all categories' }}
-      </button>
+      <!-- v1.21: scoped-only / show-all toggle removed. Project-mode
+           strip is now hard-locked to top-level in-scope categories;
+           the Brief tab is the canonical place to add a new category
+           to scope, so an in-grid escape hatch is no longer needed. -->
     </div>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
@@ -1375,16 +1373,40 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   get displayedCircles(): CategoryInfo[] {
-    let cats = this.drilledCategory ? this.childCategories : this.parentCategories;
-    // Build mode default — only show categories scoped to this project,
-    // with a "Show all" toggle to reveal the rest. The "+ scope it in"
-    // gesture relies on the user first toggling all on, then clicking
-    // a greyed circle.
-    if (this.projectContext && !this.showAllCategories) {
-      const scoped = this.scopedCategoryIds;
-      cats = cats.filter(c => scoped.has(c.id));
+    // v1.21: in project mode the strip is HARD-LOCKED to top-level
+    // in-scope categories. Two consequences:
+    //   1. Sub-categories never appear in the circles when the user
+    //      drills into a parent (they live in the sidebar's FORMAT
+    //      checkbox section instead).
+    //   2. We compute "in scope" by walking up from each
+    //      project_categories.category_id to its top-level ancestor —
+    //      so a project that scoped a sub-category (e.g. 'Canapes')
+    //      via the Brief tab still gets its parent ('Catering') in
+    //      the strip.
+    if (this.projectContext) {
+      const topInScope = new Set<string>();
+      for (const pc of this.projectContext.projectCategories) {
+        const topId = this.topLevelId(pc.category_id);
+        if (topId) topInScope.add(topId);
+      }
+      return this.parentCategories.filter(c => topInScope.has(c.id));
     }
-    return cats;
+
+    // Marketplace / supplier default — drill behaviour unchanged.
+    return this.drilledCategory ? this.childCategories : this.parentCategories;
+  }
+
+  /** Walk up the parent chain to find a category's top-level ancestor.
+      Returns the id, or null if the category isn't in our category list
+      at all. Guarded against accidental cycles. */
+  private topLevelId(catId: string | null | undefined): string | null {
+    if (!catId) return null;
+    let current = this.categories.find(c => c.id === catId);
+    let guard = 6;
+    while (current && current.parent_id && guard-- > 0) {
+      current = this.categories.find(c => c.id === current!.parent_id);
+    }
+    return current?.id || null;
   }
 
   @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
