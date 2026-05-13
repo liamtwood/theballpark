@@ -149,12 +149,17 @@ export class MarketplaceComponent implements OnInit {
       categories: this.categorySvc.getAll('catalogue'),
       items:      this.supplierSvc.getItems({}),
       cart:       this.projectItemSvc.getByProject(pid),
-      org:        this.orgSvc.getCurrentOrg()
+      org:        this.orgSvc.getCurrentOrg(),
+      // v1.21b: catalogue-wide item counts per category. Rolls up to
+      // parents on the server (countsByCategory walks parent_id) so a
+      // top-level category's count reflects every item in its tree.
+      // Drives the count chip next to each sidebar entry.
+      itemCounts: this.supplierSvc.getItemCounts()
     }).subscribe({
-      next: ({ project, projectCat, categories, items, cart, org }) => {
+      next: ({ project, projectCat, categories, items, cart, org, itemCounts }) => {
         this.project = project || null;
         this.projectCategories = (projectCat || []).filter(p => p.is_active);
-        this.categories = this.mapCategories(categories || []);
+        this.categories = this.mapCategories(categories || [], itemCounts?.counts || {});
         this.rawItems = items || [];
         this.itemEntities = this.mapItems(this.rawItems);
         this.projectItems = cart || [];
@@ -309,8 +314,9 @@ export class MarketplaceComponent implements OnInit {
   }
 
   /** Mirror the marketplace's categories shaping so the grid sees the
-      same fields (cover_image_url, icon_name, description, etc). */
-  private mapCategories(raw: any[]): CategoryInfo[] {
+      same fields (cover_image_url, icon_name, description, etc).
+      `counts` keyed by category_id — drives the sidebar count chips. */
+  private mapCategories(raw: any[], counts: Record<string, number>): CategoryInfo[] {
     return raw
       .filter((c: any) => c.enabled !== false)
       .map((c: any) => ({
@@ -323,7 +329,8 @@ export class MarketplaceComponent implements OnInit {
         parent_id: c.parent_id || undefined,
         tagline: c.tagline,
         description: c.description,
-        model: c.model || 'A'
+        model: c.model || 'A',
+        count: counts[c.id] || 0
       }));
   }
 

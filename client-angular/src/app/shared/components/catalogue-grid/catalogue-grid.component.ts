@@ -162,10 +162,13 @@ export type DetailMode = 'inline' | 'drawer';
             All categories
           </button>
 
-          <!-- FORMAT section (model=A subcategories) -->
+          <!-- FORMAT section (model=A subcategories). All / None links
+               only render when there are children to act on; the empty
+               state ("No subcategories") sits in their place so the
+               drilled-in sidebar still reads as a coherent unit. -->
           <div class="bp-sidebar-section-header mt-4">
             <span class="bp-sidebar-sublabel">Format</span>
-            <div class="bp-sidebar-check-actions">
+            <div class="bp-sidebar-check-actions" *ngIf="childCategories.length">
               <button class="bp-sidebar-check-link" (click)="checkAll()">All</button>
               <span class="bp-sidebar-check-sep">·</span>
               <button class="bp-sidebar-check-link" (click)="uncheckAll()">None</button>
@@ -177,6 +180,9 @@ export type DetailMode = 'inline' | 'drawer';
               (onChange)="toggleChild(child.id)"
               [label]="child.name">
             </p-checkbox>
+          </div>
+          <div *ngIf="!childCategories.length" class="bp-sidebar-empty">
+            No subcategories
           </div>
 
           <!-- TYPE section (tags aggregated from items in this category) -->
@@ -762,6 +768,15 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-sidebar-back:hover { opacity: 0.75; }
+    /* Empty-state row inside the sidebar (e.g. drilled into a category
+       with no subcategories). Matches the muted, italic copy used
+       elsewhere for "nothing here yet" placeholders. */
+    .bp-sidebar-empty {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-style: italic;
+      padding: 4px 0 6px;
+    }
 
     /* ── SIDEBAR CHECKBOXES ── */
     .bp-sidebar-check-actions { display: flex; align-items: center; gap: 6px; }
@@ -1527,20 +1542,15 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       return;
     }
 
-    // Check if this category has children → drill in
-    const hasChildren = this.categories.some(c => c.parent_id === catId);
-    if (hasChildren) {
-      const cat = this.categories.find(c => c.id === catId);
-      if (cat) this.drillIn(cat);
-    } else {
-      // Simple category (no children) — just filter (orgs/admin pattern)
-      this.activeCategory = catId;
-      this.activeChildCategory = null;
-      this.activeTag = '';
-      this.selectedEntity = null;
-      this.categoryChanged.emit(catId);
-      this.applyFilter();
-    }
+    // v1.21b: every non-'all' selection drills in. Previously a
+    // category without children fell through a separate "simple
+    // filter" branch that didn't reset prior drill state — so
+    // switching from a cat-with-subcats to a cat-without left the
+    // sidebar's FORMAT checkboxes stale. drillIn() resets cleanly.
+    // The FORMAT section's empty state renders "No subcategories"
+    // when childCategories is empty.
+    const cat = this.categories.find(c => c.id === catId);
+    if (cat) this.drillIn(cat);
   }
 
   // ── Drill-down ────────────────────────────────────────────────────────
