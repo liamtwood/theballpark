@@ -391,8 +391,10 @@ export type DetailMode = 'inline' | 'drawer';
                 <i class="pi pi-heart"
                    [class.pi-heart-fill]="getSelectionType(selectedEntity.id) === 'liked'"></i>
               </button>
-              <!-- Edit (own org items only) -->
-              <button *ngIf="isOwner(selectedEntity)"
+              <!-- Edit — visible for all users until auth + roles ship.
+                   Future gate: own-org items OR platform admin role.
+                   See canEdit() for the relaxed-now / strict-later logic. -->
+              <button *ngIf="canEdit(selectedEntity)"
                       type="button"
                       class="bp-detail-action"
                       (click)="onEditItem(selectedEntity)"
@@ -1570,11 +1572,22 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return this.currentOrgType === 'agency';
   }
 
-  /** True when the current org owns this item — gates the edit pencil. */
+  /** True when the current org owns this item — the eventual gate for
+      the edit pencil (alongside platform-admin role). */
   isOwner(entity: CatalogueEntity): boolean {
     if (!this.currentOrgId) return false;
     const orgId = (entity as any).org_id || entity._raw?.org_id;
     return !!orgId && orgId === this.currentOrgId;
+  }
+
+  /** Permission gate for the edit pencil. Future shape:
+        isOwner(entity) || isPlatformAdmin
+      Today (pre-auth) we return true for every user so editing is
+      unblocked during development. Swap to the strict expression once
+      Google SSO + role middleware ship (v2.0). */
+  canEdit(_entity: CatalogueEntity): boolean {
+    // TODO(v2.0 auth): return this.isOwner(_entity) || this.isPlatformAdmin;
+    return true;
   }
 
   /** Selection state for an item in the current project, or null. Drives
