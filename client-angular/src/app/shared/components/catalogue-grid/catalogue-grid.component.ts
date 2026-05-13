@@ -8,7 +8,8 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { forkJoin } from 'rxjs';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
-  ChevronRight, ChevronLeft, MapPin, SquarePen
+  ChevronRight, ChevronLeft, MapPin, SquarePen,
+  Plus, Eye
 } from 'lucide-angular';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { CatalogueEntity, CategoryInfo, ProjectCategory, ProjectContext, ProjectItem } from '../../../models';
@@ -368,7 +369,9 @@ export type DetailMode = 'inline' | 'drawer';
                  Add and like toggle the same project_items row through
                  ProjectItemService.upsert — the cart pattern from v1.13. -->
             <div *ngIf="entityType === 'item'" class="bp-detail-actions">
-              <!-- Add to project (agency only) -->
+              <!-- Add to project (agency only). Active state fills the
+                   button amber (via .bp-detail-action.active); the icon
+                   itself stays the same plus glyph. -->
               <button *ngIf="isAgency"
                       type="button"
                       class="bp-detail-action"
@@ -377,9 +380,12 @@ export type DetailMode = 'inline' | 'drawer';
                       [title]="getSelectionType(selectedEntity.id) === 'selected'
                                ? 'Remove from project'
                                : 'Add to project'">
-                <i class="pi pi-plus"></i>
+                <lucide-icon name="plus" [size]="14"></lucide-icon>
               </button>
-              <!-- Like for project (agency only) -->
+              <!-- Like for project (agency only). Active state fills the
+                   button amber — no separate solid variant needed
+                   (Lucide doesn't ship one and the button background
+                   already reads as "on"). -->
               <button *ngIf="isAgency"
                       type="button"
                       class="bp-detail-action"
@@ -388,25 +394,25 @@ export type DetailMode = 'inline' | 'drawer';
                       [title]="getSelectionType(selectedEntity.id) === 'liked'
                                ? 'Remove from project'
                                : 'Like for project'">
-                <i class="pi pi-heart"
-                   [class.pi-heart-fill]="getSelectionType(selectedEntity.id) === 'liked'"></i>
+                <lucide-icon name="heart" [size]="14"></lucide-icon>
               </button>
               <!-- Edit — visible for all users until auth + roles ship.
                    Future gate: own-org items OR platform admin role.
-                   See canEdit() for the relaxed-now / strict-later logic. -->
+                   See canEdit() for the relaxed-now / strict-later logic.
+                   Uses the standard square-pen edit glyph per WORKING_STANDARDS. -->
               <button *ngIf="canEdit(selectedEntity)"
                       type="button"
                       class="bp-detail-action"
                       (click)="onEditItem(selectedEntity)"
                       title="Edit item">
-                <i class="pi pi-pencil"></i>
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
               <!-- View (always) -->
               <button type="button"
                       class="bp-detail-action"
                       (click)="onViewItem(selectedEntity)"
                       title="View details">
-                <i class="pi pi-eye"></i>
+                <lucide-icon name="eye" [size]="14"></lucide-icon>
               </button>
             </div>
 
