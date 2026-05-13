@@ -224,7 +224,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
   inProject    = false;
   projectId    = '';
 
-  get projectBuildPath()    { return `/projects/${this.projectId}/build`; }
+  // v1.18b: Build tab renamed to Estimate. Getter name kept for now to
+  // avoid touching every top-nav consumer; URL points at /estimate.
+  get projectBuildPath()    { return `/projects/${this.projectId}/estimate`; }
   get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
   get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
   get projectMessagesQueryParams(): any { return {}; }

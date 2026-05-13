@@ -23,11 +23,21 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     loadComponent: () => import('./tabs/marketplace/marketplace.component').then(m => m.MarketplaceComponent)
   },
   {
-    // Build tab (v1.18) — unified Build + Estimate. Compressed category
-    // cards (left) with sticky estimate summary (right). Replaced the
-    // catalogue-grid wrapper that used to live here.
-    path: 'build',
+    // Estimate tab (v1.18b rename of the "Build" tab) — unified
+    // compressed category cards (left) with sticky estimate summary
+    // (right). Class is still BuildComponent and the file lives at
+    // tabs/build/build.component.ts for git-history continuity; only
+    // the user-visible label + URL slug were renamed.
+    path: 'estimate',
     loadComponent: () => import('./tabs/build/build.component').then(m => m.BuildComponent)
+  },
+  {
+    // Backward compat: anyone with a saved /build link lands on the
+    // renamed Estimate route. Re-slug rather than dual-mount so the
+    // canonical URL is stable.
+    path: 'build',
+    redirectTo: 'estimate',
+    pathMatch: 'full'
   },
   {
     // Legacy "vendor selection" Build tab — preserved at /supplier for
@@ -36,10 +46,11 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     loadComponent: () => import('./tabs/build/build-legacy.component').then(m => m.BuildLegacyComponent)
   },
   {
-    // Estimate tab — dropped from the project tab bar in v1.18 (the
-    // estimate summary is now embedded in the Build tab). Route kept
-    // for safety / direct-link callers; file unchanged.
-    path: 'estimate',
+    // Legacy standalone Estimate page (pre-v1.18). The /estimate slug
+    // now points at the unified Build/Estimate component above; the
+    // legacy file is preserved here under -legacy in case anyone needs
+    // to compare the older summary view.
+    path: 'estimate-legacy',
     loadComponent: () => import('./tabs/estimate/estimate.component').then(m => m.EstimateComponent)
   },
   {

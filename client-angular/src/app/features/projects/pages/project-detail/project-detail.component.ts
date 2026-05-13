@@ -42,14 +42,14 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   loading = true;
   pid = '';
 
-  // v1.18: Build/Estimate merged. Tab bar simplified to:
-  //   Event · Brief · Marketplace · Build · Messages
-  // (Estimate dropped — its summary is now the right column of Build.)
+  // v1.18b: tab bar reads Estimate (formerly Build — same unified
+  // compressed-cards-plus-summary component, just renamed):
+  //   Event · Brief · Marketplace · Estimate · Messages
   private readonly PROJECT_TABS = [
     { label: 'Event',       path: '' },  // path set dynamically with pid
     { label: 'Brief',       path: '' },
     { label: 'Marketplace', path: '' },
-    { label: 'Build',       path: '' },
+    { label: 'Estimate',    path: '' },
     { label: 'Messages',    path: '' },
   ];
 
@@ -80,16 +80,20 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // v1.18 tab bar — slugs now match their labels semantically:
+    // v1.18b tab bar — Build renamed to Estimate (same component, new
+    // user-facing label + slug). /build still works via a redirectTo
+    // entry in the route table so existing bookmarks keep landing
+    // somewhere sensible.
     //   Marketplace → /marketplace (catalogue-grid in project context)
-    //   Build       → /build       (compressed cards + estimate summary)
-    // The legacy /supplier (vendor selection) and /estimate routes are
-    // kept for safety but no longer surfaced in the bar.
+    //   Estimate    → /estimate    (compressed cards + summary panel)
+    // Legacy /supplier (vendor selection) and /estimate-legacy
+    // (old standalone summary) are preserved for safety but not in
+    // the bar.
     const tabs = [
       { label: 'Event',       path: `/projects/${this.pid}/event` },
       { label: 'Brief',       path: `/projects/${this.pid}/brief` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
-      { label: 'Build',       path: `/projects/${this.pid}/build` },
+      { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
       { label: 'Messages',    path: `/projects/${this.pid}/messages` },
     ];
 

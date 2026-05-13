@@ -103,7 +103,9 @@ type CardTab = 'items' | 'brief';
 
         <!-- ── HEADER ── -->
         <div class="bp-build-head">
-          <div class="bp-build-head-title">Build</div>
+          <!-- v1.18b: heading matches the renamed tab label (Build → Estimate).
+               File / class names retained for git-history continuity. -->
+          <div class="bp-build-head-title">Estimate</div>
           <div class="bp-build-head-sub">
             {{ categoryRows.length }} categor{{ categoryRows.length === 1 ? 'y' : 'ies' }}
             · {{ totalSelectedCount() }} item{{ totalSelectedCount() === 1 ? '' : 's' }} selected
@@ -330,7 +332,9 @@ type CardTab = 'items' | 'brief';
 
           <!-- ═══════════════ RIGHT: ESTIMATE SUMMARY ═══════════════ -->
           <aside class="bp-build-estimate">
-            <div class="bp-build-est-title">Estimate</div>
+            <!-- Tab + page heading already say "Estimate"; the right
+                 panel reads "Summary" to avoid the triple-stack. -->
+            <div class="bp-build-est-title">Summary</div>
 
             <!-- Category cost rows. Mirrors the compressed card's
                  icon-then-name pattern; falls back to an initial letter

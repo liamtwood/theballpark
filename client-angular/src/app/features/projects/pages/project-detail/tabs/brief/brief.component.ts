@@ -506,5 +506,7 @@ export class BriefComponent implements OnInit, OnDestroy {
   }
 
   // ── Footer ──
-  goToBuild() { this.router.navigate(['/projects', this.pid, 'build']); }
+  // v1.18b: Build tab renamed to Estimate. /build redirects but we
+  // route directly to the canonical slug.
+  goToBuild() { this.router.navigate(['/projects', this.pid, 'estimate']); }
 }
