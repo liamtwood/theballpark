@@ -9,10 +9,11 @@ import { LucideAngularModule } from 'lucide-angular';
 
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
+import { EstimateItemService } from '../../../../../../core/services/estimate-item.service';
 import { MessageService } from '../../../../../../core/services/message.service';
 import { ClientService } from '../../../../../../core/services/client.service';
 import {
-  Project, ProjectCategory, ProjectItem, Message, Client
+  Project, ProjectCategory, ProjectItem, EstimateItem, Message, Client
 } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { EventDatePipe } from '../../../../../../shared/pipes/event-date.pipe';
@@ -49,21 +50,18 @@ interface BriefSummary {
 }
 
 interface MarketplaceSummary {
+  /** v1.24k: pipeline counters re-spec'd to item-level statuses.
+      SELECTED = project_items where selection_type='selected'.
+      QUOTED   = estimate_items where offer_price > 0.
+      BOOKED   = estimate_items where approved_at is set. */
   selected:  number;
-  wishlist:  number;
-  suppliers: number;
+  quoted:    number;
+  booked:    number;
+  /** Awaiting-approval = wishlist items the agency hasn't promoted
+      into "selected" yet — kept for the TO DO line "N awaiting
+      client approval". */
+  awaitingApproval: number;
   emptyCats: string[];         // category names with zero items
-  /** v1.24d: per-category breakdown for the icon circles. itemCount
-      drives the greyed-out treatment on categories without items —
-      same affordance as the marketplace's --unscoped circle style. */
-  cats: Array<{
-    id: string;
-    name: string;
-    iconName: string | null;
-    iconColor: string | null;
-    coverUrl: string | null;
-    itemCount: number;
-  }>;
 }
 
 interface EstimateSummary {
@@ -156,28 +154,31 @@ interface MessagesSummary {
                   <span class="bp-ov-kpi-lab">TO WRITE</span>
                 </div>
               </div>
-              <div class="bp-ov-body">
-                <p class="bp-ov-prompt" *ngIf="brief.total === 0">
-                  Start by selecting categories in the Brief tab
-                </p>
-                <p class="bp-ov-prompt" *ngIf="brief.total > 0 && brief.toWrite > 0">
-                  {{ brief.toWrite }} {{ brief.toWrite === 1 ? 'brief' : 'briefs' }} to write
-                </p>
-                <p class="bp-ov-prompt bp-ov-prompt--done"
-                   *ngIf="brief.total > 0 && brief.toWrite === 0">
-                  All categories briefed
-                  <lucide-icon name="check" [size]="14"></lucide-icon>
-                </p>
-                <div class="bp-ov-pills" *ngIf="brief.missing.length">
-                  <span *ngFor="let name of brief.missing.slice(0, 3)"
-                        class="bp-ov-pill">{{ name }}</span>
-                  <span *ngIf="brief.missing.length > 3"
-                        class="bp-ov-pill bp-ov-pill--more">+{{ brief.missing.length - 3 }}</span>
+
+              <!-- v1.24k: TO DO section — themed accent label matches
+                   the home page's "ACTIVE EVENTS" treatment. Centred
+                   content below shows the prompts / pills. -->
+              <div class="bp-ov-section">
+                <div class="bp-ov-section-label">TO DO</div>
+                <div class="bp-ov-section-body">
+                  <p class="bp-ov-prompt" *ngIf="brief.total === 0">
+                    Start by selecting categories in the Brief tab
+                  </p>
+                  <p class="bp-ov-prompt" *ngIf="brief.total > 0 && brief.toWrite > 0">
+                    {{ brief.toWrite }} {{ brief.toWrite === 1 ? 'brief' : 'briefs' }} to write
+                  </p>
+                  <p class="bp-ov-prompt bp-ov-prompt--done"
+                     *ngIf="brief.total > 0 && brief.toWrite === 0">
+                    All categories briefed
+                    <lucide-icon name="check" [size]="14"></lucide-icon>
+                  </p>
+                  <div class="bp-ov-pills" *ngIf="brief.missing.length">
+                    <span *ngFor="let name of brief.missing.slice(0, 3)"
+                          class="bp-ov-pill">{{ name }}</span>
+                    <span *ngIf="brief.missing.length > 3"
+                          class="bp-ov-pill bp-ov-pill--more">+{{ brief.missing.length - 3 }}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="bp-ov-foot">
-                <span>{{ briefFooter }}</span>
-                <span class="bp-ov-open">Open →</span>
               </div>
             </div>
           </div>
@@ -186,89 +187,48 @@ interface MessagesSummary {
           <div class="bp-ov-card" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">MARKETPLACE</span>
-              <span class="bp-ov-status" *ngIf="market.cats.length > 0">{{ marketPct }}%</span>
+              <span class="bp-ov-status" *ngIf="categories.length > 0">{{ marketPct }}%</span>
             </div>
             <div class="bp-ov-content">
-              <!-- KPI trio restored — same shape as Brief / Estimate /
-                   Messages cards so the 4-card visual rhythm holds. -->
+              <!-- v1.24k: item-level pipeline counters across two
+                   tables. Drops WISHLIST + SUPPLIERS (now surfaced
+                   inside the TO DO section as "N awaiting client
+                   approval" + "M categories empty"). -->
               <div class="bp-ov-kpis">
                 <div class="bp-ov-kpi">
                   <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.selected }}</span></span>
                   <span class="bp-ov-kpi-lab">SELECTED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.wishlist }}</span></span>
-                  <span class="bp-ov-kpi-lab">WISHLIST</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.quoted }}</span></span>
+                  <span class="bp-ov-kpi-lab">QUOTED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.suppliers }}</span></span>
-                  <span class="bp-ov-kpi-lab">SUPPLIERS</span>
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent"><span class="bp-ov-kpi-glyph">{{ market.booked }}</span></span>
+                  <span class="bp-ov-kpi-lab">BOOKED</span>
                 </div>
               </div>
 
-              <div class="bp-ov-body">
-                <p class="bp-ov-prompt" *ngIf="market.cats.length === 0 && market.selected === 0">
-                  Add items from the Marketplace after writing your brief
-                </p>
-                <p class="bp-ov-prompt"
-                   *ngIf="market.cats.length > 0 && market.emptyCats.length > 0">
-                  {{ market.emptyCats.length }}
-                  {{ market.emptyCats.length === 1 ? 'category' : 'categories' }} empty
-                </p>
-                <p class="bp-ov-prompt bp-ov-prompt--done"
-                   *ngIf="market.cats.length > 0 && market.emptyCats.length === 0 && market.selected > 0">
-                  All categories have items
-                  <lucide-icon name="check" [size]="14"></lucide-icon>
-                </p>
-
-                <!-- v1.24f: empty categories rendered as the
-                     marketplace's bp-cat-circle treatment. Shows 3
-                     at a time with left/right arrow buttons that
-                     cycle through the list (wraps around the end).
-                     Arrows only appear when there are more than 3
-                     to scroll through. -->
-                <div class="bp-ov-cats-scroller" *ngIf="emptyCatRows.length">
-                  <button *ngIf="emptyCatRows.length > 3"
-                          type="button"
-                          class="bp-ov-cats-arrow"
-                          (click)="scrollEmptyLeft($event)"
-                          title="Previous">
-                    <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
-                  </button>
-                  <div class="bp-ov-cats">
-                    <div *ngFor="let cat of visibleEmptyCats"
-                         class="bp-ov-cat bp-ov-cat--empty"
-                         [title]="cat.name + ' — no items'">
-                      <div class="bp-ov-cat-circle">
-                        <img *ngIf="cat.coverUrl"
-                             [src]="cat.coverUrl"
-                             [alt]="cat.name"
-                             class="bp-ov-cat-img"/>
-                        <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
-                                     [name]="cat.iconName"
-                                     [size]="18"></lucide-icon>
-                        <span *ngIf="!cat.coverUrl && !cat.iconName"
-                              class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
-                      </div>
-                      <span class="bp-ov-cat-name">{{ cat.name }}</span>
-                    </div>
-                  </div>
-                  <button *ngIf="emptyCatRows.length > 3"
-                          type="button"
-                          class="bp-ov-cats-arrow"
-                          (click)="scrollEmptyRight($event)"
-                          title="Next">
-                    <lucide-icon name="chevron-right" [size]="14"></lucide-icon>
-                  </button>
+              <div class="bp-ov-section">
+                <div class="bp-ov-section-label">TO DO</div>
+                <div class="bp-ov-section-body">
+                  <p class="bp-ov-prompt" *ngIf="categories.length === 0 && market.selected === 0">
+                    Add items from the Marketplace after writing your brief
+                  </p>
+                  <p class="bp-ov-prompt"
+                     *ngIf="market.emptyCats.length > 0">
+                    {{ market.emptyCats.length }}
+                    {{ market.emptyCats.length === 1 ? 'category' : 'categories' }} empty
+                  </p>
+                  <p class="bp-ov-prompt bp-ov-prompt--done"
+                     *ngIf="categories.length > 0 && market.emptyCats.length === 0 && market.selected > 0">
+                    All categories have items
+                    <lucide-icon name="check" [size]="14"></lucide-icon>
+                  </p>
+                  <p class="bp-ov-prompt" *ngIf="market.awaitingApproval > 0">
+                    {{ market.awaitingApproval }} awaiting client approval
+                  </p>
                 </div>
-
-                <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
-                  {{ market.wishlist }} awaiting client approval
-                </p>
-              </div>
-              <div class="bp-ov-foot">
-                <span>{{ marketFooter }}</span>
-                <span class="bp-ov-open">Open →</span>
               </div>
             </div>
           </div>
@@ -294,35 +254,39 @@ interface MessagesSummary {
                   <span class="bp-ov-kpi-lab">MARGIN (%)</span>
                 </div>
               </div>
-              <div class="bp-ov-body">
-                <div class="bp-ov-money">
-                  <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
-                  <span class="bp-ov-money-lab">your cost</span>
+
+              <!-- v1.24k: BALLPARK section — money summary. Named
+                   "BALLPARK" rather than "ESTIMATE" so the section
+                   header doesn't collide with the card banner. -->
+              <div class="bp-ov-section" *ngIf="est.yourCost > 0 || est.clientTotal > 0">
+                <div class="bp-ov-section-label">BALLPARK</div>
+                <div class="bp-ov-section-body bp-ov-section-body--money">
+                  <div class="bp-ov-money">
+                    <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
+                    <span class="bp-ov-money-lab">your cost</span>
+                  </div>
+                  <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
+                    {{ est.clientTotal | gbp }} client total
+                  </p>
                 </div>
-                <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
-                  {{ est.clientTotal | gbp }} client total
-                </p>
-                <div class="bp-ov-budget" *ngIf="est.budget && est.budget > 0">
+              </div>
+
+              <div class="bp-ov-section" *ngIf="est.budget && est.budget > 0">
+                <div class="bp-ov-section-label">TO DO</div>
+                <div class="bp-ov-section-body">
                   <div class="bp-ov-budget-bar">
                     <div class="bp-ov-budget-fill"
                          [class.bp-ov-budget-fill--over]="est.overBudget"
                          [style.width.%]="budgetBarWidth"></div>
                   </div>
-                  <div class="bp-ov-budget-row">
-                    <span class="bp-ov-budget-state"
-                          [class.bp-ov-budget-state--over]="est.overBudget">
-                      <lucide-icon [name]="est.overBudget ? 'alert-triangle' : 'check'" [size]="12"></lucide-icon>
-                      {{ budgetPctLabel }} {{ est.overBudget ? 'over' : 'under' }} budget
-                    </span>
-                    <span class="bp-ov-budget-diff">
-                      {{ est.diff | compactCurrency }} {{ est.overBudget ? 'to trim' : 'headroom' }}
-                    </span>
-                  </div>
+                  <p class="bp-ov-prompt"
+                     [class.bp-ov-prompt--danger]="est.overBudget"
+                     [class.bp-ov-prompt--done]="!est.overBudget">
+                    <lucide-icon [name]="est.overBudget ? 'alert-triangle' : 'check'" [size]="14"></lucide-icon>
+                    {{ budgetPctLabel }} {{ est.overBudget ? 'over' : 'under' }} budget
+                    ({{ est.budget | compactCurrency }})
+                  </p>
                 </div>
-              </div>
-              <div class="bp-ov-foot">
-                <span>Budget {{ est.budget && est.budget > 0 ? (est.budget | compactCurrency) : '—' }}</span>
-                <span class="bp-ov-open">Open →</span>
               </div>
             </div>
           </div>
@@ -349,33 +313,33 @@ interface MessagesSummary {
                   <span class="bp-ov-kpi-lab">QUOTES</span>
                 </div>
               </div>
-              <div class="bp-ov-body">
-                <p class="bp-ov-prompt" *ngIf="messages.awaiting > 0">
-                  {{ messages.awaiting }} awaiting your reply
-                </p>
-                <p class="bp-ov-prompt"
-                   *ngIf="messages.contacted === 0 && messages.awaiting === 0">
-                  No suppliers contacted yet
-                </p>
-                <p class="bp-ov-prompt"
-                   *ngIf="messages.contacted > 0 && messages.awaiting === 0 && messages.quotes === 0">
-                  No messages pending
-                </p>
-                <div class="bp-ov-list" *ngIf="messages.recent.length">
-                  <div *ngFor="let row of messages.recent" class="bp-ov-list-row">
-                    <span class="bp-ov-list-dot"></span>
-                    <span class="bp-ov-list-name">{{ row.supplier }}</span>
-                    <span class="bp-ov-list-preview">— {{ row.preview }}</span>
-                    <span class="bp-ov-list-time">{{ row.time }}</span>
+
+              <div class="bp-ov-section">
+                <div class="bp-ov-section-label">TO DO</div>
+                <div class="bp-ov-section-body">
+                  <p class="bp-ov-prompt" *ngIf="messages.awaiting > 0">
+                    {{ messages.awaiting }} awaiting your reply
+                  </p>
+                  <p class="bp-ov-prompt"
+                     *ngIf="messages.contacted === 0 && messages.awaiting === 0">
+                    No suppliers contacted yet
+                  </p>
+                  <p class="bp-ov-prompt"
+                     *ngIf="messages.contacted > 0 && messages.awaiting === 0 && messages.quotes === 0">
+                    No messages pending
+                  </p>
+                  <div class="bp-ov-list" *ngIf="messages.recent.length">
+                    <div *ngFor="let row of messages.recent" class="bp-ov-list-row">
+                      <span class="bp-ov-list-dot"></span>
+                      <span class="bp-ov-list-name">{{ row.supplier }}</span>
+                      <span class="bp-ov-list-preview">— {{ row.preview }}</span>
+                      <span class="bp-ov-list-time">{{ row.time }}</span>
+                    </div>
                   </div>
+                  <p class="bp-ov-prompt" *ngIf="messages.quotes > 0">
+                    {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
+                  </p>
                 </div>
-                <p class="bp-ov-sub" *ngIf="messages.quotes > 0">
-                  {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
-                </p>
-              </div>
-              <div class="bp-ov-foot">
-                <span>{{ messagesFooter }}</span>
-                <span class="bp-ov-open">Open →</span>
               </div>
             </div>
           </div>
@@ -655,153 +619,39 @@ interface MessagesSummary {
       text-align: center;
     }
 
-    /* ── MARKETPLACE CATEGORY CIRCLES (v1.24d) ───────────────── */
-    /* Mirrors the marketplace tab's .bp-cat-circle strip — same
-       icon-in-circle treatment, scaled down so a project's
-       categories fit comfortably across the Overview card. Empty
-       categories grey out (echoes the marketplace's --unscoped
-       affordance) so the user can scan for gaps at a glance. */
-    .bp-ov-cats {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px 16px;
-      padding: 4px 0 2px;
-    }
-    .bp-ov-cat {
+    /* ── SECTION DIVIDER (TO DO / BALLPARK — v1.24k) ─────────── */
+    /* Themed accent label sitting above a top hairline that breaks
+       the card into vertical sections. Matches the home page's
+       "ACTIVE EVENTS" section header (.bp-section-title in the
+       dashboard) so the Overview lives in the same visual family. */
+    .bp-ov-section {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      min-width: 48px;
-      max-width: 72px;
+      gap: 10px;
+      padding-top: 12px;
+      border-top: var(--border-hairline);
     }
-    .bp-ov-cat-circle {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-      box-shadow: 0 0 0 0.5px var(--color-border);
-      overflow: hidden;
-    }
-    .bp-ov-cat-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .bp-ov-cat-initial {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 400;
-      color: var(--theme-accent);
-    }
-    /* Tiny count badge anchored bottom-right — shows how many items
-       this category has selected. Hidden when zero (the greyed
-       circle is enough signal). */
-    .bp-ov-cat-count {
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
-      min-width: 16px;
-      height: 16px;
-      padding: 0 4px;
-      border-radius: var(--radius-pill);
-      background: var(--theme-accent);
-      color: var(--color-surface);
-      font-family: var(--font-body);
-      font-size: 9px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      box-shadow: 0 0 0 1.5px var(--color-surface);
-    }
-    .bp-ov-cat-name {
-      font-family: var(--font-body);
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--color-text-secondary);
-      text-align: center;
-      line-height: 1.2;
-      max-width: 72px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    /* Empty-category state: greyed circle + muted label. Matches
-       the marketplace's .bp-cat-circle-btn--unscoped treatment. */
-    .bp-ov-cat--empty .bp-ov-cat-circle {
-      filter: grayscale(0.85);
-      opacity: 0.45;
-    }
-    .bp-ov-cat--empty .bp-ov-cat-name {
-      color: var(--color-text-muted);
-    }
-
-    /* v1.24f: scroller wrap + arrow buttons. Mirrors the
-       marketplace's .bp-circles-arrow style (32px in the original,
-       28px here so the controls scale to the card). Stays centred
-       and aligns vertically to the middle of the circle row, not
-       the labels below it. */
-    .bp-ov-cats-scroller {
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 8px;
-    }
-    .bp-ov-cats-arrow {
-      width: 28px;
-      height: 28px;
-      flex-shrink: 0;
-      margin-top: 8px;     /* vertical-centre against the 44px circle */
-      border-radius: 50%;
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      color: var(--theme-accent);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .bp-ov-cats-arrow:hover {
-      border-color: var(--theme-accent);
-      background: var(--theme-bg);
-    }
-
-    /* Thin summary line below the category circles — replaces the
-       trio of stat circles for this card only. */
-    .bp-ov-stats {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px;
+    .bp-ov-section-label {
       font-family: var(--font-body);
       font-size: 11px;
-      color: var(--color-text-secondary);
-      margin: 0;
-    }
-    .bp-ov-stats strong {
       font-weight: 600;
-      color: var(--color-text-primary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      text-align: center;
     }
-    .bp-ov-stats-sep {
-      color: var(--color-text-muted);
-    }
-
-    /* ── BODY (prompts, pills, list) ────────────────────────── */
-    .bp-ov-body {
+    .bp-ov-section-body {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      min-height: 64px;
+      align-items: center;     /* centred content under the label */
+      gap: 6px;
+      text-align: center;
     }
+    .bp-ov-section-body--money {
+      gap: 2px;
+    }
+
+    /* ── PROMPTS / PILLS / LIST ─────────────────────────────── */
     .bp-ov-prompt {
       font-family: var(--font-body);
       font-size: 12px;
@@ -814,6 +664,9 @@ interface MessagesSummary {
     }
     .bp-ov-prompt--done {
       color: var(--color-success-dark);
+    }
+    .bp-ov-prompt--danger {
+      color: var(--color-danger);
     }
     .bp-ov-sub {
       font-family: var(--font-body);
@@ -865,9 +718,13 @@ interface MessagesSummary {
     }
 
     /* ── BUDGET BAR (Estimate card) ─────────────────────────── */
-    .bp-ov-budget { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+    /* v1.24k: bar now sits inside the TO DO section. Full-width
+       within the section's centred column so the visual reads as
+       a meter pinned beneath the section label. */
     .bp-ov-budget-bar {
       height: 6px;
+      width: 100%;
+      max-width: 220px;
       border-radius: var(--radius-pill);
       background: var(--theme-soft);
       overflow: hidden;
@@ -878,23 +735,6 @@ interface MessagesSummary {
       transition: width 200ms ease, background 200ms ease;
     }
     .bp-ov-budget-fill--over { background: var(--color-danger); }
-    .bp-ov-budget-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      font-family: var(--font-body);
-    }
-    .bp-ov-budget-state {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-weight: 500;
-      color: var(--color-success-dark);
-    }
-    .bp-ov-budget-state--over { color: var(--color-danger); }
-    .bp-ov-budget-diff { color: var(--color-text-secondary); }
 
     /* ── MESSAGES LIST (Messages card) ──────────────────────── */
     .bp-ov-list {
@@ -931,22 +771,6 @@ interface MessagesSummary {
       white-space: nowrap;
     }
 
-    /* ── FOOT ───────────────────────────────────────────────── */
-    .bp-ov-foot {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      padding-top: 8px;
-      border-top: var(--border-hairline);
-      font-family: var(--font-body);
-      font-size: 11px;
-      color: var(--color-text-muted);
-    }
-    .bp-ov-open {
-      color: var(--theme-accent);
-      font-weight: 500;
-    }
   `]
 })
 export class OverviewComponent implements OnInit {
@@ -956,12 +780,13 @@ export class OverviewComponent implements OnInit {
   project: Project | null = null;
   categories: ProjectCategory[] = [];
   items: ProjectItem[] = [];
+  estimateItems: EstimateItem[] = [];
   msgs: Message[] = [];
   client: Client | null = null;
 
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
-  market: MarketplaceSummary = { selected: 0, wishlist: 0, suppliers: 0, emptyCats: [], cats: [] };
+  market: MarketplaceSummary = { selected: 0, quoted: 0, booked: 0, awaitingApproval: 0, emptyCats: [] };
   est: EstimateSummary = {
     estimated: 0, pending: 0, marginPct: null,
     yourCost: 0, clientTotal: 0, budget: null,
@@ -976,6 +801,7 @@ export class OverviewComponent implements OnInit {
     private router: Router,
     private projSvc: ProjectService,
     private projItemSvc: ProjectItemService,
+    private estItemSvc: EstimateItemService,
     private msgSvc: MessageService,
     private clientSvc: ClientService,
     private cdr: ChangeDetectorRef
@@ -994,12 +820,18 @@ export class OverviewComponent implements OnInit {
       project:    this.projSvc.getById(this.pid).pipe(catchError(() => of(null))),
       categories: this.projSvc.getCategories(this.pid).pipe(catchError(() => of([] as ProjectCategory[]))),
       items:      this.projItemSvc.getByProject(this.pid).pipe(catchError(() => of([] as ProjectItem[]))),
+      // v1.24k: estimate_items by project for the Marketplace card's
+      // QUOTED / BOOKED counters. Fails soft to [] — same pattern as
+      // the other sources so a missing endpoint doesn't break the
+      // Overview.
+      estimateItems: this.estItemSvc.getByProject(this.pid).pipe(catchError(() => of([] as EstimateItem[]))),
       messages:   this.msgSvc.getByProject(this.pid).pipe(catchError(() => of([] as Message[]))),
-    }).subscribe(({ project, categories, items, messages }) => {
-      this.project    = project;
-      this.categories = categories || [];
-      this.items      = items || [];
-      this.msgs       = messages || [];
+    }).subscribe(({ project, categories, items, estimateItems, messages }) => {
+      this.project       = project;
+      this.categories    = categories || [];
+      this.items         = items || [];
+      this.estimateItems = estimateItems || [];
+      this.msgs          = messages || [];
 
       // Client lookup is optional — only fire when there's a client_id
       // on the project. catchError keeps the Overview rendering even
@@ -1053,20 +885,20 @@ export class OverviewComponent implements OnInit {
 
   private recomputeMarket() {
     const items = this.items;
-    const selected  = items.filter(i => i.selection_type === 'selected').length;
-    const wishlist  = items.filter(i => i.selection_type === 'liked').length;
-    // Items themselves don't carry supplier_org_id in the project_items
-    // join — use supplier_name as a fallback for distinct-counting.
-    const supplierSet = new Set<string>();
-    for (const i of items) {
-      const key = (i as any).supplier_org_id || i.supplier_name;
-      if (key) supplierSet.add(String(key));
-    }
-    const suppliers = supplierSet.size;
+    const eItems = this.estimateItems;
 
-    // Categories with zero selected items. Use category_id matching
-    // because project_items.project_category_id may be null on older
-    // rows (see item-category fallback in ProjectItemService).
+    // v1.24k: pipeline counters now sit at item level across two
+    // tables. SELECTED stays on project_items (the cart); QUOTED
+    // and BOOKED come from estimate_items because that's where the
+    // supplier-quote lifecycle lives.
+    const selected = items.filter(i => i.selection_type === 'selected').length;
+    const quoted   = eItems.filter(ei => (+ei.offer_price || 0) > 0).length;
+    const booked   = eItems.filter(ei => !!ei.approved_at).length;
+    const awaitingApproval = items.filter(i => i.selection_type === 'liked').length;
+
+    // Empty categories — categories with zero selected items. Use
+    // category_id matching because project_items.project_category_id
+    // may be null on older rows.
     const itemsByCat = new Map<string, number>();
     for (const i of items) {
       const cid = i.project_category_id || (i as any).item_category_id;
@@ -1077,20 +909,7 @@ export class OverviewComponent implements OnInit {
       .filter(c => (itemsByCat.get(c.category_id) || 0) === 0)
       .map(c => c.category_name || c.name || 'Untitled');
 
-    // v1.24d: per-category icon row data. category_icon_name +
-    // _color are joined onto project_categories by the server so we
-    // don't need a separate categories lookup. Falls back to first
-    // letter via .bp-ov-cat-initial in the template.
-    const cats = this.categories.map(c => ({
-      id:        c.category_id,
-      name:      c.category_name || c.name || 'Untitled',
-      iconName:  c.category_icon_name || null,
-      iconColor: c.category_icon_color || null,
-      coverUrl:  c.category_cover_image_url || null,
-      itemCount: itemsByCat.get(c.category_id) || 0,
-    }));
-
-    this.market = { selected, wishlist, suppliers, emptyCats, cats };
+    this.market = { selected, quoted, booked, awaitingApproval, emptyCats };
   }
 
   private recomputeEstimate() {
@@ -1215,74 +1034,18 @@ export class OverviewComponent implements OnInit {
     return days >= 0 && days <= 30 && this.brief.toWrite > 0;
   }
 
-  get briefFooter(): string {
-    if (!this.brief.updated) return 'No briefs written yet';
-    return `Updated ${this.relativeTime(this.brief.updated)}`;
-  }
-
   /** v1.24g: completion % shown as a header pill — same slot as
-      the Estimate card's status pill. Brief = written / total,
-      Marketplace = categoriesWithItems / total. */
+      the Estimate card's status pill. Brief = written / total.
+      Marketplace = categoriesWithItems / totalCategories. */
   get briefPct(): number {
     if (this.brief.total === 0) return 0;
     return Math.round((this.brief.written / this.brief.total) * 100);
   }
   get marketPct(): number {
-    const total = this.market.cats.length;
+    const total = this.categories.length;
     if (total === 0) return 0;
-    const filled = total - this.emptyCatRows.length;
+    const filled = total - this.market.emptyCats.length;
     return Math.round((filled / total) * 100);
-  }
-  get marketFooter(): string {
-    if (this.market.selected === 0) return 'No items selected yet';
-    return `${this.market.selected} ${this.market.selected === 1 ? 'item' : 'items'} unspent`;
-  }
-
-  /** v1.24e: empty-category rows for the Marketplace card. Filters
-      market.cats down to the zero-item ones — the template renders
-      these as greyed icon circles in place of the old text pills. */
-  get emptyCatRows() {
-    return this.market.cats.filter(c => c.itemCount === 0);
-  }
-
-  /** v1.24f: rolling window of 3 empty-category circles. Wraps
-      around the end of the list so scrolling feels circular —
-      matches "circle through them" expectation. When the list is
-      already ≤3 items we just return it as-is (arrows hidden). */
-  emptyCatScroll = 0;
-  get visibleEmptyCats() {
-    const list = this.emptyCatRows;
-    if (list.length <= 3) return list;
-    const out = [];
-    for (let i = 0; i < 3; i++) {
-      out.push(list[(this.emptyCatScroll + i) % list.length]);
-    }
-    return out;
-  }
-
-  scrollEmptyLeft(event: MouseEvent) {
-    // stopPropagation keeps the click from also firing the card's
-    // (click)="goTo('marketplace')" navigation handler.
-    event.stopPropagation();
-    const len = this.emptyCatRows.length;
-    if (len <= 3) return;
-    this.emptyCatScroll = (this.emptyCatScroll - 1 + len) % len;
-    this.cdr.markForCheck();
-  }
-
-  scrollEmptyRight(event: MouseEvent) {
-    event.stopPropagation();
-    const len = this.emptyCatRows.length;
-    if (len <= 3) return;
-    this.emptyCatScroll = (this.emptyCatScroll + 1) % len;
-    this.cdr.markForCheck();
-  }
-  get messagesFooter(): string {
-    if (this.messages.awaiting > 0) {
-      return `${this.messages.awaiting} awaiting your reply`;
-    }
-    if (this.messages.contacted === 0) return 'No messages yet';
-    return 'All caught up';
   }
 
   get budgetBarWidth(): number {

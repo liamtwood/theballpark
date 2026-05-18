@@ -22,7 +22,22 @@ function calcTotal({ quantity, duration, offer_price }) {
   return qty * dur * price;
 }
 
-async function getAll(estimateId) {
+async function getAll(estimateId, projectId) {
+  // v1.24k: ?project_id=X filter joins through estimates so the
+  // Overview tab can roll up SELECTED / QUOTED / BOOKED pipeline
+  // counts across all estimates on a project. ?estimate_id=X path
+  // remains the canonical single-estimate fetch.
+  if (projectId) {
+    const result = await pool.query(
+      `SELECT ei.*
+         FROM estimate_items ei
+         JOIN estimates e ON e.id = ei.estimate_id
+        WHERE e.project_id = $1
+        ORDER BY ei.created_at DESC`,
+      [projectId]
+    );
+    return result.rows;
+  }
   let query = 'SELECT * FROM estimate_items WHERE 1=1';
   const params = [];
   if (estimateId) { params.push(estimateId); query += ` AND estimate_id = $${params.length}`; }

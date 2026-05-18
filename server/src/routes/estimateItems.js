@@ -2,7 +2,9 @@ const router = require('express').Router();
 const EstimateItemService = require('../services/estimate-item.service');
 
 router.get('/', async (req, res, next) => {
-  try { res.json(await EstimateItemService.getAll(req.query.estimate_id)); } catch (err) { next(err); }
+  try {
+    res.json(await EstimateItemService.getAll(req.query.estimate_id, req.query.project_id));
+  } catch (err) { next(err); }
 });
 
 router.get('/:id', async (req, res, next) => {

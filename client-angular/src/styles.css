@@ -93,13 +93,17 @@
   --radius-pill: 999px;
   --radius-input: 6px;
 
-  /* v1.24: success / soft tokens. --color-success and
-     --color-success-dark fill the gap the Overview-tab Estimate card
-     needed (no positive-state colour existed alongside --color-danger).
+  /* v1.24: positive-state tokens. STANDARD pairs --color-danger
+     (errors / over-budget / destructive) — use whenever the UI
+     needs to signal a positive completed state (eg. "All categories
+     briefed ✓", successful save toasts, on-budget treatment).
+     - --color-success      → vivid green, for chips / bar fills
+     - --color-success-dark → dark green, for body text on light bg
+     Both are theme-independent (they don't swap with the preset)
+     so positive state reads consistently across Amber / Emerald /
+     Pink / Ocean / Slate.
      --theme-soft is a low-opacity tint of the active theme accent —
-     fed off --theme-bg (parchment) for the default amber theme, which
-     itself is themed via the THEME_PRESETS map in ConfigService and
-     swaps when the user picks Emerald / Pink / Ocean / Slate. */
+     fed off --theme-bg (parchment) for the default amber theme. */
   --color-success:      #10B981;
   --color-success-dark: #065F46;
   --theme-soft: var(--theme-bg);
