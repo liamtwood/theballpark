@@ -1,13 +1,17 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { LucideAngularModule, Plus, Folder, Building2, ChevronRight, Calendar, MapPin, Heart, MessageCircle } from 'lucide-angular';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputTextModule } from 'primeng/inputtext';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfigStripComponent } from '../../shared/components/config-strip/config-strip.component';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
@@ -27,10 +31,12 @@ type DashTab = 'projects';
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, RouterModule,
+    CommonModule, FormsModule, RouterModule,
     LucideAngularModule,
-    CardModule, ButtonModule, ConfirmDialogModule, ToastModule,
+    CardModule, ButtonModule, CheckboxModule, InputTextModule,
+    ConfirmDialogModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
+    ConfigStripComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   providers: [ConfirmationService, MessageService],
@@ -39,8 +45,97 @@ type DashTab = 'projects';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
+      <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
+           Mounted via <app-config-strip>; the top-nav cog button
+           (already wired in top-nav, gated by hasConfig && isAdmin)
+           toggles open/closed via ConfigStripService. The mount
+           itself is what registers the cog button to appear, so
+           non-admin users see neither the strip nor the cog. -->
+      <app-config-strip>
+        <div class="bp-home-settings">
+
+          <!-- Labels row -->
+          <div class="bp-home-settings-row">
+            <label class="bp-home-settings-lab">PAGE LABEL</label>
+            <input pInputText
+                   class="bp-home-settings-input"
+                   [(ngModel)]="settingsDraft.homePageLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Projects"/>
+            <span class="bp-home-settings-divider"></span>
+
+            <label class="bp-home-settings-lab">CREDITS</label>
+            <input pInputText
+                   class="bp-home-settings-input"
+                   [(ngModel)]="settingsDraft.creditLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Balls"/>
+            <span class="bp-home-settings-divider"></span>
+
+            <label class="bp-home-settings-lab">EVENTS</label>
+            <input pInputText
+                   class="bp-home-settings-input"
+                   [(ngModel)]="settingsDraft.projectLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Events"/>
+          </div>
+
+          <!-- Theme row -->
+          <div class="bp-home-settings-row">
+            <label class="bp-home-settings-lab">THEME</label>
+            <div class="bp-home-settings-themes">
+              <button *ngFor="let t of themeOptions"
+                      type="button"
+                      class="bp-home-settings-theme"
+                      [class.active]="settingsDraft.themeName === t.value"
+                      [style.background]="t.color"
+                      [title]="t.label"
+                      (click)="onThemeChange(t.value)">
+              </button>
+            </div>
+          </div>
+
+          <!-- Components row -->
+          <div class="bp-home-settings-row bp-home-settings-row--toggles">
+            <label class="bp-home-settings-lab">COMPONENTS</label>
+            <div class="bp-home-settings-toggles">
+              <span class="bp-home-settings-toggle bp-home-settings-toggle--disabled">
+                <p-checkbox [binary]="true" [ngModel]="true" [disabled]="true"></p-checkbox>
+                Organisation name
+                <span class="bp-home-settings-muted">(always on)</span>
+              </span>
+              <span class="bp-home-settings-toggle">
+                <p-checkbox [binary]="true"
+                            [(ngModel)]="settingsDraft.showUserName"
+                            (onChange)="saveToggles()"></p-checkbox>
+                User name &amp; role
+              </span>
+              <span class="bp-home-settings-toggle">
+                <p-checkbox [binary]="true"
+                            [(ngModel)]="settingsDraft.showLocation"
+                            (onChange)="saveToggles()"></p-checkbox>
+                Location pill
+              </span>
+              <span class="bp-home-settings-toggle">
+                <p-checkbox [binary]="true"
+                            [(ngModel)]="settingsDraft.showUpcoming"
+                            (onChange)="saveToggles()"></p-checkbox>
+                Upcoming events pill
+              </span>
+              <span class="bp-home-settings-toggle">
+                <p-checkbox [binary]="true"
+                            [(ngModel)]="settingsDraft.showStats"
+                            (onChange)="saveToggles()"></p-checkbox>
+                Stats bar
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </app-config-strip>
+
       <!-- STATS BAR — always visible on desktop, Summary tab on mobile -->
-      <div class="bp-dash-stats">
+      <div class="bp-dash-stats" *ngIf="settingsDraft.showStats !== false">
         <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
           <span class="bp-dash-stat-value">{{ org?.balls_balance ?? 0 }}</span>
@@ -666,6 +761,79 @@ type DashTab = 'projects';
     .bp-sup-meta { font-size:11px; color:var(--color-text-muted); }
     .bp-empty { font-size:var(--text-sm); color:var(--color-text-muted); padding:16px 0; }
 
+    /* ── v1.23 home settings strip ──────────────────────────────
+       Compact rows inside the shared <app-config-strip> chrome.
+       Layout mirrors the marketplace's PageConfigTogglesComponent
+       so the two pages feel like siblings. */
+    .bp-home-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      font-family: var(--font-body);
+    }
+    .bp-home-settings-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .bp-home-settings-lab {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      flex-shrink: 0;
+    }
+    .bp-home-settings-input {
+      padding: 5px 10px !important;
+      font-size: 12px !important;
+      width: 160px;
+      border-radius: var(--radius-input) !important;
+    }
+    .bp-home-settings-divider {
+      width: 0.5px;
+      height: 20px;
+      background: var(--color-border);
+    }
+    .bp-home-settings-themes {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .bp-home-settings-theme {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .bp-home-settings-theme:hover { transform: scale(1.1); }
+    .bp-home-settings-theme.active {
+      border-color: var(--color-text-primary);
+    }
+    .bp-home-settings-row--toggles { align-items: flex-start; }
+    .bp-home-settings-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .bp-home-settings-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+    }
+    .bp-home-settings-toggle--disabled { opacity: 0.65; }
+    .bp-home-settings-muted {
+      color: var(--color-text-muted);
+      font-style: italic;
+      font-size: 11px;
+    }
+
     /* MOBILE TAB PANELS — hidden on desktop */
     .bp-mobile-panel { display:none; }
     .bp-desktop-only { display:grid; }
@@ -719,6 +887,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   /** v1.22: id of the project whose "..." dropdown is open. Empty
       string = no menu open. Click-outside closes via HostListener. */
   openMenuProjectId = '';
+
+  // ── v1.23 admin settings strip ────────────────────────────────────
+  /** Draft copy of the configurable fields; bound to the inputs +
+      checkboxes in the settings strip. Saved back to ConfigService on
+      blur / change. Defaults populated from configService.current in
+      ngOnInit, then kept in sync via the config$ subscription. */
+  settingsDraft: {
+    homePageLabel: string;
+    creditLabel: string;
+    projectLabel: string;
+    themeName: string;
+    showUserName: boolean;
+    showLocation: boolean;
+    showUpcoming: boolean;
+    showStats: boolean;
+  } = {
+    homePageLabel: 'Projects',
+    creditLabel: 'Ball',
+    projectLabel: 'Event',
+    themeName: 'amber',
+    showUserName: true,
+    showLocation: true,
+    showUpcoming: false,
+    showStats: true
+  };
+
+  /** Theme dot swatches — values match ConfigService.THEME_PRESETS keys. */
+  readonly themeOptions = [
+    { value: 'amber',   label: 'Amber',   color: '#D97706' },
+    { value: 'emerald', label: 'Emerald', color: '#00B84A' },
+    { value: 'pink',    label: 'Pink',    color: '#FF0066' },
+    { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
+    { value: 'slate',   label: 'Slate',   color: '#64748B' }
+  ];
   uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
@@ -898,6 +1100,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.sub = this.configService.config$.subscribe(cfg => {
       this.projectLabel = cfg.projectLabel || 'Event';
       this.creditLabel  = cfg.creditLabel  || 'Ball';
+      // v1.23: keep the local draft bound to the inputs in sync with
+      // the canonical config — other tabs (or settings pages) can
+      // mutate ConfigService and the dashboard's strip should reflect
+      // it without a reload.
+      this.settingsDraft = {
+        homePageLabel: cfg.homePageLabel || 'Projects',
+        creditLabel:   cfg.creditLabel   || 'Ball',
+        projectLabel:  cfg.projectLabel  || 'Event',
+        themeName:     cfg.themeName     || 'amber',
+        showUserName:  cfg.showUserName  !== false,
+        showLocation:  cfg.showLocation  !== false,
+        showUpcoming:  cfg.showUpcoming  === true,
+        showStats:     cfg.showStats     !== false
+      };
+      this.pushShellContext();
       this.cdr.detectChanges();
     });
 
@@ -909,15 +1126,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.creditDots = Array.from({ length: allowance }, (_, i) => i < used);
         const resetDate = new Date(); resetDate.setDate(1); resetDate.setMonth(resetDate.getMonth() + 1);
         this.daysUntilReset = Math.ceil((resetDate.getTime() - Date.now()) / 86400000);
-
-        // Write to ShellContextService — tabs use callback not routing
-        this.shellCtx.set({
-          heroTitle: org.name,
-          heroSub: 'PROJECTS',
-          pills: [],
-          tabs: [],
-        });
-
+        this.pushShellContext();
         this.cdr.detectChanges();
       }
     });
@@ -928,6 +1137,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadFavourites();
   }
 
+  // ── v1.23 settings persistence ────────────────────────────────────
+
+  /** Push hero context to the shell. Called whenever org / config /
+      project data changes so the eyebrow + upcoming pill stay in sync
+      with the settings draft. */
+  private pushShellContext() {
+    if (!this.org) return;
+    const ctx: any = {
+      heroTitle: this.org.name,
+      heroSub: (this.settingsDraft.homePageLabel || 'Projects').toUpperCase(),
+      pills: [],
+      tabs: [],
+    };
+    // Upcoming pill — when enabled AND we've got a future project.
+    if (this.settingsDraft.showUpcoming && this.nextProject) {
+      const dateLine = new EventDatePipe().transform(this.nextProject.event_date);
+      // EventDatePipe returns "02-Jun-2026 · in 20 days" — split on the
+      // first " · " so the pill reads "{event name} · in 20 days".
+      const tail = dateLine.includes(' · ')
+        ? dateLine.substring(dateLine.indexOf(' · ') + 3)
+        : dateLine;
+      const name = this.nextProject.event_name || this.nextProject.name;
+      ctx.upcomingPill = { text: `${name} · ${tail}` };
+    }
+    this.shellCtx.set(ctx);
+  }
+
+  /** Persist label changes (page / credits / events) on blur. Each
+      input is two-way bound to settingsDraft; pushing to ConfigService
+      re-emits config$ which re-runs pushShellContext above. */
+  saveLabels() {
+    this.configService.update({
+      homePageLabel: this.settingsDraft.homePageLabel || 'Projects',
+      creditLabel:   this.settingsDraft.creditLabel   || 'Ball',
+      projectLabel:  this.settingsDraft.projectLabel  || 'Event'
+    });
+  }
+
+  /** Theme dot click. Updates config + the local draft; the
+      ConfigService applies the CSS variables immediately. */
+  onThemeChange(theme: string) {
+    this.settingsDraft.themeName = theme;
+    this.configService.update({ themeName: theme });
+  }
+
+  /** Component visibility toggles. Single handler — re-reads every
+      flag from the draft and pushes the whole bag to ConfigService. */
+  saveToggles() {
+    this.configService.update({
+      showUserName: this.settingsDraft.showUserName,
+      showLocation: this.settingsDraft.showLocation,
+      showUpcoming: this.settingsDraft.showUpcoming,
+      showStats:    this.settingsDraft.showStats
+    });
+  }
+
   loadProjects() {
     this.projectService.getAll().subscribe({
       next: projects => {
@@ -935,6 +1200,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.activeProjects    = this.projects.filter(p => ['active','costing','draft'].includes(p.status_name || ''));
         this.completedProjects = this.projects.filter(p => ['completed','closed','cancelled'].includes(p.status_name || ''));
         this.loading = false;
+        // v1.23: refresh hero context so the upcoming-event pill (when
+        // enabled) reflects the freshly-loaded nextProject.
+        this.pushShellContext();
         this.cdr.detectChanges();
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }

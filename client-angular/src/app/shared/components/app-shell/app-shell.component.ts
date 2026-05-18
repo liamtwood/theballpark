@@ -4,7 +4,7 @@ import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } fro
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, MapPin } from 'lucide-angular';
+import { LucideAngularModule, MapPin, Calendar } from 'lucide-angular';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
@@ -37,8 +37,10 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <!-- PILLS — v1.22 interactive.
            User pill: click opens a small dropdown (Profile / Switch
            Org / Sign out — Profile routes, the others are stubs).
-           Location pill: click → /settings. -->
-      <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
+           Location pill: click → /settings.
+           Upcoming pill (v1.23): renders when ctx.upcomingPill is set
+           AND ConfigService.showUpcoming is true — see ngOnInit. -->
+      <div *ngIf="heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
         <ng-container *ngFor="let pill of heroPills">
           <!-- Location pill -->
           <button *ngIf="isLocationPill(pill)"
@@ -68,6 +70,14 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
             </div>
           </div>
         </ng-container>
+
+        <!-- Upcoming-event pill (v1.23). Dashboard pushes the text via
+             shellCtx.upcomingPill when ConfigService.showUpcoming is on
+             AND a future project exists. Calendar icon + plain text. -->
+        <span *ngIf="upcomingPillText" class="bp-hero-tag-span bp-hero-upcoming">
+          <lucide-icon name="calendar" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ upcomingPillText }}
+        </span>
       </div>
 
       <!-- TITLE -->
@@ -273,6 +283,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
     if (pill === this.orgCity) return true;
     if (this.ctx?.pills && this.ctx.pills.length >= 2 && pill === this.ctx.pills[1]) return true;
     return false;
+  }
+
+  /** v1.23: text for the optional upcoming-event pill. Empty when
+      ConfigService.showUpcoming is false or the dashboard hasn't
+      pushed an upcomingPill payload. Empty string hides the span. */
+  get upcomingPillText(): string {
+    if (!this.showUpcoming) return '';
+    return this.ctx?.upcomingPill?.text || '';
   }
 
   // Tab click — use onTabClick callback if present, otherwise navigate by path

@@ -28,6 +28,10 @@ export interface ShellContext {
   activeTabPath?: string;
   /** Optional back link on the hero's left edge. Cleared on every reset(). */
   back?: ShellBack;
+  /** v1.23: optional "Next event" pill payload. Dashboard pushes this
+      when ConfigService.showUpcoming is true and a future project
+      exists; app-shell renders a calendar-iconned pill in the hero. */
+  upcomingPill?: { text: string };
 }
 
 const DEFAULT_CONTEXT: ShellContext = {
