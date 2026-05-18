@@ -629,14 +629,21 @@ interface MessagesSummary {
     }
     .bp-ov-kpi-glyph {
       display: block;
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 500;
+      /* v1.24j: Libre Franklin matches the dashboard's bp-dash-stat-value
+         (the canonical Ballpark KPI typography) — sans-serif lining
+         figures have neutral vertical metrics and centre cleanly inside
+         the circle without optical-correction hacks. Weight 700 +
+         18px gives the same visual weight as the dashboard's 26px /
+         700, scaled to the 52px circle. */
+      font-family: var(--font-body);
+      font-size: 18px;
+      font-weight: 700;
       line-height: 1;
-      /* Optical correction: shifts the rendered glyph ~2px down so
-         the visual mass of the digit (which sits high in the
-         em-square for Playfair) lands on the geometric centre. */
-      transform: translateY(2px);
+      /* font-feature-settings drops Libre Franklin's old-style
+         figures if its variable axis ever ships them — tabular
+         lining figures keep all digits the same width so the
+         circle reads stable regardless of value. */
+      font-feature-settings: 'tnum' 1, 'lnum' 1;
     }
     .bp-ov-kpi-lab {
       font-family: var(--font-body);
