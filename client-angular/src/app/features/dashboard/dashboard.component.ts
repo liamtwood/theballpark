@@ -953,11 +953,10 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   ];
 
   /** v1.23b: COMPONENTS row — segmented buttons, each pill an
-      independent toggle. 'org' is disabled (always on) so the
-      Organisation pill renders permanently active. Order matters —
-      the disabled pill leads so it's the first thing the user reads. */
+      independent toggle. v1.23g: dropped the disabled 'Organisation'
+      pill — it can't be turned off so it added no value, just visual
+      noise. The org name is still always rendered in the hero. */
   readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
-    { value: 'org',      label: 'Organisation', disabled: true },
     { value: 'user',     label: 'User' },
     { value: 'location', label: 'Location' },
     { value: 'upcoming', label: 'Upcoming' },

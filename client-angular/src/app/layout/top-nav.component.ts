@@ -274,7 +274,17 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.ballsBalance = org.balls_balance || 0;
-        this.cdr.detectChanges();
+        // v1.23g: fall back to the org's DB logo_url when the local
+        // ConfigService doesn't have one (e.g. fresh browser, or a
+        // teammate who hasn't visited Marketplace settings). Don't
+        // overwrite a ConfigService value that was already set —
+        // that wins because it's the latest user action.
+        if (!this.logoUrl && (org as any).logo_url) {
+          this.logoUrl = (org as any).logo_url;
+          this.cdr.detectChanges();
+        } else {
+          this.cdr.detectChanges();
+        }
       }
     });
 
