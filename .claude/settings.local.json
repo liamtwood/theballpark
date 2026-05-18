@@ -162,7 +162,8 @@
       "Bash(git -C /c/projects/ballpark commit -m ' *)",
       "Bash(git -C /c/projects/ballpark push origin dev)",
       "Bash(cd /c/projects/ballpark/.claude/worktrees/modest-swartz-6b688d && ls client-angular/src/app/features/suppliers/)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit -m 'chore: seed v1.21 feedback prompt + test_case for unified category card design *)"
     ]
   },
   "enableAllProjectMcpServers": true,

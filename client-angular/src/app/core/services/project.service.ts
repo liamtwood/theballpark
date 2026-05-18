@@ -14,6 +14,12 @@ export class ProjectService {
   create(data: any) { return this.api.post<Project>('/projects', data); }
   update(id: string, data: any) { return this.api.put<Project>(`/projects/${id}`, data); }
   delete(id: string) { return this.api.delete<Project>(`/projects/${id}`); }
+  /** v1.22: clone a project's top-level facts into a new Draft (no
+      categories, items, estimates, or messages copied). Backend route
+      POST /projects/:id/duplicate. */
+  duplicate(id: string) {
+    return this.api.post<Project>(`/projects/${id}/duplicate`, {});
+  }
   getByOrg(orgId: string) { return this.api.get<Project[]>(`/projects?org_id=${orgId}`); }
   triggerRefresh() { this.refreshSubject.next(); }
 

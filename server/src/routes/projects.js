@@ -41,6 +41,17 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.22: clone a project's top-level facts into a new one. Categories,
+// items, estimates, and messages do NOT carry over — see project.service
+// .duplicate() for the field list.
+router.post('/:id/duplicate', async (req, res, next) => {
+  try {
+    const project = await ProjectService.duplicate(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(project);
+  } catch (err) { next(err); }
+});
+
 // ── Brief tab — scope picker + per-category briefs ───────────────────
 //
 // The Brief tab edits the (project, category) pairing directly. PATCH

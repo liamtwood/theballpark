@@ -119,6 +119,51 @@ async function update(id, data) {
   return result.rows[0] || null;
 }
 
+/**
+ * v1.22: clone a project with its top-level facts (client, event date,
+ * dimensions, financial defaults). Intentionally does NOT copy:
+ *   - project_categories       (no Brief scope)
+ *   - project_items            (no cart)
+ *   - estimates / estimate_items
+ *   - messages
+ *
+ * The new project starts as a clean Draft so the user can scope from
+ * scratch. status_id is left null — the dashboard's display logic falls
+ * back to "Draft" for projects without a status_name. Cover image /
+ * logo / card colour ARE copied so the duplicate looks like a sibling
+ * at a glance.
+ */
+async function duplicate(id) {
+  const original = await pool.query(
+    'SELECT * FROM projects WHERE id = $1 AND is_active = true',
+    [id]
+  );
+  if (!original.rows.length) return null;
+  const src = original.rows[0];
+
+  const inserted = await pool.query(
+    `INSERT INTO projects (
+       org_id, client_id, name, description,
+       event_name, event_date, venue_name, venue_city, venue_address,
+       guest_count, stand_size, stand_width_m, stand_depth_m, stand_type,
+       project_budget, default_margin_pct, default_contingency_pct,
+       default_vat_pct, tier, event_type, duration_days,
+       cover_image_url, client_logo_url, card_color
+     )
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+     RETURNING *`,
+    [
+      src.org_id, src.client_id, `Copy of ${src.name}`, src.description,
+      src.event_name, src.event_date, src.venue_name, src.venue_city, src.venue_address,
+      src.guest_count, src.stand_size, src.stand_width_m, src.stand_depth_m, src.stand_type,
+      src.project_budget, src.default_margin_pct, src.default_contingency_pct,
+      src.default_vat_pct, src.tier, src.event_type, src.duration_days,
+      src.cover_image_url, src.client_logo_url, src.card_color
+    ]
+  );
+  return inserted.rows[0];
+}
+
 async function softDelete(id) {
   const result = await pool.query(
     'UPDATE projects SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING *',
@@ -157,4 +202,4 @@ async function recalcTotals(projectId) {
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, softDelete, getByClient, recalcTotals };
+module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals };
