@@ -187,38 +187,27 @@ interface MessagesSummary {
               <span class="bp-ov-label">MARKETPLACE</span>
             </div>
             <div class="bp-ov-content">
-              <!-- v1.24d: category icon circles — mirrors the
-                   marketplace tab's bp-cat-circle strip. Empty
-                   categories render greyed (same affordance as
-                   --unscoped in the marketplace). Falls back to
-                   first letter when icon_name is missing. -->
-              <div class="bp-ov-cats" *ngIf="market.cats.length">
-                <div *ngFor="let cat of market.cats"
-                     class="bp-ov-cat"
-                     [class.bp-ov-cat--empty]="cat.itemCount === 0"
-                     [title]="cat.name + ' — ' + (cat.itemCount === 0 ? 'no items' : (cat.itemCount + ' ' + (cat.itemCount === 1 ? 'item' : 'items')))">
-                  <div class="bp-ov-cat-circle">
-                    <img *ngIf="cat.coverUrl"
-                         [src]="cat.coverUrl"
-                         [alt]="cat.name"
-                         class="bp-ov-cat-img"/>
-                    <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
-                                 [name]="cat.iconName"
-                                 [size]="18"></lucide-icon>
-                    <span *ngIf="!cat.coverUrl && !cat.iconName"
-                          class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
-                    <span *ngIf="cat.itemCount > 0"
-                          class="bp-ov-cat-count">{{ cat.itemCount }}</span>
-                  </div>
-                  <span class="bp-ov-cat-name">{{ cat.name }}</span>
+              <!-- KPI trio restored — same shape as Brief / Estimate /
+                   Messages cards so the 4-card visual rhythm holds. -->
+              <div class="bp-ov-kpis">
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.selected }}</span>
+                  <span class="bp-ov-kpi-lab">SELECTED</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.wishlist }}</span>
+                  <span class="bp-ov-kpi-lab">WISHLIST</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.suppliers }}</span>
+                  <span class="bp-ov-kpi-lab">SUPPLIERS</span>
                 </div>
               </div>
-              <!-- Empty state when no categories are scoped yet. -->
-              <p class="bp-ov-prompt" *ngIf="market.cats.length === 0">
-                Add items from the Marketplace after writing your brief
-              </p>
 
               <div class="bp-ov-body">
+                <p class="bp-ov-prompt" *ngIf="market.cats.length === 0 && market.selected === 0">
+                  Add items from the Marketplace after writing your brief
+                </p>
                 <p class="bp-ov-prompt"
                    *ngIf="market.cats.length > 0 && market.emptyCats.length > 0">
                   {{ market.emptyCats.length }}
@@ -229,19 +218,41 @@ interface MessagesSummary {
                   All categories have items
                   <lucide-icon name="check" [size]="14"></lucide-icon>
                 </p>
+
+                <!-- v1.24e: empty categories shown as the marketplace's
+                     own .bp-cat-circle treatment (icon-in-circle +
+                     name label) instead of plain text pills. Greyed
+                     to match the marketplace's --unscoped style so
+                     they read as gaps to fill. -->
+                <div class="bp-ov-cats" *ngIf="emptyCatRows.length">
+                  <div *ngFor="let cat of emptyCatRows.slice(0, 5)"
+                       class="bp-ov-cat bp-ov-cat--empty"
+                       [title]="cat.name + ' — no items'">
+                    <div class="bp-ov-cat-circle">
+                      <img *ngIf="cat.coverUrl"
+                           [src]="cat.coverUrl"
+                           [alt]="cat.name"
+                           class="bp-ov-cat-img"/>
+                      <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
+                                   [name]="cat.iconName"
+                                   [size]="18"></lucide-icon>
+                      <span *ngIf="!cat.coverUrl && !cat.iconName"
+                            class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
+                    </div>
+                    <span class="bp-ov-cat-name">{{ cat.name }}</span>
+                  </div>
+                  <div *ngIf="emptyCatRows.length > 5"
+                       class="bp-ov-cat bp-ov-cat--more"
+                       [title]="(emptyCatRows.length - 5) + ' more'">
+                    <div class="bp-ov-cat-circle bp-ov-cat-circle--more">
+                      +{{ emptyCatRows.length - 5 }}
+                    </div>
+                    <span class="bp-ov-cat-name">more</span>
+                  </div>
+                </div>
+
                 <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
                   {{ market.wishlist }} awaiting client approval
-                </p>
-                <!-- v1.24d: KPI counters demoted from circles to a
-                     thin summary line — the category icons above are
-                     the new headline content. -->
-                <p class="bp-ov-stats" *ngIf="market.cats.length > 0">
-                  <span><strong>{{ market.selected }}</strong> selected</span>
-                  <span class="bp-ov-stats-sep">·</span>
-                  <span><strong>{{ market.wishlist }}</strong> wishlist</span>
-                  <span class="bp-ov-stats-sep">·</span>
-                  <span><strong>{{ market.suppliers }}</strong>
-                    {{ market.suppliers === 1 ? 'supplier' : 'suppliers' }}</span>
                 </p>
               </div>
               <div class="bp-ov-foot">
@@ -702,6 +713,17 @@ interface MessagesSummary {
       color: var(--color-text-muted);
     }
 
+    /* Overflow circle ("+N") — sits at the end of the row when
+       there are more empty categories than we render inline. */
+    .bp-ov-cat-circle--more {
+      background: transparent;
+      box-shadow: 0 0 0 0.5px var(--color-border);
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
     /* Thin summary line below the category circles — replaces the
        trio of stat circles for this card only. */
     .bp-ov-stats {
@@ -1149,6 +1171,13 @@ export class OverviewComponent implements OnInit {
   get marketFooter(): string {
     if (this.market.selected === 0) return 'No items selected yet';
     return `${this.market.selected} ${this.market.selected === 1 ? 'item' : 'items'} unspent`;
+  }
+
+  /** v1.24e: empty-category rows for the Marketplace card. Filters
+      market.cats down to the zero-item ones — the template renders
+      these as greyed icon circles in place of the old text pills. */
+  get emptyCatRows() {
+    return this.market.cats.filter(c => c.itemCount === 0);
   }
   get messagesFooter(): string {
     if (this.messages.awaiting > 0) {
