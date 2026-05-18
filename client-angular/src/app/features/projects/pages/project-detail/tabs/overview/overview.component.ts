@@ -127,200 +127,204 @@ interface MessagesSummary {
           <!-- BRIEF CARD -->
           <div class="bp-ov-card" (click)="goTo('brief')">
             <div class="bp-ov-head">
-              <span class="bp-ov-icon"><lucide-icon name="file-text" [size]="18"></lucide-icon></span>
               <span class="bp-ov-label">BRIEF</span>
             </div>
-            <div class="bp-ov-kpis">
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ brief.total }}</span>
-                <span class="bp-ov-kpi-lab">CATEGORIES</span>
+            <div class="bp-ov-content">
+              <div class="bp-ov-kpis">
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ brief.total }}</span>
+                  <span class="bp-ov-kpi-lab">CATEGORIES</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ brief.written }}</span>
+                  <span class="bp-ov-kpi-lab">WRITTEN</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ brief.toWrite }}</span>
+                  <span class="bp-ov-kpi-lab">TO WRITE</span>
+                </div>
               </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ brief.written }}</span>
-                <span class="bp-ov-kpi-lab">WRITTEN</span>
+              <div class="bp-ov-body">
+                <p class="bp-ov-prompt" *ngIf="brief.total === 0">
+                  Start by selecting categories in the Brief tab
+                </p>
+                <p class="bp-ov-prompt" *ngIf="brief.total > 0 && brief.toWrite > 0">
+                  {{ brief.toWrite }} {{ brief.toWrite === 1 ? 'brief' : 'briefs' }} to write
+                </p>
+                <p class="bp-ov-prompt bp-ov-prompt--done"
+                   *ngIf="brief.total > 0 && brief.toWrite === 0">
+                  All categories briefed
+                  <lucide-icon name="check" [size]="14"></lucide-icon>
+                </p>
+                <div class="bp-ov-pills" *ngIf="brief.missing.length">
+                  <span *ngFor="let name of brief.missing.slice(0, 3)"
+                        class="bp-ov-pill">{{ name }}</span>
+                  <span *ngIf="brief.missing.length > 3"
+                        class="bp-ov-pill bp-ov-pill--more">+{{ brief.missing.length - 3 }}</span>
+                </div>
               </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num bp-ov-kpi-num--accent">{{ brief.toWrite }}</span>
-                <span class="bp-ov-kpi-lab">TO WRITE</span>
+              <div class="bp-ov-foot">
+                <span>{{ briefFooter }}</span>
+                <span class="bp-ov-open">Open →</span>
               </div>
-            </div>
-            <div class="bp-ov-body">
-              <p class="bp-ov-prompt" *ngIf="brief.total === 0">
-                Start by selecting categories in the Brief tab
-              </p>
-              <p class="bp-ov-prompt" *ngIf="brief.total > 0 && brief.toWrite > 0">
-                {{ brief.toWrite }} {{ brief.toWrite === 1 ? 'brief' : 'briefs' }} to write
-              </p>
-              <p class="bp-ov-prompt bp-ov-prompt--done"
-                 *ngIf="brief.total > 0 && brief.toWrite === 0">
-                All categories briefed
-                <lucide-icon name="check" [size]="14"></lucide-icon>
-              </p>
-              <div class="bp-ov-pills" *ngIf="brief.missing.length">
-                <span *ngFor="let name of brief.missing.slice(0, 3)"
-                      class="bp-ov-pill">{{ name }}</span>
-                <span *ngIf="brief.missing.length > 3"
-                      class="bp-ov-pill bp-ov-pill--more">+{{ brief.missing.length - 3 }}</span>
-              </div>
-            </div>
-            <div class="bp-ov-foot">
-              <span>{{ briefFooter }}</span>
-              <span class="bp-ov-open">Open →</span>
             </div>
           </div>
 
           <!-- MARKETPLACE CARD -->
           <div class="bp-ov-card" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
-              <span class="bp-ov-icon"><lucide-icon name="store" [size]="18"></lucide-icon></span>
               <span class="bp-ov-label">MARKETPLACE</span>
             </div>
-            <div class="bp-ov-kpis">
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ market.selected }}</span>
-                <span class="bp-ov-kpi-lab">SELECTED</span>
+            <div class="bp-ov-content">
+              <div class="bp-ov-kpis">
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.selected }}</span>
+                  <span class="bp-ov-kpi-lab">SELECTED</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.wishlist }}</span>
+                  <span class="bp-ov-kpi-lab">WISHLIST</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ market.suppliers }}</span>
+                  <span class="bp-ov-kpi-lab">SUPPLIERS</span>
+                </div>
               </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ market.wishlist }}</span>
-                <span class="bp-ov-kpi-lab">WISHLIST</span>
+              <div class="bp-ov-body">
+                <p class="bp-ov-prompt" *ngIf="brief.total === 0 && market.selected === 0">
+                  Add items from the Marketplace after writing your brief
+                </p>
+                <p class="bp-ov-prompt"
+                   *ngIf="brief.total > 0 && market.emptyCats.length > 0">
+                  {{ market.emptyCats.length }}
+                  {{ market.emptyCats.length === 1 ? 'category' : 'categories' }} empty
+                </p>
+                <p class="bp-ov-prompt bp-ov-prompt--done"
+                   *ngIf="brief.total > 0 && market.emptyCats.length === 0 && market.selected > 0">
+                  All categories have items
+                  <lucide-icon name="check" [size]="14"></lucide-icon>
+                </p>
+                <div class="bp-ov-pills" *ngIf="market.emptyCats.length">
+                  <span *ngFor="let name of market.emptyCats.slice(0, 3)"
+                        class="bp-ov-pill">{{ name }}</span>
+                  <span *ngIf="market.emptyCats.length > 3"
+                        class="bp-ov-pill bp-ov-pill--more">+{{ market.emptyCats.length - 3 }}</span>
+                </div>
+                <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
+                  {{ market.wishlist }} awaiting client approval
+                </p>
               </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ market.suppliers }}</span>
-                <span class="bp-ov-kpi-lab">SUPPLIERS</span>
+              <div class="bp-ov-foot">
+                <span>{{ marketFooter }}</span>
+                <span class="bp-ov-open">Open →</span>
               </div>
-            </div>
-            <div class="bp-ov-body">
-              <p class="bp-ov-prompt" *ngIf="brief.total === 0 && market.selected === 0">
-                Add items from the Marketplace after writing your brief
-              </p>
-              <p class="bp-ov-prompt"
-                 *ngIf="brief.total > 0 && market.emptyCats.length > 0">
-                {{ market.emptyCats.length }}
-                {{ market.emptyCats.length === 1 ? 'category' : 'categories' }} empty
-              </p>
-              <p class="bp-ov-prompt bp-ov-prompt--done"
-                 *ngIf="brief.total > 0 && market.emptyCats.length === 0 && market.selected > 0">
-                All categories have items
-                <lucide-icon name="check" [size]="14"></lucide-icon>
-              </p>
-              <div class="bp-ov-pills" *ngIf="market.emptyCats.length">
-                <span *ngFor="let name of market.emptyCats.slice(0, 3)"
-                      class="bp-ov-pill">{{ name }}</span>
-                <span *ngIf="market.emptyCats.length > 3"
-                      class="bp-ov-pill bp-ov-pill--more">+{{ market.emptyCats.length - 3 }}</span>
-              </div>
-              <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
-                {{ market.wishlist }} awaiting client approval
-              </p>
-            </div>
-            <div class="bp-ov-foot">
-              <span>{{ marketFooter }}</span>
-              <span class="bp-ov-open">Open →</span>
             </div>
           </div>
 
           <!-- ESTIMATE CARD -->
           <div class="bp-ov-card" (click)="goTo('estimate')">
             <div class="bp-ov-head">
-              <span class="bp-ov-icon"><lucide-icon name="calculator" [size]="18"></lucide-icon></span>
               <span class="bp-ov-label">ESTIMATE</span>
               <span class="bp-ov-status" *ngIf="estimateStatus">{{ estimateStatus }}</span>
             </div>
-            <div class="bp-ov-kpis">
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ est.estimated }}</span>
-                <span class="bp-ov-kpi-lab">ESTIMATED</span>
-              </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num bp-ov-kpi-num--accent">{{ est.pending }}</span>
-                <span class="bp-ov-kpi-lab">PENDING</span>
-              </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ est.marginPct != null ? est.marginPct + '%' : '—' }}</span>
-                <span class="bp-ov-kpi-lab">MARGIN</span>
-              </div>
-            </div>
-            <div class="bp-ov-body">
-              <div class="bp-ov-money">
-                <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
-                <span class="bp-ov-money-lab">your cost</span>
-              </div>
-              <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
-                {{ est.clientTotal | gbp }} client total
-              </p>
-              <div class="bp-ov-budget" *ngIf="est.budget && est.budget > 0">
-                <div class="bp-ov-budget-bar">
-                  <div class="bp-ov-budget-fill"
-                       [class.bp-ov-budget-fill--over]="est.overBudget"
-                       [style.width.%]="budgetBarWidth"></div>
+            <div class="bp-ov-content">
+              <div class="bp-ov-kpis">
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ est.estimated }}</span>
+                  <span class="bp-ov-kpi-lab">ESTIMATED</span>
                 </div>
-                <div class="bp-ov-budget-row">
-                  <span class="bp-ov-budget-state"
-                        [class.bp-ov-budget-state--over]="est.overBudget">
-                    <lucide-icon [name]="est.overBudget ? 'alert-triangle' : 'check'" [size]="12"></lucide-icon>
-                    {{ budgetPctLabel }} {{ est.overBudget ? 'over' : 'under' }} budget
-                  </span>
-                  <span class="bp-ov-budget-diff">
-                    {{ est.diff | compactCurrency }} {{ est.overBudget ? 'to trim' : 'headroom' }}
-                  </span>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ est.pending }}</span>
+                  <span class="bp-ov-kpi-lab">PENDING</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ est.marginPct != null ? est.marginPct + '%' : '—' }}</span>
+                  <span class="bp-ov-kpi-lab">MARGIN</span>
                 </div>
               </div>
-            </div>
-            <div class="bp-ov-foot">
-              <span>Budget {{ est.budget && est.budget > 0 ? (est.budget | compactCurrency) : '—' }}</span>
-              <span class="bp-ov-open">Open →</span>
+              <div class="bp-ov-body">
+                <div class="bp-ov-money">
+                  <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
+                  <span class="bp-ov-money-lab">your cost</span>
+                </div>
+                <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
+                  {{ est.clientTotal | gbp }} client total
+                </p>
+                <div class="bp-ov-budget" *ngIf="est.budget && est.budget > 0">
+                  <div class="bp-ov-budget-bar">
+                    <div class="bp-ov-budget-fill"
+                         [class.bp-ov-budget-fill--over]="est.overBudget"
+                         [style.width.%]="budgetBarWidth"></div>
+                  </div>
+                  <div class="bp-ov-budget-row">
+                    <span class="bp-ov-budget-state"
+                          [class.bp-ov-budget-state--over]="est.overBudget">
+                      <lucide-icon [name]="est.overBudget ? 'alert-triangle' : 'check'" [size]="12"></lucide-icon>
+                      {{ budgetPctLabel }} {{ est.overBudget ? 'over' : 'under' }} budget
+                    </span>
+                    <span class="bp-ov-budget-diff">
+                      {{ est.diff | compactCurrency }} {{ est.overBudget ? 'to trim' : 'headroom' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-ov-foot">
+                <span>Budget {{ est.budget && est.budget > 0 ? (est.budget | compactCurrency) : '—' }}</span>
+                <span class="bp-ov-open">Open →</span>
+              </div>
             </div>
           </div>
 
           <!-- MESSAGES CARD -->
           <div class="bp-ov-card" (click)="goTo('messages')">
             <div class="bp-ov-head">
-              <span class="bp-ov-icon"><lucide-icon name="message-circle" [size]="18"></lucide-icon></span>
               <span class="bp-ov-label">MESSAGES</span>
               <span *ngIf="messages.awaiting > 0"
                     class="bp-ov-notif">{{ messages.awaiting }}</span>
             </div>
-            <div class="bp-ov-kpis">
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ messages.contacted }}</span>
-                <span class="bp-ov-kpi-lab">CONTACTED</span>
-              </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ messages.replied }}</span>
-                <span class="bp-ov-kpi-lab">REPLIED</span>
-              </div>
-              <div class="bp-ov-kpi">
-                <span class="bp-ov-kpi-num">{{ messages.quotes }}</span>
-                <span class="bp-ov-kpi-lab">QUOTES</span>
-              </div>
-            </div>
-            <div class="bp-ov-body">
-              <p class="bp-ov-prompt" *ngIf="messages.awaiting > 0">
-                {{ messages.awaiting }} awaiting your reply
-              </p>
-              <p class="bp-ov-prompt"
-                 *ngIf="messages.contacted === 0 && messages.awaiting === 0">
-                No suppliers contacted yet
-              </p>
-              <p class="bp-ov-prompt"
-                 *ngIf="messages.contacted > 0 && messages.awaiting === 0 && messages.quotes === 0">
-                No messages pending
-              </p>
-              <div class="bp-ov-list" *ngIf="messages.recent.length">
-                <div *ngFor="let row of messages.recent" class="bp-ov-list-row">
-                  <span class="bp-ov-list-dot"></span>
-                  <span class="bp-ov-list-name">{{ row.supplier }}</span>
-                  <span class="bp-ov-list-preview">— {{ row.preview }}</span>
-                  <span class="bp-ov-list-time">{{ row.time }}</span>
+            <div class="bp-ov-content">
+              <div class="bp-ov-kpis">
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ messages.contacted }}</span>
+                  <span class="bp-ov-kpi-lab">CONTACTED</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle">{{ messages.replied }}</span>
+                  <span class="bp-ov-kpi-lab">REPLIED</span>
+                </div>
+                <div class="bp-ov-kpi">
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ messages.quotes }}</span>
+                  <span class="bp-ov-kpi-lab">QUOTES</span>
                 </div>
               </div>
-              <p class="bp-ov-sub" *ngIf="messages.quotes > 0">
-                {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
-              </p>
-            </div>
-            <div class="bp-ov-foot">
-              <span>{{ messagesFooter }}</span>
-              <span class="bp-ov-open">Open →</span>
+              <div class="bp-ov-body">
+                <p class="bp-ov-prompt" *ngIf="messages.awaiting > 0">
+                  {{ messages.awaiting }} awaiting your reply
+                </p>
+                <p class="bp-ov-prompt"
+                   *ngIf="messages.contacted === 0 && messages.awaiting === 0">
+                  No suppliers contacted yet
+                </p>
+                <p class="bp-ov-prompt"
+                   *ngIf="messages.contacted > 0 && messages.awaiting === 0 && messages.quotes === 0">
+                  No messages pending
+                </p>
+                <div class="bp-ov-list" *ngIf="messages.recent.length">
+                  <div *ngFor="let row of messages.recent" class="bp-ov-list-row">
+                    <span class="bp-ov-list-dot"></span>
+                    <span class="bp-ov-list-name">{{ row.supplier }}</span>
+                    <span class="bp-ov-list-preview">— {{ row.preview }}</span>
+                    <span class="bp-ov-list-time">{{ row.time }}</span>
+                  </div>
+                </div>
+                <p class="bp-ov-sub" *ngIf="messages.quotes > 0">
+                  {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
+                </p>
+              </div>
+              <div class="bp-ov-foot">
+                <span>{{ messagesFooter }}</span>
+                <span class="bp-ov-open">Open →</span>
+              </div>
             </div>
           </div>
 
@@ -443,16 +447,19 @@ interface MessagesSummary {
     }
 
     /* ── CARD CHROME ────────────────────────────────────────── */
+    /* v1.24b: card no longer carries top padding — the dark header
+       bar bleeds edge-to-edge. Inner .bp-ov-content owns the
+       16px/18px content padding. overflow:hidden clips the dark
+       header against the card's rounded corners. */
     .bp-ov-card {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 16px 18px;
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
       cursor: pointer;
+      overflow: hidden;
       transition: box-shadow 150ms ease, transform 150ms ease;
     }
     .bp-ov-card:hover {
@@ -460,32 +467,34 @@ interface MessagesSummary {
       transform: translateY(-1px);
     }
 
-    /* ── CARD HEAD ──────────────────────────────────────────── */
+    /* ── DARK HEADER BAR ─────────────────────────────────────── */
+    /* v1.24b: full-width banner using --theme-text (the dark
+       foreground of each theme preset — dark-amber by default,
+       dark-emerald/pink/ocean/slate when the preset swaps). Title
+       is centred; status pill / notif chip float to the right via
+       absolute positioning so they don't push the title off-centre. */
     .bp-ov-head {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 10px;
-    }
-    .bp-ov-icon {
-      display: inline-flex;
-      align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: var(--theme-soft);
-      color: var(--theme-accent);
+      padding: 10px 16px;
+      background: var(--theme-text);
+      color: var(--theme-bg);
     }
     .bp-ov-label {
       font-family: var(--font-body);
       font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--theme-accent);
-      flex: 1;
+      color: var(--theme-bg);
     }
     .bp-ov-status {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
       font-family: var(--font-body);
       font-size: 10px;
       font-weight: 500;
@@ -493,11 +502,14 @@ interface MessagesSummary {
       letter-spacing: 0.04em;
       padding: 3px 10px;
       border-radius: var(--radius-pill);
-      background: var(--theme-soft);
-      color: var(--theme-text);
-      border: 0.5px solid var(--theme-border);
+      background: var(--theme-accent);
+      color: #fff;
     }
     .bp-ov-notif {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -511,26 +523,54 @@ interface MessagesSummary {
       font-weight: 600;
     }
 
-    /* ── KPI ROW ────────────────────────────────────────────── */
+    /* ── CONTENT WRAPPER ─────────────────────────────────────── */
+    /* Holds everything below the dark header. Owns the card's
+       internal padding now that .bp-ov-card itself is unpadded. */
+    .bp-ov-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 18px;
+    }
+
+    /* ── KPI ROW (centred + circled) ─────────────────────────── */
+    /* v1.24b: numbers ride in 52px dark-themed circles, labels
+       sit below in muted uppercase. Row is centred across the card.
+       Action circles (toWrite / pending) flip the fill to
+       --theme-accent so they still call themselves out without
+       breaking the new visual language. */
     .bp-ov-kpis {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
       gap: 12px;
       padding: 4px 0;
     }
     .bp-ov-kpi {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      align-items: center;
+      gap: 6px;
+      min-width: 60px;
     }
-    .bp-ov-kpi-num {
+    .bp-ov-kpi-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--theme-text);
+      color: var(--theme-bg);
       font-family: var(--font-display);
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 400;
-      line-height: 1.1;
-      color: var(--color-text-primary);
+      line-height: 1;
     }
-    .bp-ov-kpi-num--accent { color: var(--theme-accent); }
+    .bp-ov-kpi-circle--accent {
+      background: var(--theme-accent);
+      color: #fff;
+    }
     .bp-ov-kpi-lab {
       font-family: var(--font-body);
       font-size: 9px;
@@ -538,6 +578,7 @@ interface MessagesSummary {
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--color-text-muted);
+      text-align: center;
     }
 
     /* ── BODY (prompts, pills, list) ────────────────────────── */
