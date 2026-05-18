@@ -77,7 +77,7 @@ type DashTab = 'projects';
               <p class="bp-upcoming-name">{{ nextProject.event_name || nextProject.name }}</p>
               <p class="bp-upcoming-meta">{{ nextProject.client_name }}</p>
               <p class="bp-upcoming-meta" *ngIf="nextProject.venue_name">{{ nextProject.venue_name }}</p>
-              <p class="bp-upcoming-date" *ngIf="nextProject.event_date">{{ nextProject.event_date }}</p>
+              <p class="bp-upcoming-date" *ngIf="nextProject.event_date">{{ nextProject.event_date | eventDate }}</p>
             </ng-container>
             <p *ngIf="!nextProject" class="bp-empty">No upcoming events.</p>
           </div>
@@ -242,7 +242,7 @@ type DashTab = 'projects';
           <lucide-icon name="folder" [size]="18" class="bp-row-icon" [class.muted]="p.status_name === 'draft'"></lucide-icon>
           <div class="bp-row-body">
             <div class="bp-row-name">{{ p.event_name || p.name }}</div>
-            <div class="bp-row-meta">{{ p.client_name }}{{ p.event_date ? ' · ' + p.event_date : '' }}</div>
+            <div class="bp-row-meta">{{ p.client_name }}<ng-container *ngIf="p.event_date"> · {{ p.event_date | eventDate }}</ng-container></div>
           </div>
           <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
@@ -253,7 +253,7 @@ type DashTab = 'projects';
           <lucide-icon name="folder" [size]="18" class="bp-row-icon muted"></lucide-icon>
           <div class="bp-row-body">
             <div class="bp-row-name">{{ p.event_name || p.name }}</div>
-            <div class="bp-row-meta">{{ p.client_name }}{{ p.event_date ? ' · ' + p.event_date : '' }}</div>
+            <div class="bp-row-meta">{{ p.client_name }}<ng-container *ngIf="p.event_date"> · {{ p.event_date | eventDate }}</ng-container></div>
           </div>
           <lucide-icon name="chevron-right" [size]="16" class="bp-row-chev"></lucide-icon>
         </a>
