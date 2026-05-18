@@ -273,7 +273,15 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
-    if (this.showUserName && this.userName) pills.push(`${this.userName} · ${this.userRole}`);
+    // v1.23c: title-case the role so "admin" renders as "Admin" in
+    // the pill. The DB column stores it lowercase ('owner' / 'admin'
+    // / 'member') — only the display is capitalised.
+    if (this.showUserName && this.userName) {
+      const role = this.userRole
+        ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
+        : '';
+      pills.push(role ? `${this.userName} · ${role}` : this.userName);
+    }
     if (this.showLocation && this.orgCity)  pills.push(this.orgCity);
     return pills;
   }

@@ -332,7 +332,7 @@ type DashTab = 'projects';
             <a [routerLink]="['/suppliers']"
                [queryParams]="{ view: 'suppliers' }"
                class="bp-quick-action">
-              Browse suppliers →
+              My suppliers
             </a>
           </ng-template>
         </div>
