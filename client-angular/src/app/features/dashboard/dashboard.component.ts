@@ -41,19 +41,21 @@ type DashTab = 'projects';
   providers: [ConfirmationService, MessageService],
   template: `
     <div class="bp-page">
-    <app-loading *ngIf="loading"></app-loading>
-    <ng-container *ngIf="!loading">
-
-      <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
-           v1.23f: the strip's body is now a <ng-template> captured
-           by ViewChild and pushed to ConfigStripService.setTemplate
-           in ngAfterViewInit, so AppShell renders it in its lifted
-           slot — above bp-shell-body. This way the strip spans the
-           full viewport width even when navMode='sidenav' (i.e. the
-           left menu starts BELOW the strip rather than beside it).
-           The cog in the top-nav still toggles open/closed via
-           ConfigStripService.toggle(). -->
-      <ng-template #cfgStripTpl>
+    <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
+         v1.23f: the strip's body is now a <ng-template> captured
+         by ViewChild and pushed to ConfigStripService.setTemplate
+         in ngAfterViewInit, so AppShell renders it in its lifted
+         slot — above bp-shell-body. This way the strip spans the
+         full viewport width even when navMode='sidenav' (i.e. the
+         left menu starts BELOW the strip rather than beside it).
+         The cog in the top-nav still toggles open/closed via
+         ConfigStripService.toggle().
+         Lives OUTSIDE the *ngIf="!loading" wrapper so the ViewChild
+         resolves with { static: true } before ngAfterViewInit — if
+         it were inside the gate, the template wouldn't be in the
+         view yet on first render and setTemplate would be a no-op,
+         which means the cog button wouldn't appear. -->
+    <ng-template #cfgStripTpl>
         <!-- v1.23b: reuse the global .bp-cfg-* classes so the strip
              reads identically to the marketplace ConfigStrip (same
              label sizing, segmented buttons, theme swatches). -->
@@ -150,7 +152,10 @@ type DashTab = 'projects';
           </div>
 
         </div>
-      </ng-template>
+    </ng-template>
+
+    <app-loading *ngIf="loading"></app-loading>
+    <ng-container *ngIf="!loading">
 
       <!-- STATS BAR — always visible on desktop, Summary tab on mobile -->
       <div class="bp-dash-stats" *ngIf="settingsDraft.showStats !== false">
