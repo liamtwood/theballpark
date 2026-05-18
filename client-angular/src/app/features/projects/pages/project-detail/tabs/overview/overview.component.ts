@@ -139,6 +139,7 @@ interface MessagesSummary {
           <div class="bp-ov-card" (click)="goTo('brief')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">BRIEF</span>
+              <span class="bp-ov-status" *ngIf="brief.total > 0">{{ briefPct }}%</span>
             </div>
             <div class="bp-ov-content">
               <div class="bp-ov-kpis">
@@ -185,6 +186,7 @@ interface MessagesSummary {
           <div class="bp-ov-card" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">MARKETPLACE</span>
+              <span class="bp-ov-status" *ngIf="market.cats.length > 0">{{ marketPct }}%</span>
             </div>
             <div class="bp-ov-content">
               <!-- KPI trio restored — same shape as Brief / Estimate /
@@ -612,12 +614,21 @@ interface MessagesSummary {
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: var(--theme-text);
-      color: var(--theme-bg);
+      /* v1.24g: lighter neutral fill (--theme-empty) instead of the
+         maroon --theme-text. Pairs --theme-text dark glyph on the
+         cream fill — readable through every theme preset. */
+      background: var(--theme-empty);
+      color: var(--theme-text);
       font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 400;
+      font-size: 22px;
+      font-weight: 500;
+      /* Optical centring: Playfair's lining figures sit a touch
+         low in their bounding box. Tighten line-height to 1 and
+         neutralise the descender slot so flexbox centres the visual
+         glyph, not the metric box. */
       line-height: 1;
+      text-align: center;
+      padding-top: 1px;          /* lifts the numeral 1px so it sits dead-centre */
     }
     .bp-ov-kpi-circle--accent {
       background: var(--theme-accent);
@@ -1196,6 +1207,20 @@ export class OverviewComponent implements OnInit {
   get briefFooter(): string {
     if (!this.brief.updated) return 'No briefs written yet';
     return `Updated ${this.relativeTime(this.brief.updated)}`;
+  }
+
+  /** v1.24g: completion % shown as a header pill — same slot as
+      the Estimate card's status pill. Brief = written / total,
+      Marketplace = categoriesWithItems / total. */
+  get briefPct(): number {
+    if (this.brief.total === 0) return 0;
+    return Math.round((this.brief.written / this.brief.total) * 100);
+  }
+  get marketPct(): number {
+    const total = this.market.cats.length;
+    if (total === 0) return 0;
+    const filled = total - this.emptyCatRows.length;
+    return Math.round((filled / total) * 100);
   }
   get marketFooter(): string {
     if (this.market.selected === 0) return 'No items selected yet';
