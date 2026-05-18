@@ -95,6 +95,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
           [class.active]="isTabActive(tab)"
           (click)="onTabClick(tab)">
           {{ tab.label }}
+          <!-- v1.24: notification badge — only when tab.badge > 0. -->
+          <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
         </button>
       </div>
     </div>
@@ -249,6 +251,27 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* v1.22: hero band gets a hairline separator to mark the
        boundary between header and KPI strip / body. */
     .bp-hero { border-bottom: var(--border-hairline); }
+
+    /* v1.24: notification badge on tabs. Red circle, white text,
+       positioned inline after the tab label. Used by the project
+       Messages tab when ShellTab.badge > 0. */
+    .bp-hero-tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 5px;
+      margin-left: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--color-danger);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1;
+      vertical-align: middle;
+    }
 
     /* v1.23f: lifted config-strip slot. Pages provide the inner
        controls via TemplateRef + ConfigStripService.setTemplate.

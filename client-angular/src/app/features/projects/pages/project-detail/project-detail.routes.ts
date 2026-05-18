@@ -1,7 +1,15 @@
 import { Routes } from '@angular/router';
 
 export const PROJECT_DETAIL_ROUTES: Routes = [
-  { path: '', redirectTo: 'event', pathMatch: 'full' },
+  // v1.24: Overview is the default landing tab.
+  { path: '', redirectTo: 'overview', pathMatch: 'full' },
+  {
+    // Overview tab (v1.24) — action-oriented dashboard. Event strip
+    // + 2×2 inbox cards (Brief / Marketplace / Estimate / Messages)
+    // surfaced as the project's first impression.
+    path: 'overview',
+    loadComponent: () => import('./tabs/overview/overview.component').then(m => m.OverviewComponent)
+  },
   {
     // Event tab — project facts (details, type, logistics, financials,
     // project brief markdown). Was the original Brief tab.

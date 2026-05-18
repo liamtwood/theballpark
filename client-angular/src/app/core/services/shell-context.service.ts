@@ -4,6 +4,11 @@ import { BehaviorSubject } from 'rxjs';
 export interface ShellTab {
   label: string;
   path: string;
+  /** v1.24: optional notification badge rendered top-right of the
+      tab label. AppShell only renders the chip when badge > 0, so
+      pages can leave it undefined / 0 by default. Used by the
+      project Messages tab when there are unread replies. */
+  badge?: number;
 }
 
 /** Optional "back" link shown on the LEFT of the shell hero, vertically
