@@ -213,29 +213,34 @@ type DashTab = 'projects';
             <p class="bp-credits-desc">Build and estimate for free — only spend a {{ creditLabel }} when ready to engage.</p>
           </div>
           <div class="bp-saved-hd">SAVED SUPPLIERS</div>
-          <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
-          <!-- v1.22e: 2-column grid so each card sits at ~160px wide
-               and the 140px cover image lands ~1.15:1 — same square-ish
-               aspect the marketplace /suppliers grid uses. -->
-          <div class="bp-sup-grid" *ngIf="suppliers.length > 0">
-            <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
-              <div class="bp-sup-img" [class]="'bp-sup-bg-' + getCategoryClass(s.category)" [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null">
-                <div class="bp-sup-cat">{{ s.category }}</div>
-                <div class="bp-sup-heart">&hearts;</div>
-              </div>
-              <div class="bp-sup-body">
-                <div class="bp-sup-name">{{ s.name }}</div>
-                <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
+          <!-- v1.22h: panel reads favSuppliers (actual favourites
+               loaded via loadFavourites) instead of all suppliers.
+               Earlier code accidentally used this.suppliers (every
+               supplier on the platform) — fix swaps to the right
+               source and adds a real empty state. -->
+          <ng-container *ngIf="favSuppliers.length > 0; else noFavSuppliers">
+            <!-- 2-column grid so each card sits at ~160px wide and the
+                 140px cover lands ~1.15:1 (matches marketplace). -->
+            <div class="bp-sup-grid">
+              <div *ngFor="let s of favSuppliers.slice(0,2)" class="bp-sup-card">
+                <div class="bp-sup-img bp-sup-bg-default"
+                     [style.background-image]="s.ref_image_url ? 'url(' + s.ref_image_url + ')' : null">
+                  <div class="bp-sup-heart">&hearts;</div>
+                </div>
+                <div class="bp-sup-body">
+                  <div class="bp-sup-name">{{ s.ref_name }}</div>
+                  <div class="bp-sup-meta">Saved</div>
+                </div>
               </div>
             </div>
-          </div>
-          <!-- v1.22f: was a <p-button p-button-outlined>. Swapped to
-               .bp-quick-action so it matches Browse Suppliers / Invite
-               Member exactly (PrimeNG outlined had slightly different
-               padding + radius vs the custom CTA family). -->
-          <a routerLink="/suppliers" class="bp-quick-action">
-            View all {{ supplierCount }} saved →
-          </a>
+            <a routerLink="/suppliers" class="bp-quick-action">
+              View all {{ favSuppliers.length }} saved →
+            </a>
+          </ng-container>
+          <ng-template #noFavSuppliers>
+            <div class="bp-empty">No saved suppliers yet</div>
+            <a routerLink="/suppliers" class="bp-quick-action">Browse suppliers →</a>
+          </ng-template>
         </div>
 
       </div>
@@ -873,10 +878,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadSuppliers() {
+    // v1.22h: this.suppliers (every platform supplier) is still loaded
+    // because mobile panels reference it. supplierCount is NO LONGER
+    // sourced from here — see loadFavourites() below. The previous
+    // assignment was the bug: "Saved Suppliers" KPI showed every
+    // supplier, not the user's favourites.
     this.supplierService.getAll().subscribe({
       next: (suppliers: any[]) => {
         this.suppliers = suppliers || [];
-        this.supplierCount = this.suppliers.length;
         this.cdr.detectChanges();
       },
       error: () => {}
@@ -889,6 +898,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (favs: any[]) => {
         this.favSuppliers = (favs || []).filter((f: any) => f.type === 'supplier');
         this.favItems = (favs || []).filter((f: any) => f.type === 'item');
+        // v1.22h: count of saved suppliers drives the KPI stat in the
+        // dashboard header. Was wrongly counting every supplier on the
+        // platform before this fix.
+        this.supplierCount = this.favSuppliers.length;
         this.favsLoading = false;
         this.cdr.detectChanges();
       },

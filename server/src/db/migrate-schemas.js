@@ -357,6 +357,25 @@ const migrate = async () => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         created_by UUID
       );
+
+      -- Favourites — polymorphic per-org saved items / suppliers.
+      -- ref_id is intentionally NOT a hard FK because it points to
+      -- different tables by type ('supplier' → orgs.id, 'item' →
+      -- items.id). Toggled via is_active rather than deleted so a
+      -- re-heart restores the original row's created_at.
+      -- Table already exists in dev (created pre-migration-tracking);
+      -- the IF NOT EXISTS makes this idempotent on every env.
+      CREATE TABLE IF NOT EXISTS preview.favourites (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES preview.orgs(id),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('supplier', 'item')),
+        ref_id UUID NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS favourites_org_type_idx_preview
+        ON preview.favourites (org_id, type) WHERE is_active = true;
     `);
     console.log('  Preview schema tables created.');
 
@@ -376,6 +395,7 @@ const migrate = async () => {
       CREATE TABLE IF NOT EXISTS master.project_items      (LIKE preview.project_items      INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.messages           (LIKE preview.messages           INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.balls_transactions (LIKE preview.balls_transactions INCLUDING ALL);
+      CREATE TABLE IF NOT EXISTS master.favourites         (LIKE preview.favourites         INCLUDING ALL);
     `);
     console.log('  Master schema tables created.');
 

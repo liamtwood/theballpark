@@ -293,6 +293,23 @@ const migrate = async () => {
         created_by UUID
       );
 
+      -- Favourites — polymorphic per-org saved items / suppliers.
+      -- ref_id is intentionally NOT a hard FK because it points to
+      -- different tables depending on type ('supplier' → orgs.id,
+      -- 'item' → items.id). Soft-toggled via is_active rather than
+      -- deleted, so a re-heart restores the original row's created_at.
+      CREATE TABLE IF NOT EXISTS favourites (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES orgs(id),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('supplier', 'item')),
+        ref_id UUID NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS favourites_org_type_idx
+        ON favourites (org_id, type) WHERE is_active = true;
+
       -- Add image columns to projects
       ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_logo_url TEXT;
