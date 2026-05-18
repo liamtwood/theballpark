@@ -144,15 +144,15 @@ interface MessagesSummary {
             <div class="bp-ov-content">
               <div class="bp-ov-kpis">
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ brief.total }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ brief.total }}</span></span>
                   <span class="bp-ov-kpi-lab">CATEGORIES</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ brief.written }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ brief.written }}</span></span>
                   <span class="bp-ov-kpi-lab">WRITTEN</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ brief.toWrite }}</span>
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent"><span class="bp-ov-kpi-glyph">{{ brief.toWrite }}</span></span>
                   <span class="bp-ov-kpi-lab">TO WRITE</span>
                 </div>
               </div>
@@ -193,15 +193,15 @@ interface MessagesSummary {
                    Messages cards so the 4-card visual rhythm holds. -->
               <div class="bp-ov-kpis">
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.selected }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.selected }}</span></span>
                   <span class="bp-ov-kpi-lab">SELECTED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.wishlist }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.wishlist }}</span></span>
                   <span class="bp-ov-kpi-lab">WISHLIST</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.suppliers }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ market.suppliers }}</span></span>
                   <span class="bp-ov-kpi-lab">SUPPLIERS</span>
                 </div>
               </div>
@@ -282,15 +282,15 @@ interface MessagesSummary {
             <div class="bp-ov-content">
               <div class="bp-ov-kpis">
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ est.estimated }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ est.estimated }}</span></span>
                   <span class="bp-ov-kpi-lab">ESTIMATED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ est.pending }}</span>
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent"><span class="bp-ov-kpi-glyph">{{ est.pending }}</span></span>
                   <span class="bp-ov-kpi-lab">PENDING</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ est.marginPct != null ? est.marginPct : '—' }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ est.marginPct != null ? est.marginPct : '—' }}</span></span>
                   <span class="bp-ov-kpi-lab">MARGIN (%)</span>
                 </div>
               </div>
@@ -337,15 +337,15 @@ interface MessagesSummary {
             <div class="bp-ov-content">
               <div class="bp-ov-kpis">
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ messages.contacted }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ messages.contacted }}</span></span>
                   <span class="bp-ov-kpi-lab">CONTACTED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ messages.replied }}</span>
+                  <span class="bp-ov-kpi-circle"><span class="bp-ov-kpi-glyph">{{ messages.replied }}</span></span>
                   <span class="bp-ov-kpi-lab">REPLIED</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent">{{ messages.quotes }}</span>
+                  <span class="bp-ov-kpi-circle bp-ov-kpi-circle--accent"><span class="bp-ov-kpi-glyph">{{ messages.quotes }}</span></span>
                   <span class="bp-ov-kpi-lab">QUOTES</span>
                 </div>
               </div>
@@ -607,34 +607,36 @@ interface MessagesSummary {
       gap: 6px;
       min-width: 60px;
     }
+    /* v1.24i: circle is just the chrome (shape + fill + border).
+       Centering uses CSS Grid's place-items which centres on both
+       axes geometrically. The inner .bp-ov-kpi-glyph carries the
+       typography + an optical translateY because Playfair Display's
+       lining figures sit visually high in their em-square — pure
+       geometric centering reads as off-centre to the eye. */
     .bp-ov-kpi-circle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-grid;
+      place-items: center;
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      /* v1.24h: neutral fill mirrors the hero banner's --theme-bg
-         parchment so the Overview cards visually rhyme with the
-         hero band above them. Dark --theme-text glyph keeps
-         contrast through every preset. */
       background: var(--theme-bg);
       color: var(--theme-text);
       box-shadow: 0 0 0 0.5px var(--theme-border);
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 500;
-      /* Optical centring: Playfair's lining figures sit a touch
-         low in their bounding box. Tighten line-height to 1 and
-         neutralise the descender slot so flexbox centres the visual
-         glyph, not the metric box. */
-      line-height: 1;
-      text-align: center;
-      padding-top: 1px;          /* lifts the numeral 1px so it sits dead-centre */
     }
     .bp-ov-kpi-circle--accent {
       background: var(--theme-accent);
       color: var(--color-surface);
+    }
+    .bp-ov-kpi-glyph {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 500;
+      line-height: 1;
+      /* Optical correction: shifts the rendered glyph ~2px down so
+         the visual mass of the digit (which sits high in the
+         em-square for Playfair) lands on the geometric centre. */
+      transform: translateY(2px);
     }
     .bp-ov-kpi-lab {
       font-family: var(--font-body);
