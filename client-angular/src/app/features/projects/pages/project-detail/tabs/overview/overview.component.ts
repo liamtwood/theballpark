@@ -53,6 +53,17 @@ interface MarketplaceSummary {
   wishlist:  number;
   suppliers: number;
   emptyCats: string[];         // category names with zero items
+  /** v1.24d: per-category breakdown for the icon circles. itemCount
+      drives the greyed-out treatment on categories without items —
+      same affordance as the marketplace's --unscoped circle style. */
+  cats: Array<{
+    id: string;
+    name: string;
+    iconName: string | null;
+    iconColor: string | null;
+    coverUrl: string | null;
+    itemCount: number;
+  }>;
 }
 
 interface EstimateSummary {
@@ -176,42 +187,61 @@ interface MessagesSummary {
               <span class="bp-ov-label">MARKETPLACE</span>
             </div>
             <div class="bp-ov-content">
-              <div class="bp-ov-kpis">
-                <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.selected }}</span>
-                  <span class="bp-ov-kpi-lab">SELECTED</span>
-                </div>
-                <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.wishlist }}</span>
-                  <span class="bp-ov-kpi-lab">WISHLIST</span>
-                </div>
-                <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ market.suppliers }}</span>
-                  <span class="bp-ov-kpi-lab">SUPPLIERS</span>
+              <!-- v1.24d: category icon circles — mirrors the
+                   marketplace tab's bp-cat-circle strip. Empty
+                   categories render greyed (same affordance as
+                   --unscoped in the marketplace). Falls back to
+                   first letter when icon_name is missing. -->
+              <div class="bp-ov-cats" *ngIf="market.cats.length">
+                <div *ngFor="let cat of market.cats"
+                     class="bp-ov-cat"
+                     [class.bp-ov-cat--empty]="cat.itemCount === 0"
+                     [title]="cat.name + ' — ' + (cat.itemCount === 0 ? 'no items' : (cat.itemCount + ' ' + (cat.itemCount === 1 ? 'item' : 'items')))">
+                  <div class="bp-ov-cat-circle">
+                    <img *ngIf="cat.coverUrl"
+                         [src]="cat.coverUrl"
+                         [alt]="cat.name"
+                         class="bp-ov-cat-img"/>
+                    <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
+                                 [name]="cat.iconName"
+                                 [size]="18"></lucide-icon>
+                    <span *ngIf="!cat.coverUrl && !cat.iconName"
+                          class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
+                    <span *ngIf="cat.itemCount > 0"
+                          class="bp-ov-cat-count">{{ cat.itemCount }}</span>
+                  </div>
+                  <span class="bp-ov-cat-name">{{ cat.name }}</span>
                 </div>
               </div>
+              <!-- Empty state when no categories are scoped yet. -->
+              <p class="bp-ov-prompt" *ngIf="market.cats.length === 0">
+                Add items from the Marketplace after writing your brief
+              </p>
+
               <div class="bp-ov-body">
-                <p class="bp-ov-prompt" *ngIf="brief.total === 0 && market.selected === 0">
-                  Add items from the Marketplace after writing your brief
-                </p>
                 <p class="bp-ov-prompt"
-                   *ngIf="brief.total > 0 && market.emptyCats.length > 0">
+                   *ngIf="market.cats.length > 0 && market.emptyCats.length > 0">
                   {{ market.emptyCats.length }}
                   {{ market.emptyCats.length === 1 ? 'category' : 'categories' }} empty
                 </p>
                 <p class="bp-ov-prompt bp-ov-prompt--done"
-                   *ngIf="brief.total > 0 && market.emptyCats.length === 0 && market.selected > 0">
+                   *ngIf="market.cats.length > 0 && market.emptyCats.length === 0 && market.selected > 0">
                   All categories have items
                   <lucide-icon name="check" [size]="14"></lucide-icon>
                 </p>
-                <div class="bp-ov-pills" *ngIf="market.emptyCats.length">
-                  <span *ngFor="let name of market.emptyCats.slice(0, 3)"
-                        class="bp-ov-pill">{{ name }}</span>
-                  <span *ngIf="market.emptyCats.length > 3"
-                        class="bp-ov-pill bp-ov-pill--more">+{{ market.emptyCats.length - 3 }}</span>
-                </div>
                 <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
                   {{ market.wishlist }} awaiting client approval
+                </p>
+                <!-- v1.24d: KPI counters demoted from circles to a
+                     thin summary line — the category icons above are
+                     the new headline content. -->
+                <p class="bp-ov-stats" *ngIf="market.cats.length > 0">
+                  <span><strong>{{ market.selected }}</strong> selected</span>
+                  <span class="bp-ov-stats-sep">·</span>
+                  <span><strong>{{ market.wishlist }}</strong> wishlist</span>
+                  <span class="bp-ov-stats-sep">·</span>
+                  <span><strong>{{ market.suppliers }}</strong>
+                    {{ market.suppliers === 1 ? 'supplier' : 'suppliers' }}</span>
                 </p>
               </div>
               <div class="bp-ov-foot">
@@ -583,6 +613,115 @@ interface MessagesSummary {
       text-align: center;
     }
 
+    /* ── MARKETPLACE CATEGORY CIRCLES (v1.24d) ───────────────── */
+    /* Mirrors the marketplace tab's .bp-cat-circle strip — same
+       icon-in-circle treatment, scaled down so a project's
+       categories fit comfortably across the Overview card. Empty
+       categories grey out (echoes the marketplace's --unscoped
+       affordance) so the user can scan for gaps at a glance. */
+    .bp-ov-cats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px 16px;
+      padding: 4px 0 2px;
+    }
+    .bp-ov-cat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 48px;
+      max-width: 72px;
+    }
+    .bp-ov-cat-circle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      box-shadow: 0 0 0 0.5px var(--color-border);
+      overflow: hidden;
+    }
+    .bp-ov-cat-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .bp-ov-cat-initial {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--theme-accent);
+    }
+    /* Tiny count badge anchored bottom-right — shows how many items
+       this category has selected. Hidden when zero (the greyed
+       circle is enough signal). */
+    .bp-ov-cat-count {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      font-family: var(--font-body);
+      font-size: 9px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 0 0 1.5px var(--color-surface);
+    }
+    .bp-ov-cat-name {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      text-align: center;
+      line-height: 1.2;
+      max-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    /* Empty-category state: greyed circle + muted label. Matches
+       the marketplace's .bp-cat-circle-btn--unscoped treatment. */
+    .bp-ov-cat--empty .bp-ov-cat-circle {
+      filter: grayscale(0.85);
+      opacity: 0.45;
+    }
+    .bp-ov-cat--empty .bp-ov-cat-name {
+      color: var(--color-text-muted);
+    }
+
+    /* Thin summary line below the category circles — replaces the
+       trio of stat circles for this card only. */
+    .bp-ov-stats {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+    .bp-ov-stats strong {
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+    .bp-ov-stats-sep {
+      color: var(--color-text-muted);
+    }
+
     /* ── BODY (prompts, pills, list) ────────────────────────── */
     .bp-ov-body {
       display: flex;
@@ -749,7 +888,7 @@ export class OverviewComponent implements OnInit {
 
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
-  market: MarketplaceSummary = { selected: 0, wishlist: 0, suppliers: 0, emptyCats: [] };
+  market: MarketplaceSummary = { selected: 0, wishlist: 0, suppliers: 0, emptyCats: [], cats: [] };
   est: EstimateSummary = {
     estimated: 0, pending: 0, marginPct: null,
     yourCost: 0, clientTotal: 0, budget: null,
@@ -865,7 +1004,20 @@ export class OverviewComponent implements OnInit {
       .filter(c => (itemsByCat.get(c.category_id) || 0) === 0)
       .map(c => c.category_name || c.name || 'Untitled');
 
-    this.market = { selected, wishlist, suppliers, emptyCats };
+    // v1.24d: per-category icon row data. category_icon_name +
+    // _color are joined onto project_categories by the server so we
+    // don't need a separate categories lookup. Falls back to first
+    // letter via .bp-ov-cat-initial in the template.
+    const cats = this.categories.map(c => ({
+      id:        c.category_id,
+      name:      c.category_name || c.name || 'Untitled',
+      iconName:  c.category_icon_name || null,
+      iconColor: c.category_icon_color || null,
+      coverUrl:  c.category_cover_image_url || null,
+      itemCount: itemsByCat.get(c.category_id) || 0,
+    }));
+
+    this.market = { selected, wishlist, suppliers, emptyCats, cats };
   }
 
   private recomputeEstimate() {
