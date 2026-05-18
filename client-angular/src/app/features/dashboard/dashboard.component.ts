@@ -110,7 +110,9 @@ type DashTab = 'projects';
           </div>
           <p *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</p>
           <div class="bp-project-grid">
-            <div *ngFor="let p of activeProjects" class="bp-project-card-wrap">
+            <div *ngFor="let p of activeProjects"
+                 class="bp-project-card-wrap"
+                 [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
               <p-card styleClass="bp-project-card" [routerLink]="['/projects', p.id]">
                 <ng-template pTemplate="header">
                   <div class="bp-card-header"
@@ -324,10 +326,25 @@ type DashTab = 'projects';
     /* P-CARD GRID */
     .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
     .bp-project-card-wrap { display:block; }
-    :host ::ng-deep .bp-project-card.p-card { border:0.5px solid var(--color-border) !important; border-radius:10px !important; overflow:hidden; margin:0; box-shadow:none !important; transition:border-color 0.15s; cursor:pointer; }
+    /* v1.22g: overflow on the card is now visible so the "..."
+       dropdown menu can extend below the card edge. The cover image's
+       rounded top corners are clipped by the header element itself
+       (border-top-radius + overflow:hidden below) so the visual
+       doesn't change — only the dropdown's behaviour does. */
+    :host ::ng-deep .bp-project-card.p-card { border:0.5px solid var(--color-border) !important; border-radius:10px !important; overflow:visible !important; margin:0; box-shadow:none !important; transition:border-color 0.15s; cursor:pointer; position:relative; }
     :host ::ng-deep .bp-project-card.p-card:hover { border-color:var(--color-text-muted) !important; }
     :host ::ng-deep .bp-project-card .p-card-body, :host ::ng-deep .bp-project-card .p-card-content, :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
-    .bp-card-header { height:110px; position:relative; display:flex; align-items:flex-end; justify-content:space-between; padding:8px 10px; background-size:cover; background-position:center; }
+    .bp-card-header {
+      height:110px; position:relative;
+      display:flex; align-items:flex-end; justify-content:space-between;
+      padding:8px 10px;
+      background-size:cover; background-position:center;
+      /* Clip the cover image to the card's rounded top — replaces the
+         overflow:hidden that used to live on the parent p-card. */
+      border-top-left-radius:10px;
+      border-top-right-radius:10px;
+      overflow:hidden;
+    }
     .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
     .bp-card-header-draft  { background-image:linear-gradient(160deg,#374151,#4B5563); }
     .bp-card-header-closed { background-image:linear-gradient(160deg,#374151,#6B7280); }
@@ -386,7 +403,8 @@ type DashTab = 'projects';
     }
     /* Dropdown — anchored bottom-right of the name row. Inside the
        same .bp-card-content so positioning relative to the row works
-       without re-engineering the card layout. */
+       without re-engineering the card layout. v1.22g: high z-index +
+       card overflow:visible lets it overlay siblings in the grid. */
     .bp-card-menu {
       position:absolute;
       top:32px; right:12px;
@@ -395,9 +413,17 @@ type DashTab = 'projects';
       border:0.5px solid var(--color-border);
       border-radius:8px;
       padding:4px 0;
-      z-index:10;
-      box-shadow:0 4px 12px rgba(0,0,0,0.08);
+      z-index:50;
+      box-shadow:0 6px 18px rgba(0,0,0,0.12);
     }
+    /* Lift the wrap (and therefore its dropdown menu) above sibling
+       cards when the menu is open, so the dropdown isn't covered by
+       the next card's border / hero image. The wrap is always
+       position:relative so z-index applies; the --menu-open modifier
+       is added by the template via [class.…] when openMenuProjectId
+       matches this card. */
+    .bp-project-card-wrap { position:relative; }
+    .bp-project-card-wrap--menu-open { z-index:30; }
     .bp-card-menu-item {
       display:block;
       width:100%;
