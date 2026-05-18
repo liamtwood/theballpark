@@ -92,11 +92,15 @@ type DashTab = 'projects';
             <!-- v1.22b: "+ New Project" removed from Quick Actions —
                  it already lives next to the Active Events header.
                  v1.22i: Browse Suppliers now lands on the Suppliers
-                 toggle (was defaulting to Items). -->
+                 toggle (was defaulting to Items).
+                 v1.22j: icons dropped from the links so every Quick
+                 Action reads as one clean outlined CTA; Settings
+                 added as the third entry. -->
             <a [routerLink]="['/suppliers']"
                [queryParams]="{ view: 'suppliers' }"
-               class="bp-quick-action"><i class="pi pi-building" style="font-size:11px;"></i> Browse Suppliers</a>
-            <a routerLink="/settings/team" class="bp-quick-action"><i class="pi pi-user-plus" style="font-size:11px;"></i> Invite Member</a>
+               class="bp-quick-action">Browse Suppliers</a>
+            <a routerLink="/settings/team" class="bp-quick-action">Invite Member</a>
+            <a routerLink="/settings" class="bp-quick-action">Settings</a>
           </div>
         </div>
 
