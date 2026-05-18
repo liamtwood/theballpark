@@ -189,11 +189,13 @@ type DashTab = 'projects';
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
             <!-- v1.22: in-header "+ New project" CTA. The Quick Actions
                  link stays — this position is more discoverable.
-                 v1.23c: label cascades from ConfigService.projectLabel
-                 ("Event" → "+ New event", "Show" → "+ New show", etc).
-                 Lowercased for natural reading after the "New". -->
+                 v1.23d: label cascades from ConfigService.projectLabel
+                 — Title Case + plural ("Event" → "+ New Events",
+                 "Show" → "+ New Shows"). projectLabel is stored
+                 singular; we append "s" the same way "Active {label}s"
+                 does elsewhere on the dashboard. -->
             <button type="button" class="bp-section-new-btn" (click)="createProject()">
-              + New {{ projectLabel.toLowerCase() }}
+              + New {{ projectLabel }}s
             </button>
           </div>
           <p *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</p>
