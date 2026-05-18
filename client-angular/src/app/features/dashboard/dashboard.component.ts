@@ -414,21 +414,27 @@ type DashTab = 'projects';
     .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
     .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
 
-    /* "+ New project" CTA in the Active Events section header.
-       Themed pill — matches the supplier-detail "+ Add item" pattern. */
+    /* v1.22c: "+ New project" now uses the unified outlined-CTA
+       style — same shape as .bp-section-link / .bp-quick-action.
+       Every dashboard CTA reads as one family now (no filled
+       primary exception). */
     .bp-section-new-btn {
+      display:inline-flex; align-items:center; gap:6px;
       padding:5px 12px;
       font-size:11px;
       font-weight:500;
       font-family: var(--font-body);
-      color:var(--color-surface);
-      background:var(--theme-accent);
-      border:none;
+      color:var(--theme-accent);
+      background:var(--color-surface);
+      border:0.5px solid var(--theme-accent);
       border-radius:6px;
       cursor:pointer;
-      transition: filter 0.15s;
+      transition:background 0.15s, color 0.15s;
     }
-    .bp-section-new-btn:hover { filter: brightness(1.1); }
+    .bp-section-new-btn:hover {
+      background:var(--theme-accent);
+      color:var(--color-surface);
+    }
     /* v1.22b: same outlined-CTA family as .bp-quick-action — compact
        (sits inline in a section header) but visually consistent. */
     .bp-section-link {
