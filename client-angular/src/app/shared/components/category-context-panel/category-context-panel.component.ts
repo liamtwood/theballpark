@@ -233,7 +233,17 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     </div>
   `,
   styles: [`
-    :host { display: block; height: 100%; }
+    /* v1.24m: font-family pinned on :host so the panel reads in
+       Libre Franklin regardless of what the catalogue-grid parent
+       column inherits. Inner Playfair elements (.bp-ctx-sub-amount,
+       prices in app-project-item-row, name in app-category-card-header)
+       opt into --font-display explicitly. */
+    :host {
+      display: block;
+      height: 100%;
+      font-family: var(--font-body);
+      color: var(--color-text-primary);
+    }
 
     .bp-ctx-panel {
       height: 100%;

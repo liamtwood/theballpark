@@ -62,7 +62,13 @@ import { StatusBadgeComponent } from '../status-badge/status-badge.component';
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    /* v1.24m: font-family also on :host (in addition to .bp-cch) so
+       the component is bullet-proof against ancestor styles that
+       might set font-family on the panel/column it sits in. */
+    :host {
+      display: block;
+      font-family: var(--font-body);
+    }
 
     .bp-cch {
       display: flex;

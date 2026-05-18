@@ -39,11 +39,14 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
         </span>
       </div>
 
-      <!-- Info block: name + (optional) tier chip + supplier · price math -->
+      <!-- Info block: name + (optional, non-compact only) tier chip +
+           supplier · price math. v1.24m: tier badge hidden in compact
+           mode — it crowds the narrow row and the full tier label is
+           visible on the item detail panel anyway. -->
       <div class="bp-item-info">
         <div class="bp-item-name-row">
           <span class="bp-item-name">{{ item?.name }}</span>
-          <span *ngIf="tierLabel" class="bp-item-tier">{{ tierLabel }}</span>
+          <span *ngIf="tierLabel && !compact" class="bp-item-tier">{{ tierLabel }}</span>
         </div>
         <div class="bp-item-meta">{{ metaLine }}</div>
       </div>
@@ -87,12 +90,21 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    /* v1.24m: font-family set on :host so the row always inherits
+       Libre Franklin regardless of where it's mounted (catalogue-grid
+       right rail, Build card, marketplace context panel, etc.). */
+    :host {
+      display: block;
+      font-family: var(--font-body);
+    }
 
     .bp-item-row {
       display: grid;
       grid-template-columns: 48px 1fr auto auto;
-      align-items: center;
+      /* v1.24m: switch from align-items: center → start so the row
+         flexes vertically when the name wraps to two lines, keeping
+         the thumb / price / × aligned to the top of the row. */
+      align-items: start;
       gap: 12px;
       padding: 10px 0;
       border-top: 0.5px solid var(--color-border);
@@ -144,15 +156,23 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
       gap: 6px;
       min-width: 0;
     }
+    /* v1.24m: name wraps to a maximum of two lines instead of being
+       hard-truncated with an ellipsis. Most names fit on one line at
+       this width; the few longer ones get a second line rather than
+       reading as "Suspen..." which is useless at a glance. The row's
+       align-items:start handles the flex height. */
     .bp-item-name {
       font-size: 13px;
       font-weight: 500;
       color: var(--color-text-primary);
       line-height: 1.3;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       min-width: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: normal;
+      word-break: break-word;
     }
     .bp-item-row--compact .bp-item-name { font-size: 12px; }
     /* Tier chip — sits next to the name. Same height as the meta line
