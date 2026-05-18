@@ -241,6 +241,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.loadConfig();
     this.catalogueTitle = this.configSvc.catalogueLabel;
 
+    // v1.22i: ?view=suppliers | items lets the dashboard's Browse
+    // Suppliers / My Suppliers links land directly on the Suppliers
+    // toggle instead of the default Items view. Read this BEFORE any
+    // data loads so loadItems doesn't fire unnecessarily.
+    const viewParam = this.route.snapshot.queryParams['view'];
+    if (viewParam === 'suppliers' || viewParam === 'items') {
+      this.viewMode = viewParam;
+    }
+
     // Resolve the current org once on init — drives currentOrgId/Type for
     // the catalogue-grid detail-panel actions (agency vs supplier; isOwner).
     this.orgSvc.getCurrentOrg().subscribe(org => {

@@ -90,10 +90,12 @@ type DashTab = 'projects';
           <div class="bp-panel-section">
             <div class="bp-section-header"><span class="bp-section-title">Quick Actions</span></div>
             <!-- v1.22b: "+ New Project" removed from Quick Actions —
-                 it already lives next to the Active Events header
-                 (filled primary button). Quick Actions stays as
-                 lighter outlined links for browsing / invitation. -->
-            <a routerLink="/suppliers" class="bp-quick-action"><i class="pi pi-building" style="font-size:11px;"></i> Browse Suppliers</a>
+                 it already lives next to the Active Events header.
+                 v1.22i: Browse Suppliers now lands on the Suppliers
+                 toggle (was defaulting to Items). -->
+            <a [routerLink]="['/suppliers']"
+               [queryParams]="{ view: 'suppliers' }"
+               class="bp-quick-action"><i class="pi pi-building" style="font-size:11px;"></i> Browse Suppliers</a>
             <a routerLink="/settings/team" class="bp-quick-action"><i class="pi pi-user-plus" style="font-size:11px;"></i> Invite Member</a>
           </div>
         </div>
@@ -213,11 +215,6 @@ type DashTab = 'projects';
             <p class="bp-credits-desc">Build and estimate for free — only spend a {{ creditLabel }} when ready to engage.</p>
           </div>
           <div class="bp-saved-hd">SAVED SUPPLIERS</div>
-          <!-- v1.22h: panel reads favSuppliers (actual favourites
-               loaded via loadFavourites) instead of all suppliers.
-               Earlier code accidentally used this.suppliers (every
-               supplier on the platform) — fix swaps to the right
-               source and adds a real empty state. -->
           <ng-container *ngIf="favSuppliers.length > 0; else noFavSuppliers">
             <!-- 2-column grid so each card sits at ~160px wide and the
                  140px cover lands ~1.15:1 (matches marketplace). -->
@@ -225,7 +222,12 @@ type DashTab = 'projects';
               <div *ngFor="let s of favSuppliers.slice(0,2)" class="bp-sup-card">
                 <div class="bp-sup-img bp-sup-bg-default"
                      [style.background-image]="s.ref_image_url ? 'url(' + s.ref_image_url + ')' : null">
-                  <div class="bp-sup-heart">&hearts;</div>
+                  <!-- v1.22i: lucide heart in a small white circle.
+                       The previous &hearts; entity was rendered white,
+                       so it disappeared on white card backgrounds. -->
+                  <div class="bp-sup-heart">
+                    <lucide-icon name="heart" [size]="11"></lucide-icon>
+                  </div>
                 </div>
                 <div class="bp-sup-body">
                   <div class="bp-sup-name">{{ s.ref_name }}</div>
@@ -233,13 +235,19 @@ type DashTab = 'projects';
                 </div>
               </div>
             </div>
-            <a routerLink="/suppliers" class="bp-quick-action">
-              View all {{ favSuppliers.length }} saved →
+            <a [routerLink]="['/suppliers']"
+               [queryParams]="{ view: 'suppliers' }"
+               class="bp-quick-action">
+              My Suppliers
             </a>
           </ng-container>
           <ng-template #noFavSuppliers>
             <div class="bp-empty">No saved suppliers yet</div>
-            <a routerLink="/suppliers" class="bp-quick-action">Browse suppliers →</a>
+            <a [routerLink]="['/suppliers']"
+               [queryParams]="{ view: 'suppliers' }"
+               class="bp-quick-action">
+              Browse suppliers →
+            </a>
           </ng-template>
         </div>
 
@@ -593,7 +601,20 @@ type DashTab = 'projects';
     .bp-sup-card { border:0.5px solid var(--color-border); border-radius:10px; overflow:hidden; background:var(--color-surface); }
     .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
     .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius:20px; background:rgba(0,0,0,0.5); color:#fff; }
-    .bp-sup-heart { position:absolute; top:6px; right:6px; font-size:12px; color:#fff; }
+    /* v1.22i: heart sits in a small white circle so the red lucide
+       glyph reads on any cover image — the previous white-on-white
+       entity was invisible. Suppliers in this panel are by definition
+       favourited, so the heart is always "filled" (red). */
+    .bp-sup-heart {
+      position:absolute; top:6px; right:6px;
+      width:20px; height:20px;
+      border-radius:50%;
+      background:var(--color-surface);
+      color:var(--color-danger);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 1px 3px rgba(0,0,0,0.15);
+    }
+    .bp-sup-heart lucide-icon { fill:currentColor; }
     .bp-sup-bg-setbuild { background-image:linear-gradient(160deg,#1a1a2e,#16213e); }
     .bp-sup-bg-av       { background-image:linear-gradient(160deg,#0d1b2a,#1b2838); }
     .bp-sup-bg-default  { background-image:linear-gradient(160deg,#1a1a2e,#2e1a2e); }
