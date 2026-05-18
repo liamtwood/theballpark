@@ -52,83 +52,67 @@ type DashTab = 'projects';
            itself is what registers the cog button to appear, so
            non-admin users see neither the strip nor the cog. -->
       <app-config-strip>
-        <div class="bp-home-settings">
+        <!-- v1.23b: reuse the global .bp-cfg-* classes so the strip
+             reads identically to the marketplace ConfigStrip (same
+             label sizing, segmented buttons, theme swatches). The
+             dashboard-specific row is COMPONENTS — a segmented
+             button group where each pill is an independent toggle. -->
+        <div class="bp-cfg-row">
 
-          <!-- Labels row -->
-          <div class="bp-home-settings-row">
-            <label class="bp-home-settings-lab">PAGE LABEL</label>
-            <input pInputText
-                   class="bp-home-settings-input"
-                   [(ngModel)]="settingsDraft.homePageLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Projects"/>
-            <span class="bp-home-settings-divider"></span>
+          <!-- Labels -->
+          <span class="bp-cfg-lab">PAGE LABEL</span>
+          <input pInputText
+                 class="bp-cfg-page-label"
+                 [(ngModel)]="settingsDraft.homePageLabel"
+                 (blur)="saveLabels()"
+                 placeholder="Projects"/>
+          <span class="bp-cfg-divider"></span>
 
-            <label class="bp-home-settings-lab">CREDITS</label>
-            <input pInputText
-                   class="bp-home-settings-input"
-                   [(ngModel)]="settingsDraft.creditLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Balls"/>
-            <span class="bp-home-settings-divider"></span>
+          <span class="bp-cfg-lab">CREDITS</span>
+          <input pInputText
+                 class="bp-cfg-page-label"
+                 [(ngModel)]="settingsDraft.creditLabel"
+                 (blur)="saveLabels()"
+                 placeholder="Balls"/>
+          <span class="bp-cfg-divider"></span>
 
-            <label class="bp-home-settings-lab">EVENTS</label>
-            <input pInputText
-                   class="bp-home-settings-input"
-                   [(ngModel)]="settingsDraft.projectLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Events"/>
+          <span class="bp-cfg-lab">EVENTS</span>
+          <input pInputText
+                 class="bp-cfg-page-label"
+                 [(ngModel)]="settingsDraft.projectLabel"
+                 (blur)="saveLabels()"
+                 placeholder="Events"/>
+          <span class="bp-cfg-divider"></span>
+
+          <!-- Theme — round dot swatches, identical to marketplace. -->
+          <span class="bp-cfg-lab">THEME</span>
+          <div class="bp-cfg-swatches-row">
+            <button *ngFor="let t of themeOptions"
+                    type="button"
+                    class="bp-cfg-swatch-btn"
+                    [class.active]="settingsDraft.themeName === t.value"
+                    [style.background]="t.color"
+                    [title]="t.label"
+                    (click)="onThemeChange(t.value)">
+            </button>
           </div>
+          <span class="bp-cfg-divider"></span>
 
-          <!-- Theme row -->
-          <div class="bp-home-settings-row">
-            <label class="bp-home-settings-lab">THEME</label>
-            <div class="bp-home-settings-themes">
-              <button *ngFor="let t of themeOptions"
-                      type="button"
-                      class="bp-home-settings-theme"
-                      [class.active]="settingsDraft.themeName === t.value"
-                      [style.background]="t.color"
-                      [title]="t.label"
-                      (click)="onThemeChange(t.value)">
-              </button>
-            </div>
-          </div>
-
-          <!-- Components row -->
-          <div class="bp-home-settings-row bp-home-settings-row--toggles">
-            <label class="bp-home-settings-lab">COMPONENTS</label>
-            <div class="bp-home-settings-toggles">
-              <span class="bp-home-settings-toggle bp-home-settings-toggle--disabled">
-                <p-checkbox [binary]="true" [ngModel]="true" [disabled]="true"></p-checkbox>
-                Organisation name
-                <span class="bp-home-settings-muted">(always on)</span>
-              </span>
-              <span class="bp-home-settings-toggle">
-                <p-checkbox [binary]="true"
-                            [(ngModel)]="settingsDraft.showUserName"
-                            (onChange)="saveToggles()"></p-checkbox>
-                User name &amp; role
-              </span>
-              <span class="bp-home-settings-toggle">
-                <p-checkbox [binary]="true"
-                            [(ngModel)]="settingsDraft.showLocation"
-                            (onChange)="saveToggles()"></p-checkbox>
-                Location pill
-              </span>
-              <span class="bp-home-settings-toggle">
-                <p-checkbox [binary]="true"
-                            [(ngModel)]="settingsDraft.showUpcoming"
-                            (onChange)="saveToggles()"></p-checkbox>
-                Upcoming events pill
-              </span>
-              <span class="bp-home-settings-toggle">
-                <p-checkbox [binary]="true"
-                            [(ngModel)]="settingsDraft.showStats"
-                            (onChange)="saveToggles()"></p-checkbox>
-                Stats bar
-              </span>
-            </div>
+          <!-- Components — segmented button group, each pill is an
+               independent toggle. Active pill fills theme accent;
+               inactive renders flush in the shared rounded outline.
+               Organisation is disabled (always on). -->
+          <span class="bp-cfg-lab">COMPONENTS</span>
+          <div class="bp-cfg-seg bp-cfg-seg--multi">
+            <button *ngFor="let opt of componentOptions"
+                    type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="isComponentActive(opt.value)"
+                    [disabled]="opt.disabled"
+                    [title]="opt.disabled ? opt.label + ' — always on' : opt.label"
+                    (click)="toggleComponent(opt.value)">
+              {{ opt.label }}
+            </button>
           </div>
 
         </div>
@@ -762,76 +746,70 @@ type DashTab = 'projects';
     .bp-empty { font-size:var(--text-sm); color:var(--color-text-muted); padding:16px 0; }
 
     /* ── v1.23 home settings strip ──────────────────────────────
-       Compact rows inside the shared <app-config-strip> chrome.
-       Layout mirrors the marketplace's PageConfigTogglesComponent
-       so the two pages feel like siblings. */
-    .bp-home-settings {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 100%;
-      font-family: var(--font-body);
-    }
-    .bp-home-settings-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .bp-home-settings-lab {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--theme-accent);
-      flex-shrink: 0;
-    }
-    .bp-home-settings-input {
-      padding: 5px 10px !important;
-      font-size: 12px !important;
-      width: 160px;
-      border-radius: var(--radius-input) !important;
-    }
-    .bp-home-settings-divider {
-      width: 0.5px;
-      height: 20px;
-      background: var(--color-border);
-    }
-    .bp-home-settings-themes {
-      display: inline-flex;
-      gap: 6px;
-    }
-    .bp-home-settings-theme {
+       Most styling is inherited from the global .bp-cfg-* classes in
+       styles.css (same source the marketplace's PageConfigTogglesComponent
+       uses). Only the bits unique to this page live here:
+         - theme swatch row (button-driven, not p-selectButton)
+         - segmented COMPONENTS group with multi-toggle semantics */
+
+    /* Theme swatches — round, ring on active. Same visual as the
+       marketplace's .bp-cfg-swatches but plain buttons (no p-selectButton). */
+    .bp-cfg-swatches-row { display: inline-flex; gap: 8px; }
+    .bp-cfg-swatch-btn {
       width: 22px; height: 22px;
       border-radius: 50%;
-      border: 2px solid transparent;
+      border: none;
       cursor: pointer;
       padding: 0;
-      transition: transform 0.15s, border-color 0.15s;
+      transition: transform 0.15s, box-shadow 0.15s;
     }
-    .bp-home-settings-theme:hover { transform: scale(1.1); }
-    .bp-home-settings-theme.active {
-      border-color: var(--color-text-primary);
+    .bp-cfg-swatch-btn:hover { transform: scale(1.1); }
+    .bp-cfg-swatch-btn.active {
+      box-shadow:
+        0 0 0 2px var(--color-surface),
+        0 0 0 3.5px var(--color-text-primary);
     }
-    .bp-home-settings-row--toggles { align-items: flex-start; }
-    .bp-home-settings-toggles {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-    }
-    .bp-home-settings-toggle {
+
+    /* Segmented multi-toggle — same outline + accent fill as
+       .bp-cfg-seg but each button is an independent toggle (not a
+       single-pick group). Reuses the global .bp-cfg-seg outline. */
+    .bp-cfg-seg.bp-cfg-seg--multi {
       display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--color-text-primary);
-      font-family: var(--font-body);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
     }
-    .bp-home-settings-toggle--disabled { opacity: 0.65; }
-    .bp-home-settings-muted {
-      color: var(--color-text-muted);
-      font-style: italic;
-      font-size: 11px;
+    .bp-cfg-seg-btn {
+      padding: 4px 12px;
+      height: 28px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      border: none;
+      border-left: 0.5px solid var(--color-border);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-cfg-seg-btn:first-child { border-left: none; }
+    .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-cfg-seg-btn.p-highlight {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      font-weight: 600;
+    }
+    .bp-cfg-seg-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+    /* Disabled + highlight (Organisation always-on) keeps the accent
+       fill so it visually reads as ON; just no hover / click effect. */
+    .bp-cfg-seg-btn:disabled.p-highlight {
+      opacity: 1;
     }
 
     /* MOBILE TAB PANELS — hidden on desktop */
@@ -920,6 +898,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { value: 'pink',    label: 'Pink',    color: '#FF0066' },
     { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
     { value: 'slate',   label: 'Slate',   color: '#64748B' }
+  ];
+
+  /** v1.23b: COMPONENTS row — segmented buttons, each pill an
+      independent toggle. 'org' is disabled (always on) so the
+      Organisation pill renders permanently active. Order matters —
+      the disabled pill leads so it's the first thing the user reads. */
+  readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
+    { value: 'org',      label: 'Organisation', disabled: true },
+    { value: 'user',     label: 'User' },
+    { value: 'location', label: 'Location' },
+    { value: 'upcoming', label: 'Upcoming' },
+    { value: 'stats',    label: 'Stats' }
   ];
   uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
@@ -1191,6 +1181,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
       showUpcoming: this.settingsDraft.showUpcoming,
       showStats:    this.settingsDraft.showStats
     });
+  }
+
+  /** v1.23b: segmented-button mapping. componentOptions uses opaque
+      string keys; we translate to the ConfigService flags here.
+      'org' is always active (always-on Organisation pill). */
+  isComponentActive(key: string): boolean {
+    switch (key) {
+      case 'org':      return true;
+      case 'user':     return this.settingsDraft.showUserName;
+      case 'location': return this.settingsDraft.showLocation;
+      case 'upcoming': return this.settingsDraft.showUpcoming;
+      case 'stats':    return this.settingsDraft.showStats;
+      default:         return false;
+    }
+  }
+
+  toggleComponent(key: string) {
+    // 'org' is permanent — disabled in the template so this is just
+    // defensive. Same for unknown keys.
+    if (key === 'org') return;
+    switch (key) {
+      case 'user':     this.settingsDraft.showUserName = !this.settingsDraft.showUserName; break;
+      case 'location': this.settingsDraft.showLocation = !this.settingsDraft.showLocation; break;
+      case 'upcoming': this.settingsDraft.showUpcoming = !this.settingsDraft.showUpcoming; break;
+      case 'stats':    this.settingsDraft.showStats    = !this.settingsDraft.showStats;    break;
+      default: return;
+    }
+    this.saveToggles();
   }
 
   loadProjects() {
