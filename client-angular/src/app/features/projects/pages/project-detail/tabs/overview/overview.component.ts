@@ -290,8 +290,8 @@ interface MessagesSummary {
                   <span class="bp-ov-kpi-lab">PENDING</span>
                 </div>
                 <div class="bp-ov-kpi">
-                  <span class="bp-ov-kpi-circle">{{ est.marginPct != null ? est.marginPct + '%' : '—' }}</span>
-                  <span class="bp-ov-kpi-lab">MARGIN</span>
+                  <span class="bp-ov-kpi-circle">{{ est.marginPct != null ? est.marginPct : '—' }}</span>
+                  <span class="bp-ov-kpi-lab">MARGIN (%)</span>
                 </div>
               </div>
               <div class="bp-ov-body">
@@ -614,11 +614,13 @@ interface MessagesSummary {
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      /* v1.24g: lighter neutral fill (--theme-empty) instead of the
-         maroon --theme-text. Pairs --theme-text dark glyph on the
-         cream fill — readable through every theme preset. */
-      background: var(--theme-empty);
+      /* v1.24h: neutral fill mirrors the hero banner's --theme-bg
+         parchment so the Overview cards visually rhyme with the
+         hero band above them. Dark --theme-text glyph keeps
+         contrast through every preset. */
+      background: var(--theme-bg);
       color: var(--theme-text);
+      box-shadow: 0 0 0 0.5px var(--theme-border);
       font-family: var(--font-display);
       font-size: 22px;
       font-weight: 500;
