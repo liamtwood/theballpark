@@ -67,6 +67,31 @@
   /* Spacing */
   --nav-height: 52px;
   --section-pad: 28px;
+
+  /* ── ELEVATION SYSTEM (v1.22) ──────────────────────────────────
+     Four shadow levels + two hairline borders + four radius
+     tokens. Use everywhere — no hardcoded shadow / border-radius
+     in component styles going forward. Dashboard is the first
+     adopter in v1.22; other pages migrate in subsequent prompts. */
+
+  /* Shadows — Level 1 (xs) at rest on cards, Level 2 (sm) on
+     hover, Level 3 (md) on floating UI (dropdowns, popovers),
+     Level 4 (lg) reserved for modals / drawers. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+
+  /* Hairline borders — slightly softer than the neutral
+     --color-border, designed to pair with shadows. */
+  --border-hairline: 0.5px solid rgba(0, 0, 0, 0.06);
+  --border-hairline-strong: 0.5px solid rgba(0, 0, 0, 0.10);
+
+  /* Border radius tokens. */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-pill: 999px;
+  --radius-input: 6px;
 }
 
 /* --- Dark mode overrides --- */
@@ -935,14 +960,19 @@ app-top-nav { flex-shrink: 0; }
    APP SHELL — append to styles.css
    ============================================================= */
 
-/* ── BALLS TAG (top-nav) ── */
+/* ── BALLS TAG (top-nav) ──
+   v1.22: soft-filled instead of outlined. The previous outline used
+   --theme-accent for both fill and border, which competed visually
+   with the same-colour active nav-tab underline. Soft-filled
+   (--theme-bg background, no border) reads quieter while keeping
+   the accent colour for the count. */
 .bp-balls-tag.p-tag {
   background: var(--theme-bg) !important;
   color: var(--theme-accent) !important;
-  border: 1.5px solid var(--theme-accent) !important;
+  border: none !important;
   font-weight: 600 !important;
   font-size: 12px !important;
-  border-radius: 20px !important;
+  border-radius: var(--radius-pill) !important;
 }
 
 /* ── HERO — alignment driven by CSS variable set on app-shell host ── */

@@ -322,7 +322,8 @@ type DashTab = 'projects';
     .bp-quick-action  {
       display:flex; align-items:center; justify-content:center; gap:8px;
       width:100%; padding:8px 12px; margin-bottom:8px;
-      border:0.5px solid var(--theme-accent); border-radius:8px;
+      border:0.5px solid var(--theme-accent);
+      border-radius: var(--radius-button);
       background:var(--color-surface);
       font-size:13px; font-weight:500; color:var(--theme-accent);
       cursor:pointer; text-decoration:none;
@@ -335,7 +336,10 @@ type DashTab = 'projects';
     }
     .bp-body-left { padding:var(--section-pad); border-right:0.5px solid var(--color-border); }
     .bp-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-    .bp-section-title { font-size:11px; font-weight:700; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.1em; }
+    /* v1.22: section eyebrow standardised — weight 500 (was 700) and
+       letter-spacing 0.06em (was 0.1em) so the labels feel less
+       heavy. Applied to .bp-section-title + .bp-saved-hd below. */
+    .bp-section-title { font-size:11px; font-weight:500; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.06em; }
     .bp-section-action { font-size:var(--text-sm); color:var(--theme-accent); font-weight:500; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:4px; transition:color 0.15s; }
     .bp-section-action:hover { color:var(--color-text-primary); }
     .bp-section-spacer { margin-top:24px; }
@@ -343,23 +347,37 @@ type DashTab = 'projects';
     /* P-CARD GRID */
     .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
     .bp-project-card-wrap { display:block; }
-    /* v1.22g: overflow on the card is now visible so the "..."
-       dropdown menu can extend below the card edge. The cover image's
-       rounded top corners are clipped by the header element itself
-       (border-top-radius + overflow:hidden below) so the visual
-       doesn't change — only the dropdown's behaviour does. */
-    :host ::ng-deep .bp-project-card.p-card { border:0.5px solid var(--color-border) !important; border-radius:10px !important; overflow:visible !important; margin:0; box-shadow:none !important; transition:border-color 0.15s; cursor:pointer; position:relative; }
-    :host ::ng-deep .bp-project-card.p-card:hover { border-color:var(--color-text-muted) !important; }
+    /* v1.22 elevation: Level 1 at rest (shadow-xs + hairline), Level 2
+       on hover (shadow-sm + stronger hairline + translateY(-1px)).
+       overflow:visible kept from v1.22g so the "..." dropdown can
+       extend past the card edge; the cover image's rounded top is
+       clipped by .bp-card-header below. */
+    :host ::ng-deep .bp-project-card.p-card {
+      border: var(--border-hairline) !important;
+      border-radius: var(--radius-card) !important;
+      box-shadow: var(--shadow-xs) !important;
+      overflow: visible !important;
+      margin: 0;
+      cursor: pointer;
+      position: relative;
+      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+    :host ::ng-deep .bp-project-card-wrap:hover .bp-project-card.p-card {
+      border: var(--border-hairline-strong) !important;
+      box-shadow: var(--shadow-sm) !important;
+      transform: translateY(-1px);
+    }
     :host ::ng-deep .bp-project-card .p-card-body, :host ::ng-deep .bp-project-card .p-card-content, :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
     .bp-card-header {
       height:110px; position:relative;
       display:flex; align-items:flex-end; justify-content:space-between;
       padding:8px 10px;
       background-size:cover; background-position:center;
-      /* Clip the cover image to the card's rounded top — replaces the
-         overflow:hidden that used to live on the parent p-card. */
-      border-top-left-radius:10px;
-      border-top-right-radius:10px;
+      /* Top-corner clip lives on the header, not the parent card —
+         keeps the cover image from spilling out of the rounded
+         corners now that the p-card itself is overflow:visible. */
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
       overflow:hidden;
     }
     .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
@@ -370,7 +388,7 @@ type DashTab = 'projects';
     .bp-card-client-chip {
       position:absolute; bottom:8px; left:8px;
       background:rgba(255,255,255,0.92); color:var(--color-text-primary);
-      border-radius:999px; padding:3px 10px;
+      border-radius: var(--radius-pill); padding:3px 10px;
       font-size:10px; font-weight:500;
       font-family: var(--font-body);
     }
@@ -383,7 +401,7 @@ type DashTab = 'projects';
       position:absolute; top:8px; right:8px;
       font-size:10px; font-weight:500;
       padding:3px 10px;
-      border-radius:999px;
+      border-radius: var(--radius-pill);
       color:var(--color-surface);
       background:var(--color-text-secondary);
       font-family: var(--font-body);
@@ -418,20 +436,19 @@ type DashTab = 'projects';
       background:var(--theme-bg);
       color:var(--theme-accent);
     }
-    /* Dropdown — anchored bottom-right of the name row. Inside the
-       same .bp-card-content so positioning relative to the row works
-       without re-engineering the card layout. v1.22g: high z-index +
-       card overflow:visible lets it overlay siblings in the grid. */
+    /* Dropdown — anchored bottom-right of the name row. v1.22
+       elevation: Level 3 (shadow-md) + hairline + button radius.
+       z-index + card overflow:visible let it overlay siblings. */
     .bp-card-menu {
       position:absolute;
       top:32px; right:12px;
       width:150px;
       background:var(--color-surface);
-      border:0.5px solid var(--color-border);
-      border-radius:8px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
       padding:4px 0;
       z-index:50;
-      box-shadow:0 6px 18px rgba(0,0,0,0.12);
+      box-shadow: var(--shadow-md);
     }
     /* Lift the wrap (and therefore its dropdown menu) above sibling
        cards when the menu is open, so the dropdown isn't covered by
@@ -468,26 +485,30 @@ type DashTab = 'projects';
     .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
     .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
 
-    /* v1.22d: "+ New project" matches .bp-quick-action exactly
-       (13px font, 8px 12px padding, 8px radius). Every dashboard
-       CTA reads at the same size now. */
+    /* v1.22 elevation: "+ New project" is the one primary CTA in
+       the button standard — filled themed accent, white text. The
+       secondary outlined family (Quick Actions etc.) stays around it.
+         rest:   no shadow (the colour does the lifting)
+         hover:  shadow-sm
+         active: scale(0.98) — physical press feedback */
     .bp-section-new-btn {
       display:inline-flex; align-items:center; gap:6px;
       padding:8px 12px;
       font-size:13px;
       font-weight:500;
       font-family: var(--font-body);
-      color:var(--theme-accent);
-      background:var(--color-surface);
-      border:0.5px solid var(--theme-accent);
-      border-radius:8px;
+      color:var(--color-surface);
+      background:var(--theme-accent);
+      border:none;
+      border-radius: var(--radius-button);
       cursor:pointer;
-      transition:background 0.15s, color 0.15s;
+      transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
     }
     .bp-section-new-btn:hover {
-      background:var(--theme-accent);
-      color:var(--color-surface);
+      box-shadow: var(--shadow-sm);
+      filter: brightness(1.05);
     }
+    .bp-section-new-btn:active { transform: scale(0.98); }
     /* v1.22d: section-header CTA — same font / padding as
        .bp-quick-action (13px / 8px 12px). The whole CTA family now
        reads at one size whether it's stacked in the sidebar or
@@ -500,7 +521,7 @@ type DashTab = 'projects';
       color:var(--theme-accent);
       background:var(--color-surface);
       border:0.5px solid var(--theme-accent);
-      border-radius:8px;
+      border-radius: var(--radius-button);
       text-decoration:none;
       font-family: var(--font-body);
       transition:background 0.15s, color 0.15s;
@@ -528,15 +549,20 @@ type DashTab = 'projects';
       flex-shrink:0;
       width:130px;
       scroll-snap-align:start;
-      border:0.5px solid var(--color-border);
-      border-radius:8px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
       overflow:hidden;
       background:var(--color-surface);
       text-decoration:none;
       color:inherit;
-      transition: border-color 0.15s;
+      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
     }
-    .bp-past-card:hover { border-color: var(--theme-accent); }
+    .bp-past-card:hover {
+      border: var(--border-hairline-strong);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
     .bp-past-card--fade { opacity: 0.6; }
     .bp-past-cover {
       position:relative;
@@ -563,7 +589,7 @@ type DashTab = 'projects';
       font-size:9px;
       font-weight:500;
       padding:2px 8px;
-      border-radius:999px;
+      border-radius: var(--radius-pill);
       color:var(--color-surface);
       background: var(--color-text-muted);
       font-family: var(--font-body);
@@ -588,7 +614,7 @@ type DashTab = 'projects';
 
     /* RIGHT PANEL */
     .bp-body-right { padding:24px; background:var(--color-surface); }
-    .bp-credits-card   { background:var(--theme-bg); border:0.5px solid var(--theme-border); border-radius:10px; padding:18px; margin-bottom:16px; }
+    .bp-credits-card   { background:var(--theme-bg); border:0.5px solid var(--theme-border); border-radius: var(--radius-card); padding:18px; margin-bottom:16px; }
     .bp-credits-number { font-size:40px; font-weight:700; color:var(--color-text-primary); line-height:1; margin-bottom:4px; }
     .bp-credits-label  { font-size:var(--text-sm); font-weight:600; color:var(--theme-accent); margin-bottom:12px; }
     .bp-credits-dots   { display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap; }
@@ -596,15 +622,28 @@ type DashTab = 'projects';
     .bp-credit-dot.filled { background:var(--theme-accent); }
     .bp-credit-dot.empty  { background:var(--theme-empty); }
     .bp-credits-desc   { font-size:11px; color:var(--theme-text); line-height:1.5; }
-    .bp-saved-hd { font-size:11px; font-weight:700; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:14px; }
+    .bp-saved-hd { font-size:11px; font-weight:500; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px; }
     /* v1.22e: 2-column grid mirroring the marketplace /suppliers
        layout. Each card lands at ~160px wide so the 140px cover
-       reads square-ish (~1.15:1) instead of getting stretched to
-       the full sidebar width. */
+       reads square-ish (~1.15:1) instead of getting stretched.
+       v1.22-elevation: Level 1 at rest, Level 2 on hover. */
     .bp-sup-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-    .bp-sup-card { border:0.5px solid var(--color-border); border-radius:10px; overflow:hidden; background:var(--color-surface); }
+    .bp-sup-card {
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      overflow:hidden;
+      background:var(--color-surface);
+      cursor:pointer;
+      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+    .bp-sup-card:hover {
+      border: var(--border-hairline-strong);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
     .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
-    .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius:20px; background:rgba(0,0,0,0.5); color:#fff; }
+    .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius: var(--radius-pill); background:rgba(0,0,0,0.5); color:#fff; }
     /* v1.22i: heart sits in a small white circle so the red lucide
        glyph reads on any cover image — the previous white-on-white
        entity was invisible. Suppliers in this panel are by definition

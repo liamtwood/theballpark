@@ -58,7 +58,7 @@ import { environment } from '../../environments/environment';
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <app-avatar [name]="orgName" [size]="32"></app-avatar>
+        <app-avatar [name]="userName || orgName" [size]="32"></app-avatar>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -218,6 +218,12 @@ export class TopNavComponent implements OnInit, OnDestroy {
   feedbackLabel  = 'Feedback';
   ballsBalance = 0;
   orgName      = '';
+  /** v1.22: avatar in the top-right now shows USER initials, not org.
+      Sourced from the same orgSvc.getUsers() call that drives isAdmin —
+      first user record is treated as the current user (mirrors the
+      AppShell pattern). Falls back to orgName until users load so we
+      never render an empty circle. */
+  userName     = '';
   isDark       = false;
   isAdmin      = false;
   version      = environment.version;
@@ -278,6 +284,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.orgService.getUsers().subscribe((users: any[]) => {
       if (users?.length) {
         this.isAdmin = users[0].role === 'admin' || users[0].is_platform_admin === true;
+        this.userName = users[0].name || '';
         this.cdr.detectChanges();
       }
     });

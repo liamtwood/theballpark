@@ -854,7 +854,12 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
     .bp-item-card:hover { border-color: var(--theme-accent); }
     .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
-    .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; }
+    /* v1.22: defensive overflow:hidden so a logo image with extreme
+       aspect (e.g. the DAR Hire wide-script logo) can't escape the
+       card's rounded edge. Inner img already has max-width via
+       .bp-card-logo-img, but the parent now clips too. */
+    .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; overflow: hidden; }
+    .bp-item-card-img img { max-width: 100%; object-fit: contain; }
     .bp-item-card-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
     .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }

@@ -1,7 +1,9 @@
-import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostBinding, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { LucideAngularModule, MapPin } from 'lucide-angular';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
@@ -15,7 +17,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, LucideAngularModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet],
+  providers: [MessageService],
   template: `
     <!-- HERO -->
     <div class="bp-hero" *ngIf="!hideHero">
@@ -31,14 +34,39 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
         </button>
       </ng-container>
 
-      <!-- PILLS -->
+      <!-- PILLS — v1.22 interactive.
+           User pill: click opens a small dropdown (Profile / Switch
+           Org / Sign out — Profile routes, the others are stubs).
+           Location pill: click → /settings. -->
       <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
         <ng-container *ngFor="let pill of heroPills">
-          <span *ngIf="isLocationPill(pill)" class="bp-hero-tag-span">
+          <!-- Location pill -->
+          <button *ngIf="isLocationPill(pill)"
+                  type="button"
+                  class="bp-hero-tag-span bp-hero-pill-btn"
+                  (click)="onLocationPillClick()">
             <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
             {{ pill }}
-          </span>
-          <p-tag *ngIf="!isLocationPill(pill)" [value]="pill" styleClass="bp-hero-tag"></p-tag>
+          </button>
+          <!-- User pill — wrapped in a relative div so the dropdown
+               anchors below it without affecting layout. -->
+          <div *ngIf="!isLocationPill(pill)" class="bp-hero-pill-wrap">
+            <p-tag [value]="pill"
+                   styleClass="bp-hero-tag bp-hero-pill-btn"
+                   (click)="onUserPillClick($event)"></p-tag>
+            <div *ngIf="userMenuOpen"
+                 class="bp-hero-pill-menu"
+                 (click)="$event.stopPropagation()">
+              <button type="button" class="bp-hero-pill-menu-item"
+                      (click)="onUserMenuAction('profile')">Profile</button>
+              <button type="button" class="bp-hero-pill-menu-item"
+                      (click)="onUserMenuAction('switch-org')">Switch Org</button>
+              <div class="bp-hero-pill-menu-sep"></div>
+              <button type="button"
+                      class="bp-hero-pill-menu-item bp-hero-pill-menu-item--danger"
+                      (click)="onUserMenuAction('signout')">Sign out</button>
+            </div>
+          </div>
         </ng-container>
       </div>
 
@@ -85,6 +113,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       </div>
 
     </div>
+
+    <p-toast></p-toast>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -136,6 +166,65 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-size: 11px; font-weight: 500;
       padding: 3px 12px; border-radius: 20px;
     }
+
+    /* v1.22: interactive pill treatment — applied via the
+       .bp-hero-pill-btn modifier on both pill types so the user
+       and location pills feel obviously clickable. */
+    .bp-hero-pill-btn {
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: border-color 150ms ease, background-color 100ms ease;
+    }
+    .bp-hero-pill-btn:hover {
+      border-color: var(--theme-accent) !important;
+      background: var(--theme-bg) !important;
+    }
+    :host ::ng-deep .bp-hero-tag.bp-hero-pill-btn .p-tag {
+      cursor: pointer;
+    }
+
+    /* User pill dropdown — Level 3 elevation, anchored below the
+       pill via the relative wrap. */
+    .bp-hero-pill-wrap { position: relative; display: inline-block; }
+    .bp-hero-pill-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 150px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      box-shadow: var(--shadow-md);
+      padding: 4px 0;
+      z-index: 100;
+    }
+    .bp-hero-pill-menu-item {
+      display: block;
+      width: 100%;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      transition: background 0.1s;
+    }
+    .bp-hero-pill-menu-item:hover { background: var(--theme-bg); }
+    .bp-hero-pill-menu-item--danger { color: var(--color-danger); }
+    .bp-hero-pill-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
+    .bp-hero-pill-menu-sep {
+      height: 0.5px;
+      background: var(--color-border);
+      margin: 4px 0;
+    }
+
+    /* v1.22: hero band gets a hairline separator to mark the
+       boundary between header and KPI strip / body. */
+    .bp-hero { border-bottom: var(--border-hairline); }
 
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -250,14 +339,65 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
+  /** v1.22: open/close state for the user-pill dropdown. */
+  userMenuOpen = false;
+
   constructor(
     private router: Router,
     private activatedRoute: ActivatedRoute,
     private orgSvc: OrgService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  // ── v1.22 header pill interactions ────────────────────────────────
+
+  onUserPillClick(event: MouseEvent) {
+    event.stopPropagation();
+    this.userMenuOpen = !this.userMenuOpen;
+    this.cdr.detectChanges();
+  }
+
+  onLocationPillClick() {
+    this.router.navigate(['/settings']);
+  }
+
+  onUserMenuAction(action: 'profile' | 'switch-org' | 'signout') {
+    this.userMenuOpen = false;
+    if (action === 'profile') {
+      // Profile page doesn't exist yet — route to Settings as a stub
+      // so the click does something useful rather than nothing.
+      this.router.navigate(['/settings']);
+    } else if (action === 'switch-org') {
+      this.msg.add({
+        severity: 'info',
+        summary: 'Coming soon',
+        detail: 'Multi-org switching not implemented yet.',
+        life: 2500
+      });
+    } else if (action === 'signout') {
+      this.msg.add({
+        severity: 'info',
+        summary: 'Auth not implemented',
+        detail: 'Google SSO + sign-out land with the v2.0 milestone.',
+        life: 2500
+      });
+    }
+    this.cdr.detectChanges();
+  }
+
+  /** Close the user-pill dropdown on any outside click. Pill clicks
+      stopPropagation, so toggling from the pill itself doesn't
+      immediately close. */
+  @HostListener('document:click')
+  onDocumentClick() {
+    if (this.userMenuOpen) {
+      this.userMenuOpen = false;
+      this.cdr.detectChanges();
+    }
+  }
 
   ngOnInit() {
     this.orgSvc.getCurrentOrg().subscribe(org => {
