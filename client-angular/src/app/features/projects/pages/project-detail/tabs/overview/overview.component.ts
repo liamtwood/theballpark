@@ -467,28 +467,28 @@ interface MessagesSummary {
       transform: translateY(-1px);
     }
 
-    /* ── DARK HEADER BAR ─────────────────────────────────────── */
-    /* v1.24b: full-width banner using --theme-text (the dark
-       foreground of each theme preset — dark-amber by default,
-       dark-emerald/pink/ocean/slate when the preset swaps). Title
-       is centred; status pill / notif chip float to the right via
-       absolute positioning so they don't push the title off-centre. */
+    /* ── THEMED HEADER BAR ───────────────────────────────────── */
+    /* v1.24c: banner uses --theme-accent + white text + Libre
+       Franklin 500, identical to the "+ New Events" button on the
+       dashboard so the whole product reads as one CTA / brand voice.
+       Status pill / notif chip float to the right via absolute
+       positioning so the centred title stays optically balanced. */
     .bp-ov-head {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 10px 16px;
-      background: var(--theme-text);
-      color: var(--theme-bg);
+      background: var(--theme-accent);
+      color: var(--color-surface);
     }
     .bp-ov-label {
       font-family: var(--font-body);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--theme-bg);
+      color: var(--color-surface);
     }
     .bp-ov-status {
       position: absolute;
@@ -502,8 +502,8 @@ interface MessagesSummary {
       letter-spacing: 0.04em;
       padding: 3px 10px;
       border-radius: var(--radius-pill);
-      background: var(--theme-accent);
-      color: #fff;
+      background: var(--color-surface);
+      color: var(--theme-accent);
     }
     .bp-ov-notif {
       position: absolute;
@@ -534,11 +534,13 @@ interface MessagesSummary {
     }
 
     /* ── KPI ROW (centred + circled) ─────────────────────────── */
-    /* v1.24b: numbers ride in 52px dark-themed circles, labels
-       sit below in muted uppercase. Row is centred across the card.
-       Action circles (toWrite / pending) flip the fill to
-       --theme-accent so they still call themselves out without
-       breaking the new visual language. */
+    /* v1.24c: numbers ride in 52px circles. Action circles (toWrite
+       / pending / quotes) take the --theme-accent fill (matches the
+       header bar + the "+ New Events" CTA) so they read as
+       brand-linked call-outs; neutral circles take --theme-text
+       (the darker foreground of the active preset) so they recede.
+       Number font stays Playfair Display — that's Ballpark's
+       numeric headline staple (dashboard KPIs, project totals). */
     .bp-ov-kpis {
       display: flex;
       justify-content: space-around;
@@ -569,7 +571,7 @@ interface MessagesSummary {
     }
     .bp-ov-kpi-circle--accent {
       background: var(--theme-accent);
-      color: #fff;
+      color: var(--color-surface);
     }
     .bp-ov-kpi-lab {
       font-family: var(--font-body);
