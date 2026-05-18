@@ -212,14 +212,19 @@ type DashTab = 'projects';
           </div>
           <div class="bp-saved-hd">SAVED SUPPLIERS</div>
           <div *ngIf="suppliers.length === 0" class="bp-empty">No suppliers saved yet.</div>
-          <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
-            <div class="bp-sup-img" [class]="'bp-sup-bg-' + getCategoryClass(s.category)" [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null">
-              <div class="bp-sup-cat">{{ s.category }}</div>
-              <div class="bp-sup-heart">&hearts;</div>
-            </div>
-            <div class="bp-sup-body">
-              <div class="bp-sup-name">{{ s.name }}</div>
-              <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
+          <!-- v1.22e: 2-column grid so each card sits at ~160px wide
+               and the 140px cover image lands ~1.15:1 — same square-ish
+               aspect the marketplace /suppliers grid uses. -->
+          <div class="bp-sup-grid" *ngIf="suppliers.length > 0">
+            <div *ngFor="let s of suppliers.slice(0,2)" class="bp-sup-card">
+              <div class="bp-sup-img" [class]="'bp-sup-bg-' + getCategoryClass(s.category)" [style.background-image]="s.cover_image_url ? 'url(' + s.cover_image_url + ')' : null">
+                <div class="bp-sup-cat">{{ s.category }}</div>
+                <div class="bp-sup-heart">&hearts;</div>
+              </div>
+              <div class="bp-sup-body">
+                <div class="bp-sup-name">{{ s.name }}</div>
+                <div class="bp-sup-meta">{{ s.city || 'London' }}</div>
+              </div>
             </div>
           </div>
           <p-button label="View all {{ supplierCount }} saved →" styleClass="w-full p-button-outlined mt-1" routerLink="/suppliers"></p-button>
@@ -543,11 +548,12 @@ type DashTab = 'projects';
     .bp-credit-dot.empty  { background:var(--theme-empty); }
     .bp-credits-desc   { font-size:11px; color:var(--theme-text); line-height:1.5; }
     .bp-saved-hd { font-size:11px; font-weight:700; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:14px; }
-    .bp-sup-card { border:0.5px solid var(--color-border); border-radius:10px; overflow:hidden; margin-bottom:10px; background:var(--color-surface); }
-    /* v1.22b: cover height bumped 80→140 to match the marketplace
-       /suppliers card proportions (catalogue-grid .bp-item-card-img).
-       Logos / cover photography display properly at this aspect
-       instead of being squished into a thin band. */
+    /* v1.22e: 2-column grid mirroring the marketplace /suppliers
+       layout. Each card lands at ~160px wide so the 140px cover
+       reads square-ish (~1.15:1) instead of getting stretched to
+       the full sidebar width. */
+    .bp-sup-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .bp-sup-card { border:0.5px solid var(--color-border); border-radius:10px; overflow:hidden; background:var(--color-surface); }
     .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
     .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius:20px; background:rgba(0,0,0,0.5); color:#fff; }
     .bp-sup-heart { position:absolute; top:6px; right:6px; font-size:12px; color:#fff; }
