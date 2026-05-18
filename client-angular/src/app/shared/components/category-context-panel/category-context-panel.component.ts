@@ -7,11 +7,12 @@ import { FormsModule } from '@angular/forms';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import {
-  LucideAngularModule, Heart, Clock, ArrowRight, Plus, SquarePen
+  LucideAngularModule, Heart, Clock, ArrowRight, Plus, SquarePen, Mail
 } from 'lucide-angular';
 import { GbpPipe } from '../../pipes/gbp.pipe';
-import { CategoryCardHeaderComponent } from '../category-card-header/category-card-header.component';
 import { ProjectItemRowComponent } from '../project-item-row/project-item-row.component';
 import { ProjectItem } from '../../../models';
 
@@ -45,40 +46,47 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule,
-    InputTextareaModule, InputTextModule, ButtonModule,
+    InputTextareaModule, InputTextModule, ButtonModule, ToastModule,
     LucideAngularModule, GbpPipe,
-    CategoryCardHeaderComponent, ProjectItemRowComponent
+    ProjectItemRowComponent
   ],
+  providers: [MessageService],
   template: `
     <div class="bp-ctx-panel">
 
       <!-- ── Pinned top: header + subtotal + tab bar ─────────────── -->
       <div class="bp-ctx-top">
-        <app-category-card-header class="bp-ctx-head"
-          [name]="category?.name"
-          [iconName]="category?.icon_name"
-          [selectedCount]="selectedItems.length"
-          [wishlistCount]="likedItems.length"
-          [cost]="subtotalAmount"
-          [status]="null">
-        </app-category-card-header>
+        <!-- v1.25: simplified header — icon circle + serif name only.
+             Count chip / cost / status pill removed (cost lives in
+             the subtotal block; counts are surfaced on the tab
+             chips). Matches approved mockup. -->
+        <div class="bp-ctx-head">
+          <div class="bp-ctx-head-icon">
+            <lucide-icon *ngIf="category?.icon_name"
+                         [name]="category.icon_name"
+                         [size]="18"></lucide-icon>
+            <span *ngIf="!category?.icon_name" class="bp-ctx-head-letter">
+              {{ (category?.name || '?').charAt(0) }}
+            </span>
+          </div>
+          <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
+        </div>
 
-        <!-- Subtotal block — project mode only. Big serif amount,
-             wishlist impact, longest lead. -->
+        <!-- Subtotal block — project mode only. v1.25: wishlist
+             impact + longest lead are now separate vertical lines
+             (was a wrap-flex row with " · " separator). -->
         <div class="bp-ctx-subtotal" *ngIf="context === 'project'">
           <div class="bp-ctx-sub-row">
             <span class="bp-ctx-sub-amount">{{ subtotalAmount | gbp }}</span>
             <span class="bp-ctx-sub-label">subtotal</span>
           </div>
-          <div class="bp-ctx-sub-meta" *ngIf="wishlistAmount > 0 || longestLeadDays > 0">
-            <span *ngIf="wishlistAmount > 0" class="bp-ctx-sub-meta-line">
-              <lucide-icon name="heart" [size]="11"></lucide-icon>
-              +{{ wishlistAmount | gbp }} if wishlist approved
-            </span>
-            <span *ngIf="longestLeadDays > 0" class="bp-ctx-sub-meta-line">
-              <lucide-icon name="clock" [size]="11"></lucide-icon>
-              {{ longestLeadDays }} day longest lead
-            </span>
+          <div *ngIf="wishlistAmount > 0" class="bp-ctx-sub-line">
+            <lucide-icon name="heart" [size]="11"></lucide-icon>
+            +{{ wishlistAmount | gbp }} if wishlist approved
+          </div>
+          <div *ngIf="longestLeadDays > 0" class="bp-ctx-sub-line">
+            <lucide-icon name="clock" [size]="11"></lucide-icon>
+            {{ longestLeadDays }} day longest lead
           </div>
         </div>
 
@@ -129,23 +137,13 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </ng-container>
           <ng-template #emptyItems>
             <div class="bp-ctx-empty">
-              No items added yet — use “+ Add more {{ catNameLower }}” below.
+              No items added yet.
             </div>
           </ng-template>
-
-          <!-- Item-tab footer: Add more / longest lead. -->
-          <div class="bp-ctx-tab-foot">
-            <button type="button"
-                    class="bp-ctx-add-more"
-                    (click)="browseClicked.emit()">
-              <lucide-icon name="plus" [size]="13"></lucide-icon>
-              Add more {{ catNameLower }}
-            </button>
-            <span *ngIf="longestLeadDays > 0" class="bp-ctx-lead-foot">
-              <lucide-icon name="clock" [size]="11"></lucide-icon>
-              Longest lead {{ longestLeadDays }} days
-            </span>
-          </div>
+          <!-- v1.25: "Add more {category}" link + "Longest lead Xd"
+               line removed. Longest lead now lives in the subtotal
+               block above; browsing happens via the catalogue grid
+               on the left. -->
         </ng-container>
 
         <!-- WISHLIST tab — slightly tinted band per spec. -->
@@ -208,29 +206,21 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
 
       </div>
 
-      <!-- ── Pinned bottom: project total + open estimate ──────────
-           Project mode only — marketplace / supplier still get the
-           legacy "Browse marketplace" CTA below. -->
-      <div class="bp-ctx-footer" *ngIf="context === 'project'">
-        <span class="bp-ctx-footer-total">
-          Project total {{ projectTotal | gbp }}
-        </span>
+      <!-- ── Pinned footer (v1.25): Contact supplier CTA. Only
+           shown when there's at least one selected item — empty
+           and wishlist-only states hide the footer entirely. -->
+      <div class="bp-ctx-footer"
+           *ngIf="context === 'project' && selectedItems.length > 0">
         <button type="button"
-                class="bp-ctx-footer-link"
-                (click)="openEstimate.emit()">
-          Open estimate
-          <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
+                class="bp-ctx-contact"
+                (click)="onContactSupplier($event)">
+          <lucide-icon name="mail" [size]="14"></lucide-icon>
+          Contact supplier →
         </button>
       </div>
 
-      <div class="bp-ctx-browse"
-           *ngIf="context !== 'project'"
-           (click)="browseClicked.emit()">
-        <lucide-icon name="plus" [size]="13"></lucide-icon>
-        Browse marketplace
-      </div>
-
     </div>
+    <p-toast></p-toast>
   `,
   styles: [`
     /* v1.24m: font-family pinned on :host so the panel reads in
@@ -257,36 +247,77 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
 
     /* ── Pinned top ── */
     .bp-ctx-top { flex-shrink: 0; }
-    .bp-ctx-head { display: block; padding: 16px 16px 12px; }
 
-    /* Subtotal block */
-    .bp-ctx-subtotal { padding: 0 16px 14px; }
-    .bp-ctx-sub-row { display: flex; align-items: baseline; gap: 8px; }
+    /* v1.25: simplified header — 36px themed icon circle + Playfair
+       category name. Hairline separator handled by the subtotal
+       block below (border-top there) so the row sits clean. */
+    .bp-ctx-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-ctx-head-icon {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bp-ctx-head-letter {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .bp-ctx-head-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    /* Subtotal block — v1.25 layout: amount row, then each meta
+       line (wishlist impact / longest lead) on its own row, left-
+       aligned with the heart / clock glyph leading. */
+    .bp-ctx-subtotal {
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-ctx-sub-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
     .bp-ctx-sub-amount {
       font-family: var(--font-display);
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 400;
       color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
       line-height: 1;
     }
     .bp-ctx-sub-label {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--color-text-muted);
     }
-    .bp-ctx-sub-meta {
+    .bp-ctx-sub-line {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 4px 12px;
-      margin-top: 8px;
-      font-size: 11.5px;
-      color: var(--color-text-muted);
-    }
-    .bp-ctx-sub-meta-line {
-      display: inline-flex;
-      align-items: center;
       gap: 4px;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      margin-bottom: 2px;
     }
 
     /* Tab bar — underline style, accent active. */
@@ -356,36 +387,10 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       border-radius: 8px;
     }
 
-    /* Items tab footer */
-    .bp-ctx-tab-foot {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 0 4px;
-      font-family: var(--font-body);
-    }
-    .bp-ctx-add-more {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 0;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--theme-accent);
-      font-family: var(--font-body);
-    }
-    .bp-ctx-add-more:hover { opacity: 0.75; }
-    .bp-ctx-lead-foot {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: var(--color-text-muted);
-    }
+    /* v1.25: legacy Items-tab footer + Browse marketplace CTA
+       removed. The Add-more affordance / longest-lead recap lived
+       there and are no longer surfaced (browsing happens via the
+       catalogue grid; longest lead is in the subtotal block). */
 
     /* Wishlist hint */
     .bp-ctx-wish-hint {
@@ -413,59 +418,34 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       margin-top: -4px;
     }
 
-    /* ── Pinned footer ── */
+    /* ── Pinned footer (v1.25): full-width Contact supplier CTA.
+         Hidden when the panel has no selected items so empty /
+         wishlist-only states show no footer at all. */
     .bp-ctx-footer {
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
       padding: 12px 16px;
       border-top: 0.5px solid var(--color-border);
       background: var(--color-surface);
     }
-    .bp-ctx-footer-total {
-      font-size: 12px;
-      color: var(--color-text-muted);
-      font-variant-numeric: tabular-nums;
-    }
-    .bp-ctx-footer-link {
+    .bp-ctx-contact {
+      width: 100%;
+      padding: 10px;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 0;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: var(--font-body);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--theme-accent);
-    }
-    .bp-ctx-footer-link:hover { opacity: 0.75; }
-
-    /* Non-project Browse CTA (unchanged from v1.20). */
-    .bp-ctx-browse {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      gap: 5px;
-      margin: 0 16px 14px;
-      padding: 8px;
-      color: var(--theme-accent);
+      gap: 6px;
+      font-family: var(--font-body);
       font-size: 12px;
       font-weight: 500;
+      color: var(--color-surface);
+      background: var(--theme-accent);
+      border: none;
+      border-radius: var(--radius-button);
       cursor: pointer;
-      border: 0.5px dashed var(--color-border);
-      border-radius: 6px;
-      font-family: var(--font-body);
-      transition: border-color 0.15s, background 0.15s;
+      transition: opacity 0.15s, filter 0.15s;
     }
-    .bp-ctx-browse:hover {
-      border-color: var(--theme-accent);
-      background: var(--theme-bg);
-    }
+    .bp-ctx-contact:hover { filter: brightness(1.05); }
+    .bp-ctx-contact:active { transform: scale(0.99); }
   `]
 })
 export class CategoryContextPanelComponent implements OnChanges {
@@ -498,7 +478,10 @@ export class CategoryContextPanelComponent implements OnChanges {
   /** Local edit state for the inline brief editor. */
   briefDraft = '';
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private msg: MessageService,
+  ) {}
 
   ngOnChanges() {
     // Keep the brief draft in sync when the parent passes new text
@@ -555,5 +538,20 @@ export class CategoryContextPanelComponent implements OnChanges {
     if (next !== current) {
       this.briefUpdated.emit(next);
     }
+  }
+
+  /** v1.25: pinned-footer CTA. Stubbed until the supplier outreach
+      flow lands — surfaces a "Coming soon" toast so the affordance
+      is honest about its state. event.stopPropagation isn't needed
+      (the button is the only interactive element in the footer)
+      but kept for symmetry with the rest of the panel. */
+  onContactSupplier(event: MouseEvent) {
+    event.stopPropagation();
+    this.msg.add({
+      severity: 'info',
+      summary: 'Coming soon',
+      detail: 'Supplier outreach flow not yet built',
+      life: 2500,
+    });
   }
 }
