@@ -227,7 +227,13 @@ type DashTab = 'projects';
               </div>
             </div>
           </div>
-          <p-button label="View all {{ supplierCount }} saved →" styleClass="w-full p-button-outlined mt-1" routerLink="/suppliers"></p-button>
+          <!-- v1.22f: was a <p-button p-button-outlined>. Swapped to
+               .bp-quick-action so it matches Browse Suppliers / Invite
+               Member exactly (PrimeNG outlined had slightly different
+               padding + radius vs the custom CTA family). -->
+          <a routerLink="/suppliers" class="bp-quick-action">
+            View all {{ supplierCount }} saved →
+          </a>
         </div>
 
       </div>
