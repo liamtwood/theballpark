@@ -219,36 +219,45 @@ interface MessagesSummary {
                   <lucide-icon name="check" [size]="14"></lucide-icon>
                 </p>
 
-                <!-- v1.24e: empty categories shown as the marketplace's
-                     own .bp-cat-circle treatment (icon-in-circle +
-                     name label) instead of plain text pills. Greyed
-                     to match the marketplace's --unscoped style so
-                     they read as gaps to fill. -->
-                <div class="bp-ov-cats" *ngIf="emptyCatRows.length">
-                  <div *ngFor="let cat of emptyCatRows.slice(0, 5)"
-                       class="bp-ov-cat bp-ov-cat--empty"
-                       [title]="cat.name + ' — no items'">
-                    <div class="bp-ov-cat-circle">
-                      <img *ngIf="cat.coverUrl"
-                           [src]="cat.coverUrl"
-                           [alt]="cat.name"
-                           class="bp-ov-cat-img"/>
-                      <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
-                                   [name]="cat.iconName"
-                                   [size]="18"></lucide-icon>
-                      <span *ngIf="!cat.coverUrl && !cat.iconName"
-                            class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
+                <!-- v1.24f: empty categories rendered as the
+                     marketplace's bp-cat-circle treatment. Shows 3
+                     at a time with left/right arrow buttons that
+                     cycle through the list (wraps around the end).
+                     Arrows only appear when there are more than 3
+                     to scroll through. -->
+                <div class="bp-ov-cats-scroller" *ngIf="emptyCatRows.length">
+                  <button *ngIf="emptyCatRows.length > 3"
+                          type="button"
+                          class="bp-ov-cats-arrow"
+                          (click)="scrollEmptyLeft($event)"
+                          title="Previous">
+                    <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
+                  </button>
+                  <div class="bp-ov-cats">
+                    <div *ngFor="let cat of visibleEmptyCats"
+                         class="bp-ov-cat bp-ov-cat--empty"
+                         [title]="cat.name + ' — no items'">
+                      <div class="bp-ov-cat-circle">
+                        <img *ngIf="cat.coverUrl"
+                             [src]="cat.coverUrl"
+                             [alt]="cat.name"
+                             class="bp-ov-cat-img"/>
+                        <lucide-icon *ngIf="!cat.coverUrl && cat.iconName"
+                                     [name]="cat.iconName"
+                                     [size]="18"></lucide-icon>
+                        <span *ngIf="!cat.coverUrl && !cat.iconName"
+                              class="bp-ov-cat-initial">{{ cat.name.charAt(0) }}</span>
+                      </div>
+                      <span class="bp-ov-cat-name">{{ cat.name }}</span>
                     </div>
-                    <span class="bp-ov-cat-name">{{ cat.name }}</span>
                   </div>
-                  <div *ngIf="emptyCatRows.length > 5"
-                       class="bp-ov-cat bp-ov-cat--more"
-                       [title]="(emptyCatRows.length - 5) + ' more'">
-                    <div class="bp-ov-cat-circle bp-ov-cat-circle--more">
-                      +{{ emptyCatRows.length - 5 }}
-                    </div>
-                    <span class="bp-ov-cat-name">more</span>
-                  </div>
+                  <button *ngIf="emptyCatRows.length > 3"
+                          type="button"
+                          class="bp-ov-cats-arrow"
+                          (click)="scrollEmptyRight($event)"
+                          title="Next">
+                    <lucide-icon name="chevron-right" [size]="14"></lucide-icon>
+                  </button>
                 </div>
 
                 <p class="bp-ov-sub" *ngIf="market.wishlist > 0">
@@ -713,15 +722,35 @@ interface MessagesSummary {
       color: var(--color-text-muted);
     }
 
-    /* Overflow circle ("+N") — sits at the end of the row when
-       there are more empty categories than we render inline. */
-    .bp-ov-cat-circle--more {
-      background: transparent;
-      box-shadow: 0 0 0 0.5px var(--color-border);
-      color: var(--color-text-muted);
-      font-family: var(--font-body);
-      font-size: 12px;
-      font-weight: 500;
+    /* v1.24f: scroller wrap + arrow buttons. Mirrors the
+       marketplace's .bp-circles-arrow style (32px in the original,
+       28px here so the controls scale to the card). Stays centred
+       and aligns vertically to the middle of the circle row, not
+       the labels below it. */
+    .bp-ov-cats-scroller {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 8px;
+    }
+    .bp-ov-cats-arrow {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      margin-top: 8px;     /* vertical-centre against the 44px circle */
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--theme-accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .bp-ov-cats-arrow:hover {
+      border-color: var(--theme-accent);
+      background: var(--theme-bg);
     }
 
     /* Thin summary line below the category circles — replaces the
@@ -1178,6 +1207,39 @@ export class OverviewComponent implements OnInit {
       these as greyed icon circles in place of the old text pills. */
   get emptyCatRows() {
     return this.market.cats.filter(c => c.itemCount === 0);
+  }
+
+  /** v1.24f: rolling window of 3 empty-category circles. Wraps
+      around the end of the list so scrolling feels circular —
+      matches "circle through them" expectation. When the list is
+      already ≤3 items we just return it as-is (arrows hidden). */
+  emptyCatScroll = 0;
+  get visibleEmptyCats() {
+    const list = this.emptyCatRows;
+    if (list.length <= 3) return list;
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      out.push(list[(this.emptyCatScroll + i) % list.length]);
+    }
+    return out;
+  }
+
+  scrollEmptyLeft(event: MouseEvent) {
+    // stopPropagation keeps the click from also firing the card's
+    // (click)="goTo('marketplace')" navigation handler.
+    event.stopPropagation();
+    const len = this.emptyCatRows.length;
+    if (len <= 3) return;
+    this.emptyCatScroll = (this.emptyCatScroll - 1 + len) % len;
+    this.cdr.markForCheck();
+  }
+
+  scrollEmptyRight(event: MouseEvent) {
+    event.stopPropagation();
+    const len = this.emptyCatRows.length;
+    if (len <= 3) return;
+    this.emptyCatScroll = (this.emptyCatScroll + 1) % len;
+    this.cdr.markForCheck();
   }
   get messagesFooter(): string {
     if (this.messages.awaiting > 0) {
