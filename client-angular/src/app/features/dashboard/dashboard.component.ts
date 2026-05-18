@@ -114,6 +114,24 @@ type DashTab = 'projects';
               {{ opt.label }}
             </button>
           </div>
+          <span class="bp-cfg-divider"></span>
+
+          <!-- v1.23e: NAV — Tabs vs Menu (sidenav). Mirrors the
+               Marketplace settings page's "Navigation" picker but
+               rendered inline in the strip. Single-pick segmented
+               group so it's visually distinct from the multi-toggle
+               COMPONENTS row above. Writes ConfigService.navMode;
+               AppShell picks it up via config$ and re-renders. -->
+          <span class="bp-cfg-lab">NAV</span>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let opt of navOptions"
+                    type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="settingsDraft.navMode === opt.value"
+                    (click)="selectNavMode(opt.value)">
+              {{ opt.label }}
+            </button>
+          </div>
 
         </div>
       </app-config-strip>
@@ -881,6 +899,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     creditLabel: string;
     projectLabel: string;
     themeName: string;
+    navMode: 'tabs' | 'sidenav';
     showUserName: boolean;
     showLocation: boolean;
     showUpcoming: boolean;
@@ -890,6 +909,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     creditLabel: 'Ball',
     projectLabel: 'Event',
     themeName: 'amber',
+    navMode: 'tabs',
     showUserName: true,
     showLocation: true,
     showUpcoming: false,
@@ -915,6 +935,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { value: 'location', label: 'Location' },
     { value: 'upcoming', label: 'Upcoming' },
     { value: 'stats',    label: 'Stats' }
+  ];
+
+  /** v1.23e: NAV row — single-pick segmented group. Values map to
+      ConfigService.navMode; 'sidenav' is labelled 'Menu' in the
+      strip (shorter than 'Side navigation') to match the dashboard's
+      compact label voice. */
+  readonly navOptions: Array<{ value: 'tabs' | 'sidenav'; label: string }> = [
+    { value: 'tabs',    label: 'Tabs' },
+    { value: 'sidenav', label: 'Menu' }
   ];
   uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
@@ -1104,6 +1133,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         creditLabel:   cfg.creditLabel   || 'Ball',
         projectLabel:  cfg.projectLabel  || 'Event',
         themeName:     cfg.themeName     || 'amber',
+        navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
         showUserName:  cfg.showUserName  !== false,
         showLocation:  cfg.showLocation  !== false,
         showUpcoming:  cfg.showUpcoming  === true,
@@ -1175,6 +1205,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onThemeChange(theme: string) {
     this.settingsDraft.themeName = theme;
     this.configService.update({ themeName: theme });
+  }
+
+  /** v1.23e: persist NAV choice. Writes ConfigService.navMode; the
+      AppShell subscribes to config$ and re-renders the hero/body
+      with either the tab strip or the sidenav. */
+  selectNavMode(mode: 'tabs' | 'sidenav') {
+    this.settingsDraft.navMode = mode;
+    this.configService.update({ navMode: mode });
   }
 
   /** Component visibility toggles. Single handler — re-reads every
