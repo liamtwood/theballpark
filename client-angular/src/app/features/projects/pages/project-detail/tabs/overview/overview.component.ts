@@ -255,22 +255,9 @@ interface MessagesSummary {
                 </div>
               </div>
 
-              <!-- v1.24k: BALLPARK section — money summary. Named
-                   "BALLPARK" rather than "ESTIMATE" so the section
-                   header doesn't collide with the card banner. -->
-              <div class="bp-ov-section" *ngIf="est.yourCost > 0 || est.clientTotal > 0">
-                <div class="bp-ov-section-label">BALLPARK</div>
-                <div class="bp-ov-section-body bp-ov-section-body--money">
-                  <div class="bp-ov-money">
-                    <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
-                    <span class="bp-ov-money-lab">your cost</span>
-                  </div>
-                  <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
-                    {{ est.clientTotal | gbp }} client total
-                  </p>
-                </div>
-              </div>
-
+              <!-- v1.24l: TO DO sits above BALLPARK so the action
+                   (budget status) leads and the money summary
+                   follows as supporting detail. -->
               <div class="bp-ov-section" *ngIf="est.budget && est.budget > 0">
                 <div class="bp-ov-section-label">TO DO</div>
                 <div class="bp-ov-section-body">
@@ -288,6 +275,22 @@ interface MessagesSummary {
                   </p>
                 </div>
               </div>
+
+              <!-- v1.24k: BALLPARK section — money summary. Named
+                   "BALLPARK" rather than "ESTIMATE" so the section
+                   header doesn't collide with the card banner. -->
+              <div class="bp-ov-section" *ngIf="est.yourCost > 0 || est.clientTotal > 0">
+                <div class="bp-ov-section-label">BALLPARK</div>
+                <div class="bp-ov-section-body bp-ov-section-body--money">
+                  <div class="bp-ov-money">
+                    <span class="bp-ov-money-num">{{ est.yourCost | gbp }}</span>
+                    <span class="bp-ov-money-lab">your cost</span>
+                  </div>
+                  <p class="bp-ov-sub" *ngIf="est.clientTotal > 0">
+                    {{ est.clientTotal | gbp }} client total
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -295,8 +298,11 @@ interface MessagesSummary {
           <div class="bp-ov-card" (click)="goTo('messages')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">MESSAGES</span>
+              <!-- v1.24l: pill matches the Estimate Active pill —
+                   white surface with theme-accent text — for visual
+                   consistency across the four card headers. -->
               <span *ngIf="messages.awaiting > 0"
-                    class="bp-ov-notif">{{ messages.awaiting }}</span>
+                    class="bp-ov-status">{{ messages.awaiting }}</span>
             </div>
             <div class="bp-ov-content">
               <div class="bp-ov-kpis">
@@ -314,6 +320,10 @@ interface MessagesSummary {
                 </div>
               </div>
 
+              <!-- v1.24l: TO DO holds the action prompts only — the
+                   recent-message list moves to its own INBOX section
+                   below so action and informational content read as
+                   distinct rhythms. -->
               <div class="bp-ov-section">
                 <div class="bp-ov-section-label">TO DO</div>
                 <div class="bp-ov-section-body">
@@ -328,7 +338,16 @@ interface MessagesSummary {
                      *ngIf="messages.contacted > 0 && messages.awaiting === 0 && messages.quotes === 0">
                     No messages pending
                   </p>
-                  <div class="bp-ov-list" *ngIf="messages.recent.length">
+                  <p class="bp-ov-prompt" *ngIf="messages.quotes > 0">
+                    {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
+                  </p>
+                </div>
+              </div>
+
+              <div class="bp-ov-section" *ngIf="messages.recent.length">
+                <div class="bp-ov-section-label">INBOX</div>
+                <div class="bp-ov-section-body">
+                  <div class="bp-ov-list">
                     <div *ngFor="let row of messages.recent" class="bp-ov-list-row">
                       <span class="bp-ov-list-dot"></span>
                       <span class="bp-ov-list-name">{{ row.supplier }}</span>
@@ -336,9 +355,6 @@ interface MessagesSummary {
                       <span class="bp-ov-list-time">{{ row.time }}</span>
                     </div>
                   </div>
-                  <p class="bp-ov-prompt" *ngIf="messages.quotes > 0">
-                    {{ messages.quotes }} {{ messages.quotes === 1 ? 'quote' : 'quotes' }} awaiting review
-                  </p>
                 </div>
               </div>
             </div>
@@ -521,23 +537,9 @@ interface MessagesSummary {
       background: var(--color-surface);
       color: var(--theme-accent);
     }
-    .bp-ov-notif {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 6px;
-      border-radius: var(--radius-pill);
-      background: var(--color-danger);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 600;
-    }
+    /* v1.24l: legacy red notif chip retired — Messages card's
+       awaiting-count now reuses .bp-ov-status for consistency
+       with the Estimate Active pill. */
 
     /* ── CONTENT WRAPPER ─────────────────────────────────────── */
     /* Holds everything below the dark header. Owns the card's
@@ -737,10 +739,15 @@ interface MessagesSummary {
     .bp-ov-budget-fill--over { background: var(--color-danger); }
 
     /* ── MESSAGES LIST (Messages card) ──────────────────────── */
+    /* width:100% so the list fills the centred section body — the
+       parent's flex align-items:center would otherwise shrink the
+       list to its natural width and the time column would float
+       in mid-air. */
     .bp-ov-list {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      width: 100%;
     }
     .bp-ov-list-row {
       display: grid;
