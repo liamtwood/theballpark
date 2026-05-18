@@ -10,6 +10,8 @@ import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { ConfigStripService } from '../../../core/services/config-strip.service';
+import { TemplateRef } from '@angular/core';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -95,6 +97,18 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
           {{ tab.label }}
         </button>
       </div>
+    </div>
+
+    <!-- v1.23f: lifted config-strip slot. When a page pushes a
+         TemplateRef via ConfigStripService.setTemplate() (e.g. the
+         dashboard's Home settings strip), the strip renders here —
+         between hero and body — so it spans full width even when
+         navMode='sidenav'. The cog in the top-nav still toggles
+         open/closed via ConfigStripService.toggle(). Pages that use
+         the inline <app-config-strip> wrapper instead don't push a
+         template, so this slot stays hidden. -->
+    <div *ngIf="stripTpl && stripOpen" class="bp-shell-config-strip">
+      <ng-container *ngTemplateOutlet="stripTpl"></ng-container>
     </div>
 
     <!-- BODY -->
@@ -236,6 +250,23 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
        boundary between header and KPI strip / body. */
     .bp-hero { border-bottom: var(--border-hairline); }
 
+    /* v1.23f: lifted config-strip slot. Pages provide the inner
+       controls via TemplateRef + ConfigStripService.setTemplate.
+       Chrome (background, padding, hairline) lives here so the
+       strip always renders the same regardless of which page
+       lit it up. flex-shrink:0 keeps the row from collapsing. */
+    .bp-shell-config-strip {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 18px;
+      padding: 10px 28px;
+      background: var(--color-surface);
+      border-bottom: 0.5px solid var(--color-border);
+      flex-wrap: wrap;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
@@ -368,12 +399,20 @@ export class AppShellComponent implements OnInit, OnDestroy {
   /** v1.22: open/close state for the user-pill dropdown. */
   userMenuOpen = false;
 
+  /** v1.23f: lifted config-strip slot. Both fields are mirrored from
+      ConfigStripService observables so we can drive the *ngIf without
+      async-piping a TemplateRef (which Angular's template type-check
+      doesn't unwrap cleanly). */
+  stripTpl: TemplateRef<any> | null = null;
+  stripOpen = false;
+
   constructor(
     private router: Router,
     private activatedRoute: ActivatedRoute,
     private orgSvc: OrgService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private configStripSvc: ConfigStripService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -452,6 +491,19 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
     this.shellCtx.context$.pipe(takeUntil(this.destroy$)).subscribe(ctx => {
       this.ctx = ctx.heroTitle ? ctx : null;
+      this.cdr.detectChanges();
+    });
+
+    // v1.23f: track the lifted config-strip slot. Pages that pushed
+    // a TemplateRef render their strip here (above bp-shell-body);
+    // pages still on the inline <app-config-strip> pattern leave
+    // stripTpl null and this slot stays hidden.
+    this.configStripSvc.template$.pipe(takeUntil(this.destroy$)).subscribe(tpl => {
+      this.stripTpl = tpl;
+      this.cdr.detectChanges();
+    });
+    this.configStripSvc.open$.pipe(takeUntil(this.destroy$)).subscribe(open => {
+      this.stripOpen = open;
       this.cdr.detectChanges();
     });
 

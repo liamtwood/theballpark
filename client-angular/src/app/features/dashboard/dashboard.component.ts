@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, TemplateRef, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -11,12 +11,12 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { ConfigStripComponent } from '../../shared/components/config-strip/config-strip.component';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { ConfigStripService } from '../../core/services/config-strip.service';
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -36,7 +36,6 @@ type DashTab = 'projects';
     CardModule, ButtonModule, CheckboxModule, InputTextModule,
     ConfirmDialogModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
-    ConfigStripComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   providers: [ConfirmationService, MessageService],
@@ -46,17 +45,18 @@ type DashTab = 'projects';
     <ng-container *ngIf="!loading">
 
       <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
-           Mounted via <app-config-strip>; the top-nav cog button
-           (already wired in top-nav, gated by hasConfig && isAdmin)
-           toggles open/closed via ConfigStripService. The mount
-           itself is what registers the cog button to appear, so
-           non-admin users see neither the strip nor the cog. -->
-      <app-config-strip>
+           v1.23f: the strip's body is now a <ng-template> captured
+           by ViewChild and pushed to ConfigStripService.setTemplate
+           in ngAfterViewInit, so AppShell renders it in its lifted
+           slot — above bp-shell-body. This way the strip spans the
+           full viewport width even when navMode='sidenav' (i.e. the
+           left menu starts BELOW the strip rather than beside it).
+           The cog in the top-nav still toggles open/closed via
+           ConfigStripService.toggle(). -->
+      <ng-template #cfgStripTpl>
         <!-- v1.23b: reuse the global .bp-cfg-* classes so the strip
              reads identically to the marketplace ConfigStrip (same
-             label sizing, segmented buttons, theme swatches). The
-             dashboard-specific row is COMPONENTS — a segmented
-             button group where each pill is an independent toggle. -->
+             label sizing, segmented buttons, theme swatches). -->
         <div class="bp-cfg-row">
 
           <!-- Labels -->
@@ -116,12 +116,28 @@ type DashTab = 'projects';
           </div>
           <span class="bp-cfg-divider"></span>
 
+          <!-- v1.23f: ALIGN — Left vs Centre. Mirrors the Marketplace
+               settings page's HERO BANNER → Alignment picker. Writes
+               ConfigService.heroAlign; AppShell picks it up via the
+               --hero-align-flex CSS var so the hero meta + content
+               re-align without a reload. -->
+          <span class="bp-cfg-lab">ALIGN</span>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let opt of alignOptions"
+                    type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="settingsDraft.heroAlign === opt.value"
+                    (click)="selectHeroAlign(opt.value)">
+              {{ opt.label }}
+            </button>
+          </div>
+          <span class="bp-cfg-divider"></span>
+
           <!-- v1.23e: NAV — Tabs vs Menu (sidenav). Mirrors the
                Marketplace settings page's "Navigation" picker but
                rendered inline in the strip. Single-pick segmented
-               group so it's visually distinct from the multi-toggle
-               COMPONENTS row above. Writes ConfigService.navMode;
-               AppShell picks it up via config$ and re-renders. -->
+               group; writes ConfigService.navMode. AppShell picks
+               it up via config$ and re-renders. -->
           <span class="bp-cfg-lab">NAV</span>
           <div class="bp-cfg-seg">
             <button *ngFor="let opt of navOptions"
@@ -134,7 +150,7 @@ type DashTab = 'projects';
           </div>
 
         </div>
-      </app-config-strip>
+      </ng-template>
 
       <!-- STATS BAR — always visible on desktop, Summary tab on mobile -->
       <div class="bp-dash-stats" *ngIf="settingsDraft.showStats !== false">
@@ -871,7 +887,11 @@ type DashTab = 'projects';
     }
   `]
 })
-export class DashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+  /** v1.23f: TemplateRef capturing the admin settings strip body.
+      Pushed to ConfigStripService so the AppShell renders it in its
+      lifted slot above bp-shell-body. */
+  @ViewChild('cfgStripTpl', { static: true }) cfgStripTpl!: TemplateRef<any>;
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
@@ -899,6 +919,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     creditLabel: string;
     projectLabel: string;
     themeName: string;
+    heroAlign: 'left' | 'center';
     navMode: 'tabs' | 'sidenav';
     showUserName: boolean;
     showLocation: boolean;
@@ -909,6 +930,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     creditLabel: 'Ball',
     projectLabel: 'Event',
     themeName: 'amber',
+    heroAlign: 'center',
     navMode: 'tabs',
     showUserName: true,
     showLocation: true,
@@ -937,6 +959,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { value: 'stats',    label: 'Stats' }
   ];
 
+  /** v1.23f: ALIGN row — single-pick segmented group. Values map to
+      ConfigService.heroAlign. Matches the Marketplace settings page's
+      HERO BANNER → Alignment control ("Centre" spelt the British way
+      to match the rest of that page). */
+  readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
+    { value: 'left',   label: 'Left' },
+    { value: 'center', label: 'Centre' }
+  ];
+
   /** v1.23e: NAV row — single-pick segmented group. Values map to
       ConfigService.navMode; 'sidenav' is labelled 'Menu' in the
       strip (shorter than 'Side navigation') to match the dashboard's
@@ -960,12 +991,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private supplierService: SupplierService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private configStripSvc: ConfigStripService,
     private favSvc: FavouriteService,
     private confirm: ConfirmationService,
     private msg: MessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  /** v1.23f: register the strip template with the global service so
+      AppShell renders it in the lifted slot. Using ngAfterViewInit
+      isn't strictly needed (the ViewChild is { static: true } so it
+      resolves before ngOnInit), but it's the conventional spot. */
+  ngAfterViewInit() {
+    this.configStripSvc.setTemplate(this.cfgStripTpl);
+  }
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
 
@@ -1133,6 +1173,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         creditLabel:   cfg.creditLabel   || 'Ball',
         projectLabel:  cfg.projectLabel  || 'Event',
         themeName:     cfg.themeName     || 'amber',
+        heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
         navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
         showUserName:  cfg.showUserName  !== false,
         showLocation:  cfg.showLocation  !== false,
@@ -1213,6 +1254,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectNavMode(mode: 'tabs' | 'sidenav') {
     this.settingsDraft.navMode = mode;
     this.configService.update({ navMode: mode });
+  }
+
+  /** v1.23f: persist hero ALIGN choice. Writes ConfigService.heroAlign;
+      AppShell reflects via the --hero-align-flex CSS var binding. */
+  selectHeroAlign(align: 'left' | 'center') {
+    this.settingsDraft.heroAlign = align;
+    this.configService.update({ heroAlign: align });
   }
 
   /** Component visibility toggles. Single handler — re-reads every
@@ -1304,6 +1352,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.shellCtx.reset();
+    // v1.23f: clear the lifted strip slot so it doesn't bleed onto
+    // the next page (also auto-closes the strip via the service).
+    this.configStripSvc.setTemplate(null);
     this.sub?.unsubscribe();
   }
 }
