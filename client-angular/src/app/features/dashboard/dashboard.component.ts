@@ -89,7 +89,10 @@ type DashTab = 'projects';
           </div>
           <div class="bp-panel-section">
             <div class="bp-section-header"><span class="bp-section-title">Quick Actions</span></div>
-            <a routerLink="/projects/new" class="bp-quick-action"><i class="pi pi-plus" style="font-size:11px;"></i> New Project</a>
+            <!-- v1.22b: "+ New Project" removed from Quick Actions —
+                 it already lives next to the Active Events header
+                 (filled primary button). Quick Actions stays as
+                 lighter outlined links for browsing / invitation. -->
             <a routerLink="/suppliers" class="bp-quick-action"><i class="pi pi-building" style="font-size:11px;"></i> Browse Suppliers</a>
             <a routerLink="/settings/team" class="bp-quick-action"><i class="pi pi-user-plus" style="font-size:11px;"></i> Invite Member</a>
           </div>
@@ -281,8 +284,25 @@ type DashTab = 'projects';
     .bp-activity-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:0.5px solid var(--color-border); font-size:12px; color:var(--color-text-secondary); line-height:1.4; }
     .bp-activity-dot  { width:6px; height:6px; border-radius:50%; background:var(--theme-accent); margin-top:4px; flex-shrink:0; }
     .bp-activity-time { font-size:11px; color:var(--color-text-muted); margin-left:auto; white-space:nowrap; padding-left:8px; }
-    .bp-quick-action  { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; margin-bottom:8px; border:0.5px solid var(--color-border); border-radius:8px; background:var(--color-surface); font-size:13px; font-weight:500; color:var(--color-text-primary); cursor:pointer; text-decoration:none; transition:border-color 0.15s,color 0.15s; font-family:var(--font-body); }
-    .bp-quick-action:hover { border-color:var(--theme-accent); color:var(--theme-accent); }
+    /* v1.22b: unified outlined-CTA style. Matches the "View all saved →"
+       p-button-outlined treatment (amber border + amber text, fills
+       amber on hover) so every dashboard CTA reads as one family.
+       The only filled exception is the "+ New project" primary button
+       in the Active Events header. */
+    .bp-quick-action  {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      width:100%; padding:8px 12px; margin-bottom:8px;
+      border:0.5px solid var(--theme-accent); border-radius:8px;
+      background:var(--color-surface);
+      font-size:13px; font-weight:500; color:var(--theme-accent);
+      cursor:pointer; text-decoration:none;
+      transition:background 0.15s, color 0.15s;
+      font-family:var(--font-body);
+    }
+    .bp-quick-action:hover {
+      background:var(--theme-accent);
+      color:var(--color-surface);
+    }
     .bp-body-left { padding:var(--section-pad); border-right:0.5px solid var(--color-border); }
     .bp-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .bp-section-title { font-size:11px; font-weight:700; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.1em; }
@@ -409,14 +429,25 @@ type DashTab = 'projects';
       transition: filter 0.15s;
     }
     .bp-section-new-btn:hover { filter: brightness(1.1); }
+    /* v1.22b: same outlined-CTA family as .bp-quick-action — compact
+       (sits inline in a section header) but visually consistent. */
     .bp-section-link {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 12px;
       font-size:11px;
       font-weight:500;
       color:var(--theme-accent);
+      background:var(--color-surface);
+      border:0.5px solid var(--theme-accent);
+      border-radius:6px;
       text-decoration:none;
       font-family: var(--font-body);
+      transition:background 0.15s, color 0.15s;
     }
-    .bp-section-link:hover { opacity:0.75; }
+    .bp-section-link:hover {
+      background:var(--theme-accent);
+      color:var(--color-surface);
+    }
 
     /* ── PAST EVENTS CAROUSEL ──────────────────────────────────────
        Horizontal scroll, snap-to-card, hidden scrollbar. Compact
@@ -506,7 +537,11 @@ type DashTab = 'projects';
     .bp-credits-desc   { font-size:11px; color:var(--theme-text); line-height:1.5; }
     .bp-saved-hd { font-size:11px; font-weight:700; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:14px; }
     .bp-sup-card { border:0.5px solid var(--color-border); border-radius:10px; overflow:hidden; margin-bottom:10px; background:var(--color-surface); }
-    .bp-sup-img  { width:100%; height:80px; background-size:cover; background-position:center; position:relative; }
+    /* v1.22b: cover height bumped 80→140 to match the marketplace
+       /suppliers card proportions (catalogue-grid .bp-item-card-img).
+       Logos / cover photography display properly at this aspect
+       instead of being squished into a thin band. */
+    .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
     .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius:20px; background:rgba(0,0,0,0.5); color:#fff; }
     .bp-sup-heart { position:absolute; top:6px; right:6px; font-size:12px; color:#fff; }
     .bp-sup-bg-setbuild { background-image:linear-gradient(160deg,#1a1a2e,#16213e); }
