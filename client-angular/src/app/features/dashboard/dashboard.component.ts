@@ -414,20 +414,19 @@ type DashTab = 'projects';
     .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
     .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
 
-    /* v1.22c: "+ New project" now uses the unified outlined-CTA
-       style — same shape as .bp-section-link / .bp-quick-action.
-       Every dashboard CTA reads as one family now (no filled
-       primary exception). */
+    /* v1.22d: "+ New project" matches .bp-quick-action exactly
+       (13px font, 8px 12px padding, 8px radius). Every dashboard
+       CTA reads at the same size now. */
     .bp-section-new-btn {
       display:inline-flex; align-items:center; gap:6px;
-      padding:5px 12px;
-      font-size:11px;
+      padding:8px 12px;
+      font-size:13px;
       font-weight:500;
       font-family: var(--font-body);
       color:var(--theme-accent);
       background:var(--color-surface);
       border:0.5px solid var(--theme-accent);
-      border-radius:6px;
+      border-radius:8px;
       cursor:pointer;
       transition:background 0.15s, color 0.15s;
     }
@@ -435,17 +434,19 @@ type DashTab = 'projects';
       background:var(--theme-accent);
       color:var(--color-surface);
     }
-    /* v1.22b: same outlined-CTA family as .bp-quick-action — compact
-       (sits inline in a section header) but visually consistent. */
+    /* v1.22d: section-header CTA — same font / padding as
+       .bp-quick-action (13px / 8px 12px). The whole CTA family now
+       reads at one size whether it's stacked in the sidebar or
+       inline next to a section title. */
     .bp-section-link {
       display:inline-flex; align-items:center; gap:6px;
-      padding:5px 12px;
-      font-size:11px;
+      padding:8px 12px;
+      font-size:13px;
       font-weight:500;
       color:var(--theme-accent);
       background:var(--color-surface);
       border:0.5px solid var(--theme-accent);
-      border-radius:6px;
+      border-radius:8px;
       text-decoration:none;
       font-family: var(--font-body);
       transition:background 0.15s, color 0.15s;
