@@ -114,6 +114,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
             · {{ totalSelectedCount() }} item{{ totalSelectedCount() === 1 ? '' : 's' }} selected
           </div>
         </div>
+        <div class="bp-page-divider"></div>
 
         <div class="bp-build-grid">
 
@@ -489,7 +490,9 @@ type CardTab = 'items' | 'wishlist' | 'brief';
     }
     .bp-build-head {
       text-align: center;
-      margin-bottom: 24px;
+      /* v1.26: the bp-page-divider below the head owns the gap to
+         content. Margin here is 0 so we don't stack double gaps. */
+      margin-bottom: 12px;
     }
     /* v1.26: tighten the page-title margin when a sub-line follows it
        so the count/items label sits right under the serif heading. */

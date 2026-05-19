@@ -19,6 +19,7 @@ import { MessagesInboxComponent } from '../../../../../../shared/components/mess
   imports: [CommonModule, MessagesInboxComponent],
   template: `
     <h2 class="bp-page-title">Messages</h2>
+    <div class="bp-page-divider"></div>
     <app-messages-inbox [boundProjectId]="pid"></app-messages-inbox>
   `
 })

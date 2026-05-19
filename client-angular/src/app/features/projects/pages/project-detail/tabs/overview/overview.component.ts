@@ -99,6 +99,7 @@ interface MessagesSummary {
       <div class="bp-overview">
 
         <h2 class="bp-page-title">Project Overview</h2>
+        <div class="bp-page-divider"></div>
 
         <!-- ── EVENT STRIP ─────────────────────────────────────── -->
         <div class="bp-event-strip" (click)="goTo('event')">

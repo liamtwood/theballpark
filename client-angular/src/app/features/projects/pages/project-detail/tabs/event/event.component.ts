@@ -41,6 +41,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
       <div class="bp-brief-body">
 
         <h2 class="bp-page-title">Event</h2>
+        <div class="bp-page-divider"></div>
 
         <!-- ── EVENT DETAILS ── -->
         <div class="bp-brief-sec">

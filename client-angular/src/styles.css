@@ -760,6 +760,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
   color: var(--theme-accent);
   margin-bottom: 24px;
 }
+/* v1.26: shared horizontal hairline that sits beneath bp-page-title.
+   Single source of truth — Settings/Organisation, Settings/Subscription
+   and every project tab pick this up. */
+.bp-page-divider {
+  border: none;
+  border-top: 0.5px solid var(--color-border);
+  margin: 0 0 32px;
+}
 
 /* ── SECTIONS ── */
 .bp-section         { padding-bottom: 32px; margin-bottom: 8px; }

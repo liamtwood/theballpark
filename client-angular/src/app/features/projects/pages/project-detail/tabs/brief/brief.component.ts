@@ -46,6 +46,7 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
       <div class="bp-brief-body">
 
         <h2 class="bp-page-title">Brief</h2>
+        <div class="bp-page-divider"></div>
 
         <div class="bp-brief-sec">
           <!-- Header constrained for line-length readability -->

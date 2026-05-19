@@ -57,6 +57,7 @@ import {
     <app-loading *ngIf="loading"></app-loading>
 
     <h2 *ngIf="!loading" class="bp-page-title">Marketplace</h2>
+    <div *ngIf="!loading" class="bp-page-divider"></div>
 
     <app-catalogue-grid *ngIf="!loading"
       [entities]="itemEntities"
