@@ -92,17 +92,21 @@ interface VendorThread {
       </div>
 
       <!-- ═══════════════ CATEGORY CIRCLES ═══════════════
-           Shared shell with catalogue-grid (marketplace, suppliers).
-           Class names come from styles.css; component contributes
-           data only (the in-scope project_categories + unread badge). -->
-      <div class="bp-cat-circles-wrap" *ngIf="categoryFolders.length > 0" data-circle-size="sm">
+           Markup mirrors catalogue-grid (marketplace, suppliers)
+           verbatim — same wrap, same circle, same fallback chain
+           (cover_image_url → icon_name → initials), same data-circle-size.
+           Only difference: --unscoped means "no threads in this category"
+           here (vs. "not in project_categories" on marketplace), and we
+           overlay a small red unread-count badge. Both are styled in
+           styles.css under the shared CATALOGUE / INBOX SHELL block. -->
+      <div class="bp-cat-circles-wrap" *ngIf="categoryFolders.length > 0" data-circle-size="lg">
         <div class="bp-cat-circles">
           <button type="button"
                   class="bp-cat-circle-btn"
                   [class.active]="activeFolder === 'all'"
                   (click)="activeFolder = 'all'; cdr.detectChanges()">
             <div class="bp-cat-circle bp-cat-circle--all">
-              <lucide-icon name="layers" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+              <lucide-icon name="layers" [size]="22"></lucide-icon>
             </div>
             <span class="bp-cat-circle-label">All</span>
           </button>
@@ -112,8 +116,15 @@ interface VendorThread {
                   [class.active]="activeFolder === f.id"
                   [class.bp-cat-circle-btn--unscoped]="threadCountForCategory(f.id) === 0"
                   (click)="activeFolder = f.id; cdr.detectChanges()">
-            <div class="bp-cat-circle bp-cat-circle--no-image">
-              <lucide-icon [name]="getCatIcon(f.name)" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+            <div class="bp-cat-circle"
+                 [style.background-image]="f.cover_image_url ? 'url(' + f.cover_image_url + ')' : null"
+                 [style.background-color]="!f.cover_image_url && f.icon_name && f.icon_color ? f.icon_color : null"
+                 [class.bp-cat-circle--no-image]="!f.cover_image_url && !f.icon_name">
+              <lucide-icon *ngIf="!f.cover_image_url && f.icon_name"
+                           [name]="f.icon_name" [size]="22"
+                           class="bp-cat-circle-lucide"></lucide-icon>
+              <span *ngIf="!f.cover_image_url && !f.icon_name"
+                    class="bp-cat-circle-initials">{{ (f.name || '?').charAt(0) }}</span>
               <span *ngIf="unreadCountForCategory(f.id) > 0"
                     class="bp-cat-circle-badge">{{ unreadCountForCategory(f.id) }}</span>
             </div>
@@ -709,7 +720,16 @@ export class MessagesInboxComponent implements OnInit {
   loading = true;
   msgs: ThreadMessage[] = [];
   threads: VendorThread[] = [];
-  categoryFolders: { id: string; name: string }[] = [];
+  // v1.27b: rich shape so the circles can use the exact same markup as
+  // catalogue-grid (cover_image_url → icon_name → initials fallback).
+  // Populated from the joined /projects/:id/categories endpoint.
+  categoryFolders: Array<{
+    id: string;
+    name: string;
+    icon_name?: string;
+    icon_color?: string;
+    cover_image_url?: string;
+  }> = [];
   projects: Project[] = [];
   projectOptions: any[] = [];
   selectedProjectId = '';
@@ -808,11 +828,15 @@ export class MessagesInboxComponent implements OnInit {
     // project (project_categories.is_active = true).
     this.projectSvc.getCategories(id).subscribe({
       next: cats => {
+        // Joined endpoint returns category_name / category_icon_name /
+        // category_icon_color / category_cover_image_url. Reshape into
+        // the lighter folder type the circle markup uses.
         this.categoryFolders = (cats || []).map(c => ({
           id: c.id,
-          // Joined column from categories table; fall back to the raw
-          // project_categories.name then a generic placeholder.
-          name: (c as any).category_name || c.name || 'Untitled category'
+          name:            (c as any).category_name || c.name || 'Untitled category',
+          icon_name:       (c as any).category_icon_name,
+          icon_color:      (c as any).category_icon_color,
+          cover_image_url: (c as any).category_cover_image_url
         }));
         this.cdr.detectChanges();
       }
