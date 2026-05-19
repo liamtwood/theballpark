@@ -23,13 +23,9 @@ export const routes: Routes = [
       },
 
       // ── PROJECTS ──
-      {
-        path: 'projects',
-        loadComponent: () => import('./features/projects/pages/project-list/project-list.component').then(m => m.ProjectListComponent),
-        data: { pageLabel: '', tabs: [] }
-      },
       // v1.30: /projects/new removed — replaced by the intake modal
       // mounted in app-shell and opened via CreateProjectService.
+      // v1.33: /projects list removed — dashboard is the entry point.
       {
         path: 'projects/:id',
         loadComponent: () => import('./features/projects/pages/project-detail/project-detail.component').then(m => m.ProjectDetailComponent),

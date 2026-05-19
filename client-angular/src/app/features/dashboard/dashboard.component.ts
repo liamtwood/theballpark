@@ -357,9 +357,6 @@ type DashTab = 'projects';
           <div class="bp-section-spacer" *ngIf="completedProjects.length > 0">
             <div class="bp-section-header">
               <span class="bp-section-title">Past {{ projectLabel }}s</span>
-              <a routerLink="/projects" class="bp-section-link">
-                View all {{ completedProjects.length }} closed →
-              </a>
             </div>
           </div>
           <div class="bp-past-carousel" *ngIf="completedProjects.length > 0">

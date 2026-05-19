@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, Store, FolderOpen, MessageSquareWarning, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, Store, MessageSquareWarning, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
@@ -38,9 +38,6 @@ import { environment } from '../../environments/environment';
         </a>
         <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
-        </a>
-        <a routerLink="/projects" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="folder-open" [size]="14"></lucide-icon> Projects
         </a>
         <a routerLink="/ballpark-settings/feedback" routerLinkActive="active" class="bp-nav-link">
           <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> {{ feedbackLabel }}
