@@ -15,7 +15,9 @@ import { LucideAngularModule, SquarePen, WandSparkles } from 'lucide-angular';
 
 import { ProjectService } from '../../../../core/services/project.service';
 import { CodelistService } from '../../../../core/services/codelist.service';
-import { Project, Codelist } from '../../../../models';
+import { ClientService } from '../../../../core/services/client.service';
+import { ApiService } from '../../../../core/services/api.service';
+import { Project, Codelist, Client } from '../../../../models';
 
 /**
  * Event drawer — v1.29b.
@@ -476,12 +478,10 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     .bp-evd-row--ref { grid-template-columns: 110px 1fr 1fr; }
     .bp-evd-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 
-    /* Ref read-only field reads as an identifier, not a normal value. */
-    :host ::ng-deep .bp-evd-ref.bp-field-readonly {
-      font-size: 11.5px !important;
-      color: var(--color-text-muted) !important;
-      letter-spacing: 0.04em;
-    }
+    /* v1.31a: Ref now uses the standard bp-field-readonly font like
+       every other view-mode field. Previously it was rendered smaller
+       + muted + letter-spaced which made it inconsistent with Event
+       name and Client sitting next to it on the same row. */
     /* Budget — serif display, 16px, per spec. */
     :host ::ng-deep .bp-evd-budget.bp-field-readonly {
       font-family: var(--font-display) !important;
@@ -608,6 +608,14 @@ export class EventDrawerComponent implements OnChanges {
       pill colour. Stored as projects.status_id (FK to statuses); the
       codelist code matches statuses.name one-to-one. */
   statusOptions: Codelist[] = [];
+  /** v1.31a: code → id map built from /api/statuses on init. Used at
+      save-time to resolve form.status_code → projects.status_id
+      client-side, so the change persists without the v1.31 backend
+      restart. */
+  private statusIdByCode = new Map<string, string>();
+  /** v1.31a: client list cached for find-or-create on save. Same
+      reasoning as status above. */
+  private clients: Client[] = [];
 
   /** Which DB columns each section is allowed to persist on save. Save
       only sends these — never the whole form. */
@@ -622,6 +630,8 @@ export class EventDrawerComponent implements OnChanges {
   constructor(
     private projSvc: ProjectService,
     private codelistSvc: CodelistService,
+    private clientSvc: ClientService,
+    private apiSvc: ApiService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {
@@ -637,6 +647,16 @@ export class EventDrawerComponent implements OnChanges {
       this.statusOptions = rows || [];
       this.cdr.markForCheck();
     });
+    // v1.31a: code → id map for status_code → status_id resolution
+    // on save. Done client-side so the change persists without the
+    // backend's v1.31 status_code support being deployed.
+    this.apiSvc.get<any[]>('/statuses').subscribe(rows => {
+      for (const r of rows || []) {
+        if (r.entity_type === 'project') this.statusIdByCode.set(r.name, r.id);
+      }
+    });
+    // v1.31a: cache clients for find-or-create on save.
+    this.clientSvc.getAll().subscribe(rows => { this.clients = rows || []; });
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -703,28 +723,88 @@ export class EventDrawerComponent implements OnChanges {
   saveSection(section: SectionKey) {
     if (!this.project) return;
     // Only send the columns this section owns — never the whole form.
-    const patch: Partial<Project> = {};
+    const patch: any = {};
     for (const k of this.sectionFields[section]) {
-      (patch as any)[k] = (this.form as any)[k];
+      patch[k] = (this.form as any)[k];
     }
-    this.saving = true;
-    this.projSvc.update(this.project.id, patch).subscribe({
-      next: p => {
-        this.project = p;
-        this.syncForm(p);
-        this.saving = false;
-        this.editing[section] = false;
-        this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
-        this.projSvc.triggerRefresh();
-        this.projectUpdated.emit(p);
-        this.cdr.markForCheck();
-      },
-      error: () => {
+
+    // v1.31a: client-side resolution for the two fields whose form
+    // value doesn't match a real projects column. Doing this here
+    // (rather than relying on backend support) means the change
+    // persists even when the running backend hasn't been restarted
+    // since v1.31 shipped.
+    const finish = (resolved: any) => {
+      this.saving = true;
+      this.projSvc.update(this.project!.id, resolved).subscribe({
+        next: p => {
+          this.project = p;
+          this.syncForm(p);
+          this.saving = false;
+          this.editing[section] = false;
+          this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
+          this.projSvc.triggerRefresh();
+          this.projectUpdated.emit(p);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.saving = false;
+          this.msg.add({ severity: 'error', summary: 'Failed to save', life: 3000 });
+          this.cdr.markForCheck();
+        }
+      });
+    };
+
+    if (section === 'details') {
+      this.resolveDetailsPatch(patch).then(finish).catch(() => {
         this.saving = false;
         this.msg.add({ severity: 'error', summary: 'Failed to save', life: 3000 });
         this.cdr.markForCheck();
+      });
+    } else {
+      finish(patch);
+    }
+  }
+
+  /** v1.31a: pre-flight the Event Details patch so the backend gets
+      real FK columns (status_id / client_id) instead of synthetic
+      form fields. Status code → id is a Map lookup. Client name →
+      id is a find-or-create against the cached client list. */
+  private async resolveDetailsPatch(patch: any): Promise<any> {
+    // Status — code → id via /api/statuses map.
+    if (patch.status_code) {
+      const id = this.statusIdByCode.get(patch.status_code);
+      if (id) patch.status_id = id;
+    }
+    delete patch.status_code;
+
+    // Client — find or create by name within the org.
+    const name = (patch.client_name || '').trim();
+    if (name) {
+      const match = this.clients.find(c =>
+        (c.name || '').toLowerCase() === name.toLowerCase()
+      );
+      if (match) {
+        patch.client_id = match.id;
+      } else {
+        // Create a new client row so subsequent saves don't dupe.
+        const created = await new Promise<Client | null>((resolve) =>
+          this.clientSvc.create({ name }).subscribe({
+            next: c => resolve(c),
+            error: () => resolve(null)
+          })
+        );
+        if (created) {
+          patch.client_id = created.id;
+          this.clients.push(created);
+        }
       }
-    });
+    } else if (patch.client_name === '') {
+      // User cleared the field → detach the client.
+      patch.client_id = null;
+    }
+    delete patch.client_name;
+
+    return patch;
   }
 
   parseBrief() {
