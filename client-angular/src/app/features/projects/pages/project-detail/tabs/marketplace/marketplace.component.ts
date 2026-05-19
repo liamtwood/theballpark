@@ -189,13 +189,13 @@ export class MarketplaceComponent implements OnInit {
 
   // ── v1.17 detail-panel action handlers ───────────────────────────────
 
+  /** v1.34a: "View item" now navigates to the standalone /items/:id page
+      with projectId so the new page's Add / Wishlist actions target this
+      project. The drawer stays in use for edit-mode (own-org pencil). */
   onViewItem(entity: CatalogueEntity) {
-    const raw = this.rawItems.find(i => i.id === entity.id);
-    if (!raw) return;
-    this.drawerItem = raw as Item;
-    this.drawerMode = 'view';
-    this.showItemDrawer = true;
-    this.cdr.detectChanges();
+    this.router.navigate(['/items', entity.id], {
+      queryParams: this.projectId ? { projectId: this.projectId } : undefined
+    });
   }
 
   onItemEditRequested(entity: CatalogueEntity) {

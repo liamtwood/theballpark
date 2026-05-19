@@ -626,13 +626,13 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   // ── v1.17 detail-panel action handlers ───────────────────────────────
 
+  /** v1.34a: "View item" now navigates to the standalone /items/:id page
+      instead of opening the view-mode drawer. Pass projectId through so
+      Add-to-project / Wishlist actions on the new page hit the right project. */
   onViewItem(entity: CatalogueEntity) {
-    const raw = this.rawItems.find(i => i.id === entity.id);
-    if (!raw) return;
-    this.drawerItem = raw as Item;
-    this.drawerMode = 'view';
-    this.showItemDrawer = true;
-    this.cdr.detectChanges();
+    const params: any = {};
+    if (this.projectId) params['projectId'] = this.projectId;
+    this.router.navigate(['/items', entity.id], { queryParams: params });
   }
 
   onItemEditRequested(entity: CatalogueEntity) {
