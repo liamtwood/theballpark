@@ -40,6 +40,8 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
     <ng-container *ngIf="!loading && project">
       <div class="bp-brief-body">
 
+        <h2 class="bp-page-title">Event</h2>
+
         <!-- ── EVENT DETAILS ── -->
         <div class="bp-brief-sec">
           <div class="bp-brief-sec-h">

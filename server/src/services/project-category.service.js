@@ -126,8 +126,9 @@ async function getByProject(projectId) {
 }
 
 async function upsert(projectId, categoryId, data) {
-  const requirement_brief = data.requirement_brief !== undefined ? data.requirement_brief : null;
-  const ballpark_budget   = data.ballpark_budget   !== undefined ? data.ballpark_budget   : null;
+  const requirement_brief  = data.requirement_brief  !== undefined ? data.requirement_brief  : null;
+  const requirement_detail = data.requirement_detail !== undefined ? data.requirement_detail : null;
+  const ballpark_budget    = data.ballpark_budget    !== undefined ? data.ballpark_budget    : null;
 
   // INSERT ... ON CONFLICT requires a unique constraint on
   // (project_id, category_id). A composite constraint isn't guaranteed
@@ -142,21 +143,22 @@ async function upsert(projectId, categoryId, data) {
   if (existing.rows.length) {
     const result = await pool.query(
       `UPDATE project_categories SET
-        requirement_brief = COALESCE($1, requirement_brief),
-        ballpark_budget   = COALESCE($2, ballpark_budget),
+        requirement_brief  = COALESCE($1, requirement_brief),
+        requirement_detail = COALESCE($2, requirement_detail),
+        ballpark_budget    = COALESCE($3, ballpark_budget),
         updated_at = NOW()
-       WHERE id = $3 RETURNING *`,
-      [requirement_brief, ballpark_budget, existing.rows[0].id]
+       WHERE id = $4 RETURNING *`,
+      [requirement_brief, requirement_detail, ballpark_budget, existing.rows[0].id]
     );
     return result.rows[0];
   }
 
   const inserted = await pool.query(
     `INSERT INTO project_categories
-       (project_id, category_id, requirement_brief, ballpark_budget)
-     VALUES ($1, $2, $3, $4)
+       (project_id, category_id, requirement_brief, requirement_detail, ballpark_budget)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [projectId, categoryId, requirement_brief, ballpark_budget]
+    [projectId, categoryId, requirement_brief, requirement_detail, ballpark_budget]
   );
   return inserted.rows[0];
 }

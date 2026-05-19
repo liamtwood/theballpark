@@ -14,6 +14,7 @@ import { ProjectService } from '../../../../../../core/services/project.service'
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { ProjectCategory, Category } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 
 /**
  * Project Brief tab — In Scope picker.
@@ -35,7 +36,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
   imports: [
     CommonModule, LucideAngularModule,
     ButtonModule, ToastModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent, GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -43,6 +44,8 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 
     <ng-container *ngIf="!loading">
       <div class="bp-brief-body">
+
+        <h2 class="bp-page-title">Brief</h2>
 
         <div class="bp-brief-sec">
           <!-- Header constrained for line-length readability -->
@@ -105,6 +108,35 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
                     [value]="row.requirement_brief || ''"
                     [placeholder]="'What you need from ' + (row.category_name || 'this category').toLowerCase() + ' suppliers — keep it short, 2–3 lines.'"
                     (blur)="onRowBriefBlur(row, $event)"></textarea>
+
+                  <label class="bp-brief-sublabel">Additional details</label>
+                  <textarea
+                    class="bp-brief-row-detail"
+                    rows="2"
+                    [value]="row.requirement_detail || ''"
+                    placeholder="Specs, constraints, brand requirements..."
+                    (blur)="onRowDetailBlur(row, $event)"></textarea>
+
+                  <div class="bp-brief-row-money">
+                    <div class="bp-brief-money-col">
+                      <label class="bp-brief-sublabel">Budget</label>
+                      <div class="bp-money-input">
+                        <span class="bp-money-prefix">£</span>
+                        <input class="bp-brief-money-input"
+                               type="number"
+                               min="0"
+                               [value]="row.ballpark_budget ?? ''"
+                               placeholder="0"
+                               (blur)="onRowBudgetBlur(row, $event)"/>
+                      </div>
+                    </div>
+                    <div class="bp-brief-money-col">
+                      <label class="bp-brief-sublabel">Ballpark cost</label>
+                      <div class="bp-brief-cost-display">
+                        {{ row.ballpark_cost && row.ballpark_cost > 0 ? (row.ballpark_cost | gbp) : '—' }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="bp-brief-row-actions">
                   <button class="bp-brief-wand" (click)="rewriteRow(row)" title="Rewrite from project brief">
@@ -288,6 +320,69 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
     .bp-brief-row-prompt::placeholder {
       color: var(--color-text-secondary);
       font-style: italic;
+    }
+
+    /* ── ADDITIONAL DETAILS + BUDGET ── */
+    .bp-brief-sublabel {
+      display: block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin: 10px 0 4px;
+    }
+    .bp-brief-row-detail {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      background: transparent;
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      outline: none; resize: vertical;
+      padding: 6px 8px; margin: 0;
+    }
+    .bp-brief-row-detail:focus { border-color: var(--theme-accent); }
+    .bp-brief-row-detail::placeholder {
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+    .bp-brief-row-money {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .bp-brief-money-col { display: flex; flex-direction: column; }
+    .bp-money-input { position: relative; display: flex; align-items: center; }
+    .bp-money-prefix {
+      position: absolute; left: 8px;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      pointer-events: none;
+    }
+    .bp-brief-money-input {
+      width: 100%;
+      padding: 6px 8px 6px 20px;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+      background: transparent;
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      outline: none;
+    }
+    .bp-brief-money-input:focus { border-color: var(--theme-accent); }
+    .bp-brief-cost-display {
+      padding: 6px 8px;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--color-text-primary);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 6px;
+      min-height: 30px;
+      display: flex; align-items: center;
     }
     .bp-brief-row-actions { display: flex; align-items: flex-start; gap: 4px; flex-shrink: 0; }
     .bp-brief-wand {
@@ -482,6 +577,28 @@ export class BriefComponent implements OnInit, OnDestroy {
       });
     }, 800);
     this.rowSaveTimers.set(row.category_id, t);
+  }
+
+  onRowDetailBlur(row: ProjectCategory, ev: Event) {
+    const value = (ev.target as HTMLTextAreaElement).value;
+    if (value === (row.requirement_detail || '')) return;
+    row.requirement_detail = value;
+    this.projSvc.upsertCategory(this.pid, row.category_id, { requirement_detail: value }).subscribe({
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1200 }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save details', life: 3000 })
+    });
+  }
+
+  onRowBudgetBlur(row: ProjectCategory, ev: Event) {
+    const raw = (ev.target as HTMLInputElement).value.trim();
+    const next: number | null = raw === '' ? null : Number(raw);
+    const current = row.ballpark_budget != null ? Number(row.ballpark_budget) : null;
+    if (next === current) return;
+    row.ballpark_budget = next ?? undefined;
+    this.projSvc.upsertCategory(this.pid, row.category_id, { ballpark_budget: next }).subscribe({
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1200 }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save budget', life: 3000 })
+    });
   }
 
   rewriteRow(_row: ProjectCategory) {

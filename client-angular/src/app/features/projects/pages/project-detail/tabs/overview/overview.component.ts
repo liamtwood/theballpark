@@ -98,6 +98,8 @@ interface MessagesSummary {
     <ng-container *ngIf="!loading && project">
       <div class="bp-overview">
 
+        <h2 class="bp-page-title">Project Overview</h2>
+
         <!-- ── EVENT STRIP ─────────────────────────────────────── -->
         <div class="bp-event-strip" (click)="goTo('event')">
           <div class="bp-event-cols">

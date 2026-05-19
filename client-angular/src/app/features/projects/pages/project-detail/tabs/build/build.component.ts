@@ -106,9 +106,9 @@ type CardTab = 'items' | 'wishlist' | 'brief';
 
         <!-- ── HEADER ── -->
         <div class="bp-build-head">
-          <!-- v1.18b: heading matches the renamed tab label (Build → Estimate).
-               File / class names retained for git-history continuity. -->
-          <div class="bp-build-head-title">Estimate</div>
+          <!-- v1.26: page title uses the shared bp-page-title token —
+               matches Settings/Brief/Event/Marketplace/Messages. -->
+          <h2 class="bp-page-title bp-page-title--with-sub">Estimate</h2>
           <div class="bp-build-head-sub">
             {{ categoryRows.length }} categor{{ categoryRows.length === 1 ? 'y' : 'ies' }}
             · {{ totalSelectedCount() }} item{{ totalSelectedCount() === 1 ? '' : 's' }} selected
@@ -323,11 +323,9 @@ type CardTab = 'items' | 'wishlist' | 'brief';
                     </div>
                   </div>
 
-                  <p-button *ngIf="hasBrief(row)"
-                            label="Send brief to suppliers"
-                            styleClass="bp-build-send-btn"
-                            (onClick)="onSendBrief(row)">
-                  </p-button>
+                  <!-- v1.26: "Send brief to suppliers" CTA removed — the
+                       marketplace category context panel's "Contact
+                       supplier →" CTA owns supplier outreach. -->
 
                 </ng-container>
 
@@ -377,6 +375,13 @@ type CardTab = 'items' | 'wishlist' | 'brief';
                 <span>Contingency ({{ contingencyPct | number:'1.0-2' }}%)</span>
                 <span>{{ contingency | gbp }}</span>
               </div>
+              <!-- v1.26: VAT line item (display calculation only — no new
+                   column). vat_pct comes from project.default_vat_pct or
+                   org.default_vat_pct, with a 20% fallback. -->
+              <div class="bp-build-est-row">
+                <span>VAT ({{ vatPct | number:'1.0-2' }}%)</span>
+                <span>{{ vat | gbp }}</span>
+              </div>
             </div>
 
             <!-- Your cost (big) -->
@@ -425,11 +430,9 @@ type CardTab = 'items' | 'wishlist' | 'brief';
                 normal range for this spec.
               </p>
             </div>
-
-            <p-button label="Messages →"
-                      styleClass="bp-build-messages-btn w-full"
-                      [routerLink]="['..', 'messages']">
-            </p-button>
+            <!-- v1.26: "Messages →" CTA removed — Messages is reachable
+                 from the project tab bar; the summary panel doesn't need
+                 to duplicate that link. -->
           </aside>
 
         </div>
@@ -488,10 +491,10 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       text-align: center;
       margin-bottom: 24px;
     }
-    .bp-build-head-title {
-      font-family: var(--font-display);
-      font-size: 22px; font-weight: 400;
-      color: var(--color-text-primary);
+    /* v1.26: tighten the page-title margin when a sub-line follows it
+       so the count/items label sits right under the serif heading. */
+    .bp-build-head .bp-page-title.bp-page-title--with-sub {
+      margin-bottom: 2px;
     }
     .bp-build-head-sub {
       font-size: 12px;
@@ -1017,11 +1020,15 @@ export class BuildComponent implements OnInit {
   budget = 0;
   contingencyPct = 10;
   marginPct = 20;
+  /** v1.26: VAT % for the summary panel line item (display only).
+      Hydrated from project.default_vat_pct or org.default_vat_pct. */
+  vatPct = 20;
 
   // Estimate totals — recomputed whenever items or category rows change.
   subtotal = 0;
   delivery = 0;
   contingency = 0;
+  vat = 0;
   yourCost = 0;
   clientTotal = 0;
   budgetDiff = 0;
@@ -1086,6 +1093,9 @@ export class BuildComponent implements OnInit {
                             ?? 10;
         this.marginPct      = project?.default_margin_pct
                             ?? org?.default_margin_pct
+                            ?? 20;
+        this.vatPct         = (project as any)?.default_vat_pct
+                            ?? (org as any)?.default_vat_pct
                             ?? 20;
 
         // Filter actives + build the local row state.
@@ -1181,7 +1191,10 @@ export class BuildComponent implements OnInit {
     this.subtotal    = this.categoryRows.reduce((s, r) => s + r.selectedCost, 0);
     this.delivery    = this.subtotal * 0.12;
     this.contingency = this.subtotal * (this.contingencyPct / 100);
-    this.yourCost    = this.subtotal + this.delivery + this.contingency;
+    // v1.26: VAT = (subtotal + delivery + contingency) * vat_pct / 100,
+    // and Your cost rolls VAT in (display calculation only).
+    this.vat         = (this.subtotal + this.delivery + this.contingency) * (this.vatPct / 100);
+    this.yourCost    = this.subtotal + this.delivery + this.contingency + this.vat;
     this.clientTotal = this.yourCost * (1 + this.marginPct / 100);
     this.budgetDiff  = this.budget > 0 ? this.clientTotal - this.budget : 0;
     this.absBudgetDiff = Math.abs(this.budgetDiff);

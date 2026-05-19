@@ -38,7 +38,12 @@ export class StatusBadgeComponent {
   @Input() statusName: string | null | undefined;
 
   get displayName(): string {
-    return (this.statusName || this.status || '').replace(/_/g, ' ');
+    // v1.26: sentence case across all status pills (e.g. "Draft", not
+    // "draft" or "DRAFT"). Underscores normalised to spaces first so
+    // raw DB values like "in_progress" → "In progress".
+    const raw = (this.statusName || this.status || '').replace(/_/g, ' ').trim();
+    if (!raw) return '';
+    return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
   }
 
   get key(): string {
