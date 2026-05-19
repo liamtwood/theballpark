@@ -730,15 +730,33 @@ export class EventDrawerComponent implements OnChanges {
     const finish = (resolved: any) => {
       this.saving = true;
       this.projSvc.update(this.project!.id, resolved).subscribe({
-        next: p => {
-          this.project = p;
-          this.syncForm(p);
-          this.saving = false;
-          this.editing[section] = false;
-          this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
-          this.projSvc.triggerRefresh();
-          this.projectUpdated.emit(p);
-          this.cdr.markForCheck();
+        next: () => {
+          // v1.31c: re-read via getById so the form picks up the
+          // joined columns (client_name, status_name, status_color)
+          // that the older backend's update() doesn't return on its
+          // raw INSERT/UPDATE RETURNING *. Without this the input
+          // briefly shows the patched fields as empty until a page
+          // refresh repopulates from the joined SELECT.
+          this.projSvc.getById(this.project!.id).subscribe({
+            next: p => {
+              this.project = p;
+              this.syncForm(p);
+              this.saving = false;
+              this.editing[section] = false;
+              this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
+              this.projSvc.triggerRefresh();
+              this.projectUpdated.emit(p);
+              this.cdr.markForCheck();
+            },
+            error: () => {
+              // Save did succeed; the re-fetch failed. Surface a
+              // milder message but still close the editor.
+              this.saving = false;
+              this.editing[section] = false;
+              this.projSvc.triggerRefresh();
+              this.cdr.markForCheck();
+            }
+          });
         },
         error: () => {
           this.saving = false;
