@@ -95,14 +95,19 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
           </div>
         </div>
 
-        <!-- Row 1: Ref (narrow read-only) | Event name | Client.
-             Ref is ALWAYS read-only per spec, even in edit mode. -->
+        <!-- Row 1: Ref (narrow) | Event name | Client.
+             Ref is read-only in view mode but editable when the
+             section's pencil is clicked. -->
         <div class="bp-evd-row bp-evd-row--ref">
           <div class="bp-evd-field">
             <label class="bp-field-label">Ref</label>
-            <input pInputText
+            <input pInputText *ngIf="!editing.details"
                    [value]="form.po_ref || '—'"
                    class="w-full bp-field-readonly bp-evd-ref" readonly/>
+            <input pInputText *ngIf="editing.details"
+                   [(ngModel)]="form.po_ref"
+                   placeholder="e.g. TVS-2026-047"
+                   class="w-full bp-input-edit"/>
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Event name</label>
@@ -564,7 +569,7 @@ export class EventDrawerComponent implements OnChanges {
   /** Which DB columns each section is allowed to persist on save. Save
       only sends these — never the whole form. */
   private sectionFields: Record<SectionKey, (keyof Project)[]> = {
-    details:    ['event_name', 'client_name', 'venue_name', 'venue_city'],
+    details:    ['po_ref', 'event_name', 'client_name', 'venue_name', 'venue_city'],
     type:       ['event_type', 'tier'],
     logistics:  ['event_date', 'duration_days', 'guest_count'],
     financials: ['project_budget', 'currency', 'default_margin_pct', 'default_contingency_pct', 'default_vat_pct'],

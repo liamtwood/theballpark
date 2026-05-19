@@ -425,12 +425,12 @@ interface MessagesSummary {
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
       cursor: pointer;
-      transition: box-shadow 150ms ease, transform 150ms ease;
+      transition: box-shadow 150ms ease;
     }
-    .bp-event-strip:hover {
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* v1.29c: dropped the translateY on hover — the transform property
+       creates a stacking context which trapped the kebab dropdown
+       inside the strip. Shadow change alone signals the interactive lift. */
+    .bp-event-strip:hover { box-shadow: var(--shadow-sm); }
     .bp-event-cols {
       display: grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -522,7 +522,10 @@ interface MessagesSummary {
       border: var(--border-hairline);
       border-radius: var(--radius-button);
       padding: 4px 0;
-      z-index: 50;
+      /* v1.29c: high z-index + the parent strip's hover transform
+         removed means the menu reliably floats over the cards grid
+         below it. */
+      z-index: 1000;
       box-shadow: var(--shadow-md);
       font-family: var(--font-body);
     }

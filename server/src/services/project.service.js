@@ -106,7 +106,7 @@ async function update(id, data) {
       po_ref = COALESCE($32, po_ref),
       currency = COALESCE($33, currency),
       updated_at = NOW()
-     WHERE id = $34 RETURNING *`,
+     WHERE id = $34`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
@@ -117,7 +117,11 @@ async function update(id, data) {
       event_type, duration_days, po_ref, currency, id
     ]
   );
-  return result.rows[0] || null;
+  // v1.29c: re-read via the joined SELECT used by getById so the row
+  // we return includes client_name / status_name / status_color. The
+  // Overview event strip + drawer header depend on those joined fields
+  // and would otherwise blank out after a save.
+  return await getById(id);
 }
 
 /**
