@@ -17,6 +17,9 @@ import { ConfigStripComponent } from '../config-strip/config-strip.component';
 import {
   CategoryContextPanelComponent, CategoryContextMode
 } from '../category-context-panel/category-context-panel.component';
+import {
+  CategoryCirclesComponent, CategoryCircle
+} from '../category-circles/category-circles.component';
 import { CodelistService } from '../../../core/services/codelist.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
@@ -30,7 +33,7 @@ export type DetailMode = 'inline' | 'drawer';
     CommonModule, FormsModule,
     InputTextModule, InputTextareaModule, ButtonModule, CheckboxModule,
     LucideAngularModule, GbpPipe, ConfigStripComponent,
-    CategoryContextPanelComponent
+    CategoryContextPanelComponent, CategoryCirclesComponent
   ],
   template: `
     <!-- CONFIG STRIP — toggled from cog in top-nav. Page projects its own
@@ -65,59 +68,22 @@ export type DetailMode = 'inline' | 'drawer';
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
     </div>
 
-    <!-- CATEGORY CIRCLES (single row — level-0 or level-1 depending on drill state) -->
-    <div class="bp-cat-circles-wrap" *ngIf="categories.length && showCategoryCircles" [attr.data-circle-size]="circleSize">
-      <button class="bp-circles-arrow bp-circles-arrow--left" *ngIf="canScrollLeft"
-        (click)="scrollCircles(-200)">
-        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
-      </button>
-      <div class="bp-cat-circles" #circlesRow (scroll)="onCirclesScroll()">
-        <!-- "All" circle -->
-        <button class="bp-cat-circle-btn"
-          [class.active]="!drilledCategory ? activeCategory === 'all' : !activeChildCategory"
-          (click)="!drilledCategory ? setCategory('all') : setChildCategory(null)">
-          <div class="bp-cat-circle bp-cat-circle--all">
-            <lucide-icon name="layers" [size]="circleIconSize"></lucide-icon>
-          </div>
-          <span class="bp-cat-circle-label">All</span>
-        </button>
-        <!-- Category circles. In project (Build) mode, categories not in
-             projectContext.projectCategories render greyed; clicking one
-             emits categoryScopeChange so the parent scopes it in. -->
-        <button *ngFor="let cat of displayedCircles"
-          class="bp-cat-circle-btn"
-          [class.active]="!drilledCategory ? activeCategory === cat.id : activeChildCategory === cat.id"
-          [class.bp-cat-circle-btn--unscoped]="!!projectContext && !isCategoryScoped(cat.id)"
-          (click)="onCircleClick(cat)">
-          <div class="bp-cat-circle"
-            [style.background-image]="cat.cover_image_url ? 'url(' + cat.cover_image_url + ')' : null"
-            [style.background-color]="!cat.cover_image_url && !cat.logo_url && cat.icon_name && cat.icon_color ? cat.icon_color : null"
-            [class.bp-cat-circle--no-image]="!cat.cover_image_url && !cat.logo_url && !cat.icon_name"
-            [class.bp-cat-circle--logo]="!!cat.logo_url && !cat.cover_image_url">
-            <img *ngIf="cat.logo_url && !cat.cover_image_url" [src]="cat.logo_url" [alt]="cat.name" class="bp-cat-circle-logo-img"/>
-            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name" [name]="cat.icon_name" [size]="circleIconSize" class="bp-cat-circle-lucide"></lucide-icon>
-            <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon" [name]="cat.icon" [size]="circleIconSize" class="bp-cat-circle-icon"></lucide-icon>
-            <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon" class="bp-cat-circle-initials">{{ cat.name.charAt(0) }}</span>
-            <button *ngIf="showEdit && !projectContext" class="bp-cat-circle-edit" (click)="onCategoryEdit($event, cat)" title="Edit image">
-              <lucide-icon name="square-pen" [size]="12"></lucide-icon>
-            </button>
-          </div>
-          <span class="bp-cat-circle-label">{{ cat.name }}</span>
-        </button>
-      </div>
-      <button class="bp-circles-arrow bp-circles-arrow--right" *ngIf="canScrollRight"
-        (click)="scrollCircles(200)">
-        <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
-      </button>
-      <!-- Project-mode strip toggle — flips the circle strip between
-           in-scope-only (default) and all top-level categories
-           (unscoped ones render greyed via .bp-cat-circle-btn--unscoped).
-           The sidebar parent-list stays scoped-only regardless. -->
-      <button *ngIf="projectContext" class="bp-circles-toggle"
-        (click)="toggleShowAllCategories()">
-        {{ showAllCategories ? 'Show scoped only' : 'Show all categories' }}
-      </button>
-    </div>
+    <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
+         Catalogue-grid owns the data + drill/scope state; the sub-
+         component owns the markup, scroll-arrow state and event wiring.
+         Messages tab mounts the SAME component so the two stay aligned. -->
+    <app-category-circles
+      *ngIf="categories.length && showCategoryCircles"
+      [categories]="displayedCircles"
+      [activeId]="circleActiveId"
+      [size]="circleSize"
+      [showEdit]="showEdit && !projectContext"
+      [unscopedIds]="circleUnscopedIds"
+      [footerToggleLabel]="circleFooterToggleLabel"
+      (select)="onCircleSelect($event)"
+      (edit)="onCategoryEdit($event)"
+      (footerToggle)="toggleShowAllCategories()">
+    </app-category-circles>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
@@ -1168,11 +1134,34 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return this.categories.filter(c => !c.parent_id);
   }
 
-  /** Lucide icon size for the circle strip — scales with circleSize input. */
-  get circleIconSize(): number {
-    if (this.circleSize === 'sm') return 20;
-    if (this.circleSize === 'md') return 26;
-    return 34;
+  /** v1.28: circle-strip adapters that feed <app-category-circles>.
+      Internal state (drilled / activeCategory / activeChildCategory /
+      projectContext / showAllCategories) stays in this component; the
+      sub-component just renders what we hand it. */
+  get circleActiveId(): string {
+    if (this.drilledCategory) return this.activeChildCategory || 'all';
+    return this.activeCategory;
+  }
+  get circleUnscopedIds(): ReadonlySet<string> {
+    if (!this.projectContext) return new Set();
+    const ids = new Set<string>();
+    for (const cat of this.displayedCircles) {
+      if (!this.isCategoryScoped(cat.id)) ids.add(cat.id);
+    }
+    return ids;
+  }
+  get circleFooterToggleLabel(): string | undefined {
+    if (!this.projectContext) return undefined;
+    return this.showAllCategories ? 'Show scoped only' : 'Show all categories';
+  }
+  onCircleSelect(id: string) {
+    if (id === 'all') {
+      if (this.drilledCategory) this.setChildCategory(null);
+      else this.setCategory('all');
+      return;
+    }
+    const cat = this.displayedCircles.find(c => c.id === id);
+    if (cat) this.onCircleClick(cat);
   }
 
   /** True when the inline detail panel should be suppressed — only
@@ -1268,7 +1257,6 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         this.drillOut();
       }
     }
-    setTimeout(() => this.checkScrollArrows(), 0);
     this.cdr.detectChanges();
   }
 
@@ -1383,9 +1371,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return current?.id || null;
   }
 
-  @ViewChild('circlesRow') circlesRowRef!: ElementRef<HTMLDivElement>;
-  canScrollLeft = false;
-  canScrollRight = false;
+  /* v1.28: circle scroll state moved into <app-category-circles>. */
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -1403,38 +1389,17 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return code ? this.codelistSvc.getDisplay(code) : '';
   }
 
-  ngAfterViewInit() { this.checkScrollArrows(); }
+  ngAfterViewInit() { /* circle scroll handled inside <app-category-circles> */ }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['entities']) {
       this.applyFilter();
-    }
-    if (changes['categories']) {
-      setTimeout(() => this.checkScrollArrows(), 0);
     }
     if (changes['tags']) {
       // All tags checked by default whenever the tag list changes
       this.checkedTags = new Set(this.tags || []);
       this.applyFilter();
     }
-  }
-
-  scrollCircles(delta: number) {
-    const el = this.circlesRowRef?.nativeElement;
-    if (el) {
-      el.scrollBy({ left: delta, behavior: 'smooth' });
-      setTimeout(() => this.checkScrollArrows(), 350);
-    }
-  }
-
-  onCirclesScroll() { this.checkScrollArrows(); }
-
-  private checkScrollArrows() {
-    const el = this.circlesRowRef?.nativeElement;
-    if (!el) return;
-    this.canScrollLeft = el.scrollLeft > 0;
-    this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-    this.cdr.detectChanges();
   }
 
   getImageUrl(e: CatalogueEntity): string | null {
@@ -1499,7 +1464,6 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.categoryChanged.emit(cat.id);
     this.drillChanged.emit(cat.id);
     this.applyFilter();
-    setTimeout(() => this.checkScrollArrows(), 0);
     this.cdr.detectChanges();
   }
 
@@ -1515,7 +1479,6 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.categoryChanged.emit('all');
     this.drillChanged.emit(null);
     this.applyFilter();
-    setTimeout(() => this.checkScrollArrows(), 0);
     this.cdr.detectChanges();
   }
 
@@ -1592,9 +1555,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.imageEditRequested.emit(e);
   }
 
-  onCategoryEdit(event: MouseEvent, cat: CategoryInfo) {
-    event.stopPropagation();
-    this.categoryImageEditRequested.emit(cat);
+  /** v1.28: edit-pencil click. The sub-component already stops event
+      propagation; we just forward the CategoryCircle out as the
+      full CategoryInfo (it carries the same id which is what the
+      parent uses to look up the category). */
+  onCategoryEdit(cat: CategoryCircle) {
+    this.categoryImageEditRequested.emit(cat as CategoryInfo);
   }
 
   onToggleFav(event: any, e: CatalogueEntity) {

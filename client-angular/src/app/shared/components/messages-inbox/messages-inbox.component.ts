@@ -22,6 +22,9 @@ import { ShellContextService } from '../../../core/services/shell-context.servic
 import { Project, Message } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
+import {
+  CategoryCirclesComponent, CategoryCircle
+} from '../category-circles/category-circles.component';
 
 const STATUSES = [
   { id: 'all',           label: 'All',     color: '' },
@@ -72,7 +75,7 @@ interface VendorThread {
     CommonModule, FormsModule, RouterModule,
     ButtonModule, InputTextModule, DropdownModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent
+    GbpPipe, LoadingSpinnerComponent, CategoryCirclesComponent
   ],
   providers: [MessageService, DatePipe],
   template: `
@@ -92,46 +95,19 @@ interface VendorThread {
       </div>
 
       <!-- ═══════════════ CATEGORY CIRCLES ═══════════════
-           Markup mirrors catalogue-grid (marketplace, suppliers)
-           verbatim — same wrap, same circle, same fallback chain
-           (cover_image_url → icon_name → initials), same data-circle-size.
-           Only difference: --unscoped means "no threads in this category"
-           here (vs. "not in project_categories" on marketplace), and we
-           overlay a small red unread-count badge. Both are styled in
-           styles.css under the shared CATALOGUE / INBOX SHELL block. -->
-      <div class="bp-cat-circles-wrap" *ngIf="categoryFolders.length > 0" data-circle-size="lg">
-        <div class="bp-cat-circles">
-          <button type="button"
-                  class="bp-cat-circle-btn"
-                  [class.active]="activeFolder === 'all'"
-                  (click)="activeFolder = 'all'; cdr.detectChanges()">
-            <div class="bp-cat-circle bp-cat-circle--all">
-              <lucide-icon name="layers" [size]="22"></lucide-icon>
-            </div>
-            <span class="bp-cat-circle-label">All</span>
-          </button>
-          <button *ngFor="let f of categoryFolders"
-                  type="button"
-                  class="bp-cat-circle-btn"
-                  [class.active]="activeFolder === f.id"
-                  [class.bp-cat-circle-btn--unscoped]="threadCountForCategory(f.id) === 0"
-                  (click)="activeFolder = f.id; cdr.detectChanges()">
-            <div class="bp-cat-circle"
-                 [style.background-image]="f.cover_image_url ? 'url(' + f.cover_image_url + ')' : null"
-                 [style.background-color]="!f.cover_image_url && f.icon_name && f.icon_color ? f.icon_color : null"
-                 [class.bp-cat-circle--no-image]="!f.cover_image_url && !f.icon_name">
-              <lucide-icon *ngIf="!f.cover_image_url && f.icon_name"
-                           [name]="f.icon_name" [size]="22"
-                           class="bp-cat-circle-lucide"></lucide-icon>
-              <span *ngIf="!f.cover_image_url && !f.icon_name"
-                    class="bp-cat-circle-initials">{{ (f.name || '?').charAt(0) }}</span>
-              <span *ngIf="unreadCountForCategory(f.id) > 0"
-                    class="bp-cat-circle-badge">{{ unreadCountForCategory(f.id) }}</span>
-            </div>
-            <span class="bp-cat-circle-label">{{ f.name }}</span>
-          </button>
-        </div>
-      </div>
+           Same component the Marketplace tab mounts — single source of
+           truth for the circle row (markup, scroll, hover, active,
+           sizing). Inputs: in-scope project categories, current
+           activeFolder, unread badges, "no-threads = greyed". -->
+      <app-category-circles
+        *ngIf="categoryFolders.length > 0"
+        [categories]="categoryFolders"
+        [activeId]="activeFolder"
+        size="lg"
+        [unscopedIds]="emptyCategoryIds"
+        [badgeCounts]="unreadBadgeCounts"
+        (select)="onCircleSelect($event)">
+      </app-category-circles>
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
            Reuses the marketplace bp-cat-body--detail grid: sidebar
@@ -139,7 +115,7 @@ interface VendorThread {
            column is message-specific; the shell is shared. -->
       <div class="bp-cat-body bp-cat-body--detail" data-detail-size="md">
 
-        <!-- ── LEFT SIDEBAR: search + suppliers ── -->
+        <!-- ── LEFT SIDEBAR: search + status + suppliers ── -->
         <aside class="bp-cat-sidebar">
           <div class="bp-sidebar-search">
             <lucide-icon name="search" [size]="14" class="bp-sidebar-search-icon"></lucide-icon>
@@ -150,8 +126,20 @@ interface VendorThread {
                    class="bp-sidebar-search-input"/>
           </div>
 
-          <div class="bp-sidebar-sublabel">Suppliers</div>
+          <!-- v1.28: STATUS moved here from the centre column so all the
+               filters share one rail. Uses the shared bp-sidebar-item /
+               -count primitives — identical look to the suppliers list. -->
+          <div class="bp-sidebar-sublabel">Status</div>
+          <button *ngFor="let s of statuses"
+                  type="button"
+                  class="bp-sidebar-item"
+                  [class.active]="activeStatus === s.id"
+                  (click)="activeStatus = s.id; cdr.detectChanges()">
+            <span>{{ s.label }}</span>
+            <span class="bp-sidebar-count">{{ s.id === 'all' ? threads.length : countByStatus(s.id) }}</span>
+          </button>
 
+          <div class="bp-sidebar-sublabel" style="margin-top:16px">Suppliers</div>
           <button type="button"
                   class="bp-sidebar-item"
                   [class.active]="activeSupplier === 'all'"
@@ -199,18 +187,8 @@ interface VendorThread {
             </div>
           </div>
 
-          <!-- Status filter tabs -->
-          <div class="bp-msg-filter">
-            <button *ngFor="let s of statuses"
-                    type="button"
-                    class="bp-msg-filter-btn"
-                    [class.active]="activeStatus === s.id"
-                    (click)="activeStatus = s.id; cdr.detectChanges()">
-              {{ s.label }}
-              <span *ngIf="s.id !== 'all' && countByStatus(s.id) > 0"
-                    class="bp-msg-filter-n">{{ countByStatus(s.id) }}</span>
-            </button>
-          </div>
+          <!-- v1.28: Status pills moved to the left sidebar — only ONE
+               filter rail across the page now. -->
 
           <!-- Empty state -->
           <div *ngIf="filteredThreads().length === 0" class="bp-msg-empty">
@@ -424,42 +402,8 @@ interface VendorThread {
       flex: 1; min-width: 0;
     }
 
-    /* Status filter tabs */
-    .bp-msg-filter {
-      display: flex;
-      border-bottom: 0.5px solid var(--color-border);
-      flex-shrink: 0;
-    }
-    .bp-msg-filter-btn {
-      flex: 1;
-      padding: 8px 6px;
-      font-size: 10.5px; font-weight: 500;
-      text-align: center;
-      cursor: pointer;
-      border: none;
-      background: none;
-      color: var(--color-text-muted);
-      border-bottom: 2px solid transparent;
-      font-family: var(--font-body);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-    }
-    .bp-msg-filter-btn:hover { color: var(--color-text-primary); }
-    .bp-msg-filter-btn.active {
-      color: var(--theme-accent);
-      border-bottom-color: var(--theme-accent);
-      font-weight: 600;
-    }
-    .bp-msg-filter-n {
-      font-size: 9px; font-weight: 700;
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-      border-radius: 20px;
-      padding: 1px 6px;
-      min-width: 16px;
-    }
+    /* v1.28: .bp-msg-filter / -btn / -n removed — status filter now
+       lives in the left sidebar using shared bp-sidebar-item/-count. */
 
     /* Empty state */
     .bp-msg-empty {
@@ -948,6 +892,29 @@ export class MessagesInboxComponent implements OnInit {
       badge on the circle. */
   unreadCountForCategory(catId: string): number {
     return this.threads.filter(t => t.categoryId === catId && t.unread).length;
+  }
+
+  /** v1.28: adapters that feed <app-category-circles>. */
+  get emptyCategoryIds(): ReadonlySet<string> {
+    const s = new Set<string>();
+    for (const f of this.categoryFolders) {
+      if (this.threadCountForCategory(f.id) === 0) s.add(f.id);
+    }
+    return s;
+  }
+  get unreadBadgeCounts(): ReadonlyMap<string, number> {
+    const m = new Map<string, number>();
+    for (const f of this.categoryFolders) {
+      const n = this.unreadCountForCategory(f.id);
+      if (n > 0) m.set(f.id, n);
+    }
+    return m;
+  }
+  /** Circle-strip select handler. Mirrors the catalogue-grid pattern:
+      string id from the shared component, mapped onto activeFolder. */
+  onCircleSelect(id: string) {
+    this.activeFolder = id;
+    this.cdr.detectChanges();
   }
 
   /** v1.27: distinct suppliers across the current thread set, with the
