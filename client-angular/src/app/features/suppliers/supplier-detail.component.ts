@@ -939,7 +939,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // ── Event handlers ────────────────────────────────────────────────────
 
   goBack() {
-    this.router.navigate(['/suppliers']);
+    // v1.32: history.back() so the user lands wherever they came
+    // from — dashboard, /suppliers?favourites=true, a project page,
+    // etc. — instead of always being dumped on /suppliers. If there's
+    // no history entry (deep-link / fresh tab) we fall back to the
+    // catalogue.
+    if (history.length > 1) history.back();
+    else this.router.navigate(['/suppliers']);
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}

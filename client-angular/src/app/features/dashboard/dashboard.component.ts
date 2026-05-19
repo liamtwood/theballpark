@@ -397,9 +397,13 @@ type DashTab = 'projects';
           <div class="bp-saved-hd">SAVED SUPPLIERS</div>
           <ng-container *ngIf="favSuppliers.length > 0; else noFavSuppliers">
             <!-- 2-column grid so each card sits at ~160px wide and the
-                 140px cover lands ~1.15:1 (matches marketplace). -->
+                 140px cover lands ~1.15:1 (matches marketplace).
+                 v1.32: each card is now an <a> linking to the
+                 supplier's shop front (/suppliers/:id). -->
             <div class="bp-sup-grid">
-              <div *ngFor="let s of favSuppliers.slice(0,2)" class="bp-sup-card">
+              <a *ngFor="let s of favSuppliers.slice(0,2)"
+                 [routerLink]="['/suppliers', s.ref_id]"
+                 class="bp-sup-card">
                 <div class="bp-sup-img bp-sup-bg-default"
                      [style.background-image]="s.ref_image_url ? 'url(' + s.ref_image_url + ')' : null">
                   <!-- v1.22i: lucide heart in a small white circle.
@@ -413,10 +417,13 @@ type DashTab = 'projects';
                   <div class="bp-sup-name">{{ s.ref_name }}</div>
                   <div class="bp-sup-meta">Saved</div>
                 </div>
-              </div>
+              </a>
             </div>
+            <!-- v1.32: "My Suppliers" lands on the marketplace
+                 (a.k.a. supplier-list at /suppliers) pre-filtered
+                 to the user's hearted suppliers. -->
             <a [routerLink]="['/suppliers']"
-               [queryParams]="{ view: 'suppliers' }"
+               [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My Suppliers
             </a>
@@ -424,7 +431,7 @@ type DashTab = 'projects';
           <ng-template #noFavSuppliers>
             <div class="bp-empty">No saved suppliers yet</div>
             <a [routerLink]="['/suppliers']"
-               [queryParams]="{ view: 'suppliers' }"
+               [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My suppliers
             </a>

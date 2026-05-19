@@ -154,6 +154,11 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // State
   loading = true;
   viewMode: 'suppliers' | 'items' = 'items';
+  /** v1.32: when ?favourites=true is in the URL, restrict the list to
+      the user's hearted suppliers (or items) and surface a "My
+      Suppliers" hero + back button so the entry-from-dashboard
+      context is obvious. */
+  favouritesOnly = false;
   activeCategory = 'all';
   activeTag = '';
   searchTerm = '';
@@ -249,6 +254,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     if (viewParam === 'suppliers' || viewParam === 'items') {
       this.viewMode = viewParam;
     }
+    // v1.32: ?favourites=true opt-in. The flag drives both the
+    // mapSuppliers/mapItems filter and the hero label/back button.
+    this.favouritesOnly = this.route.snapshot.queryParams['favourites'] === 'true';
 
     // Resolve the current org once on init — drives currentOrgId/Type for
     // the catalogue-grid detail-panel actions (agency vs supplier; isOwner).
@@ -324,6 +332,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
     this.favSvc.supplierFavIds$.subscribe(ids => {
       this.supplierFavIds = new Set(ids);
+      // v1.32: re-map so the favourites-only filter responds to
+      // toggle events without a manual refresh.
+      if (this.favouritesOnly) this.mapSuppliers();
       this.cdr.detectChanges();
     });
     this.favSvc.itemFavIds$.subscribe(ids => {
@@ -335,11 +346,18 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.shellCtx.reset(); }
 
   private applyShellHero(pills: string[]) {
+    // v1.32: surface "My Suppliers" + a back button when the list is
+    // filtered to favourites. The back link uses history.back() so
+    // the user returns to wherever they came from (dashboard, project
+    // page, anywhere with a "My Suppliers" link).
+    const favHero = this.favouritesOnly;
     this.shellCtx.set({
-      heroTitle: this.configSvc.platformName,
-      heroSub: this.configSvc.catalogueLabel.toUpperCase(),
+      heroTitle: favHero ? 'My Suppliers' : this.configSvc.platformName,
+      heroSub: (favHero ? 'SAVED ' : '') +
+               this.configSvc.catalogueLabel.toUpperCase(),
       pills,
-      tabs: []
+      tabs: [],
+      back: favHero ? { label: 'Back', onBack: () => history.back() } : undefined
     });
   }
 
@@ -382,6 +400,12 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   mapSuppliers() {
     let filtered = this.suppliers;
+    // v1.32: ?favourites=true restricts to hearted suppliers. The fav
+    // ids are kept in sync via favSvc.supplierFavIds$ (subscribed in
+    // ngOnInit) — same Set powering the heart fill state on cards.
+    if (this.favouritesOnly) {
+      filtered = filtered.filter(s => this.supplierFavIds.has(s.id));
+    }
     if (this.activeCategory !== 'all') {
       filtered = filtered.filter(s => {
         const catIds: string[] = (s as any).category_ids || [];
