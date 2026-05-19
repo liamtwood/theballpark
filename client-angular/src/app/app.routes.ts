@@ -50,6 +50,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/suppliers/item-detail.component').then(m => m.ItemDetailComponent),
         data: { pageLabel: '', tabs: [] }
       },
+      // v1.34: consumer-facing item detail page (gallery + specs + related).
+      // The supplier-context page at /suppliers/:id/items/:itemId stays as-is.
+      {
+        path: 'items/:id',
+        loadComponent: () => import('./features/items/pages/item-detail-page/item-detail-page.component').then(m => m.ItemDetailPageComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
       {
         path: 'favourites',
         loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
