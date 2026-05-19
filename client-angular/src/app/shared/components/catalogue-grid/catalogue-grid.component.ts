@@ -672,45 +672,10 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-breadcrumb-sep { color: var(--color-text-muted); }
     .bp-breadcrumb-current { font-weight: 500; color: var(--color-text-primary); }
 
-    .bp-cat-circles-wrap {
-      padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border);
-      position: relative; display: flex; align-items: flex-start;
-      min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible;
-      --bp-circle-w: 96px;
-    }
-    .bp-cat-circles-wrap[data-circle-size="sm"] { --bp-circle-w: 56px; }
-    .bp-cat-circles-wrap[data-circle-size="md"] { --bp-circle-w: 72px; }
-    .bp-cat-circles-wrap[data-circle-size="lg"] { --bp-circle-w: 96px; }
-    .bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
-    .bp-circles-arrow {
-      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-      background: var(--color-surface); border: 0.5px solid var(--color-border);
-      color: var(--theme-accent); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 32px; transition: all 0.15s; z-index: 2;
-    }
-    .bp-circles-arrow:hover { border-color: var(--theme-accent); }
-    .bp-circles-arrow--left { margin-right: 8px; }
-    .bp-circles-arrow--right { margin-left: 8px; }
-    /* Build mode — scoped/all toggle, sits to the right of the strip. */
-    .bp-circles-toggle {
-      flex-shrink: 0;
-      margin: 32px 0 0 12px;
-      background: none; border: none; padding: 4px 0; cursor: pointer;
-      font-family: var(--font-body); font-size: 12px; font-weight: 500;
-      color: var(--theme-accent); white-space: nowrap;
-    }
-    .bp-circles-toggle:hover { opacity: 0.75; }
-    .bp-cat-circles::-webkit-scrollbar { display: none; }
-    .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
-    .bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
-    .bp-cat-circle--all { background-color: var(--color-surface); }
-    .bp-cat-circle--no-image { background-color: var(--theme-bg); }
-    .bp-cat-circle-initials { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
-    .bp-cat-circle-icon { color: var(--theme-accent); }
-    .bp-cat-circle-lucide { color: var(--color-text-muted); }
-    .bp-cat-circle--logo { background: var(--theme-bg); }
-    .bp-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
+    /* v1.27: shell classes (circles + 3-column body + sidebar primitives
+       + circle edit) live in styles.css now — single source of truth
+       shared with app-messages-inbox. Catalogue-specific overlays only
+       below: edit-pencil on circles, sidebar empty/back/check helpers. */
     .bp-cat-circle-edit {
       position: absolute; bottom: 2px; right: 2px;
       width: 22px; height: 22px; border-radius: 50%;
@@ -721,56 +686,6 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
     .bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
-
-    .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
-    .bp-cat-circle-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
-    .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
-
-    /* Build mode — categories not in project_categories render greyed.
-       Click still works (parent emits scope-in via categoryScopeChange). */
-    .bp-cat-circle-btn--unscoped .bp-cat-circle { filter: grayscale(0.85); opacity: 0.45; }
-    .bp-cat-circle-btn--unscoped .bp-cat-circle-label { color: var(--color-text-muted); font-weight: 500; }
-    .bp-cat-circle-btn--unscoped:hover .bp-cat-circle { filter: grayscale(0.4); opacity: 0.75; }
-    .bp-cat-circle-btn--unscoped:hover .bp-cat-circle-label { color: var(--color-text-secondary); }
-
-    .bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
-    .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
-    /* Detail panel width — driven by [data-detail-size]. sm/md/lg = 260/320/420.
-       Default (no attribute) keeps the historical 260px so existing pages are
-       unaffected. */
-    .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
-    .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
-    .bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
-    /* Wider detail panel when the parent projects a custom one (e.g. the
-       feedback notes preview). Matches the drawer minimum (520px). */
-    .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
-    /* Detail-mode = drawer in table view: suppress the third column so
-       the main fills the width and the page's own drawer slides in. */
-    .bp-cat-body--detail.bp-cat-body--no-inline-detail,
-    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="sm"],
-    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="md"],
-    .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
-      grid-template-columns: 260px 1fr;
-    }
-    .bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
-    .bp-cat-main { padding: 20px 28px; overflow-y: auto; min-width: 0; }
-    .bp-cat-detail { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
-
-    .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }
-    .bp-sidebar-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
-    .bp-sidebar-search-input { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-size: 12px !important; }
-    .bp-sidebar-sublabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 8px; }
-    .bp-sidebar-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); background: none; border: none; border-radius: var(--border-radius-md, 6px); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
-    .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
-    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; }
-    .bp-sidebar-count {
-      font-size: 11px;
-      color: var(--color-text-secondary);
-      background: var(--color-background-secondary, var(--color-surface));
-      border: 0.5px solid var(--color-border);
-      border-radius: 20px;
-      padding: 1px 7px;
-    }
     .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-sidebar-back:hover { opacity: 0.75; }
     /* Empty-state row inside the sidebar (e.g. drilled into a category
@@ -812,12 +727,8 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-crumb-link:hover { color: var(--theme-accent); }
     .bp-crumb-active { color: var(--color-text-primary); font-weight: 500; }
 
-    .bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-    .bp-cat-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
-    .bp-cat-section-count { font-size: 12px; color: var(--color-text-muted); flex: 1; }
-    .bp-view-toggle { display: flex; gap: 4px; }
-    .bp-view-btn { width: 30px; height: 30px; border-radius: 6px; border: 0.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-    .bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    /* v1.27: bp-cat-section-header / -title / -count + bp-view-toggle /
+       -btn live in styles.css now (shared with app-messages-inbox). */
     .bp-cat-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--color-text-muted); }
 
     /* LIST VIEW */

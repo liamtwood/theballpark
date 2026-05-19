@@ -91,94 +91,100 @@ interface VendorThread {
         </p-dropdown>
       </div>
 
-      <!-- ═══════════════ CATEGORY CIRCLES ═══════════════ -->
-      <div class="bp-msg-circles" *ngIf="categoryFolders.length > 0">
-        <button type="button"
-                class="bp-msg-ci"
-                [class.on]="activeFolder === 'all'"
-                (click)="activeFolder = 'all'; cdr.detectChanges()">
-          <span class="bp-msg-circle">
-            <lucide-icon name="layers" [size]="22"></lucide-icon>
-          </span>
-          <span class="bp-msg-cn">All</span>
-        </button>
-        <button *ngFor="let f of categoryFolders"
-                type="button"
-                class="bp-msg-ci"
-                [class.on]="activeFolder === f.id"
-                [class.empty]="threadCountForCategory(f.id) === 0"
-                (click)="activeFolder = f.id; cdr.detectChanges()">
-          <span class="bp-msg-circle">
-            <lucide-icon [name]="getCatIcon(f.name)" [size]="22"></lucide-icon>
-            <span *ngIf="unreadCountForCategory(f.id) > 0"
-                  class="bp-msg-circle-badge">{{ unreadCountForCategory(f.id) }}</span>
-          </span>
-          <span class="bp-msg-cn">{{ f.name }}</span>
-        </button>
+      <!-- ═══════════════ CATEGORY CIRCLES ═══════════════
+           Shared shell with catalogue-grid (marketplace, suppliers).
+           Class names come from styles.css; component contributes
+           data only (the in-scope project_categories + unread badge). -->
+      <div class="bp-cat-circles-wrap" *ngIf="categoryFolders.length > 0" data-circle-size="sm">
+        <div class="bp-cat-circles">
+          <button type="button"
+                  class="bp-cat-circle-btn"
+                  [class.active]="activeFolder === 'all'"
+                  (click)="activeFolder = 'all'; cdr.detectChanges()">
+            <div class="bp-cat-circle bp-cat-circle--all">
+              <lucide-icon name="layers" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+            </div>
+            <span class="bp-cat-circle-label">All</span>
+          </button>
+          <button *ngFor="let f of categoryFolders"
+                  type="button"
+                  class="bp-cat-circle-btn"
+                  [class.active]="activeFolder === f.id"
+                  [class.bp-cat-circle-btn--unscoped]="threadCountForCategory(f.id) === 0"
+                  (click)="activeFolder = f.id; cdr.detectChanges()">
+            <div class="bp-cat-circle bp-cat-circle--no-image">
+              <lucide-icon [name]="getCatIcon(f.name)" [size]="20" class="bp-cat-circle-lucide"></lucide-icon>
+              <span *ngIf="unreadCountForCategory(f.id) > 0"
+                    class="bp-cat-circle-badge">{{ unreadCountForCategory(f.id) }}</span>
+            </div>
+            <span class="bp-cat-circle-label">{{ f.name }}</span>
+          </button>
+        </div>
       </div>
 
-      <!-- ═══════════════ THREE-COLUMN GRID ═══════════════ -->
-      <div class="bp-msg-grid">
+      <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
+           Reuses the marketplace bp-cat-body--detail grid: sidebar
+           (260) | main (1fr) | detail (md=320). Content inside each
+           column is message-specific; the shell is shared. -->
+      <div class="bp-cat-body bp-cat-body--detail" data-detail-size="md">
 
         <!-- ── LEFT SIDEBAR: search + suppliers ── -->
-        <aside class="bp-msg-side">
-          <div class="bp-msg-side-label">Suppliers</div>
-
-          <div class="bp-msg-search">
-            <lucide-icon name="search" [size]="13" class="bp-msg-search-icn"></lucide-icon>
+        <aside class="bp-cat-sidebar">
+          <div class="bp-sidebar-search">
+            <lucide-icon name="search" [size]="14" class="bp-sidebar-search-icon"></lucide-icon>
             <input pInputText type="text"
                    [(ngModel)]="searchTerm"
                    (ngModelChange)="onSearchChange()"
                    placeholder="Search..."
-                   class="bp-msg-search-in"/>
+                   class="bp-sidebar-search-input"/>
           </div>
 
+          <div class="bp-sidebar-sublabel">Suppliers</div>
+
           <button type="button"
-                  class="bp-msg-supp"
+                  class="bp-sidebar-item"
                   [class.active]="activeSupplier === 'all'"
                   (click)="activeSupplier = 'all'; cdr.detectChanges()">
             <span>All threads</span>
-            <span class="bp-msg-supp-n">{{ threads.length }}</span>
+            <span class="bp-sidebar-count">{{ threads.length }}</span>
           </button>
           <button *ngFor="let s of supplierList"
                   type="button"
-                  class="bp-msg-supp"
+                  class="bp-sidebar-item"
                   [class.active]="activeSupplier === s.id"
                   (click)="activeSupplier = s.id; cdr.detectChanges()">
             <span class="bp-msg-supp-name">{{ s.name }}</span>
-            <span class="bp-msg-supp-n">{{ s.count }}</span>
+            <span class="bp-sidebar-count">{{ s.count }}</span>
           </button>
         </aside>
 
-        <!-- ── CENTRE: inbox header + filter + list/card/table ── -->
-        <section class="bp-msg-centre">
-          <div class="bp-msg-centre-head">
-            <span class="bp-msg-centre-title">MESSAGES</span>
-            <div class="bp-msg-centre-right">
-              <span class="bp-msg-centre-count">
-                {{ filteredThreads().length }}
-                {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
-              </span>
-              <div class="bp-msg-view-toggle">
-                <button type="button" class="bp-msg-view-btn"
-                        [class.active]="activeView === 'list'"
-                        title="List"
-                        (click)="activeView = 'list'; cdr.detectChanges()">
-                  <lucide-icon name="list" [size]="14"></lucide-icon>
-                </button>
-                <button type="button" class="bp-msg-view-btn"
-                        [class.active]="activeView === 'card'"
-                        title="Cards"
-                        (click)="activeView = 'card'; cdr.detectChanges()">
-                  <lucide-icon name="layout-grid" [size]="14"></lucide-icon>
-                </button>
-                <button type="button" class="bp-msg-view-btn"
-                        [class.active]="activeView === 'table'"
-                        title="Table"
-                        (click)="activeView = 'table'; cdr.detectChanges()">
-                  <lucide-icon name="table" [size]="14"></lucide-icon>
-                </button>
-              </div>
+        <!-- ── MAIN: section header + filter + list/card/table ── -->
+        <section class="bp-cat-main">
+          <div class="bp-cat-section-header">
+            <span class="bp-cat-section-title">MESSAGES</span>
+            <span class="bp-cat-section-count">
+              {{ filteredThreads().length }}
+              {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
+            </span>
+            <div class="bp-view-toggle">
+              <button type="button" class="bp-view-btn"
+                      [class.active]="activeView === 'list'"
+                      title="List"
+                      (click)="activeView = 'list'; cdr.detectChanges()">
+                <lucide-icon name="list" [size]="14"></lucide-icon>
+              </button>
+              <button type="button" class="bp-view-btn"
+                      [class.active]="activeView === 'card'"
+                      title="Cards"
+                      (click)="activeView = 'card'; cdr.detectChanges()">
+                <lucide-icon name="layout-grid" [size]="14"></lucide-icon>
+              </button>
+              <button type="button" class="bp-view-btn"
+                      [class.active]="activeView === 'table'"
+                      title="Table"
+                      (click)="activeView = 'table'; cdr.detectChanges()">
+                <lucide-icon name="table" [size]="14"></lucide-icon>
+              </button>
             </div>
           </div>
 
@@ -299,8 +305,8 @@ interface VendorThread {
           </div>
         </section>
 
-        <!-- ── RIGHT: conversation panel ── -->
-        <section class="bp-msg-conv">
+        <!-- ── RIGHT: conversation panel (detail column) ── -->
+        <section class="bp-cat-detail bp-msg-conv">
           <ng-container *ngIf="!activeThread">
             <div class="bp-msg-conv-empty">
               <lucide-icon name="inbox" [size]="28"></lucide-icon>
@@ -401,211 +407,10 @@ interface VendorThread {
       margin: 0 auto;
     }
 
-    /* ── CATEGORY CIRCLES ── matches Brief/Marketplace pattern */
-    .bp-msg-circles {
-      display: flex; gap: 20px;
-      padding: 6px 28px 18px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .bp-msg-circles::-webkit-scrollbar { display: none; }
-    .bp-msg-ci {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      cursor: pointer; flex-shrink: 0;
-      background: none; border: none; padding: 0;
-      font-family: var(--font-body);
-      min-width: 76px;
-    }
-    .bp-msg-ci.empty { opacity: 0.45; }
-    .bp-msg-circle {
-      position: relative;
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--color-text-secondary);
-      transition: border-color 0.15s, box-shadow 0.18s, background 0.15s, color 0.15s;
-    }
-    .bp-msg-ci:hover .bp-msg-circle {
-      border-color: var(--theme-accent);
-      color: var(--theme-accent);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .bp-msg-ci.on .bp-msg-circle {
-      background: var(--theme-bg);
-      border-color: var(--theme-accent);
-      color: var(--theme-accent);
-    }
-    .bp-msg-circle-badge {
-      position: absolute;
-      top: -3px; right: -3px;
-      min-width: 18px; height: 18px;
-      padding: 0 5px;
-      border-radius: 9px;
-      background: var(--color-danger);
-      color: #fff;
-      font-size: 9px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      border: 1.5px solid var(--theme-bg);
-      font-family: var(--font-body);
-    }
-    .bp-msg-cn {
-      font-size: 10px; font-weight: 500;
-      color: var(--color-text-secondary);
-      text-align: center; max-width: 76px;
-      line-height: 1.3;
-    }
-    .bp-msg-ci.on .bp-msg-cn {
-      color: var(--theme-accent); font-weight: 600;
-    }
-
-    /* ── THREE-COLUMN GRID ── */
-    .bp-msg-grid {
-      display: grid;
-      grid-template-columns: 220px 1fr 380px;
-      gap: 0;
-      border: 0.5px solid var(--color-border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--color-surface);
-      min-height: 560px;
-      max-width: 1200px;
-      margin: 0 24px 24px;
-    }
-    @media (max-width: 1100px) {
-      .bp-msg-grid { grid-template-columns: 200px 1fr 320px; }
-    }
-    @media (max-width: 880px) {
-      .bp-msg-grid { grid-template-columns: 1fr; }
-    }
-
-    /* ── LEFT SIDEBAR ── */
-    .bp-msg-side {
-      border-right: 0.5px solid var(--color-border);
-      background: var(--theme-bg);
-      display: flex; flex-direction: column;
-      overflow-y: auto;
-    }
-    .bp-msg-side-label {
-      padding: 12px 14px 8px;
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--theme-accent);
-    }
-    .bp-msg-search {
-      position: relative;
-      padding: 0 10px 8px;
-    }
-    .bp-msg-search-icn {
-      position: absolute;
-      left: 18px; top: 50%;
-      transform: translateY(-60%);
-      color: var(--color-text-muted);
-      pointer-events: none;
-    }
-    .bp-msg-search-in {
-      width: 100%;
-      padding: 6px 10px 6px 28px !important;
-      font-size: 11px !important;
-      border-radius: 6px !important;
-      border: 0.5px solid var(--color-border) !important;
-      background: var(--color-surface) !important;
-      font-family: var(--font-body);
-    }
-    .bp-msg-search-in:focus { border-color: var(--theme-accent) !important; }
-    .bp-msg-supp {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px;
-      padding: 8px 14px;
-      font-size: 11.5px;
-      font-family: var(--font-body);
-      background: none; border: none;
-      border-bottom: 0.5px solid var(--color-border);
-      color: var(--color-text-primary);
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.1s;
-    }
-    .bp-msg-supp:hover { background: var(--color-surface); }
-    .bp-msg-supp.active {
-      background: var(--color-surface);
-      color: var(--theme-accent);
-      font-weight: 600;
-    }
+    /* Long supplier names truncate inside the shared bp-sidebar-item. */
     .bp-msg-supp-name {
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       flex: 1; min-width: 0;
-    }
-    .bp-msg-supp-n {
-      font-size: 9.5px;
-      color: var(--color-text-muted);
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      border-radius: 20px;
-      padding: 1px 7px;
-      min-width: 18px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .bp-msg-supp.active .bp-msg-supp-n {
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-      border-color: var(--theme-accent);
-    }
-
-    /* ── CENTRE COLUMN ── */
-    .bp-msg-centre {
-      border-right: 0.5px solid var(--color-border);
-      display: flex; flex-direction: column;
-      overflow-y: auto;
-      background: var(--color-surface);
-    }
-    .bp-msg-centre-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 14px;
-      border-bottom: 0.5px solid var(--color-border);
-      flex-shrink: 0;
-    }
-    .bp-msg-centre-title {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--theme-accent);
-    }
-    .bp-msg-centre-right {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .bp-msg-centre-count {
-      font-size: 11px;
-      color: var(--color-text-muted);
-      font-variant-numeric: tabular-nums;
-    }
-    .bp-msg-view-toggle {
-      display: flex;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .bp-msg-view-btn {
-      padding: 4px 8px;
-      border: none;
-      background: var(--color-surface);
-      color: var(--color-text-muted);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: color 0.1s, background 0.1s;
-    }
-    .bp-msg-view-btn:hover { color: var(--theme-accent); }
-    .bp-msg-view-btn.active {
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-    }
-    .bp-msg-view-btn + .bp-msg-view-btn {
-      border-left: 0.5px solid var(--color-border);
     }
 
     /* Status filter tabs */
@@ -995,9 +800,20 @@ export class MessagesInboxComponent implements OnInit {
   loadCategories(pid?: string) {
     const id = pid || this.boundProjectId;
     if (!id) return;
-    this.projectCategorySvc.getByProject(id).subscribe({
+    // v1.27b: use the joined /projects/:id/categories endpoint so the
+    // circles display the proper categories.name (instead of the often-
+    // null project_categories.name column that surfaced as "Unnamed").
+    // Same endpoint that powers the Brief/Marketplace tabs — guarantees
+    // the circles only show categories that are IN SCOPE for this
+    // project (project_categories.is_active = true).
+    this.projectSvc.getCategories(id).subscribe({
       next: cats => {
-        this.categoryFolders = (cats || []).map(c => ({ id: c.id, name: c.name || 'Unnamed' }));
+        this.categoryFolders = (cats || []).map(c => ({
+          id: c.id,
+          // Joined column from categories table; fall back to the raw
+          // project_categories.name then a generic placeholder.
+          name: (c as any).category_name || c.name || 'Untitled category'
+        }));
         this.cdr.detectChanges();
       }
     });
