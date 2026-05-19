@@ -28,11 +28,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/projects/pages/project-list/project-list.component').then(m => m.ProjectListComponent),
         data: { pageLabel: '', tabs: [] }
       },
-      {
-        path: 'projects/new',
-        loadComponent: () => import('./features/projects/pages/project-create/project-create.component').then(m => m.ProjectCreateComponent),
-        data: { pageLabel: '', tabs: [] }
-      },
+      // v1.30: /projects/new removed — replaced by the intake modal
+      // mounted in app-shell and opened via CreateProjectService.
       {
         path: 'projects/:id',
         loadComponent: () => import('./features/projects/pages/project-detail/project-detail.component').then(m => m.ProjectDetailComponent),

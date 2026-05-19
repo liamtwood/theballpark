@@ -24,6 +24,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
+import { CreateProjectService } from '../../core/services/create-project.service';
 
 type DashTab = 'projects';
 
@@ -997,6 +998,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private shellCtx: ShellContextService,
     private configStripSvc: ConfigStripService,
     private favSvc: FavouriteService,
+    private createProjectSvc: CreateProjectService,
     private confirm: ConfirmationService,
     private msg: MessageService,
     private router: Router,
@@ -1125,7 +1127,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   createProject() {
-    this.router.navigate(['/projects/new']);
+    // v1.30: opens the intake modal mounted at the app-shell level
+    // (replaces the standalone /projects/new page).
+    this.createProjectSvc.open();
   }
 
   /** Extract the year from an event_date for the past-events carousel

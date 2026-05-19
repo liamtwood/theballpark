@@ -189,12 +189,12 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
           <div class="bp-evd-field">
             <label class="bp-field-label">Tier</label>
             <input pInputText *ngIf="!editing.type"
-                   [value]="(form.tier | titlecase) || '—'"
+                   [value]="tierDisplay()"
                    class="w-full bp-field-readonly" readonly/>
             <p-dropdown *ngIf="editing.type"
                         [(ngModel)]="form.tier"
                         [options]="tierOptions"
-                        optionLabel="label" optionValue="value"
+                        optionLabel="label" optionValue="code"
                         styleClass="w-full bp-evd-dropdown"
                         placeholder="Select tier">
             </p-dropdown>
@@ -558,11 +558,11 @@ export class EventDrawerComponent implements OnChanges {
     { label: 'Corporate',    value: 'corporate' },
     { label: 'Private',      value: 'private' },
   ];
-  tierOptions = [
-    { label: 'Core',      value: 'core' },
-    { label: 'Signature', value: 'signature' },
-    { label: 'Premium',   value: 'premium' },
-  ];
+  /** v1.30: tier dropdown is now codelist-driven (budget_tier rows
+      seeded into shared.codelists). Values stored on projects.tier:
+      'starter' / 'professional' / 'premium' / 'unknown'. The rule-
+      based brief parser writes the same codes verbatim. */
+  tierOptions: Codelist[] = [];
   /** Hydrated on init from CodelistService.getByName('currency'). */
   currencyOptions: Codelist[] = [];
 
@@ -584,6 +584,10 @@ export class EventDrawerComponent implements OnChanges {
   ) {
     this.codelistSvc.getByName('currency').subscribe(rows => {
       this.currencyOptions = rows || [];
+      this.cdr.markForCheck();
+    });
+    this.codelistSvc.getByName('budget_tier').subscribe(rows => {
+      this.tierOptions = rows || [];
       this.cdr.markForCheck();
     });
   }
@@ -687,6 +691,14 @@ export class EventDrawerComponent implements OnChanges {
     const code = this.form.currency || 'GBP';
     const row = this.currencyOptions.find(c => c.code === code);
     return row?.symbol || '£';
+  }
+  /** Tier label for view mode (resolved against the budget_tier
+      codelist; falls back to the raw code for legacy values). */
+  tierDisplay(): string {
+    const code = this.form.tier;
+    if (!code) return '—';
+    const row = this.tierOptions.find(t => t.code === code);
+    return row?.label || code;
   }
   /** Long display value for view mode — e.g. "GBP (£)". */
   currencyDisplay(): string {

@@ -316,7 +316,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
         <div class="mb-4" *ngIf="projects.length === 0">
           <label class="bp-field-label">Project</label>
           <p style="font-size:13px;color:var(--color-text-muted);">
-            No active projects. <a routerLink="/projects/new" style="color:var(--theme-accent);">Create one first →</a>
+            No active projects. <a routerLink="/dashboard" style="color:var(--theme-accent);">Create one first →</a>
           </p>
         </div>
         <div class="mb-4">

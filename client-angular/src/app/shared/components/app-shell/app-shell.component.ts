@@ -12,6 +12,9 @@ import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 import { TemplateRef } from '@angular/core';
+import {
+  CreateProjectModalComponent
+} from '../../../features/projects/components/create-project-modal/create-project-modal.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -19,7 +22,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -141,6 +144,10 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     </div>
 
     <p-toast></p-toast>
+
+    <!-- v1.30: single shared "+ New project" intake modal. Every
+         entry point in the app opens it via CreateProjectService.open(). -->
+    <app-create-project-modal></app-create-project-modal>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

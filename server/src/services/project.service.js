@@ -48,7 +48,10 @@ async function create(data) {
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
     parsed_brief_json, ai_hints, missing_fields, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-    default_vat_pct, tier, status_id
+    default_vat_pct, tier, status_id,
+    // v1.30: extended so the create-project intake modal can persist
+    // everything the rule-based parser extracts on the first save.
+    event_type, duration_days, po_ref, currency
   } = data;
   const result = await pool.query(
     `INSERT INTO projects (
@@ -57,15 +60,17 @@ async function create(data) {
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`,
+      default_vat_pct, tier, status_id,
+      event_type, duration_days, po_ref, currency
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id
+      default_vat_pct, tier, status_id,
+      event_type, duration_days, po_ref, currency
     ]
   );
   return result.rows[0];

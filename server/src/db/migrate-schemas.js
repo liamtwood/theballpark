@@ -748,7 +748,14 @@ const migrate = async () => {
         ('currency',       'EUR',       'EUR (€)',         '€',   3, true),
         ('currency',       'AED',       'AED (د.إ)',       'د.إ', 4, true),
         ('currency',       'CHF',       'CHF (Fr)',        'Fr',  5, true),
-        ('currency',       'SEK',       'SEK (kr)',        'kr',  6, true)
+        ('currency',       'SEK',       'SEK (kr)',        'kr',  6, true),
+        -- v1.30: budget_tier drives the Event drawer's Tier dropdown.
+        -- The rule-based brief parser also writes one of these codes
+        -- straight to projects.tier (no mapping to older item tiers).
+        ('budget_tier',    'starter',      'Starter',      NULL, 1, true),
+        ('budget_tier',    'professional', 'Professional', NULL, 2, true),
+        ('budget_tier',    'premium',      'Premium',      NULL, 3, true),
+        ('budget_tier',    'unknown',      'Unknown',      NULL, 4, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

@@ -9,6 +9,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ProjectService } from '../../../../core/services/project.service';
+import { CreateProjectService } from '../../../../core/services/create-project.service';
 import { Project } from '../../../../models';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
@@ -27,7 +28,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       <div class="flex items-center justify-between mb-8">
         <div><h1 class="text-2xl font-bold text-gray-900">Projects</h1>
           <p class="text-sm text-gray-500 mt-1">{{ projects.length }} total projects</p></div>
-        <a routerLink="/projects/new"><p-button icon="pi pi-plus" label="New Project"></p-button></a>
+        <p-button icon="pi pi-plus" label="New Project" (onClick)="createProjectSvc.open()"></p-button>
       </div>
       <div class="mb-6 max-w-md">
         <span class="p-input-icon-left w-full"><i class="pi pi-search"></i>
@@ -69,7 +70,12 @@ export class ProjectListComponent implements OnInit {
   searchTerm = '';
   loading = true;
 
-  constructor(private svc: ProjectService, private confirm: ConfirmationService, private msg: MessageService) {}
+  constructor(
+    private svc: ProjectService,
+    private confirm: ConfirmationService,
+    private msg: MessageService,
+    public  createProjectSvc: CreateProjectService
+  ) {}
   ngOnInit() { this.load(); }
 
   load() {
