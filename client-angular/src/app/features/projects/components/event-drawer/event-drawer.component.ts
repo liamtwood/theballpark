@@ -97,10 +97,22 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
           </div>
         </div>
 
-        <!-- v1.31: Status row sits at the top of EVENT DETAILS. Pill
-             rendered with the codelist meta.color in view mode;
-             dropdown (project_status codelist) in edit mode. -->
-        <div class="bp-evd-row bp-evd-row--1">
+        <!-- v1.31b: section rows reflowed.
+             Row 1: Ref | Status   (Status pill in view mode, dropdown in edit)
+             Row 2: Event name | Client
+             Row 3: Venue | City
+             Ref leads the section per request — Status sits to its right. -->
+        <div class="bp-evd-row bp-evd-row--2">
+          <div class="bp-evd-field">
+            <label class="bp-field-label">Ref</label>
+            <input pInputText *ngIf="!editing.details"
+                   [value]="form.po_ref || '—'"
+                   class="w-full bp-field-readonly" readonly/>
+            <input pInputText *ngIf="editing.details"
+                   [(ngModel)]="form.po_ref"
+                   placeholder="e.g. TVS-2026-047"
+                   class="w-full bp-input-edit"/>
+          </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Status</label>
             <div *ngIf="!editing.details" class="bp-evd-status-view">
@@ -118,21 +130,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
             </p-dropdown>
           </div>
         </div>
-
-        <!-- Row 1: Ref (narrow) | Event name | Client.
-             Ref is read-only in view mode but editable when the
-             section's pencil is clicked. -->
-        <div class="bp-evd-row bp-evd-row--ref">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Ref</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="form.po_ref || '—'"
-                   class="w-full bp-field-readonly bp-evd-ref" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.po_ref"
-                   placeholder="e.g. TVS-2026-047"
-                   class="w-full bp-input-edit"/>
-          </div>
+        <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Event name</label>
             <input pInputText *ngIf="!editing.details"
@@ -152,7 +150,6 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
                    class="w-full bp-input-edit"/>
           </div>
         </div>
-        <!-- Row 2: Venue | City -->
         <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Venue</label>
@@ -482,12 +479,9 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
        every other view-mode field. Previously it was rendered smaller
        + muted + letter-spaced which made it inconsistent with Event
        name and Client sitting next to it on the same row. */
-    /* Budget — serif display, 16px, per spec. */
-    :host ::ng-deep .bp-evd-budget.bp-field-readonly {
-      font-family: var(--font-display) !important;
-      font-size: 16px !important;
-      color: var(--color-text-primary) !important;
-    }
+    /* v1.31b: Budget view-mode now uses the standard body font like
+       every other view-mode field — the serif Playfair was sticking
+       out against its siblings (Margin %, Contingency %, VAT %). */
 
     /* Native-number prefix / suffix wrappers — keep inputs in sync with
        the rest of the grid (p-inputNumber's inner DOM doesn't pick up
