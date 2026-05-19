@@ -105,15 +105,10 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       <div *ngIf="categoryRows.length" class="bp-build-page">
 
         <!-- ── HEADER ── -->
-        <div class="bp-build-head">
-          <!-- v1.26: page title uses the shared bp-page-title token —
-               matches Settings/Brief/Event/Marketplace/Messages. -->
-          <h2 class="bp-page-title bp-page-title--with-sub">Estimate</h2>
-          <div class="bp-build-head-sub">
-            {{ categoryRows.length }} categor{{ categoryRows.length === 1 ? 'y' : 'ies' }}
-            · {{ totalSelectedCount() }} item{{ totalSelectedCount() === 1 ? '' : 's' }} selected
-          </div>
-        </div>
+        <!-- v1.26c: dropped the "N categories · N items selected" sub-line
+             so every project tab opens on a clean title + divider only,
+             matching the Settings pattern. -->
+        <h2 class="bp-page-title">Estimate</h2>
         <div class="bp-page-divider"></div>
 
         <div class="bp-build-grid">
@@ -488,23 +483,6 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       margin: 0 auto;
       padding: 24px 28px 60px;
     }
-    .bp-build-head {
-      text-align: center;
-      /* v1.26: the bp-page-divider below the head owns the gap to
-         content. Margin here is 0 so we don't stack double gaps. */
-      margin-bottom: 12px;
-    }
-    /* v1.26: tighten the page-title margin when a sub-line follows it
-       so the count/items label sits right under the serif heading. */
-    .bp-build-head .bp-page-title.bp-page-title--with-sub {
-      margin-bottom: 2px;
-    }
-    .bp-build-head-sub {
-      font-size: 12px;
-      color: var(--color-text-muted);
-      margin-top: 2px;
-    }
-
     /* ── TWO-COLUMN GRID ─────────────────────────────────────────── */
     /* v1.18b: right column bumped 280→320 so category names breathe.
        The estimate panel itself sets the same explicit width below. */

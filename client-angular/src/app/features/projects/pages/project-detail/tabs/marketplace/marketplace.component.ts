@@ -98,7 +98,13 @@ import {
 
     <p-toast></p-toast>
   `,
-  styles: [`:host { display: block; }`]
+  styles: [`
+    :host { display: block; }
+    /* v1.26c: breathing room between the tab bar and the page title —
+       Marketplace has no outer padded wrapper because catalogue-grid is
+       full-bleed, so the title needs its own top margin. */
+    :host .bp-page-title { margin-top: var(--section-pad); }
+  `]
 })
 export class MarketplaceComponent implements OnInit {
   loading = true;

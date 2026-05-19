@@ -21,7 +21,14 @@ import { MessagesInboxComponent } from '../../../../../../shared/components/mess
     <h2 class="bp-page-title">Messages</h2>
     <div class="bp-page-divider"></div>
     <app-messages-inbox [boundProjectId]="pid"></app-messages-inbox>
-  `
+  `,
+  styles: [`
+    :host { display: block; }
+    /* v1.26c: breathing room between the tab bar and the page title —
+       Messages has no outer padded wrapper because messages-inbox is
+       full-bleed, so the title needs its own top margin. */
+    :host .bp-page-title { margin-top: var(--section-pad); }
+  `]
 })
 export class MessagesComponent implements OnInit {
   pid = '';
