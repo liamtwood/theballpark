@@ -14,27 +14,35 @@ import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen, WandSparkles } from 'lucide-angular';
 
 import { ProjectService } from '../../../../core/services/project.service';
-import { Project } from '../../../../models';
+import { CodelistService } from '../../../../core/services/codelist.service';
+import { Project, Codelist } from '../../../../models';
 
 /**
- * Event drawer — v1.29.
+ * Event drawer — v1.29b.
  *
  * Replaces the standalone /event tab. Opens from the Overview page's
- * event strip. Mirrors the Settings > Team "Member" drawer pattern
- * exactly:
- *   - p-sidebar position="right", styleClass="bp-drawer", 480px
- *   - parchment header with eyebrow + serif title + ✕ close
- *   - per-section edit toggle (pencil → tick/cross)
- *   - bp-section-header / bp-section-title section labels
- *   - view mode renders bp-field-readonly inputs, edit mode swaps to
- *     bp-input-edit
+ * event strip (and from the "⋯" menu on the strip). Mirrors the
+ * Settings > Team "Member" drawer pattern exactly:
  *
- * All field definitions, dropdown options, sync/save logic come from
- * the original event.component.ts — same ProjectService.update() call,
- * same eventTypeOptions + tierOptions, same per-section snapshot/cancel.
- * The page-level tab component is no longer in the tab bar but is
- * retained on /event-legacy for git history.
+ *   - p-sidebar position="right", styleClass="bp-drawer", 480px
+ *   - parchment header — eyebrow + serif title + ✕ close
+ *   - PER-SECTION edit toggle (pencil → tick/cross); only the touched
+ *     section enters edit mode, only its fields persist on save
+ *   - bp-section-header / bp-section-title section labels with a
+ *     0.5px border under the title (matches the Member drawer rhythm)
+ *   - view mode renders bp-field-readonly inputs, edit mode swaps to
+ *     bp-input-edit (or p-dropdown for Event Type / Tier / Currency)
+ *
+ * Currency dropdown is populated from CodelistService.getByName('currency')
+ * — the same shared.codelists table that drives item_unit / item_time_unit.
+ * Project value is stored on projects.currency (ISO-4217 code, e.g. 'GBP').
+ *
+ * The legacy event.component.ts file stays in the repo (not routed) for
+ * git-history continuity; the field definitions + dropdown options here
+ * are lifted directly from it.
  */
+type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
+
 @Component({
   selector: 'app-event-drawer',
   standalone: true,
@@ -57,29 +65,9 @@ import { Project } from '../../../../models';
             <span class="bp-drawer-label">PROJECT</span>
             <div class="bp-drawer-title">Event details</div>
           </div>
-          <div class="bp-evd-head-actions">
-            <!-- v1.29a: single edit toggle for the WHOLE drawer.
-                 Tick saves all changed fields in one ProjectService.update;
-                 cross restores the snapshot taken when edit was entered. -->
-            <ng-container *ngIf="!editing">
-              <button class="bp-icon-btn" (click)="startEdit()" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editing">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveAll()"
-                      [disabled]="saving" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit()"
-                      [disabled]="saving" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
-            <button class="bp-icon-btn" (click)="close()" title="Close">
-              <i class="pi pi-times"></i>
-            </button>
-          </div>
+          <button class="bp-icon-btn" (click)="close()" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
       </ng-template>
 
@@ -88,58 +76,70 @@ import { Project } from '../../../../models';
         <!-- ═══ SECTION 1: EVENT DETAILS ═══ -->
         <div class="bp-section-header">
           <span class="bp-section-title">EVENT DETAILS</span>
+          <div class="bp-section-actions">
+            <ng-container *ngIf="!editing.details">
+              <button class="bp-icon-btn" (click)="startEdit('details')" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editing.details">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('details')"
+                      [disabled]="saving" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('details')"
+                      [disabled]="saving" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
 
-        <!-- v1.29a layout: row 1 = Ref + Event name, row 2 = Client
-             (full width), row 3 = Venue + City. Ref is editable. -->
+        <!-- Row 1: Ref (narrow read-only) | Event name | Client.
+             Ref is ALWAYS read-only per spec, even in edit mode. -->
         <div class="bp-evd-row bp-evd-row--ref">
           <div class="bp-evd-field">
             <label class="bp-field-label">Ref</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText
                    [value]="form.po_ref || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
-                   [(ngModel)]="form.po_ref"
-                   placeholder="e.g. TVS-2026-047"
-                   class="w-full bp-input-edit"/>
+                   class="w-full bp-field-readonly bp-evd-ref" readonly/>
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Event name</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.details"
                    [value]="form.event_name || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.event_name"
                    class="w-full bp-input-edit"/>
           </div>
-        </div>
-        <div class="bp-evd-row bp-evd-row--1">
           <div class="bp-evd-field">
             <label class="bp-field-label">Client</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.details"
                    [value]="form.client_name || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.client_name"
                    class="w-full bp-input-edit"/>
           </div>
         </div>
+        <!-- Row 2: Venue | City -->
         <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Venue</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.details"
                    [value]="form.venue_name || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.venue_name"
                    class="w-full bp-input-edit"/>
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">City</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.details"
                    [value]="form.venue_city || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.venue_city"
                    class="w-full bp-input-edit"/>
           </div>
@@ -148,15 +148,32 @@ import { Project } from '../../../../models';
         <!-- ═══ SECTION 2: EVENT TYPE ═══ -->
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">EVENT TYPE</span>
+          <div class="bp-section-actions">
+            <ng-container *ngIf="!editing.type">
+              <button class="bp-icon-btn" (click)="startEdit('type')" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editing.type">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('type')"
+                      [disabled]="saving" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('type')"
+                      [disabled]="saving" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
 
         <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Event type</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.type"
                    [value]="(form.event_type | titlecase) || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <p-dropdown *ngIf="editing"
+            <p-dropdown *ngIf="editing.type"
                         [(ngModel)]="form.event_type"
                         [options]="eventTypeOptions"
                         optionLabel="label" optionValue="value"
@@ -166,10 +183,10 @@ import { Project } from '../../../../models';
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Tier</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.type"
                    [value]="(form.tier | titlecase) || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <p-dropdown *ngIf="editing"
+            <p-dropdown *ngIf="editing.type"
                         [(ngModel)]="form.tier"
                         [options]="tierOptions"
                         optionLabel="label" optionValue="value"
@@ -182,61 +199,95 @@ import { Project } from '../../../../models';
         <!-- ═══ SECTION 3: LOGISTICS ═══ -->
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">LOGISTICS</span>
+          <div class="bp-section-actions">
+            <ng-container *ngIf="!editing.logistics">
+              <button class="bp-icon-btn" (click)="startEdit('logistics')" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editing.logistics">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('logistics')"
+                      [disabled]="saving" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('logistics')"
+                      [disabled]="saving" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
 
-        <!-- v1.29: Event date is FREE TEXT per spec — dates are often
-             approximate ("Late September", "TBC", "w/c 15 March"). -->
-        <div class="bp-evd-row bp-evd-row--3">
+        <!-- Row 1: Event date | Duration. Event date is FREE TEXT per
+             spec — dates are often approximate ("Late September", "TBC"). -->
+        <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Event date</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.logistics"
                    [value]="form.event_date || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.logistics"
                    [(ngModel)]="form.event_date"
                    placeholder="e.g. 2 Jun 2026 / TBC"
                    class="w-full bp-input-edit"/>
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Duration (days)</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.logistics"
                    [value]="form.duration_days || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.logistics"
                    type="number" min="1"
                    [(ngModel)]="form.duration_days"
                    class="w-full bp-input-edit"/>
           </div>
+        </div>
+        <!-- Row 2: Guest count (alone, full-width below Event date). -->
+        <div class="bp-evd-row bp-evd-row--1">
           <div class="bp-evd-field">
             <label class="bp-field-label">Guest count</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.logistics"
                    [value]="form.guest_count || '—'"
                    class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing"
+            <input pInputText *ngIf="editing.logistics"
                    type="number" min="1"
                    [(ngModel)]="form.guest_count"
                    class="w-full bp-input-edit"/>
           </div>
         </div>
 
-        <!-- ═══ SECTION 4: FINANCIALS ═══ -->
+        <!-- ═══ SECTION 4: FINANCIALS ═══
+             No subtitle per spec. -->
         <div class="bp-section-header bp-section-header--top">
-          <div class="bp-section-header-text">
-            <span class="bp-section-title">FINANCIALS</span>
-            <div class="bp-section-hint">
-              Top-line numbers — full breakdown lives in Estimate
-            </div>
+          <span class="bp-section-title">FINANCIALS</span>
+          <div class="bp-section-actions">
+            <ng-container *ngIf="!editing.financials">
+              <button class="bp-icon-btn" (click)="startEdit('financials')" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editing.financials">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('financials')"
+                      [disabled]="saving" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('financials')"
+                      [disabled]="saving" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
           </div>
         </div>
 
-        <div class="bp-evd-row bp-evd-row--3">
+        <!-- Row 1: Budget | Currency -->
+        <div class="bp-evd-row bp-evd-row--2">
           <div class="bp-evd-field">
             <label class="bp-field-label">Budget</label>
-            <input pInputText *ngIf="!editing"
-                   [value]="formatCurrency(form.project_budget) || '—'"
+            <input pInputText *ngIf="!editing.financials"
+                   [value]="formatBudgetView()"
                    class="w-full bp-field-readonly bp-evd-budget" readonly/>
-            <div *ngIf="editing" class="bp-evd-prefix">
-              <span class="bp-evd-prefix-sym">£</span>
+            <div *ngIf="editing.financials" class="bp-evd-prefix">
+              <span class="bp-evd-prefix-sym">{{ currencySymbol }}</span>
               <input pInputText
                      type="number" min="0" step="100"
                      [(ngModel)]="form.project_budget"
@@ -244,11 +295,27 @@ import { Project } from '../../../../models';
             </div>
           </div>
           <div class="bp-evd-field">
+            <label class="bp-field-label">Currency</label>
+            <input pInputText *ngIf="!editing.financials"
+                   [value]="currencyDisplay()"
+                   class="w-full bp-field-readonly" readonly/>
+            <p-dropdown *ngIf="editing.financials"
+                        [(ngModel)]="form.currency"
+                        [options]="currencyOptions"
+                        optionLabel="label" optionValue="code"
+                        styleClass="w-full bp-evd-dropdown"
+                        placeholder="GBP">
+            </p-dropdown>
+          </div>
+        </div>
+        <!-- Row 2: Margin % | Contingency % | VAT Rate % -->
+        <div class="bp-evd-row bp-evd-row--3">
+          <div class="bp-evd-field">
             <label class="bp-field-label">Margin %</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.financials"
                    [value]="formatPct(form.default_margin_pct)"
                    class="w-full bp-field-readonly" readonly/>
-            <div *ngIf="editing" class="bp-evd-suffix">
+            <div *ngIf="editing.financials" class="bp-evd-suffix">
               <input pInputText
                      type="number" min="0" max="100"
                      [(ngModel)]="form.default_margin_pct"
@@ -258,13 +325,26 @@ import { Project } from '../../../../models';
           </div>
           <div class="bp-evd-field">
             <label class="bp-field-label">Contingency %</label>
-            <input pInputText *ngIf="!editing"
+            <input pInputText *ngIf="!editing.financials"
                    [value]="formatPct(form.default_contingency_pct)"
                    class="w-full bp-field-readonly" readonly/>
-            <div *ngIf="editing" class="bp-evd-suffix">
+            <div *ngIf="editing.financials" class="bp-evd-suffix">
               <input pInputText
                      type="number" min="0" max="100"
                      [(ngModel)]="form.default_contingency_pct"
+                     class="w-full bp-input-edit bp-evd-suffix-input"/>
+              <span class="bp-evd-suffix-sym">%</span>
+            </div>
+          </div>
+          <div class="bp-evd-field">
+            <label class="bp-field-label">VAT rate %</label>
+            <input pInputText *ngIf="!editing.financials"
+                   [value]="formatPct(form.default_vat_pct)"
+                   class="w-full bp-field-readonly" readonly/>
+            <div *ngIf="editing.financials" class="bp-evd-suffix">
+              <input pInputText
+                     type="number" min="0" max="100"
+                     [(ngModel)]="form.default_vat_pct"
                      class="w-full bp-input-edit bp-evd-suffix-input"/>
               <span class="bp-evd-suffix-sym">%</span>
             </div>
@@ -274,9 +354,26 @@ import { Project } from '../../../../models';
         <!-- ═══ SECTION 5: PROJECT BRIEF ═══ -->
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">PROJECT BRIEF</span>
+          <div class="bp-section-actions">
+            <ng-container *ngIf="!editing.brief">
+              <button class="bp-icon-btn" (click)="startEdit('brief')" title="Edit">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="editing.brief">
+              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('brief')"
+                      [disabled]="saving" title="Save">
+                <i class="pi pi-check"></i>
+              </button>
+              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('brief')"
+                      [disabled]="saving" title="Cancel">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </div>
         </div>
 
-        <ng-container *ngIf="!editing">
+        <ng-container *ngIf="!editing.brief">
           <div class="bp-evd-brief-view"
                *ngIf="form.raw_brief_text; else briefEmpty">
             {{ form.raw_brief_text }}
@@ -288,7 +385,7 @@ import { Project } from '../../../../models';
           </ng-template>
         </ng-container>
 
-        <ng-container *ngIf="editing">
+        <ng-container *ngIf="editing.brief">
           <textarea pInputTextarea
                     [(ngModel)]="form.raw_brief_text"
                     [rows]="5"
@@ -315,64 +412,59 @@ import { Project } from '../../../../models';
     <p-toast></p-toast>
   `,
   styles: [`
-    /* Section padding inside the drawer body — first section sits flush
-       with the header divider, subsequent sections get a top rule. */
+    :host { font-family: var(--font-body); }
+
+    /* Section spacing — first section sits flush under the header; the
+       rest get a top divider via --top. */
     .bp-section-header--top {
       margin-top: 20px;
       padding-top: 16px;
       border-top: 0.5px solid var(--color-border);
     }
-    .bp-section-header-text { display: flex; flex-direction: column; gap: 2px; }
-    .bp-section-hint {
-      font-size: 11px; font-style: italic;
-      color: var(--color-text-muted);
-    }
 
-    /* v1.29a: drawer header actions cluster (edit / save / cancel /
-       close). Sits to the right of the parchment title; child buttons
-       are the standard bp-icon-btn (28x28 pill). */
-    .bp-evd-head-actions {
-      display: inline-flex; align-items: center; gap: 4px;
-    }
-
-    /* Field grids — match the Member-drawer field labels but lay out
-       in 1 / 2 / 3 columns per section per spec. */
-    .bp-evd-row { display: grid; gap: 12px; margin-bottom: 12px; }
+    /* Field grids — 1 / 2 / 3 / ref column variants per section spec. */
+    .bp-evd-row   { display: grid; gap: 12px; margin-bottom: 12px; }
     .bp-evd-row--1 { grid-template-columns: 1fr; }
     .bp-evd-row--2 { grid-template-columns: 1fr 1fr; }
     .bp-evd-row--3 { grid-template-columns: 1fr 1fr 1fr; }
-    /* v1.29a: Ref + Event name. Ref capped narrow so the long event
-       name takes the remaining width. */
-    .bp-evd-row--ref { grid-template-columns: 140px 1fr; }
+    /* Ref is permanently read-only and narrow; Name + Client share the
+       remaining width. */
+    .bp-evd-row--ref { grid-template-columns: 110px 1fr 1fr; }
     .bp-evd-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 
-    /* v1.29a: native-number input prefix / suffix wrappers. Avoids
-       p-inputNumber's PrimeNG-themed inner DOM which doesn't pick up
-       our edit-input styling cleanly inside a tight grid. */
-    .bp-evd-prefix, .bp-evd-suffix {
-      position: relative;
-      display: flex; align-items: center;
+    /* Ref read-only field reads as an identifier, not a normal value. */
+    :host ::ng-deep .bp-evd-ref.bp-field-readonly {
+      font-size: 11.5px !important;
+      color: var(--color-text-muted) !important;
+      letter-spacing: 0.04em;
     }
+    /* Budget — serif display, 16px, per spec. */
+    :host ::ng-deep .bp-evd-budget.bp-field-readonly {
+      font-family: var(--font-display) !important;
+      font-size: 16px !important;
+      color: var(--color-text-primary) !important;
+    }
+
+    /* Native-number prefix / suffix wrappers — keep inputs in sync with
+       the rest of the grid (p-inputNumber's inner DOM doesn't pick up
+       bp-input-edit cleanly). Chrome spinner arrows hidden. */
+    .bp-evd-prefix, .bp-evd-suffix { position: relative; display: flex; align-items: center; }
     .bp-evd-prefix-sym, .bp-evd-suffix-sym {
-      position: absolute;
-      font-size: 13px;
-      color: var(--color-text-muted);
-      pointer-events: none;
+      position: absolute; font-size: 13px;
+      color: var(--color-text-muted); pointer-events: none;
     }
     .bp-evd-prefix-sym { left: 10px; }
     .bp-evd-suffix-sym { right: 12px; }
-    :host ::ng-deep .bp-evd-prefix-input.p-inputtext  { padding-left:  22px !important; }
-    :host ::ng-deep .bp-evd-suffix-input.p-inputtext  { padding-right: 22px !important; }
-    /* Hide the spinner arrows that Chrome adds to type=number inputs —
-       keeps the grid tidy and matches the Member-drawer aesthetic. */
+    :host ::ng-deep .bp-evd-prefix-input.p-inputtext { padding-left:  22px !important; }
+    :host ::ng-deep .bp-evd-suffix-input.p-inputtext { padding-right: 22px !important; }
     :host ::ng-deep input[type="number"].p-inputtext::-webkit-inner-spin-button,
     :host ::ng-deep input[type="number"].p-inputtext::-webkit-outer-spin-button {
       -webkit-appearance: none; margin: 0;
     }
     :host ::ng-deep input[type="number"].p-inputtext { -moz-appearance: textfield; }
 
-    /* p-dropdown — pin it to the same height + radius as the text
-       inputs so Event Type + Tier line up with everything else. */
+    /* p-dropdown alignment — match text-input height/radius so dropdowns
+       line up with plain inputs in the same grid row. */
     :host ::ng-deep .bp-evd-dropdown.p-dropdown {
       width: 100% !important;
       height: 34px !important;
@@ -388,22 +480,13 @@ import { Project } from '../../../../models';
       font-family: var(--font-body) !important;
       line-height: 1.4 !important;
     }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-trigger {
-      width: 28px !important;
-    }
+    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-trigger { width: 28px !important; }
     :host ::ng-deep .bp-evd-dropdown.p-dropdown.p-focus {
       border-color: var(--theme-accent) !important;
       box-shadow: none !important;
     }
 
-    /* Budget renders in serif when in view mode — matches the mockup. */
-    :host ::ng-deep .bp-evd-budget.bp-field-readonly {
-      font-family: var(--font-display) !important;
-      font-size: 15px !important;
-      color: var(--color-text-primary) !important;
-    }
-
-    /* Project brief — view mode prose block + edit-mode textarea. */
+    /* Project brief — view mode prose + edit-mode textarea + parse pill. */
     .bp-evd-brief-view {
       padding: 9px 12px;
       background: var(--color-background-secondary, var(--theme-bg));
@@ -414,32 +497,22 @@ import { Project } from '../../../../models';
       white-space: pre-wrap;
       min-height: 60px;
     }
-    .bp-evd-brief-empty {
-      color: var(--color-text-muted);
-      font-style: italic;
-    }
-    .bp-evd-brief-actions {
-      display: flex; justify-content: flex-end;
-      margin-top: 10px;
-    }
+    .bp-evd-brief-empty { color: var(--color-text-muted); font-style: italic; }
+    .bp-evd-brief-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
     .bp-evd-parse {
       display: inline-flex; align-items: center; gap: 6px;
       height: 28px; padding: 0 12px;
       border: 0.5px solid var(--theme-accent);
-      background: var(--theme-bg);
-      color: var(--theme-accent);
+      background: var(--theme-bg); color: var(--theme-accent);
       border-radius: 14px;
       font-size: 11.5px; font-weight: 600;
       font-family: var(--font-body);
       cursor: pointer;
       transition: background 0.15s, color 0.15s;
     }
-    .bp-evd-parse:hover {
-      background: var(--theme-accent);
-      color: var(--color-surface);
-    }
+    .bp-evd-parse:hover { background: var(--theme-accent); color: var(--color-surface); }
 
-    /* Footer line — parchment background matching the header. */
+    /* Footer line — parchment background matches the header. */
     .bp-evd-footer {
       font-size: 11px;
       color: var(--color-text-muted);
@@ -456,19 +529,20 @@ export class EventDrawerComponent implements OnChanges {
 
   @Output() visibleChange = new EventEmitter<boolean>();
   /** Fires after a successful save with the updated project. Parent
-      should replace its local copy so the Overview event strip
-      reflects the new values immediately. */
+      replaces its local copy so the Overview event strip reflects the
+      new values immediately. */
   @Output() projectUpdated = new EventEmitter<Project>();
 
   saving = false;
   form: Partial<Project> = {};
-  /** v1.29a: single edit toggle for the whole drawer. Pencil in the
-      header flips this; tick saves all fields in one update; cross
-      restores the snapshot taken when edit was entered. */
-  editing = false;
-  private snapshot: Partial<Project> = {};
+  /** Per-section edit flags — only the touched section's fields go to
+      the server on save. */
+  editing = { details: false, type: false, logistics: false, financials: false, brief: false };
+  private snapshots: Record<SectionKey, Partial<Project>> = {
+    details: {}, type: {}, logistics: {}, financials: {}, brief: {}
+  };
 
-  /** Lifted from event.component.ts — same labels, same DB values. */
+  /** Lifted verbatim from event.component.ts — same labels, same DB values. */
   eventTypeOptions = [
     { label: 'Gala',         value: 'gala' },
     { label: 'Conference',   value: 'conference' },
@@ -484,12 +558,30 @@ export class EventDrawerComponent implements OnChanges {
     { label: 'Signature', value: 'signature' },
     { label: 'Premium',   value: 'premium' },
   ];
+  /** Hydrated on init from CodelistService.getByName('currency'). */
+  currencyOptions: Codelist[] = [];
+
+  /** Which DB columns each section is allowed to persist on save. Save
+      only sends these — never the whole form. */
+  private sectionFields: Record<SectionKey, (keyof Project)[]> = {
+    details:    ['event_name', 'client_name', 'venue_name', 'venue_city'],
+    type:       ['event_type', 'tier'],
+    logistics:  ['event_date', 'duration_days', 'guest_count'],
+    financials: ['project_budget', 'currency', 'default_margin_pct', 'default_contingency_pct', 'default_vat_pct'],
+    brief:      ['raw_brief_text'],
+  };
 
   constructor(
     private projSvc: ProjectService,
+    private codelistSvc: CodelistService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+    this.codelistSvc.getByName('currency').subscribe(rows => {
+      this.currencyOptions = rows || [];
+      this.cdr.markForCheck();
+    });
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['project'] && this.project) {
@@ -516,32 +608,39 @@ export class EventDrawerComponent implements OnChanges {
       duration_days:           p.duration_days,
       guest_count:             p.guest_count,
       project_budget:          p.project_budget,
+      currency:                p.currency || 'GBP',
       default_margin_pct:      p.default_margin_pct,
       default_contingency_pct: p.default_contingency_pct,
+      default_vat_pct:         p.default_vat_pct,
       raw_brief_text:          p.raw_brief_text,
     };
   }
 
-  // ── Whole-drawer edit controls (v1.29a) ─────────────────────────────
-  startEdit() {
-    this.snapshot = { ...this.form };
-    this.editing = true;
+  // ── Per-section edit controls ───────────────────────────────────────
+  startEdit(section: SectionKey) {
+    this.snapshots[section] = { ...this.form };
+    this.editing[section] = true;
     this.cdr.markForCheck();
   }
-  cancelEdit() {
-    Object.assign(this.form, this.snapshot);
-    this.editing = false;
+  cancelEdit(section: SectionKey) {
+    Object.assign(this.form, this.snapshots[section]);
+    this.editing[section] = false;
     this.cdr.markForCheck();
   }
-  saveAll() {
+  saveSection(section: SectionKey) {
     if (!this.project) return;
+    // Only send the columns this section owns — never the whole form.
+    const patch: Partial<Project> = {};
+    for (const k of this.sectionFields[section]) {
+      (patch as any)[k] = (this.form as any)[k];
+    }
     this.saving = true;
-    this.projSvc.update(this.project.id, this.form).subscribe({
+    this.projSvc.update(this.project.id, patch).subscribe({
       next: p => {
         this.project = p;
         this.syncForm(p);
         this.saving = false;
-        this.editing = false;
+        this.editing[section] = false;
         this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
         this.projSvc.triggerRefresh();
         this.projectUpdated.emit(p);
@@ -561,16 +660,34 @@ export class EventDrawerComponent implements OnChanges {
     this.msg.add({ severity: 'info', summary: 'AI parsing coming soon', life: 2000 });
   }
 
+  /** v1.29b: drive the section pencil from outside (e.g. the kebab menu's
+      "Edit event" option). Caller should `[visible]=true` first. */
+  openSection(section: SectionKey) {
+    this.startEdit(section);
+  }
+
   // ── Display helpers ─────────────────────────────────────────────────
-  formatCurrency(value: any): string {
-    if (value === null || value === undefined || value === '') return '';
-    const n = Number(value);
-    if (isNaN(n)) return '';
-    return '£' + n.toLocaleString('en-GB', { maximumFractionDigits: 0 });
+  /** View-mode Budget — symbol from the currency code, 0 decimals. */
+  formatBudgetView(): string {
+    const n = Number(this.form.project_budget);
+    if (!isFinite(n) || n === 0) return '—';
+    return this.currencySymbol + n.toLocaleString('en-GB', { maximumFractionDigits: 0 });
   }
   formatPct(value: any): string {
     if (value === null || value === undefined || value === '') return '—';
     return value + '%';
+  }
+  /** Symbol for the currently-selected currency (defaults to £). */
+  get currencySymbol(): string {
+    const code = this.form.currency || 'GBP';
+    const row = this.currencyOptions.find(c => c.code === code);
+    return row?.symbol || '£';
+  }
+  /** Long display value for view mode — e.g. "GBP (£)". */
+  currencyDisplay(): string {
+    const code = this.form.currency || 'GBP';
+    const row = this.currencyOptions.find(c => c.code === code);
+    return row?.label || code;
   }
 
   get lastEditedLabel(): string {

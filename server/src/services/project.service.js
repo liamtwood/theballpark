@@ -79,7 +79,7 @@ async function update(id, data) {
     parsed_brief_json, ai_hints, missing_fields, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
     default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
-    event_type, duration_days, po_ref
+    event_type, duration_days, po_ref, currency
   } = data;
   const result = await pool.query(
     `UPDATE projects SET
@@ -104,8 +104,9 @@ async function update(id, data) {
       event_type = COALESCE($30, event_type),
       duration_days = COALESCE($31, duration_days),
       po_ref = COALESCE($32, po_ref),
+      currency = COALESCE($33, currency),
       updated_at = NOW()
-     WHERE id = $33 RETURNING *`,
+     WHERE id = $34 RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
@@ -113,7 +114,7 @@ async function update(id, data) {
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
-      event_type, duration_days, po_ref, id
+      event_type, duration_days, po_ref, currency, id
     ]
   );
   return result.rows[0] || null;

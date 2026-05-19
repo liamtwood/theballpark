@@ -25,6 +25,10 @@ export interface Project {
   default_margin_pct?: number;
   default_contingency_pct?: number;
   default_vat_pct?: number;
+  /** v1.29b: ISO-4217 currency code (GBP/USD/EUR/AUD). Set per project
+      from the Event drawer's Financials section. Defaults to 'GBP'
+      server-side. */
+  currency?: string;
   total_ballpark_cost?: number;
   total_base_cost?: number;
   total_client_cost?: number;

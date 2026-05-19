@@ -204,6 +204,7 @@ const migrate = async () => {
         default_margin_pct NUMERIC(5,2),
         default_contingency_pct NUMERIC(5,2),
         default_vat_pct NUMERIC(5,2) DEFAULT 20,
+        currency VARCHAR(10) DEFAULT 'GBP',
         total_ballpark_cost NUMERIC(12,2) DEFAULT 0,
         total_base_cost NUMERIC(12,2) DEFAULT 0,
         total_client_cost NUMERIC(12,2) DEFAULT 0,
@@ -432,6 +433,12 @@ const migrate = async () => {
       ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+
+      -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
+      -- Currency dropdown via shared.codelists list_name='currency').
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
       -- estimate_items drift reconciliation. The legacy CREATE block had
       -- `unit VARCHAR(50)` and `is_active BOOLEAN` columns that were dropped
@@ -733,7 +740,15 @@ const migrate = async () => {
         ('item_time_unit', 'hour',      'Hours',          'hr', 2, true),
         ('item_time_unit', 'event',     'Event',          NULL, 3, true),
         ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true),
-        ('item_time_unit', 'month',     'Month',          NULL, 5, true)
+        ('item_time_unit', 'month',     'Month',          NULL, 5, true),
+        -- v1.29: currency codelist drives the Event drawer's Currency
+        -- dropdown. ISO-4217 code stored on projects.currency.
+        ('currency',       'GBP',       'GBP (£)',         '£',   1, true),
+        ('currency',       'USD',       'USD ($)',         '$',   2, true),
+        ('currency',       'EUR',       'EUR (€)',         '€',   3, true),
+        ('currency',       'AED',       'AED (د.إ)',       'د.إ', 4, true),
+        ('currency',       'CHF',       'CHF (Fr)',        'Fr',  5, true),
+        ('currency',       'SEK',       'SEK (kr)',        'kr',  6, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

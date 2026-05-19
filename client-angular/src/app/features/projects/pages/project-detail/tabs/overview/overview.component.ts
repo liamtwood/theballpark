@@ -1,5 +1,6 @@
 import {
-  Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef
+  Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef,
+  ViewChild, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -104,10 +105,10 @@ interface MessagesSummary {
         <div class="bp-page-divider"></div>
 
         <!-- ── EVENT STRIP ─────────────────────────────────────── -->
-        <!-- v1.29: click anywhere on the strip opens the Event drawer
-             (the standalone /event tab is gone). Strip stays visible
-             even when fields are empty so the user has a way in to
-             fill them in. -->
+        <!-- v1.29b: 4 data columns + a "⋯" kebab menu on the right.
+             Clicking anywhere on the strip (except the menu itself)
+             opens the Event drawer. The menu offers two entry points —
+             Edit event and Project brief — both open the drawer. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
             <div class="bp-event-col">
@@ -125,25 +126,38 @@ interface MessagesSummary {
               <span class="bp-event-value bp-event-value--num">{{ guestCount || '—' }}</span>
               <span class="bp-event-sub">{{ guestSub }}</span>
             </div>
+            <!-- v1.29b: Client column replaces the old Client Lead — the
+                 contact-name field doesn't exist on the project; just
+                 surface the client name from the joined query. -->
             <div class="bp-event-col">
-              <span class="bp-event-eyebrow">CLIENT LEAD</span>
-              <span class="bp-event-value">{{ clientLeadName || '—' }}</span>
-              <span class="bp-event-sub">{{ project.client_name || '' }}</span>
+              <span class="bp-event-eyebrow">CLIENT</span>
+              <span class="bp-event-value">{{ project.client_name || '—' }}</span>
             </div>
           </div>
           <div class="bp-event-actions">
             <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
-            <a class="bp-event-link"
-               (click)="openEventDrawer(); $event.stopPropagation()">
-              Open event →
-            </a>
+            <!-- "⋯" kebab — same UI as the dashboard project card menu.
+                 stopPropagation on the button + the menu so clicks inside
+                 don't bubble to the strip's open handler. -->
+            <button type="button"
+                    class="bp-event-menu-btn"
+                    (click)="toggleEventMenu($event)"
+                    title="More actions">⋯</button>
+            <div *ngIf="eventMenuOpen"
+                 class="bp-event-menu"
+                 (click)="$event.stopPropagation()">
+              <button type="button" class="bp-event-menu-item"
+                      (click)="onEventMenu('edit', $event)">Edit event</button>
+              <button type="button" class="bp-event-menu-item"
+                      (click)="onEventMenu('brief', $event)">Project brief</button>
+            </div>
           </div>
         </div>
 
         <!-- v1.29: shared Event drawer — same instance reused on every
              open. projectUpdated rehydrates the local copy so the strip
              above updates immediately on save. -->
-        <app-event-drawer
+        <app-event-drawer #eventDrawer
           [project]="project"
           [(visible)]="eventDrawerVisible"
           (projectUpdated)="onProjectUpdated($event)">
@@ -384,7 +398,11 @@ interface MessagesSummary {
     </ng-container>
   `,
   styles: [`
-    :host { display: block; }
+    /* v1.29b: pin the standard body font on the whole Overview so no
+       leaf element silently falls back to system sans-serif. KPI
+       numbers / cost amounts / guest count opt-in to var(--font-display)
+       individually where used. */
+    :host { display: block; font-family: var(--font-body); }
 
     .bp-overview {
       max-width: 1100px;
@@ -476,15 +494,53 @@ interface MessagesSummary {
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .bp-event-link {
-      font-family: var(--font-body);
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--theme-accent);
+    /* v1.29b: "⋯" kebab on the right of the strip + its dropdown.
+       Same shell as the dashboard project-card menu — 24px borderless
+       circle, parchment-on-hover. Dropdown gets shadow-md + hairline
+       per the elevation tokens. */
+    .bp-event-menu-btn {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: none; background: none;
+      color: var(--color-text-muted);
       cursor: pointer;
-      white-space: nowrap;
+      font-size: 18px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      font-family: var(--font-body);
     }
-    .bp-event-link:hover { opacity: 0.75; }
+    .bp-event-menu-btn:hover {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-event-actions { position: relative; }
+    .bp-event-menu {
+      position: absolute;
+      top: 32px; right: 0;
+      width: 160px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      padding: 4px 0;
+      z-index: 50;
+      box-shadow: var(--shadow-md);
+      font-family: var(--font-body);
+    }
+    .bp-event-menu-item {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      transition: background 0.1s;
+    }
+    .bp-event-menu-item:hover { background: var(--theme-bg); }
 
     /* ── 2×2 GRID ───────────────────────────────────────────── */
     .bp-overview-grid {
@@ -812,6 +868,9 @@ export class OverviewComponent implements OnInit {
 
   /** v1.29: Event drawer state — opened by clicking the event strip. */
   eventDrawerVisible = false;
+  /** v1.29b: Kebab menu (Edit event / Project brief) on the event strip. */
+  eventMenuOpen = false;
+  @ViewChild('eventDrawer') eventDrawerRef?: any;
 
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
@@ -890,7 +949,41 @@ export class OverviewComponent implements OnInit {
 
   openEventDrawer() {
     this.eventDrawerVisible = true;
+    this.eventMenuOpen = false;
     this.cdr.markForCheck();
+  }
+
+  /** v1.29b: toggle the "⋯" kebab menu on the event strip. stopProp so
+      the click doesn't also fire the strip's open-drawer handler. */
+  toggleEventMenu(ev: MouseEvent) {
+    ev.stopPropagation();
+    this.eventMenuOpen = !this.eventMenuOpen;
+    this.cdr.markForCheck();
+  }
+
+  /** Kebab menu actions. Both items open the same drawer; "edit"
+      starts the Event Details section in edit mode straight away,
+      "brief" jumps to the Project Brief section in edit mode. */
+  onEventMenu(action: 'edit' | 'brief', ev: MouseEvent) {
+    ev.stopPropagation();
+    this.eventMenuOpen = false;
+    this.eventDrawerVisible = true;
+    // Wait a frame so the drawer mounts before we drive its edit state.
+    setTimeout(() => {
+      const section = action === 'brief' ? 'brief' : 'details';
+      this.eventDrawerRef?.openSection?.(section);
+      this.cdr.markForCheck();
+    }, 0);
+    this.cdr.markForCheck();
+  }
+
+  /** Close the kebab on any document click outside the strip. */
+  @HostListener('document:click')
+  onDocClick() {
+    if (this.eventMenuOpen) {
+      this.eventMenuOpen = false;
+      this.cdr.markForCheck();
+    }
   }
 
   /** Save handler from <app-event-drawer>. Replaces the local project
