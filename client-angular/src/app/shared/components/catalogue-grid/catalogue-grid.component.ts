@@ -638,20 +638,9 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-breadcrumb-sep { color: var(--color-text-muted); }
     .bp-breadcrumb-current { font-weight: 500; color: var(--color-text-primary); }
 
-    /* v1.27: shell classes (circles + 3-column body + sidebar primitives
-       + circle edit) live in styles.css now — single source of truth
-       shared with app-messages-inbox. Catalogue-specific overlays only
-       below: edit-pencil on circles, sidebar empty/back/check helpers. */
-    .bp-cat-circle-edit {
-      position: absolute; bottom: 2px; right: 2px;
-      width: 22px; height: 22px; border-radius: 50%;
-      background: var(--color-surface); border: 1px solid var(--color-border);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--color-text-muted); transition: all 0.15s;
-      opacity: 0; pointer-events: none;
-    }
-    .bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
-    .bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+    /* v1.27/v1.28: every circle-strip / 3-column-body / sidebar
+       primitive lives in styles.css now (CATALOGUE / INBOX SHELL block).
+       Only catalogue-specific sidebar helpers remain scoped here. */
     .bp-sidebar-back { display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 4px 0; }
     .bp-sidebar-back:hover { opacity: 0.75; }
     /* Empty-state row inside the sidebar (e.g. drilled into a category

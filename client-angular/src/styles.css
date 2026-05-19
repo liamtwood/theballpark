@@ -627,6 +627,19 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
 .bp-cat-circle-label      { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
 .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
+/* v1.28a: edit-pencil overlay — hidden until the circle is hovered.
+   Lives here (not in the consumer) so it works inside the shared
+   <app-category-circles> sub-component too. */
+.bp-cat-circle-edit {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--color-text-muted); transition: all 0.15s;
+  opacity: 0; pointer-events: none;
+}
+.bp-cat-circle:hover .bp-cat-circle-edit { opacity: 1; pointer-events: auto; }
+.bp-cat-circle-edit:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
 /* Greyed circles — projectContext + category not in project_categories,
    OR (Messages tab) project_category has no message threads. */
 .bp-cat-circle-btn--unscoped .bp-cat-circle       { filter: grayscale(0.85); opacity: 0.45; }
