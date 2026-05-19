@@ -19,6 +19,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 import { EventDatePipe } from '../../../../../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../../../../../shared/pipes/compact-currency.pipe';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
+import { EventDrawerComponent } from '../../../../components/event-drawer/event-drawer.component';
 
 /**
  * v1.24 — Project Overview tab.
@@ -90,7 +91,8 @@ interface MessagesSummary {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, LucideAngularModule, LoadingSpinnerComponent,
-    EventDatePipe, CompactCurrencyPipe, GbpPipe
+    EventDatePipe, CompactCurrencyPipe, GbpPipe,
+    EventDrawerComponent
   ],
   template: `
     <app-loading *ngIf="loading"></app-loading>
@@ -102,7 +104,11 @@ interface MessagesSummary {
         <div class="bp-page-divider"></div>
 
         <!-- ── EVENT STRIP ─────────────────────────────────────── -->
-        <div class="bp-event-strip" (click)="goTo('event')">
+        <!-- v1.29: click anywhere on the strip opens the Event drawer
+             (the standalone /event tab is gone). Strip stays visible
+             even when fields are empty so the user has a way in to
+             fill them in. -->
+        <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">DATE</span>
@@ -127,11 +133,21 @@ interface MessagesSummary {
           </div>
           <div class="bp-event-actions">
             <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
-            <a class="bp-event-link" (click)="goTo('event'); $event.stopPropagation()">
+            <a class="bp-event-link"
+               (click)="openEventDrawer(); $event.stopPropagation()">
               Open event →
             </a>
           </div>
         </div>
+
+        <!-- v1.29: shared Event drawer — same instance reused on every
+             open. projectUpdated rehydrates the local copy so the strip
+             above updates immediately on save. -->
+        <app-event-drawer
+          [project]="project"
+          [(visible)]="eventDrawerVisible"
+          (projectUpdated)="onProjectUpdated($event)">
+        </app-event-drawer>
 
         <!-- ── 2×2 CARD GRID ───────────────────────────────────── -->
         <div class="bp-overview-grid">
@@ -794,6 +810,9 @@ export class OverviewComponent implements OnInit {
   msgs: Message[] = [];
   client: Client | null = null;
 
+  /** v1.29: Event drawer state — opened by clicking the event strip. */
+  eventDrawerVisible = false;
+
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
   market: MarketplaceSummary = { selected: 0, quoted: 0, booked: 0, awaitingApproval: 0, emptyCats: [] };
@@ -863,8 +882,24 @@ export class OverviewComponent implements OnInit {
 
   // ── NAVIGATION ───────────────────────────────────────────────
 
-  goTo(tab: 'event' | 'brief' | 'marketplace' | 'estimate' | 'messages') {
+  // v1.29: 'event' is no longer a routable tab — the event strip
+  // opens the drawer instead. Other tabs still route normally.
+  goTo(tab: 'brief' | 'marketplace' | 'estimate' | 'messages') {
     this.router.navigate([`/projects/${this.pid}/${tab}`]);
+  }
+
+  openEventDrawer() {
+    this.eventDrawerVisible = true;
+    this.cdr.markForCheck();
+  }
+
+  /** Save handler from <app-event-drawer>. Replaces the local project
+      copy and recomputes derived summaries so the event strip + KPI
+      cards reflect the new values without a full reload. */
+  onProjectUpdated(p: Project) {
+    this.project = p;
+    this.recompute();
+    this.cdr.markForCheck();
   }
 
   // ── DERIVATIONS ──────────────────────────────────────────────

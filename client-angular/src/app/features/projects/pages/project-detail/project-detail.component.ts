@@ -100,15 +100,12 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // v1.24 tab bar — Overview is the new first tab and default
-    // landing route. Order:
-    //   Overview · Event · Brief · Marketplace · Estimate · Messages
-    // Estimate keeps the old /build → /estimate redirect alive for
-    // bookmarks; /supplier (legacy vendor-selection) and
-    // /estimate-legacy stay routable but aren't surfaced.
+    // v1.29 tab bar — Event removed. Event details are now reached
+    // via the drawer opened from the Overview event strip.
+    //   Overview · Brief · Marketplace · Estimate · Messages
+    // /event still routes — redirects to /overview for bookmarks.
     const tabs = [
       { label: 'Overview',    path: `/projects/${this.pid}/overview` },
-      { label: 'Event',       path: `/projects/${this.pid}/event` },
       { label: 'Brief',       path: `/projects/${this.pid}/brief` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
       { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
@@ -145,11 +142,12 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       Returns '' for tabs that prefer their own page-level title. */
   private eyebrowForUrl(url: string): string {
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
-    if (url.includes('/event'))        return 'EVENT';
     if (url.includes('/brief'))        return 'BRIEF';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
     if (url.includes('/estimate'))     return 'ESTIMATE';
     if (url.includes('/messages'))     return 'MESSAGES';
+    // /event no longer surfaces (replaced by the Event drawer) but the
+    // route still redirects, so it briefly resolves before bouncing.
     return '';
   }
 }

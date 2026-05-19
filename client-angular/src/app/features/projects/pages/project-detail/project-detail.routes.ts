@@ -11,10 +11,14 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     loadComponent: () => import('./tabs/overview/overview.component').then(m => m.OverviewComponent)
   },
   {
-    // Event tab — project facts (details, type, logistics, financials,
-    // project brief markdown). Was the original Brief tab.
+    // v1.29: /event redirects to /overview. The standalone Event tab
+    // was removed in favour of the Event drawer that opens from the
+    // Overview event strip. The component file is preserved at
+    // tabs/event/event.component.ts for git-history continuity; the
+    // drawer reuses its field definitions and dropdown options.
     path: 'event',
-    loadComponent: () => import('./tabs/event/event.component').then(m => m.EventComponent)
+    redirectTo: 'overview',
+    pathMatch: 'full'
   },
   {
     // Brief tab — In Scope picker (split out of the original Brief tab).
