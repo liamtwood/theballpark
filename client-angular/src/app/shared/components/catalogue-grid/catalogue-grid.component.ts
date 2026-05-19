@@ -999,7 +999,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() showItemEdit = false;
   @Input() showFavourite = true;
   @Input() showBack = false;
-  @Input() backLabel = 'Back to catalogue';
+  @Input() backLabel = 'Back';
   @Input() totalCount = 0;
 
   /** Build tab — when set, the inline detail panel shows the project / per-

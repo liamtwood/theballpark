@@ -753,7 +753,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
             heroSub: this.supplier.city || 'London',
             pills: [],
             tabs: [],
-            back: { label: 'Back to catalogue', onBack: () => this.goBack() }
+            back: { label: 'Back', onBack: () => this.goBack() }
           });
         }
         this.cdr.detectChanges();
@@ -1150,7 +1150,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       heroSub: this.supplier.city || 'London',
       pills: [],
       tabs: [],
-      back: { label: 'Back to catalogue', onBack: () => this.goBack() }
+      back: { label: 'Back', onBack: () => this.goBack() }
     });
     this.cdr.detectChanges();
   }

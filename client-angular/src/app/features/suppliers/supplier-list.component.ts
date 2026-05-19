@@ -346,10 +346,12 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.shellCtx.reset(); }
 
   private applyShellHero(pills: string[]) {
-    // v1.32: surface "My Suppliers" + a back button when the list is
-    // filtered to favourites. The back link uses history.back() so
-    // the user returns to wherever they came from (dashboard, project
-    // page, anywhere with a "My Suppliers" link).
+    // v1.32: hero swaps to "My Suppliers" + "SAVED CATALOGUE" when the
+    // list is filtered to favourites.
+    // v1.32a: Back button now shows on every supplier-list view (not
+    // just the favourites one) — it's reachable from Browse Suppliers
+    // on the dashboard and from the top-nav. history.back() with a
+    // dashboard fallback handles both cases gracefully.
     const favHero = this.favouritesOnly;
     this.shellCtx.set({
       heroTitle: favHero ? 'My Suppliers' : this.configSvc.platformName,
@@ -357,8 +359,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
                this.configSvc.catalogueLabel.toUpperCase(),
       pills,
       tabs: [],
-      back: favHero ? { label: 'Back', onBack: () => history.back() } : undefined
+      back: { label: 'Back', onBack: () => this.goBack() }
     });
+  }
+
+  /** v1.32a: history.back() when there's a useful entry, otherwise
+      land on the dashboard. Mirrors the supplier-detail goBack(). */
+  private goBack() {
+    if (history.length > 1) history.back();
+    else this.router.navigate(['/']);
   }
 
   // ── Config strip persistence ──────────────────────────────────────────
