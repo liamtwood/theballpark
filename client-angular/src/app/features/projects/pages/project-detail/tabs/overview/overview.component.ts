@@ -460,11 +460,15 @@ interface MessagesSummary {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    /* v1.31: standardised on the body font for date + guest values so
+       they sit alongside Venue / Client without the serif/body
+       mismatch ("July 4th" reading differently to "Kings Cross
+       Station"). Size + weight unchanged. */
     .bp-event-value--num {
-      font-family: var(--font-display);
-      font-weight: 400;
-      font-size: 18px;
-      line-height: 1.1;
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 16px;
+      line-height: 1.2;
     }
     .bp-event-sub {
       font-family: var(--font-body);

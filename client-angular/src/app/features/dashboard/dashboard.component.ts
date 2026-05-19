@@ -25,6 +25,7 @@ import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
+import { CodelistService } from '../../core/services/codelist.service';
 
 type DashTab = 'projects';
 
@@ -249,13 +250,12 @@ type DashTab = 'projects';
                     [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
                     [class.bp-card-header-active]="!p.cover_image_url && projectStatus(p).key !== 'draft'"
                     [class.bp-card-header-draft]="!p.cover_image_url && projectStatus(p).key === 'draft'">
-                    <!-- v1.22 status pill — sentence case, solid colour
-                         (Draft amber, Active green, Closed grey). Replaces
-                         the previous app-status-badge in this slot. -->
+                    <!-- v1.31 status pill — colour comes from the
+                         project_status codelist meta JSONB so any future
+                         status code (incl. user-added ones) renders
+                         consistently across surfaces. -->
                     <span class="bp-card-status-pill"
-                          [class.bp-card-status-pill--draft]="projectStatus(p).key === 'draft'"
-                          [class.bp-card-status-pill--active]="projectStatus(p).key === 'active'"
-                          [class.bp-card-status-pill--closed]="projectStatus(p).key === 'closed'">
+                          [style.background-color]="projectStatus(p).color">
                       {{ projectStatus(p).label }}
                     </span>
                     <!-- Client chip moved bottom-left per v1.22. -->
@@ -295,6 +295,58 @@ type DashTab = 'projects';
                 </div>
               </p-card>
               <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
+            </div>
+          </div>
+
+          <!-- ── v1.31 INACTIVE EVENTS ─────────────────────────────────
+               Mirrors the Active Events grid above — same card, same
+               menu, same hover. No "+ New" button. Hidden entirely when
+               there are no completed / archived projects. -->
+          <div class="bp-section-spacer" *ngIf="completedProjects.length > 0">
+            <div class="bp-section-header">
+              <span class="bp-section-title">Inactive {{ projectLabel }}s</span>
+            </div>
+            <div class="bp-project-grid">
+              <div *ngFor="let p of completedProjects"
+                   class="bp-project-card-wrap"
+                   [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
+                <p-card styleClass="bp-project-card" [routerLink]="['/projects', p.id]">
+                  <ng-template pTemplate="header">
+                    <div class="bp-card-header"
+                      [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
+                      [class.bp-card-header-active]="!p.cover_image_url">
+                      <span class="bp-card-status-pill"
+                            [style.background-color]="projectStatus(p).color">
+                        {{ projectStatus(p).label }}
+                      </span>
+                      <span *ngIf="p.client_name" class="bp-card-client-chip">{{ p.client_name }}</span>
+                      <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
+                    </div>
+                  </ng-template>
+                  <div class="bp-card-content">
+                    <div class="bp-card-name-row">
+                      <div class="bp-card-name">{{ p.event_name || p.name }}</div>
+                      <button type="button" class="bp-card-menu-btn"
+                              (click)="toggleMenu($event, p)"
+                              title="More actions">⋯</button>
+                    </div>
+                    <div class="bp-card-meta">{{ p.event_date | eventDate }}</div>
+                    <div class="bp-card-cost">Est. {{ p.total_client_cost | compactCurrency }}</div>
+                    <div *ngIf="openMenuProjectId === p.id"
+                         class="bp-card-menu"
+                         (click)="$event.stopPropagation(); $event.preventDefault()">
+                      <button type="button" class="bp-card-menu-item"
+                              (click)="onMenuAction('edit-image', p, $event)">Edit image</button>
+                      <button type="button" class="bp-card-menu-item"
+                              (click)="onMenuAction('copy', p, $event)">Copy</button>
+                      <div class="bp-card-menu-sep"></div>
+                      <button type="button" class="bp-card-menu-item bp-card-menu-item--danger"
+                              (click)="onMenuAction('delete', p, $event)">Delete</button>
+                    </div>
+                  </div>
+                </p-card>
+                <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
+              </div>
             </div>
           </div>
 
@@ -999,6 +1051,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private configStripSvc: ConfigStripService,
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
+    private codelistSvc: CodelistService,
     private confirm: ConfirmationService,
     private msg: MessageService,
     private router: Router,
@@ -1022,14 +1075,18 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // ── v1.22 project-card menu ────────────────────────────────────────
 
-  /** Normalise the project's status_name into the three-bucket scheme
-      the card pill renders (Draft / Active / Closed). Falls back to
-      Draft when status_name is missing — matches the spec. */
-  projectStatus(p: Project): { key: 'draft' | 'active' | 'closed'; label: string } {
-    const s = (p.status_name || '').toLowerCase();
-    if (s === 'active' || s === 'costing') return { key: 'active', label: 'Active' };
-    if (['closed', 'completed', 'cancelled'].includes(s)) return { key: 'closed', label: 'Closed' };
-    return { key: 'draft', label: 'Draft' };
+  /** v1.31: codelist-driven status bucketing.
+      Resolves the project's `status_name` (joined from the statuses
+      table) against the shared.codelists `project_status` list and
+      returns the canonical code + label + colour from meta JSONB.
+      Null / missing → "draft" (active bucket). One source of truth
+      for the dashboard filter, the project-card pill, and any future
+      surface that renders project status. */
+  projectStatus(p: Project): { key: string; label: string; color: string } {
+    const code = (p.status_name || 'draft').toLowerCase();
+    const label = this.codelistSvc.getLabel('project_status', code) || 'Draft';
+    const meta  = this.codelistSvc.getMeta('project_status', code);
+    return { key: code, label, color: meta?.['color'] || '#F59E0B' };
   }
 
   toggleMenu(event: MouseEvent, p: Project) {
@@ -1169,6 +1226,11 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit() {
+    // v1.31: warm the project_status codelist cache so the project
+    // card pills + projectStatus() helper resolve label + colour
+    // immediately on first render.
+    this.codelistSvc.getByName('project_status').subscribe(() => this.cdr.detectChanges());
+
     this.sub = this.configService.config$.subscribe(cfg => {
       this.projectLabel = cfg.projectLabel || 'Event';
       this.creditLabel  = cfg.creditLabel  || 'Ball';
@@ -1314,8 +1376,19 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.projectService.getAll().subscribe({
       next: projects => {
         this.projects = projects || [];
-        this.activeProjects    = this.projects.filter(p => ['active','costing','draft'].includes(p.status_name || ''));
-        this.completedProjects = this.projects.filter(p => ['completed','closed','cancelled'].includes(p.status_name || ''));
+        // v1.31: bucket via the single projectStatus() helper so
+        // null / draft / active / costing land in Active and the
+        // closed family lands in Inactive. Previously a raw filter
+        // on status_name silently dropped any project whose status
+        // hadn't been set (e.g. modal-created ones).
+        this.activeProjects = this.projects.filter(p => {
+          const k = this.projectStatus(p).key;
+          return ['draft', 'active', 'costing'].includes(k);
+        });
+        this.completedProjects = this.projects.filter(p => {
+          const k = this.projectStatus(p).key;
+          return ['completed', 'archived', 'closed', 'cancelled'].includes(k);
+        });
         this.loading = false;
         // v1.23: refresh hero context so the upcoming-event pill (when
         // enabled) reflects the freshly-loaded nextProject.

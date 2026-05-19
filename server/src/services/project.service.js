@@ -42,7 +42,7 @@ async function getById(id) {
 }
 
 async function create(data) {
-  const {
+  let {
     org_id, client_id, name, description, event_name, event_date,
     venue_name, venue_city, venue_address, guest_count, stand_size,
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
@@ -53,6 +53,16 @@ async function create(data) {
     // everything the rule-based parser extracts on the first save.
     event_type, duration_days, po_ref, currency
   } = data;
+  // v1.31: default new projects to the draft status row so they land
+  // in the Active Events bucket on the dashboard. Previously the
+  // intake modal created projects with status_id=null which made them
+  // invisible to the dashboard filter. One-shot SELECT — small table.
+  if (!status_id) {
+    const draft = await pool.query(
+      `SELECT id FROM statuses WHERE entity_type='project' AND name='draft' LIMIT 1`
+    );
+    if (draft.rows.length) status_id = draft.rows[0].id;
+  }
   const result = await pool.query(
     `INSERT INTO projects (
       org_id, client_id, name, description, event_name, event_date,
@@ -77,7 +87,7 @@ async function create(data) {
 }
 
 async function update(id, data) {
-  const {
+  let {
     org_id, client_id, name, description, event_name, event_date,
     venue_name, venue_city, venue_address, guest_count, stand_size,
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
@@ -86,6 +96,18 @@ async function update(id, data) {
     default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
     event_type, duration_days, po_ref, currency
   } = data;
+  // v1.31: the Event drawer's Status dropdown is codelist-driven and
+  // emits the status code (matches statuses.name) instead of an id.
+  // Resolve it here so callers don't need to know about the statuses
+  // table. status_id (if passed) still wins — `status_code` is an
+  // alternative entry point.
+  if (!status_id && data.status_code) {
+    const row = await pool.query(
+      `SELECT id FROM statuses WHERE entity_type='project' AND name=$1 LIMIT 1`,
+      [data.status_code]
+    );
+    if (row.rows.length) status_id = row.rows[0].id;
+  }
   const result = await pool.query(
     `UPDATE projects SET
       org_id = COALESCE($1, org_id), client_id = COALESCE($2, client_id),

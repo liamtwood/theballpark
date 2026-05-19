@@ -56,4 +56,28 @@ export class CodelistService {
     }
     return code;
   }
+
+  /** v1.31: return the meta JSONB for a given list + code (or null if
+      the list isn't cached yet or the code isn't found). Used by the
+      project status pills to look up the colour stored on
+      project_status rows. Returns the raw meta — callers reach into
+      it (e.g. meta?.color). */
+  getMeta(listName: string, code: string): Record<string, any> | null {
+    if (!code) return null;
+    const list = this.cache.get(listName);
+    if (!list) return null;
+    const match = list.find(c => c.code === code);
+    return (match as any)?.meta || null;
+  }
+
+  /** v1.31: like getDisplay but scoped to a single list — convenient
+      for project_status / budget_tier / project_status look-ups that
+      know which list they want. */
+  getLabel(listName: string, code: string): string {
+    if (!code) return '';
+    const list = this.cache.get(listName);
+    if (!list) return code;
+    const match = list.find(c => c.code === code);
+    return match?.label || code;
+  }
 }

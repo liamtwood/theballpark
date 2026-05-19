@@ -95,6 +95,28 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
           </div>
         </div>
 
+        <!-- v1.31: Status row sits at the top of EVENT DETAILS. Pill
+             rendered with the codelist meta.color in view mode;
+             dropdown (project_status codelist) in edit mode. -->
+        <div class="bp-evd-row bp-evd-row--1">
+          <div class="bp-evd-field">
+            <label class="bp-field-label">Status</label>
+            <div *ngIf="!editing.details" class="bp-evd-status-view">
+              <span class="bp-evd-status-pill"
+                    [style.background-color]="statusColor()">
+                {{ statusLabel() }}
+              </span>
+            </div>
+            <p-dropdown *ngIf="editing.details"
+                        [(ngModel)]="form.status_code"
+                        [options]="statusOptions"
+                        optionLabel="label" optionValue="code"
+                        styleClass="w-full bp-evd-dropdown"
+                        placeholder="Draft">
+            </p-dropdown>
+          </div>
+        </div>
+
         <!-- Row 1: Ref (narrow) | Event name | Client.
              Ref is read-only in view mode but editable when the
              section's pencil is clicked. -->
@@ -427,6 +449,23 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
       border-top: 0.5px solid var(--color-border);
     }
 
+    /* v1.31: status pill in the drawer's Status row. Colour comes
+       from the project_status codelist meta JSONB; padding +
+       border-radius match the dashboard project-card pill. */
+    .bp-evd-status-view {
+      display: flex; align-items: center;
+      height: 34px;
+    }
+    .bp-evd-status-pill {
+      display: inline-flex; align-items: center;
+      padding: 4px 12px;
+      border-radius: 14px;
+      font-size: 11px; font-weight: 600;
+      color: #fff;
+      text-transform: none;
+      letter-spacing: 0.02em;
+    }
+
     /* Field grids — 1 / 2 / 3 / ref column variants per section spec. */
     .bp-evd-row   { display: grid; gap: 12px; margin-bottom: 12px; }
     .bp-evd-row--1 { grid-template-columns: 1fr; }
@@ -565,11 +604,15 @@ export class EventDrawerComponent implements OnChanges {
   tierOptions: Codelist[] = [];
   /** Hydrated on init from CodelistService.getByName('currency'). */
   currencyOptions: Codelist[] = [];
+  /** v1.31: project_status codelist drives the Status dropdown +
+      pill colour. Stored as projects.status_id (FK to statuses); the
+      codelist code matches statuses.name one-to-one. */
+  statusOptions: Codelist[] = [];
 
   /** Which DB columns each section is allowed to persist on save. Save
       only sends these — never the whole form. */
   private sectionFields: Record<SectionKey, (keyof Project)[]> = {
-    details:    ['po_ref', 'event_name', 'client_name', 'venue_name', 'venue_city'],
+    details:    ['po_ref', 'event_name', 'client_name', 'venue_name', 'venue_city', 'status_code' as any],
     type:       ['event_type', 'tier'],
     logistics:  ['event_date', 'duration_days', 'guest_count'],
     financials: ['project_budget', 'currency', 'default_margin_pct', 'default_contingency_pct', 'default_vat_pct'],
@@ -588,6 +631,10 @@ export class EventDrawerComponent implements OnChanges {
     });
     this.codelistSvc.getByName('budget_tier').subscribe(rows => {
       this.tierOptions = rows || [];
+      this.cdr.markForCheck();
+    });
+    this.codelistSvc.getByName('project_status').subscribe(rows => {
+      this.statusOptions = rows || [];
       this.cdr.markForCheck();
     });
   }
@@ -622,7 +669,24 @@ export class EventDrawerComponent implements OnChanges {
       default_contingency_pct: p.default_contingency_pct,
       default_vat_pct:         p.default_vat_pct,
       raw_brief_text:          p.raw_brief_text,
-    };
+      // v1.31: synthetic status_code mirrors p.status_name so the
+      // dropdown two-way-binds correctly. On save the backend
+      // resolves the code → status_id (see project.service.js).
+      status_code:             (p as any).status_name || 'draft',
+    } as any;
+  }
+
+  /** v1.31: pill label resolved against the project_status codelist. */
+  statusLabel(): string {
+    const code = (this.form as any).status_code || 'draft';
+    return this.codelistSvc.getLabel('project_status', code) || 'Draft';
+  }
+  /** v1.31: pill colour from the codelist meta.color (falls back to
+      amber so the pill never renders un-coloured). */
+  statusColor(): string {
+    const code = (this.form as any).status_code || 'draft';
+    const meta = this.codelistSvc.getMeta('project_status', code);
+    return meta?.['color'] || '#F59E0B';
   }
 
   // ── Per-section edit controls ───────────────────────────────────────

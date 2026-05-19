@@ -39,6 +39,10 @@ export interface Project {
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  /** v1.31: synthetic status-code field — codelist 'project_status'
+      code (draft / active / completed / archived). Used by the Event
+      drawer's Status dropdown; backend resolves to status_id on save. */
+  status_code?: string;
   cover_image_url?: string;
   client_logo_url?: string;
   card_color?: string;

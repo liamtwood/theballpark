@@ -757,6 +757,17 @@ const migrate = async () => {
         ('budget_tier',    'premium',      'Premium',      NULL, 3, true),
         ('budget_tier',    'unknown',      'Unknown',      NULL, 4, true)
       ON CONFLICT (list_name, code) DO NOTHING;
+
+      -- v1.31: project_status drives the Event drawer's Status dropdown
+      -- and the dashboard project-card pill colour. Colour is stored on
+      -- meta JSONB so the consumer reads it via
+      -- CodelistService.getMeta('project_status', code).color.
+      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('project_status', 'draft',     'Draft',     1, '{"color":"#F59E0B"}'::jsonb, true),
+        ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
+        ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
+        ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
 
