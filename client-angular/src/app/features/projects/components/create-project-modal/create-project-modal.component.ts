@@ -164,19 +164,6 @@ interface PendingCategory {
 
           <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
-
-        <ng-template pTemplate="footer">
-          <p-button label="Cancel" styleClass="bp-btn-cancel"
-                    (onClick)="close()"></p-button>
-          <p-button styleClass="bp-btn-save"
-                    [disabled]="!canParse"
-                    (onClick)="parseWithAi()">
-            <ng-template pTemplate="content">
-              <lucide-icon name="sparkles" [size]="13" style="margin-right:6px"></lucide-icon>
-              Parse with AI →
-            </ng-template>
-          </p-button>
-        </ng-template>
       </ng-container>
 
       <!-- ═══════════════════════════════════════════════════ LOADING ═ -->
@@ -284,8 +271,32 @@ interface PendingCategory {
 
           <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
+      </ng-container>
 
-        <ng-template pTemplate="footer">
+      <!-- ════════════════════════════════════════════════════ FOOTER ═
+           Single footer template. PrimeNG only registers one
+           pTemplate="footer" per p-dialog instance — splitting it
+           across state-branches above made the INPUT footer get
+           pinned and the RESULTS "Create project" button never
+           rendered. State-switched buttons inside one template fixes
+           that. -->
+      <ng-template pTemplate="footer">
+        <!-- INPUT footer: Cancel + Parse with AI -->
+        <ng-container *ngIf="state === 'input'">
+          <p-button label="Cancel" styleClass="bp-btn-cancel"
+                    (onClick)="close()"></p-button>
+          <p-button styleClass="bp-btn-save"
+                    [disabled]="!canParse"
+                    (onClick)="parseWithAi()">
+            <ng-template pTemplate="content">
+              <lucide-icon name="sparkles" [size]="13" style="margin-right:6px"></lucide-icon>
+              Parse with AI →
+            </ng-template>
+          </p-button>
+        </ng-container>
+
+        <!-- RESULTS footer: ← Edit brief · Cancel · Create project → -->
+        <ng-container *ngIf="state === 'results'">
           <button type="button" class="bp-cp-back" (click)="backToInput()">
             ← Edit brief
           </button>
@@ -302,8 +313,10 @@ interface PendingCategory {
               </ng-template>
             </p-button>
           </div>
-        </ng-template>
-      </ng-container>
+        </ng-container>
+
+        <!-- LOADING has no footer (the spinner body owns the space). -->
+      </ng-template>
     </p-dialog>
 
     <p-toast></p-toast>
