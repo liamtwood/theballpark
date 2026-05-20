@@ -118,8 +118,11 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       },
     ];
 
-    // Pills: client name + venue
+    // Pills: auto-ref (v1.39g — was missing from the hero), client
+    // name, then venue. The ref is the project's identifier; surfacing
+    // it as the leftmost pill keeps it visible on every project tab.
     const pills: string[] = [];
+    if (p.ref)         pills.push(p.ref);
     if (p.client_name) pills.push(p.client_name);
     if (p.venue_name)  pills.push(p.venue_name);
 

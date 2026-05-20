@@ -68,7 +68,10 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
           <div class="bp-drawer-header">
-            <span class="bp-drawer-label">PROJECT</span>
+            <span class="bp-drawer-label">
+              PROJECT
+              <span *ngIf="project?.ref" class="bp-evd-ref-chip">{{ project?.ref }}</span>
+            </span>
             <div class="bp-drawer-title">Event details</div>
           </div>
           <button class="bp-icon-btn" (click)="close()" title="Close">
@@ -445,6 +448,23 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
   `,
   styles: [`
     :host { font-family: var(--font-body); }
+
+    /* v1.39g — auto-ref chip in the drawer header (next to "PROJECT"
+       eyebrow). Compact monospace-leaning style so the identifier
+       reads as data, not a label. */
+    .bp-evd-ref-chip {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 8px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--color-text-secondary);
+      vertical-align: middle;
+    }
 
     /* Section spacing — first section sits flush under the header; the
        rest get a top divider via --top. */
