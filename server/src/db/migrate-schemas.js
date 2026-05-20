@@ -595,7 +595,307 @@ const migrate = async () => {
         SELECT 1 FROM master.categories
          WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
       );
+
+      -- v1.40: three new catalogue categories required by the full
+      -- subcategory taxonomy.
+      --   Set Build         — scenic, dressing, theming (distinct
+      --                       from Stand Structure which is the
+      --                       physical build)
+      --   Event Accessories — red carpets, gift bags, lanyards,
+      --                       scent design, etc.
+      --   Other             — PM fees, contingency, design fees and
+      --                       other admin lines that don't fit a
+      --                       supplier category.
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
     `);
+
+    // v1.40: ensure tag table exists in preview + master. It was
+    // created in public via a one-off migration (migration_category_tags
+    // .sql) but never carried across. Mirror the public schema exactly
+    // so the same INSERTs below work uniformly.
+    for (const schema of ['preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.tag (
+          id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          category_id UUID NOT NULL REFERENCES ${schema}.categories(id) ON DELETE CASCADE,
+          label       TEXT NOT NULL,
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_category_id_label_key
+          ON ${schema}.tag (category_id, label);
+      `);
+    }
+
+    // v1.40: seed the complete subcategory taxonomy. ~140 tags across
+    // 17 catalogue groupings. Idempotent — `ON CONFLICT (category_id,
+    // label) DO NOTHING` thanks to the unique constraint on
+    // (category_id, label). Lookup is by category name so the same
+    // SQL works across public/preview/master (UUIDs differ per schema).
+    //
+    // Mapping decisions (Liam, v1.40 brief):
+    //   - "Set Build" → new category (NOT Stand Structure)
+    //   - "Talent & Staffing" tags → existing "Staffing" (no rename)
+    //   - "Photography & Content" tags → existing "Photography"
+    //   - "Event Accessories" → new category
+    //   - "Venues" tags → existing "Venue" (singular)
+    //   - "Other" → new category
+    //   - Construction & Build left as-is (its 5 existing tags untouched)
+    //
+    // No dedupe — if a label already exists with slight variation
+    // (e.g. "Outdoor Structures" vs "Outdoor Structure") both stay.
+    const TAXONOMY = [
+      // Stand Structure
+      ['Stand Structure', 'Shell Scheme', 1],
+      ['Stand Structure', 'Space Only / Custom Build', 2],
+      ['Stand Structure', 'Modular / Reusable Systems', 3],
+      ['Stand Structure', 'Pop-Up / Activation Structures', 4],
+      ['Stand Structure', 'Bespoke Fabrication', 5],
+      ['Stand Structure', 'Inflatables', 6],
+      ['Stand Structure', 'Tensile / Canopy / Tent', 7],
+      ['Stand Structure', 'Container / Portacabin Conversion', 8],
+      ['Stand Structure', 'Stage / Platform Build', 9],
+      ['Stand Structure', 'Outdoor Structure', 10],
+      // Set Build (new)
+      ['Set Build', 'Set Dressing / Styling', 1],
+      ['Set Build', 'Scenic Painting', 2],
+      ['Set Build', 'Props & Theming', 3],
+      ['Set Build', 'Window Display', 4],
+      ['Set Build', 'Shop / Retail Fit-Out', 5],
+      ['Set Build', 'Immersive Environment', 6],
+      ['Set Build', 'Photo Moment / Selfie Wall', 7],
+      ['Set Build', 'Green Room / Backstage Build', 8],
+      // Flooring
+      ['Flooring', 'Carpet / Carpet Tile', 1],
+      ['Flooring', 'Vinyl / Lino', 2],
+      ['Flooring', 'Raised Floor / Platform', 3],
+      ['Flooring', 'Outdoor Flooring / Trackway', 4],
+      ['Flooring', 'Dance Floor', 5],
+      ['Flooring', 'Branded Floor Graphics', 6],
+      // Lighting
+      ['Lighting', 'Architectural / Wash Lighting', 1],
+      ['Lighting', 'Spot / Feature Lighting', 2],
+      ['Lighting', 'Festoon / Fairy Lights', 3],
+      ['Lighting', 'Neon / LED Signage', 4],
+      ['Lighting', 'Gobo Projection', 5],
+      ['Lighting', 'Uplighting', 6],
+      ['Lighting', 'Intelligent / Moving Head', 7],
+      ['Lighting', 'Outdoor / Weatherproof Lighting', 8],
+      ['Lighting', 'Ambient / Mood Lighting', 9],
+      // AV & Technology
+      ['AV & Technology', 'PA & Sound System', 1],
+      ['AV & Technology', 'Microphones', 2],
+      ['AV & Technology', 'Mixing & Playback', 3],
+      ['AV & Technology', 'LED Wall & Screens', 4],
+      ['AV & Technology', 'TV & Monitors', 5],
+      ['AV & Technology', 'Projection', 6],
+      ['AV & Technology', 'Streaming & Recording', 7],
+      ['AV & Technology', 'Control & Infrastructure', 8],
+      ['AV & Technology', 'Interactive / Touchscreen', 9],
+      ['AV & Technology', 'VR / AR Experience', 10],
+      ['AV & Technology', 'WiFi & Connectivity', 11],
+      // Furniture & Fixtures
+      ['Furniture & Fixtures', 'Seating', 1],
+      ['Furniture & Fixtures', 'Tables', 2],
+      ['Furniture & Fixtures', 'Bar & Counter Units', 3],
+      ['Furniture & Fixtures', 'Shelving & Display Units', 4],
+      ['Furniture & Fixtures', 'Outdoor Furniture', 5],
+      ['Furniture & Fixtures', 'Lounge & Breakout Sets', 6],
+      ['Furniture & Fixtures', 'Plinths & Pedestals', 7],
+      ['Furniture & Fixtures', 'Reception / Registration Desk', 8],
+      ['Furniture & Fixtures', 'Retail Fixtures', 9],
+      ['Furniture & Fixtures', 'Storage / Containers / Bins', 10],
+      // Catering & Hospitality
+      ['Catering & Hospitality', 'Catering Company / Chef', 1],
+      ['Catering & Hospitality', 'Drinks & Mixology', 2],
+      ['Catering & Hospitality', 'Coffee & Hot Drinks', 3],
+      ['Catering & Hospitality', 'Afternoon Tea & Canapés', 4],
+      ['Catering & Hospitality', 'Catering Equipment Hire', 5],
+      ['Catering & Hospitality', 'Staffing (F&B)', 6],
+      ['Catering & Hospitality', 'Product Sampling', 7],
+      ['Catering & Hospitality', 'Food Truck / Street Food', 8],
+      ['Catering & Hospitality', 'Ice Cream / Dessert', 9],
+      ['Catering & Hospitality', 'Dietary & Allergen Management', 10],
+      // Florals
+      ['Florals', 'Table Centrepieces', 1],
+      ['Florals', 'Entrance & Arch Florals', 2],
+      ['Florals', 'Hanging Installations', 3],
+      ['Florals', 'Potted Plants & Greenery', 4],
+      ['Florals', 'Dried & Artificial Botanicals', 5],
+      ['Florals', 'Branded / Colour-Matched Arrangements', 6],
+      ['Florals', 'Sustainable / Seasonal Florals', 7],
+      // Graphics & Signage
+      ['Graphics & Signage', 'Large Format Print', 1],
+      ['Graphics & Signage', 'Vinyl & Wraps', 2],
+      ['Graphics & Signage', 'Fabric / Tension Graphics', 3],
+      ['Graphics & Signage', 'Wayfinding & Directional', 4],
+      ['Graphics & Signage', 'A-Frames / Freestanding', 5],
+      ['Graphics & Signage', 'Step & Repeat / Press Wall', 6],
+      ['Graphics & Signage', 'Vehicle / Fleet Wraps', 7],
+      ['Graphics & Signage', 'Window Graphics', 8],
+      ['Graphics & Signage', 'Digital Print / Packaging', 9],
+      ['Graphics & Signage', 'Branded Merchandise / Collateral', 10],
+      // Health & Safety
+      ['Health & Safety', 'Risk Assessment / RAMS', 1],
+      ['Health & Safety', 'Public Liability Insurance', 2],
+      ['Health & Safety', 'Fire Safety / Marshal', 3],
+      ['Health & Safety', 'First Aid Cover', 4],
+      ['Health & Safety', 'Crowd Management / Barriers', 5],
+      ['Health & Safety', 'Food Safety / Hygiene', 6],
+      ['Health & Safety', 'Structural Certification', 7],
+      ['Health & Safety', 'DBS / Safeguarding', 8],
+      ['Health & Safety', 'Licensing / Permits', 9],
+      // Logistics & Transport
+      ['Logistics & Transport', 'Transport & Delivery', 1],
+      ['Logistics & Transport', 'Load-In / Load-Out Crew', 2],
+      ['Logistics & Transport', 'Storage & Warehousing', 3],
+      ['Logistics & Transport', 'Generator / Temp Power', 4],
+      ['Logistics & Transport', 'Water & Plumbing', 5],
+      ['Logistics & Transport', 'Waste Management / Recycling', 6],
+      ['Logistics & Transport', 'Freight / International Shipping', 7],
+      ['Logistics & Transport', 'Site Survey / Recce', 8],
+      ['Logistics & Transport', 'Event Insurance', 9],
+      ['Logistics & Transport', 'Parking / Traffic Management', 10],
+      // Entertainment
+      ['Entertainment', 'Live Band / Musician', 1],
+      ['Entertainment', 'DJ', 2],
+      ['Entertainment', 'MC / Host', 3],
+      ['Entertainment', 'Comedian / Speaker', 4],
+      ['Entertainment', 'Performance Act', 5],
+      ['Entertainment', 'Interactive Experience', 6],
+      ['Entertainment', "Children's Entertainment", 7],
+      ['Entertainment', 'Roaming / Ambient Acts', 8],
+      // Staffing  (← Prompt 1's "Talent & Staffing")
+      ['Staffing', 'Brand Ambassador', 1],
+      ['Staffing', 'Event Manager / Producer', 2],
+      ['Staffing', 'Registration / Front of House', 3],
+      ['Staffing', 'Technical Crew', 4],
+      ['Staffing', 'Runners / General Staff', 5],
+      ['Staffing', 'Promotional Staff', 6],
+      ['Staffing', 'Specialist Staff (DBS, First Aid)', 7],
+      ['Staffing', 'Influencer / KOL Coordination', 8],
+      ['Staffing', 'Interpreter / Multilingual Staff', 9],
+      // Photography  (← Prompt 1's "Photography & Content")
+      ['Photography', 'Event Photographer', 1],
+      ['Photography', 'Videographer / Film Crew', 2],
+      ['Photography', 'Drone Photography', 3],
+      ['Photography', 'Social Media Content', 4],
+      ['Photography', 'Live Streaming Crew', 5],
+      ['Photography', 'Photo Booth / Activation', 6],
+      ['Photography', 'Same-Day Edit / Highlights', 7],
+      ['Photography', '360° / VR Capture', 8],
+      // Event Accessories (new)
+      ['Event Accessories', 'Red Carpet / Rope & Post', 1],
+      ['Event Accessories', 'Gift Bags / Welcome Packs', 2],
+      ['Event Accessories', 'Lanyards / Badges / Wristbands', 3],
+      ['Event Accessories', 'Table Dressing / Linen', 4],
+      ['Event Accessories', 'Glassware / Crockery Hire', 5],
+      ['Event Accessories', 'Branded Uniforms / Workwear', 6],
+      ['Event Accessories', 'Balloons / Confetti / Pyro', 7],
+      ['Event Accessories', 'Scent / Aroma Design', 8],
+      // Venue  (← Prompt 1's "Venues")
+      ['Venue', 'Exhibition Centre', 1],
+      ['Venue', 'Hotel / Conference', 2],
+      ['Venue', 'Museum / Gallery', 3],
+      ['Venue', 'Outdoor / Park / Garden', 4],
+      ['Venue', 'Warehouse / Industrial', 5],
+      ['Venue', 'Restaurant / Bar', 6],
+      ['Venue', 'Unique / Non-Traditional', 7],
+      ['Venue', 'Festival Site / Field', 8],
+      ['Venue', 'Retail Unit / Pop-Up Shop', 9],
+      ['Venue', 'Studio / Broadcast', 10],
+      // Other (new)
+      ['Other', 'Project Management Fee', 1],
+      ['Other', 'Design & Creative Fee', 2],
+      ['Other', 'Contingency', 3],
+      ['Other', 'Client Hospitality', 4],
+      ['Other', 'Travel & Accommodation', 5],
+      ['Other', 'Miscellaneous', 6],
+    ];
+    // Render the VALUES list once. Single-quotes need doubling for SQL.
+    const valuesSql = TAXONOMY
+      .map(([cat, label, ord]) => `(${"'"}${cat.replace(/'/g, "''")}${"'"}, ${"'"}${label.replace(/'/g, "''")}${"'"}, ${ord})`)
+      .join(',\n        ');
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        WITH src(cat_name, label, sort_order) AS (
+          VALUES
+            ${valuesSql}
+        )
+        INSERT INTO ${schema}.tag (category_id, label, sort_order)
+        SELECT c.id, src.label, src.sort_order
+          FROM src
+          JOIN ${schema}.categories c
+            ON c.name = src.cat_name
+           AND c.namespace = 'catalogue'
+           AND c.parent_id IS NULL
+        ON CONFLICT (category_id, label) DO NOTHING;
+      `);
+    }
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
@@ -603,6 +903,8 @@ const migrate = async () => {
     console.log('  orgs.auto_publish_items ensured.');
     console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
     console.log('  Photography catalogue category ensured (v1.39f).');
+    console.log('  Set Build / Event Accessories / Other catalogue categories ensured (v1.40).');
+    console.log(`  Subcategory taxonomy seeded — ${TAXONOMY.length} tags × 3 schemas (v1.40).`);
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
