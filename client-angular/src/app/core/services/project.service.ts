@@ -21,6 +21,12 @@ export class ProjectService {
     return this.api.post<Project>(`/projects/${id}/duplicate`, {});
   }
   getByOrg(orgId: string) { return this.api.get<Project[]>(`/projects?org_id=${orgId}`); }
+  /** v1.39 — preview the next auto-ref for an org without burning the
+      counter. Returns `{ ref: 'WA-014' | null }`. The real ref is
+      generated on create() so a cancelled modal doesn't burn a number. */
+  previewNextRef(orgId: string) {
+    return this.api.get<{ ref: string | null }>(`/projects/next-ref?org_id=${orgId}`);
+  }
   triggerRefresh() { this.refreshSubject.next(); }
 
   // ── Brief tab — scope picker + per-category briefs ──

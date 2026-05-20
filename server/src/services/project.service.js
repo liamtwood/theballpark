@@ -51,7 +51,10 @@ async function create(data) {
     default_vat_pct, tier, status_id,
     // v1.30: extended so the create-project intake modal can persist
     // everything the rule-based parser extracts on the first save.
-    event_type, duration_days, po_ref, currency
+    event_type, duration_days, po_ref, currency,
+    // v1.39: allow caller-supplied ref to short-circuit the auto-gen
+    // (e.g. seed scripts that want a known value).
+    ref
   } = data;
   // v1.31: default new projects to the draft status row so they land
   // in the Active Events bucket on the dashboard. Previously the
@@ -63,6 +66,34 @@ async function create(data) {
     );
     if (draft.rows.length) status_id = draft.rows[0].id;
   }
+
+  // v1.39: auto-generate the project ref by atomically incrementing
+  // the org's counter. UPDATE ... RETURNING is a single statement so
+  // two concurrent project creates can never claim the same number.
+  // Skipped if org_id is missing (defensive — shouldn't happen) or if
+  // the caller supplied an explicit ref.
+  if (!ref && org_id) {
+    const r = await pool.query(
+      `UPDATE orgs
+          SET ref_counter = COALESCE(ref_counter, 0) + 1
+        WHERE id = $1
+       RETURNING ref_prefix, ref_counter, name`,
+      [org_id]
+    );
+    if (r.rows.length) {
+      const row = r.rows[0];
+      let prefix = (row.ref_prefix || '').trim();
+      if (!prefix) {
+        // Fallback: first two letters of org name, uppercase. If org
+        // name is missing too, the existing v1.39 default of 'BP'
+        // applies (set in the column default).
+        prefix = ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+      }
+      const padded = String(row.ref_counter).padStart(3, '0');
+      ref = `${prefix.toUpperCase()}-${padded}`;
+    }
+  }
+
   const result = await pool.query(
     `INSERT INTO projects (
       org_id, client_id, name, description, event_name, event_date,
@@ -71,8 +102,9 @@ async function create(data) {
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
-      event_type, duration_days, po_ref, currency
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
+      event_type, duration_days, po_ref, currency,
+      ref
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31) RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
@@ -80,7 +112,8 @@ async function create(data) {
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
-      event_type, duration_days, po_ref, currency
+      event_type, duration_days, po_ref, currency,
+      ref
     ]
   );
   return result.rows[0];
@@ -234,4 +267,26 @@ async function recalcTotals(projectId) {
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals };
+/** v1.39 — preview the *next* project ref for an org, without
+    consuming the counter. Used by the create-project modal so the
+    "Ref WA-014 auto-generated" chip can render before the user
+    confirms create. The real ref is still generated inside create()
+    so a cancelled modal doesn't burn a number. */
+async function previewNextRef(orgId) {
+  if (!orgId) return null;
+  const r = await pool.query(
+    `SELECT ref_prefix, COALESCE(ref_counter, 0) AS ref_counter, name
+       FROM orgs WHERE id = $1`,
+    [orgId]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  let prefix = (row.ref_prefix || '').trim();
+  if (!prefix) {
+    prefix = ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+  }
+  const next = row.ref_counter + 1;
+  return `${prefix.toUpperCase()}-${String(next).padStart(3, '0')}`;
+}
+
+module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals, previewNextRef };

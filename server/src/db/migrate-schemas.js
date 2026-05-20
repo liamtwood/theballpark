@@ -535,12 +535,31 @@ const migrate = async () => {
       ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
       ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
+
+      -- v1.39: org project-ref prefix + counter, and the resulting
+      -- auto-generated project ref column. The create-project modal
+      -- now stamps every new project with "{prefix}-{counter:03}"
+      -- (e.g. WA-014). Counter is incremented atomically server-side
+      -- on every successful project create. ref_prefix defaults to
+      -- 'BP' if the org owner hasn't customised it in Settings.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
     `);
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
     console.log('  project_items table + unique index ensured.');
     console.log('  orgs.auto_publish_items ensured.');
+    console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');

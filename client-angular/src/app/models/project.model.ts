@@ -36,6 +36,11 @@ export interface Project {
   event_type?: string;
   duration_days?: number;
   po_ref?: string;
+  /** v1.39: auto-generated project reference — "{org.ref_prefix}-{counter:03}"
+      (e.g. WA-014). Stamped on create from orgs.ref_prefix +
+      orgs.ref_counter (atomic increment). Distinct from po_ref which
+      is a free-text purchase-order field. */
+  ref?: string;
   status_id?: string;
   status_name?: string;
   status_color?: string;

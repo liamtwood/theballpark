@@ -4,50 +4,64 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, Paperclip, X, WandSparkles } from 'lucide-angular';
+import {
+  LucideAngularModule, Paperclip, X, WandSparkles, Check, HelpCircle, Sparkles
+} from 'lucide-angular';
 
 import { ProjectService } from '../../../../core/services/project.service';
-import { ProjectCategoryService } from '../../../../core/services/project-category.service';
 import { CategoryService } from '../../../../core/services/category.service';
 import { OrgService } from '../../../../core/services/org.service';
+import { AiService } from '../../../../core/services/ai.service';
 import {
   CreateProjectService
 } from '../../../../core/services/create-project.service';
 import {
-  BriefParserService, ParsedBrief, EXAMPLE_BRIEFS
+  BriefParserService, EXAMPLE_BRIEFS, ParsedBrief as RuleParsedBrief
 } from '../../../../core/services/brief-parser.service';
-import { Category } from '../../../../models';
+import {
+  Category, ParsedBrief, ParsedBriefCategory
+} from '../../../../models';
 
 /**
- * "New project" intake modal — v1.30.
+ * "New project" intake modal — v1.39.
  *
- * PrimeNG p-dialog mounted once at the app-shell level so every "+ New
- * project" call site (dashboard, project list, future top-nav) calls
- * CreateProjectService.open() and this single instance handles it.
+ * Three states:
+ *   1. INPUT   — upload a file or paste a brief; ref chip auto-shown
+ *   2. LOADING — AI is reading; animated progress steps
+ *   3. RESULTS — hero card + category list + questions; review & remove
  *
- * Flow:
- *   1. User fills name (required) + optional client / date / venue
- *   2. User pastes a brief OR uploads a file (file is captured for
- *      later AI parsing — not used by the rule-based parser yet)
- *   3. Click "Create & parse →"
- *      - Run BriefParserService.parseBrief(text) → ParsedBrief
- *      - ProjectService.create() with merged fields (modal fields
- *        take priority over parsed values)
- *      - For each parsed category, resolve to a real category_id via
- *        CategoryService.getAll() name-match, then
- *        ProjectCategoryService.upsert() with requirement_brief +
- *        ballpark_budget
- *      - Navigate to /projects/:id/brief
+ * AI is the PRIMARY parser (AiService.parseBrief — Haiku 4.5, upgraded
+ * in v1.38). The rule-based parser (BriefParserService) is kept as a
+ * LAST-RESORT fallback when the AI call fails so the user can still
+ * land on a half-populated project rather than a blank one.
  *
- * The "Try an example" pills paste one of the EXAMPLE_BRIEFS into the
- * textarea + project name input.
+ * The auto-ref ("{org.ref_prefix}-{counter:03}", e.g. WA-014) is
+ * previewed via GET /projects/next-ref?org_id=... and stamped for real
+ * when create() runs server-side, so a cancelled modal doesn't burn
+ * a number.
+ *
+ * The modal is mounted once at the app-shell level; every "+ New
+ * project" call site uses CreateProjectService.open() to surface this
+ * single instance.
  */
+type ModalState = 'input' | 'loading' | 'results';
+
+interface PendingCategory {
+  ai: ParsedBriefCategory;
+  /** Resolved catalogue Category, or null if no match. */
+  db: Category | null;
+  /** UI flag — user clicked ✕ to remove. */
+  removed: boolean;
+}
+
 @Component({
   selector: 'app-create-project-modal',
   standalone: true,
@@ -62,14 +76,14 @@ import { Category } from '../../../../models';
               (visibleChange)="onVisibleChange($event)"
               [modal]="true" [draggable]="false" [resizable]="false"
               [closable]="false"
-              [style]="{width:'560px'}"
+              [style]="{width:'600px'}"
               styleClass="bp-cp-dialog">
 
       <ng-template pTemplate="header">
         <div class="bp-cp-head">
           <div>
             <div class="bp-cp-title">New project</div>
-            <div class="bp-cp-sub">Enter the basics — AI will do the rest</div>
+            <div class="bp-cp-sub">{{ subtitle }}</div>
           </div>
           <button type="button" class="bp-icon-btn" (click)="close()" title="Close">
             <i class="pi pi-times"></i>
@@ -77,109 +91,214 @@ import { Category } from '../../../../models';
         </div>
       </ng-template>
 
-      <div class="bp-cp-body">
+      <!-- ═══════════════════════════════════════════════════ INPUT ═══ -->
+      <ng-container *ngIf="state === 'input'">
+        <div class="bp-cp-body">
 
-        <!-- Row 1: name (required) | client -->
-        <div class="bp-cp-row">
-          <div class="bp-cp-field">
-            <label class="bp-field-label">Project name<span class="bp-cp-req">*</span></label>
-            <input pInputText [(ngModel)]="form.name"
-                   placeholder="e.g. TechVista London Tech Week"
-                   class="w-full bp-input-edit"/>
+          <div class="bp-cp-ref" *ngIf="nextRef">
+            <span>Ref</span>
+            <span class="bp-cp-ref-code">{{ nextRef }}</span>
+            <span class="bp-cp-ref-auto">auto-generated</span>
           </div>
-          <div class="bp-cp-field">
-            <label class="bp-field-label">Client</label>
-            <input pInputText [(ngModel)]="form.client_name"
-                   placeholder="e.g. TechVista Solutions"
-                   class="w-full bp-input-edit"/>
+
+          <!-- File upload zone (hidden if textarea has content) -->
+          <ng-container *ngIf="!form.brief.trim()">
+            <label class="bp-cp-upload"
+                   [class.has-file]="uploadedFile"
+                   (dragover)="$event.preventDefault()"
+                   (drop)="onDrop($event)">
+              <input #fileInput type="file" hidden
+                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.eml,.txt"
+                     (change)="onFilePicked($event)"/>
+              <ng-container *ngIf="!uploadedFile">
+                <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+                <div class="bp-cp-upload-text">
+                  <div class="bp-cp-upload-title">Upload brief</div>
+                  <div class="bp-cp-upload-sub">Drag &amp; drop or click to browse</div>
+                </div>
+                <div class="bp-cp-upload-formats">
+                  <span class="bp-cp-upload-fmt">PDF</span>
+                  <span class="bp-cp-upload-fmt">Image</span>
+                  <span class="bp-cp-upload-fmt">Word</span>
+                  <span class="bp-cp-upload-fmt">Email</span>
+                </div>
+              </ng-container>
+              <ng-container *ngIf="uploadedFile">
+                <lucide-icon name="paperclip" [size]="14"></lucide-icon>
+                <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
+                <button type="button" class="bp-cp-upload-x"
+                        (click)="$event.preventDefault(); $event.stopPropagation(); uploadedFile = null;">
+                  <i class="pi pi-times"></i>
+                </button>
+              </ng-container>
+            </label>
+          </ng-container>
+
+          <div class="bp-cp-or" *ngIf="!uploadedFile">
+            <span class="bp-cp-or-line"></span>
+            <span class="bp-cp-or-text">or paste text</span>
+            <span class="bp-cp-or-line"></span>
           </div>
+
+          <textarea *ngIf="!uploadedFile"
+                    pInputTextarea
+                    [(ngModel)]="form.brief"
+                    [rows]="5"
+                    placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
+                    class="w-full bp-input-edit bp-cp-brief"></textarea>
+
+          <div class="bp-cp-examples" *ngIf="!uploadedFile">
+            <span class="bp-cp-examples-label">Try:</span>
+            <button *ngFor="let ex of examples"
+                    type="button"
+                    class="bp-cp-example-pill"
+                    (click)="loadExample(ex.key)">
+              {{ ex.label }}
+            </button>
+          </div>
+
+          <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
 
-        <!-- Row 2: event date (free text) | venue -->
-        <div class="bp-cp-row">
-          <div class="bp-cp-field">
-            <label class="bp-field-label">Event date</label>
-            <input pInputText [(ngModel)]="form.event_date"
-                   placeholder="e.g. 2-4 June 2026 or Late September"
-                   class="w-full bp-input-edit"/>
+        <ng-template pTemplate="footer">
+          <p-button label="Cancel" styleClass="bp-btn-cancel"
+                    (onClick)="close()"></p-button>
+          <p-button styleClass="bp-btn-save"
+                    [disabled]="!canParse"
+                    (onClick)="parseWithAi()">
+            <ng-template pTemplate="content">
+              <lucide-icon name="sparkles" [size]="13" style="margin-right:6px"></lucide-icon>
+              Parse with AI →
+            </ng-template>
+          </p-button>
+        </ng-template>
+      </ng-container>
+
+      <!-- ═══════════════════════════════════════════════════ LOADING ═ -->
+      <ng-container *ngIf="state === 'loading'">
+        <div class="bp-cp-loading">
+          <div class="bp-cp-spinner"></div>
+          <div class="bp-cp-loading-title">
+            <lucide-icon name="sparkles" [size]="14"></lucide-icon>
+            AI is reading your brief…
           </div>
-          <div class="bp-cp-field">
-            <label class="bp-field-label">Venue</label>
-            <input pInputText [(ngModel)]="form.venue_name"
-                   placeholder="e.g. ExCeL London"
-                   class="w-full bp-input-edit"/>
+          <div class="bp-cp-loading-sub">
+            Identifying categories, writing supplier briefs, flagging questions
+          </div>
+          <div class="bp-cp-loading-steps">
+            <div class="bp-cp-step" [class.done]="loadStep >= 1">
+              <lucide-icon *ngIf="loadStep >= 1" name="check" [size]="12"></lucide-icon>
+              <span *ngIf="loadStep < 1">⏳</span>
+              {{ loadStep >= 1 ? 'Details extracted' : 'Extracting details' }}
+            </div>
+            <div class="bp-cp-step" [class.done]="loadStep >= 2" *ngIf="loadStep >= 1">
+              <lucide-icon *ngIf="loadStep >= 2" name="check" [size]="12"></lucide-icon>
+              <span *ngIf="loadStep < 2">⏳</span>
+              {{ loadStep >= 2
+                  ? (aiCategoryCount + ' categories identified')
+                  : 'Writing category briefs' }}
+            </div>
+            <div class="bp-cp-step" [class.done]="loadStep >= 3" *ngIf="loadStep >= 2">
+              <lucide-icon *ngIf="loadStep >= 3" name="check" [size]="12"></lucide-icon>
+              <span *ngIf="loadStep < 3">⏳</span>
+              {{ loadStep >= 3
+                  ? (aiQuestionCount + ' questions flagged')
+                  : 'Flagging questions' }}
+            </div>
+            <div class="bp-cp-step" *ngIf="loadStep >= 3 && !aiSettled">
+              ⏳ Still working…
+            </div>
           </div>
         </div>
+      </ng-container>
 
-        <!-- Upload zone (hidden when textarea has content) -->
-        <ng-container *ngIf="!form.brief.trim()">
-          <label class="bp-cp-upload"
-                 [class.has-file]="uploadedFile"
-                 (dragover)="$event.preventDefault()"
-                 (drop)="onDrop($event)">
-            <input #fileInput type="file" hidden
-                   accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                   (change)="onFilePicked($event)"/>
-            <ng-container *ngIf="!uploadedFile">
-              <lucide-icon name="paperclip" [size]="16"></lucide-icon>
-              <div class="bp-cp-upload-text">
-                <div class="bp-cp-upload-title">Upload brief</div>
-                <div class="bp-cp-upload-sub">PDF, image, or Word doc</div>
+      <!-- ═══════════════════════════════════════════════════ RESULTS ═ -->
+      <ng-container *ngIf="state === 'results' && aiResult">
+        <div class="bp-cp-body">
+
+          <div class="bp-cp-hero">
+            <div class="bp-cp-hero-row">
+              <div class="bp-cp-hero-main">
+                <div class="bp-cp-hero-name">{{ aiResult.projectName || 'Untitled project' }}</div>
+                <div class="bp-cp-hero-meta">
+                  <span class="bp-cp-chip" *ngIf="aiResult.client">👤 {{ aiResult.client }}</span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.dates">📅 {{ aiResult.dates }}</span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.location">📍 {{ aiResult.location }}</span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.budget">💰 {{ aiResult.budget }}</span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">
+                    🎯 {{ aiResult.budgetSignal }}
+                  </span>
+                </div>
               </div>
-            </ng-container>
-            <ng-container *ngIf="uploadedFile">
-              <lucide-icon name="paperclip" [size]="14"></lucide-icon>
-              <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
-              <button type="button" class="bp-cp-upload-x"
-                      (click)="$event.preventDefault(); uploadedFile = null;">
-                <i class="pi pi-times"></i>
+              <span class="bp-cp-hero-ref">{{ nextRef || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="bp-cp-summary" *ngIf="aiResult.summary">
+            “{{ aiResult.summary }}”
+          </div>
+
+          <div class="bp-cp-section">{{ activeCategoryCount }} categories identified</div>
+          <div class="bp-cp-cats">
+            <div *ngFor="let p of pendingCategories; let i = index"
+                 class="bp-cp-cat" [class.removed]="p.removed">
+              <div class="bp-cp-cat-icon">
+                <lucide-icon *ngIf="p.db?.icon_name"
+                             [name]="p.db?.icon_name || 'circle'"
+                             [size]="14"></lucide-icon>
+                <span *ngIf="!p.db?.icon_name">{{ (p.ai.categoryLabel || '?').charAt(0) }}</span>
+              </div>
+              <div class="bp-cp-cat-body">
+                <div class="bp-cp-cat-name">
+                  {{ p.db?.name || p.ai.categoryLabel }}
+                  <span *ngIf="p.ai.implied" class="bp-cp-cat-implied">Implied</span>
+                  <span *ngIf="!p.db" class="bp-cp-cat-unmatched" title="Catalogue category not found — will be skipped on Create.">
+                    No match
+                  </span>
+                </div>
+                <div class="bp-cp-cat-brief">{{ p.ai.oneLiner }}</div>
+              </div>
+              <div class="bp-cp-cat-est" *ngIf="p.ai.budgetEstimate">{{ p.ai.budgetEstimate }}</div>
+              <button type="button" class="bp-cp-cat-x"
+                      (click)="toggleRemove(i)"
+                      [title]="p.removed ? 'Undo remove' : 'Remove category'">
+                <i class="pi" [class.pi-times]="!p.removed" [class.pi-undo]="p.removed"></i>
               </button>
-            </ng-container>
-          </label>
-        </ng-container>
+            </div>
+          </div>
 
-        <!-- Divider — only when no file is uploaded -->
-        <div class="bp-cp-or" *ngIf="!uploadedFile">
-          <span class="bp-cp-or-line"></span>
-          <span class="bp-cp-or-text">or paste text</span>
-          <span class="bp-cp-or-line"></span>
+          <ng-container *ngIf="aiResult.topQuestions?.length">
+            <div class="bp-cp-section">{{ aiResult.topQuestions?.length }} questions to resolve</div>
+            <div class="bp-cp-questions">
+              <div class="bp-cp-question" *ngFor="let q of aiResult.topQuestions">
+                <lucide-icon name="help-circle" [size]="12"></lucide-icon>
+                {{ q }}
+              </div>
+            </div>
+          </ng-container>
+
+          <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
 
-        <!-- Textarea (hidden if file uploaded) -->
-        <textarea *ngIf="!uploadedFile"
-                  pInputTextarea
-                  [(ngModel)]="form.brief"
-                  [rows]="6"
-                  placeholder="Paste a client email, brief, or rough notes here..."
-                  class="w-full bp-input-edit bp-cp-brief"></textarea>
-
-        <!-- Example pills -->
-        <div class="bp-cp-examples" *ngIf="!uploadedFile">
-          <span class="bp-cp-examples-label">Try an example:</span>
-          <button *ngFor="let ex of examples"
-                  type="button"
-                  class="bp-cp-example-pill"
-                  (click)="loadExample(ex.key)">
-            {{ ex.label }}
+        <ng-template pTemplate="footer">
+          <button type="button" class="bp-cp-back" (click)="backToInput()">
+            ← Edit brief
           </button>
-        </div>
-
-        <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
-      </div>
-
-      <ng-template pTemplate="footer">
-        <p-button label="Cancel" styleClass="bp-btn-cancel"
-                  [disabled]="creating"
-                  (onClick)="close()"></p-button>
-        <p-button styleClass="bp-btn-save"
-                  [disabled]="!form.name.trim() || creating"
-                  (onClick)="createAndParse()">
-          <ng-template pTemplate="content">
-            <i *ngIf="creating" class="pi pi-spin pi-spinner" style="margin-right:6px"></i>
-            {{ creating ? 'Creating project...' : 'Create & parse →' }}
-          </ng-template>
-        </p-button>
-      </ng-template>
+          <div class="bp-cp-footer-r">
+            <p-button label="Cancel" styleClass="bp-btn-cancel"
+                      [disabled]="creating"
+                      (onClick)="close()"></p-button>
+            <p-button styleClass="bp-btn-save"
+                      [disabled]="creating"
+                      (onClick)="createProject()">
+              <ng-template pTemplate="content">
+                <i *ngIf="creating" class="pi pi-spin pi-spinner" style="margin-right:6px"></i>
+                {{ creating ? 'Creating…' : 'Create project →' }}
+              </ng-template>
+            </p-button>
+          </div>
+        </ng-template>
+      </ng-container>
     </p-dialog>
 
     <p-toast></p-toast>
@@ -187,10 +306,10 @@ import { Category } from '../../../../models';
   styles: [`
     :host { font-family: var(--font-body); }
 
-    /* Override the default p-dialog chrome to read more like the
-       Settings / drawer pattern — parchment header, hairline border. */
+    /* p-dialog chrome — parchment header / hairline border, matches the
+       Settings + drawer rhythm. */
     :host ::ng-deep .bp-cp-dialog .p-dialog-header {
-      background: var(--color-background-secondary, var(--theme-bg));
+      background: var(--theme-bg);
       border-bottom: 0.5px solid var(--color-border);
       padding: 16px 20px;
     }
@@ -198,7 +317,7 @@ import { Category } from '../../../../models';
       padding: 16px 20px 8px;
     }
     :host ::ng-deep .bp-cp-dialog .p-dialog-footer {
-      background: var(--color-background-secondary, var(--theme-bg));
+      background: var(--theme-bg);
       border-top: 0.5px solid var(--color-border);
       padding: 12px 20px;
       display: flex; justify-content: flex-end; gap: 10px;
@@ -219,30 +338,64 @@ import { Category } from '../../../../models';
     }
 
     .bp-cp-body { display: flex; flex-direction: column; gap: 14px; }
-    .bp-cp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .bp-cp-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .bp-cp-req { color: var(--color-danger); margin-left: 2px; }
 
-    /* Upload zone — dashed parchment block. */
+    /* ── Ref chip (INPUT state) ──────────────────────────────────────── */
+    .bp-cp-ref {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--color-text-muted);
+      align-self: flex-start;
+    }
+    .bp-cp-ref-code {
+      font-weight: 600;
+      color: var(--color-text-primary);
+      letter-spacing: 0.02em;
+    }
+    .bp-cp-ref-auto {
+      font-size: 10px;
+      color: var(--color-text-muted);
+    }
+
+    /* ── Upload zone ─────────────────────────────────────────────────── */
     .bp-cp-upload {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px;
-      border: 1px dashed var(--color-border);
-      border-radius: 8px;
-      background: var(--color-background-secondary, var(--theme-bg));
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 20px;
+      border: 2px dashed var(--color-border);
+      border-radius: 10px;
+      background: var(--color-surface);
       color: var(--color-text-muted);
       cursor: pointer;
       transition: border-color 0.15s, color 0.15s;
+      text-align: center;
     }
     .bp-cp-upload:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
     }
-    .bp-cp-upload.has-file { padding: 10px 14px; }
+    .bp-cp-upload.has-file {
+      padding: 10px 14px;
+      flex-direction: row;
+      justify-content: flex-start;
+    }
     .bp-cp-upload-text { display: flex; flex-direction: column; gap: 1px; }
-    .bp-cp-upload-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+    .bp-cp-upload-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
     .bp-cp-upload-sub   { font-size: 11px; color: var(--color-text-muted); }
-    .bp-cp-upload-name  { flex: 1; font-size: 12.5px; color: var(--color-text-primary); }
+    .bp-cp-upload-formats { display: flex; gap: 6px; margin-top: 4px; }
+    .bp-cp-upload-fmt {
+      font-size: 9px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--theme-bg);
+      color: var(--color-text-muted);
+    }
+    .bp-cp-upload-name {
+      flex: 1; font-size: 12.5px; color: var(--color-text-primary);
+      text-align: left;
+    }
     .bp-cp-upload-x {
       width: 22px; height: 22px;
       border-radius: 50%;
@@ -258,34 +411,34 @@ import { Category } from '../../../../models';
       border-color: var(--color-danger);
     }
 
-    /* "or paste text" divider. */
+    /* "or paste text" divider */
     .bp-cp-or {
       display: flex; align-items: center; gap: 10px;
-      font-size: 10.5px;
+      font-size: 11px;
       color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
     }
     .bp-cp-or-line { flex: 1; height: 0.5px; background: var(--color-border); }
 
-    /* Brief textarea — same input styling as drawer fields. */
-    .bp-cp-brief { resize: vertical; min-height: 120px; }
+    .bp-cp-brief {
+      resize: vertical; min-height: 100px;
+      line-height: 1.6;
+    }
 
-    /* Example pills. */
+    /* Example pills */
     .bp-cp-examples {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-      font-size: 11.5px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      font-size: 11px;
       color: var(--color-text-muted);
     }
     .bp-cp-examples-label { color: var(--color-text-muted); }
     .bp-cp-example-pill {
       display: inline-flex; align-items: center;
-      height: 26px; padding: 0 12px;
+      height: 24px; padding: 0 10px;
       border: 0.5px solid var(--color-border);
-      border-radius: 13px;
+      border-radius: 12px;
       background: var(--color-surface);
       color: var(--color-text-secondary);
-      font-size: 11.5px; font-weight: 500;
+      font-size: 11px; font-weight: 500;
       font-family: var(--font-body);
       cursor: pointer;
       transition: all 0.15s;
@@ -303,32 +456,251 @@ import { Category } from '../../../../models';
       background: rgba(225, 29, 72, 0.06);
       border-radius: 6px;
     }
+
+    /* ── LOADING state ───────────────────────────────────────────────── */
+    .bp-cp-loading {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .bp-cp-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--theme-bg);
+      border-top-color: var(--theme-accent);
+      border-radius: 50%;
+      animation: bp-cp-spin 0.7s linear infinite;
+    }
+    @keyframes bp-cp-spin { to { transform: rotate(360deg); } }
+    .bp-cp-loading-title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-loading-sub {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      max-width: 360px;
+    }
+    .bp-cp-loading-steps {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+    .bp-cp-step {
+      display: flex; align-items: center; gap: 6px;
+      transition: color 0.2s;
+    }
+    .bp-cp-step.done {
+      color: var(--theme-accent);
+    }
+
+    /* ── RESULTS state ───────────────────────────────────────────────── */
+    .bp-cp-hero {
+      padding: 14px 16px;
+      background: var(--theme-bg);
+      border-radius: 10px;
+      border: 0.5px solid var(--color-border);
+    }
+    .bp-cp-hero-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px;
+    }
+    .bp-cp-hero-main { flex: 1; min-width: 0; }
+    .bp-cp-hero-name {
+      font-family: var(--font-display);
+      font-size: 20px; font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-hero-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+    .bp-cp-chip {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-secondary);
+    }
+    .bp-cp-hero-ref {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      padding: 3px 10px;
+      background: var(--color-surface);
+      border-radius: 6px;
+      border: 0.5px solid var(--color-border);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+    }
+
+    .bp-cp-summary {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .bp-cp-section {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-accent);
+      padding-bottom: 6px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+
+    .bp-cp-cats {
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .bp-cp-cat {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 10px;
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-surface);
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .bp-cp-cat:hover { background: var(--theme-bg); }
+    .bp-cp-cat.removed { opacity: 0.4; }
+    .bp-cp-cat-icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px; font-weight: 600;
+    }
+    .bp-cp-cat-body { flex: 1; min-width: 0; }
+    .bp-cp-cat-name {
+      font-size: 12px; font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--color-text-primary);
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .bp-cp-cat-implied {
+      font-size: 9px; font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--theme-empty);
+      color: var(--theme-text);
+    }
+    .bp-cp-cat-unmatched {
+      font-size: 9px; font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(225, 29, 72, 0.08);
+      color: var(--color-danger);
+    }
+    .bp-cp-cat-brief {
+      font-size: 10.5px;
+      color: var(--color-text-muted);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .bp-cp-cat-est {
+      font-family: var(--font-display);
+      font-size: 13px;
+      color: var(--color-text-primary);
+      flex-shrink: 0;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    .bp-cp-cat-x {
+      background: none; border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    .bp-cp-cat-x:hover { color: var(--color-danger); }
+
+    .bp-cp-questions { display: flex; flex-direction: column; gap: 4px; }
+    .bp-cp-question {
+      display: flex; align-items: flex-start; gap: 6px;
+      padding: 5px 0;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+    .bp-cp-question lucide-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .bp-cp-back {
+      background: none; border: none;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 0;
+    }
+    .bp-cp-back:hover { color: var(--theme-accent); }
+    .bp-cp-footer-r { display: flex; gap: 8px; margin-left: auto; }
+
+    :host ::ng-deep .bp-cp-dialog .p-dialog-footer { align-items: center; }
   `]
 })
 export class CreateProjectModalComponent implements OnInit {
   visible = false;
-  creating = false;
-  errorMsg = '';
+  state: ModalState = 'input';
 
-  form = {
-    name: '',
-    client_name: '',
-    event_date: '',
-    venue_name: '',
-    brief: ''
-  };
+  // INPUT
+  form = { brief: '' };
   uploadedFile: File | null = null;
   examples = EXAMPLE_BRIEFS;
+  nextRef: string | null = null;
+  errorMsg = '';
+
+  // LOADING
+  loadStep = 0;             // 0/1/2/3 — visible step
+  aiSettled = false;        // true once the AI call has returned
+  aiCategoryCount = 0;
+  aiQuestionCount = 0;
+
+  // RESULTS
+  aiResult: ParsedBrief | null = null;
+  pendingCategories: PendingCategory[] = [];
+  creating = false;
 
   private categories: Category[] = [];
   private orgId = '';
+
+  // AI categoryId → DB catalogue category name (matches v1.38 wiring on
+  // the Brief tab and Event drawer).
+  private static readonly AI_TO_DB: Record<string, string> = {
+    'set-build':     'Stand Structure',
+    'print':         'Graphics & Signage',
+    'av':            'AV & Technology',
+    'floral':        'Florals',
+    'catering':      'Catering & Hospitality',
+    'photography':   'Photography',
+    'staffing':      'Staffing',
+    'h-and-s':       'Health & Safety',
+    'furniture':     'Furniture & Fixtures',
+    'logistics':     'Logistics & Transport',
+    'entertainment': 'Entertainment',
+    'lighting':      'Lighting'
+  };
 
   constructor(
     private router: Router,
     private cpSvc: CreateProjectService,
     private parser: BriefParserService,
+    private aiSvc: AiService,
     private projSvc: ProjectService,
-    private pcSvc: ProjectCategoryService,
     private catSvc: CategoryService,
     private orgSvc: OrgService,
     private msg: MessageService,
@@ -336,45 +708,72 @@ export class CreateProjectModalComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // One subscription drives the modal's open state for every "+ New
-    // project" call site in the app.
     this.cpSvc.visible$.subscribe(v => {
       this.visible = v;
-      if (v) this.reset();
-      this.cdr.markForCheck();
-    });
-    // Cache categories + org so Create & parse doesn't pay another
-    // round-trip every click.
-    this.catSvc.getAll('catalogue').subscribe(rows => {
-      this.categories = rows || [];
+      if (v) {
+        this.reset();
+        // Lazy-load the next ref + catalogue every time the modal opens
+        // so the counter / catalogue stay fresh between project creates.
+        if (this.orgId) this.loadNextRef();
+        this.loadCatalogue();
+      }
       this.cdr.markForCheck();
     });
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) this.orgId = org.id;
+      if (org) {
+        this.orgId = org.id;
+        if (this.visible) this.loadNextRef();
+      }
     });
   }
 
-  onVisibleChange(v: boolean) {
-    this.cpSvc.setVisible(v);
-  }
-
+  // ── Lifecycle ─────────────────────────────────────────────────────────
+  onVisibleChange(v: boolean) { this.cpSvc.setVisible(v); }
   close() {
     if (this.creating) return;
     this.cpSvc.close();
   }
-
   reset() {
-    this.form = { name: '', client_name: '', event_date: '', venue_name: '', brief: '' };
+    this.state = 'input';
+    this.form = { brief: '' };
     this.uploadedFile = null;
     this.errorMsg = '';
+    this.loadStep = 0;
+    this.aiSettled = false;
+    this.aiCategoryCount = 0;
+    this.aiQuestionCount = 0;
+    this.aiResult = null;
+    this.pendingCategories = [];
     this.creating = false;
   }
 
+  private loadNextRef() {
+    this.projSvc.previewNextRef(this.orgId).subscribe({
+      next: r => { this.nextRef = r?.ref || null; this.cdr.markForCheck(); },
+      error: () => { /* non-fatal — chip just hides */ }
+    });
+  }
+  private loadCatalogue() {
+    this.catSvc.getAll('catalogue').subscribe(rows => {
+      this.categories = (rows || []).filter(c => !(c as any).parent_id);
+      this.cdr.markForCheck();
+    });
+  }
+
+  get subtitle(): string {
+    if (this.state === 'input')   return 'Upload a brief or paste text — AI will do the rest';
+    if (this.state === 'loading') return this.nextRef || '';
+    return 'Review AI results — remove categories before creating';
+  }
+
+  get canParse(): boolean {
+    return !!(this.form.brief.trim() || this.uploadedFile);
+  }
+
+  // ── INPUT actions ─────────────────────────────────────────────────────
   loadExample(key: string) {
     const ex = this.examples.find(e => e.key === key);
     if (!ex) return;
-    this.form.name = ex.projectName;
-    this.form.client_name = ex.client;
     this.form.brief = ex.text;
     this.uploadedFile = null;
     this.cdr.markForCheck();
@@ -383,88 +782,251 @@ export class CreateProjectModalComponent implements OnInit {
   onFilePicked(ev: Event) {
     const input = ev.target as HTMLInputElement;
     const f = input.files?.[0];
-    if (f) this.uploadedFile = f;
+    if (f) this.handleFile(f);
   }
   onDrop(ev: DragEvent) {
     ev.preventDefault();
     const f = ev.dataTransfer?.files?.[0];
-    if (f) this.uploadedFile = f;
+    if (f) this.handleFile(f);
+  }
+  private handleFile(f: File) {
+    this.uploadedFile = f;
+    // Plain-text / email / extracted-PDF → read inline and put the text
+    // in form.brief so the AI gets the actual content.
+    if (/\.(txt|eml)$/i.test(f.name)) {
+      f.text().then(txt => { this.form.brief = txt; this.cdr.markForCheck(); });
+    } else if (/\.(png|jpg|jpeg)$/i.test(f.name)) {
+      this.msg.add({
+        severity: 'info',
+        summary: 'Image uploaded — paste the brief text below for best results',
+        life: 3500
+      });
+    } else if (/\.(pdf|docx?)$/i.test(f.name)) {
+      this.msg.add({
+        severity: 'info',
+        summary: `${f.name} captured — paste the text below or click Parse to send the file`,
+        life: 3500
+      });
+    }
+    this.cdr.markForCheck();
   }
 
-  createAndParse() {
-    if (!this.form.name.trim()) return;
+  // ── LOADING / AI call ─────────────────────────────────────────────────
+  parseWithAi() {
+    if (!this.canParse) return;
+    this.state = 'loading';
+    this.loadStep = 0;
+    this.aiSettled = false;
+    this.aiCategoryCount = 0;
+    this.aiQuestionCount = 0;
+    this.errorMsg = '';
+    this.cdr.markForCheck();
+
+    // Animate the progress steps on timers — cosmetic, the real API
+    // call is a single request that returns when it returns.
+    setTimeout(() => { this.loadStep = Math.max(this.loadStep, 1); this.cdr.markForCheck(); },  800);
+    setTimeout(() => { this.loadStep = Math.max(this.loadStep, 2); this.cdr.markForCheck(); }, 1600);
+    setTimeout(() => { this.loadStep = Math.max(this.loadStep, 3); this.cdr.markForCheck(); }, 2200);
+
+    const text = this.form.brief.trim();
+    if (!text) {
+      // Image-only uploads with no text — bail with a friendly error.
+      this.aiFailed('Image upload needs the brief text pasted in for AI parsing.');
+      return;
+    }
+
+    const start = Date.now();
+    this.aiSvc.parseBrief(text).subscribe({
+      next: (res: ParsedBrief) => {
+        this.aiCategoryCount = (res?.categories || []).length;
+        this.aiQuestionCount = (res?.topQuestions || []).length;
+        // Wait at least 2.4s before flipping to results so the animation
+        // doesn't snap. If the API was slow, show immediately.
+        const elapsed = Date.now() - start;
+        const wait = Math.max(0, 2400 - elapsed);
+        setTimeout(() => this.showResults(res), wait);
+      },
+      error: err => this.aiFailed(
+        err?.error?.error || 'AI parser unreachable. You can still create the project manually.'
+      )
+    });
+  }
+
+  private aiFailed(detail: string) {
+    this.aiSettled = true;
+    // Last-resort fallback: run the rule-based parser so the user
+    // still gets something. The note in the UI explains the downgrade.
+    const text = this.form.brief.trim();
+    let rule: RuleParsedBrief = { categories: [] };
+    if (text) {
+      try { rule = this.parser.parseBrief(text); } catch { /* swallow */ }
+    }
+    const fallbackResult: ParsedBrief = {
+      projectName: rule.eventName || '',
+      client:      rule.client    || '',
+      eventType:   rule.eventType,
+      location:    rule.venue,
+      city:        rule.city,
+      dates:       rule.eventDate,
+      durationDays: rule.durationDays,
+      guestCount:  rule.guestCount,
+      budget:      rule.budget ? '£' + rule.budget.toLocaleString('en-GB') : 'Unknown',
+      budgetSignal: (rule.budgetSignal || 'Unknown') as any,
+      summary:     'AI unavailable — using basic parsing. Results may be limited.',
+      categories:  (rule.categories || []).map(c => ({
+        categoryId:    this.dbNameToAiId(c.categoryName),
+        categoryLabel: c.categoryName,
+        oneLiner:      c.requirementBrief,
+        budgetEstimate: c.budgetEstimate ? '£' + c.budgetEstimate.toLocaleString('en-GB') : null,
+        implied:       c.implied
+      })),
+      topQuestions: []
+    };
+    this.aiCategoryCount = fallbackResult.categories?.length || 0;
+    this.aiQuestionCount = 0;
+    this.errorMsg = detail;
+    this.showResults(fallbackResult);
+  }
+
+  private dbNameToAiId(dbName: string): string {
+    // Reverse-map for the fallback path so categories slot back into
+    // the same resolver. Returns the AI categoryId or '' if unmapped.
+    for (const [aiId, name] of Object.entries(CreateProjectModalComponent.AI_TO_DB)) {
+      if (name === dbName) return aiId;
+    }
+    return '';
+  }
+
+  private showResults(res: ParsedBrief) {
+    this.aiSettled = true;
+    this.aiResult = res;
+    this.pendingCategories = (res.categories || []).map(ai => {
+      const dbName = CreateProjectModalComponent.AI_TO_DB[ai.categoryId];
+      let db: Category | null = (dbName
+        ? this.categories.find(c => c.name === dbName)
+        : null) ?? null;
+      if (!db && ai.categoryLabel) {
+        const lc = ai.categoryLabel.toLowerCase();
+        db = this.categories.find(c => lc.includes(c.name.toLowerCase())) || null;
+      }
+      return { ai, db, removed: false };
+    });
+    this.state = 'results';
+    this.cdr.markForCheck();
+  }
+
+  // ── RESULTS actions ───────────────────────────────────────────────────
+  get activeCategoryCount(): number {
+    return this.pendingCategories.filter(p => !p.removed).length;
+  }
+  toggleRemove(i: number) {
+    const p = this.pendingCategories[i];
+    if (!p) return;
+    p.removed = !p.removed;
+    this.cdr.markForCheck();
+  }
+  backToInput() {
+    this.state = 'input';
+    this.errorMsg = '';
+    this.cdr.markForCheck();
+  }
+
+  createProject() {
+    if (this.creating || !this.aiResult) return;
     this.creating = true;
     this.errorMsg = '';
     this.cdr.markForCheck();
 
-    const parsed: ParsedBrief = this.form.brief.trim()
-      ? this.parser.parseBrief(this.form.brief)
-      : { categories: [] };
+    const r = this.aiResult;
+    const parsedBudget = this.parseBudgetString(r.budget);
+    const tier = (r.budgetSignal && r.budgetSignal !== 'Unknown')
+      ? String(r.budgetSignal).toLowerCase()
+      : null;
 
-    // Modal-typed fields always win over parsed values.
     const payload: any = {
-      org_id:        this.orgId || null,
-      name:          this.form.name.trim() || parsed.eventName,
-      event_name:    this.form.name.trim() || parsed.eventName,
-      client_name:   this.form.client_name.trim() || parsed.client,
-      venue_name:    this.form.venue_name.trim() || parsed.venue,
-      venue_city:    parsed.city,
-      event_date:    this.form.event_date.trim() || parsed.eventDate,
-      duration_days: parsed.durationDays,
-      guest_count:   parsed.guestCount,
-      project_budget: parsed.budget,
-      event_type:    parsed.eventType,
-      tier:          parsed.budgetSignal && parsed.budgetSignal !== 'unknown' ? parsed.budgetSignal : null,
+      org_id:         this.orgId || null,
+      name:           r.projectName || 'Untitled project',
+      event_name:     r.projectName,
+      client_name:    r.client,
+      venue_name:     r.location,
+      venue_city:     r.city,
+      event_date:     r.dates,
+      duration_days:  r.durationDays ?? null,
+      guest_count:    r.guestCount ?? null,
+      project_budget: parsedBudget,
+      event_type:     r.eventType,
+      tier,
       raw_brief_text: this.form.brief.trim(),
-      currency:      'GBP'
+      currency:       'GBP'
     };
 
     this.projSvc.create(payload).subscribe({
-      next: project => {
-        // Resolve each parsed category to a real category_id and
-        // upsert. Failures don't block the project navigation — the
-        // user can scope categories manually on the Brief tab.
-        const upserts = parsed.categories
-          .map(pc => {
-            const match = this.categories.find(c =>
-              (c.name || '').toLowerCase() === pc.categoryName.toLowerCase()
-            );
-            if (!match) return null;
-            return this.projSvc.upsertCategory(project.id, match.id, {
-              requirement_brief: pc.requirementBrief,
-              ballpark_budget:   pc.budgetEstimate ?? null
-            });
-          })
-          .filter(Boolean) as any[];
-
-        const finish = () => {
-          this.creating = false;
-          this.cpSvc.close();
-          this.projSvc.triggerRefresh();
-          this.router.navigate(['/projects', project.id, 'brief']);
-        };
-
-        if (!upserts.length) { finish(); return; }
-        // Fire upserts in parallel; navigate when all resolve (or
-        // settle — any error just shows a toast and we still navigate).
-        let outstanding = upserts.length;
-        upserts.forEach(o => o.subscribe({
-          next: () => { if (--outstanding === 0) finish(); },
-          error: () => {
-            if (--outstanding === 0) finish();
-            this.msg.add({
-              severity: 'warn',
-              summary: 'Some categories could not be created',
-              life: 3000
-            });
-          }
-        }));
-      },
+      next: project => this.createCategories(project),
       error: () => {
         this.creating = false;
         this.errorMsg = 'Could not create the project. Try again.';
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private createCategories(project: any) {
+    const active = this.pendingCategories.filter(p => !p.removed && p.db);
+    if (!active.length) {
+      this.finish(project, 0);
+      return;
+    }
+    const upserts = active.map(p =>
+      this.projSvc.upsertCategory(project.id, p.db!.id, {
+        requirement_brief: p.ai.oneLiner,
+        ballpark_budget:   this.midOfBand(p.ai.budgetEstimate)
+      }).pipe(catchError(() => of(null)))
+    );
+    forkJoin(upserts).subscribe({
+      next: () => this.finish(project, active.length),
+      error: () => this.finish(project, 0)
+    });
+  }
+
+  private finish(project: any, n: number) {
+    this.creating = false;
+    this.projSvc.triggerRefresh();
+    this.cpSvc.close();
+    this.router.navigate(['/projects', project.id], { queryParams: { tab: 'brief' } });
+    this.msg.add({
+      severity: 'success',
+      summary: n > 0
+        ? `✦ Project ${project.ref || ''} created — ${n} categories from AI`
+        : `✦ Project ${project.ref || ''} created`,
+      life: 3500
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  /** "£40,000" / "£20,000–£22,000" / "£200k" → number (midpoint for
+      ranges). Returns null on Unknown / unparseable. */
+  private parseBudgetString(s?: string): number | null {
+    if (!s) return null;
+    const norm = s.replace(/[£,]/g, '').replace(/–|—/g, '-');
+    if (/unknown|tbc/i.test(norm)) return null;
+    const range = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?\s*-\s*(\d+(?:\.\d+)?)\s*([kKmM])?/);
+    if (range) {
+      const a = this.toNumber(range[1], range[2]);
+      const b = this.toNumber(range[3], range[4]);
+      return Math.round((a + b) / 2);
+    }
+    const single = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?/);
+    if (single) return Math.round(this.toNumber(single[1], single[2]));
+    return null;
+  }
+  private toNumber(n: string, suffix?: string): number {
+    const base = parseFloat(n);
+    if (suffix?.toLowerCase() === 'k') return base * 1000;
+    if (suffix?.toLowerCase() === 'm') return base * 1_000_000;
+    return base;
+  }
+  private midOfBand(s?: string | null): number | null {
+    if (!s) return null;
+    return this.parseBudgetString(s);
   }
 }

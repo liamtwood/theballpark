@@ -9,6 +9,17 @@ router.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.39: preview the next auto-ref for an org without burning the counter.
+// Used by the create-project modal to render the "Ref WA-014" chip
+// before the user clicks Create. Mounted before /:id so the literal
+// path wins.
+router.get('/next-ref', async (req, res, next) => {
+  try {
+    const ref = await ProjectService.previewNextRef(req.query.org_id);
+    res.json({ ref });
+  } catch (err) { next(err); }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const project = await ProjectService.getById(req.params.id);

@@ -19,6 +19,13 @@ export interface Org {
   vat_number?: string;
   default_margin_pct: number;
   default_contingency_pct: number;
+  /** v1.39: prefix used by the auto-generated project ref
+      ("{prefix}-{counter:03}", e.g. WA-014). Editable in
+      Settings > Organisation. Defaults to 'BP' if unset. */
+  ref_prefix?: string;
+  /** v1.39: per-org incrementing counter; never edited from the UI —
+      driven by project creates server-side. */
+  ref_counter?: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
