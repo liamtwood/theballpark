@@ -520,7 +520,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
     });
 
     this.shellCtx.context$.pipe(takeUntil(this.destroy$)).subscribe(ctx => {
-      this.ctx = ctx.heroTitle ? ctx : null;
+      // v1.35a: keep ctx alive when only `back` is set so pages that just
+      // need a Back button (e.g. /settings via data.back) don't have to
+      // also push a heroTitle. Title/sub still fall back to route data.
+      this.ctx = (ctx.heroTitle || ctx.back) ? ctx : null;
       this.cdr.detectChanges();
     });
 
@@ -582,6 +585,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       this.shellCtx.reset();
     }
     let route = this.activatedRoute;
+    let routeBack: string | null = null;
     while (route.firstChild) {
       route = route.firstChild;
       const data = route.snapshot.data;
@@ -590,6 +594,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
       }
+      // v1.35a: any level in the active route tree may set
+      // `data: { back: '/somewhere' }` to opt into the standard hero
+      // back button. Deepest wins so child tabs can override parents.
+      if (typeof data['back'] === 'string') routeBack = data['back'];
+    }
+    if (routeBack) {
+      const target = routeBack;
+      this.shellCtx.set({ back: { label: 'Back', onBack: () => this.router.navigateByUrl(target) } });
     }
   }
 

@@ -86,6 +86,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
         data: {
           pageLabel: 'SETTINGS',
+          // v1.35a: hero back button → dashboard. Reached via the cog icon
+          // (or the dashboard's Invite Member quick action) so there's no
+          // longer a nav link to return through.
+          back: '/',
           tabs: [
             { label: 'Organisation', path: '/settings/organisation' },
             { label: 'Team',         path: '/settings/team' },
