@@ -48,12 +48,9 @@ import { environment } from '../../environments/environment';
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
-        <!-- v1.35: Settings cog replaces the text nav link. Same visual
-             weight as the dark-mode toggle — no bg, no border, themed
-             accent on hover (via .bp-nav-icon-link). -->
-        <a routerLink="/settings" class="bp-nav-icon-link" title="Settings">
-          <lucide-icon name="settings" [size]="14"></lucide-icon>
-        </a>
+        <!-- v1.35: Settings cog removed per user request — Settings is
+             reachable via the dashboard Quick Actions / Invite Member
+             quick action; the cog was redundant in the nav cluster. -->
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
