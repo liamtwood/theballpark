@@ -553,6 +553,48 @@ const migrate = async () => {
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+
+      -- v1.39f: bring preview + master categories schemas in line
+      -- with public — the namespace + model + icon_name/color +
+      -- object_type columns were added to public over time but
+      -- never carried across, so the Photography seed below would
+      -- otherwise fail on master.
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS namespace   VARCHAR(20)  DEFAULT 'catalogue';
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS namespace   VARCHAR(20)  DEFAULT 'catalogue';
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS model       VARCHAR(50);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS model       VARCHAR(50);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS icon_name   VARCHAR(50);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS icon_name   VARCHAR(50);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS icon_color  VARCHAR(20);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS icon_color  VARCHAR(20);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS object_type VARCHAR(20) DEFAULT 'category';
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS object_type VARCHAR(20) DEFAULT 'category';
+
+      -- v1.39f: Photography catalogue category. AI parser returns
+      -- "photography" as a categoryId — without a matching row the
+      -- modal silently drops those categories on save. Idempotent
+      -- INSERT ... WHERE NOT EXISTS so re-runs are no-ops.
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
     `);
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
@@ -560,6 +602,7 @@ const migrate = async () => {
     console.log('  project_items table + unique index ensured.');
     console.log('  orgs.auto_publish_items ensured.');
     console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
+    console.log('  Photography catalogue category ensured (v1.39f).');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');

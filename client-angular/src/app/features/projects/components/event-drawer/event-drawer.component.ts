@@ -865,13 +865,15 @@ export class EventDrawerComponent implements OnChanges {
   }
 
   /** AI categoryId → DB catalogue category name. Mirrored exactly
-      from BriefComponent so the two parse-brief paths upsert against
-      the same catalogue rows. */
+      from BriefComponent + CreateProjectModalComponent so all three
+      parse-brief paths upsert against the same catalogue rows.
+      v1.39f: added venues + photography rows. */
   private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
     'set-build':     'Stand Structure',
     'print':         'Graphics & Signage',
     'av':            'AV & Technology',
     'floral':        'Florals',
+    'venues':        'Venue',
     'catering':      'Catering & Hospitality',
     'photography':   'Photography',
     'staffing':      'Staffing',

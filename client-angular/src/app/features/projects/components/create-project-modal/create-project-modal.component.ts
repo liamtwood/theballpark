@@ -723,13 +723,18 @@ export class CreateProjectModalComponent implements OnInit {
       fall back to UK norms if any are missing). */
   private org: any = null;
 
-  // AI categoryId → DB catalogue category name (matches v1.38 wiring on
-  // the Brief tab and Event drawer).
+  // AI categoryId → DB catalogue category name. The Brief tab and
+  // Event drawer keep the same map so all three "Parse brief" entry
+  // points upsert against the same rows.
+  //   v1.39f: added `venues→Venue` (Venue IS in the catalogue here)
+  //   v1.39f: `photography→Photography` row was missing in the DB —
+  //           seeded via migrate-schemas (idempotent insert).
   private static readonly AI_TO_DB: Record<string, string> = {
     'set-build':     'Stand Structure',
     'print':         'Graphics & Signage',
     'av':            'AV & Technology',
     'floral':        'Florals',
+    'venues':        'Venue',
     'catering':      'Catering & Hospitality',
     'photography':   'Photography',
     'staffing':      'Staffing',
@@ -1054,6 +1059,10 @@ export class CreateProjectModalComponent implements OnInit {
       default_contingency_pct: Number.isFinite(orgContingency) && orgContingency > 0 ? orgContingency : 5,
       default_vat_pct:         Number.isFinite(orgVat)         && orgVat         > 0 ? orgVat         : 20,
       raw_brief_text: this.form.brief.trim(),
+      // v1.39f — persist the full AI response so we can audit later
+      // (compare what the AI returned to what ended up on the
+      // project + categories). projects.parsed_brief_json is JSONB.
+      parsed_brief_json: r,
       currency:       'GBP'
     };
 

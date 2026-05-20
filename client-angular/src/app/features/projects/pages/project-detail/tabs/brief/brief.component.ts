@@ -675,12 +675,15 @@ export class BriefComponent implements OnInit, OnDestroy {
   }
 
   /** AI categoryId → DB category name mapping (catalogue namespace).
-      Names must match the seed in `seed.js` / preview-equivalent. */
+      Names must match the seed in `seed.js` / preview-equivalent.
+      v1.39f: `venues→Venue` reinstated (it IS in the catalogue);
+      `photography` row was seeded via migrate-schemas in v1.39f. */
   private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
     'set-build':     'Stand Structure',
     'print':         'Graphics & Signage',
     'av':            'AV & Technology',
     'floral':        'Florals',
+    'venues':        'Venue',
     'catering':      'Catering & Hospitality',
     'photography':   'Photography',
     'staffing':      'Staffing',
@@ -689,8 +692,6 @@ export class BriefComponent implements OnInit, OnDestroy {
     'logistics':     'Logistics & Transport',
     'entertainment': 'Entertainment',
     'lighting':      'Lighting'
-    // 'venues' deliberately omitted — venue is a project field, not a
-    // catalogue category, and shouldn't create a row on this tab.
   };
 
   private applyAiCategories(parsed: ParsedBrief) {
