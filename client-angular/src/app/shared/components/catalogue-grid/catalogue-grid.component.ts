@@ -432,13 +432,8 @@ export type DetailMode = 'inline' | 'drawer';
                       title="Edit item">
                 <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
-              <!-- View (always) -->
-              <button type="button"
-                      class="bp-detail-action"
-                      (click)="onViewItem(selectedEntity)"
-                      title="View details">
-                <lucide-icon name="eye" [size]="14"></lucide-icon>
-              </button>
+              <!-- v1.35c: View (eye) button removed per user request.
+                   Edit pencil + outer action cluster preserved. -->
             </div>
 
             <!-- Legacy item-edit pencil. Kept for parents that still set
