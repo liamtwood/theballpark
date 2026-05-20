@@ -503,11 +503,14 @@ type DrawerTab = 'details' | 'index' | 'images';
          panel is itself a <p-dialog> (via app-modal), so we just toggle the
          *ngIf. type='item' + entityId=this.item.id targets the items bucket
          and PATCHes image_url on save (we capture the URL into our local
-         images[] array on the way past). -->
+         images[] array on the way past).
+         v1.34b: multi=true so the user can pick several Unsplash images in
+         one search; the drawer fills the next N empty slots on emit. -->
     <app-image-upload-panel
       *ngIf="imageUploadOpen && item"
       [entityId]="item.id"
       type="item"
+      [multi]="true"
       [existingCoverUrl]="existingSlotUrl()"
       [existingImageDisplay]="form.image_display"
       (imagesUpdated)="onImageUploaded($event)"
@@ -1190,25 +1193,30 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     return slot && slot.url ? slot.url : '';
   }
 
-  /** Capture the URL ImageUploadPanel emits and write it to the local
-      form.images[] at the slot we opened. The panel itself PATCHes
-      image_url on the item too — harmless, since on drawer save we
-      overwrite both image_url + images[] with the right values. */
-  onImageUploaded(event: { coverUrl: string; imageDisplay?: 'cover' | 'contain' }): void {
-    if (!event.coverUrl) {
+  /** Capture the URL(s) ImageUploadPanel emits and write to form.images[].
+      v1.34b: in multi mode the panel emits `coverUrls[]` — fill the slot
+      we opened plus the next empty slots in order. The drawer's own save
+      flow PATCHes the full images[] array, so no per-image server hit. */
+  onImageUploaded(event: { coverUrl: string; coverUrls?: string[]; imageDisplay?: 'cover' | 'contain' }): void {
+    if (!event.coverUrl && !(event.coverUrls && event.coverUrls.length)) {
       // No URL returned (e.g. user removed the existing image). Treat as
       // a remove on the slot we opened.
       this.removeImageAt(this.uploadSlotIndex);
       this.closeImageUpload();
       return;
     }
-    const i = this.uploadSlotIndex;
+    const urls = (event.coverUrls && event.coverUrls.length) ? event.coverUrls : [event.coverUrl];
     const updated: ItemImage[] = [...this.form.images];
-    updated[i] = {
-      url: event.coverUrl,
-      sort_order: i,
-      is_hero: i === 0
-    };
+    let cursor = this.uploadSlotIndex;
+    for (const url of urls) {
+      // Find the next empty slot starting at cursor (the slot we opened).
+      // If the targeted slot already has content, overwrite it with the
+      // first URL and continue placing subsequent URLs in empty slots.
+      while (cursor < this.imageSlotCount && updated[cursor] && url !== urls[0]) cursor++;
+      if (cursor >= this.imageSlotCount) break;
+      updated[cursor] = { url, sort_order: cursor, is_hero: cursor === 0 };
+      cursor++;
+    }
     this.form.images = this.normaliseImages(updated);
     if (event.imageDisplay) this.form.image_display = event.imageDisplay;
     this.closeImageUpload();

@@ -164,10 +164,19 @@ import { registeredIconNames } from '../../../core/icons';
         </div>
         <div class="iup-unsplash-grid" *ngIf="unsplashResults.length">
           <div *ngFor="let img of unsplashResults" class="iup-unsplash-thumb"
-            [class.selected]="selectedUnsplashUrl === img.url"
+            [class.selected]="isUnsplashSelected(img.url)"
             (click)="selectUnsplash(img)">
             <img [src]="img.thumb" [alt]="img.description" loading="lazy"/>
+            <!-- v1.34b: tick badge on selected tiles (always shown in multi
+                 mode for clarity; single mode keeps the accent border only). -->
+            <span *ngIf="isUnsplashSelected(img.url)" class="iup-unsplash-tick">
+              <span *ngIf="multi" class="iup-unsplash-tick-num">{{ unsplashIndex(img.url) }}</span>
+              <lucide-icon *ngIf="!multi" name="check" [size]="12"></lucide-icon>
+            </span>
           </div>
+        </div>
+        <div *ngIf="multi && selectedUnsplashUrls.length" class="iup-unsplash-count">
+          {{ selectedUnsplashUrls.length }} selected — click Save to add.
         </div>
         <div class="iup-unsplash-empty" *ngIf="unsplashSearched && !unsplashResults.length && !unsplashSearching">
           No images found. Try a different search term.
@@ -340,12 +349,27 @@ import { registeredIconNames } from '../../../core/icons';
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px;
     }
     .iup-unsplash-thumb {
+      position: relative;
       aspect-ratio: 16/10; border-radius: 6px; overflow: hidden; cursor: pointer;
       border: 2px solid transparent; transition: border-color 0.15s;
     }
     .iup-unsplash-thumb:hover { border-color: var(--color-border, #D9CFC2); }
     .iup-unsplash-thumb.selected { border-color: var(--theme-accent, #D97706); }
     .iup-unsplash-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* v1.34b: tick / order-number badge on selected Unsplash tiles. */
+    .iup-unsplash-tick {
+      position: absolute; top: 4px; right: 4px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--theme-accent, #D97706); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .iup-unsplash-tick-num { line-height: 1; }
+    .iup-unsplash-count {
+      font-size: 12px; color: var(--theme-accent, #D97706); font-weight: 500;
+      margin-bottom: 8px;
+    }
     .iup-unsplash-empty { font-size: 12px; color: var(--color-text-muted, #9CA3AF); text-align: center; padding: 20px 0; }
     .iup-unsplash-credit { font-size: 10px; color: var(--color-text-muted, #9CA3AF); }
     .iup-unsplash-credit a { color: var(--theme-accent, #D97706); text-decoration: none; }
@@ -371,9 +395,17 @@ export class ImageUploadPanelComponent implements OnInit {
   @Input() existingIconName = '';
   @Input() existingIconColor = '';
   @Input() searchTerm = '';
+  /** v1.34b: when true, the Unsplash search supports multi-select. Each
+      thumbnail toggles in/out of `selectedUnsplashUrls`, the save button
+      becomes "Use N images", and `imagesUpdated` includes the full
+      `coverUrls` array. File upload + icon tabs remain single-select.
+      Used by the item drawer's gallery (8 slots) to let the user fill
+      several slots in one search. */
+  @Input() multi = false;
 
   @Output() imagesUpdated = new EventEmitter<{
     coverUrl: string;
+    coverUrls?: string[];
     logoUrl: string;
     cardColor?: string;
     imageDisplay?: 'cover' | 'contain';
@@ -403,6 +435,10 @@ export class ImageUploadPanelComponent implements OnInit {
   unsplashSearching = false;
   unsplashSearched = false;
   selectedUnsplashUrl = '';
+  /** v1.34b: when `multi=true`, tracks the ordered list of Unsplash URLs
+      the user has clicked. Order matches click order so we can fill
+      empty drawer slots in the same order the user selected them. */
+  selectedUnsplashUrls: string[] = [];
 
   // Single source of truth — every icon registered in core/icons.ts is
   // available to pick. Filtered live by `iconQuery` from the search input.
@@ -467,10 +503,31 @@ export class ImageUploadPanelComponent implements OnInit {
   }
 
   selectUnsplash(img: { url: string; thumb: string }) {
-    this.selectedUnsplashUrl = img.url;
-    this.coverPreview = img.url;
+    if (this.multi) {
+      // v1.34b: toggle in/out of the ordered selection list. Order matches
+      // click order so the drawer can fill empty slots predictably.
+      const i = this.selectedUnsplashUrls.indexOf(img.url);
+      if (i >= 0) this.selectedUnsplashUrls.splice(i, 1);
+      else this.selectedUnsplashUrls.push(img.url);
+      this.coverPreview = this.selectedUnsplashUrls[0] || null;
+      this.selectedUnsplashUrl = this.selectedUnsplashUrls[0] || '';
+    } else {
+      this.selectedUnsplashUrl = img.url;
+      this.coverPreview = img.url;
+    }
     this.coverFile = null; // Clear any uploaded file — using URL directly
     this.cdr.detectChanges();
+  }
+
+  /** v1.34b template helpers — single source for the "is this tile selected"
+      check works for both single and multi modes. */
+  isUnsplashSelected(url: string): boolean {
+    return this.multi
+      ? this.selectedUnsplashUrls.includes(url)
+      : this.selectedUnsplashUrl === url;
+  }
+  unsplashIndex(url: string): number {
+    return this.selectedUnsplashUrls.indexOf(url) + 1;
   }
 
   getSelectedGradient(): string {
@@ -516,6 +573,25 @@ export class ImageUploadPanelComponent implements OnInit {
     this.processing = true;
     this.errorText = '';
     this.cdr.detectChanges();
+
+    // v1.34b: multi-pick Unsplash short-circuit. We do NOT PATCH the item's
+    // cover here — the caller (item drawer) accumulates URLs into its own
+    // images[] form state and saves them in one shot. This avoids the
+    // race where each pick overwrites cover_image_url server-side.
+    if (this.multi && this.selectedUnsplashUrls.length) {
+      try {
+        this.imagesUpdated.emit({
+          coverUrl: this.selectedUnsplashUrls[0],
+          coverUrls: [...this.selectedUnsplashUrls],
+          logoUrl: ''
+        });
+        this.closed.emit();
+      } finally {
+        this.processing = false;
+        this.cdr.detectChanges();
+      }
+      return;
+    }
 
     // Icon-only short-circuit — used for area rows in shared.feedback_categories.
     // No file upload, no Supabase storage, no per-env category PATCH. Just

@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ToastModule } from 'primeng/toast';
@@ -47,7 +47,7 @@ import { Item, Org } from '../../../../models';
       <!-- Back link -->
       <a class="bp-itempage-back" (click)="goBack()">
         <lucide-icon name="chevron-left" [size]="12"></lucide-icon>
-        Back to {{ item.category_name || 'catalogue' }}
+        Back
       </a>
 
       <!-- Two-column layout -->
@@ -476,9 +476,11 @@ import { Item, Org } from '../../../../models';
       color: var(--color-text-muted);
     }
 
-    /* Supplier card */
+    /* Supplier card — v1.34b: constrained width + taller cover for a more
+       square card silhouette (matches the dashboard saved-suppliers shape). */
     .bp-itempage-supp-card {
       display: block; text-decoration: none;
+      max-width: 320px;
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-card);
       overflow: hidden; background: var(--color-surface);
@@ -486,7 +488,7 @@ import { Item, Org } from '../../../../models';
     }
     .bp-itempage-supp-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .bp-itempage-supp-cover {
-      height: 80px; background: var(--theme-bg);
+      height: 180px; background: var(--theme-bg);
       background-size: cover; background-position: center;
     }
     .bp-itempage-supp-body { padding: 14px 16px; }
@@ -577,6 +579,7 @@ export class ItemDetailPageComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
+    private location: Location,
     private itemSvc: ItemService,
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
@@ -757,8 +760,12 @@ export class ItemDetailPageComponent implements OnInit {
     }
   }
 
+  /** v1.34b: use Angular's Location service so SPA history is preserved
+      properly (browser history.back can land on a stale URL when the
+      router has rewritten the path). Fallback to the catalogue if there
+      is no prior page (direct URL navigation). */
   goBack() {
-    if (window.history.length > 1) window.history.back();
+    if (window.history.length > 1) this.location.back();
     else this.router.navigate(['/suppliers']);
   }
 }
