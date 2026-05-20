@@ -1,3 +1,50 @@
+const SYSTEM_PROMPT = `You are a senior London event production planner with 15 years of agency experience. Read this brief and return ONLY valid JSON — no markdown, no explanation, no backticks.
+
+You will receive briefs in many formats: casual emails, formal RFPs, creative decks, WhatsApp messages. Extract the signal from the noise — ignore procurement boilerplate, T&Cs, and submission instructions. Focus on what needs to be BUILT and DELIVERED.
+
+SPLITTING RULES:
+- Items that are separate costs MUST be separate categories. AV and lighting are always two items. Public catering and VIP catering are always two. Set build and set dressing are always two.
+
+INFERENCE RULES — always apply:
+- Outdoor or public location → add h-and-s (implied)
+- Media, press, KOL, or launch → add photography (implied)
+- Public-facing activation with guests → add staffing (implied)
+- Festival or outdoor build → add set-build
+- 50+ guests at 4+ hour event → add catering (implied)
+- Product sampling → add catering for food safety (implied)
+- Immersive/experiential → add av for sensory tech (implied)
+- Retail/sales element → add furniture for display (implied)
+
+DETAIL STANDARD:
+Each category oneLiner must be specific enough for a supplier to start quoting. Not "set build" but "Custom inflatable jelly structure with ball pit, approx 4m tall, Angel Delight branded, engineered for public interaction." Dimensions, quantities, brands, durations where mentioned.
+
+Return exactly:
+{
+  "projectName": "Client — Event Type",
+  "client": "brand or company name",
+  "eventType": "activation|exhibition|launch|festival|pop-up|conference|gala|experience",
+  "location": "venue or area or TBC",
+  "city": "city name",
+  "dates": "dates or TBC",
+  "durationDays": number or null,
+  "guestCount": number or null,
+  "budget": "£X,000 or Unknown",
+  "budgetSignal": "Premium|Professional|Starter|Unknown",
+  "summary": "One punchy sentence — specific not generic",
+  "categories": [
+    {
+      "categoryId": "set-build|print|av|floral|venues|catering|photography|staffing|h-and-s|furniture|logistics|entertainment|lighting",
+      "categoryLabel": "human readable label",
+      "oneLiner": "Specific supplier-ready brief with dimensions, quantities, requirements.",
+      "budgetEstimate": "£X,000–£Y,000 or null",
+      "implied": false
+    }
+  ],
+  "topQuestions": [
+    "Max 3 questions — genuine blockers that stop suppliers quoting. Specific not vague."
+  ]
+}`;
+
 async function parseBrief(rawBriefText) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const err = new Error('ANTHROPIC_API_KEY is not configured');
@@ -9,28 +56,13 @@ async function parseBrief(rawBriefText) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
-    system: 'You are an expert exhibition and event production planner. Extract structured data from event briefs. Respond with valid JSON only, no markdown formatting.',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    system: SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
-        content: `Extract structured data from this event brief. Return a JSON object with these fields:
-- event_name (string)
-- event_date (string, ISO format if possible)
-- venue_name (string)
-- venue_city (string)
-- venue_address (string)
-- guest_count (number or null)
-- stand_size (one of: small, medium, large, xl, custom)
-- stand_type (one of: shell_scheme, space_only)
-- project_notes (string, any additional relevant notes)
-- suggested_categories (array of category names from: Structures, Flooring, Furniture, AV & Lighting, Graphics & Signage, Electrics, Catering, Staffing, Transport & Logistics, Design & Management, Sustainability, Miscellaneous)
-- ai_hints (string, any suggestions or recommendations for the project)
-- missing_fields (array of strings, fields that could not be determined from the brief)
-
-Event brief:
-${rawBriefText}`,
+        content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
       },
     ],
   });

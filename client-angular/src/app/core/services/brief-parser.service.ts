@@ -55,7 +55,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Stand Structure': [
     'stand', 'build', 'shell', 'booth', 'exhibition', 'island',
     'space-only', 'modular', 'structure', 'custom build', 'pop-up',
-    'pop up', 'activation structure', 'fabrication', 'set build'
+    'pop up', 'activation structure', 'fabrication', 'set build',
+    // v1.34 — from parser-comparison on real briefs (Angel Delight,
+    // Creditspring, Lavazza). Inflatables / shop takeovers / immersive
+    // installations were all missed by the v1.30 keyword set.
+    'inflatable', 'ball pit', 'pop-up shop', 'pop up shop',
+    'takeover', 'immersive', 'experiential', 'installation',
+    'weatherproof', 'sheltered'
   ],
   'Florals': [
     'floral', 'flower', 'arrangement', 'arch', 'bouquet', 'foliage',
@@ -70,48 +76,77 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'AV & Technology': [
     'av', 'audio', 'visual', 'screen', 'speaker', 'sound', 'video wall',
     'led wall', 'projector', 'microphone', 'streaming', 'hybrid',
-    'camera', 'pa', 'dj', 'mixing'
+    'camera', 'pa', 'dj', 'mixing',
+    // v1.34 — sensory + broadcast vocabulary surfaced by Lavazza + TikTok
+    'soundscape', 'aroma', 'scent', 'sensory', 'content capture',
+    'tiktok live', 'livestream', 'broadcast'
   ],
   'Graphics & Signage': [
     'print', 'signage', 'graphic', 'banner', 'branding', 'vinyl',
     'backdrop', 'step and repeat', 'step & repeat', 'foam', 'foamex',
-    'poster', 'wayfinding', 'decal', 'wrap', 'fascia', 'hoarding', 'merch'
+    'poster', 'wayfinding', 'decal', 'wrap', 'fascia', 'hoarding', 'merch',
+    // v1.34 — agency lexicon for branded collateral & touring banners
+    'merchandise', 'collateral', 'evergreen branding', 'removable banner'
   ],
   'Furniture & Fixtures': [
     'furniture', 'chair', 'table', 'sofa', 'lounge', 'stool', 'bar',
     'counter', 'shelving', 'display unit', 'plinth', 'pedestal', 'rug',
-    'carpet', 'seating'
+    'carpet', 'seating',
+    // v1.34 — retail / workshop seating language (HelloFresh, Lavazza,
+    // Creditspring)
+    'retail', 'retail space', 'communal table', 'workstation',
+    'cooking station', 'display'
   ],
   'Catering & Hospitality': [
     'catering', 'food', 'drink', 'canape', 'dinner', 'lunch', 'breakfast',
     'cocktail', 'coffee', 'tea', 'menu', 'chef', 'kitchen', 'grazing',
-    'bowl food', 'buffet', 'sampling', 'tasting'
+    'bowl food', 'buffet', 'sampling', 'tasting',
+    // v1.34 — workshop / cookalong + sampling vocabulary
+    'cookalong', 'cook along', 'cook-along', 'workshop', 'cookery',
+    'food workshop', 'meal kit', 'recipe', 'free sample', 'sample'
   ],
   'Health & Safety': [
     'h&s', 'health and safety', 'rams', 'risk assessment', 'permit',
     'licence', 'license', 'fire', 'marshal', 'first aid', 'crowd',
-    'barrier', 'stewarding'
+    'barrier', 'stewarding',
+    // v1.34
+    'public liability', 'compliance', 'food safety'
   ],
   'Photography': [
     'photo', 'photographer', 'photography', 'videographer', 'video',
-    'filming', 'reel', 'press', 'content'
+    'filming', 'reel', 'press', 'content',
+    // v1.34 — influencer / earned-media lexicon
+    'kol', 'influencer', 'creator', 'tastemaker',
+    'picture moment', 'shareable', 'earned media', 'media coverage',
+    'tier 1 media', 'coverage'
   ],
   'Staffing': [
     'staff', 'staffing', 'ambassador', 'crew', 'hostess', 'host',
     'event manager', 'registration', 'door', 'usher', 'steward',
-    'runner', 'production staff'
+    'runner', 'production staff',
+    // v1.34 — agency staffing patterns
+    'brand ambassador', 'project manager', 'event team'
   ],
   'Entertainment': [
     'entertainment', 'band', 'musician', 'performer', 'act', 'mc',
-    'comedian', 'speaker', 'talent'
+    'comedian', 'talent',
+    // 'speaker' removed in v1.34 — too many false positives from
+    // RFP boilerplate ("no speaker contact unless directed"). Reintroduce
+    // only behind tighter context detection.
+    // v1.34 — TikTok-style creator hierarchy
+    'hero talent', 'micro creator', 'macro creator'
   ],
   'Logistics & Transport': [
     'logistics', 'transport', 'delivery', 'storage', 'parking',
-    'shuttle', 'load in', 'load out', 'freight', 'courier', 'van', 'truck'
+    'shuttle', 'load in', 'load out', 'freight', 'courier', 'van', 'truck',
+    // v1.34 — install + de-rig phases of an activation
+    'de-rig', 'derig', 'dismantle', 'load-in', 'load-out', 'pitch'
   ],
   'Venue': [
     'venue', 'space', 'room', 'hall', 'location', 'hire', 'dry hire',
-    'exclusive hire', 'private hire'
+    'exclusive hire', 'private hire',
+    // v1.34
+    'venue sourcing', 'institution'
   ]
 };
 
@@ -158,7 +193,12 @@ const KNOWN_VENUES: Record<string, string> = {
   'Printworks':               'London',
   'Magazine London':          'London',
   'Battersea Power Station':  'London',
-  'Coal Drops Yard':          'London'
+  'Coal Drops Yard':          'London',
+  // v1.34 — added from parser-comparison briefs
+  'Truman Brewery':           'London',
+  'Soho':                     'London',
+  'Latitude':                 'Henham Park',
+  'Latitude Festival':        'Henham Park'
 };
 
 const KNOWN_CITIES = [
@@ -421,9 +461,9 @@ export class BriefParserService {
       });
     }
 
-    // Media / press / launch / PR → Photography
+    // Media / press / launch / PR / KOL / influencer / earned media → Photography
     if (!has('Photography') &&
-        /\b(media|press|launch|pr)\b/.test(lc)) {
+        /\b(media|press|launch|pr|kol|influencer|creator|tastemaker|earned media|tier 1|picture moment|social)\b/.test(lc)) {
       out.categories.push({
         categoryName: 'Photography',
         requirementBrief: 'Press and content photography for launch event.',
@@ -437,6 +477,89 @@ export class BriefParserService {
       out.categories.push({
         categoryName: 'Staffing',
         requirementBrief: `Event staffing for ${out.guestCount} guests.`,
+        budgetEstimate: null,
+        implied: true
+      });
+    }
+
+    // v1.34 — Product sampling in public → Catering + H&S (food safety)
+    if (/\b(sampl(?:e|ing)|free sample|product sampling)\b/.test(lc)) {
+      if (!has('Catering & Hospitality')) {
+        out.categories.push({
+          categoryName: 'Catering & Hospitality',
+          requirementBrief: 'Sample handling, food safety and food hygiene compliance.',
+          budgetEstimate: null,
+          implied: true
+        });
+      }
+      if (!has('Health & Safety')) {
+        out.categories.push({
+          categoryName: 'Health & Safety',
+          requirementBrief: 'Food-safety risk assessment for product sampling.',
+          budgetEstimate: null,
+          implied: true
+        });
+      }
+    }
+
+    // v1.34 — Public-facing activation → Staffing
+    if (!has('Staffing') &&
+        /\b(activation|pop[\s-]?up|public|shop|launch)\b/.test(lc)) {
+      out.categories.push({
+        categoryName: 'Staffing',
+        requirementBrief: 'Hosts / brand ambassadors for public-facing activation.',
+        budgetEstimate: null,
+        implied: true
+      });
+    }
+
+    // v1.34 — Immersive / experiential / sensory → AV (sensory tech)
+    if (!has('AV & Technology') &&
+        /\b(immersive|experiential|sensory)\b/.test(lc)) {
+      out.categories.push({
+        categoryName: 'AV & Technology',
+        requirementBrief: 'AV / sensory technology for immersive experience.',
+        budgetEstimate: null,
+        implied: true
+      });
+    }
+
+    // v1.34 — Retail / sales element → Furniture for display
+    if (!has('Furniture & Fixtures') &&
+        /\b(retail|sales|merchandise|pre-order|purchase)\b/.test(lc)) {
+      out.categories.push({
+        categoryName: 'Furniture & Fixtures',
+        requirementBrief: 'Display fixtures and retail furniture for sales area.',
+        budgetEstimate: null,
+        implied: true
+      });
+    }
+
+    // v1.34 — Festival / outdoor build → Set build + Logistics
+    if (/\b(festival|outdoor build|pitch|latitude)\b/.test(lc)) {
+      if (!has('Stand Structure')) {
+        out.categories.push({
+          categoryName: 'Stand Structure',
+          requirementBrief: 'Festival / outdoor build — fabricated structure for site delivery.',
+          budgetEstimate: null,
+          implied: true
+        });
+      }
+      if (!has('Logistics & Transport')) {
+        out.categories.push({
+          categoryName: 'Logistics & Transport',
+          requirementBrief: 'Festival logistics — install, transport, de-rig, on-site storage.',
+          budgetEstimate: null,
+          implied: true
+        });
+      }
+    }
+
+    // v1.34 — 50+ guests → Catering (food safety net even if not keyword-matched)
+    if (!has('Catering & Hospitality') && out.guestCount && out.guestCount >= 50) {
+      out.categories.push({
+        categoryName: 'Catering & Hospitality',
+        requirementBrief: `Catering for ${out.guestCount} guests across event duration.`,
         budgetEstimate: null,
         implied: true
       });

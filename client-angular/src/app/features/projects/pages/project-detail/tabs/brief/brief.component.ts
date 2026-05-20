@@ -12,7 +12,8 @@ import { LucideAngularModule } from 'lucide-angular';
 
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { CategoryService } from '../../../../../../core/services/category.service';
-import { ProjectCategory, Category } from '../../../../../../models';
+import { AiService } from '../../../../../../core/services/ai.service';
+import { ProjectCategory, Category, ParsedBrief, ParsedBriefCategory } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 
@@ -53,7 +54,16 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
           <div class="bp-brief-inner">
             <div class="bp-brief-sec-h">
               <span class="bp-brief-sec-label">IN SCOPE</span>
-              <span class="bp-brief-sec-hint">Select the categories needed for this event</span>
+              <div class="bp-brief-sec-actions">
+                <span class="bp-brief-sec-hint">Select the categories needed for this event</span>
+                <button class="bp-brief-parse-btn"
+                        type="button"
+                        [disabled]="aiParsing"
+                        (click)="parseFromBrief()">
+                  <lucide-icon name="wand-sparkles" [size]="12"></lucide-icon>
+                  {{ aiParsing ? 'Parsing…' : 'Parse brief' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -180,6 +190,19 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
     .bp-brief-sec-h      { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
     .bp-brief-sec-label  { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--theme-accent); }
     .bp-brief-sec-hint   { font-size: 11.5px; color: var(--color-text-secondary); }
+    .bp-brief-sec-actions { display: flex; align-items: center; gap: 12px; }
+    .bp-brief-parse-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+      padding: 6px 12px; border-radius: 6px;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      border: 0.5px solid var(--theme-accent);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-brief-parse-btn:hover:not(:disabled) { background: var(--theme-accent); color: #fff; }
+    .bp-brief-parse-btn:disabled { opacity: 0.5; cursor: default; }
 
     /* ── CIRCLE STRIP ── matches marketplace padding/sizing */
     .bp-brief-strip-wrap {
@@ -434,6 +457,9 @@ export class BriefComponent implements OnInit, OnDestroy {
   canScrollLeft = false;
   canScrollRight = false;
 
+  // AI parse-brief flow state.
+  aiParsing = false;
+
   @ViewChild('strip') stripRef?: ElementRef<HTMLElement>;
 
   constructor(
@@ -441,6 +467,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private router: Router,
     private projSvc: ProjectService,
     private catSvc: CategoryService,
+    private aiSvc: AiService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -605,6 +632,129 @@ export class BriefComponent implements OnInit, OnDestroy {
   rewriteRow(_row: ProjectCategory) {
     // Stub — AI category brief rewrite lives behind this in a later release.
     this.msg.add({ severity: 'info', summary: 'AI category brief coming soon', life: 2000 });
+  }
+
+  /** v1.34 — "✦ Parse brief" — runs the upgraded Haiku parser against
+      the project's raw_brief_text, then upserts each returned category
+      onto project_categories with its supplier-ready oneLiner as the
+      requirement_brief. */
+  parseFromBrief() {
+    if (this.aiParsing) return;
+    this.aiParsing = true;
+    this.cdr.markForCheck();
+
+    this.projSvc.getById(this.pid).subscribe({
+      next: project => {
+        const brief = (project as any)?.raw_brief_text || '';
+        if (!brief.trim()) {
+          this.aiParsing = false;
+          this.msg.add({ severity: 'warn', summary: 'No project brief yet — add one on the Event tab first.', life: 3000 });
+          this.cdr.markForCheck();
+          return;
+        }
+        this.aiSvc.parseBrief(brief).subscribe({
+          next: (parsed: ParsedBrief) => this.applyAiCategories(parsed),
+          error: err => {
+            this.aiParsing = false;
+            this.msg.add({
+              severity: 'error',
+              summary: 'Brief parse failed',
+              detail: err?.error?.error || 'AI parser unreachable — try again shortly.',
+              life: 4000
+            });
+            this.cdr.markForCheck();
+          }
+        });
+      },
+      error: () => {
+        this.aiParsing = false;
+        this.msg.add({ severity: 'error', summary: 'Could not load project brief', life: 3000 });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** AI categoryId → DB category name mapping (catalogue namespace).
+      Names must match the seed in `seed.js` / preview-equivalent. */
+  private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
+    'set-build':     'Stand Structure',
+    'print':         'Graphics & Signage',
+    'av':            'AV & Technology',
+    'floral':        'Florals',
+    'catering':      'Catering & Hospitality',
+    'photography':   'Photography',
+    'staffing':      'Staffing',
+    'h-and-s':       'Health & Safety',
+    'furniture':     'Furniture & Fixtures',
+    'logistics':     'Logistics & Transport',
+    'entertainment': 'Entertainment',
+    'lighting':      'Lighting'
+    // 'venues' deliberately omitted — venue is a project field, not a
+    // catalogue category, and shouldn't create a row on this tab.
+  };
+
+  private applyAiCategories(parsed: ParsedBrief) {
+    const cats: ParsedBriefCategory[] = parsed?.categories || [];
+    if (!cats.length) {
+      this.aiParsing = false;
+      this.msg.add({ severity: 'info', summary: '✦ Brief parsed — no categories identified', life: 2500 });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Resolve each AI category to a DB Category (by id-map, else by label fuzzy).
+    const resolved: Array<{ ai: ParsedBriefCategory; db: Category }> = [];
+    for (const ai of cats) {
+      const dbName = BriefComponent.AI_CATEGORY_TO_DB[ai.categoryId];
+      let db: Category | undefined;
+      if (dbName) {
+        db = this.catalogueCategories.find(c => c.name === dbName);
+      }
+      if (!db && ai.categoryLabel) {
+        const lc = ai.categoryLabel.toLowerCase();
+        db = this.catalogueCategories.find(c => lc.includes(c.name.toLowerCase()));
+      }
+      if (db) resolved.push({ ai, db });
+    }
+
+    if (!resolved.length) {
+      this.aiParsing = false;
+      this.msg.add({ severity: 'info', summary: '✦ Brief parsed — no matching catalogue categories', life: 3000 });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Upsert each — sequential to keep server load predictable.
+    const upserts = resolved.map(({ ai, db }) =>
+      this.projSvc.upsertCategory(this.pid, db.id, { requirement_brief: ai.oneLiner })
+    );
+    forkJoin(upserts).subscribe({
+      next: rows => {
+        // Refresh the tab's local state from the server response.
+        this.projSvc.getCategories(this.pid).subscribe({
+          next: fresh => {
+            this.applyProjectCategories(fresh || []);
+            this.aiParsing = false;
+            this.projSvc.triggerRefresh();
+            this.msg.add({
+              severity: 'success',
+              summary: `✦ Brief parsed — ${resolved.length} categories identified`,
+              life: 3000
+            });
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.aiParsing = false;
+            this.cdr.markForCheck();
+          }
+        });
+      },
+      error: () => {
+        this.aiParsing = false;
+        this.msg.add({ severity: 'error', summary: 'Failed to save AI categories', life: 3000 });
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   // ── Strip scroll controls ──

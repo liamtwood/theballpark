@@ -8,7 +8,7 @@ export { Project, ProjectCategory, ProjectContext } from './project.model';
 export { Estimate, EstimateItem } from './estimate.model';
 export { Message } from './message.model';
 export { BallsTransaction } from './balls-transaction.model';
-export { ParsedBrief } from './parsed-brief.model';
+export { ParsedBrief, ParsedBriefCategory } from './parsed-brief.model';
 export { ThemePreset, PlatformConfig } from './config.model';
 export { CatalogueEntity, CategoryInfo } from './catalogue.model';
 export { Codelist } from './codelist.model';

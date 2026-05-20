@@ -13,11 +13,15 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen, WandSparkles } from 'lucide-angular';
 
+import { forkJoin } from 'rxjs';
+
 import { ProjectService } from '../../../../core/services/project.service';
 import { CodelistService } from '../../../../core/services/codelist.service';
 import { ClientService } from '../../../../core/services/client.service';
+import { CategoryService } from '../../../../core/services/category.service';
+import { AiService } from '../../../../core/services/ai.service';
 import { ApiService } from '../../../../core/services/api.service';
-import { Project, Codelist, Client } from '../../../../models';
+import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../../models';
 
 /**
  * Event drawer — v1.29b.
@@ -419,9 +423,11 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
                     placeholder="Paste or write the event brief here...">
           </textarea>
           <div class="bp-evd-brief-actions">
-            <button type="button" class="bp-evd-parse" (click)="parseBrief()">
+            <button type="button" class="bp-evd-parse"
+                    [disabled]="aiParsing"
+                    (click)="parseBrief()">
               <lucide-icon name="wand-sparkles" [size]="12"></lucide-icon>
-              Parse brief
+              {{ aiParsing ? 'Parsing…' : 'Parse brief' }}
             </button>
           </div>
         </ng-container>
@@ -626,6 +632,8 @@ export class EventDrawerComponent implements OnChanges {
     private codelistSvc: CodelistService,
     private clientSvc: ClientService,
     private apiSvc: ApiService,
+    private catSvc: CategoryService,
+    private aiSvc: AiService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {
@@ -819,10 +827,119 @@ export class EventDrawerComponent implements OnChanges {
     return patch;
   }
 
+  /** v1.34 — "✦ Parse brief" — calls the upgraded Haiku parser on the
+      current raw_brief_text, then upserts each returned category onto
+      project_categories with the AI's supplier-ready oneLiner as
+      requirement_brief. The Brief tab picks the new rows up on its
+      next load (projSvc.triggerRefresh() fires). Drawer stays focused
+      on event-facts edit — it does not auto-fill event-level fields. */
+  aiParsing = false;
   parseBrief() {
-    // Stub — same behaviour as the legacy Event tab. AI parsing wires
-    // in a later release.
-    this.msg.add({ severity: 'info', summary: 'AI parsing coming soon', life: 2000 });
+    if (this.aiParsing) return;
+    const text = (this.form.raw_brief_text || '').toString().trim();
+    const pid = (this.project as any)?.id;
+    if (!text) {
+      this.msg.add({ severity: 'warn', summary: 'Add a project brief first, then Parse', life: 2500 });
+      return;
+    }
+    if (!pid) {
+      this.msg.add({ severity: 'error', summary: 'Project id unavailable', life: 2500 });
+      return;
+    }
+    this.aiParsing = true;
+    this.cdr.markForCheck();
+
+    this.aiSvc.parseBrief(text).subscribe({
+      next: (parsed: ParsedBrief) => this.applyAiCategories(pid, parsed),
+      error: err => {
+        this.aiParsing = false;
+        this.msg.add({
+          severity: 'error',
+          summary: 'Brief parse failed',
+          detail: err?.error?.error || 'AI parser unreachable — try again shortly.',
+          life: 4000
+        });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** AI categoryId → DB catalogue category name. Mirrored exactly
+      from BriefComponent so the two parse-brief paths upsert against
+      the same catalogue rows. */
+  private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
+    'set-build':     'Stand Structure',
+    'print':         'Graphics & Signage',
+    'av':            'AV & Technology',
+    'floral':        'Florals',
+    'catering':      'Catering & Hospitality',
+    'photography':   'Photography',
+    'staffing':      'Staffing',
+    'h-and-s':       'Health & Safety',
+    'furniture':     'Furniture & Fixtures',
+    'logistics':     'Logistics & Transport',
+    'entertainment': 'Entertainment',
+    'lighting':      'Lighting'
+  };
+
+  private applyAiCategories(pid: string, parsed: ParsedBrief) {
+    const cats: ParsedBriefCategory[] = parsed?.categories || [];
+    if (!cats.length) {
+      this.aiParsing = false;
+      this.msg.add({ severity: 'info', summary: '✦ Brief parsed — no categories identified', life: 2500 });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.catSvc.getAll('catalogue').subscribe({
+      next: catalogueCategories => {
+        const cats0 = (catalogueCategories || []).filter(c => !(c as any).parent_id);
+        const resolved: Array<{ ai: ParsedBriefCategory; db: Category }> = [];
+        for (const ai of cats) {
+          const dbName = EventDrawerComponent.AI_CATEGORY_TO_DB[ai.categoryId];
+          let db = dbName ? cats0.find(c => c.name === dbName) : undefined;
+          if (!db && ai.categoryLabel) {
+            const lc = ai.categoryLabel.toLowerCase();
+            db = cats0.find(c => lc.includes(c.name.toLowerCase()));
+          }
+          if (db) resolved.push({ ai, db });
+        }
+
+        if (!resolved.length) {
+          this.aiParsing = false;
+          this.msg.add({ severity: 'info', summary: '✦ Brief parsed — no matching catalogue categories', life: 3000 });
+          this.cdr.markForCheck();
+          return;
+        }
+
+        const upserts = resolved.map(({ ai, db }) =>
+          this.projSvc.upsertCategory(pid, db.id, { requirement_brief: ai.oneLiner })
+        );
+        forkJoin(upserts).subscribe({
+          next: () => {
+            this.aiParsing = false;
+            this.projSvc.triggerRefresh();
+            this.msg.add({
+              severity: 'success',
+              summary: `✦ Brief parsed — ${resolved.length} categories identified`,
+              detail: 'Open the Brief tab to review.',
+              life: 3500
+            });
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.aiParsing = false;
+            this.msg.add({ severity: 'error', summary: 'Failed to save AI categories', life: 3000 });
+            this.cdr.markForCheck();
+          }
+        });
+      },
+      error: () => {
+        this.aiParsing = false;
+        this.msg.add({ severity: 'error', summary: 'Failed to load catalogue categories', life: 3000 });
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   /** v1.29b: drive the section pencil from outside (e.g. the kebab menu's
