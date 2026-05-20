@@ -191,10 +191,13 @@ export class MarketplaceComponent implements OnInit {
 
   /** v1.34a: "View item" now navigates to the standalone /items/:id page
       with projectId so the new page's Add / Wishlist actions target this
-      project. The drawer stays in use for edit-mode (own-org pencil). */
+      project. The drawer stays in use for edit-mode (own-org pencil).
+      v1.34c: stamp this project marketplace URL into history.state so
+      Back from item details returns here, not to the global marketplace. */
   onViewItem(entity: CatalogueEntity) {
     this.router.navigate(['/items', entity.id], {
-      queryParams: this.projectId ? { projectId: this.projectId } : undefined
+      queryParams: this.projectId ? { projectId: this.projectId } : undefined,
+      state: { backUrl: this.router.url }
     });
   }
 

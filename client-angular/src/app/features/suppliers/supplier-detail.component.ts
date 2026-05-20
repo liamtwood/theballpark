@@ -1033,11 +1033,18 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   /** v1.17 — fired from the eye icon on the detail panel. */
   /** v1.34a: "View item" now navigates to the standalone /items/:id page
       instead of opening the view-mode drawer. Pass projectId through if
-      we arrived here with one. */
+      we arrived here with one.
+      v1.34c: backUrl points at /suppliers (marketplace), not this shop
+      front. The user explicitly asked Back from item details to bypass
+      the supplier home and return to the marketplace where they were
+      browsing. */
   onViewItem(entity: CatalogueEntity) {
     const params: any = {};
     if (this.selectedProjectId) params['projectId'] = this.selectedProjectId;
-    this.router.navigate(['/items', entity.id], { queryParams: params });
+    this.router.navigate(['/items', entity.id], {
+      queryParams: params,
+      state: { backUrl: '/suppliers' }
+    });
   }
 
   onItemSaved(_item: Item) {

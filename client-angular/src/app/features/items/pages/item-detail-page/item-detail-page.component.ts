@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, Location } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ToastModule } from 'primeng/toast';
@@ -227,7 +227,8 @@ import { Item, Org } from '../../../../models';
         <div class="bp-itempage-related-grid">
           <a *ngFor="let r of related"
              class="bp-itempage-related-card"
-             [routerLink]="['/items', r.id]">
+             [routerLink]="['/items', r.id]"
+             [state]="{ backUrl: backUrl }">
             <div class="bp-itempage-related-img"
                  [style.background-image]="r.image_url ? 'url(' + r.image_url + ')' : null">
               <div *ngIf="!r.image_url" class="bp-itempage-related-img-initial">{{ (r.name || '?').charAt(0) }}</div>
@@ -575,11 +576,15 @@ export class ItemDetailPageComponent implements OnInit {
   /** v1.34: project context via ?projectId= query param. When present the
       Add-to-project button targets that project. When absent we just toast. */
   private projectId = '';
+  /** v1.34c: back-target URL stamped into history.state by whichever surface
+      navigated us here (marketplace / shop front / project marketplace tab).
+      Persisted across related-item clicks so the user always returns to
+      their original entry point, never the previous item or the shop front. */
+  backUrl = '/suppliers';
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private location: Location,
     private itemSvc: ItemService,
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
@@ -594,6 +599,15 @@ export class ItemDetailPageComponent implements OnInit {
 
   ngOnInit() {
     this.projectId = this.route.snapshot.queryParams['projectId'] || '';
+
+    // v1.34c: capture backUrl from history.state on first hit. We do NOT
+    // overwrite on subsequent related-item clicks within the same session
+    // because the related-item routerLink propagates the same backUrl via
+    // [state] — so chained nav still returns to the original entry point.
+    const state = (window.history.state || {}) as { backUrl?: string };
+    if (state.backUrl) this.backUrl = state.backUrl;
+    else if (this.projectId) this.backUrl = `/projects/${this.projectId}/marketplace`;
+    else this.backUrl = '/suppliers';
 
     this.codelistSvc.getByName('item_unit').subscribe(() => this.cdr.markForCheck());
     this.codelistSvc.getByName('item_time_unit').subscribe(() => this.cdr.markForCheck());
@@ -760,12 +774,13 @@ export class ItemDetailPageComponent implements OnInit {
     }
   }
 
-  /** v1.34b: use Angular's Location service so SPA history is preserved
-      properly (browser history.back can land on a stale URL when the
-      router has rewritten the path). Fallback to the catalogue if there
-      is no prior page (direct URL navigation). */
+  /** v1.34c: navigate explicitly to the stamped backUrl rather than using
+      history.back(). This skips the supplier shop front when the user
+      arrived via a shop front (the user's complaint: Back from item
+      details was landing on supplier home instead of the marketplace
+      where they were browsing). Also survives chained related-item
+      clicks because the backUrl is propagated forward in [state]. */
   goBack() {
-    if (window.history.length > 1) this.location.back();
-    else this.router.navigate(['/suppliers']);
+    this.router.navigateByUrl(this.backUrl);
   }
 }
