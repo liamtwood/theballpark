@@ -111,6 +111,14 @@ interface MessagesSummary {
              Edit event and Project brief — both open the drawer. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
+            <!-- v1.39h: REF column — auto-generated project reference
+                 (e.g. WA-005). First column so it acts as the row's
+                 identifier; falls back to em-dash if missing. -->
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">REF</span>
+              <span class="bp-event-value">{{ project.ref || '—' }}</span>
+              <span class="bp-event-sub">auto-generated</span>
+            </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">DATE</span>
               <span class="bp-event-value bp-event-value--num">{{ datePrimary || '—' }}</span>

@@ -46,8 +46,29 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
     <ng-container *ngIf="!loading">
       <div class="bp-brief-body">
 
-        <h2 class="bp-page-title">Brief</h2>
+        <h2 class="bp-page-title">
+          Brief
+          <span *ngIf="project?.ref" class="bp-brief-ref-chip">{{ project.ref }}</span>
+        </h2>
         <div class="bp-page-divider"></div>
+
+        <!-- v1.39h — questions surfaced from AI's parsed_brief_json. -->
+        <div class="bp-brief-inner" *ngIf="questions.length">
+          <div class="bp-brief-questions">
+            <button class="bp-brief-questions-toggle" type="button"
+                    (click)="questionsOpen = !questionsOpen">
+              <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+              {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+              <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+            </button>
+            <ul class="bp-brief-questions-list" *ngIf="questionsOpen">
+              <li *ngFor="let q of questions" class="bp-brief-question">
+                <span class="bp-brief-q-marker">?</span>
+                <span class="bp-brief-q-text">{{ q }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
 
         <div class="bp-brief-sec">
           <!-- Header constrained for line-length readability -->
@@ -191,6 +212,60 @@ import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
     .bp-brief-sec-label  { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--theme-accent); }
     .bp-brief-sec-hint   { font-size: 11.5px; color: var(--color-text-secondary); }
     .bp-brief-sec-actions { display: flex; align-items: center; gap: 12px; }
+
+    /* v1.39h — ref chip next to the page title, and the AI-questions
+       panel that pulls topQuestions out of parsed_brief_json. */
+    .bp-brief-ref-chip {
+      display: inline-block;
+      margin-left: 12px;
+      padding: 3px 10px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--color-text-secondary);
+      vertical-align: middle;
+    }
+    .bp-brief-questions {
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+    }
+    .bp-brief-questions-toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: none; border: none; padding: 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-accent);
+      cursor: pointer;
+    }
+    .bp-brief-questions-list {
+      list-style: none; padding: 8px 0 0 0; margin: 0;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .bp-brief-question {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 12px; line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+    .bp-brief-q-marker {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      color: #fff;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bp-brief-q-text { flex: 1; min-width: 0; }
     .bp-brief-parse-btn {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
@@ -460,6 +535,13 @@ export class BriefComponent implements OnInit, OnDestroy {
   // AI parse-brief flow state.
   aiParsing = false;
 
+  // v1.39h — full project (cached on init) for the page-header ref
+  // chip + the "Questions to resolve" panel pulled from
+  // parsed_brief_json.topQuestions.
+  project: any = null;
+  questions: string[] = [];
+  questionsOpen = true;
+
   @ViewChild('strip') stripRef?: ElementRef<HTMLElement>;
 
   constructor(
@@ -483,13 +565,22 @@ export class BriefComponent implements OnInit, OnDestroy {
     forkJoin({
       catCategories:     this.catSvc.getAll('catalogue'),
       projectCategories: this.projSvc.getCategories(this.pid),
+      // v1.39h — fetch the project too so the header can render
+      // the ref chip and the questions panel can pull
+      // parsed_brief_json.topQuestions.
+      project:           this.projSvc.getById(this.pid)
     }).subscribe({
-      next: ({ catCategories, projectCategories }) => {
-        // Root-level catalogue categories only (parent_id is null/undefined).
+      next: ({ catCategories, projectCategories, project }) => {
         this.catalogueCategories = (catCategories || [])
           .filter(c => !(c as any).parent_id)
           .sort((a, b) => ((a as any).sort_order || 0) - ((b as any).sort_order || 0));
         this.applyProjectCategories(projectCategories || []);
+        this.project = project || null;
+        // Pull AI-flagged questions out of parsed_brief_json — these
+        // were saved on create (v1.39f). Empty array if missing /
+        // older project.
+        const pj: any = (project as any)?.parsed_brief_json;
+        this.questions = Array.isArray(pj?.topQuestions) ? pj.topQuestions.filter((q: any) => typeof q === 'string' && q.trim()) : [];
         this.loading = false;
         this.cdr.markForCheck();
         setTimeout(() => this.updateStripArrows(), 0);

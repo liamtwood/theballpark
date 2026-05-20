@@ -1136,32 +1136,37 @@ export class CreateProjectModalComponent implements OnInit {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
-  /** "£40,000" / "£20,000–£22,000" / "£200k" / "£40,000 (1-day)" →
-      number (midpoint for ranges, leftmost amount otherwise). Returns
-      null on Unknown / unparseable. Defensive against parentheticals
-      like "(1-day)" that previously made the range regex misfire. */
+  /** "£40,000" / "£20,000–£22,000" / "£200k" / "£40,000 (1-day)" /
+      "£40,000 (1 day) / Unknown (3 days)" → number (midpoint for
+      ranges, leftmost amount otherwise). Returns null on Unknown /
+      unparseable.
+      v1.39h: split on "/" first so multi-option strings only consider
+      the first plausible amount; strip parentheticals next so
+      "(1-day)" can't be misread as a range. */
   private parseBudgetString(s?: string): number | null {
     if (!s) return null;
-    // Strip parentheticals first so "(1-day)" can't be misread as a
-    // range. Also drop the £/€/$ symbols and convert en/em dashes to
-    // hyphens so the regexes below stay simple.
-    const norm = s
+    // 1) Take the first slash-delimited piece. Common AI patterns:
+    //   "£40,000 (1 day) / Unknown (3 days)" → "£40,000 (1 day)"
+    //   "£200k / £180k" → "£200k"
+    //   "Unknown" → "Unknown" (passes through, becomes null below)
+    const first = s.split('/')[0];
+    // 2) Strip parentheticals, currency symbols, commas; normalise dashes.
+    const norm = first
       .replace(/\(.*?\)/g, ' ')
       .replace(/[£$€,]/g, '')
       .replace(/–|—/g, '-')
       .trim();
-    if (!norm || /unknown|tbc|n\/a/i.test(norm)) return null;
-    // Range: two amounts separated by " - " (with optional k/m suffixes).
+    if (!norm || /^(?:unknown|tbc|n\/a|tba)$/i.test(norm)) return null;
+    // 3) Range: two amounts separated by " - " (with optional k/m).
     const range = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?\s*-\s*(\d+(?:\.\d+)?)\s*([kKmM])?/);
     if (range) {
       const a = this.toNumber(range[1], range[2]);
       const b = this.toNumber(range[3], range[4]);
-      // Only treat as a range if both sides are budget-plausible. A
-      // mis-parsed "40 - 1" (from "40,000 (1-day)" residue) would
-      // otherwise collapse to 20.5 — guard with a sanity floor.
+      // Sanity floor — reject ranges where either side is implausibly
+      // small (typical residue from numeric remnants like "1-day").
       if (a >= 100 && b >= 100) return Math.round((a + b) / 2);
     }
-    // Single figure: take the first plausible amount.
+    // 4) Single figure: leftmost plausible amount.
     const single = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?/);
     if (single) {
       const n = this.toNumber(single[1], single[2]);
