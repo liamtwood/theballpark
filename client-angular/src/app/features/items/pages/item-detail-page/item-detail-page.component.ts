@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -16,6 +16,7 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { CodelistService } from '../../../../core/services/codelist.service';
 import { ProjectItemService } from '../../../../core/services/project-item.service';
 import { FavouriteService } from '../../../../core/services/favourite.service';
+import { ShellContextService } from '../../../../core/services/shell-context.service';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemDrawerComponent } from '../../../../shared/components/item-drawer/item-drawer.component';
@@ -42,13 +43,10 @@ import { Item, Org } from '../../../../models';
     </ng-container>
 
     <!-- ITEM CONTENT -->
+    <!-- v1.34d: back button + item name + category eyebrow now live in
+         the app-shell hero (driven via ShellContextService). Page body
+         starts straight into the gallery + details layout. -->
     <div class="bp-itempage" *ngIf="!loading && item">
-
-      <!-- Back link -->
-      <a class="bp-itempage-back" (click)="goBack()">
-        <lucide-icon name="chevron-left" [size]="12"></lucide-icon>
-        Back
-      </a>
 
       <!-- Two-column layout -->
       <div class="bp-itempage-layout">
@@ -86,10 +84,9 @@ import { Item, Org } from '../../../../models';
         </div>
 
         <!-- ═══ RIGHT: Details ═══ -->
+        <!-- v1.34d: category eyebrow + item name moved to the app-shell
+             hero. Right column starts with the tier badge. -->
         <div class="bp-itempage-details">
-
-          <div class="bp-itempage-cat">{{ item.category_name }}</div>
-          <h1 class="bp-itempage-name">{{ item.name }}</h1>
 
           <span *ngIf="item.tier" class="bp-itempage-tier" [ngClass]="'bp-itempage-tier--' + item.tier">
             ✦ {{ tierLabel(item.tier) }}
@@ -266,14 +263,7 @@ import { Item, Org } from '../../../../models';
     }
     .bp-itempage-empty a { color: var(--theme-accent); display: inline-block; margin-top: 8px; }
 
-    /* Back link */
-    .bp-itempage-back {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: var(--text-xs); color: var(--color-text-muted);
-      cursor: pointer; margin-bottom: 16px; text-decoration: none;
-      transition: color 0.15s;
-    }
-    .bp-itempage-back:hover { color: var(--theme-accent); }
+    /* v1.34d: .bp-itempage-back removed — back lives in the shell hero. */
 
     /* ── Layout ── */
     .bp-itempage-layout {
@@ -331,16 +321,8 @@ import { Item, Org } from '../../../../models';
 
     /* ── Details ── */
     .bp-itempage-details { padding-top: 4px; min-width: 0; }
-    .bp-itempage-cat {
-      font-size: 10px; font-weight: 500; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--theme-accent);
-      margin-bottom: 4px;
-    }
-    .bp-itempage-name {
-      font-family: var(--font-display); font-size: 26px;
-      font-weight: 400; line-height: 1.2; margin: 0 0 6px;
-      color: var(--color-text-primary);
-    }
+    /* v1.34d: .bp-itempage-cat + .bp-itempage-name removed — both render
+       in the shell hero now (heroSub + heroTitle). */
 
     /* Tier badge */
     .bp-itempage-tier {
@@ -562,7 +544,7 @@ import { Item, Org } from '../../../../models';
     }
   `]
 })
-export class ItemDetailPageComponent implements OnInit {
+export class ItemDetailPageComponent implements OnInit, OnDestroy {
   item: Item | null = null;
   supplier: Org | null = null;
   related: Item[] = [];
@@ -592,6 +574,7 @@ export class ItemDetailPageComponent implements OnInit {
     private codelistSvc: CodelistService,
     private projectItemSvc: ProjectItemService,
     private favSvc: FavouriteService,
+    private shellCtx: ShellContextService,
     private msg: MessageService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
@@ -645,8 +628,23 @@ export class ItemDetailPageComponent implements OnInit {
           .filter((r: any) => r.id !== item.id)
           .slice(0, 4);
         this.loading = false;
+        this.applyShellHero();
         this.cdr.markForCheck();
       });
+    });
+  }
+
+  /** v1.34d: drive the app-shell hero (back button + item name + category
+      eyebrow) instead of rendering them inline. Matches the supplier
+      shop front / project detail pattern. */
+  private applyShellHero() {
+    if (!this.item) return;
+    this.shellCtx.set({
+      heroTitle: this.item.name,
+      heroSub: (this.item.category_name || 'ITEM').toUpperCase(),
+      pills: [],
+      tabs: [],
+      back: { label: 'Back', onBack: () => this.goBack() }
     });
   }
 
@@ -782,5 +780,11 @@ export class ItemDetailPageComponent implements OnInit {
       clicks because the backUrl is propagated forward in [state]. */
   goBack() {
     this.router.navigateByUrl(this.backUrl);
+  }
+
+  ngOnDestroy() {
+    // Clear the hero context so the next page (which may not call set())
+    // doesn't inherit the item-detail title/back button.
+    this.shellCtx.reset();
   }
 }
