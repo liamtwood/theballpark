@@ -182,6 +182,36 @@ Branches:  dev → preview → master
 Deploy:    Vercel (frontend) + Railway (backend)
 ```
 
+### Version label bumping — CRITICAL
+
+The version label rendered bottom-right of the app (e.g. `[Dev] v1.36`)
+comes from a **different env file per build target**. Bumping only
+`environment.ts` is a silent failure — preview/master keep reporting
+the OLD version even though new code has shipped, which makes it
+impossible to confirm a deploy landed.
+
+| Build target  | Env file                          | angular.json config |
+|---------------|-----------------------------------|---------------------|
+| Dev (local)   | `environment.ts`                  | `development`       |
+| Preview       | `environment.staging.ts`          | `preview`           |
+| Master (prod) | `environment.prod.ts`             | `production`        |
+
+**Rules**
+- Every code commit on `dev` bumps `environment.ts` (`[Dev] vX.Y`).
+- The commit that **merges dev → preview** must also bump
+  `environment.staging.ts` to the same number (`[Preview] vX.Y`),
+  ideally in the merge or in a dedicated `chore:` commit on dev
+  immediately before the merge.
+- The commit that **merges preview → master** must also bump
+  `environment.prod.ts` (`[Master] vX.Y`).
+- Never bump `environment.prod.ts` outside of a master release.
+- Never bump `environment.staging.ts` outside of a preview promotion.
+
+Quick sanity check after deploy: open the deployed URL, look at the
+version label, confirm it matches what you just promoted. If it
+still shows the old number, the env file for that target wasn't
+bumped — fix that before assuming the deploy worked.
+
 ---
 
 ## Authentication & Authorisation
