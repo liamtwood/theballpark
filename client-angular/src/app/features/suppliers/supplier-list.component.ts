@@ -626,19 +626,13 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   // ── v1.17 detail-panel action handlers ───────────────────────────────
 
-  /** v1.34a: "View item" now navigates to the standalone /items/:id page
-      instead of opening the view-mode drawer. Pass projectId through so
-      Add-to-project / Wishlist actions on the new page hit the right project.
-      v1.34c: stamp the marketplace URL into history.state.backUrl so the
-      item page's Back link returns here (with view + favourites filter
-      preserved) instead of using browser-history fallback. */
+  /** v1.34a: "View item" navigates to /items/:id.
+      v1.36: context=marketplace tells the item page to render the
+      marketplace hero (org name + CATALOGUE eyebrow). */
   onViewItem(entity: CatalogueEntity) {
-    const params: any = {};
+    const params: any = { context: 'marketplace' };
     if (this.projectId) params['projectId'] = this.projectId;
-    this.router.navigate(['/items', entity.id], {
-      queryParams: params,
-      state: { backUrl: this.router.url }
-    });
+    this.router.navigate(['/items', entity.id], { queryParams: params });
   }
 
   onItemEditRequested(entity: CatalogueEntity) {

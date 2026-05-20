@@ -189,16 +189,14 @@ export class MarketplaceComponent implements OnInit {
 
   // ── v1.17 detail-panel action handlers ───────────────────────────────
 
-  /** v1.34a: "View item" now navigates to the standalone /items/:id page
-      with projectId so the new page's Add / Wishlist actions target this
-      project. The drawer stays in use for edit-mode (own-org pencil).
-      v1.34c: stamp this project marketplace URL into history.state so
-      Back from item details returns here, not to the global marketplace. */
+  /** v1.34a: "View item" navigates to /items/:id with projectId so the
+      Add / Wishlist actions target this project.
+      v1.36: context=project tells the item page to render the project
+      hero (name + client/venue pills + project tab bar). */
   onViewItem(entity: CatalogueEntity) {
-    this.router.navigate(['/items', entity.id], {
-      queryParams: this.projectId ? { projectId: this.projectId } : undefined,
-      state: { backUrl: this.router.url }
-    });
+    const params: any = { context: 'project' };
+    if (this.projectId) params['projectId'] = this.projectId;
+    this.router.navigate(['/items', entity.id], { queryParams: params });
   }
 
   onItemEditRequested(entity: CatalogueEntity) {

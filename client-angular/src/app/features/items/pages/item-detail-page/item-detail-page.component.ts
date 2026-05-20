@@ -16,11 +16,13 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { CodelistService } from '../../../../core/services/codelist.service';
 import { ProjectItemService } from '../../../../core/services/project-item.service';
 import { FavouriteService } from '../../../../core/services/favourite.service';
+import { ProjectService } from '../../../../core/services/project.service';
+import { ConfigService } from '../../../../core/services/config.service';
 import { ShellContextService } from '../../../../core/services/shell-context.service';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemDrawerComponent } from '../../../../shared/components/item-drawer/item-drawer.component';
-import { Item, Org } from '../../../../models';
+import { Item, Org, Project } from '../../../../models';
 
 @Component({
   selector: 'app-item-detail-page',
@@ -43,10 +45,16 @@ import { Item, Org } from '../../../../models';
     </ng-container>
 
     <!-- ITEM CONTENT -->
-    <!-- v1.34d: back button + item name + category eyebrow now live in
-         the app-shell hero (driven via ShellContextService). Page body
-         starts straight into the gallery + details layout. -->
+    <!-- v1.36: hero now mirrors the navigation context (project / supplier
+         / marketplace) instead of showing the item. Back link + category
+         eyebrow + item name live inside the page body again. -->
     <div class="bp-itempage" *ngIf="!loading && item">
+
+      <!-- Back link -->
+      <a class="bp-itempage-back" (click)="goBack()">
+        <lucide-icon name="chevron-left" [size]="12"></lucide-icon>
+        Back
+      </a>
 
       <!-- Two-column layout -->
       <div class="bp-itempage-layout">
@@ -84,9 +92,13 @@ import { Item, Org } from '../../../../models';
         </div>
 
         <!-- ═══ RIGHT: Details ═══ -->
-        <!-- v1.34d: category eyebrow + item name moved to the app-shell
-             hero. Right column starts with the tier badge. -->
+        <!-- v1.36: category eyebrow + item name back in the right column.
+             The shell hero shows the navigation context (project /
+             supplier / marketplace) — not the item itself. -->
         <div class="bp-itempage-details">
+
+          <div class="bp-itempage-cat" *ngIf="item.category_name">{{ item.category_name }}</div>
+          <h1 class="bp-itempage-name">{{ item.name }}</h1>
 
           <span *ngIf="item.tier" class="bp-itempage-tier" [ngClass]="'bp-itempage-tier--' + item.tier">
             ✦ {{ tierLabel(item.tier) }}
@@ -225,7 +237,7 @@ import { Item, Org } from '../../../../models';
           <a *ngFor="let r of related"
              class="bp-itempage-related-card"
              [routerLink]="['/items', r.id]"
-             [state]="{ backUrl: backUrl }">
+             [queryParams]="relatedQueryParams()">
             <div class="bp-itempage-related-img"
                  [style.background-image]="r.image_url ? 'url(' + r.image_url + ')' : null">
               <div *ngIf="!r.image_url" class="bp-itempage-related-img-initial">{{ (r.name || '?').charAt(0) }}</div>
@@ -243,9 +255,12 @@ import { Item, Org } from '../../../../models';
       </div>
     </div>
 
-    <!-- ITEM EDIT DRAWER (reused) -->
+    <!-- ITEM EDIT DRAWER (reused) — v1.36 explicitly mounted in edit
+         mode. Default mode on the drawer is 'add', so without this the
+         ✎ button was opening the new-item form instead of editing. -->
     <app-item-drawer
       [(visible)]="showEditDrawer"
+      [mode]="'edit'"
       [item]="item"
       (saved)="onItemSaved($event)"
       (cancelled)="showEditDrawer = false">
@@ -263,7 +278,14 @@ import { Item, Org } from '../../../../models';
     }
     .bp-itempage-empty a { color: var(--theme-accent); display: inline-block; margin-top: 8px; }
 
-    /* v1.34d: .bp-itempage-back removed — back lives in the shell hero. */
+    /* Back link */
+    .bp-itempage-back {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: var(--text-xs); color: var(--color-text-muted);
+      cursor: pointer; margin-bottom: 16px; text-decoration: none;
+      transition: color 0.15s;
+    }
+    .bp-itempage-back:hover { color: var(--theme-accent); }
 
     /* ── Layout ── */
     .bp-itempage-layout {
@@ -321,8 +343,16 @@ import { Item, Org } from '../../../../models';
 
     /* ── Details ── */
     .bp-itempage-details { padding-top: 4px; min-width: 0; }
-    /* v1.34d: .bp-itempage-cat + .bp-itempage-name removed — both render
-       in the shell hero now (heroSub + heroTitle). */
+    .bp-itempage-cat {
+      font-size: 10px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-itempage-name {
+      font-family: var(--font-display); font-size: 26px;
+      font-weight: 400; line-height: 1.2; margin: 0 0 6px;
+      color: var(--color-text-primary);
+    }
 
     /* Tier badge */
     .bp-itempage-tier {
@@ -558,11 +588,16 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
   /** v1.34: project context via ?projectId= query param. When present the
       Add-to-project button targets that project. When absent we just toast. */
   private projectId = '';
-  /** v1.34c: back-target URL stamped into history.state by whichever surface
-      navigated us here (marketplace / shop front / project marketplace tab).
-      Persisted across related-item clicks so the user always returns to
-      their original entry point, never the previous item or the shop front. */
-  backUrl = '/suppliers';
+  /** v1.36: navigation context driven by ?context= query.
+      'project'    → render project hero (name + client/venue pills + tabs)
+      'supplier'   → render shop front hero (supplier name + city)
+      'marketplace'→ render marketplace hero (platform name + CATALOGUE)
+      Default: 'marketplace' when no context (direct URL navigation). */
+  private context: 'project' | 'supplier' | 'marketplace' = 'marketplace';
+  private supplierContextId = '';
+  /** Cached project/supplier needed for the hero. */
+  private contextProject: Project | null = null;
+  private contextSupplier: Org | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -574,6 +609,8 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     private codelistSvc: CodelistService,
     private projectItemSvc: ProjectItemService,
     private favSvc: FavouriteService,
+    private projectSvc: ProjectService,
+    private configSvc: ConfigService,
     private shellCtx: ShellContextService,
     private msg: MessageService,
     private sanitizer: DomSanitizer,
@@ -581,25 +618,50 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.projectId = this.route.snapshot.queryParams['projectId'] || '';
-
-    // v1.34c: capture backUrl from history.state on first hit. We do NOT
-    // overwrite on subsequent related-item clicks within the same session
-    // because the related-item routerLink propagates the same backUrl via
-    // [state] — so chained nav still returns to the original entry point.
-    const state = (window.history.state || {}) as { backUrl?: string };
-    if (state.backUrl) this.backUrl = state.backUrl;
-    else if (this.projectId) this.backUrl = `/projects/${this.projectId}/marketplace`;
-    else this.backUrl = '/suppliers';
+    const qp = this.route.snapshot.queryParams;
+    this.projectId = qp['projectId'] || '';
+    this.supplierContextId = qp['supplierId'] || '';
+    const ctx = qp['context'];
+    this.context = (ctx === 'project' || ctx === 'supplier' || ctx === 'marketplace')
+      ? ctx
+      : 'marketplace';
 
     this.codelistSvc.getByName('item_unit').subscribe(() => this.cdr.markForCheck());
     this.codelistSvc.getByName('item_time_unit').subscribe(() => this.cdr.markForCheck());
+
+    // Kick off context fetch in parallel with item load so the hero
+    // can be applied as soon as either resolves.
+    this.loadContext();
 
     this.route.params.subscribe(params => {
       const id = params['id'];
       if (!id) { this.loading = false; this.cdr.markForCheck(); return; }
       this.loadItem(id);
     });
+  }
+
+  /** v1.36: fetch whatever the context hero needs (project for project
+      context, supplier for supplier context, nothing for marketplace),
+      then push the hero into ShellContextService. */
+  private loadContext() {
+    if (this.context === 'project' && this.projectId) {
+      this.projectSvc.getById(this.projectId).pipe(
+        catchError(() => of(null as Project | null))
+      ).subscribe(p => {
+        this.contextProject = p;
+        this.applyShellHero();
+      });
+    } else if (this.context === 'supplier' && this.supplierContextId) {
+      this.orgSvc.getById(this.supplierContextId).pipe(
+        catchError(() => of(null as Org | null))
+      ).subscribe(s => {
+        this.contextSupplier = s;
+        this.applyShellHero();
+      });
+    } else {
+      // marketplace context (or fallback): no fetch needed, push hero now.
+      this.applyShellHero();
+    }
   }
 
   private loadItem(id: string) {
@@ -628,24 +690,48 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
           .filter((r: any) => r.id !== item.id)
           .slice(0, 4);
         this.loading = false;
-        this.applyShellHero();
         this.cdr.markForCheck();
       });
     });
   }
 
-  /** v1.34d: drive the app-shell hero (back button + item name + category
-      eyebrow) instead of rendering them inline. Matches the supplier
-      shop front / project detail pattern. */
+  /** v1.36: render the hero of whichever surface navigated us here so
+      the user keeps their bearings (and the project tab bar / supplier
+      identity stays visible). Item name lives in the page body now. */
   private applyShellHero() {
-    if (!this.item) return;
-    this.shellCtx.set({
-      heroTitle: this.item.name,
-      heroSub: (this.item.category_name || 'ITEM').toUpperCase(),
-      pills: [],
-      tabs: [],
-      back: { label: 'Back', onBack: () => this.goBack() }
-    });
+    if (this.context === 'project' && this.contextProject) {
+      const p = this.contextProject;
+      const pills: string[] = [];
+      if ((p as any).client_name) pills.push((p as any).client_name);
+      if ((p as any).venue_name)  pills.push((p as any).venue_name);
+      this.shellCtx.set({
+        heroTitle: (p as any).event_name || p.name || 'Untitled',
+        heroSub: 'MARKETPLACE',
+        pills,
+        tabs: [
+          { label: 'Overview',    path: `/projects/${this.projectId}/overview` },
+          { label: 'Brief',       path: `/projects/${this.projectId}/brief` },
+          { label: 'Marketplace', path: `/projects/${this.projectId}/marketplace` },
+          { label: 'Estimate',    path: `/projects/${this.projectId}/estimate` },
+          { label: 'Messages',    path: `/projects/${this.projectId}/messages` }
+        ]
+      });
+    } else if (this.context === 'supplier' && this.contextSupplier) {
+      this.shellCtx.set({
+        heroTitle: this.contextSupplier.name,
+        heroSub: (this.contextSupplier.city || 'London').toUpperCase(),
+        pills: [],
+        tabs: []
+      });
+    } else {
+      // Marketplace (default).
+      this.shellCtx.set({
+        heroTitle: this.configSvc.platformName,
+        heroSub: this.configSvc.catalogueLabel.toUpperCase(),
+        pills: [],
+        tabs: []
+      });
+    }
   }
 
   private buildGallery(item: Item): string[] {
@@ -712,6 +798,16 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     return (item as any)?.supplier_name || (item as any)?.org_name || '';
   }
 
+  /** v1.36: when the user clicks a related item, carry the same context
+      forward so the hero stays consistent (project → project, supplier
+      → supplier, etc.) rather than reverting to marketplace default. */
+  relatedQueryParams(): Record<string, string> {
+    const out: Record<string, string> = { context: this.context };
+    if (this.projectId) out['projectId'] = this.projectId;
+    if (this.supplierContextId) out['supplierId'] = this.supplierContextId;
+    return out;
+  }
+
   addToProject() {
     if (!this.item) return;
     if (!this.projectId) {
@@ -772,14 +868,23 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** v1.34c: navigate explicitly to the stamped backUrl rather than using
-      history.back(). This skips the supplier shop front when the user
-      arrived via a shop front (the user's complaint: Back from item
-      details was landing on supplier home instead of the marketplace
-      where they were browsing). Also survives chained related-item
-      clicks because the backUrl is propagated forward in [state]. */
+  /** v1.36: history.back() per spec. Falls back to a context-sensible
+      URL when there's no SPA history (direct URL navigation):
+        project   → /projects/:id/marketplace
+        supplier  → /suppliers/:id
+        marketplace (or unknown) → /suppliers */
   goBack() {
-    this.router.navigateByUrl(this.backUrl);
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    if (this.context === 'project' && this.projectId) {
+      this.router.navigate(['/projects', this.projectId, 'marketplace']);
+    } else if (this.context === 'supplier' && this.supplierContextId) {
+      this.router.navigate(['/suppliers', this.supplierContextId]);
+    } else {
+      this.router.navigate(['/suppliers']);
+    }
   }
 
   ngOnDestroy() {
