@@ -15,6 +15,9 @@ INFERENCE RULES — always apply:
 - Immersive/experiential → add av for sensory tech (implied)
 - Retail/sales element → add furniture for display (implied)
 
+DATE RESOLUTION RULE — always apply:
+Resolve relative dates to actual dates. May Half Term = 25-30 May. Easter = lookup (Sun + Mon following Good Friday). Bank holidays = lookup. Christmas Eve / Christmas Day = 24/25 December. New Year's Eve = 31 December. If year not stated, assume next occurrence (i.e. the next date matching that description after today). Return the resolved date in the "dates" field; preserve the user's phrasing if helpful, e.g. "May Half Term — 25-30 May 2026".
+
 DETAIL STANDARD:
 Each category oneLiner must be specific enough for a supplier to start quoting. Not "set build" but "Custom inflatable jelly structure with ball pit, approx 4m tall, Angel Delight branded, engineered for public interaction." Dimensions, quantities, brands, durations where mentioned.
 
@@ -69,8 +72,33 @@ async function parseBrief(rawBriefText) {
 
   const responseText = message.content[0].text;
 
+  // v1.39d — log what Haiku returns so we can verify mapping
+  // gaps against what hits the create payload. Truncated to keep
+  // server logs readable; full body is in the API response.
   try {
-    return JSON.parse(responseText);
+    const parsed = JSON.parse(responseText);
+    console.log('[ai.parseBrief] response',
+      JSON.stringify({
+        projectName:  parsed.projectName,
+        client:       parsed.client,
+        eventType:    parsed.eventType,
+        dates:        parsed.dates,
+        durationDays: parsed.durationDays,
+        guestCount:   parsed.guestCount,
+        budget:       parsed.budget,
+        budgetSignal: parsed.budgetSignal,
+        location:     parsed.location,
+        city:         parsed.city,
+        categoryCount: (parsed.categories || []).length,
+        questionCount: (parsed.topQuestions || []).length,
+        categories: (parsed.categories || []).map(c => ({
+          id: c.categoryId, label: c.categoryLabel,
+          oneLinerChars: (c.oneLiner || '').length,
+          budget: c.budgetEstimate, implied: c.implied
+        }))
+      }, null, 2)
+    );
+    return parsed;
   } catch {
     const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {

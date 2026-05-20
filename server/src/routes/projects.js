@@ -30,7 +30,31 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
+    // v1.39d diagnostic — see exactly what fields land in the create
+    // payload so we can verify the AI → modal → API mapping when
+    // something looks missing on the project page.
+    console.log('[projects.create] payload', JSON.stringify({
+      org_id:         req.body.org_id,
+      ref_in:         req.body.ref || null,
+      name:           req.body.name,
+      event_name:     req.body.event_name,
+      client_name:    req.body.client_name,
+      venue_name:     req.body.venue_name,
+      venue_city:     req.body.venue_city,
+      event_date:     req.body.event_date,
+      duration_days:  req.body.duration_days,
+      guest_count:    req.body.guest_count,
+      project_budget: req.body.project_budget,
+      event_type:     req.body.event_type,
+      tier:           req.body.tier,
+      currency:       req.body.currency,
+      margin_pct:     req.body.default_margin_pct,
+      contingency_pct: req.body.default_contingency_pct,
+      vat_pct:        req.body.default_vat_pct,
+      raw_brief_text_chars: (req.body.raw_brief_text || '').length
+    }, null, 2));
     const project = await ProjectService.create(req.body);
+    console.log('[projects.create] saved', project.ref, project.id);
     res.status(201).json(project);
   } catch (err) { next(err); }
 });
@@ -76,6 +100,14 @@ router.get('/:projectId/categories', async (req, res, next) => {
 
 router.patch('/:projectId/categories/:categoryId', async (req, res, next) => {
   try {
+    // v1.39d diagnostic — confirm category brief + budget land here.
+    console.log('[project_categories.upsert]', JSON.stringify({
+      project_id:  req.params.projectId,
+      category_id: req.params.categoryId,
+      requirement_brief_chars: (req.body?.requirement_brief || '').length,
+      requirement_brief_preview: (req.body?.requirement_brief || '').slice(0, 80),
+      ballpark_budget: req.body?.ballpark_budget ?? null
+    }));
     const pc = await ProjectCategoryService.upsert(
       req.params.projectId, req.params.categoryId, req.body || {}
     );

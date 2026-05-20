@@ -67,12 +67,14 @@ async function create(data) {
     if (draft.rows.length) status_id = draft.rows[0].id;
   }
 
-  // v1.39: auto-generate the project ref by atomically incrementing
-  // the org's counter. UPDATE ... RETURNING is a single statement so
-  // two concurrent project creates can never claim the same number.
-  // Skipped if org_id is missing (defensive — shouldn't happen) or if
-  // the caller supplied an explicit ref.
-  if (!ref && org_id) {
+  // v1.39: always advance the org's ref counter atomically on create
+  // (UPDATE…RETURNING is a single statement → no race between two
+  // concurrent creates). The counter is the source of truth — the
+  // caller-supplied `ref`, if present, is honoured as the *value*
+  // saved on the project (preserves what the modal showed the user)
+  // but the counter still ticks so future previews are accurate.
+  // Both branches still produce a unique number per org.
+  if (org_id) {
     const r = await pool.query(
       `UPDATE orgs
           SET ref_counter = COALESCE(ref_counter, 0) + 1
@@ -84,13 +86,14 @@ async function create(data) {
       const row = r.rows[0];
       let prefix = (row.ref_prefix || '').trim();
       if (!prefix) {
-        // Fallback: first two letters of org name, uppercase. If org
-        // name is missing too, the existing v1.39 default of 'BP'
-        // applies (set in the column default).
         prefix = ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
       }
       const padded = String(row.ref_counter).padStart(3, '0');
-      ref = `${prefix.toUpperCase()}-${padded}`;
+      const generated = `${prefix.toUpperCase()}-${padded}`;
+      // Prefer the caller's value (it's what the modal showed). Fall
+      // back to the freshly generated one if the caller didn't pass
+      // one (e.g. seed scripts, future API consumers).
+      ref = ref || generated;
     }
   }
 

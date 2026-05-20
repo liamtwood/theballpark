@@ -718,6 +718,10 @@ export class CreateProjectModalComponent implements OnInit {
 
   private categories: Category[] = [];
   private orgId = '';
+  /** v1.39d — cached on modal open so create() can apply the org's
+      saved margin/contingency/VAT defaults to the new project (and
+      fall back to UK norms if any are missing). */
+  private org: any = null;
 
   // AI categoryId → DB catalogue category name (matches v1.38 wiring on
   // the Brief tab and Event drawer).
@@ -763,6 +767,7 @@ export class CreateProjectModalComponent implements OnInit {
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
         this.orgId = org.id;
+        this.org = org;
         if (this.visible) this.loadNextRef();
       }
     });
@@ -1018,8 +1023,21 @@ export class CreateProjectModalComponent implements OnInit {
       ? String(r.budgetSignal).toLowerCase()
       : null;
 
+    // v1.39d — financial defaults. Use the org's saved defaults if
+    // present; otherwise fall back to sensible UK numbers
+    // (20% margin / 5% contingency / 20% VAT). These end up on the
+    // project so the Estimate tab can apply them per-row without
+    // touching the org table again.
+    const orgMargin      = Number(this.org?.default_margin_pct);
+    const orgContingency = Number(this.org?.default_contingency_pct);
+    const orgVat         = Number(this.org?.default_vat_pct);
+
     const payload: any = {
       org_id:         this.orgId || null,
+      // v1.39d — pass the previewed ref so the project ends up with
+      // exactly what the modal chip showed. Backend still atomically
+      // advances orgs.ref_counter so subsequent previews stay correct.
+      ref:            this.nextRef || undefined,
       name:           r.projectName || 'Untitled project',
       event_name:     r.projectName,
       client_name:    r.client,
@@ -1031,13 +1049,31 @@ export class CreateProjectModalComponent implements OnInit {
       project_budget: parsedBudget,
       event_type:     r.eventType,
       tier,
+      // v1.39d — financial defaults (was previously omitted)
+      default_margin_pct:      Number.isFinite(orgMargin)      && orgMargin      > 0 ? orgMargin      : 20,
+      default_contingency_pct: Number.isFinite(orgContingency) && orgContingency > 0 ? orgContingency : 5,
+      default_vat_pct:         Number.isFinite(orgVat)         && orgVat         > 0 ? orgVat         : 20,
       raw_brief_text: this.form.brief.trim(),
       currency:       'GBP'
     };
 
+    // v1.39d diagnostic — log the AI response + the outbound payload
+    // so we can quickly see why a field on the project page is blank.
+    // Open the browser console to see these.
+    // eslint-disable-next-line no-console
+    console.log('[createProject] AI response →', r);
+    // eslint-disable-next-line no-console
+    console.log('[createProject] outbound payload →', payload);
+
     this.projSvc.create(payload).subscribe({
-      next: project => this.createCategories(project),
-      error: () => {
+      next: project => {
+        // eslint-disable-next-line no-console
+        console.log('[createProject] saved project →', project);
+        this.createCategories(project);
+      },
+      error: err => {
+        // eslint-disable-next-line no-console
+        console.error('[createProject] failed →', err);
         this.creating = false;
         this.errorMsg = 'Could not create the project. Try again.';
         this.cdr.markForCheck();
@@ -1051,12 +1087,25 @@ export class CreateProjectModalComponent implements OnInit {
       this.finish(project, 0);
       return;
     }
-    const upserts = active.map(p =>
-      this.projSvc.upsertCategory(project.id, p.db!.id, {
+    // v1.39d — log every category's outbound payload so missing
+    // requirement_briefs are easy to diagnose.
+    const upserts = active.map(p => {
+      const body = {
         requirement_brief: p.ai.oneLiner,
-        ballpark_budget:   this.midOfBand(p.ai.budgetEstimate)
-      }).pipe(catchError(() => of(null)))
-    );
+        // v1.39d — was midOfBand, now LOW end of the range so the
+        // Estimate tab starts conservative. AI's budgetEstimate is
+        // a band like "£15k–£20k"; pick £15k.
+        ballpark_budget:   this.lowOfBand(p.ai.budgetEstimate)
+      };
+      // eslint-disable-next-line no-console
+      console.log('[createCategories] upsert →', p.db!.name, body);
+      return this.projSvc.upsertCategory(project.id, p.db!.id, body)
+        .pipe(catchError(err => {
+          // eslint-disable-next-line no-console
+          console.error('[createCategories] upsert failed →', p.db!.name, err);
+          return of(null);
+        }));
+    });
     forkJoin(upserts).subscribe({
       next: () => this.finish(project, active.length),
       error: () => this.finish(project, 0)
@@ -1102,6 +1151,18 @@ export class CreateProjectModalComponent implements OnInit {
   }
   private midOfBand(s?: string | null): number | null {
     if (!s) return null;
+    return this.parseBudgetString(s);
+  }
+  /** v1.39d — LOW end of a budget band (e.g. "£15k–£20k" → 15000).
+      Used for the per-category ballpark_budget so the Estimate tab
+      starts conservative. Falls back to parseBudgetString if the
+      value is a single figure rather than a range. */
+  private lowOfBand(s?: string | null): number | null {
+    if (!s) return null;
+    const norm = s.replace(/[£,]/g, '').replace(/–|—/g, '-');
+    if (/unknown|tbc/i.test(norm)) return null;
+    const range = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?\s*-\s*(\d+(?:\.\d+)?)\s*([kKmM])?/);
+    if (range) return Math.round(this.toNumber(range[1], range[2]));
     return this.parseBudgetString(s);
   }
 }
