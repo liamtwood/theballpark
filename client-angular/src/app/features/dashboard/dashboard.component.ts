@@ -214,13 +214,17 @@ type DashTab = 'projects';
                  v1.22i: Browse Suppliers now lands on the Suppliers
                  toggle (was defaulting to Items).
                  v1.22j: icons dropped from the links so every Quick
-                 Action reads as one clean outlined CTA; Settings
-                 added as the third entry. -->
+                 Action reads as one clean outlined CTA.
+                 v1.35: Marketplace nav link removed — Browse
+                 Marketplace lives here now. Settings link removed —
+                 lives behind the cog icon in the header. -->
+            <a [routerLink]="['/suppliers']"
+               [queryParams]="{ view: 'items' }"
+               class="bp-quick-action">Browse Marketplace</a>
             <a [routerLink]="['/suppliers']"
                [queryParams]="{ view: 'suppliers' }"
                class="bp-quick-action">Browse Suppliers</a>
             <a routerLink="/settings/team" class="bp-quick-action">Invite Member</a>
-            <a routerLink="/settings" class="bp-quick-action">Settings</a>
           </div>
         </div>
 

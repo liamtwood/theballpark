@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, Store, MessageSquareWarning, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
@@ -33,25 +33,27 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
+        <!-- v1.35: nav simplified to Home + Admin only. Marketplace moved
+             to Quick Actions on the dashboard; Settings is now the cog
+             icon on the right; Feedback (Requirements) sits under Admin. -->
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
-        <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
-        </a>
-        <a routerLink="/ballpark-settings/feedback" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="message-square-warning" [size]="14"></lucide-icon> {{ feedbackLabel }}
-        </a>
-        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
-        </a>
-        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link bp-nav-link-admin">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
+        <a *ngIf="isAdmin"
+           routerLink="/ballpark-settings" routerLinkActive="active"
+           class="bp-nav-link bp-nav-link-admin">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
         </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
+        <!-- v1.35: Settings cog replaces the text nav link. Same visual
+             weight as the dark-mode toggle — no bg, no border, themed
+             accent on hover (via .bp-nav-icon-link). -->
+        <a routerLink="/settings" class="bp-nav-icon-link" title="Settings">
+          <lucide-icon name="settings" [size]="14"></lucide-icon>
+        </a>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
@@ -150,6 +152,16 @@ import { environment } from '../../environments/environment';
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       color: var(--color-text-secondary);
     }
+    /* v1.35: Settings cog — same visual weight as the dark-mode toggle
+       icon. No bg, no border, muted colour, themed accent on hover. */
+    .bp-nav-icon-link {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none;
+      color: var(--color-text-muted); cursor: pointer;
+      text-decoration: none; transition: color 0.15s;
+    }
+    .bp-nav-icon-link:hover { color: var(--theme-accent); }
     .bp-nav-version {
       position: fixed; bottom: 8px; right: 12px;
       font-size: 10px; color: var(--color-text-muted); z-index: 50;
