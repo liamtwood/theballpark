@@ -113,11 +113,10 @@ interface MessagesSummary {
              jump between numeric + label values. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
-            <!-- ROW 1 -->
-            <div class="bp-event-col">
+            <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
+            <div class="bp-event-col bp-event-col--narrow">
               <span class="bp-event-eyebrow">REF</span>
               <span class="bp-event-value">{{ project.ref || '—' }}</span>
-              <span class="bp-event-sub">auto-generated</span>
             </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">CLIENT</span>
@@ -128,8 +127,8 @@ interface MessagesSummary {
               <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
             </div>
 
-            <!-- ROW 2 -->
-            <div class="bp-event-col">
+            <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
+            <div class="bp-event-col bp-event-col--narrow">
               <span class="bp-event-eyebrow">GUESTS</span>
               <span class="bp-event-value">{{ guestCount || '—' }}</span>
               <span class="bp-event-sub">{{ guestSub }}</span>
@@ -137,7 +136,8 @@ interface MessagesSummary {
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">DATE</span>
               <span class="bp-event-value">{{ datePrimary || '—' }}</span>
-              <span class="bp-event-sub" *ngIf="dateRelative">{{ dateRelative }}</span>
+              <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
+              <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
             </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">VENUE</span>
@@ -465,11 +465,13 @@ interface MessagesSummary {
     /* v1.39j — 3 columns wrapping to 2 rows.
          Row 1: REF | CLIENT | EVENT NAME
          Row 2: GUESTS | DATE | VENUE
+       v1.39k: column 1 is narrow (REF / GUESTS are always short —
+       15-20 chars max), the other two share the remaining width.
        row-gap is tighter than column-gap so the two rows read as
        one block, not two stacked strips. */
     .bp-event-cols {
       display: grid;
-      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      grid-template-columns: minmax(96px, 0.5fr) minmax(140px, 1fr) minmax(140px, 1fr);
       column-gap: 24px;
       row-gap: 14px;
       flex: 1;
@@ -480,6 +482,10 @@ interface MessagesSummary {
       gap: 2px;
       min-width: 0;
     }
+    /* v1.39k — narrow variant for REF + GUESTS. The cap lives on the
+       grid track, so this is mostly a hint for future use (e.g. nested
+       grids) — kept as a marker class. */
+    .bp-event-col--narrow { max-width: 140px; }
     /* v1.39j — Questions panel below the event strip. Parchment
        container, theme-accent eyebrow + chevron. */
     .bp-questions-panel {
@@ -1242,6 +1248,15 @@ export class OverviewComponent implements OnInit {
     if (!this.project?.event_date) return '';
     const formatted = new EventDatePipe().transform(this.project.event_date);
     return formatted.includes(' · ') ? formatted.substring(formatted.indexOf(' · ') + 3) : '';
+  }
+  /** v1.39k — duration sub-label under the DATE value.
+      e.g. duration_days=1 → "1 day"; duration_days=3 → "3 days".
+      Returns '' when the project has no duration set so the
+      template falls back to dateRelative. */
+  get durationLabel(): string {
+    const d = this.project?.duration_days;
+    if (!d || d <= 0) return '';
+    return `${d} day${d === 1 ? '' : 's'}`;
   }
   get guestCount(): string {
     const n = this.project?.guest_count;
