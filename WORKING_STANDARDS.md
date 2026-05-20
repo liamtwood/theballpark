@@ -212,6 +212,33 @@ version label, confirm it matches what you just promoted. If it
 still shows the old number, the env file for that target wasn't
 bumped — fix that before assuming the deploy worked.
 
+### Schema migrations — single source of truth
+
+`server/src/db/migrate-schemas.js` is the **only** sanctioned way to
+bring a schema (dev/preview/master) into the current shape. Running
+it must be idempotent and complete in one pass — `IF NOT EXISTS`
+everywhere, `ON CONFLICT DO NOTHING` on all seeds.
+
+**Rules — no exceptions**
+- Every commit that adds/alters a column, table, index, codelist row,
+  or seed entry on dev MUST update `migrate-schemas.js` in the same
+  commit. Ad-hoc `ALTER TABLE` against the dev DB without recording
+  it in the script causes silent drift that surfaces weeks later
+  when preview/master is promoted (e.g. v1.36 → preview hit a
+  20-version backlog of missing columns).
+- The script targets `public.`, `preview.`, and `master.` explicitly
+  in each statement. Don't write `ALTER TABLE items ...` — write
+  three statements, one per schema.
+- Before merging dev → preview (or preview → master), run
+  `node server/src/db/migrate-schemas.js`. It is idempotent and safe
+  to run repeatedly.
+- Don't write inline backticks in SQL comments inside the JS
+  template literal — they break the parser. Use plain quotes or
+  unquoted names in `--` comments.
+- New seed data (codelists, demo rows) goes in the same script under
+  `ON CONFLICT DO NOTHING`. Don't lean on one-off `seed-vX.Y.js`
+  scripts as canonical — they're history, not state.
+
 ---
 
 ## Authentication & Authorisation

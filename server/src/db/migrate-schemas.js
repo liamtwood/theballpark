@@ -268,7 +268,7 @@ const migrate = async () => {
 
       -- Estimate Items
       -- NOTE: this CREATE block reflects the v1.13 production schema:
-      --   - `unit_price` renamed to `offer_price` (deal-specific proposal
+      --   - unit_price renamed to offer_price (deal-specific proposal
       --     editable until approved_at locks it).
       --   - Added budget_price (agency expectation), ballpark_snapshot
       --     (catalogue anchor at request time), inspired_by_item_id (FK
@@ -276,9 +276,9 @@ const migrate = async () => {
       --     (deal lock), duration (time dimension), unit + time_unit
       --     (inherited from item on creation, mutable on the deal), and
       --     attributes JSONB.
-      --   - total_price = quantity × duration × offer_price.
-      -- The earlier `unit` and `is_active` columns were dropped in dev
-      -- before v1.13 — see the idempotent ALTER block below for the
+      --   - total_price = quantity x duration x offer_price.
+      -- The earlier unit and is_active columns were dropped in dev
+      -- before v1.13 -- see the idempotent ALTER block below for the
       -- reconciliation applied to older databases.
       CREATE TABLE IF NOT EXISTS preview.estimate_items (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -441,8 +441,8 @@ const migrate = async () => {
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
       -- estimate_items drift reconciliation. The legacy CREATE block had
-      -- `unit VARCHAR(50)` and `is_active BOOLEAN` columns that were dropped
-      -- in dev out-of-band; `shortlisted` + `status_id` were added at the
+      -- unit VARCHAR(50) and is_active BOOLEAN columns that were dropped
+      -- in dev out-of-band; shortlisted + status_id were added at the
       -- same time. These ALTERs converge any older DB to the new shape
       -- without losing data (the dropped columns held no application data).
       ALTER TABLE public.estimate_items  DROP COLUMN IF EXISTS unit;
