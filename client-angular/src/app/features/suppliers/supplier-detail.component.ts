@@ -224,7 +224,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [categories]="displayStoreCategories"
           entityType="item"
           entityLabel="item"
-          [actionLabel]="'View →'"
+          [actionLabel]="''"
           [favouriteIds]="itemFavIds"
           [showEdit]="true"
           [showItemEdit]="false"

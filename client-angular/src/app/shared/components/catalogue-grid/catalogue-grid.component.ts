@@ -432,8 +432,13 @@ export type DetailMode = 'inline' | 'drawer';
                       title="Edit item">
                 <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
-              <!-- v1.35c: View (eye) button removed per user request.
-                   Edit pencil + outer action cluster preserved. -->
+              <!-- View (always) -->
+              <button type="button"
+                      class="bp-detail-action"
+                      (click)="onViewItem(selectedEntity)"
+                      title="View details">
+                <lucide-icon name="eye" [size]="14"></lucide-icon>
+              </button>
             </div>
 
             <!-- Legacy item-edit pencil. Kept for parents that still set
@@ -499,9 +504,12 @@ export type DetailMode = 'inline' | 'drawer';
               <lucide-icon name="chevron-right" [size]="14" class="bp-row-chev"></lucide-icon>
             </div>
 
-            <!-- Action buttons -->
+            <!-- Action buttons. v1.35d: primary CTA only renders when
+                 actionLabel is set; surfaces that don't want a primary
+                 button (supplier shop front, now using the eye instead)
+                 pass [actionLabel]="''". Heart stays independent. -->
             <div class="flex gap-2">
-              <p-button [label]="actionLabel" styleClass="flex-1"
+              <p-button *ngIf="actionLabel" [label]="actionLabel" styleClass="flex-1"
                 (onClick)="onAction(selectedEntity)"></p-button>
               <p-button *ngIf="showFavourite" icon="pi pi-heart" styleClass="p-button-outlined"
                 [class.p-button-danger]="favouriteIds.has(selectedEntity.id)"
