@@ -101,53 +101,58 @@ interface PendingCategory {
             <span class="bp-cp-ref-auto">auto-generated</span>
           </div>
 
-          <!-- File upload zone (hidden if textarea has content) -->
-          <ng-container *ngIf="!form.brief.trim()">
-            <label class="bp-cp-upload"
-                   [class.has-file]="uploadedFile"
-                   (dragover)="$event.preventDefault()"
-                   (drop)="onDrop($event)">
-              <input #fileInput type="file" hidden
-                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.eml,.txt"
-                     (change)="onFilePicked($event)"/>
-              <ng-container *ngIf="!uploadedFile">
-                <lucide-icon name="paperclip" [size]="22"></lucide-icon>
-                <div class="bp-cp-upload-text">
-                  <div class="bp-cp-upload-title">Upload brief</div>
-                  <div class="bp-cp-upload-sub">Drag &amp; drop or click to browse</div>
-                </div>
-                <div class="bp-cp-upload-formats">
-                  <span class="bp-cp-upload-fmt">PDF</span>
-                  <span class="bp-cp-upload-fmt">Image</span>
-                  <span class="bp-cp-upload-fmt">Word</span>
-                  <span class="bp-cp-upload-fmt">Email</span>
-                </div>
-              </ng-container>
-              <ng-container *ngIf="uploadedFile">
-                <lucide-icon name="paperclip" [size]="14"></lucide-icon>
-                <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
-                <button type="button" class="bp-cp-upload-x"
-                        (click)="$event.preventDefault(); $event.stopPropagation(); uploadedFile = null;">
-                  <i class="pi pi-times"></i>
-                </button>
-              </ng-container>
-            </label>
-          </ng-container>
+          <!-- File upload zone. Stays compact once a file is selected
+               so the textarea below is always available for paste /
+               edit, even after upload. -->
+          <label class="bp-cp-upload"
+                 [class.has-file]="uploadedFile"
+                 [class.extracting]="extracting"
+                 (dragover)="$event.preventDefault()"
+                 (drop)="onDrop($event)">
+            <input #fileInput type="file" hidden
+                   accept=".pdf,.docx,.eml,.txt,.png,.jpg,.jpeg"
+                   (change)="onFilePicked($event)"/>
+            <ng-container *ngIf="!uploadedFile">
+              <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+              <div class="bp-cp-upload-text">
+                <div class="bp-cp-upload-title">Upload brief</div>
+                <div class="bp-cp-upload-sub">Drag &amp; drop or click to browse</div>
+              </div>
+              <div class="bp-cp-upload-formats">
+                <span class="bp-cp-upload-fmt">PDF</span>
+                <span class="bp-cp-upload-fmt">Word</span>
+                <span class="bp-cp-upload-fmt">Email</span>
+                <span class="bp-cp-upload-fmt">Text</span>
+              </div>
+            </ng-container>
+            <ng-container *ngIf="uploadedFile">
+              <lucide-icon name="paperclip" [size]="14"></lucide-icon>
+              <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
+              <span *ngIf="extracting"   class="bp-cp-upload-status">extracting…</span>
+              <span *ngIf="!extracting && extractedChars > 0"
+                    class="bp-cp-upload-status bp-cp-upload-status-ok">
+                ✓ {{ extractedChars | number }} chars
+              </span>
+              <button type="button" class="bp-cp-upload-x"
+                      (click)="$event.preventDefault(); $event.stopPropagation(); removeFile()">
+                <i class="pi pi-times"></i>
+              </button>
+            </ng-container>
+          </label>
 
-          <div class="bp-cp-or" *ngIf="!uploadedFile">
+          <div class="bp-cp-or">
             <span class="bp-cp-or-line"></span>
-            <span class="bp-cp-or-text">or paste text</span>
+            <span class="bp-cp-or-text">{{ uploadedFile ? 'review or edit text' : 'or paste text' }}</span>
             <span class="bp-cp-or-line"></span>
           </div>
 
-          <textarea *ngIf="!uploadedFile"
-                    pInputTextarea
+          <textarea pInputTextarea
                     [(ngModel)]="form.brief"
                     [rows]="5"
                     placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
                     class="w-full bp-input-edit bp-cp-brief"></textarea>
 
-          <div class="bp-cp-examples" *ngIf="!uploadedFile">
+          <div class="bp-cp-examples">
             <span class="bp-cp-examples-label">Try:</span>
             <button *ngFor="let ex of examples"
                     type="button"
@@ -395,6 +400,24 @@ interface PendingCategory {
     .bp-cp-upload-name {
       flex: 1; font-size: 12.5px; color: var(--color-text-primary);
       text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-cp-upload-status {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-style: italic;
+      flex-shrink: 0;
+    }
+    .bp-cp-upload-status-ok {
+      color: var(--theme-accent);
+      font-style: normal;
+      font-weight: 500;
+    }
+    .bp-cp-upload.extracting {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
     }
     .bp-cp-upload-x {
       width: 22px; height: 22px;
@@ -660,6 +683,11 @@ export class CreateProjectModalComponent implements OnInit {
   // INPUT
   form = { brief: '' };
   uploadedFile: File | null = null;
+  /** True while POST /ai/extract-text is in flight. */
+  extracting = false;
+  /** char count from the most recent successful extract — used to
+      show "✓ N chars" next to the file name. */
+  extractedChars = 0;
   examples = EXAMPLE_BRIEFS;
   nextRef: string | null = null;
   errorMsg = '';
@@ -737,6 +765,8 @@ export class CreateProjectModalComponent implements OnInit {
     this.state = 'input';
     this.form = { brief: '' };
     this.uploadedFile = null;
+    this.extracting = false;
+    this.extractedChars = 0;
     this.errorMsg = '';
     this.loadStep = 0;
     this.aiSettled = false;
@@ -767,7 +797,10 @@ export class CreateProjectModalComponent implements OnInit {
   }
 
   get canParse(): boolean {
-    return !!(this.form.brief.trim() || this.uploadedFile);
+    // Only the textarea text drives the AI call — files are extracted
+    // to text on upload so by the time the user clicks Parse, anything
+    // that needs to be sent is in form.brief.
+    return !this.extracting && !!this.form.brief.trim();
   }
 
   // ── INPUT actions ─────────────────────────────────────────────────────
@@ -783,32 +816,60 @@ export class CreateProjectModalComponent implements OnInit {
     const input = ev.target as HTMLInputElement;
     const f = input.files?.[0];
     if (f) this.handleFile(f);
+    // Allow re-selecting the same file (Chrome won't refire change otherwise).
+    (input as HTMLInputElement).value = '';
   }
   onDrop(ev: DragEvent) {
     ev.preventDefault();
     const f = ev.dataTransfer?.files?.[0];
     if (f) this.handleFile(f);
   }
+  removeFile() {
+    this.uploadedFile = null;
+    this.extracting = false;
+    this.extractedChars = 0;
+    this.cdr.markForCheck();
+  }
+
+  /** v1.39a — send the file to /ai/extract-text and populate the
+      textarea with the result. The textarea remains user-editable so
+      they can clean up the extracted text before parsing. */
   private handleFile(f: File) {
     this.uploadedFile = f;
-    // Plain-text / email / extracted-PDF → read inline and put the text
-    // in form.brief so the AI gets the actual content.
-    if (/\.(txt|eml)$/i.test(f.name)) {
-      f.text().then(txt => { this.form.brief = txt; this.cdr.markForCheck(); });
-    } else if (/\.(png|jpg|jpeg)$/i.test(f.name)) {
-      this.msg.add({
-        severity: 'info',
-        summary: 'Image uploaded — paste the brief text below for best results',
-        life: 3500
-      });
-    } else if (/\.(pdf|docx?)$/i.test(f.name)) {
-      this.msg.add({
-        severity: 'info',
-        summary: `${f.name} captured — paste the text below or click Parse to send the file`,
-        life: 3500
-      });
-    }
+    this.extracting = true;
+    this.extractedChars = 0;
+    this.errorMsg = '';
     this.cdr.markForCheck();
+
+    this.aiSvc.extractText(f).subscribe({
+      next: out => {
+        this.extracting = false;
+        this.form.brief = out.text || '';
+        this.extractedChars = (out.text || '').length;
+        this.msg.add({
+          severity: 'success',
+          summary: `✓ Extracted ${this.extractedChars.toLocaleString()} characters from ${f.name}`,
+          detail: 'Review the text below, then Parse with AI.',
+          life: 3500
+        });
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.extracting = false;
+        const detail =
+          err?.error?.error ||
+          'Could not extract text from this file — paste the brief text below.';
+        // Keep the file pinned (so the user sees what they uploaded)
+        // but surface a clear actionable message.
+        this.msg.add({
+          severity: 'warn',
+          summary: 'File needs paste',
+          detail,
+          life: 4500
+        });
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   // ── LOADING / AI call ─────────────────────────────────────────────────
@@ -830,8 +891,9 @@ export class CreateProjectModalComponent implements OnInit {
 
     const text = this.form.brief.trim();
     if (!text) {
-      // Image-only uploads with no text — bail with a friendly error.
-      this.aiFailed('Image upload needs the brief text pasted in for AI parsing.');
+      // Should be unreachable thanks to `canParse`, but keep a clear
+      // last-line message in case the button state got out of sync.
+      this.aiFailed('Paste or upload some brief text before parsing.');
       return;
     }
 
