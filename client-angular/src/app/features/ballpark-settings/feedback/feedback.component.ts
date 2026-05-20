@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -7,7 +7,14 @@ import {
 } from '../../../core/services/feedback.service';
 import { CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  CatalogueGridComponent, CircleSize, DetailSize
+} from '../../../shared/components/catalogue-grid/catalogue-grid.component';
+import {
+  PageConfigTogglesComponent, ThemeSwatch, DetailMode
+} from '../../../shared/components/page-config-toggles/page-config-toggles.component';
+import { ConfigService } from '../../../core/services/config.service';
+import { ShellContextService } from '../../../core/services/shell-context.service';
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -21,7 +28,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { FeedbackDrawerComponent } from '../../feedback/feedback-drawer.component';
 
-type ViewMode = 'grid' | 'list' | 'table';
+type ViewMode = 'card' | 'list' | 'table';
 
 @Component({
   selector: 'app-feedback',
@@ -32,55 +39,16 @@ type ViewMode = 'grid' | 'list' | 'table';
     InputTextModule, DropdownModule, ButtonModule, ConfirmDialogModule, ToastModule,
     TableModule, SelectButtonModule,
     StatusBadgeComponent, AvatarComponent,
-    FeedbackDrawerComponent
+    FeedbackDrawerComponent, PageConfigTogglesComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
-      <!-- AREA CIRCLES -->
-      <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1">
-        <div class="bp-fb-areas">
-          <button *ngFor="let a of areaCircles"
-            class="bp-fb-area-btn"
-            [class.active]="selectedArea === a.id"
-            (click)="setArea(a.id)">
-            <div class="bp-fb-area-circle">
-              <lucide-icon [name]="a.icon" [size]="22"></lucide-icon>
-            </div>
-            <span class="bp-fb-area-label">{{ a.label }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- FILTER BAR -->
-      <div class="bp-fb-filters">
-        <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All types"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterPage" [options]="pageOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All pages"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterOwner" [options]="ownerOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All owners"></p-dropdown>
-        <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
-          (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All statuses"></p-dropdown>
-      </div>
-
-      <!-- BULK ACTION BAR -->
-      <div class="bp-fb-bulk-bar" *ngIf="selectedIds.size > 0">
-        <span class="bp-fb-bulk-count">{{ selectedIds.size }} selected</span>
-        <button class="bp-fb-bulk-btn" (click)="bulkMarkDone()">
-          <lucide-icon name="check" [size]="12"></lucide-icon> Mark done
-        </button>
-        <p-dropdown [(ngModel)]="bulkAssignOwner" [options]="ownerAssignOptions" optionLabel="label" optionValue="value"
-          (onChange)="bulkAssign()" styleClass="bp-fb-filter" placeholder="Assign to..."></p-dropdown>
-        <button class="bp-fb-bulk-btn bp-fb-bulk-btn--danger" (click)="bulkDelete()">
-          <lucide-icon name="x" [size]="12"></lucide-icon> Delete
-        </button>
-      </div>
-
       <!-- catalogue-grid wraps grid/list/table. No detail panel — single
-           click opens the drawer directly. -->
+           click opens the drawer directly. Hero, config strip, and the
+           area-circles/filter/bulk row are all projected through. -->
       <app-catalogue-grid
         [entities]="filteredEntities"
         [categories]="filterCategories"
@@ -89,21 +57,86 @@ type ViewMode = 'grid' | 'list' | 'table';
         [layout]="catalogueLayout()"
         [showLayoutToggle]="false"
         [useCustomDetail]="false"
+        [useCustomMain]="true"
         entityType="feedback"
         entityLabel="entry"
         sectionTitle="FEEDBACK"
         actionLabel="Open"
+        [circleSize]="circleSize"
+        [detailSize]="detailSize"
+        [detailMode]="detailMode"
+        [breadcrumbRoot]="'AREA'"
+        [breadcrumbAll]="'All Areas'"
+        [breadcrumbActive]="selectedAreaLabel"
         [favouriteIds]="emptySet"
         [showEdit]="false"
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
-        (categoryChanged)="onTypeFilterChanged($event)">
+        (categoryChanged)="onTypeFilterChanged($event)"
+        (breadcrumbBackClicked)="setArea('all')">
+
+        <!-- Shared config strip controls (toggled by cog in top-nav) -->
+        <app-page-config-toggles config-content
+          [(pageLabel)]="pageLabel"
+          (pageLabelChange)="onPageLabelChange($event)"
+          [(theme)]="theme"
+          (themeChange)="onThemeChange()"
+          [(circleSize)]="circleSize"
+          (circleSizeChange)="persistConfig()"
+          [(view)]="viewMode"
+          (viewChange)="persistConfig()"
+          [(detailSize)]="detailSize"
+          (detailSizeChange)="persistConfig()"
+          [(detailMode)]="detailMode"
+          (detailModeChange)="persistConfig()"></app-page-config-toggles>
+
+        <!-- AREA CIRCLES + FILTER BAR + BULK BAR — projected so they sit
+             between the hero and the 3-col body. -->
+        <div catalogue-before-body>
+          <div class="bp-fb-areas-wrap" *ngIf="areaCircles.length > 1" [attr.data-circle-size]="circleSize">
+            <div class="bp-fb-areas">
+              <button *ngFor="let a of areaCircles"
+                class="bp-fb-area-btn"
+                [class.active]="selectedArea === a.id"
+                (click)="setArea(a.id)">
+                <div class="bp-fb-area-circle"
+                  [style.background-color]="a.iconColor || null">
+                  <lucide-icon [name]="a.icon" [size]="areaIconSize"></lucide-icon>
+                </div>
+                <span class="bp-fb-area-label">{{ a.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bp-fb-filters">
+            <p-dropdown [(ngModel)]="filterType" [options]="typeOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All types"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterPage" [options]="pageOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All pages"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterOwner" [options]="ownerOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All owners"></p-dropdown>
+            <p-dropdown [(ngModel)]="filterStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
+              (onChange)="applyFilters()" styleClass="bp-fb-filter" placeholder="All statuses"></p-dropdown>
+          </div>
+
+          <div class="bp-fb-bulk-bar" *ngIf="selectedIds.size > 0">
+            <span class="bp-fb-bulk-count">{{ selectedIds.size }} selected</span>
+            <button class="bp-fb-bulk-btn" (click)="bulkMarkDone()">
+              <lucide-icon name="check" [size]="12"></lucide-icon> Mark done
+            </button>
+            <p-dropdown [(ngModel)]="bulkAssignOwner" [options]="ownerAssignOptions" optionLabel="label" optionValue="value"
+              (onChange)="bulkAssign()" styleClass="bp-fb-filter" placeholder="Assign to..."></p-dropdown>
+            <button class="bp-fb-bulk-btn bp-fb-bulk-btn--danger" (click)="bulkDelete()">
+              <lucide-icon name="x" [size]="12"></lucide-icon> Delete
+            </button>
+          </div>
+        </div>
 
         <!-- Section header right-side controls: Add + view toggle. -->
         <div catalogue-toggles class="bp-fb-header-actions">
-          <p-button label="+ Add" styleClass="p-button-outlined bp-fb-add-btn"
+          <p-button label="+ Add entry" styleClass="p-button-outlined bp-fb-add-btn"
             (onClick)="openAddDialog()"></p-button>
           <p-selectButton
             [options]="viewModeOptions"
@@ -118,7 +151,7 @@ type ViewMode = 'grid' | 'list' | 'table';
         </div>
 
         <!-- TABLE — only rendered when layout='table' -->
-        <div catalogue-main *ngIf="viewMode === 'table'" class="bp-fb-table-wrap">
+        <div catalogue-main *ngIf="viewMode === 'table'" class="bp-table-wrap bp-fb-table-wrap">
           <p-table [value]="tableRows" styleClass="bp-table" sortMode="multiple"
             [multiSortMeta]="defaultTableSort" [scrollable]="true" scrollHeight="flex">
             <ng-template pTemplate="header">
@@ -232,17 +265,29 @@ type ViewMode = 'grid' | 'list' | 'table';
   styles: [`
     .bp-empty-state { text-align: center; padding: 48px 24px; }
 
-    /* Area circles */
-    .bp-fb-areas-wrap { padding: 16px 28px 4px; border-bottom: 0.5px solid var(--color-border); }
+    /* Area circles — size driven by [data-circle-size] from the config strip. */
+    .bp-fb-areas-wrap {
+      padding: 16px 28px 4px; border-bottom: 0.5px solid var(--color-border);
+      --bp-fb-area-w: 72px;
+    }
+    .bp-fb-areas-wrap[data-circle-size="sm"] { --bp-fb-area-w: 56px; }
+    .bp-fb-areas-wrap[data-circle-size="md"] { --bp-fb-area-w: 72px; }
+    .bp-fb-areas-wrap[data-circle-size="lg"] { --bp-fb-area-w: 96px; }
     .bp-fb-areas { display: flex; gap: 18px; justify-content: center; padding: 4px 4px 12px; flex-wrap: wrap; }
     .bp-fb-area-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0; }
     .bp-fb-area-circle {
-      width: 56px; height: 56px; border-radius: 50%;
+      width: var(--bp-fb-area-w, 72px); height: var(--bp-fb-area-w, 72px);
+      border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      border: 2.5px solid transparent; transition: border-color 0.15s;
+      border: 2.5px solid transparent;
+      transition: width 0.18s, height 0.18s, border-color 0.15s;
       color: var(--theme-accent); background: var(--theme-bg);
       box-shadow: 0 0 0 0.5px var(--color-border);
     }
+    /* When icon_color is set on the area, an inline style fills the
+       circle with that hue (it's the "icon background" in the area
+       form). The lucide stroke keeps the theme-accent default so the
+       icon stays legible on top of the fill. */
     .bp-fb-area-btn.active .bp-fb-area-circle {
       border-color: var(--theme-accent);
       box-shadow: 0 0 0 2px var(--theme-accent);
@@ -271,37 +316,38 @@ type ViewMode = 'grid' | 'list' | 'table';
       font-size: 12px; font-weight: 500;
       font-family: var(--font-body);
     }
-    :host ::ng-deep .bp-fb-view-select .p-button {
-      width: 30px; height: 30px; padding: 0;
-      background: var(--color-surface);
+    /* View toggle — segmented group, single border around all buttons.
+       Matches the team-page bp-view-toggle pattern: shared outline,
+       no inter-button gap, theme-bg fill on the active mode. The
+       !important flags match the global .p-button overrides in
+       styles.css so this scoped rule wins. */
+    :host ::ng-deep .bp-fb-view-select {
+      display: inline-flex;
       border: 0.5px solid var(--color-border);
-      color: var(--color-text-muted);
-      display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px;
+      overflow: hidden;
     }
-    :host ::ng-deep .bp-fb-view-select .p-button + .p-button { margin-left: 4px; }
+    :host ::ng-deep .bp-fb-view-select .p-button {
+      width: 30px !important;
+      height: 28px !important;
+      padding: 0 !important;
+      background: var(--color-surface) !important;
+      border: none !important;
+      color: var(--color-text-muted) !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0 !important;
+      font-size: 13px !important;
+    }
     :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
-      background: var(--theme-bg);
-      border-color: var(--theme-border);
-      color: var(--theme-accent);
+      background: var(--theme-bg) !important;
+      color: var(--theme-accent) !important;
     }
-    :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none; }
+    :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none !important; }
 
-    /* Table */
-    .bp-fb-table-wrap { padding: 12px 8px; }
-    :host ::ng-deep .bp-table .p-datatable-thead > tr > th {
-      background: var(--color-surface); color: var(--color-text-muted);
-      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-      border-bottom: 0.5px solid var(--color-border); padding: 10px 12px;
-    }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr {
-      cursor: pointer; transition: background 0.1s;
-    }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr:hover { background: var(--theme-bg); }
-    :host ::ng-deep .bp-table .p-datatable-tbody > tr > td {
-      padding: 10px 12px; font-size: 13px; color: var(--color-text-primary);
-      border-bottom: 0.5px solid var(--color-border); vertical-align: middle;
-    }
+    /* Table — chrome lives in styles.css under .bp-table / .bp-table-wrap;
+       only the page-specific cell helpers stay here. */
     .bp-fb-cell-title { font-weight: 500; }
 
     .bp-fb-type-pill {
@@ -370,7 +416,7 @@ type ViewMode = 'grid' | 'list' | 'table';
     .bp-fb-bulk-btn--danger:hover { border-color: var(--color-action-text); color: var(--color-action-text); }
   `]
 })
-export class FeedbackComponent implements OnInit {
+export class FeedbackComponent implements OnInit, OnDestroy {
   loading = true;
   allEntities: CatalogueEntity[] = [];
   filteredEntities: CatalogueEntity[] = [];
@@ -397,16 +443,44 @@ export class FeedbackComponent implements OnInit {
   filterOwner = '';
   filterStatus = '';
   selectedArea: string = 'all';
-  areaCircles: { id: string; label: string; icon: string }[] = [
+  areaCircles: { id: string; label: string; icon: string; iconColor?: string }[] = [
     { id: 'all', label: 'All', icon: 'layers' }
   ];
 
   viewMode: ViewMode = 'table';
   viewModeOptions = [
-    { label: 'Grid',  value: 'grid' as ViewMode,  icon: 'layout-grid' },
+    { label: 'Grid',  value: 'card' as ViewMode,  icon: 'layout-grid' },
     { label: 'List',  value: 'list' as ViewMode,  icon: 'list' },
     { label: 'Table', value: 'table' as ViewMode, icon: 'table' }
   ];
+
+  /** Display label for the currently-selected area; '' when on "All". */
+  get selectedAreaLabel(): string {
+    if (!this.selectedArea || this.selectedArea === 'all') return '';
+    const a = this.areaCircles.find(c => c.id === this.selectedArea);
+    return a?.label || '';
+  }
+
+  /** Lucide icon size for area circles — scales with circleSize. */
+  get areaIconSize(): number {
+    if (this.circleSize === 'sm') return 20;
+    if (this.circleSize === 'md') return 26;
+    return 34;
+  }
+
+  private readonly LS = {
+    theme:      'ballpark:feedback:theme',
+    circleSize: 'ballpark:feedback:circleSize',
+    detailSize: 'ballpark:feedback:detailSize',
+    viewMode:   'ballpark:feedback:viewMode',
+    detailMode: 'ballpark:feedback:detailMode'
+  };
+  theme: ThemeSwatch = '';
+  circleSize: CircleSize = 'md';
+  detailSize: DetailSize = 'md';
+  // Drawer is the only fully-supported detail mode for feedback today.
+  // The toggle persists user choice for when inline detail lands.
+  detailMode: DetailMode = 'drawer';
 
   tableRows: any[] = [];
 
@@ -460,20 +534,40 @@ export class FeedbackComponent implements OnInit {
     return prefix + '-' + (entry.id || '').substring(0, 4).toUpperCase();
   }
 
+  // Page label is org-wide via ConfigService.feedbackLabel — kept in
+  // sync via configService.config$ in ngOnInit.
+  pageLabel = 'Feedback';
+
+  /** Drives the hero subtitle and stays as-is when no entries loaded. */
+
   constructor(
+    private configSvc: ConfigService,
     private feedbackSvc: FeedbackService,
     private confirmSvc: ConfirmationService,
     private msg: MessageService,
+    private shellCtx: ShellContextService,
     private cdr: ChangeDetectorRef
   ) {}
 
   catalogueLayout(): 'list' | 'card' | 'table' {
-    if (this.viewMode === 'grid')  return 'card';
+    if (this.viewMode === 'card')  return 'card';
     if (this.viewMode === 'list')  return 'list';
     return 'table';
   }
 
   ngOnInit() {
+    this.loadConfig();
+    this.pageLabel = this.configSvc.feedbackLabel;
+    // Defer past NavigationEnd — AppShell resets shellCtx after child
+    // ngOnInit, so a synchronous set would be wiped.
+    setTimeout(() => this.applyShellHero(), 0);
+    this.configSvc.config$.subscribe(cfg => {
+      if (cfg.feedbackLabel && cfg.feedbackLabel !== this.pageLabel) {
+        this.pageLabel = cfg.feedbackLabel;
+      }
+      this.applyShellHero();
+      this.cdr.detectChanges();
+    });
     this.feedbackSvc.getFeedbackCategories('area').subscribe({
       next: (cats) => {
         this.areaCategories = (cats || []).filter(c => c.namespace === 'area');
@@ -481,6 +575,47 @@ export class FeedbackComponent implements OnInit {
       },
       error: () => { this.loadEntries(); }
     });
+  }
+
+  ngOnDestroy() { this.shellCtx.reset(); }
+
+  private applyShellHero() {
+    this.shellCtx.set({
+      heroTitle: this.configSvc.platformName,
+      heroSub: this.configSvc.feedbackLabel.toUpperCase(),
+      pills: [],
+      tabs: []
+    });
+  }
+
+  // ── Config strip persistence ──────────────────────────────────────────
+  loadConfig() {
+    this.theme      = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
+    this.circleSize = (localStorage.getItem(this.LS.circleSize) || 'md') as CircleSize;
+    this.detailSize = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
+    this.viewMode   = (localStorage.getItem(this.LS.viewMode)   || 'table') as ViewMode;
+    this.detailMode = (localStorage.getItem(this.LS.detailMode) || 'drawer') as DetailMode;
+    this.applyTheme();
+  }
+  persistConfig() {
+    localStorage.setItem(this.LS.theme,      this.theme);
+    localStorage.setItem(this.LS.circleSize, this.circleSize);
+    localStorage.setItem(this.LS.detailSize, this.detailSize);
+    localStorage.setItem(this.LS.viewMode,   this.viewMode);
+    localStorage.setItem(this.LS.detailMode, this.detailMode);
+  }
+  onThemeChange() {
+    this.applyTheme();
+    this.persistConfig();
+  }
+  /** Page label is org-wide — write through to ConfigService so the
+      top-nav and admin terminology editor see the change too. */
+  onPageLabelChange(label: string) {
+    this.configSvc.update({ feedbackLabel: label });
+  }
+  private applyTheme() {
+    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
+    else document.documentElement.removeAttribute('data-theme');
   }
 
   loadEntries() {
@@ -517,7 +652,12 @@ export class FeedbackComponent implements OnInit {
         const sortedAreas = [...this.areaCategories].sort((a, b) => a.sort_order - b.sort_order);
         const dbCircles = sortedAreas
           .filter(a => referenced.has(a.id) || referenced.has(a.name.toLowerCase()))
-          .map(a => ({ id: a.id, label: a.name, icon: a.icon_name || 'circle' }));
+          .map(a => ({
+            id: a.id,
+            label: a.name,
+            icon: a.icon_name || 'circle',
+            iconColor: a.icon_color || ''
+          }));
         this.areaCircles = [
           { id: 'all', label: 'All', icon: 'layers' },
           ...dbCircles

@@ -3,10 +3,11 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, FolderOpen, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
+import { ConfigStripService } from '../core/services/config-strip.service';
 import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
 import { environment } from '../../environments/environment';
@@ -32,26 +33,28 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
+        <!-- v1.35: nav simplified to Home + Admin only. Marketplace moved
+             to Quick Actions on the dashboard; Settings is now the cog
+             icon on the right; Feedback (Requirements) sits under Admin. -->
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
-        <a routerLink="/suppliers" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="store" [size]="14"></lucide-icon> {{ catalogueLabel }}
-        </a>
-        <a routerLink="/settings" routerLinkActive="active" class="bp-nav-link">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
-        </a>
-        <a routerLink="/ballpark-settings" routerLinkActive="active" class="bp-nav-link bp-nav-link-admin">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Ballpark
-        </a>
-        <a href="/welcome" target="_blank" rel="noopener" class="bp-nav-link bp-nav-link-welcome" title="Open public welcome page in a new tab">
-          <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
+        <a *ngIf="isAdmin"
+           routerLink="/ballpark-settings" routerLinkActive="active"
+           class="bp-nav-link bp-nav-link-admin">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
         </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
+        <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
+          <lucide-icon name="settings" [size]="14"></lucide-icon>
+        </button>
+        <!-- v1.35: Settings cog removed per user request — Settings is
+             reachable via the dashboard Quick Actions / Invite Member
+             quick action; the cog was redundant in the nav cluster. -->
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
         </button>
-        <app-avatar [name]="orgName" [size]="32"></app-avatar>
+        <app-avatar [name]="userName || orgName" [size]="32"></app-avatar>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -146,6 +149,16 @@ import { environment } from '../../environments/environment';
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       color: var(--color-text-secondary);
     }
+    /* v1.35: Settings cog — same visual weight as the dark-mode toggle
+       icon. No bg, no border, muted colour, themed accent on hover. */
+    .bp-nav-icon-link {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none;
+      color: var(--color-text-muted); cursor: pointer;
+      text-decoration: none; transition: color 0.15s;
+    }
+    .bp-nav-icon-link:hover { color: var(--theme-accent); }
     .bp-nav-version {
       position: fixed; bottom: 8px; right: 12px;
       font-size: 10px; color: var(--color-text-muted); z-index: 50;
@@ -208,29 +221,45 @@ export class TopNavComponent implements OnInit, OnDestroy {
   tagline      = 'Exhibition Costing';
   creditLabel  = 'Ball';
   catalogueLabel = 'Catalogue';
+  feedbackLabel  = 'Feedback';
   ballsBalance = 0;
   orgName      = '';
+  /** v1.22: avatar in the top-right now shows USER initials, not org.
+      Sourced from the same orgSvc.getUsers() call that drives isAdmin —
+      first user record is treated as the current user (mirrors the
+      AppShell pattern). Falls back to orgName until users load so we
+      never render an empty circle. */
+  userName     = '';
   isDark       = false;
+  isAdmin      = false;
   version      = environment.version;
   inProject    = false;
   projectId    = '';
 
-  get projectBuildPath()    { return `/projects/${this.projectId}/build`; }
+  // v1.18b: Build tab renamed to Estimate. Getter name kept for now to
+  // avoid touching every top-nav consumer; URL points at /estimate.
+  get projectBuildPath()    { return `/projects/${this.projectId}/estimate`; }
   get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
   get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
   get projectMessagesQueryParams(): any { return {}; }
 
+  hasConfig    = false;
+
   private sub?: Subscription;
   private routerSub?: Subscription;
   private ctxSub?: Subscription;
+  private cfgStripSub?: Subscription;
 
   constructor(
     private configService: ConfigService,
     private orgService: OrgService,
     private shellCtx: ShellContextService,
+    private configStrip: ConfigStripService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  toggleConfigStrip() { this.configStrip.toggle(); }
 
   ngOnInit() {
     this.sub = this.configService.config$.subscribe(cfg => {
@@ -243,6 +272,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (cfg.tagline)     this.tagline     = cfg.tagline;
       if (cfg.creditLabel) this.creditLabel = cfg.creditLabel;
       if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
+      if (cfg.feedbackLabel)  this.feedbackLabel  = cfg.feedbackLabel;
       this.cdr.detectChanges();
     });
 
@@ -250,6 +280,27 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.ballsBalance = org.balls_balance || 0;
+        // v1.23g: fall back to the org's DB logo_url when the local
+        // ConfigService doesn't have one (e.g. fresh browser, or a
+        // teammate who hasn't visited Marketplace settings). Don't
+        // overwrite a ConfigService value that was already set —
+        // that wins because it's the latest user action.
+        if (!this.logoUrl && (org as any).logo_url) {
+          this.logoUrl = (org as any).logo_url;
+          this.cdr.detectChanges();
+        } else {
+          this.cdr.detectChanges();
+        }
+      }
+    });
+
+    // Mirror app-shell's pattern: first user record is treated as the
+    // current user, so admin role gates the cog the same way it gates
+    // admin-only nav groups.
+    this.orgService.getUsers().subscribe((users: any[]) => {
+      if (users?.length) {
+        this.isAdmin = users[0].role === 'admin' || users[0].is_platform_admin === true;
+        this.userName = users[0].name || '';
         this.cdr.detectChanges();
       }
     });
@@ -287,6 +338,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
     const saved = localStorage.getItem('bp-mode');
     this.isDark = saved === 'dark';
     this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
+
+    this.cfgStripSub = this.configStrip.hasConfig$.subscribe(has => {
+      this.hasConfig = has;
+      this.cdr.detectChanges();
+    });
   }
 
   toggleMode() {
@@ -300,5 +356,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
     this.routerSub?.unsubscribe();
     this.ctxSub?.unsubscribe();
+    this.cfgStripSub?.unsubscribe();
   }
 }

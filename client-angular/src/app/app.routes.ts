@@ -23,16 +23,9 @@ export const routes: Routes = [
       },
 
       // ── PROJECTS ──
-      {
-        path: 'projects',
-        loadComponent: () => import('./features/projects/pages/project-list/project-list.component').then(m => m.ProjectListComponent),
-        data: { pageLabel: '', tabs: [] }
-      },
-      {
-        path: 'projects/new',
-        loadComponent: () => import('./features/projects/pages/project-create/project-create.component').then(m => m.ProjectCreateComponent),
-        data: { pageLabel: '', tabs: [] }
-      },
+      // v1.30: /projects/new removed — replaced by the intake modal
+      // mounted in app-shell and opened via CreateProjectService.
+      // v1.33: /projects list removed — dashboard is the entry point.
       {
         path: 'projects/:id',
         loadComponent: () => import('./features/projects/pages/project-detail/project-detail.component').then(m => m.ProjectDetailComponent),
@@ -44,7 +37,8 @@ export const routes: Routes = [
       {
         path: 'suppliers',
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
-        data: { pageLabel: 'CATALOGUE', tabs: [] }
+        // Page sets hero via ShellContextService (heroSub = catalogueLabel).
+        data: { pageLabel: '', tabs: [] }
       },
       {
         path: 'suppliers/:id',
@@ -54,6 +48,13 @@ export const routes: Routes = [
       {
         path: 'suppliers/:id/items/:itemId',
         loadComponent: () => import('./features/suppliers/item-detail.component').then(m => m.ItemDetailComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
+      // v1.34: consumer-facing item detail page (gallery + specs + related).
+      // The supplier-context page at /suppliers/:id/items/:itemId stays as-is.
+      {
+        path: 'items/:id',
+        loadComponent: () => import('./features/items/pages/item-detail-page/item-detail-page.component').then(m => m.ItemDetailPageComponent),
         data: { pageLabel: '', tabs: [] }
       },
       {
@@ -85,6 +86,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
         data: {
           pageLabel: 'SETTINGS',
+          // v1.35a: hero back button → dashboard. Reached via the cog icon
+          // (or the dashboard's Invite Member quick action) so there's no
+          // longer a nav link to return through.
+          back: '/',
           tabs: [
             { label: 'Organisation', path: '/settings/organisation' },
             { label: 'Team',         path: '/settings/team' },

@@ -1,52 +1,45 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ShellContextService } from '../../../../../../core/services/shell-context.service';
-import { ProjectService } from '../../../../../../core/services/project.service';
 import { MessagesInboxComponent } from '../../../../../../shared/components/messages-inbox/messages-inbox.component';
 
+/**
+ * Project Messages tab — thin wrapper around the shared messages inbox.
+ *
+ * v1.26: the tab bar / hero are owned entirely by the parent
+ * ProjectDetailComponent (via ShellContextService). This tab no longer
+ * overrides shell context — that override was wiping `tabs: []` and
+ * hiding the project tab bar on /messages. boundProjectId still flows
+ * through so the inbox auto-selects this project and hides its global
+ * project selector dropdown.
+ */
 @Component({
   selector: 'app-messages',
   standalone: true,
   imports: [CommonModule, MessagesInboxComponent],
   template: `
+    <h2 class="bp-page-title">Messages</h2>
+    <div class="bp-page-divider"></div>
     <app-messages-inbox [boundProjectId]="pid"></app-messages-inbox>
-  `
+  `,
+  styles: [`
+    :host { display: block; }
+    /* v1.26c: breathing room between the tab bar and the page title —
+       Messages has no outer padded wrapper because messages-inbox is
+       full-bleed, so the title needs its own top margin. */
+    :host .bp-page-title { margin-top: var(--section-pad); }
+  `]
 })
-export class MessagesComponent implements OnInit, OnDestroy {
+export class MessagesComponent implements OnInit {
   pid = '';
-  private previousCtx: any;
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
-    private shellCtx: ShellContextService,
-    private projectSvc: ProjectService
+    private router: Router
   ) {}
 
   ngOnInit() {
-    // Extract project ID from URL — most reliable approach
     const match = this.router.url.match(/\/projects\/([^\/]+)/);
     this.pid = match?.[1] || this.route.parent?.snapshot.paramMap.get('id') || '';
-
-    // Save parent context so we can restore on destroy
-    this.previousCtx = { ...this.shellCtx.current };
-
-    if (this.pid) {
-      this.projectSvc.getById(this.pid).subscribe(p => {
-        this.shellCtx.set({
-          ...this.previousCtx,
-          heroTitle: p?.event_name || p?.name || 'Messages',
-          heroSub: 'Messages',
-          tabs: [],
-        });
-      });
-    }
-  }
-
-  ngOnDestroy() {
-    if (this.previousCtx) {
-      this.shellCtx.set(this.previousCtx);
-    }
   }
 }

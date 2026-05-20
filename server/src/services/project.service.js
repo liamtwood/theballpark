@@ -42,14 +42,27 @@ async function getById(id) {
 }
 
 async function create(data) {
-  const {
+  let {
     org_id, client_id, name, description, event_name, event_date,
     venue_name, venue_city, venue_address, guest_count, stand_size,
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
     parsed_brief_json, ai_hints, missing_fields, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-    default_vat_pct, tier, status_id
+    default_vat_pct, tier, status_id,
+    // v1.30: extended so the create-project intake modal can persist
+    // everything the rule-based parser extracts on the first save.
+    event_type, duration_days, po_ref, currency
   } = data;
+  // v1.31: default new projects to the draft status row so they land
+  // in the Active Events bucket on the dashboard. Previously the
+  // intake modal created projects with status_id=null which made them
+  // invisible to the dashboard filter. One-shot SELECT — small table.
+  if (!status_id) {
+    const draft = await pool.query(
+      `SELECT id FROM statuses WHERE entity_type='project' AND name='draft' LIMIT 1`
+    );
+    if (draft.rows.length) status_id = draft.rows[0].id;
+  }
   const result = await pool.query(
     `INSERT INTO projects (
       org_id, client_id, name, description, event_name, event_date,
@@ -57,29 +70,44 @@ async function create(data) {
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`,
+      default_vat_pct, tier, status_id,
+      event_type, duration_days, po_ref, currency
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id
+      default_vat_pct, tier, status_id,
+      event_type, duration_days, po_ref, currency
     ]
   );
   return result.rows[0];
 }
 
 async function update(id, data) {
-  const {
+  let {
     org_id, client_id, name, description, event_name, event_date,
     venue_name, venue_city, venue_address, guest_count, stand_size,
     stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
     parsed_brief_json, ai_hints, missing_fields, project_budget,
     share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-    default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color
+    default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
+    event_type, duration_days, po_ref, currency
   } = data;
+  // v1.31: the Event drawer's Status dropdown is codelist-driven and
+  // emits the status code (matches statuses.name) instead of an id.
+  // Resolve it here so callers don't need to know about the statuses
+  // table. status_id (if passed) still wins — `status_code` is an
+  // alternative entry point.
+  if (!status_id && data.status_code) {
+    const row = await pool.query(
+      `SELECT id FROM statuses WHERE entity_type='project' AND name=$1 LIMIT 1`,
+      [data.status_code]
+    );
+    if (row.rows.length) status_id = row.rows[0].id;
+  }
   const result = await pool.query(
     `UPDATE projects SET
       org_id = COALESCE($1, org_id), client_id = COALESCE($2, client_id),
@@ -100,18 +128,72 @@ async function update(id, data) {
       cover_image_url = COALESCE($27, cover_image_url),
       client_logo_url = COALESCE($28, client_logo_url),
       card_color = COALESCE($29, card_color),
+      event_type = COALESCE($30, event_type),
+      duration_days = COALESCE($31, duration_days),
+      po_ref = COALESCE($32, po_ref),
+      currency = COALESCE($33, currency),
       updated_at = NOW()
-     WHERE id = $30 RETURNING *`,
+     WHERE id = $34`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
       stand_width_m, stand_depth_m, stand_type, project_notes, raw_brief_text,
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
-      default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color, id
+      default_vat_pct, tier, status_id, cover_image_url, client_logo_url, card_color,
+      event_type, duration_days, po_ref, currency, id
     ]
   );
-  return result.rows[0] || null;
+  // v1.29c: re-read via the joined SELECT used by getById so the row
+  // we return includes client_name / status_name / status_color. The
+  // Overview event strip + drawer header depend on those joined fields
+  // and would otherwise blank out after a save.
+  return await getById(id);
+}
+
+/**
+ * v1.22: clone a project with its top-level facts (client, event date,
+ * dimensions, financial defaults). Intentionally does NOT copy:
+ *   - project_categories       (no Brief scope)
+ *   - project_items            (no cart)
+ *   - estimates / estimate_items
+ *   - messages
+ *
+ * The new project starts as a clean Draft so the user can scope from
+ * scratch. status_id is left null — the dashboard's display logic falls
+ * back to "Draft" for projects without a status_name. Cover image /
+ * logo / card colour ARE copied so the duplicate looks like a sibling
+ * at a glance.
+ */
+async function duplicate(id) {
+  const original = await pool.query(
+    'SELECT * FROM projects WHERE id = $1 AND is_active = true',
+    [id]
+  );
+  if (!original.rows.length) return null;
+  const src = original.rows[0];
+
+  const inserted = await pool.query(
+    `INSERT INTO projects (
+       org_id, client_id, name, description,
+       event_name, event_date, venue_name, venue_city, venue_address,
+       guest_count, stand_size, stand_width_m, stand_depth_m, stand_type,
+       project_budget, default_margin_pct, default_contingency_pct,
+       default_vat_pct, tier, event_type, duration_days,
+       cover_image_url, client_logo_url, card_color
+     )
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+     RETURNING *`,
+    [
+      src.org_id, src.client_id, `Copy of ${src.name}`, src.description,
+      src.event_name, src.event_date, src.venue_name, src.venue_city, src.venue_address,
+      src.guest_count, src.stand_size, src.stand_width_m, src.stand_depth_m, src.stand_type,
+      src.project_budget, src.default_margin_pct, src.default_contingency_pct,
+      src.default_vat_pct, src.tier, src.event_type, src.duration_days,
+      src.cover_image_url, src.client_logo_url, src.card_color
+    ]
+  );
+  return inserted.rows[0];
 }
 
 async function softDelete(id) {
@@ -152,4 +234,4 @@ async function recalcTotals(projectId) {
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, softDelete, getByClient, recalcTotals };
+module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals };

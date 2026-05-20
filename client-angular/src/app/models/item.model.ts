@@ -7,11 +7,28 @@ export interface Item {
   name: string;
   description?: string;
   unit?: string;
+  /** Optional rental cadence — e.g. unit='pallet', time_unit='month'.
+      Both reference shared.codelists; time_unit codes live in item_time_unit. */
+  time_unit?: string | null;
   base_price: number;
   min_price?: number;
   max_price?: number;
   lead_time_days?: number;
   coverage_area?: number;
-  tier: 'basic' | 'mid' | 'premium';
+  tier?: 'basic' | 'mid' | 'premium' | null;
+  /** Self-FK to an item this one was "born from" (lineage). */
+  derived_from_id?: string | null;
+  /** Self-FK to the parent of a variant family. */
+  parent_item_id?: string | null;
+  /** Open metadata bag. */
+  attributes?: Record<string, any>;
+  tags?: string[];
+  image_url?: string | null;
+  image_display?: 'cover' | 'contain';
+  /** v1.17: ordered gallery of up to 8 images. `image_url` continues to be
+      written from `images[0]` (or the entry where is_hero=true) on every
+      save for backward compat with existing card / detail surfaces. */
+  images?: Array<{ url: string; sort_order: number; is_hero: boolean }>;
+  external_url?: string | null;
   is_active: boolean;
 }

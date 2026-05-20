@@ -156,6 +156,10 @@ const migrate = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         unit VARCHAR(50),
+        time_unit VARCHAR(50),
+        derived_from_id UUID REFERENCES preview.items(id),
+        parent_item_id UUID REFERENCES preview.items(id),
+        attributes JSONB DEFAULT '{}',
         base_price NUMERIC(12,2),
         min_price NUMERIC(12,2),
         max_price NUMERIC(12,2),
@@ -200,6 +204,7 @@ const migrate = async () => {
         default_margin_pct NUMERIC(5,2),
         default_contingency_pct NUMERIC(5,2),
         default_vat_pct NUMERIC(5,2) DEFAULT 20,
+        currency VARCHAR(10) DEFAULT 'GBP',
         total_ballpark_cost NUMERIC(12,2) DEFAULT 0,
         total_base_cost NUMERIC(12,2) DEFAULT 0,
         total_client_cost NUMERIC(12,2) DEFAULT 0,
@@ -262,6 +267,19 @@ const migrate = async () => {
       );
 
       -- Estimate Items
+      -- NOTE: this CREATE block reflects the v1.13 production schema:
+      --   - `unit_price` renamed to `offer_price` (deal-specific proposal
+      --     editable until approved_at locks it).
+      --   - Added budget_price (agency expectation), ballpark_snapshot
+      --     (catalogue anchor at request time), inspired_by_item_id (FK
+      --     to items, SET NULL on item delete), approved_at + approved_by
+      --     (deal lock), duration (time dimension), unit + time_unit
+      --     (inherited from item on creation, mutable on the deal), and
+      --     attributes JSONB.
+      --   - total_price = quantity × duration × offer_price.
+      -- The earlier `unit` and `is_active` columns were dropped in dev
+      -- before v1.13 — see the idempotent ALTER block below for the
+      -- reconciliation applied to older databases.
       CREATE TABLE IF NOT EXISTS preview.estimate_items (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         estimate_id UUID REFERENCES preview.estimates(id) ON DELETE CASCADE,
@@ -269,17 +287,43 @@ const migrate = async () => {
         item_id UUID REFERENCES preview.items(id),
         name VARCHAR(255),
         description TEXT,
-        unit VARCHAR(50),
         quantity NUMERIC(10,2) DEFAULT 1,
-        unit_price NUMERIC(12,2) DEFAULT 0,
+        offer_price NUMERIC(12,2) DEFAULT 0,
+        budget_price NUMERIC(12,2),
+        ballpark_snapshot NUMERIC(12,2),
+        inspired_by_item_id UUID REFERENCES preview.items(id) ON DELETE SET NULL,
+        approved_at TIMESTAMPTZ,
+        approved_by UUID,
+        duration NUMERIC,
+        unit VARCHAR(50),
+        time_unit VARCHAR(50),
+        attributes JSONB DEFAULT '{}',
         total_price NUMERIC(12,2) DEFAULT 0,
         supplier_org_id UUID REFERENCES preview.orgs(id),
-        is_active BOOLEAN DEFAULT true,
+        shortlisted BOOLEAN DEFAULT false,
+        status_id UUID REFERENCES preview.statuses(id),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         created_by UUID,
         updated_by UUID
       );
+
+      -- Project Items — the supplier-facing "cart". Lightweight selection
+      -- layer that lives BEFORE pricing exists. selection_type='selected'
+      -- = tick (committed), 'liked' = heart (interested). Upsert via the
+      -- unique index, so flipping between liked/selected mutates the
+      -- existing row rather than creating duplicates.
+      CREATE TABLE IF NOT EXISTS preview.project_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        project_id UUID NOT NULL REFERENCES preview.projects(id) ON DELETE CASCADE,
+        item_id UUID NOT NULL REFERENCES preview.items(id) ON DELETE CASCADE,
+        project_category_id UUID REFERENCES preview.project_categories(id) ON DELETE SET NULL,
+        selection_type VARCHAR(20) DEFAULT 'selected'
+          CHECK (selection_type IN ('selected', 'liked')),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
+        ON preview.project_items(project_id, item_id);
 
       -- Messages
       CREATE TABLE IF NOT EXISTS preview.messages (
@@ -314,6 +358,25 @@ const migrate = async () => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         created_by UUID
       );
+
+      -- Favourites — polymorphic per-org saved items / suppliers.
+      -- ref_id is intentionally NOT a hard FK because it points to
+      -- different tables by type ('supplier' → orgs.id, 'item' →
+      -- items.id). Toggled via is_active rather than deleted so a
+      -- re-heart restores the original row's created_at.
+      -- Table already exists in dev (created pre-migration-tracking);
+      -- the IF NOT EXISTS makes this idempotent on every env.
+      CREATE TABLE IF NOT EXISTS preview.favourites (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES preview.orgs(id),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('supplier', 'item')),
+        ref_id UUID NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS favourites_org_type_idx_preview
+        ON preview.favourites (org_id, type) WHERE is_active = true;
     `);
     console.log('  Preview schema tables created.');
 
@@ -330,10 +393,154 @@ const migrate = async () => {
       CREATE TABLE IF NOT EXISTS master.project_categories (LIKE preview.project_categories INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.estimates          (LIKE preview.estimates          INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.estimate_items     (LIKE preview.estimate_items     INCLUDING ALL);
+      CREATE TABLE IF NOT EXISTS master.project_items      (LIKE preview.project_items      INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.messages           (LIKE preview.messages           INCLUDING ALL);
       CREATE TABLE IF NOT EXISTS master.balls_transactions (LIKE preview.balls_transactions INCLUDING ALL);
+      CREATE TABLE IF NOT EXISTS master.favourites         (LIKE preview.favourites         INCLUDING ALL);
     `);
     console.log('  Master schema tables created.');
+
+    // ── 3b. Idempotent column additions ──────────────────────────────────
+    // items.time_unit lets a row store a rental cadence (e.g. unit='pallet',
+    // time_unit='month' → "per pallet / month").
+    // items.derived_from_id / parent_item_id support the lineage drawer
+    // section — "born from" + "variant of a product family" — both FK self.
+    // items.attributes is a JSONB bag for future per-item metadata.
+    // Applied to all three env schemas so existing tables pick changes up.
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS time_unit       VARCHAR(50);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES public.items(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES preview.items(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS derived_from_id UUID REFERENCES master.items(id);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES public.items(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES preview.items(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS parent_item_id  UUID REFERENCES master.items(id);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS attributes      JSONB DEFAULT '{}';
+
+      -- v1.17: items.images JSONB array — up to 8 images per item, ordered
+      -- by sort_order, one flagged is_hero=true. Drives the new Images tab
+      -- in the item drawer (8-slot grid). Backward compat: image_url is
+      -- still kept in sync with images[0].url on every save so card and
+      -- detail surfaces keep working until they migrate to images[].
+      --   shape: [{ url, sort_order, is_hero }]
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
+
+      -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
+      -- Currency dropdown via shared.codelists list_name='currency').
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
+
+      -- estimate_items drift reconciliation. The legacy CREATE block had
+      -- `unit VARCHAR(50)` and `is_active BOOLEAN` columns that were dropped
+      -- in dev out-of-band; `shortlisted` + `status_id` were added at the
+      -- same time. These ALTERs converge any older DB to the new shape
+      -- without losing data (the dropped columns held no application data).
+      ALTER TABLE public.estimate_items  DROP COLUMN IF EXISTS unit;
+      ALTER TABLE preview.estimate_items DROP COLUMN IF EXISTS unit;
+      ALTER TABLE master.estimate_items  DROP COLUMN IF EXISTS unit;
+
+      ALTER TABLE public.estimate_items  DROP COLUMN IF EXISTS is_active;
+      ALTER TABLE preview.estimate_items DROP COLUMN IF EXISTS is_active;
+      ALTER TABLE master.estimate_items  DROP COLUMN IF EXISTS is_active;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS shortlisted BOOLEAN DEFAULT false;
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS shortlisted BOOLEAN DEFAULT false;
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS shortlisted BOOLEAN DEFAULT false;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS status_id UUID REFERENCES public.statuses(id);
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS status_id UUID REFERENCES preview.statuses(id);
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS status_id UUID REFERENCES master.statuses(id);
+
+      -- v1.13: estimate_items rename + 9 new columns. RENAME COLUMN has no
+      -- IF NOT EXISTS form, so guard it inside DO blocks that check the
+      -- information_schema first. Idempotent on re-runs.
+      DO $mig$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='estimate_items' AND column_name='unit_price') THEN
+          EXECUTE 'ALTER TABLE public.estimate_items RENAME COLUMN unit_price TO offer_price';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='preview' AND table_name='estimate_items' AND column_name='unit_price') THEN
+          EXECUTE 'ALTER TABLE preview.estimate_items RENAME COLUMN unit_price TO offer_price';
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='master' AND table_name='estimate_items' AND column_name='unit_price') THEN
+          EXECUTE 'ALTER TABLE master.estimate_items RENAME COLUMN unit_price TO offer_price';
+        END IF;
+      END $mig$;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS budget_price        NUMERIC(12,2);
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS budget_price        NUMERIC(12,2);
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS budget_price        NUMERIC(12,2);
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS ballpark_snapshot   NUMERIC(12,2);
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS ballpark_snapshot   NUMERIC(12,2);
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS ballpark_snapshot   NUMERIC(12,2);
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS inspired_by_item_id UUID REFERENCES public.items(id)  ON DELETE SET NULL;
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS inspired_by_item_id UUID REFERENCES preview.items(id) ON DELETE SET NULL;
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS inspired_by_item_id UUID REFERENCES master.items(id)  ON DELETE SET NULL;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS approved_at         TIMESTAMPTZ;
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS approved_at         TIMESTAMPTZ;
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS approved_at         TIMESTAMPTZ;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS approved_by         UUID;
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS approved_by         UUID;
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS approved_by         UUID;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS duration            NUMERIC;
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS duration            NUMERIC;
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS duration            NUMERIC;
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS unit                VARCHAR(50);
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS unit                VARCHAR(50);
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS unit                VARCHAR(50);
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS time_unit           VARCHAR(50);
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS time_unit           VARCHAR(50);
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS time_unit           VARCHAR(50);
+
+      ALTER TABLE public.estimate_items  ADD COLUMN IF NOT EXISTS attributes          JSONB DEFAULT '{}';
+      ALTER TABLE preview.estimate_items ADD COLUMN IF NOT EXISTS attributes          JSONB DEFAULT '{}';
+      ALTER TABLE master.estimate_items  ADD COLUMN IF NOT EXISTS attributes          JSONB DEFAULT '{}';
+
+      -- v1.13: project_items new table (cart). CREATE TABLE IF NOT EXISTS
+      -- so re-runs are no-ops on the env that already created it via the
+      -- CREATE blocks above; this catches any env that pre-dates v1.13.
+      CREATE TABLE IF NOT EXISTS public.project_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+        item_id UUID NOT NULL REFERENCES public.items(id) ON DELETE CASCADE,
+        project_category_id UUID REFERENCES public.project_categories(id) ON DELETE SET NULL,
+        selection_type VARCHAR(20) DEFAULT 'selected'
+          CHECK (selection_type IN ('selected', 'liked')),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
+        ON public.project_items(project_id, item_id);
+
+      -- v1.13: orgs.auto_publish_items. Controls whether approved
+      -- estimate items auto-publish back to the supplier catalogue.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
+    `);
+    console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
+    console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
+    console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
+    console.log('  project_items table + unique index ensured.');
+    console.log('  orgs.auto_publish_items ensured.');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
@@ -492,6 +699,75 @@ const migrate = async () => {
             'open', 'in_progress', 'done', 'wont_fix',
             'pass', 'fail', 'skip', 'todo', 'draft', 'agreed'
           ));
+
+      -- Codelists — shared key/value lookup table for platform-wide reference
+      -- data (item units, time units, future: event_type, tier, visibility).
+      CREATE TABLE IF NOT EXISTS shared.codelists (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        list_name VARCHAR(100) NOT NULL,
+        code VARCHAR(50) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        symbol VARCHAR(20),
+        meta JSONB DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(list_name, code)
+      );
+
+      INSERT INTO shared.codelists (list_name, code, label, symbol, sort_order, is_system) VALUES
+        ('item_unit',      'unit',      'Units',          NULL, 1, true),
+        ('item_unit',      'cover',     'Covers',         NULL, 2, true),
+        ('item_unit',      'head',      'Head',           NULL, 3, true),
+        ('item_unit',      'sqm',       'Square Metres',  'm²', 4, true),
+        ('item_unit',      'sqft',      'Square Feet',    'ft²', 5, true),
+        ('item_unit',      'linear_m',  'Linear Metres',  'm',  6, true),
+        ('item_unit',      'each',      'Each',           'ea', 7, true),
+        ('item_unit',      'package',   'Package',        NULL, 8, true),
+        ('item_unit',      'set',       'Set',            NULL, 9, true),
+        ('item_unit',      'project',   'Project',        NULL, 10, true),
+        ('item_unit',      'item',      'Item',           NULL, 11, true),
+        ('item_unit',      'pair',      'Pair',           NULL, 12, true),
+        ('item_unit',      'panel',     'Panel',          NULL, 13, true),
+        ('item_unit',      'platter',   'Platter',        NULL, 14, true),
+        ('item_unit',      'letter',    'Letter',         NULL, 15, true),
+        ('item_unit',      'load',      'Load',           NULL, 16, true),
+        ('item_unit',      'pallet',    'Pallet',         NULL, 17, true),
+        ('item_unit',      'cbm',       'Cubic Metres',   'm³', 18, true),
+        ('item_unit',      'table',     'Table',          NULL, 19, true),
+        ('item_time_unit', 'day',       'Days',           NULL, 1, true),
+        ('item_time_unit', 'hour',      'Hours',          'hr', 2, true),
+        ('item_time_unit', 'event',     'Event',          NULL, 3, true),
+        ('item_time_unit', 'half_day',  'Half Day',       NULL, 4, true),
+        ('item_time_unit', 'month',     'Month',          NULL, 5, true),
+        -- v1.29: currency codelist drives the Event drawer's Currency
+        -- dropdown. ISO-4217 code stored on projects.currency.
+        ('currency',       'GBP',       'GBP (£)',         '£',   1, true),
+        ('currency',       'USD',       'USD ($)',         '$',   2, true),
+        ('currency',       'EUR',       'EUR (€)',         '€',   3, true),
+        ('currency',       'AED',       'AED (د.إ)',       'د.إ', 4, true),
+        ('currency',       'CHF',       'CHF (Fr)',        'Fr',  5, true),
+        ('currency',       'SEK',       'SEK (kr)',        'kr',  6, true),
+        -- v1.30: budget_tier drives the Event drawer's Tier dropdown.
+        -- The rule-based brief parser also writes one of these codes
+        -- straight to projects.tier (no mapping to older item tiers).
+        ('budget_tier',    'starter',      'Starter',      NULL, 1, true),
+        ('budget_tier',    'professional', 'Professional', NULL, 2, true),
+        ('budget_tier',    'premium',      'Premium',      NULL, 3, true),
+        ('budget_tier',    'unknown',      'Unknown',      NULL, 4, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
+
+      -- v1.31: project_status drives the Event drawer's Status dropdown
+      -- and the dashboard project-card pill colour. Colour is stored on
+      -- meta JSONB so the consumer reads it via
+      -- CodelistService.getMeta('project_status', code).color.
+      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('project_status', 'draft',     'Draft',     1, '{"color":"#F59E0B"}'::jsonb, true),
+        ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
+        ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
+        ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
 

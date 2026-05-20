@@ -25,13 +25,24 @@ export interface Project {
   default_margin_pct?: number;
   default_contingency_pct?: number;
   default_vat_pct?: number;
+  /** v1.29b: ISO-4217 currency code (GBP/USD/EUR/AUD). Set per project
+      from the Event drawer's Financials section. Defaults to 'GBP'
+      server-side. */
+  currency?: string;
   total_ballpark_cost?: number;
   total_base_cost?: number;
   total_client_cost?: number;
   tier?: string;
+  event_type?: string;
+  duration_days?: number;
+  po_ref?: string;
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  /** v1.31: synthetic status-code field — codelist 'project_status'
+      code (draft / active / completed / archived). Used by the Event
+      drawer's Status dropdown; backend resolves to status_id on save. */
+  status_code?: string;
   cover_image_url?: string;
   client_logo_url?: string;
   card_color?: string;
@@ -39,6 +50,20 @@ export interface Project {
   project_categories?: ProjectCategory[];
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Build tab — context passed into CatalogueGridComponent so the inline
+ * detail panel can show the project / per-category brief alongside the
+ * usual item preview, and so the circle strip can grey unscoped
+ * categories. When null the grid renders in standard marketplace mode.
+ */
+export interface ProjectContext {
+  projectId: string;
+  /** Project-level brief (projects.raw_brief_text). Shown when "All" is active. */
+  projectBrief: string;
+  /** Active project_categories rows for this project, keyed off category_id. */
+  projectCategories: ProjectCategory[];
 }
 
 export interface ProjectCategory {
@@ -49,6 +74,7 @@ export interface ProjectCategory {
   description?: string;
   requirement_brief?: string;
   requirement_detail?: string;
+  ballpark_budget?: number;
   ballpark_cost: number;
   base_cost: number;
   contingency_pct: number;
@@ -64,5 +90,10 @@ export interface ProjectCategory {
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  category_name?: string;
+  category_icon_name?: string;
+  category_icon_color?: string;
+  category_cover_image_url?: string;
+  category_sort_order?: number;
   is_active: boolean;
 }

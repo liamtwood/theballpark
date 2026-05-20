@@ -45,7 +45,7 @@ import {
   Key,
   LayoutDashboard, LayoutGrid, Layers, Lightbulb,
   Link, Link2, List, LoaderCircle, Lock, LockOpen,
-  Mail, MapPin, Martini, Menu, MessageCircle, MessageSquare,
+  Mail, MapPin, Martini, Menu, MessageCircle, MessageSquare, MessageSquareWarning,
   Mic, Microscope, Minus, Monitor, Moon, Music,
   Package, Palette, PanelLeft, Pencil, PersonStanding, Phone, Pizza, Plane, Plus,
   Rocket,
@@ -54,7 +54,7 @@ import {
   Table, Tag, Terminal, Ticket, Timer, Trash2, TrendingUp, Trophy, Truck, Tv,
   Upload, User, Users, Utensils,
   Video, Volleyball,
-  Warehouse, Wine, Wrench,
+  WandSparkles, Warehouse, Wine, Wrench,
   X, Zap
 } from 'lucide-angular';
 
@@ -86,7 +86,7 @@ export const ICON_REGISTRY = {
   Key,
   LayoutDashboard, LayoutGrid, Layers, Lightbulb,
   Link, Link2, List, LoaderCircle, Lock, LockOpen,
-  Mail, MapPin, Martini, Menu, MessageCircle, MessageSquare,
+  Mail, MapPin, Martini, Menu, MessageCircle, MessageSquare, MessageSquareWarning,
   Mic, Microscope, Minus, Monitor, Moon, Music,
   Package, Palette, PanelLeft, Pencil, PersonStanding, Phone, Pizza, Plane, Plus,
   Rocket,
@@ -95,7 +95,7 @@ export const ICON_REGISTRY = {
   Table, Tag, Terminal, Ticket, Timer, Trash2, TrendingUp, Trophy, Truck, Tv,
   Upload, User, Users, Utensils,
   Video, Volleyball,
-  Warehouse, Wine, Wrench,
+  WandSparkles, Warehouse, Wine, Wrench,
   X, Zap
 } as const;
 

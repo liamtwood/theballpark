@@ -146,6 +146,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
               <label class="bp-field-label">Catalogue page is called</label>
               <input pInputText [value]="appearance.catalogueLabel || '—'" class="w-full bp-field-readonly" readonly/>
             </div>
+            <div>
+              <label class="bp-field-label">Feedback page is called</label>
+              <input pInputText [value]="appearance.feedbackLabel || '—'" class="w-full bp-field-readonly" readonly/>
+            </div>
           </div>
         </ng-container>
         <ng-container *ngIf="editingTerminology">
@@ -161,6 +165,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <div>
               <label class="bp-field-label">Catalogue page is called</label>
               <input pInputText [(ngModel)]="appearance.catalogueLabel" class="w-full bp-input-edit"/>
+            </div>
+            <div>
+              <label class="bp-field-label">Feedback page is called</label>
+              <input pInputText [(ngModel)]="appearance.feedbackLabel" class="w-full bp-input-edit"/>
             </div>
           </div>
         </ng-container>
@@ -369,7 +377,7 @@ export class MarketplaceComponent implements OnInit {
     fontPairing?: string;
   } = {
     platformName: 'The Ballpark', tagline: 'Exhibition Costing',
-    projectLabel: 'Event', creditLabel: 'Ball', catalogueLabel: 'Catalogue', themeName: 'amber',
+    projectLabel: 'Event', creditLabel: 'Ball', catalogueLabel: 'Catalogue', feedbackLabel: 'Feedback', themeName: 'amber',
     mode: 'system' as 'light' | 'dark' | 'system',
     heroAlign: 'center', showUserName: true, showLocation: true,
     showUpcoming: true, showStats: true, navMode: 'tabs',
@@ -421,7 +429,7 @@ export class MarketplaceComponent implements OnInit {
       this.platformSnapshot = { platformName: this.appearance.platformName, tagline: this.appearance.tagline };
       this.editingPlatform = true;
     } else {
-      this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel, catalogueLabel: this.appearance.catalogueLabel };
+      this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel, catalogueLabel: this.appearance.catalogueLabel, feedbackLabel: this.appearance.feedbackLabel };
       this.editingTerminology = true;
     }
     this.cdr.detectChanges();
@@ -465,11 +473,31 @@ export class MarketplaceComponent implements OnInit {
   }
 
   onLogoUpdated(urls: { coverUrl: string }) {
-    if (this.org && urls.coverUrl !== undefined) {
-      (this.org as any).logo_url = urls.coverUrl;
-      this.editingLogo = false;
-      this.cdr.detectChanges();
-    }
+    if (!this.org || urls.coverUrl === undefined) return;
+    const logoUrl = urls.coverUrl;
+    // Local display update for the marketplace settings page itself.
+    (this.org as any).logo_url = logoUrl;
+    this.editingLogo = false;
+    this.cdr.detectChanges();
+
+    // v1.23g: image-upload-panel uploads the file to storage but
+    // doesn't persist the URL anywhere when type='logo' (its API
+    // endpoint is null for that type). We persist it here:
+    //   1. ConfigService.logoUrl — picked up by the top-nav via
+    //      config$ so the brand mark swaps to the uploaded logo
+    //      immediately. Also written to localStorage so it survives
+    //      a reload in this browser.
+    //   2. orgs.logo_url via the API — canonical DB record so other
+    //      sessions / browsers see the same logo.
+    this.configService.update({ logoUrl });
+    this.orgSvc.updateCurrentOrg({ logo_url: logoUrl } as any).subscribe({
+      next: () => {
+        this.msg.add({ severity: 'success', summary: 'Logo saved' });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: 'Saved locally, sync to server failed' });
+      }
+    });
   }
 
   saveAppearance() {

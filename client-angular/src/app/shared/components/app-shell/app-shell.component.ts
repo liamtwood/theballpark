@@ -1,13 +1,20 @@
-import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostBinding, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { RouterModule, RouterOutlet, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { TagModule } from 'primeng/tag';
-import { LucideAngularModule, MapPin } from 'lucide-angular';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { LucideAngularModule, MapPin, Calendar } from 'lucide-angular';
 import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { ConfigStripService } from '../../../core/services/config-strip.service';
+import { TemplateRef } from '@angular/core';
+import {
+  CreateProjectModalComponent
+} from '../../../features/projects/components/create-project-modal/create-project-modal.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -15,20 +22,67 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, LucideAngularModule, RouterModule, RouterOutlet],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent],
+  providers: [MessageService],
   template: `
     <!-- HERO -->
-    <div class="bp-hero" [class.bp-hero--no-tabs]="!activeTabs.length" *ngIf="!hideHero">
+    <div class="bp-hero" *ngIf="!hideHero">
 
-      <!-- PILLS -->
-      <div *ngIf="heroPills.length > 0" class="bp-hero-meta">
+      <!-- Optional left-aligned back link, vertically centred in the hero.
+           Pages opt-in via shellCtx.set({ back: { label, onBack } }).
+           Wrapped in an *ngIf="as" pattern because this.ctx is nullable
+           on routes that don't use the hero. -->
+      <ng-container *ngIf="ctx?.back as back">
+        <button type="button" class="bp-hero-back" (click)="back.onBack()">
+          <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
+          <span>{{ back.label }}</span>
+        </button>
+      </ng-container>
+
+      <!-- PILLS — v1.22 interactive.
+           User pill: click opens a small dropdown (Profile / Switch
+           Org / Sign out — Profile routes, the others are stubs).
+           Location pill: click → /settings.
+           Upcoming pill (v1.23): renders when ctx.upcomingPill is set
+           AND ConfigService.showUpcoming is true — see ngOnInit. -->
+      <div *ngIf="heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
         <ng-container *ngFor="let pill of heroPills">
-          <span *ngIf="isLocationPill(pill)" class="bp-hero-tag-span">
+          <!-- Location pill -->
+          <button *ngIf="isLocationPill(pill)"
+                  type="button"
+                  class="bp-hero-tag-span bp-hero-pill-btn"
+                  (click)="onLocationPillClick()">
             <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
             {{ pill }}
-          </span>
-          <p-tag *ngIf="!isLocationPill(pill)" [value]="pill" styleClass="bp-hero-tag"></p-tag>
+          </button>
+          <!-- User pill — wrapped in a relative div so the dropdown
+               anchors below it without affecting layout. -->
+          <div *ngIf="!isLocationPill(pill)" class="bp-hero-pill-wrap">
+            <p-tag [value]="pill"
+                   styleClass="bp-hero-tag bp-hero-pill-btn"
+                   (click)="onUserPillClick($event)"></p-tag>
+            <div *ngIf="userMenuOpen"
+                 class="bp-hero-pill-menu"
+                 (click)="$event.stopPropagation()">
+              <button type="button" class="bp-hero-pill-menu-item"
+                      (click)="onUserMenuAction('profile')">Profile</button>
+              <button type="button" class="bp-hero-pill-menu-item"
+                      (click)="onUserMenuAction('switch-org')">Switch Org</button>
+              <div class="bp-hero-pill-menu-sep"></div>
+              <button type="button"
+                      class="bp-hero-pill-menu-item bp-hero-pill-menu-item--danger"
+                      (click)="onUserMenuAction('signout')">Sign out</button>
+            </div>
+          </div>
         </ng-container>
+
+        <!-- Upcoming-event pill (v1.23). Dashboard pushes the text via
+             shellCtx.upcomingPill when ConfigService.showUpcoming is on
+             AND a future project exists. Calendar icon + plain text. -->
+        <span *ngIf="upcomingPillText" class="bp-hero-tag-span bp-hero-upcoming">
+          <lucide-icon name="calendar" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ upcomingPillText }}
+        </span>
       </div>
 
       <!-- TITLE -->
@@ -44,8 +98,22 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
           [class.active]="isTabActive(tab)"
           (click)="onTabClick(tab)">
           {{ tab.label }}
+          <!-- v1.24: notification badge — only when tab.badge > 0. -->
+          <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
         </button>
       </div>
+    </div>
+
+    <!-- v1.23f: lifted config-strip slot. When a page pushes a
+         TemplateRef via ConfigStripService.setTemplate() (e.g. the
+         dashboard's Home settings strip), the strip renders here —
+         between hero and body — so it spans full width even when
+         navMode='sidenav'. The cog in the top-nav still toggles
+         open/closed via ConfigStripService.toggle(). Pages that use
+         the inline <app-config-strip> wrapper instead don't push a
+         template, so this slot stays hidden. -->
+    <div *ngIf="stripTpl && stripOpen" class="bp-shell-config-strip">
+      <ng-container *ngTemplateOutlet="stripTpl"></ng-container>
     </div>
 
     <!-- BODY -->
@@ -74,10 +142,42 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       </div>
 
     </div>
+
+    <p-toast></p-toast>
+
+    <!-- v1.30: single shared "+ New project" intake modal. Every
+         entry point in the app opens it via CreateProjectService.open(). -->
+    <app-create-project-modal></app-create-project-modal>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-    .bp-hero          { flex-shrink: 0; }
+    .bp-hero          { flex-shrink: 0; position: relative; }
+
+    /* Optional back link on the hero's left edge. Vertically centred
+       against the hero's full height; offset is var(--section-pad) so it
+       aligns with the page's left content gutter. */
+    .bp-hero-back {
+      position: absolute;
+      left: var(--section-pad, 28px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none; border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      padding: 4px 0;
+      white-space: nowrap;
+    }
+    .bp-hero-back:hover { opacity: 0.75; }
+    @media (max-width: 600px) {
+      /* Hide the back label on narrow screens — keep the chevron only. */
+      .bp-hero-back span { display: none; }
+    }
 
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -98,6 +198,103 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       border: 1.5px solid var(--theme-accent);
       font-size: 11px; font-weight: 500;
       padding: 3px 12px; border-radius: 20px;
+    }
+
+    /* v1.22: interactive pill treatment — applied via the
+       .bp-hero-pill-btn modifier on both pill types so the user
+       and location pills feel obviously clickable. */
+    .bp-hero-pill-btn {
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: border-color 150ms ease, background-color 100ms ease;
+    }
+    .bp-hero-pill-btn:hover {
+      border-color: var(--theme-accent) !important;
+      background: var(--theme-bg) !important;
+    }
+    :host ::ng-deep .bp-hero-tag.bp-hero-pill-btn .p-tag {
+      cursor: pointer;
+    }
+
+    /* User pill dropdown — Level 3 elevation, anchored below the
+       pill via the relative wrap. */
+    .bp-hero-pill-wrap { position: relative; display: inline-block; }
+    .bp-hero-pill-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 150px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      box-shadow: var(--shadow-md);
+      padding: 4px 0;
+      z-index: 100;
+    }
+    .bp-hero-pill-menu-item {
+      display: block;
+      width: 100%;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      transition: background 0.1s;
+    }
+    .bp-hero-pill-menu-item:hover { background: var(--theme-bg); }
+    .bp-hero-pill-menu-item--danger { color: var(--color-danger); }
+    .bp-hero-pill-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
+    .bp-hero-pill-menu-sep {
+      height: 0.5px;
+      background: var(--color-border);
+      margin: 4px 0;
+    }
+
+    /* v1.22: hero band gets a hairline separator to mark the
+       boundary between header and KPI strip / body. */
+    .bp-hero { border-bottom: var(--border-hairline); }
+
+    /* v1.24: notification badge on tabs. Red circle, white text,
+       positioned inline after the tab label. Used by the project
+       Messages tab when ShellTab.badge > 0. */
+    .bp-hero-tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 5px;
+      margin-left: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--color-danger);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    /* v1.23f: lifted config-strip slot. Pages provide the inner
+       controls via TemplateRef + ConfigStripService.setTemplate.
+       Chrome (background, padding, hairline) lives here so the
+       strip always renders the same regardless of which page
+       lit it up. flex-shrink:0 keeps the row from collapsing. */
+    .bp-shell-config-strip {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 18px;
+      padding: 10px 28px;
+      background: var(--color-surface);
+      border-bottom: 0.5px solid var(--color-border);
+      flex-wrap: wrap;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-secondary);
     }
 
     /* ── SHELL BODY ── */
@@ -137,7 +334,15 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
-    if (this.showUserName && this.userName) pills.push(`${this.userName} · ${this.userRole}`);
+    // v1.23c: title-case the role so "admin" renders as "Admin" in
+    // the pill. The DB column stores it lowercase ('owner' / 'admin'
+    // / 'member') — only the display is capitalised.
+    if (this.showUserName && this.userName) {
+      const role = this.userRole
+        ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
+        : '';
+      pills.push(role ? `${this.userName} · ${role}` : this.userName);
+    }
     if (this.showLocation && this.orgCity)  pills.push(this.orgCity);
     return pills;
   }
@@ -147,6 +352,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
     if (pill === this.orgCity) return true;
     if (this.ctx?.pills && this.ctx.pills.length >= 2 && pill === this.ctx.pills[1]) return true;
     return false;
+  }
+
+  /** v1.23: text for the optional upcoming-event pill. Empty when
+      ConfigService.showUpcoming is false or the dashboard hasn't
+      pushed an upcomingPill payload. Empty string hides the span. */
+  get upcomingPillText(): string {
+    if (!this.showUpcoming) return '';
+    return this.ctx?.upcomingPill?.text || '';
   }
 
   // Tab click — use onTabClick callback if present, otherwise navigate by path
@@ -213,14 +426,73 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
+  /** v1.22: open/close state for the user-pill dropdown. */
+  userMenuOpen = false;
+
+  /** v1.23f: lifted config-strip slot. Both fields are mirrored from
+      ConfigStripService observables so we can drive the *ngIf without
+      async-piping a TemplateRef (which Angular's template type-check
+      doesn't unwrap cleanly). */
+  stripTpl: TemplateRef<any> | null = null;
+  stripOpen = false;
+
   constructor(
     private router: Router,
     private activatedRoute: ActivatedRoute,
     private orgSvc: OrgService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    private configStripSvc: ConfigStripService,
+    private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  // ── v1.22 header pill interactions ────────────────────────────────
+
+  onUserPillClick(event: MouseEvent) {
+    event.stopPropagation();
+    this.userMenuOpen = !this.userMenuOpen;
+    this.cdr.detectChanges();
+  }
+
+  onLocationPillClick() {
+    this.router.navigate(['/settings']);
+  }
+
+  onUserMenuAction(action: 'profile' | 'switch-org' | 'signout') {
+    this.userMenuOpen = false;
+    if (action === 'profile') {
+      // Profile page doesn't exist yet — route to Settings as a stub
+      // so the click does something useful rather than nothing.
+      this.router.navigate(['/settings']);
+    } else if (action === 'switch-org') {
+      this.msg.add({
+        severity: 'info',
+        summary: 'Coming soon',
+        detail: 'Multi-org switching not implemented yet.',
+        life: 2500
+      });
+    } else if (action === 'signout') {
+      this.msg.add({
+        severity: 'info',
+        summary: 'Auth not implemented',
+        detail: 'Google SSO + sign-out land with the v2.0 milestone.',
+        life: 2500
+      });
+    }
+    this.cdr.detectChanges();
+  }
+
+  /** Close the user-pill dropdown on any outside click. Pill clicks
+      stopPropagation, so toggling from the pill itself doesn't
+      immediately close. */
+  @HostListener('document:click')
+  onDocumentClick() {
+    if (this.userMenuOpen) {
+      this.userMenuOpen = false;
+      this.cdr.detectChanges();
+    }
+  }
 
   ngOnInit() {
     this.orgSvc.getCurrentOrg().subscribe(org => {
@@ -248,7 +520,23 @@ export class AppShellComponent implements OnInit, OnDestroy {
     });
 
     this.shellCtx.context$.pipe(takeUntil(this.destroy$)).subscribe(ctx => {
-      this.ctx = ctx.heroTitle ? ctx : null;
+      // v1.35a: keep ctx alive when only `back` is set so pages that just
+      // need a Back button (e.g. /settings via data.back) don't have to
+      // also push a heroTitle. Title/sub still fall back to route data.
+      this.ctx = (ctx.heroTitle || ctx.back) ? ctx : null;
+      this.cdr.detectChanges();
+    });
+
+    // v1.23f: track the lifted config-strip slot. Pages that pushed
+    // a TemplateRef render their strip here (above bp-shell-body);
+    // pages still on the inline <app-config-strip> pattern leave
+    // stripTpl null and this slot stays hidden.
+    this.configStripSvc.template$.pipe(takeUntil(this.destroy$)).subscribe(tpl => {
+      this.stripTpl = tpl;
+      this.cdr.detectChanges();
+    });
+    this.configStripSvc.open$.pipe(takeUntil(this.destroy$)).subscribe(open => {
+      this.stripOpen = open;
       this.cdr.detectChanges();
     });
 
@@ -297,6 +585,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       this.shellCtx.reset();
     }
     let route = this.activatedRoute;
+    let routeBack: string | null = null;
     while (route.firstChild) {
       route = route.firstChild;
       const data = route.snapshot.data;
@@ -305,6 +594,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
       }
+      // v1.35a: any level in the active route tree may set
+      // `data: { back: '/somewhere' }` to opt into the standard hero
+      // back button. Deepest wins so child tabs can override parents.
+      if (typeof data['back'] === 'string') routeBack = data['back'];
+    }
+    if (routeBack) {
+      const target = routeBack;
+      this.shellCtx.set({ back: { label: 'Back', onBack: () => this.router.navigateByUrl(target) } });
     }
   }
 

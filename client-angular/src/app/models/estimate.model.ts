@@ -21,7 +21,25 @@ export interface EstimateItem {
   name?: string;
   description?: string;
   quantity: number;
-  unit_price: number;
+  /** Supplier's project-specific proposal. Editable until approved_at is set. */
+  offer_price: number;
+  /** Agency's price expectation (optional). */
+  budget_price?: number;
+  /** Catalogue base_price snapshot at request time — anchors the conversation. */
+  ballpark_snapshot?: number;
+  /** Which catalogue item this deal started from. SET NULL on item delete. */
+  inspired_by_item_id?: string;
+  /** Deal lock — once set, offer_price is immutable. */
+  approved_at?: string;
+  approved_by?: string;
+  /** Time dimension multiplier. Defaults to 1 if null/missing. */
+  duration?: number;
+  /** Unit / time_unit inherited from the item on creation, mutable on the deal. */
+  unit?: string;
+  time_unit?: string;
+  /** Open metadata bag for deal-specific fields. */
+  attributes?: Record<string, any>;
+  /** quantity × duration × offer_price. Server-computed. */
   total_price: number;
   supplier_org_id?: string;
   shortlisted: boolean;

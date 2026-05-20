@@ -19,17 +19,20 @@ async function create(data) {
   const {
     name, description, type, address, city, country, phone, email, website,
     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-    default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct
+    default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
+    auto_publish_items
   } = data;
   const result = await pool.query(
     `INSERT INTO orgs (
       name, description, type, address, city, country, phone, email, website,
       logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-      default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+      default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
+      auto_publish_items
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
     [name, description, type, address, city, country, phone, email, website,
      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
-     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct]
+     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
+     auto_publish_items ?? true]
   );
   return result.rows[0];
 }
@@ -39,7 +42,7 @@ async function update(id, data) {
     name, description, type, address, city, country, phone, email, website,
     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-    cover_image_url, image_display
+    cover_image_url, image_display, auto_publish_items
   } = data;
   const result = await pool.query(
     `UPDATE orgs SET
@@ -58,12 +61,13 @@ async function update(id, data) {
       default_contingency_pct = COALESCE($18, default_contingency_pct),
       cover_image_url = COALESCE($19, cover_image_url),
       image_display = COALESCE($20, image_display),
+      auto_publish_items = COALESCE($21, auto_publish_items),
       updated_at = NOW()
-     WHERE id = $21 RETURNING *`,
+     WHERE id = $22 RETURNING *`,
     [name, description, type, address, city, country, phone, email, website,
      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
      default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-     cover_image_url, image_display, id]
+     cover_image_url, image_display, auto_publish_items, id]
   );
   return result.rows[0] || null;
 }

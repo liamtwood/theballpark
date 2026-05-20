@@ -1,43 +1,82 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import {
+  Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { SidebarModule } from 'primeng/sidebar';
-import { DropdownModule } from 'primeng/dropdown';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideAngularModule, ChevronRight, MapPin } from 'lucide-angular';
-import { ProjectCategoryService } from '../../../../../../core/services/project-category.service';
-import { CategoryService } from '../../../../../../core/services/category.service';
-import { SupplierService } from '../../../../../../core/services/supplier.service';
-import { OrgService } from '../../../../../../core/services/org.service';
-import { ConfigService } from '../../../../../../core/services/config.service';
-import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { LucideAngularModule } from 'lucide-angular';
 
-interface CategoryWithBrief {
-  id: string;
-  name: string;
-  category_id: string;
-  ballpark_cost: number;
-  requirement_brief: string;
-  status_name: string;
-  editingBrief: boolean;
+import { ProjectService } from '../../../../../../core/services/project.service';
+import { ProjectCategoryService } from '../../../../../../core/services/project-category.service';
+import { ProjectItemService } from '../../../../../../core/services/project-item.service';
+import { CategoryService } from '../../../../../../core/services/category.service';
+import { CodelistService } from '../../../../../../core/services/codelist.service';
+import { OrgService } from '../../../../../../core/services/org.service';
+import {
+  Project, ProjectCategory, ProjectItem, Item, Category
+} from '../../../../../../models';
+import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { StatusBadgeComponent } from '../../../../../../shared/components/status-badge/status-badge.component';
+import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
+import {
+  ItemDrawerComponent, ItemDrawerMode
+} from '../../../../../../shared/components/item-drawer/item-drawer.component';
+import { ProjectItemRowComponent } from '../../../../../../shared/components/project-item-row/project-item-row.component';
+import { CategoryCardHeaderComponent } from '../../../../../../shared/components/category-card-header/category-card-header.component';
+
+/**
+ * Project Build tab — v1.18 unified Build/Estimate view.
+ *
+ * Two-column layout:
+ *   - LEFT: compressed category cards. Each card collapses to a single
+ *     row (icon · name · counts · brief dot · cost · status · chevron).
+ *     Click to expand and reveal two sub-tabs: Items and Brief.
+ *   - RIGHT: sticky estimate summary panel — subtotal, delivery (12%),
+ *     contingency, your cost, margin, client total, budget indicator.
+ *
+ * Replaces the older "Build" tab (legacy vendor selection — preserved
+ * at /supplier but no longer in the tab bar) AND the separate Estimate
+ * tab (also dropped from the tab bar; route preserved for safety).
+ *
+ * The catalogue-grid Marketplace browse lives in marketplace.component.ts
+ * at /marketplace.
+ */
+
+/** In-memory shape per expanded card — augments the joined
+    ProjectCategory row with drawer/edit state. */
+interface BuildCategoryRow extends ProjectCategory {
+  /** Cached client-side: sum of selected items' base_price for this
+      category. Updated on every cart refresh. */
+  selectedCost: number;
+  selectedCount: number;
+  likedCount: number;
+  /** Local drafts edited in the Brief tab — flushed to the server on
+      blur via upsertBrief / updateDetail / updateBudget. */
   briefDraft: string;
-  selectedVendorIds: string[];
-  vendors?: any[];
-  vendorsLoaded?: boolean;
+  detailDraft: string;
+  budgetDraft: number | null;
 }
+
+type CardTab = 'items' | 'wishlist' | 'brief';
 
 @Component({
   selector: 'app-build',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    LucideAngularModule,
-    ButtonModule, InputTextareaModule,
-    SidebarModule, ToastModule, DropdownModule, LoadingSpinnerComponent
+    ButtonModule, InputTextModule, InputTextareaModule, InputNumberModule,
+    ToastModule, LucideAngularModule,
+    LoadingSpinnerComponent, StatusBadgeComponent,
+    GbpPipe, ItemDrawerComponent,
+    ProjectItemRowComponent, CategoryCardHeaderComponent
   ],
   providers: [MessageService],
   template: `
@@ -45,504 +84,1298 @@ interface CategoryWithBrief {
 
     <ng-container *ngIf="!loading">
 
-      <!-- EMPTY STATE -->
-      <div *ngIf="categories.length === 0" class="bp-build-empty">
-        <div class="bp-build-empty-icon">🏗️</div>
-        <h3 class="bp-build-empty-title">No categories yet</h3>
-        <p class="bp-build-empty-body">Start with the Brief tab to let AI parse your project brief and populate categories automatically.</p>
-        <p-button label="Go to Brief →" styleClass="p-button-outlined" [routerLink]="['../brief']"></p-button>
+      <!-- ═══════════════ EMPTY STATE ═══════════════
+           No project_categories — direct the user to the Brief tab
+           where they scope categories in. -->
+      <div *ngIf="!categoryRows.length" class="bp-build-empty">
+        <div class="bp-build-empty-icon">
+          <lucide-icon name="file-text" [size]="40"></lucide-icon>
+        </div>
+        <h3 class="bp-build-empty-title">No categories scoped yet</h3>
+        <p class="bp-build-empty-body">
+          Head to the Brief tab to select categories and write your requirements.
+        </p>
+        <p-button label="Go to Brief →"
+                  styleClass="p-button-outlined"
+                  [routerLink]="['..', 'brief']">
+        </p-button>
       </div>
 
-      <!-- CATEGORY LIST -->
-      <div *ngIf="categories.length > 0" class="bp-build-body">
+      <!-- ═══════════════ MAIN LAYOUT ═══════════════ -->
+      <div *ngIf="categoryRows.length" class="bp-build-page">
 
-        <div class="bp-build-header">
-          <div>
-            <div class="bp-build-title">Build</div>
-            <div class="bp-build-sub">{{ categories.length }} categories · {{ totalSelectedVendors() }} vendors selected</div>
-          </div>
-          <p-button label="+ Add Category" styleClass="bp-btn-save p-button-sm" (onClick)="openAddCategory()"></p-button>
-          <p-button
-            *ngIf="totalSelectedVendors() > 0"
-            label="Request Quotes →"
-            styleClass="bp-btn-request-quote"
-            (onClick)="openQuoteReview()">
-          </p-button>
-        </div>
+        <!-- ── HEADER ── -->
+        <!-- v1.26c: dropped the "N categories · N items selected" sub-line
+             so every project tab opens on a clean title + divider only,
+             matching the Settings pattern. -->
+        <h2 class="bp-page-title">Estimate</h2>
+        <div class="bp-page-divider"></div>
 
-        <!-- CATEGORY CARDS -->
-        <div class="bp-cat-list">
-          <div *ngFor="let cat of categories" class="bp-cat-item">
+        <div class="bp-build-grid">
 
-            <!-- CATEGORY HEADER -->
-            <div class="bp-cat-header" (click)="toggleCategory(cat)">
-              <div class="bp-cat-header-left">
-                <lucide-icon [name]="getCatIcon(cat)" [size]="18"
-                  style="color: var(--theme-accent);">
-                </lucide-icon>
-                <div>
-                  <div class="bp-cat-name">{{ cat.name }}</div>
-                  <div class="bp-cat-cost">Est. {{ fmtCurrency(cat.ballpark_cost) }}
-                    <span *ngIf="cat.selectedVendorIds.length > 0" class="bp-cat-vendor-count">
-                      · {{ cat.selectedVendorIds.length }} vendor{{ cat.selectedVendorIds.length > 1 ? 's' : '' }} selected
+          <!-- ═══════════════ LEFT: COMPRESSED CARDS ═══════════════ -->
+          <div class="bp-build-cards">
+            <div *ngFor="let row of categoryRows; trackBy: trackByRowId"
+                 class="bp-build-card"
+                 [class.expanded]="expandedCategoryId === row.id">
+
+              <!-- ── Compressed row (always visible) ──────────────────
+                   Single line: icon · name · counts · brief dot · cost
+                   · status · chevron. Click anywhere to toggle expand. -->
+              <button type="button"
+                      class="bp-build-card-head"
+                      (click)="toggleCategory(row)">
+                <span class="bp-build-card-icon">
+                  <lucide-icon *ngIf="row.category_icon_name"
+                               [name]="row.category_icon_name"
+                               [size]="18"></lucide-icon>
+                  <span *ngIf="!row.category_icon_name" class="bp-build-card-initial">
+                    {{ rowInitial(row) }}
+                  </span>
+                </span>
+
+                <div class="bp-build-card-body">
+                  <div class="bp-build-card-name">{{ rowName(row) }}</div>
+                  <div class="bp-build-card-meta">
+                    <ng-container *ngIf="row.selectedCount || row.likedCount; else noItems">
+                      <!-- v1.18b: icon-based counts (✓ N  ♡ N) replace the
+                           wordier "N selected · N liked" pattern — more
+                           scannable per QC. -->
+                      <span *ngIf="row.selectedCount" class="bp-build-count">
+                        <lucide-icon name="check" [size]="11"></lucide-icon>
+                        {{ row.selectedCount }}
+                      </span>
+                      <span *ngIf="row.likedCount" class="bp-build-count bp-build-count--liked">
+                        <lucide-icon name="heart" [size]="11"></lucide-icon>
+                        {{ row.likedCount }}
+                      </span>
+                    </ng-container>
+                    <ng-template #noItems>
+                      <!-- v1.21: contextual empty-state link.
+                           Stops click propagation so the card doesn't
+                           toggle expand at the same time. -->
+                      <span class="bp-build-card-empty-text"
+                            (click)="onBrowseMarketplace(row); $event.stopPropagation()">
+                        + Add {{ rowNameLower(row) }}
+                      </span>
+                    </ng-template>
+                    <span class="bp-build-brief-dot"
+                          [class.filled]="hasBrief(row)"
+                          [title]="hasBrief(row) ? 'Brief written' : 'No brief yet'">
                     </span>
                   </div>
                 </div>
-              </div>
-              <lucide-icon name="chevron-right" [size]="16"
-                class="bp-cat-chevron"
-                [class.open]="expandedCatId === cat.id">
-              </lucide-icon>
-            </div>
 
-            <!-- EXPANDED CONTENT -->
-            <div *ngIf="expandedCatId === cat.id" class="bp-cat-expanded">
+                <div class="bp-build-card-cost">
+                  {{ row.selectedCost ? (row.selectedCost | gbp) : '—' }}
+                </div>
 
-              <!-- BRIEF -->
-              <div class="bp-cat-brief-section">
-                <div class="bp-cat-section-label">
-                  Category Brief
-                  <button *ngIf="!cat.editingBrief" class="bp-icon-btn" (click)="startEditBrief(cat); $event.stopPropagation()">
-                    <i class="pi pi-pencil"></i>
+                <div class="bp-build-card-status">
+                  <app-status-badge [statusName]="row.status_name || 'draft'"></app-status-badge>
+                </div>
+
+                <lucide-icon name="chevron-right"
+                             [size]="16"
+                             class="bp-build-card-chev"
+                             [class.open]="expandedCategoryId === row.id">
+                </lucide-icon>
+              </button>
+
+              <!-- ── Expanded body (one row at a time) ────────────── -->
+              <div *ngIf="expandedCategoryId === row.id" class="bp-build-card-exp">
+
+                <!-- Tab bar — three tabs: Items / Wishlist / Brief.
+                     v1.21: matches the Marketplace right-rail panel's
+                     tab structure for a unified design language. -->
+                <div class="bp-build-card-tabs">
+                  <button type="button"
+                          class="bp-build-card-tab"
+                          [class.active]="activeCardTab === 'items'"
+                          (click)="activeCardTab = 'items'">
+                    Items
+                    <span *ngIf="row.selectedCount" class="bp-build-card-tab-count">
+                      {{ row.selectedCount }}
+                    </span>
+                  </button>
+                  <button type="button"
+                          class="bp-build-card-tab"
+                          [class.active]="activeCardTab === 'wishlist'"
+                          (click)="activeCardTab = 'wishlist'">
+                    Wishlist
+                    <span *ngIf="row.likedCount" class="bp-build-card-tab-count">
+                      {{ row.likedCount }}
+                    </span>
+                  </button>
+                  <button type="button"
+                          class="bp-build-card-tab"
+                          [class.active]="activeCardTab === 'brief'"
+                          (click)="activeCardTab = 'brief'">
+                    Brief
                   </button>
                 </div>
-                <div *ngIf="!cat.editingBrief" class="bp-cat-brief-text">
-                  {{ cat.requirement_brief || 'No brief yet — click the pencil to add requirements for this category.' }}
-                </div>
-                <ng-container *ngIf="cat.editingBrief">
-                  <textarea pInputTextarea [(ngModel)]="cat.briefDraft"
-                    class="w-full bp-input-edit bp-brief-textarea"
-                    [rows]="4"
-                    placeholder="Describe what you need for this category...">
-                  </textarea>
-                  <div class="bp-brief-actions">
-                    <p-button label="Save" icon="pi pi-check" styleClass="p-button-sm" (onClick)="saveBrief(cat)"></p-button>
-                    <p-button label="Cancel" icon="pi pi-times" styleClass="p-button-sm p-button-outlined" (onClick)="cancelBrief(cat)"></p-button>
+
+                <!-- ═══ ITEMS TAB ═══ -->
+                <ng-container *ngIf="activeCardTab === 'items'">
+                  <ng-container *ngIf="selectedItemsFor(row).length; else itemsEmpty">
+                    <app-project-item-row *ngFor="let pi of selectedItemsFor(row); trackBy: trackByItemId"
+                      [item]="pi"
+                      mode="selected"
+                      [compact]="false"
+                      (clicked)="onViewItem($event)"
+                      (removed)="onRemoveItem($event)"
+                      (movedToWishlist)="onMoveToLiked($event)">
+                    </app-project-item-row>
+                  </ng-container>
+                  <ng-template #itemsEmpty>
+                    <div class="bp-build-items-empty">
+                      No items selected — use the link below to add some from
+                      the marketplace.
+                    </div>
+                  </ng-template>
+
+                  <!-- Items tab footer: Add more (left) · Longest lead (right). -->
+                  <div class="bp-build-tab-foot">
+                    <button type="button" class="bp-build-browse-link"
+                            (click)="onBrowseMarketplace(row)">
+                      <lucide-icon name="plus" [size]="13"></lucide-icon>
+                      Add more {{ rowNameLower(row) }}
+                    </button>
+                    <span *ngIf="longestLeadFor(row) > 0" class="bp-build-lead-foot">
+                      <lucide-icon name="clock" [size]="11"></lucide-icon>
+                      Longest lead {{ longestLeadFor(row) }} days
+                    </span>
                   </div>
                 </ng-container>
-              </div>
 
-              <!-- VENDORS -->
-              <div class="bp-cat-section-label" style="margin-top:16px;">
-                Select Vendors
-                <span class="bp-cat-section-hint">Tap to select · all receive the same brief simultaneously</span>
-              </div>
-
-              <app-loading *ngIf="!cat.vendorsLoaded"></app-loading>
-
-              <div *ngIf="cat.vendorsLoaded && cat.vendors?.length === 0" class="bp-vendor-empty">
-                No suppliers found for this category yet.
-              </div>
-
-              <div *ngIf="cat.vendorsLoaded" class="bp-vendor-list">
-                <div *ngFor="let v of cat.vendors"
-                  class="bp-vendor-row"
-                  [class.selected]="cat.selectedVendorIds.includes(v.id)"
-                  (click)="toggleVendor(cat, v.id)">
-                  <div class="bp-vendor-img"
-                    [style.background-image]="v.cover_image_url ? 'url(' + v.cover_image_url + ')' : null"
-                    [class.bp-vendor-grad]="!v.cover_image_url">
+                <!-- ═══ WISHLIST TAB ═══
+                     Slightly tinted section per the shared design; rows
+                     render in wishlist mode (Confirm button promotes to
+                     selected, × removes). -->
+                <ng-container *ngIf="activeCardTab === 'wishlist'">
+                  <div class="bp-build-wish-hint" *ngIf="likedItemsFor(row).length">
+                    awaiting client approval
                   </div>
-                  <div class="bp-vendor-info">
-                    <div class="bp-vendor-name">{{ v.name }}</div>
-                    <div class="bp-vendor-meta">
-                      <lucide-icon name="map-pin" [size]="10"></lucide-icon>
-                      {{ v.city || 'London' }}
+                  <ng-container *ngIf="likedItemsFor(row).length; else wishEmpty">
+                    <app-project-item-row *ngFor="let pi of likedItemsFor(row); trackBy: trackByItemId"
+                      [item]="pi"
+                      mode="wishlist"
+                      [compact]="false"
+                      (clicked)="onViewItem($event)"
+                      (removed)="onRemoveItem($event)"
+                      (confirmed)="onMoveToSelected($event)">
+                    </app-project-item-row>
+                  </ng-container>
+                  <ng-template #wishEmpty>
+                    <div class="bp-build-items-empty">
+                      No wishlist items — heart an item from the marketplace
+                      to add it here.
+                    </div>
+                  </ng-template>
+                </ng-container>
+
+                <!-- ═══ BRIEF TAB ═══ -->
+                <ng-container *ngIf="activeCardTab === 'brief'">
+
+                  <div class="bp-build-brief-field">
+                    <label class="bp-build-brief-label">One-line requirement</label>
+                    <input pInputText
+                           [(ngModel)]="row.briefDraft"
+                           (blur)="onBriefBlur(row)"
+                           class="w-full bp-input-edit"
+                           [placeholder]="'What you need from ' + (row.category_name || 'this category').toLowerCase() + ' suppliers — keep it short.'"/>
+                  </div>
+
+                  <div class="bp-build-brief-field">
+                    <label class="bp-build-brief-label">Additional details</label>
+                    <textarea pInputTextarea
+                              [(ngModel)]="row.detailDraft"
+                              (blur)="onDetailBlur(row)"
+                              [rows]="4"
+                              class="w-full bp-input-edit"
+                              placeholder="Anything else suppliers should know — context, constraints, references.">
+                    </textarea>
+                  </div>
+
+                  <div class="bp-build-brief-row">
+                    <div class="bp-build-brief-field">
+                      <label class="bp-build-brief-label">Budget</label>
+                      <div class="bp-money-input">
+                        <span class="bp-money-prefix">£</span>
+                        <input pInputText
+                               type="number"
+                               min="0"
+                               [(ngModel)]="row.budgetDraft"
+                               (blur)="onBudgetBlur(row)"
+                               class="w-full bp-input-edit bp-input-money"
+                               placeholder="0"/>
+                      </div>
+                    </div>
+                    <div class="bp-build-brief-field">
+                      <label class="bp-build-brief-label">Ballpark cost</label>
+                      <div class="bp-build-brief-cost-display">
+                        {{ row.selectedCost ? (row.selectedCost | gbp) : '—' }}
+                        <span class="bp-build-brief-cost-hint">from selected items</span>
+                      </div>
                     </div>
                   </div>
-                  <div class="bp-vendor-check" [class.checked]="cat.selectedVendorIds.includes(v.id)">
-                    <i *ngIf="cat.selectedVendorIds.includes(v.id)" class="pi pi-check" style="font-size:10px;"></i>
-                  </div>
-                </div>
-              </div>
 
+                  <!-- v1.26: "Send brief to suppliers" CTA removed — the
+                       marketplace category context panel's "Contact
+                       supplier →" CTA owns supplier outreach. -->
+
+                </ng-container>
+
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- BOTTOM CTA (mobile-sticky) -->
-        <div *ngIf="totalSelectedVendors() > 0" class="bp-build-footer">
-          <p-button
-            label="Request Quotes →"
-            styleClass="w-full bp-btn-request-quote"
-            (onClick)="openQuoteReview()">
-          </p-button>
-          <div class="bp-build-footer-sub">{{ ballsBalance }} {{ creditLabel }}{{ ballsBalance !== 1 ? 's' : '' }} remaining · 1 {{ creditLabel }} per category</div>
-        </div>
+          <!-- ═══════════════ RIGHT: ESTIMATE SUMMARY ═══════════════ -->
+          <aside class="bp-build-estimate">
+            <!-- Tab + page heading already say "Estimate"; the right
+                 panel reads "Summary" to avoid the triple-stack. -->
+            <div class="bp-build-est-title">Summary</div>
 
+            <!-- Category cost rows. Mirrors the compressed card's
+                 icon-then-name pattern; falls back to an initial letter
+                 when the category has no icon_name (matches Brief tab). -->
+            <div class="bp-build-est-cats">
+              <div *ngFor="let row of categoryRows; trackBy: trackByRowId"
+                   class="bp-build-est-cat">
+                <span class="bp-build-est-cat-icn">
+                  <lucide-icon *ngIf="row.category_icon_name"
+                               [name]="row.category_icon_name"
+                               [size]="13"></lucide-icon>
+                  <span *ngIf="!row.category_icon_name">{{ rowInitial(row) }}</span>
+                </span>
+                <span class="bp-build-est-cat-name" [title]="rowName(row)">
+                  {{ rowName(row) }}
+                </span>
+                <span class="bp-build-est-cat-cost"
+                      [class.muted]="!row.selectedCost">
+                  {{ row.selectedCost ? (row.selectedCost | gbp) : '—' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Subtotal + adjustments -->
+            <div class="bp-build-est-totals">
+              <div class="bp-build-est-row">
+                <span>Subtotal</span>
+                <span>{{ subtotal | gbp }}</span>
+              </div>
+              <div class="bp-build-est-row">
+                <span>Delivery &amp; setup (12%)</span>
+                <span>{{ delivery | gbp }}</span>
+              </div>
+              <div class="bp-build-est-row">
+                <span>Contingency ({{ contingencyPct | number:'1.0-2' }}%)</span>
+                <span>{{ contingency | gbp }}</span>
+              </div>
+              <!-- v1.26: VAT line item (display calculation only — no new
+                   column). vat_pct comes from project.default_vat_pct or
+                   org.default_vat_pct, with a 20% fallback. -->
+              <div class="bp-build-est-row">
+                <span>VAT ({{ vatPct | number:'1.0-2' }}%)</span>
+                <span>{{ vat | gbp }}</span>
+              </div>
+            </div>
+
+            <!-- Your cost (big) -->
+            <div class="bp-build-est-yours">
+              <span class="bp-build-est-yours-lbl">Your cost</span>
+              <span class="bp-build-est-yours-val">{{ yourCost | gbp }}</span>
+            </div>
+
+            <div class="bp-build-est-margin">
+              <span>At {{ marginPct | number:'1.0-2' }}% margin</span>
+              <span class="bp-build-est-client-total">
+                {{ clientTotal | gbp }} client total
+              </span>
+            </div>
+
+            <!-- Budget indicator (only when a budget is set) -->
+            <div *ngIf="budget > 0" class="bp-build-budget"
+                 [class.over]="clientTotal > budget">
+              <div class="bp-build-budget-h">
+                <lucide-icon [name]="clientTotal <= budget ? 'check-square' : 'alert-triangle'"
+                             [size]="13"></lucide-icon>
+                <span class="bp-build-budget-state">
+                  {{ clientTotal <= budget ? 'Within budget' : 'Over budget' }}
+                </span>
+                <span class="bp-build-budget-diff">
+                  {{ clientTotal <= budget ? '-' : '+' }}{{ absBudgetDiff | gbp }}
+                </span>
+              </div>
+              <div class="bp-build-budget-bar">
+                <div class="bp-build-budget-bar-fill" [style.width.%]="barPct"></div>
+              </div>
+              <div class="bp-build-budget-foot">
+                <span>Client {{ clientTotal | gbp }}</span>
+                <span>Budget {{ budget | gbp }}</span>
+              </div>
+              <div class="bp-build-budget-msg">
+                {{ budgetMessage }}
+              </div>
+            </div>
+
+            <!-- AI insight placeholder — real data wires in a later prompt. -->
+            <div class="bp-build-insight">
+              <div class="bp-build-insight-label">AI INSIGHT</div>
+              <p class="bp-build-insight-body">
+                Similar events average {{ insightAverage | gbp }}. Your estimate is within
+                normal range for this spec.
+              </p>
+            </div>
+            <!-- v1.26: "Messages →" CTA removed — Messages is reachable
+                 from the project tab bar; the summary panel doesn't need
+                 to duplicate that link. -->
+          </aside>
+
+        </div>
       </div>
     </ng-container>
 
-    <!-- ADD CATEGORY DRAWER -->
-    <p-sidebar [(visible)]="showAddCatDrawer" position="bottom" styleClass="bp-drawer bp-drawer-bottom" [style]="{height:'auto'}" [showCloseIcon]="false">
-      <ng-template pTemplate="header">
-        <div class="bp-drawer-header-row">
-          <div class="bp-drawer-header"><div class="bp-drawer-title">Add Category</div></div>
-          <button class="bp-icon-btn" (click)="showAddCatDrawer = false"><i class="pi pi-times"></i></button>
-        </div>
-      </ng-template>
-      <div class="bp-drawer-body">
-        <label class="bp-field-label">Category</label>
-        <p-dropdown [(ngModel)]="selectedNewCatId" [options]="availableCategories" optionLabel="name" optionValue="id" styleClass="w-full bp-input-edit" placeholder="Select a category"></p-dropdown>
-      </div>
-      <ng-template pTemplate="footer">
-        <div class="bp-drawer-footer">
-          <p-button label="Add Category" styleClass="bp-drawer-cta w-full" [disabled]="!selectedNewCatId" [loading]="addingCat" (onClick)="addCategory()"></p-button>
-        </div>
-      </ng-template>
-    </p-sidebar>
-
-    <!-- QUOTE REVIEW DRAWER -->
-    <p-sidebar [(visible)]="showQuoteDrawer" position="right"
-      styleClass="bp-drawer" [style]="{width:'480px'}"
-      [showCloseIcon]="false">
-      <ng-template pTemplate="header">
-        <div class="bp-drawer-header-row">
-          <div class="bp-drawer-header">
-            <span class="bp-drawer-label">QUOTE REQUEST</span>
-            <div class="bp-drawer-title">Ready to send?</div>
-          </div>
-          <button class="bp-icon-btn" (click)="showQuoteDrawer = false"><i class="pi pi-times"></i></button>
-        </div>
-      </ng-template>
-
-      <div class="bp-drawer-body">
-
-        <!-- CATEGORIES WITH VENDORS -->
-        <div *ngFor="let cat of categoriesWithSelections()" class="bp-review-cat">
-          <div class="bp-review-cat-name">{{ cat.name }}</div>
-          <div *ngFor="let vid of cat.selectedVendorIds" class="bp-review-vendor">
-            <i class="pi pi-check-circle" style="color:var(--theme-accent);font-size:12px;"></i>
-            <span>{{ getVendorName(cat, vid) }}</span>
-          </div>
-          <div class="bp-review-brief" *ngIf="cat.requirement_brief">
-            <span class="bp-review-brief-lbl">Brief: </span>{{ cat.requirement_brief }}
-          </div>
-        </div>
-
-        <!-- BALL COST -->
-        <div class="bp-review-ball-card">
-          <div class="bp-review-ball-left">
-            <div class="bp-review-ball-label">Using {{ categoriesWithSelections().length }} {{ creditLabel }}{{ categoriesWithSelections().length !== 1 ? 's' : '' }}</div>
-            <div class="bp-review-ball-after">{{ ballsBalance - categoriesWithSelections().length }} remaining after send</div>
-          </div>
-          <div class="bp-review-ball-num">{{ ballsBalance }}→{{ ballsBalance - categoriesWithSelections().length }}</div>
-        </div>
-
-      </div>
-
-      <ng-template pTemplate="footer">
-        <div class="bp-drawer-footer">
-          <p-button
-            label="Request Quotes →"
-            styleClass="bp-drawer-cta w-full"
-            [loading]="sending"
-            (onClick)="sendQuotes()">
-          </p-button>
-          <p class="bp-drawer-footer-sub">
-            All selected vendors contacted simultaneously.
-            This will use {{ categoriesWithSelections().length }} {{ creditLabel }}{{ categoriesWithSelections().length !== 1 ? 's' : '' }}.
-          </p>
-        </div>
-      </ng-template>
-    </p-sidebar>
+    <!-- Shared item drawer — view mode triggered from the items list. -->
+    <app-item-drawer
+      [(visible)]="showItemDrawer"
+      [mode]="drawerMode"
+      [item]="drawerItem"
+      (cancelled)="drawerItem = null">
+    </app-item-drawer>
 
     <p-toast></p-toast>
   `,
   styles: [`
-    /* ── LAYOUT ── */
-    .bp-build-body   { display: flex; flex-direction: column; min-height: 100%; }
-    .bp-build-header { display: flex; align-items: center; justify-content: space-between; padding: 16px var(--section-pad) 12px; border-bottom: 0.5px solid var(--color-border); text-align: center; flex-direction: column; gap: 4px; }
-    .bp-build-title  { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); text-align: center; }
-    .bp-build-sub    { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; text-align: center; }
+    :host { display: block; }
 
-    /* ── EMPTY STATE ── */
-    .bp-build-empty       { text-align: center; padding: 80px 24px; }
-    .bp-build-empty-icon  { font-size: 48px; margin-bottom: 16px; }
-    .bp-build-empty-title { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 8px; }
-    .bp-build-empty-body  { font-size: 14px; color: var(--color-text-muted); margin-bottom: 20px; }
+    /* ── EMPTY STATE ─────────────────────────────────────────────── */
+    .bp-build-empty {
+      text-align: center;
+      padding: 80px 24px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .bp-build-empty-icon {
+      display: inline-flex;
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      margin-bottom: 18px;
+    }
+    .bp-build-empty-title {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 400;
+      color: var(--color-text-primary);
+      margin-bottom: 8px;
+    }
+    .bp-build-empty-body {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      margin-bottom: 20px;
+      line-height: 1.55;
+    }
 
-    /* ── CATEGORY LIST ── */
-    .bp-cat-list { padding: 12px var(--section-pad); flex: 1; }
-    .bp-cat-item { border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: var(--color-surface); }
+    /* ── PAGE + HEADER ───────────────────────────────────────────── */
+    .bp-build-page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 28px 60px;
+    }
+    /* ── TWO-COLUMN GRID ─────────────────────────────────────────── */
+    /* v1.18b: right column bumped 280→320 so category names breathe.
+       The estimate panel itself sets the same explicit width below. */
+    .bp-build-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 880px) {
+      .bp-build-grid { grid-template-columns: 1fr; }
+    }
 
-    /* ── CATEGORY HEADER ── */
-    .bp-cat-header       { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
-    .bp-cat-header:hover { background: var(--color-surface); }
-    .bp-cat-header-left  { display: flex; align-items: center; gap: 12px; }
-    .bp-cat-name         { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-cat-cost         { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; }
-    .bp-cat-vendor-count { color: var(--theme-accent); font-weight: 500; }
-    .bp-cat-chevron      { color: var(--color-text-muted); transition: transform 0.2s; }
-    .bp-cat-chevron.open { transform: rotate(90deg); }
+    /* ── COMPRESSED CARD ─────────────────────────────────────────── */
+    .bp-build-cards { display: flex; flex-direction: column; gap: 8px; }
+    .bp-build-card {
+      border: 0.5px solid var(--color-border);
+      border-left: 3px solid var(--theme-accent);
+      border-radius: 10px;
+      background: var(--color-surface);
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .bp-build-card:hover { border-color: var(--theme-accent); }
+    .bp-build-card.expanded { border-color: var(--theme-accent); }
 
-    /* ── EXPANDED CONTENT ── */
-    .bp-cat-expanded        { border-top: 0.5px solid var(--color-border); padding: 16px; background: var(--color-surface); }
-    .bp-cat-section-label   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .bp-cat-section-hint    { font-size: 10px; color: var(--color-text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
-    .bp-cat-brief-text      { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; padding: 10px 12px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 6px; }
-    .bp-brief-textarea      { font-size: 13px; line-height: 1.6; }
-    .bp-brief-actions       { display: flex; gap: 8px; margin-top: 8px; }
+    /* Compressed row — single line, click target. */
+    .bp-build-card-head {
+      display: grid;
+      grid-template-columns: 40px 1fr auto auto 18px;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .bp-build-card-head:hover { background: var(--theme-bg); }
+    .bp-build-card-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      flex-shrink: 0;
+    }
+    .bp-build-card-initial {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 600;
+      color: var(--theme-accent);
+    }
+    .bp-build-card-body { min-width: 0; }
+    .bp-build-card-name {
+      font-size: 14px; font-weight: 500;
+      color: var(--color-text-primary);
+      line-height: 1.3;
+    }
+    .bp-build-card-meta {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    /* v1.18b: icon-and-number count chips replace the "N selected · N liked"
+       text counts — more scannable. ✓ = selected (theme accent),
+       ♡ = liked (red). */
+    .bp-build-count {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-count--liked { color: var(--color-danger); }
+    .bp-build-card-empty-text {
+      font-style: italic;
+      color: var(--theme-accent);
+      cursor: pointer;
+      font-weight: 500;
+      font-style: normal;
+    }
+    .bp-build-card-empty-text:hover { opacity: 0.75; }
+    .bp-build-brief-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      border: 1px solid var(--color-text-muted);
+      background: transparent;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .bp-build-brief-dot.filled {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
+    .bp-build-card-cost {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-card-status { display: flex; align-items: center; }
+    .bp-build-card-chev {
+      color: var(--color-text-muted);
+      transition: transform 0.18s;
+    }
+    .bp-build-card-chev.open { transform: rotate(90deg); }
 
-    /* ── VENDORS ── */
-    .bp-vendor-list  { display: flex; flex-direction: column; gap: 8px; }
-    .bp-vendor-empty { font-size: 13px; color: var(--color-text-muted); padding: 12px 0; }
-    .bp-vendor-row   { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 8px; background: var(--color-surface); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-    .bp-vendor-row.selected { border-color: var(--theme-accent); background: var(--theme-bg); }
-    .bp-vendor-img   { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-vendor-grad  { background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
-    .bp-vendor-info  { flex: 1; min-width: 0; }
-    .bp-vendor-name  { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-vendor-meta  { font-size: 11px; color: var(--color-text-muted); display: flex; align-items: center; gap: 3px; margin-top: 1px; }
-    .bp-vendor-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s, border-color 0.15s; }
-    .bp-vendor-check.checked { background: var(--theme-accent); border-color: var(--theme-accent); color: #fff; }
+    /* Expanded body. */
+    .bp-build-card-exp {
+      border-top: 0.5px solid var(--color-border);
+      padding: 16px 18px 18px;
+      background: var(--color-surface);
+    }
 
-    /* ── REQUEST QUOTE BUTTON ── */
-    :host ::ng-deep .bp-btn-request-quote.p-button {
-      background: var(--theme-accent) !important;
-      border-color: var(--theme-accent) !important;
-      color: #fff !important;
+    /* Card tab bar — same underline pattern as drawer tabs. */
+    .bp-build-card-tabs {
+      display: flex; gap: 0;
+      border-bottom: 0.5px solid var(--color-border);
+      margin-bottom: 14px;
+    }
+    .bp-build-card-tab {
+      padding: 8px 14px;
+      font-size: 12px; font-weight: 500;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-family: var(--font-body);
+      margin-bottom: -0.5px;
+      transition: color 0.15s, border-color 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .bp-build-card-tab:hover { color: var(--color-text-primary); }
+    .bp-build-card-tab.active {
+      color: var(--theme-accent);
+      border-bottom-color: var(--theme-accent);
+    }
+    .bp-build-card-tab-count {
+      display: inline-flex; align-items: center;
+      min-width: 18px;
+      padding: 1px 6px;
+      font-size: 10px; font-weight: 600;
+      color: var(--color-text-muted);
+      background: var(--theme-bg);
+      border-radius: 10px;
+    }
+    .bp-build-card-tab.active .bp-build-card-tab-count {
+      color: var(--theme-accent);
+    }
+
+    /* ── ITEMS TAB ───────────────────────────────────────────────── */
+    .bp-build-items-sec { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .bp-build-items-sec--liked { opacity: 0.92; }
+    .bp-build-items-sec-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin: 6px 0 2px;
+    }
+    .bp-build-item-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-surface);
+    }
+    .bp-build-item-row--liked {
+      border-style: dashed;
+      background: transparent;
+    }
+    .bp-build-item-heart {
+      color: #E11D48;
+      flex-shrink: 0;
+    }
+    .bp-build-item-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-build-item-price {
+      display: flex; flex-direction: column; align-items: flex-end;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-item-unit-line { font-size: 10px; }
+    .bp-build-item-total {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+    .bp-build-item-actions { display: flex; gap: 4px; }
+    .bp-build-item-act {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .bp-build-item-act:hover {
+      color: var(--theme-accent);
+      border-color: var(--theme-accent);
+    }
+    .bp-build-item-act--danger:hover {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
+    .bp-build-items-empty {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-style: italic;
+      padding: 10px 0 14px;
+    }
+
+    .bp-build-browse-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .bp-build-browse-link:hover { opacity: 0.75; }
+
+    /* v1.21: Items tab footer — Add more (left) + Longest lead (right). */
+    .bp-build-tab-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 8px;
+      margin-top: 8px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-build-lead-foot {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+    }
+
+    /* Wishlist hint — sits above the rows, mirrors the panel pattern. */
+    .bp-build-wish-hint {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--color-text-muted);
+      text-align: right;
+      padding: 4px 0 8px;
+    }
+
+    /* ── BRIEF TAB ───────────────────────────────────────────────── */
+    .bp-build-brief-field { margin-bottom: 12px; }
+    .bp-build-brief-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      margin-bottom: 4px;
+      font-family: var(--font-body);
+    }
+    .bp-build-brief-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .bp-build-brief-cost-display {
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 8px;
+      min-height: 38px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .bp-build-brief-cost-hint {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    /* Money input — copied from item-drawer pattern. */
+    .bp-money-input { position: relative; display: flex; align-items: center; }
+    .bp-money-prefix {
+      position: absolute;
+      left: 10px;
+      font-size: 13px;
+      color: var(--color-text-muted);
+      pointer-events: none;
+    }
+    .bp-input-money { padding-left: 22px !important; }
+
+    :host ::ng-deep .bp-build-send-btn.p-button {
+      background: var(--color-text-primary) !important;
+      border-color: var(--color-text-primary) !important;
+      color: var(--color-surface) !important;
+      font-weight: 600 !important;
+      margin-top: 8px;
+    }
+    :host ::ng-deep .bp-build-send-btn.p-button:hover {
+      filter: brightness(1.15);
+    }
+
+    /* ── ESTIMATE SUMMARY PANEL ──────────────────────────────────── */
+    /* v1.18b: width matched to grid column (320px). Padding adjusted
+       so category names get more room before truncating. */
+    .bp-build-estimate {
+      position: sticky;
+      top: 20px;
+      width: 320px;
+      padding: 16px 18px;
+      border: 0.5px solid var(--color-border);
+      border-radius: 10px;
+      background: var(--color-surface);
+      font-family: var(--font-body);
+    }
+    .bp-build-est-title {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 400;
+      color: var(--color-text-primary);
+      margin-bottom: 12px;
+    }
+    .bp-build-est-cats { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+    .bp-build-est-cat {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 12px;
+      color: var(--color-text-primary);
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-build-est-cat:last-child { border-bottom: none; }
+    /* v1.18b: icon-or-initial container — keeps the column aligned
+       whether a category has icon_name or only an initial fallback. */
+    .bp-build-est-cat-icn {
+      width: 18px; height: 18px;
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .bp-build-est-cat-name {
+      min-width: 0; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-build-est-cat-cost { font-weight: 500; font-variant-numeric: tabular-nums; }
+    .bp-build-est-cat-cost.muted { color: var(--color-text-muted); }
+
+    .bp-build-est-totals {
+      padding: 10px 0;
+      border-top: 0.5px solid var(--color-border);
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-build-est-row {
+      display: flex; justify-content: space-between;
+      padding: 3px 0;
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-est-yours {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 14px 0 2px;
+    }
+    .bp-build-est-yours-lbl {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--color-text-primary);
+    }
+    .bp-build-est-yours-val {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 700;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-est-margin {
+      display: flex; justify-content: space-between;
+      padding: 6px 0 14px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+    }
+    .bp-build-est-client-total {
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+
+    /* Budget card — neutral CSS-variable theming so under/over read
+       semantically without hardcoded greens/reds (the existing
+       estimate.component.ts used hardcoded hex; v1.18 follows
+       WORKING_STANDARDS and pulls from CSS variables). */
+    .bp-build-budget {
+      border: 0.5px solid var(--theme-border);
+      background: var(--theme-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .bp-build-budget.over {
+      border-color: var(--color-danger);
+      background: rgba(225, 29, 72, 0.06);
+    }
+    .bp-build-budget-h {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 6px;
+    }
+    .bp-build-budget-h lucide-icon { color: var(--theme-accent); }
+    .bp-build-budget.over .bp-build-budget-h lucide-icon { color: var(--color-danger); }
+    .bp-build-budget-state {
+      flex: 1;
+      font-size: 12px; font-weight: 600;
+      color: var(--theme-accent);
+    }
+    .bp-build-budget.over .bp-build-budget-state { color: var(--color-danger); }
+    .bp-build-budget-diff {
+      font-size: 12px; font-weight: 600;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-build-budget.over .bp-build-budget-diff { color: var(--color-danger); }
+    .bp-build-budget-bar {
+      height: 5px;
+      border-radius: 20px;
+      background: rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .bp-build-budget-bar-fill {
+      height: 100%;
+      background: var(--theme-accent);
+      border-radius: 20px;
+      max-width: 100%;
+      transition: width 0.3s;
+    }
+    .bp-build-budget.over .bp-build-budget-bar-fill { background: var(--color-danger); }
+    .bp-build-budget-foot {
+      display: flex; justify-content: space-between;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+    .bp-build-budget-msg {
+      font-size: 10px;
+      color: var(--color-text-secondary);
+      line-height: 1.45;
+    }
+
+    .bp-build-insight {
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .bp-build-insight-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-build-insight-body {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    :host ::ng-deep .bp-build-messages-btn.p-button {
+      background: var(--color-text-primary) !important;
+      border-color: var(--color-text-primary) !important;
+      color: var(--color-surface) !important;
       font-weight: 600 !important;
     }
-    :host ::ng-deep .bp-btn-request-quote.p-button:hover {
-      filter: brightness(0.9);
-    }
-
-    /* ── STICKY FOOTER (mobile) ── */
-    .bp-build-footer     { padding: 16px var(--section-pad); border-top: 0.5px solid var(--color-border); background: var(--color-surface); }
-    .bp-build-footer-sub { font-size: 11px; color: var(--color-text-muted); text-align: center; margin-top: 6px; }
-
-    /* ── QUOTE REVIEW DRAWER ── */
-    .bp-review-cat        { padding: 12px 0; border-bottom: 0.5px solid var(--color-border); }
-    .bp-review-cat:last-child { border-bottom: none; }
-    .bp-review-cat-name   { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 6px; }
-    .bp-review-vendor     { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
-    .bp-review-brief      { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; line-height: 1.5; }
-    .bp-review-brief-lbl  { font-weight: 600; color: var(--theme-accent); }
-    .bp-review-ball-card  { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 14px 16px; }
-    .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 3px; }
-    .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
-    .bp-review-ball-num   { font-size: 24px; font-weight: 700; color: var(--color-text-primary); }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 768px) {
-      .bp-build-header { padding: 14px 16px 10px; flex-direction: column; gap: 10px; }
-      .bp-build-header p-button { width: 100%; }
-      .bp-cat-list { padding: 10px 12px; }
-      .bp-build-footer { position: sticky; bottom: 0; z-index: 10; }
+    :host ::ng-deep .bp-build-messages-btn.p-button:hover {
+      filter: brightness(1.15);
     }
   `]
 })
 export class BuildComponent implements OnInit {
   loading = true;
-  categories: CategoryWithBrief[] = [];
-  expandedCatId = '';
-  showQuoteDrawer = false;
-  sending = false;
-  ballsBalance = 0;
-  creditLabel = 'Ball';
-  private projectId = '';
-  showAddCatDrawer = false;
-  availableCategories: any[] = [];
-  selectedNewCatId = '';
-  addingCat = false;
+  categoryRows: BuildCategoryRow[] = [];
+  projectItems: ProjectItem[] = [];
+
+  /** id of the project_category whose card is currently expanded. */
+  expandedCategoryId: string | null = null;
+  /** Active sub-tab on the expanded card. */
+  activeCardTab: CardTab = 'items';
+
+  // Project meta
+  private project: Project | null = null;
+  projectId = '';
+  budget = 0;
+  contingencyPct = 10;
+  marginPct = 20;
+  /** v1.26: VAT % for the summary panel line item (display only).
+      Hydrated from project.default_vat_pct or org.default_vat_pct. */
+  vatPct = 20;
+
+  // Estimate totals — recomputed whenever items or category rows change.
+  subtotal = 0;
+  delivery = 0;
+  contingency = 0;
+  vat = 0;
+  yourCost = 0;
+  clientTotal = 0;
+  budgetDiff = 0;
+  absBudgetDiff = 0;
+  barPct = 0;
+  budgetMessage = '';
+  /** Placeholder for AI insight average — within ±15% of clientTotal so
+      the message reads sensibly. Real insight data wires later. */
+  insightAverage = 0;
+
+  // Categories index — used to walk parent chain when grouping items.
+  private allCategories: Category[] = [];
+
+  // Drawer state (view-only from the items list).
+  showItemDrawer = false;
+  drawerMode: ItemDrawerMode = 'view';
+  drawerItem: Item | null = null;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
+    private projectSvc: ProjectService,
     private projectCategorySvc: ProjectCategoryService,
-    private supplierSvc: SupplierService,
+    private projectItemSvc: ProjectItemService,
+    private categorySvc: CategoryService,
+    private codelistSvc: CodelistService,
     private orgSvc: OrgService,
-    private configService: ConfigService,
     private msg: MessageService,
-    private cdr: ChangeDetectorRef,
-    private categorySvc: CategoryService
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.creditLabel = this.configService.current?.creditLabel || 'Ball';
-
-    this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) { this.ballsBalance = org.balls_balance || 0; this.cdr.detectChanges(); }
-    });
-
-    // Get project id from parent route
-    let r = this.route;
-    while (r.parent) { r = r.parent; }
-    const pid = r.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id') || '';
+    // Walk parents until we find the project id (lives on /projects/:id).
+    let r: ActivatedRoute | null = this.route;
+    let pid = '';
+    while (r && !pid) {
+      pid = r.snapshot.paramMap.get('id') || '';
+      r = r.parent;
+    }
     this.projectId = pid;
+    if (!pid) { this.loading = false; return; }
 
-    if (pid) {
-      this.projectCategorySvc.getByProject(pid).subscribe({
-        next: cats => {
-          this.categories = (cats || []).map((c: any) => ({
-            ...c,
-            editingBrief: false,
-            briefDraft: c.requirement_brief || '',
-            selectedVendorIds: [],
-            vendors: [],
-            vendorsLoaded: false
-          }));
-          this.loading = false;
-          this.cdr.detectChanges();
-        },
-        error: () => { this.loading = false; this.cdr.detectChanges(); }
-      });
-    } else {
-      this.loading = false;
-    }
-
-    this.categorySvc.getAll('catalogue').subscribe({
-      next: cats => {
-        this.availableCategories = (cats || []).filter((c: any) => c.enabled !== false);
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  openAddCategory() {
-    this.selectedNewCatId = '';
-    this.showAddCatDrawer = true;
-  }
-
-  addCategory() {
-    if (!this.selectedNewCatId || !this.projectId) return;
-    this.addingCat = true;
-    const cat = this.availableCategories.find((c: any) => c.id === this.selectedNewCatId);
-    this.projectCategorySvc.create({
-      project_id: this.projectId,
-      category_id: this.selectedNewCatId,
-      name: cat?.name || 'New Category',
-      ballpark_cost: 0,
-      sort_order: this.categories.length
+    forkJoin({
+      project:        this.projectSvc.getById(pid),
+      // Use ProjectService.getCategories — it hits /projects/:pid/categories
+      // which calls the joined ProjectCategoryService.getByProject() on the
+      // server, returning category_name, category_icon_name, etc. The
+      // shorter projectCategorySvc.getByProject() goes via /project-categories?
+      // project_id=X which calls the un-joined getAll() and leaves the
+      // category fields undefined — that was the v1.18a "? icon" bug.
+      projectCats:    this.projectSvc.getCategories(pid),
+      cart:           this.projectItemSvc.getByProject(pid),
+      allCategories:  this.categorySvc.getAll('catalogue'),
+      org:            this.orgSvc.getCurrentOrg()
     }).subscribe({
-      next: () => {
-        this.addingCat = false;
-        this.showAddCatDrawer = false;
-        this.projectCategorySvc.getByProject(this.projectId).subscribe({
-          next: cats => {
-            this.categories = (cats || []).map((c: any) => ({
-              ...c, editingBrief: false, briefDraft: c.requirement_brief || '',
-              selectedVendorIds: [], vendors: [], vendorsLoaded: false
-            }));
-            this.cdr.detectChanges();
-          }
-        });
+      next: ({ project, projectCats, cart, allCategories, org }) => {
+        this.project = project || null;
+        this.allCategories = allCategories || [];
+        this.budget         = Number(project?.project_budget) || 0;
+        this.contingencyPct = project?.default_contingency_pct
+                            ?? org?.default_contingency_pct
+                            ?? 10;
+        this.marginPct      = project?.default_margin_pct
+                            ?? org?.default_margin_pct
+                            ?? 20;
+        this.vatPct         = (project as any)?.default_vat_pct
+                            ?? (org as any)?.default_vat_pct
+                            ?? 20;
+
+        // Filter actives + build the local row state.
+        const actives = (projectCats || []).filter(c => c.is_active);
+        this.categoryRows = actives.map(pc => this.toRow(pc));
+        this.projectItems = cart || [];
+
+        this.recomputeAll();
+        this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.addingCat = false; this.cdr.detectChanges(); }
+      error: () => { this.loading = false; this.cdr.detectChanges(); }
     });
   }
 
-  getCatIcon(cat: CategoryWithBrief): string {
-    const map: Record<string, string> = {
-      'stand structure': 'warehouse', 'structure': 'warehouse', 'set build': 'warehouse',
-      'lighting': 'spotlight', 'av': 'headset', 'av & production': 'headset', 'audio visual': 'headset',
-      'permits': 'signature', 'permits & logistics': 'signature',
-      'catering': 'martini', 'talent': 'person-standing', 'talent & staffing': 'person-standing',
-      'entertainment': 'person-standing',
-      'av & technology': 'headset', 'graphics': 'image', 'graphics & signage': 'image',
-      'signage': 'image', 'print': 'printer', 'hospitality': 'martini',
-      'catering & hospitality': 'martini', 'bar': 'martini',
-      'staffing': 'person-standing', 'security': 'shield',
+  // ── Row state ────────────────────────────────────────────────────────
+
+  private toRow(pc: ProjectCategory): BuildCategoryRow {
+    return {
+      ...pc,
+      selectedCost: 0,
+      selectedCount: 0,
+      likedCount: 0,
+      briefDraft: pc.requirement_brief || '',
+      detailDraft: pc.requirement_detail || '',
+      budgetDraft: pc.ballpark_budget != null ? Number(pc.ballpark_budget) : null
     };
-    const key = (cat.name || '').toLowerCase();
-    for (const [k, v] of Object.entries(map)) {
-      if (key.includes(k)) return v;
-    }
-    return 'warehouse';
   }
 
-  toggleCategory(cat: CategoryWithBrief) {
-    if (this.expandedCatId === cat.id) {
-      this.expandedCatId = '';
+  trackByRowId = (_: number, r: BuildCategoryRow) => r.id;
+  trackByItemId = (_: number, pi: ProjectItem) => pi.id;
+
+  // ── Item bucketing ───────────────────────────────────────────────────
+
+  /** Items in this category that the project has selected.
+      Match order: explicit project_category_id first, then by item's
+      category_id (direct or via parent chain). */
+  selectedItemsFor(row: BuildCategoryRow): ProjectItem[] {
+    return this.projectItems.filter(pi =>
+      pi.selection_type === 'selected' && this.belongsToCategory(pi, row)
+    );
+  }
+
+  likedItemsFor(row: BuildCategoryRow): ProjectItem[] {
+    return this.projectItems.filter(pi =>
+      pi.selection_type === 'liked' && this.belongsToCategory(pi, row)
+    );
+  }
+
+  private belongsToCategory(pi: ProjectItem, row: BuildCategoryRow): boolean {
+    // Direct link.
+    if (pi.project_category_id && pi.project_category_id === row.id) return true;
+    // Fallback: match by item's category id (or its ancestor) to the
+    // project_category's category_id. Covers older rows added pre-v1.18
+    // that lack project_category_id.
+    if (pi.project_category_id) return false; // honour explicit link
+    return this.categoryMatches(pi.item_category_id, row.category_id);
+  }
+
+  private categoryMatches(itemCatId?: string | null, pcCategoryId?: string): boolean {
+    if (!itemCatId || !pcCategoryId) return false;
+    if (itemCatId === pcCategoryId) return true;
+    // Walk up the parent chain.
+    let current = this.allCategories.find(c => c.id === itemCatId);
+    let guard = 6;
+    while (current && current.parent_id && guard-- > 0) {
+      if (current.parent_id === pcCategoryId) return true;
+      current = this.allCategories.find(c => c.id === current!.parent_id);
+    }
+    return false;
+  }
+
+  // ── Totals ───────────────────────────────────────────────────────────
+
+  totalSelectedCount(): number {
+    return this.categoryRows.reduce((s, r) => s + r.selectedCount, 0);
+  }
+
+  hasBrief(row: BuildCategoryRow): boolean {
+    return !!(row.requirement_brief && row.requirement_brief.trim().length);
+  }
+
+  /** Refresh per-row costs/counts and the right-column totals. Called
+      whenever projectItems / categoryRows change. */
+  private recomputeAll() {
+    for (const row of this.categoryRows) {
+      const selected = this.selectedItemsFor(row);
+      const liked = this.likedItemsFor(row);
+      row.selectedCount = selected.length;
+      row.likedCount = liked.length;
+      row.selectedCost = selected.reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+    }
+    this.subtotal    = this.categoryRows.reduce((s, r) => s + r.selectedCost, 0);
+    this.delivery    = this.subtotal * 0.12;
+    this.contingency = this.subtotal * (this.contingencyPct / 100);
+    // v1.26: VAT = (subtotal + delivery + contingency) * vat_pct / 100,
+    // and Your cost rolls VAT in (display calculation only).
+    this.vat         = (this.subtotal + this.delivery + this.contingency) * (this.vatPct / 100);
+    this.yourCost    = this.subtotal + this.delivery + this.contingency + this.vat;
+    this.clientTotal = this.yourCost * (1 + this.marginPct / 100);
+    this.budgetDiff  = this.budget > 0 ? this.clientTotal - this.budget : 0;
+    this.absBudgetDiff = Math.abs(this.budgetDiff);
+    this.barPct      = this.budget > 0 ? Math.min((this.clientTotal / this.budget) * 100, 100) : 0;
+    this.budgetMessage = this.budget > 0
+      ? (this.budgetDiff <= 0
+          ? `${Math.round(this.barPct === 100 ? 0 : 100 - this.barPct)}% under — headroom to add more`
+          : `${Math.round((this.budgetDiff / this.budget) * 100)}% over — review items to reduce`)
+      : '';
+    // Pseudo-average for the AI insight card — sits within ±10% of
+    // clientTotal so the placeholder reads coherent. Replace with real
+    // service call later.
+    this.insightAverage = Math.round((this.clientTotal * 0.92) / 100) * 100;
+  }
+
+  // ── Card interactions ────────────────────────────────────────────────
+
+  toggleCategory(row: BuildCategoryRow) {
+    if (this.expandedCategoryId === row.id) {
+      this.expandedCategoryId = null;
     } else {
-      this.expandedCatId = cat.id;
-      if (!cat.vendorsLoaded) this.loadVendors(cat);
-    }
-    this.cdr.detectChanges();
-  }
-
-  loadVendors(cat: CategoryWithBrief) {
-    this.supplierSvc.getAll().subscribe({
-      next: (suppliers: any[]) => {
-        cat.vendors = suppliers || [];
-        cat.vendorsLoaded = true;
-        this.cdr.detectChanges();
-      },
-      error: () => { cat.vendors = []; cat.vendorsLoaded = true; this.cdr.detectChanges(); }
-    });
-  }
-
-  startEditBrief(cat: CategoryWithBrief) {
-    cat.briefDraft = cat.requirement_brief || '';
-    cat.editingBrief = true;
-    this.cdr.detectChanges();
-  }
-
-  saveBrief(cat: CategoryWithBrief) {
-    this.projectCategorySvc.update(cat.id, { requirement_brief: cat.briefDraft }).subscribe({
-      next: () => {
-        cat.requirement_brief = cat.briefDraft;
-        cat.editingBrief = false;
-        this.msg.add({ severity: 'success', summary: 'Brief saved', life: 2000 });
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
+      this.expandedCategoryId = row.id;
+      // Default tab choice — prefer the tab with content:
+      //   selected items → Items
+      //   liked only      → Wishlist
+      //   brief written   → Brief
+      //   nothing         → Items (clearest empty-state route to add)
+      if (row.selectedCount > 0) {
+        this.activeCardTab = 'items';
+      } else if (row.likedCount > 0) {
+        this.activeCardTab = 'wishlist';
+      } else if (this.hasBrief(row)) {
+        this.activeCardTab = 'brief';
+      } else {
+        this.activeCardTab = 'items';
       }
-    });
-  }
-
-  cancelBrief(cat: CategoryWithBrief) {
-    cat.editingBrief = false;
-    cat.briefDraft = cat.requirement_brief || '';
-    this.cdr.detectChanges();
-  }
-
-  toggleVendor(cat: CategoryWithBrief, vendorId: string) {
-    const idx = cat.selectedVendorIds.indexOf(vendorId);
-    if (idx === -1) {
-      cat.selectedVendorIds = [...cat.selectedVendorIds, vendorId];
-    } else {
-      cat.selectedVendorIds = cat.selectedVendorIds.filter(id => id !== vendorId);
     }
     this.cdr.detectChanges();
   }
 
-  totalSelectedVendors(): number {
-    return this.categories.reduce((sum, c) => sum + c.selectedVendorIds.length, 0);
+  /** Lowercase name for the "Add more {name}" CTA. */
+  rowNameLower(row: BuildCategoryRow): string {
+    return (row.category_name || row.name || 'items').toLowerCase();
   }
 
-  categoriesWithSelections(): CategoryWithBrief[] {
-    return this.categories.filter(c => c.selectedVendorIds.length > 0);
+  /** Max lead_time_days across the row's selected items. 0 hides the
+      "Longest lead N days" footnote in the Items tab. */
+  longestLeadFor(row: BuildCategoryRow): number {
+    let max = 0;
+    for (const pi of this.selectedItemsFor(row)) {
+      const d = Number(pi.lead_time_days);
+      if (!isNaN(d) && d > max) max = d;
+    }
+    return max;
   }
 
-  getVendorName(cat: CategoryWithBrief, vendorId: string): string {
-    return cat.vendors?.find(v => v.id === vendorId)?.name || vendorId;
+  // ── Items tab actions ────────────────────────────────────────────────
+
+  onViewItem(pi: ProjectItem) {
+    // Build a minimal Item shape from the joined fields. The drawer's
+    // view mode only reads — no save needed — so the partial shape is
+    // sufficient.
+    this.drawerItem = {
+      id: pi.item_id,
+      name: pi.name || '',
+      base_price: Number(pi.base_price) || 0,
+      unit: pi.unit,
+      time_unit: pi.time_unit,
+      image_url: pi.image_url || null,
+      tier: pi.tier as any,
+      category_id: pi.item_category_id || '',
+      category_name: pi.category_name,
+      org_id: '',
+      is_active: true
+    } as Item;
+    this.drawerMode = 'view';
+    this.showItemDrawer = true;
+    this.cdr.detectChanges();
   }
 
-  openQuoteReview() {
-    this.showQuoteDrawer = true;
+  onMoveToLiked(pi: ProjectItem) {
+    this.projectItemSvc.add(this.projectId, pi.item_id, 'liked', pi.project_category_id ?? undefined).subscribe({
+      next: () => this.refreshCart(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
   }
 
-  sendQuotes() {
-    this.sending = true;
-    // TODO: wire to balls transaction service + messaging service
-    // For now simulate a send
-    setTimeout(() => {
-      this.sending = false;
-      this.showQuoteDrawer = false;
-      this.msg.add({
-        severity: 'success',
-        summary: 'Quotes requested!',
-        detail: `${this.categoriesWithSelections().length} categories sent to ${this.totalSelectedVendors()} vendors.`,
-        life: 4000
-      });
-      // Clear selections
-      this.categories.forEach(c => c.selectedVendorIds = []);
-      this.ballsBalance -= this.categoriesWithSelections().length;
+  onMoveToSelected(pi: ProjectItem) {
+    this.projectItemSvc.add(this.projectId, pi.item_id, 'selected', pi.project_category_id ?? undefined).subscribe({
+      next: () => this.refreshCart(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
+  }
+
+  onRemoveItem(pi: ProjectItem) {
+    this.projectItemSvc.remove(this.projectId, pi.item_id).subscribe({
+      next: () => this.refreshCart(),
+      error: () => this.msg.add({ severity: 'error', summary: 'Remove failed', life: 3000 })
+    });
+  }
+
+  /** Browse marketplace → navigate to the Marketplace tab. Passing the
+      category_id as a query param so a future enhancement can pre-filter
+      the catalogue-grid; the grid doesn't react to it yet. */
+  onBrowseMarketplace(row: BuildCategoryRow) {
+    this.router.navigate(['..', 'marketplace'], {
+      relativeTo: this.route,
+      queryParams: { category_id: row.category_id }
+    });
+  }
+
+  private refreshCart() {
+    this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+      this.projectItems = rows || [];
+      this.recomputeAll();
       this.cdr.detectChanges();
-    }, 1200);
+    });
   }
 
-  fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
+  // ── Brief tab actions (save on blur) ─────────────────────────────────
+
+  onBriefBlur(row: BuildCategoryRow) {
+    const next = (row.briefDraft || '').trim();
+    if (next === (row.requirement_brief || '')) return;
+    // Save via update(id, …) — touches just the named columns and triggers
+    // recalcTotals() on the project (cheap; harmless when nothing changed).
+    this.projectCategorySvc.update(row.id, { requirement_brief: next }).subscribe({
+      next: updated => {
+        row.requirement_brief = updated?.requirement_brief ?? next;
+        this.msg.add({ severity: 'success', summary: 'Brief saved', life: 1500 });
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
+  }
+
+  onDetailBlur(row: BuildCategoryRow) {
+    const next = row.detailDraft || '';
+    if (next === (row.requirement_detail || '')) return;
+    this.projectCategorySvc.update(row.id, { requirement_detail: next }).subscribe({
+      next: updated => {
+        row.requirement_detail = updated?.requirement_detail ?? next;
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
+  }
+
+  onBudgetBlur(row: BuildCategoryRow) {
+    const next = row.budgetDraft != null ? Number(row.budgetDraft) : null;
+    const current = row.ballpark_budget != null ? Number(row.ballpark_budget) : null;
+    if (next === current) return;
+    this.projectCategorySvc.update(row.id, { ballpark_budget: next }).subscribe({
+      next: updated => {
+        row.ballpark_budget = updated?.ballpark_budget ?? next ?? 0;
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 })
+    });
+  }
+
+  onSendBrief(_row: BuildCategoryRow) {
+    // Outreach flow not wired yet — placeholder toast per the v1.18 prompt.
+    this.msg.add({
+      severity: 'info',
+      summary: 'Coming soon',
+      detail: 'Supplier outreach flow not yet built.',
+      life: 3500
+    });
+  }
+
+  // ── Display helpers ──────────────────────────────────────────────────
+
+  /** Best-available display name for a project_category row. Prefers the
+      joined categories.name (v1.18b: now reliably populated via the
+      /projects/:pid/categories endpoint), then the project_categories.name
+      column, then a generic fallback. Guarantees the user never sees a
+      bare "—" for a card title. */
+  rowName(row: BuildCategoryRow): string {
+    return (row.category_name?.trim() || row.name?.trim() || 'Uncategorised');
+  }
+
+  /** Single-letter initial for the estimate-panel icon column when a
+      category has no icon_name. Matches Brief tab's pattern. */
+  rowInitial(row: BuildCategoryRow): string {
+    return (this.rowName(row).charAt(0) || '?').toUpperCase();
+  }
+
+  unitLabel(code: string | null | undefined): string {
+    return code ? this.codelistSvc.getDisplay(code) : '';
+  }
+
+  /** Map item.tier (basic/mid/premium) to the user-facing label that
+      app-status-badge keys its colour off. */
+  tierLabel(tier: string | null | undefined): string {
+    switch (tier) {
+      case 'basic':   return 'Core';
+      case 'mid':     return 'Signature';
+      case 'premium': return 'Premium';
+      default:        return tier || '';
+    }
+  }
 }
