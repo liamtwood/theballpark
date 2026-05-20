@@ -104,39 +104,59 @@ interface MessagesSummary {
         <h2 class="bp-page-title">Project Overview</h2>
         <div class="bp-page-divider"></div>
 
-        <!-- ── EVENT STRIP ─────────────────────────────────────── -->
-        <!-- v1.29b: 4 data columns + a "⋯" kebab menu on the right.
-             Clicking anywhere on the strip (except the menu itself)
-             opens the Event drawer. The menu offers two entry points —
-             Edit event and Project brief — both open the drawer. -->
+        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
+             v1.39i: moved here from the Brief tab. Pulls topQuestions
+             out of projects.parsed_brief_json (saved on create since
+             v1.39f). Read-only, collapsible. -->
+        <div *ngIf="questions.length" class="bp-questions-panel">
+          <button type="button" class="bp-questions-toggle"
+                  (click)="questionsOpen = !questionsOpen">
+            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+          </button>
+          <ul class="bp-questions-list" *ngIf="questionsOpen">
+            <li *ngFor="let q of questions" class="bp-question">
+              <span class="bp-q-marker">?</span>
+              <span class="bp-q-text">{{ q }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- ── EVENT STRIP ──────────────────────────────────────
+             v1.39i: Venue now stacks under Date in a single column —
+             keeps the date+venue pairing visible without widening the
+             strip. REF / DATE+VENUE / GUESTS / CLIENT = 4 columns. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
-            <!-- v1.39h: REF column — auto-generated project reference
-                 (e.g. WA-005). First column so it acts as the row's
-                 identifier; falls back to em-dash if missing. -->
+            <!-- REF column — auto-generated project reference (WA-005). -->
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">REF</span>
               <span class="bp-event-value">{{ project.ref || '—' }}</span>
               <span class="bp-event-sub">auto-generated</span>
             </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">DATE</span>
-              <span class="bp-event-value bp-event-value--num">{{ datePrimary || '—' }}</span>
-              <span class="bp-event-sub">{{ dateRelative }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">VENUE</span>
-              <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
-              <span class="bp-event-sub">{{ project.venue_city || '' }}</span>
+            <!-- DATE + VENUE stacked. Each keeps its own eyebrow so
+                 the user still scans the column quickly. -->
+            <div class="bp-event-col bp-event-col--stacked">
+              <div class="bp-event-stack-row">
+                <span class="bp-event-eyebrow">DATE</span>
+                <span class="bp-event-value bp-event-value--num">{{ datePrimary || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="dateRelative">{{ dateRelative }}</span>
+              </div>
+              <div class="bp-event-stack-row">
+                <span class="bp-event-eyebrow">VENUE</span>
+                <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
+              </div>
             </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">GUESTS</span>
               <span class="bp-event-value bp-event-value--num">{{ guestCount || '—' }}</span>
               <span class="bp-event-sub">{{ guestSub }}</span>
             </div>
-            <!-- v1.29b: Client column replaces the old Client Lead — the
-                 contact-name field doesn't exist on the project; just
-                 surface the client name from the joined query. -->
+            <!-- v1.29b: Client column — contact-name field doesn't
+                 exist on the project; surface the client name from
+                 the joined query. -->
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">CLIENT</span>
               <span class="bp-event-value">{{ project.client_name || '—' }}</span>
@@ -451,6 +471,57 @@ interface MessagesSummary {
       gap: 2px;
       min-width: 0;
     }
+    /* v1.39i — stacked column for Date + Venue. Two rows, each
+       carrying its own eyebrow/value/sub triple. Slightly tighter
+       internal vertical rhythm so both rows fit the strip height. */
+    .bp-event-col--stacked {
+      gap: 10px;
+    }
+    .bp-event-stack-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    /* v1.39i — Questions panel above the event strip. Parchment
+       container, theme-accent eyebrow + chevron. */
+    .bp-questions-panel {
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+    }
+    .bp-questions-toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: none; border: none; padding: 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-accent);
+      cursor: pointer;
+    }
+    .bp-questions-list {
+      list-style: none; padding: 8px 0 0 0; margin: 0;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .bp-question {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 12px; line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+    .bp-q-marker {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      color: #fff;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bp-q-text { flex: 1; min-width: 0; }
     .bp-event-eyebrow {
       font-family: var(--font-body);
       font-size: 10px;
@@ -881,6 +952,12 @@ export class OverviewComponent implements OnInit {
   msgs: Message[] = [];
   client: Client | null = null;
 
+  /** v1.39i — AI-flagged questions from parsed_brief_json.topQuestions.
+      Rendered as a collapsible panel above the event strip. Read-only
+      for now — no resolve / dismiss interaction yet. */
+  questions: string[] = [];
+  questionsOpen = true;
+
   /** v1.29: Event drawer state — opened by clicking the event strip. */
   eventDrawerVisible = false;
   /** v1.29b: Kebab menu (Edit event / Project brief) on the event strip. */
@@ -935,6 +1012,13 @@ export class OverviewComponent implements OnInit {
       this.items         = items || [];
       this.estimateItems = estimateItems || [];
       this.msgs          = messages || [];
+      // v1.39i — surface the AI's topQuestions from parsed_brief_json
+      // (persisted on create since v1.39f) in the new collapsible
+      // panel above the event strip.
+      const pj: any = (project as any)?.parsed_brief_json;
+      this.questions = Array.isArray(pj?.topQuestions)
+        ? pj.topQuestions.filter((q: any) => typeof q === 'string' && q.trim())
+        : [];
 
       // Client lookup is optional — only fire when there's a client_id
       // on the project. catchError keeps the Overview rendering even
