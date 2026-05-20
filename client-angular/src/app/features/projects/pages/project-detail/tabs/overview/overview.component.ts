@@ -104,62 +104,45 @@ interface MessagesSummary {
         <h2 class="bp-page-title">Project Overview</h2>
         <div class="bp-page-divider"></div>
 
-        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
-             v1.39i: moved here from the Brief tab. Pulls topQuestions
-             out of projects.parsed_brief_json (saved on create since
-             v1.39f). Read-only, collapsible. -->
-        <div *ngIf="questions.length" class="bp-questions-panel">
-          <button type="button" class="bp-questions-toggle"
-                  (click)="questionsOpen = !questionsOpen">
-            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
-            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
-            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
-          </button>
-          <ul class="bp-questions-list" *ngIf="questionsOpen">
-            <li *ngFor="let q of questions" class="bp-question">
-              <span class="bp-q-marker">?</span>
-              <span class="bp-q-text">{{ q }}</span>
-            </li>
-          </ul>
-        </div>
-
         <!-- ── EVENT STRIP ──────────────────────────────────────
-             v1.39i: Venue now stacks under Date in a single column —
-             keeps the date+venue pairing visible without widening the
-             strip. REF / DATE+VENUE / GUESTS / CLIENT = 4 columns. -->
+             v1.39j: now a 2-row × 3-col grid.
+               Row 1: REF | CLIENT | EVENT NAME
+               Row 2: GUESTS | DATE | VENUE
+             All values render at the same font size — the
+             value--num variant was retired so the user's eye doesn't
+             jump between numeric + label values. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
-            <!-- REF column — auto-generated project reference (WA-005). -->
+            <!-- ROW 1 -->
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">REF</span>
               <span class="bp-event-value">{{ project.ref || '—' }}</span>
               <span class="bp-event-sub">auto-generated</span>
             </div>
-            <!-- DATE + VENUE stacked. Each keeps its own eyebrow so
-                 the user still scans the column quickly. -->
-            <div class="bp-event-col bp-event-col--stacked">
-              <div class="bp-event-stack-row">
-                <span class="bp-event-eyebrow">DATE</span>
-                <span class="bp-event-value bp-event-value--num">{{ datePrimary || '—' }}</span>
-                <span class="bp-event-sub" *ngIf="dateRelative">{{ dateRelative }}</span>
-              </div>
-              <div class="bp-event-stack-row">
-                <span class="bp-event-eyebrow">VENUE</span>
-                <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
-                <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
-              </div>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">GUESTS</span>
-              <span class="bp-event-value bp-event-value--num">{{ guestCount || '—' }}</span>
-              <span class="bp-event-sub">{{ guestSub }}</span>
-            </div>
-            <!-- v1.29b: Client column — contact-name field doesn't
-                 exist on the project; surface the client name from
-                 the joined query. -->
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">CLIENT</span>
               <span class="bp-event-value">{{ project.client_name || '—' }}</span>
+            </div>
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">EVENT NAME</span>
+              <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
+            </div>
+
+            <!-- ROW 2 -->
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">GUESTS</span>
+              <span class="bp-event-value">{{ guestCount || '—' }}</span>
+              <span class="bp-event-sub">{{ guestSub }}</span>
+            </div>
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">DATE</span>
+              <span class="bp-event-value">{{ datePrimary || '—' }}</span>
+              <span class="bp-event-sub" *ngIf="dateRelative">{{ dateRelative }}</span>
+            </div>
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">VENUE</span>
+              <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
+              <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
             </div>
           </div>
           <div class="bp-event-actions">
@@ -180,6 +163,26 @@ interface MessagesSummary {
                       (click)="onEventMenu('brief', $event)">Project brief</button>
             </div>
           </div>
+        </div>
+
+        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
+             v1.39j: moved BELOW the event strip per Liam — reads more
+             naturally as "here are the facts, here are the open
+             questions". Same data (parsed_brief_json.topQuestions).
+             Hidden entirely when there are no questions. -->
+        <div *ngIf="questions.length" class="bp-questions-panel">
+          <button type="button" class="bp-questions-toggle"
+                  (click)="questionsOpen = !questionsOpen">
+            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+          </button>
+          <ul class="bp-questions-list" *ngIf="questionsOpen">
+            <li *ngFor="let q of questions" class="bp-question">
+              <span class="bp-q-marker">?</span>
+              <span class="bp-q-text">{{ q }}</span>
+            </li>
+          </ul>
         </div>
 
         <!-- v1.29: shared Event drawer — same instance reused on every
@@ -459,10 +462,16 @@ interface MessagesSummary {
        creates a stacking context which trapped the kebab dropdown
        inside the strip. Shadow change alone signals the interactive lift. */
     .bp-event-strip:hover { box-shadow: var(--shadow-sm); }
+    /* v1.39j — 3 columns wrapping to 2 rows.
+         Row 1: REF | CLIENT | EVENT NAME
+         Row 2: GUESTS | DATE | VENUE
+       row-gap is tighter than column-gap so the two rows read as
+       one block, not two stacked strips. */
     .bp-event-cols {
       display: grid;
-      grid-template-columns: repeat(4, minmax(120px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      column-gap: 24px;
+      row-gap: 14px;
       flex: 1;
     }
     .bp-event-col {
@@ -471,21 +480,10 @@ interface MessagesSummary {
       gap: 2px;
       min-width: 0;
     }
-    /* v1.39i — stacked column for Date + Venue. Two rows, each
-       carrying its own eyebrow/value/sub triple. Slightly tighter
-       internal vertical rhythm so both rows fit the strip height. */
-    .bp-event-col--stacked {
-      gap: 10px;
-    }
-    .bp-event-stack-row {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-    /* v1.39i — Questions panel above the event strip. Parchment
+    /* v1.39j — Questions panel below the event strip. Parchment
        container, theme-accent eyebrow + chevron. */
     .bp-questions-panel {
+      margin-top: 16px;
       margin-bottom: 16px;
       padding: 10px 14px;
       background: var(--theme-bg);
@@ -530,24 +528,21 @@ interface MessagesSummary {
       text-transform: uppercase;
       color: var(--theme-accent);
     }
-    .bp-event-value {
+    /* v1.39j — single font-size for every value in the strip
+       (was 14px for text + 16px --num for date/guest). The number
+       variant is no longer applied; if any legacy markup still
+       references it, the override below makes it match the default
+       so we don't have to chase down every call site. */
+    .bp-event-value,
+    .bp-event-value--num {
       font-family: var(--font-body);
       font-size: 14px;
       font-weight: 500;
+      line-height: 1.3;
       color: var(--color-text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-    /* v1.31: standardised on the body font for date + guest values so
-       they sit alongside Venue / Client without the serif/body
-       mismatch ("July 4th" reading differently to "Kings Cross
-       Station"). Size + weight unchanged. */
-    .bp-event-value--num {
-      font-family: var(--font-body);
-      font-weight: 500;
-      font-size: 16px;
-      line-height: 1.2;
     }
     .bp-event-sub {
       font-family: var(--font-body);
