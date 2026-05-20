@@ -1127,20 +1127,37 @@ export class CreateProjectModalComponent implements OnInit {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
-  /** "£40,000" / "£20,000–£22,000" / "£200k" → number (midpoint for
-      ranges). Returns null on Unknown / unparseable. */
+  /** "£40,000" / "£20,000–£22,000" / "£200k" / "£40,000 (1-day)" →
+      number (midpoint for ranges, leftmost amount otherwise). Returns
+      null on Unknown / unparseable. Defensive against parentheticals
+      like "(1-day)" that previously made the range regex misfire. */
   private parseBudgetString(s?: string): number | null {
     if (!s) return null;
-    const norm = s.replace(/[£,]/g, '').replace(/–|—/g, '-');
-    if (/unknown|tbc/i.test(norm)) return null;
+    // Strip parentheticals first so "(1-day)" can't be misread as a
+    // range. Also drop the £/€/$ symbols and convert en/em dashes to
+    // hyphens so the regexes below stay simple.
+    const norm = s
+      .replace(/\(.*?\)/g, ' ')
+      .replace(/[£$€,]/g, '')
+      .replace(/–|—/g, '-')
+      .trim();
+    if (!norm || /unknown|tbc|n\/a/i.test(norm)) return null;
+    // Range: two amounts separated by " - " (with optional k/m suffixes).
     const range = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?\s*-\s*(\d+(?:\.\d+)?)\s*([kKmM])?/);
     if (range) {
       const a = this.toNumber(range[1], range[2]);
       const b = this.toNumber(range[3], range[4]);
-      return Math.round((a + b) / 2);
+      // Only treat as a range if both sides are budget-plausible. A
+      // mis-parsed "40 - 1" (from "40,000 (1-day)" residue) would
+      // otherwise collapse to 20.5 — guard with a sanity floor.
+      if (a >= 100 && b >= 100) return Math.round((a + b) / 2);
     }
+    // Single figure: take the first plausible amount.
     const single = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?/);
-    if (single) return Math.round(this.toNumber(single[1], single[2]));
+    if (single) {
+      const n = this.toNumber(single[1], single[2]);
+      if (n >= 100) return Math.round(n);
+    }
     return null;
   }
   private toNumber(n: string, suffix?: string): number {

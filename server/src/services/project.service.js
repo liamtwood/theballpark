@@ -54,8 +54,39 @@ async function create(data) {
     event_type, duration_days, po_ref, currency,
     // v1.39: allow caller-supplied ref to short-circuit the auto-gen
     // (e.g. seed scripts that want a known value).
-    ref
+    ref,
+    // v1.39d: AI-first create-project modal sends client_name (free
+    // text from the brief — e.g. "Angel Delight"). projects has no
+    // such column, so we find-or-create against clients and use
+    // client_id below. Same pattern as the Event drawer's save.
+    client_name
   } = data;
+
+  // v1.39d — resolve client_name → client_id (find-or-create against
+  // the clients table). Skipped if the caller already passed client_id
+  // explicitly (modal future-proofing), or if no name was supplied.
+  if (!client_id && client_name && org_id && typeof client_name === 'string') {
+    const trimmed = client_name.trim();
+    if (trimmed) {
+      const existing = await pool.query(
+        `SELECT id FROM clients
+          WHERE org_id = $1 AND LOWER(name) = LOWER($2) AND is_active = true
+          LIMIT 1`,
+        [org_id, trimmed]
+      );
+      if (existing.rows.length) {
+        client_id = existing.rows[0].id;
+      } else {
+        const created = await pool.query(
+          `INSERT INTO clients (org_id, name, is_active)
+           VALUES ($1, $2, true)
+           RETURNING id`,
+          [org_id, trimmed]
+        );
+        client_id = created.rows[0].id;
+      }
+    }
+  }
   // v1.31: default new projects to the draft status row so they land
   // in the Active Events bucket on the dashboard. Previously the
   // intake modal created projects with status_id=null which made them
