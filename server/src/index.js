@@ -1,4 +1,10 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+// v1.39b: `override: true` so values in /.env win against anything
+// pre-set in the shell environment (e.g. an empty ANTHROPIC_API_KEY
+// inherited from a parent process — silently ignored without this).
+require('dotenv').config({
+  path: require('path').resolve(__dirname, '../../.env'),
+  override: true
+});
 
 console.log('[STARTUP] APP_SCHEMA:', process.env.APP_SCHEMA || '(not set — defaults to public)');
 
