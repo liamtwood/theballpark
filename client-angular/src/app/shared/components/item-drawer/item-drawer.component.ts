@@ -1217,7 +1217,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       the supplier catalogue page passes the user's active category so a
       new item lands in the right place without re-typing.
       Ignored when `item` is set (edit/view modes populate from the item). */
-  @Input() prefill: { category_id?: string; subcategory_id?: string } | null = null;
+  @Input() prefill: { category_id?: string; subcategory_id?: string; org_id?: string } | null = null;
 
   @Output() saved = new EventEmitter<Item>();
   @Output() cancelled = new EventEmitter<void>();
@@ -1954,18 +1954,20 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     if (this.mode === 'edit' && this.item) {
       op$ = this.itemSvc.update(this.item.id, payload);
     } else {
-      // add mode
-      if (!this.currentOrg) {
+      // add mode — the item belongs to prefill.org_id when supplied (e.g.
+      // adding from a supplier's catalogue page), else the logged-in org.
+      const targetOrgId = this.prefill?.org_id || this.currentOrg?.id;
+      if (!targetOrgId) {
         this.saving = false;
         this.msg.add({
           severity: 'error',
-          summary: 'No current org',
+          summary: 'No org context',
           detail: 'Cannot save item without an org context.'
         });
         this.cdr.markForCheck();
         return;
       }
-      (payload as any).org_id = this.currentOrg.id;
+      (payload as any).org_id = targetOrgId;
       op$ = this.itemSvc.create(payload);
     }
 

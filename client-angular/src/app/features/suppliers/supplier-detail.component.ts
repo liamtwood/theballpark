@@ -705,7 +705,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   /** Seed values passed to the drawer in add mode. Computed from the
       catalogue-grid's current category filter on each Add click so the
       drawer lands pre-populated with the user's contextual view. */
-  addPrefill: { category_id?: string; subcategory_id?: string } | null = null;
+  addPrefill: { category_id?: string; subcategory_id?: string; org_id?: string } | null = null;
 
   @ViewChild(CatalogueGridComponent) private catGrid?: CatalogueGridComponent;
 
@@ -1039,7 +1039,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   openAddItemDrawer() {
     this.drawerItem = null;
     this.drawerMode = 'add';
-    this.addPrefill = this.computeAddPrefill();
+    // v1.43a — the new item belongs to the SUPPLIER whose page this is
+    // (this.sid), not the logged-in org. Without this, an agency adding
+    // an item from a supplier's catalogue filed it under the agency.
+    this.addPrefill = { ...(this.computeAddPrefill() ?? {}), org_id: this.sid };
     this.showItemDrawer = true;
     this.cdr.detectChanges();
   }
