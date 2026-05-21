@@ -268,7 +268,7 @@ const migrate = async () => {
 
       -- Estimate Items
       -- NOTE: this CREATE block reflects the v1.13 production schema:
-      --   - `unit_price` renamed to `offer_price` (deal-specific proposal
+      --   - unit_price renamed to offer_price (deal-specific proposal
       --     editable until approved_at locks it).
       --   - Added budget_price (agency expectation), ballpark_snapshot
       --     (catalogue anchor at request time), inspired_by_item_id (FK
@@ -276,9 +276,9 @@ const migrate = async () => {
       --     (deal lock), duration (time dimension), unit + time_unit
       --     (inherited from item on creation, mutable on the deal), and
       --     attributes JSONB.
-      --   - total_price = quantity × duration × offer_price.
-      -- The earlier `unit` and `is_active` columns were dropped in dev
-      -- before v1.13 — see the idempotent ALTER block below for the
+      --   - total_price = quantity x duration x offer_price.
+      -- The earlier unit and is_active columns were dropped in dev
+      -- before v1.13 -- see the idempotent ALTER block below for the
       -- reconciliation applied to older databases.
       CREATE TABLE IF NOT EXISTS preview.estimate_items (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -441,8 +441,8 @@ const migrate = async () => {
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
       -- estimate_items drift reconciliation. The legacy CREATE block had
-      -- `unit VARCHAR(50)` and `is_active BOOLEAN` columns that were dropped
-      -- in dev out-of-band; `shortlisted` + `status_id` were added at the
+      -- unit VARCHAR(50) and is_active BOOLEAN columns that were dropped
+      -- in dev out-of-band; shortlisted + status_id were added at the
       -- same time. These ALTERs converge any older DB to the new shape
       -- without losing data (the dropped columns held no application data).
       ALTER TABLE public.estimate_items  DROP COLUMN IF EXISTS unit;
@@ -535,12 +535,468 @@ const migrate = async () => {
       ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
       ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
+
+      -- v1.39: org project-ref prefix + counter, and the resulting
+      -- auto-generated project ref column. The create-project modal
+      -- now stamps every new project with "{prefix}-{counter:03}"
+      -- (e.g. WA-014). Counter is incremented atomically server-side
+      -- on every successful project create. ref_prefix defaults to
+      -- 'BP' if the org owner hasn't customised it in Settings.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_prefix    VARCHAR(10) DEFAULT 'BP';
+
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
+
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+
+      -- v1.39f: bring preview + master categories schemas in line
+      -- with public — the namespace + model + icon_name/color +
+      -- object_type columns were added to public over time but
+      -- never carried across, so the Photography seed below would
+      -- otherwise fail on master.
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS namespace   VARCHAR(20)  DEFAULT 'catalogue';
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS namespace   VARCHAR(20)  DEFAULT 'catalogue';
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS model       VARCHAR(50);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS model       VARCHAR(50);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS icon_name   VARCHAR(50);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS icon_name   VARCHAR(50);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS icon_color  VARCHAR(20);
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS icon_color  VARCHAR(20);
+      ALTER TABLE preview.categories ADD COLUMN IF NOT EXISTS object_type VARCHAR(20) DEFAULT 'category';
+      ALTER TABLE master.categories  ADD COLUMN IF NOT EXISTS object_type VARCHAR(20) DEFAULT 'category';
+
+      -- v1.39f: Photography catalogue category. AI parser returns
+      -- "photography" as a categoryId — without a matching row the
+      -- modal silently drops those categories on save. Idempotent
+      -- INSERT ... WHERE NOT EXISTS so re-runs are no-ops.
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Photography', 'Stills, video, content capture and earned-media coverage.',
+             'Camera', 12, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+
+      -- v1.40: three new catalogue categories required by the full
+      -- subcategory taxonomy.
+      --   Set Build         — scenic, dressing, theming (distinct
+      --                       from Stand Structure which is the
+      --                       physical build)
+      --   Event Accessories — red carpets, gift bags, lanyards,
+      --                       scent design, etc.
+      --   Other             — PM fees, contingency, design fees and
+      --                       other admin lines that don't fit a
+      --                       supplier category.
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
+             'Paintbrush', 13, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
+             'Sparkles', 14, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Event Accessories' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+
+      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM preview.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
+      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
+      SELECT 'Other', 'Project management fees, design fees, contingency, travel and other admin lines.',
+             'MoreHorizontal', 15, 'catalogue', NULL
+      WHERE NOT EXISTS (
+        SELECT 1 FROM master.categories
+         WHERE name = 'Other' AND namespace = 'catalogue' AND parent_id IS NULL
+      );
     `);
+
+    // v1.40: ensure tag table exists in preview + master. It was
+    // created in public via a one-off migration (migration_category_tags
+    // .sql) but never carried across. Mirror the public schema exactly
+    // so the same INSERTs below work uniformly.
+    for (const schema of ['preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.tag (
+          id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          category_id UUID NOT NULL REFERENCES ${schema}.categories(id) ON DELETE CASCADE,
+          label       TEXT NOT NULL,
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_category_id_label_key
+          ON ${schema}.tag (category_id, label);
+      `);
+    }
+
+    // v1.40: seed the complete subcategory taxonomy. ~140 tags across
+    // 17 catalogue groupings. Idempotent — `ON CONFLICT (category_id,
+    // label) DO NOTHING` thanks to the unique constraint on
+    // (category_id, label). Lookup is by category name so the same
+    // SQL works across public/preview/master (UUIDs differ per schema).
+    //
+    // Mapping decisions (Liam, v1.40 brief):
+    //   - "Set Build" → new category (NOT Stand Structure)
+    //   - "Talent & Staffing" tags → existing "Staffing" (no rename)
+    //   - "Photography & Content" tags → existing "Photography"
+    //   - "Event Accessories" → new category
+    //   - "Venues" tags → existing "Venue" (singular)
+    //   - "Other" → new category
+    //   - Construction & Build left as-is (its 5 existing tags untouched)
+    //
+    // No dedupe — if a label already exists with slight variation
+    // (e.g. "Outdoor Structures" vs "Outdoor Structure") both stay.
+    const TAXONOMY = [
+      // Stand Structure
+      ['Stand Structure', 'Shell Scheme', 1],
+      ['Stand Structure', 'Space Only / Custom Build', 2],
+      ['Stand Structure', 'Modular / Reusable Systems', 3],
+      ['Stand Structure', 'Pop-Up / Activation Structures', 4],
+      ['Stand Structure', 'Bespoke Fabrication', 5],
+      ['Stand Structure', 'Inflatables', 6],
+      ['Stand Structure', 'Tensile / Canopy / Tent', 7],
+      ['Stand Structure', 'Container / Portacabin Conversion', 8],
+      ['Stand Structure', 'Stage / Platform Build', 9],
+      ['Stand Structure', 'Outdoor Structure', 10],
+      // Set Build (new)
+      ['Set Build', 'Set Dressing / Styling', 1],
+      ['Set Build', 'Scenic Painting', 2],
+      ['Set Build', 'Props & Theming', 3],
+      ['Set Build', 'Window Display', 4],
+      ['Set Build', 'Shop / Retail Fit-Out', 5],
+      ['Set Build', 'Immersive Environment', 6],
+      ['Set Build', 'Photo Moment / Selfie Wall', 7],
+      ['Set Build', 'Green Room / Backstage Build', 8],
+      // Flooring
+      ['Flooring', 'Carpet / Carpet Tile', 1],
+      ['Flooring', 'Vinyl / Lino', 2],
+      ['Flooring', 'Raised Floor / Platform', 3],
+      ['Flooring', 'Outdoor Flooring / Trackway', 4],
+      ['Flooring', 'Dance Floor', 5],
+      ['Flooring', 'Branded Floor Graphics', 6],
+      // Lighting
+      ['Lighting', 'Architectural / Wash Lighting', 1],
+      ['Lighting', 'Spot / Feature Lighting', 2],
+      ['Lighting', 'Festoon / Fairy Lights', 3],
+      ['Lighting', 'Neon / LED Signage', 4],
+      ['Lighting', 'Gobo Projection', 5],
+      ['Lighting', 'Uplighting', 6],
+      ['Lighting', 'Intelligent / Moving Head', 7],
+      ['Lighting', 'Outdoor / Weatherproof Lighting', 8],
+      ['Lighting', 'Ambient / Mood Lighting', 9],
+      // AV & Technology
+      ['AV & Technology', 'PA & Sound System', 1],
+      ['AV & Technology', 'Microphones', 2],
+      ['AV & Technology', 'Mixing & Playback', 3],
+      ['AV & Technology', 'LED Wall & Screens', 4],
+      ['AV & Technology', 'TV & Monitors', 5],
+      ['AV & Technology', 'Projection', 6],
+      ['AV & Technology', 'Streaming & Recording', 7],
+      ['AV & Technology', 'Control & Infrastructure', 8],
+      ['AV & Technology', 'Interactive / Touchscreen', 9],
+      ['AV & Technology', 'VR / AR Experience', 10],
+      ['AV & Technology', 'WiFi & Connectivity', 11],
+      // Furniture & Fixtures
+      ['Furniture & Fixtures', 'Seating', 1],
+      ['Furniture & Fixtures', 'Tables', 2],
+      ['Furniture & Fixtures', 'Bar & Counter Units', 3],
+      ['Furniture & Fixtures', 'Shelving & Display Units', 4],
+      ['Furniture & Fixtures', 'Outdoor Furniture', 5],
+      ['Furniture & Fixtures', 'Lounge & Breakout Sets', 6],
+      ['Furniture & Fixtures', 'Plinths & Pedestals', 7],
+      ['Furniture & Fixtures', 'Reception / Registration Desk', 8],
+      ['Furniture & Fixtures', 'Retail Fixtures', 9],
+      ['Furniture & Fixtures', 'Storage / Containers / Bins', 10],
+      // Catering & Hospitality
+      ['Catering & Hospitality', 'Catering Company / Chef', 1],
+      ['Catering & Hospitality', 'Drinks & Mixology', 2],
+      ['Catering & Hospitality', 'Coffee & Hot Drinks', 3],
+      ['Catering & Hospitality', 'Afternoon Tea & Canapés', 4],
+      ['Catering & Hospitality', 'Catering Equipment Hire', 5],
+      ['Catering & Hospitality', 'Staffing (F&B)', 6],
+      ['Catering & Hospitality', 'Product Sampling', 7],
+      ['Catering & Hospitality', 'Food Truck / Street Food', 8],
+      ['Catering & Hospitality', 'Ice Cream / Dessert', 9],
+      ['Catering & Hospitality', 'Dietary & Allergen Management', 10],
+      // Florals
+      ['Florals', 'Table Centrepieces', 1],
+      ['Florals', 'Entrance & Arch Florals', 2],
+      ['Florals', 'Hanging Installations', 3],
+      ['Florals', 'Potted Plants & Greenery', 4],
+      ['Florals', 'Dried & Artificial Botanicals', 5],
+      ['Florals', 'Branded / Colour-Matched Arrangements', 6],
+      ['Florals', 'Sustainable / Seasonal Florals', 7],
+      // Graphics & Signage
+      ['Graphics & Signage', 'Large Format Print', 1],
+      ['Graphics & Signage', 'Vinyl & Wraps', 2],
+      ['Graphics & Signage', 'Fabric / Tension Graphics', 3],
+      ['Graphics & Signage', 'Wayfinding & Directional', 4],
+      ['Graphics & Signage', 'A-Frames / Freestanding', 5],
+      ['Graphics & Signage', 'Step & Repeat / Press Wall', 6],
+      ['Graphics & Signage', 'Vehicle / Fleet Wraps', 7],
+      ['Graphics & Signage', 'Window Graphics', 8],
+      ['Graphics & Signage', 'Digital Print / Packaging', 9],
+      ['Graphics & Signage', 'Branded Merchandise / Collateral', 10],
+      // Health & Safety
+      ['Health & Safety', 'Risk Assessment / RAMS', 1],
+      ['Health & Safety', 'Public Liability Insurance', 2],
+      ['Health & Safety', 'Fire Safety / Marshal', 3],
+      ['Health & Safety', 'First Aid Cover', 4],
+      ['Health & Safety', 'Crowd Management / Barriers', 5],
+      ['Health & Safety', 'Food Safety / Hygiene', 6],
+      ['Health & Safety', 'Structural Certification', 7],
+      ['Health & Safety', 'DBS / Safeguarding', 8],
+      ['Health & Safety', 'Licensing / Permits', 9],
+      // Logistics & Transport
+      ['Logistics & Transport', 'Transport & Delivery', 1],
+      ['Logistics & Transport', 'Load-In / Load-Out Crew', 2],
+      ['Logistics & Transport', 'Storage & Warehousing', 3],
+      ['Logistics & Transport', 'Generator / Temp Power', 4],
+      ['Logistics & Transport', 'Water & Plumbing', 5],
+      ['Logistics & Transport', 'Waste Management / Recycling', 6],
+      ['Logistics & Transport', 'Freight / International Shipping', 7],
+      ['Logistics & Transport', 'Site Survey / Recce', 8],
+      ['Logistics & Transport', 'Event Insurance', 9],
+      ['Logistics & Transport', 'Parking / Traffic Management', 10],
+      // Entertainment
+      ['Entertainment', 'Live Band / Musician', 1],
+      ['Entertainment', 'DJ', 2],
+      ['Entertainment', 'MC / Host', 3],
+      ['Entertainment', 'Comedian / Speaker', 4],
+      ['Entertainment', 'Performance Act', 5],
+      ['Entertainment', 'Interactive Experience', 6],
+      ['Entertainment', "Children's Entertainment", 7],
+      ['Entertainment', 'Roaming / Ambient Acts', 8],
+      // Staffing  (← Prompt 1's "Talent & Staffing")
+      ['Staffing', 'Brand Ambassador', 1],
+      ['Staffing', 'Event Manager / Producer', 2],
+      ['Staffing', 'Registration / Front of House', 3],
+      ['Staffing', 'Technical Crew', 4],
+      ['Staffing', 'Runners / General Staff', 5],
+      ['Staffing', 'Promotional Staff', 6],
+      ['Staffing', 'Specialist Staff (DBS, First Aid)', 7],
+      ['Staffing', 'Influencer / KOL Coordination', 8],
+      ['Staffing', 'Interpreter / Multilingual Staff', 9],
+      // Photography  (← Prompt 1's "Photography & Content")
+      ['Photography', 'Event Photographer', 1],
+      ['Photography', 'Videographer / Film Crew', 2],
+      ['Photography', 'Drone Photography', 3],
+      ['Photography', 'Social Media Content', 4],
+      ['Photography', 'Live Streaming Crew', 5],
+      ['Photography', 'Photo Booth / Activation', 6],
+      ['Photography', 'Same-Day Edit / Highlights', 7],
+      ['Photography', '360° / VR Capture', 8],
+      // Event Accessories (new)
+      ['Event Accessories', 'Red Carpet / Rope & Post', 1],
+      ['Event Accessories', 'Gift Bags / Welcome Packs', 2],
+      ['Event Accessories', 'Lanyards / Badges / Wristbands', 3],
+      ['Event Accessories', 'Table Dressing / Linen', 4],
+      ['Event Accessories', 'Glassware / Crockery Hire', 5],
+      ['Event Accessories', 'Branded Uniforms / Workwear', 6],
+      ['Event Accessories', 'Balloons / Confetti / Pyro', 7],
+      ['Event Accessories', 'Scent / Aroma Design', 8],
+      // Venue  (← Prompt 1's "Venues")
+      ['Venue', 'Exhibition Centre', 1],
+      ['Venue', 'Hotel / Conference', 2],
+      ['Venue', 'Museum / Gallery', 3],
+      ['Venue', 'Outdoor / Park / Garden', 4],
+      ['Venue', 'Warehouse / Industrial', 5],
+      ['Venue', 'Restaurant / Bar', 6],
+      ['Venue', 'Unique / Non-Traditional', 7],
+      ['Venue', 'Festival Site / Field', 8],
+      ['Venue', 'Retail Unit / Pop-Up Shop', 9],
+      ['Venue', 'Studio / Broadcast', 10],
+      // Other (new)
+      ['Other', 'Project Management Fee', 1],
+      ['Other', 'Design & Creative Fee', 2],
+      ['Other', 'Contingency', 3],
+      ['Other', 'Client Hospitality', 4],
+      ['Other', 'Travel & Accommodation', 5],
+      ['Other', 'Miscellaneous', 6],
+    ];
+    // Render the VALUES list once. Single-quotes need doubling for SQL.
+    const valuesSql = TAXONOMY
+      .map(([cat, label, ord]) => `(${"'"}${cat.replace(/'/g, "''")}${"'"}, ${"'"}${label.replace(/'/g, "''")}${"'"}, ${ord})`)
+      .join(',\n        ');
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        WITH src(cat_name, label, sort_order) AS (
+          VALUES
+            ${valuesSql}
+        )
+        INSERT INTO ${schema}.tag (category_id, label, sort_order)
+        SELECT c.id, src.label, src.sort_order
+          FROM src
+          JOIN ${schema}.categories c
+            ON c.name = src.cat_name
+           AND c.namespace = 'catalogue'
+           AND c.parent_id IS NULL
+        ON CONFLICT (category_id, label) DO NOTHING;
+      `);
+    }
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
     console.log('  project_items table + unique index ensured.');
     console.log('  orgs.auto_publish_items ensured.');
+    console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
+    console.log('  Photography catalogue category ensured (v1.39f).');
+    console.log('  Set Build / Event Accessories / Other catalogue categories ensured (v1.40).');
+    console.log(`  Subcategory taxonomy seeded — ${TAXONOMY.length} tags × 3 schemas (v1.40).`);
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.41 — promote the TAXONOMY labels into CHILD CATEGORY rows so
+    // the categories table is the canonical subcategory source (the
+    // two-field model on items uses categories.parent_id, not the tag
+    // table). Tag table stays seeded for a future use.
+    //
+    // Idempotent: only inserts labels that don't already exist as a
+    // child of the same parent. Preserves the 27 existing Catering
+    // children (Working Lunch, Canapes, etc.) — they coexist with
+    // the new ones from the taxonomy.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        WITH src(cat_name, label, sort_order) AS (
+          VALUES
+            ${valuesSql}
+        )
+        INSERT INTO ${schema}.categories (name, parent_id, sort_order, namespace, icon, icon_name)
+        SELECT src.label, p.id, src.sort_order, 'catalogue', NULL, NULL
+          FROM src
+          JOIN ${schema}.categories p
+            ON p.name = src.cat_name
+           AND p.namespace = 'catalogue'
+           AND p.parent_id IS NULL
+         WHERE NOT EXISTS (
+            SELECT 1 FROM ${schema}.categories c
+             WHERE c.name = src.label
+               AND c.parent_id = p.id
+         );
+      `);
+    }
+    console.log('  Child categories promoted from taxonomy (v1.41).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.41 — two-field subcategory model on items.
+    //   items.category_id    = ALWAYS a parent category (parent_id IS NULL)
+    //   items.subcategory_id = NULL or a child category (parent_id set)
+    // Plus a BEFORE INSERT/UPDATE trigger that rejects rows where the
+    // subcategory's parent_id doesn't match the row's category_id.
+    // ─────────────────────────────────────────────────────────────────
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES public.categories(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES preview.categories(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES master.categories(id);
+    `);
+
+    // Idempotent migration: any item whose category_id currently
+    // points at a CHILD category gets split — move category_id up to
+    // the parent, set subcategory_id to the original child. Re-runs
+    // are no-ops (items already on parents won't match the JOIN).
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        UPDATE ${schema}.items i
+           SET subcategory_id = i.category_id,
+               category_id    = c.parent_id
+          FROM ${schema}.categories c
+         WHERE c.id = i.category_id
+           AND c.parent_id IS NOT NULL;
+      `);
+    }
+
+    // Subcategory ↔ category validation trigger. The function is
+    // schema-qualified to keep public/preview/master functions
+    // independent. CREATE OR REPLACE + DROP TRIGGER IF EXISTS makes
+    // both safe to re-run.
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE OR REPLACE FUNCTION ${schema}.check_item_subcategory()
+        RETURNS TRIGGER AS $body$
+        BEGIN
+          IF NEW.subcategory_id IS NOT NULL THEN
+            IF NOT EXISTS (
+              SELECT 1 FROM ${schema}.categories
+               WHERE id = NEW.subcategory_id
+                 AND parent_id = NEW.category_id
+            ) THEN
+              RAISE EXCEPTION 'Subcategory % does not belong to category %',
+                NEW.subcategory_id, NEW.category_id;
+            END IF;
+          END IF;
+          RETURN NEW;
+        END;
+        $body$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trg_check_item_subcategory ON ${schema}.items;
+        CREATE TRIGGER trg_check_item_subcategory
+          BEFORE INSERT OR UPDATE ON ${schema}.items
+          FOR EACH ROW EXECUTE FUNCTION ${schema}.check_item_subcategory();
+      `);
+    }
+    console.log('  items.subcategory_id column ensured + 15 items migrated + trg_check_item_subcategory installed (v1.41).');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');

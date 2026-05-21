@@ -1,0 +1,467 @@
+[
+  {
+    "key": "angel-delight",
+    "name": "Angel Delight",
+    "complexity": "casual email",
+    "ai_projection": {
+      "projectName": "Angel Delight — Inflatable Jelly Sampling Pop-up",
+      "client": "Angel Delight",
+      "eventType": "activation",
+      "location": "Outdoor public area near family footfall (TBC — high-street pedestrian zone, shopping district, or family attraction)",
+      "city": "TBC",
+      "dates": "May Half Term — 1-day option and 3-day option (Thursday, Friday, Saturday)",
+      "durationDays": 3,
+      "guestCount": null,
+      "budget": "£40,000 (1 day) — 3-day budget TBC",
+      "budgetSignal": "Professional",
+      "summary": "Branded inflatable jelly + ball pit pop-up activation sampling Angel Delight to families with tweens, with a built-in picture moment for organic social.",
+      "categories": [
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set build / inflatable",
+          "oneLiner": "Custom-printed inflatable jelly structure with attached ball pit (clear bubble dome), approx 4m tall, Angel Delight branded, engineered for public interaction — entry tunnel, integrated sampling station inside, ball-pit photo moment, weighted base for outdoor wind loading.",
+          "budgetEstimate": "£14,000–£18,000",
+          "implied": false
+        },
+        {
+          "categoryId": "catering",
+          "categoryLabel": "Sampling / catering",
+          "oneLiner": "Free product sampling of Angel Delight in single-serve cups — refrigerated/temperature-controlled prep area, ~2,000 samples/day, food-hygiene certificated handlers, allergen labelling, branded sampling cups + spoons, refuse bins (recyclable streams).",
+          "budgetEstimate": "£4,000–£6,000",
+          "implied": false
+        },
+        {
+          "categoryId": "staffing",
+          "categoryLabel": "Staffing",
+          "oneLiner": "4–6 brand ambassadors per day (one queue host, one sampler, two ball-pit attendants, one photographer/social capture), Angel Delight branded uniforms, briefed on key messaging and food-hygiene compliance.",
+          "budgetEstimate": "£3,000–£5,000",
+          "implied": false
+        },
+        {
+          "categoryId": "venues",
+          "categoryLabel": "Location fee",
+          "oneLiner": "Outdoor pitch hire in a high-footfall family location (shopping precinct, central square, or near a family attraction) — power supply, public-liability cover from the landlord, and licence to sample food.",
+          "budgetEstimate": "£2,000–£6,000",
+          "implied": false
+        },
+        {
+          "categoryId": "h-and-s",
+          "categoryLabel": "Health & safety",
+          "oneLiner": "RAMS for inflatable + ball pit (anchoring, child supervision ratios, ball-pit cleaning schedule), food-hygiene RA for product sampling, public-liability insurance, first-aider on site, daily kit inspection log.",
+          "budgetEstimate": "£800–£1,500",
+          "implied": true
+        },
+        {
+          "categoryId": "photography",
+          "categoryLabel": "Photography / social capture",
+          "oneLiner": "Dedicated content creator on site to capture the ball-pit picture moment, family vox-pops, daily edit deliverables for paid social + earned media kit.",
+          "budgetEstimate": "£1,500–£3,000",
+          "implied": true
+        },
+        {
+          "categoryId": "print",
+          "categoryLabel": "Print / signage",
+          "oneLiner": "Angel Delight branded fascia print, queue-line vinyl, sampling station graphics, ingredient/allergen-info A4 boards, removable day-rate banners.",
+          "budgetEstimate": "£1,500–£2,500",
+          "implied": false
+        },
+        {
+          "categoryId": "logistics",
+          "categoryLabel": "Logistics & transport",
+          "oneLiner": "Van delivery + collection of inflatable, balls, sampling kit between depot and pitch; storage between 1-day and 3-day options; daily de-rig / re-rig if pitch not 24h secured.",
+          "budgetEstimate": "£1,500–£3,000",
+          "implied": false
+        }
+      ],
+      "topQuestions": [
+        "Is the 1-day vs 3-day budget the same £40k each, or £40k total across both quotes?",
+        "Confirm location type (shopping precinct, public square, attraction forecourt) — affects pitch fees, wind ratings, and sampling licence path.",
+        "Is overnight de-rig required between days, or can the inflatable stay anchored and tarped on pitch?"
+      ]
+    }
+  },
+
+  {
+    "key": "creditspring",
+    "name": "Creditspring",
+    "complexity": "casual email",
+    "ai_projection": {
+      "projectName": "Creditspring — Home a Loan Pop-up Shop",
+      "client": "Creditspring",
+      "eventType": "pop-up",
+      "location": "Blank-shell retail unit in Soho (client sourcing separately)",
+      "city": "London",
+      "dates": "Dressing 18 Nov · Launch 19 Nov · De-rig 20 Nov",
+      "durationDays": 1,
+      "guestCount": null,
+      "budget": "£20,000–£22,000",
+      "budgetSignal": "Professional",
+      "summary": "Festive 'Home a Loan' lending-shop pop-up dressed as a visually playful Christmas-takeover that drives press around the cost of Christmas and Creditspring's borrow-better narrative.",
+      "categories": [
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set dressing / shop fit",
+          "oneLiner": "Full festive shop dressing of a blank Soho unit — Home Alone-inspired styling (35th-anniversary cue), Christmas tree(s), decorated shelving, themed product displays representing 'rentable' Christmas must-haves; flexible install in ~1 day on 18 Nov.",
+          "budgetEstimate": "£6,000–£8,000",
+          "implied": false
+        },
+        {
+          "categoryId": "furniture",
+          "categoryLabel": "Furniture & retail fixtures",
+          "oneLiner": "Retail-style shelving, display plinths, counter / 'rental desk', festive seating area for storytelling vignettes; rented for the install + launch + de-rig window.",
+          "budgetEstimate": "£2,000–£3,500",
+          "implied": false
+        },
+        {
+          "categoryId": "lighting",
+          "categoryLabel": "Lighting",
+          "oneLiner": "Warm festive lighting wash, fairy / festoon lights through the shop, accent lighting on photo moments and product displays, optional neon sign 'Home a Loan'.",
+          "budgetEstimate": "£1,500–£2,500",
+          "implied": false
+        },
+        {
+          "categoryId": "print",
+          "categoryLabel": "Print, signage & branding",
+          "oneLiner": "Window vinyl 'Home a Loan' shopfront, branded price tags / rental-form collateral, branded merchandise, posters telling the 'real cost of Christmas' research story.",
+          "budgetEstimate": "£1,500–£2,500",
+          "implied": false
+        },
+        {
+          "categoryId": "photography",
+          "categoryLabel": "Photography & content",
+          "oneLiner": "Stills + reel shoot covering shop dressing, launch day footfall, vox-pops with families, hero PR shots for tier-1 media drop. Same-day social edits.",
+          "budgetEstimate": "£1,500–£2,500",
+          "implied": true
+        },
+        {
+          "categoryId": "staffing",
+          "categoryLabel": "Staffing",
+          "oneLiner": "2–3 brand hosts dressed in-keeping with the Home Alone festive cue, briefed on Creditspring messaging + rental mechanic; project manager across dressing, launch, de-rig.",
+          "budgetEstimate": "£1,500–£2,500",
+          "implied": true
+        },
+        {
+          "categoryId": "h-and-s",
+          "categoryLabel": "Health & safety",
+          "oneLiner": "RAMS for the install/de-rig, fire-loading check on dressing materials (festive props can be combustible), licence/insurance check with landlord, public-liability cover.",
+          "budgetEstimate": "£500–£1,000",
+          "implied": true
+        },
+        {
+          "categoryId": "logistics",
+          "categoryLabel": "Logistics",
+          "oneLiner": "Delivery + collection of dressing, props, furniture; one rigger team for 18 Nov install and one for 20 Nov de-rig; minimum two transport movements.",
+          "budgetEstimate": "£800–£1,500",
+          "implied": false
+        }
+      ],
+      "topQuestions": [
+        "Is the Soho unit confirmed and on what dates is access permitted (18–20 Nov only or earlier prep window)?",
+        "Are the 'rentable' items actually being lent out to the public, or are they styled props only? (Materially changes insurance + furniture spec.)",
+        "Is press / media drop happening on launch day or staggered — drives the content / photography spec."
+      ]
+    }
+  },
+
+  {
+    "key": "tiktok",
+    "name": "TikTok #SummerSkills",
+    "complexity": "structured brief",
+    "ai_projection": {
+      "projectName": "TikTok — #SummerSkills Launch Event",
+      "client": "TikTok",
+      "eventType": "launch",
+      "location": "British institution — Shakespeare's Globe or Science Museum (TBC, production to support sourcing)",
+      "city": "London",
+      "dates": "Wednesday 23 July 2025, 09:00–14:00",
+      "durationDays": 1,
+      "guestCount": 90,
+      "budget": "Unknown",
+      "budgetSignal": "Unknown",
+      "summary": "Half-day launch event at a British cultural institution showcasing 2–3 skills (STEM, literature, music) through TikTok creators, broadcast via TikTok LIVE, with teen attendees + media driving widespread launch coverage.",
+      "categories": [
+        {
+          "categoryId": "venues",
+          "categoryLabel": "Venue sourcing & contracting",
+          "oneLiner": "Source, contract and manage a British institution in London (e.g. Shakespeare's Globe, Science Museum) with confirmed capability for TikTok LIVE broadcast; capacity 80–100; full morning hold 09:00–14:00 plus build-up/de-rig windows.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set & skill-station build",
+          "oneLiner": "Three themed skill-station builds (STEM / literature / music) — modular so they can flex into Globe vs Science Museum footprints; branded backdrops to camera; TikTok green-screen photo moment.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "av",
+          "categoryLabel": "AV & broadcast (TikTok LIVE)",
+          "oneLiner": "Full broadcast-grade AV: multi-cam capture, vision mix, sound (lapels for talent, PA for room), TikTok LIVE-ready stream encode + uplink, monitors for in-room audience.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "lighting",
+          "categoryLabel": "Lighting",
+          "oneLiner": "Broadcast lighting plot — soft key on talent at each skill station, backdrop wash, audience ambient lighting balanced for cameras.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "print",
+          "categoryLabel": "Merch, print & signage",
+          "oneLiner": "Branded merch giveaway pack (teen-targeted), wayfinding signage, skill-station headers, press-wall step-and-repeat, badges for media + government stakeholders.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "staffing",
+          "categoryLabel": "Staffing",
+          "oneLiner": "Production team (event manager + 2x producers), 4–6 hosts/runners for skill stations and registration, security/door for venue, project manager pre-event for talent + venue + media liaison.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "h-and-s",
+          "categoryLabel": "H&S / RAMS / permits",
+          "oneLiner": "RAMS for institution venue (insurance, evacuation, capacity limits), public-liability check, safeguarding plan for teen attendees (15–19), permits for broadcast and any external filming.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "photography",
+          "categoryLabel": "Photography & content",
+          "oneLiner": "Stills photographer for press, dedicated content team for short-form social cut-downs through the morning; assets delivered same-day for media titles + TikTok channels.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "catering",
+          "categoryLabel": "Catering",
+          "oneLiner": "Light breakfast on arrival + grab-and-go lunch for ~90 across talent + teens + media + stakeholders; dietary requirements collected at RSVP.",
+          "budgetEstimate": null,
+          "implied": true
+        },
+        {
+          "categoryId": "logistics",
+          "categoryLabel": "Logistics",
+          "oneLiner": "Get-in / install at venue (likely 22 July), de-rig same day after 14:00 close; storage of skill-station props between rehearsal + live.",
+          "budgetEstimate": null,
+          "implied": true
+        }
+      ],
+      "topQuestions": [
+        "What is the budget envelope? It is not stated and materially changes venue (Globe is significantly more than Science Museum room hire) and build spec.",
+        "Confirm TikTok LIVE technical spec — encode bitrate, uplink type (venue network vs hardline / 5G failover), and whether TikTok's own broadcast crew is in scope or production-provided.",
+        "Is talent + skill-session content delivered to production ahead of build, or are we building to generic skill-station templates?"
+      ]
+    }
+  },
+
+  {
+    "key": "hellofresh",
+    "name": "HelloFresh @ Latitude",
+    "complexity": "formal RFP",
+    "ai_projection": {
+      "projectName": "HelloFresh — Latitude Festival Cookalong Activation",
+      "client": "HelloFresh UK",
+      "eventType": "festival",
+      "location": "Latitude Festival pitch — 10m × 12m",
+      "city": "Henham Park, Suffolk",
+      "dates": "23–26 July 2026",
+      "durationDays": 4,
+      "guestCount": null,
+      "budget": "£200,000",
+      "budgetSignal": "Premium",
+      "summary": "10m × 12m sheltered cookalong activation at Latitude — back-to-back family cooking workshops 3pm–9pm with HelloFresh chef Mimi Morley + hired chef, plus daytime craft space, designed modular for reuse at smaller events.",
+      "categories": [
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set build (festival structure)",
+          "oneLiner": "10m × 12m weatherproof / sheltered festival build — fabricated structure able to operate outdoors in bad weather; modular components that demount, transport and reassemble for smaller events; evergreen HelloFresh branding (no Latitude-specific marks); removable banner panels for messaging swap.",
+          "budgetEstimate": "£60,000–£80,000",
+          "implied": false
+        },
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set dressing (kitchen + dining)",
+          "oneLiner": "Communal dining tables, family-style cookalong workstations, branded shelving for ingredient pre-portioning, decorative softs that read on camera, child-friendly craft area for daytime sessions.",
+          "budgetEstimate": "£12,000–£18,000",
+          "implied": false
+        },
+        {
+          "categoryId": "catering",
+          "categoryLabel": "Workshop catering (cookalong)",
+          "oneLiner": "Cooking equipment for ~6 family workstations × 4 days — induction hobs, mise-en-place stations, pre-portioned HelloFresh meal kits per 20-minute workshop, dishwash and waste flow, food-hygiene ratings for festival environment; supports back-to-back workshops 3pm–9pm.",
+          "budgetEstimate": "£25,000–£35,000",
+          "implied": false
+        },
+        {
+          "categoryId": "staffing",
+          "categoryLabel": "Staffing (chefs + crew)",
+          "oneLiner": "Hired chef alongside Mimi Morley to run / support workshops; full pack-down + prep team between sessions; brand ambassadors for queue management + craft area; dedicated project manager (client has no in-house events manager). Day rates incl. weekend variations.",
+          "budgetEstimate": "£35,000–£45,000",
+          "implied": false
+        },
+        {
+          "categoryId": "av",
+          "categoryLabel": "AV & content capture",
+          "oneLiner": "Demonstration cam + overhead cooking-station cam for in-space monitors so larger families can follow Mimi; sound system for workshop audio; on-site content capture rig for daily social edits.",
+          "budgetEstimate": "£12,000–£18,000",
+          "implied": false
+        },
+        {
+          "categoryId": "lighting",
+          "categoryLabel": "Lighting",
+          "oneLiner": "Practical lighting on cooking stations (food-safe), festoon/ambient lighting across dining/craft area, dusk-to-close lighting that complements the structure aesthetic in low light.",
+          "budgetEstimate": "£6,000–£10,000",
+          "implied": false
+        },
+        {
+          "categoryId": "furniture",
+          "categoryLabel": "Furniture & fixtures",
+          "oneLiner": "Communal dining benches, family-size tables, workstation counters, craft-area seating, storage units for kits / consumables / cleaning materials.",
+          "budgetEstimate": "£8,000–£12,000",
+          "implied": false
+        },
+        {
+          "categoryId": "print",
+          "categoryLabel": "Branding & signage",
+          "oneLiner": "Evergreen HelloFresh signage (not Latitude-specific); workshop schedule boards; recipe-card prints per workshop; child-friendly craft templates; removable messaging banners.",
+          "budgetEstimate": "£5,000–£8,000",
+          "implied": false
+        },
+        {
+          "categoryId": "h-and-s",
+          "categoryLabel": "Health & safety",
+          "oneLiner": "Festival H&S pack (fire, electrical, gas if applicable, public-liability) plus food-safety risk assessment for cookalong; child supervision policy; weather-contingency operating plan.",
+          "budgetEstimate": "£4,000–£6,000",
+          "implied": false
+        },
+        {
+          "categoryId": "logistics",
+          "categoryLabel": "Logistics & transport",
+          "oneLiner": "Truck movements from build yard to Latitude site; on-site storage between sessions; pre/post-event storage for the modular set; replenishment trips for ingredients during the festival.",
+          "budgetEstimate": "£8,000–£12,000",
+          "implied": false
+        },
+        {
+          "categoryId": "photography",
+          "categoryLabel": "Photography / earned media",
+          "oneLiner": "Stills + reels for earned-media amplification (secondary objective); hero shots of cookalong, family vignettes; daily edits for paid social.",
+          "budgetEstimate": "£4,000–£6,000",
+          "implied": true
+        }
+      ],
+      "topQuestions": [
+        "Is the £200k all-in (build + production + staffing + equipment + logistics) or does it exclude HelloFresh-supplied ingredients / Mimi's day rate?",
+        "Is the structure expected to live past Latitude as a touring asset (cost of reusability) or is it disposed after the festival?",
+        "Workshop pricing (£5–£10 per family to Felix Project) — does production handle ticketing infrastructure or is that client-side?"
+      ]
+    }
+  },
+
+  {
+    "key": "lavazza",
+    "name": "Lavazza TABLÉ",
+    "complexity": "creative deck",
+    "ai_projection": {
+      "projectName": "Lavazza — TABLÉ UK Launch Experience",
+      "client": "Lavazza",
+      "eventType": "launch",
+      "location": "Battersea Power Station (1st choice) — Coal Drops Yard or Truman Brewery as alternatives",
+      "city": "London",
+      "dates": "TBC",
+      "durationDays": null,
+      "guestCount": 60,
+      "budget": "Unknown",
+      "budgetSignal": "Premium",
+      "summary": "Premium 12m-diameter circular sensory installation launching TABLÉ in the UK — four ritual zones (sight, aroma, sound, experience) plus a retail pre-order area, designed modular for reuse at sampling moments, partnerships and trade events.",
+      "categories": [
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set build (12m circular installation)",
+          "oneLiner": "Circular installation, c.12m diameter, centred on the TABLÉ machine; four self-guided ritual zones (sight, aroma, sound, experience); premium finish, solid colour, clean architectural lines; modular so individual zones can flex for sampling activations, partnership moments and trade events.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "set-build",
+          "categoryLabel": "Set dressing (ritual zones)",
+          "oneLiner": "Ritual-zone dressing — visual coffee display + light staging for Ritual 1; scent diffuser cabinet for Ritual 2 controlled aroma waves; soft acoustic treatment + speaker placement for Ritual 3 soundscape; ambient finishes throughout.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "av",
+          "categoryLabel": "AV & sensory tech",
+          "oneLiner": "Multi-channel ambient sound system playing a sampled coffee soundscape (grind, pour, tamp, crema); programmable scent diffusion in controlled waves; theatrical lighting for the sight ritual; content-capture rig for KOL / press visits.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "lighting",
+          "categoryLabel": "Lighting",
+          "oneLiner": "Theatrical lighting design across the four zones — premium, low-key, drawing visitors into each ritual; emphasis on the sight ritual showcasing the coffee inside the machine; daylight balance for KOL photo content.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "furniture",
+          "categoryLabel": "Furniture & retail fixtures",
+          "oneLiner": "Premium retail area for TABLÉ pre-order / purchase; display plinths for the machine and coffee, consultation seating area; expert demo counter; secure stock storage.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "catering",
+          "categoryLabel": "Coffee service",
+          "oneLiner": "Trained baristas/operators serving TABLÉ coffee to visitors throughout the experience — c.50–70 visitors per cycle; consumables (cups, beans, water filtration); waste flow.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "staffing",
+          "categoryLabel": "Staffing (experts + hosts)",
+          "oneLiner": "Trained TABLÉ experts to explain features in the retail area; ritual hosts in each zone; meet-and-greet for media + KOLs + tastemakers; project manager across the launch window.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "venues",
+          "categoryLabel": "Venue",
+          "oneLiner": "Battersea Power Station (preferred) — secure a footprint large enough for the 12m circular install + retail + queueing; landlord agreement for premium experience; alternates Coal Drops Yard or Old Truman Brewery if Battersea is not viable.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "photography",
+          "categoryLabel": "Photography / media / KOL capture",
+          "oneLiner": "Hero stills + reels of the installation; KOL/tastemaker visit capture; tier-1 media press kit; same-day social edits to amplify earned media.",
+          "budgetEstimate": null,
+          "implied": false
+        },
+        {
+          "categoryId": "h-and-s",
+          "categoryLabel": "H&S",
+          "oneLiner": "RAMS for a premium public-access installation at Battersea — public-liability, fire-loading of finishes, electrical sign-off on lighting + AV + scent diffusion, crowd flow within the 12m circle (50–70 capacity).",
+          "budgetEstimate": null,
+          "implied": true
+        },
+        {
+          "categoryId": "logistics",
+          "categoryLabel": "Logistics & transport",
+          "oneLiner": "Truck movements for the modular structure; storage for the asset post-launch (key consideration since modular reuse is in scope); install + de-rig at Battersea with venue timing constraints.",
+          "budgetEstimate": null,
+          "implied": true
+        }
+      ],
+      "topQuestions": [
+        "What is the budget envelope? The deck is silent on it but the spec (12m architectural install, premium finish, tier-1 KOL audience) is firmly in £150k+ territory before retail and operating costs.",
+        "How long does the installation live at Battersea — single-night launch event or multi-day public-access window? Materially changes staffing, H&S, and logistics.",
+        "Is the retail area transactional (taking actual orders + payment) or is it the tracked-discount alternative described in the deck? Affects fixtures, staffing and licence requirements."
+      ]
+    }
+  }
+]

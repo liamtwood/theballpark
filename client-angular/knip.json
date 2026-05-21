@@ -1,0 +1,22 @@
+{
+  "entry": [
+    "src/main.ts",
+    "src/app/app.component.ts",
+    "src/app/app.config.ts",
+    "src/app/app.routes.ts"
+  ],
+  "project": [
+    "src/**/*.ts"
+  ],
+  "ignore": [
+    "src/environments/**",
+    "src/test/**",
+    "**/*.spec.ts",
+    "**/*.d.ts"
+  ],
+  "ignoreDependencies": [
+    "@angular/*",
+    "zone.js",
+    "tslib"
+  ]
+}

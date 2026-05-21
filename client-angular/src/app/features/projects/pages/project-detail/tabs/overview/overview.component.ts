@@ -104,34 +104,45 @@ interface MessagesSummary {
         <h2 class="bp-page-title">Project Overview</h2>
         <div class="bp-page-divider"></div>
 
-        <!-- ── EVENT STRIP ─────────────────────────────────────── -->
-        <!-- v1.29b: 4 data columns + a "⋯" kebab menu on the right.
-             Clicking anywhere on the strip (except the menu itself)
-             opens the Event drawer. The menu offers two entry points —
-             Edit event and Project brief — both open the drawer. -->
+        <!-- ── EVENT STRIP ──────────────────────────────────────
+             v1.39j: now a 2-row × 3-col grid.
+               Row 1: REF | CLIENT | EVENT NAME
+               Row 2: GUESTS | DATE | VENUE
+             All values render at the same font size — the
+             value--num variant was retired so the user's eye doesn't
+             jump between numeric + label values. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
           <div class="bp-event-cols">
+            <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
+            <div class="bp-event-col bp-event-col--narrow">
+              <span class="bp-event-eyebrow">REF</span>
+              <span class="bp-event-value">{{ project.ref || '—' }}</span>
+            </div>
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">CLIENT</span>
+              <span class="bp-event-value">{{ project.client_name || '—' }}</span>
+            </div>
+            <div class="bp-event-col">
+              <span class="bp-event-eyebrow">EVENT NAME</span>
+              <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
+            </div>
+
+            <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
+            <div class="bp-event-col bp-event-col--narrow">
+              <span class="bp-event-eyebrow">GUESTS</span>
+              <span class="bp-event-value">{{ guestCount || '—' }}</span>
+              <span class="bp-event-sub">{{ guestSub }}</span>
+            </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">DATE</span>
-              <span class="bp-event-value bp-event-value--num">{{ datePrimary || '—' }}</span>
-              <span class="bp-event-sub">{{ dateRelative }}</span>
+              <span class="bp-event-value">{{ datePrimary || '—' }}</span>
+              <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
+              <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
             </div>
             <div class="bp-event-col">
               <span class="bp-event-eyebrow">VENUE</span>
               <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
-              <span class="bp-event-sub">{{ project.venue_city || '' }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">GUESTS</span>
-              <span class="bp-event-value bp-event-value--num">{{ guestCount || '—' }}</span>
-              <span class="bp-event-sub">{{ guestSub }}</span>
-            </div>
-            <!-- v1.29b: Client column replaces the old Client Lead — the
-                 contact-name field doesn't exist on the project; just
-                 surface the client name from the joined query. -->
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">CLIENT</span>
-              <span class="bp-event-value">{{ project.client_name || '—' }}</span>
+              <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
             </div>
           </div>
           <div class="bp-event-actions">
@@ -152,6 +163,26 @@ interface MessagesSummary {
                       (click)="onEventMenu('brief', $event)">Project brief</button>
             </div>
           </div>
+        </div>
+
+        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
+             v1.39j: moved BELOW the event strip per Liam — reads more
+             naturally as "here are the facts, here are the open
+             questions". Same data (parsed_brief_json.topQuestions).
+             Hidden entirely when there are no questions. -->
+        <div *ngIf="questions.length" class="bp-questions-panel">
+          <button type="button" class="bp-questions-toggle"
+                  (click)="questionsOpen = !questionsOpen">
+            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+          </button>
+          <ul class="bp-questions-list" *ngIf="questionsOpen">
+            <li *ngFor="let q of questions" class="bp-question">
+              <span class="bp-q-marker">?</span>
+              <span class="bp-q-text">{{ q }}</span>
+            </li>
+          </ul>
         </div>
 
         <!-- v1.29: shared Event drawer — same instance reused on every
@@ -431,10 +462,18 @@ interface MessagesSummary {
        creates a stacking context which trapped the kebab dropdown
        inside the strip. Shadow change alone signals the interactive lift. */
     .bp-event-strip:hover { box-shadow: var(--shadow-sm); }
+    /* v1.39j — 3 columns wrapping to 2 rows.
+         Row 1: REF | CLIENT | EVENT NAME
+         Row 2: GUESTS | DATE | VENUE
+       v1.39k: column 1 is narrow (REF / GUESTS are always short —
+       15-20 chars max), the other two share the remaining width.
+       row-gap is tighter than column-gap so the two rows read as
+       one block, not two stacked strips. */
     .bp-event-cols {
       display: grid;
-      grid-template-columns: repeat(4, minmax(120px, 1fr));
-      gap: 24px;
+      grid-template-columns: minmax(96px, 0.5fr) minmax(140px, 1fr) minmax(140px, 1fr);
+      column-gap: 24px;
+      row-gap: 14px;
       flex: 1;
     }
     .bp-event-col {
@@ -443,6 +482,50 @@ interface MessagesSummary {
       gap: 2px;
       min-width: 0;
     }
+    /* v1.39k — narrow variant for REF + GUESTS. The cap lives on the
+       grid track, so this is mostly a hint for future use (e.g. nested
+       grids) — kept as a marker class. */
+    .bp-event-col--narrow { max-width: 140px; }
+    /* v1.39j — Questions panel below the event strip. Parchment
+       container, theme-accent eyebrow + chevron. */
+    .bp-questions-panel {
+      margin-top: 16px;
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+    }
+    .bp-questions-toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: none; border: none; padding: 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-accent);
+      cursor: pointer;
+    }
+    .bp-questions-list {
+      list-style: none; padding: 8px 0 0 0; margin: 0;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .bp-question {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 12px; line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+    .bp-q-marker {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      color: #fff;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bp-q-text { flex: 1; min-width: 0; }
     .bp-event-eyebrow {
       font-family: var(--font-body);
       font-size: 10px;
@@ -451,24 +534,21 @@ interface MessagesSummary {
       text-transform: uppercase;
       color: var(--theme-accent);
     }
-    .bp-event-value {
+    /* v1.39j — single font-size for every value in the strip
+       (was 14px for text + 16px --num for date/guest). The number
+       variant is no longer applied; if any legacy markup still
+       references it, the override below makes it match the default
+       so we don't have to chase down every call site. */
+    .bp-event-value,
+    .bp-event-value--num {
       font-family: var(--font-body);
       font-size: 14px;
       font-weight: 500;
+      line-height: 1.3;
       color: var(--color-text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-    /* v1.31: standardised on the body font for date + guest values so
-       they sit alongside Venue / Client without the serif/body
-       mismatch ("July 4th" reading differently to "Kings Cross
-       Station"). Size + weight unchanged. */
-    .bp-event-value--num {
-      font-family: var(--font-body);
-      font-weight: 500;
-      font-size: 16px;
-      line-height: 1.2;
     }
     .bp-event-sub {
       font-family: var(--font-body);
@@ -873,6 +953,12 @@ export class OverviewComponent implements OnInit {
   msgs: Message[] = [];
   client: Client | null = null;
 
+  /** v1.39i — AI-flagged questions from parsed_brief_json.topQuestions.
+      Rendered as a collapsible panel above the event strip. Read-only
+      for now — no resolve / dismiss interaction yet. */
+  questions: string[] = [];
+  questionsOpen = true;
+
   /** v1.29: Event drawer state — opened by clicking the event strip. */
   eventDrawerVisible = false;
   /** v1.29b: Kebab menu (Edit event / Project brief) on the event strip. */
@@ -927,6 +1013,13 @@ export class OverviewComponent implements OnInit {
       this.items         = items || [];
       this.estimateItems = estimateItems || [];
       this.msgs          = messages || [];
+      // v1.39i — surface the AI's topQuestions from parsed_brief_json
+      // (persisted on create since v1.39f) in the new collapsible
+      // panel above the event strip.
+      const pj: any = (project as any)?.parsed_brief_json;
+      this.questions = Array.isArray(pj?.topQuestions)
+        ? pj.topQuestions.filter((q: any) => typeof q === 'string' && q.trim())
+        : [];
 
       // Client lookup is optional — only fire when there's a client_id
       // on the project. catchError keeps the Overview rendering even
@@ -1155,6 +1248,15 @@ export class OverviewComponent implements OnInit {
     if (!this.project?.event_date) return '';
     const formatted = new EventDatePipe().transform(this.project.event_date);
     return formatted.includes(' · ') ? formatted.substring(formatted.indexOf(' · ') + 3) : '';
+  }
+  /** v1.39k — duration sub-label under the DATE value.
+      e.g. duration_days=1 → "1 day"; duration_days=3 → "3 days".
+      Returns '' when the project has no duration set so the
+      template falls back to dateRelative. */
+  get durationLabel(): string {
+    const d = this.project?.duration_days;
+    if (!d || d <= 0) return '';
+    return `${d} day${d === 1 ? '' : 's'}`;
   }
   get guestCount(): string {
     const n = this.project?.guest_count;

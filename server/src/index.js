@@ -1,4 +1,10 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+// v1.39b: `override: true` so values in /.env win against anything
+// pre-set in the shell environment (e.g. an empty ANTHROPIC_API_KEY
+// inherited from a parent process — silently ignored without this).
+require('dotenv').config({
+  path: require('path').resolve(__dirname, '../../.env'),
+  override: true
+});
 
 console.log('[STARTUP] APP_SCHEMA:', process.env.APP_SCHEMA || '(not set — defaults to public)');
 
@@ -160,6 +166,7 @@ app.use('/api/estimate-items', require('./routes/estimateItems'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/taxonomy', require('./routes/taxonomy'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));

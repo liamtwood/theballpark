@@ -1,0 +1,325 @@
+[
+  {
+    "key": "angel-delight",
+    "name": "Angel Delight",
+    "complexity": "casual email",
+    "textLength": 781,
+    "rule": {
+      "output": {
+        "categories": [
+          {
+            "categoryName": "Stand Structure",
+            "requirementBrief": "- We need costing for the whole pop-up and running of it so inflatable, staff, bins for samples, location fee etc.",
+            "budgetEstimate": 14000,
+            "implied": false
+          },
+          {
+            "categoryName": "Catering & Hospitality",
+            "requirementBrief": "Product we're sampling.",
+            "budgetEstimate": 6800,
+            "implied": false
+          },
+          {
+            "categoryName": "Staffing",
+            "requirementBrief": "- We need costing for the whole pop-up and running of it so inflatable, staff, bins for samples, location fee etc.",
+            "budgetEstimate": 2400,
+            "implied": false
+          },
+          {
+            "categoryName": "Venue",
+            "requirementBrief": "- Location, again depending on budget but somewhere where families with tweens visit - We need costing for the whole pop-up and running of it so inflatable, staff, bins for samples, location fee etc.",
+            "budgetEstimate": 4000,
+            "implied": false
+          }
+        ],
+        "budget": 40000,
+        "budgetSignal": "professional",
+        "eventType": "activation"
+      },
+      "ms": 6
+    },
+    "ai": {
+      "output": {
+        "error": "ANTHROPIC_API_KEY is not configured"
+      },
+      "ms": 0
+    }
+  },
+  {
+    "key": "creditspring",
+    "name": "Creditspring",
+    "complexity": "casual email",
+    "textLength": 1436,
+    "rule": {
+      "output": {
+        "categories": [
+          {
+            "categoryName": "Stand Structure",
+            "requirementBrief": "We propose a festive pop-up shop lending out Christmas must-haves in the run up to the festive period (November), helping families create magical moments at home without the financial strain. We're already sourcing a blank space for the pop-up and have a separate location site fee for this.",
+            "budgetEstimate": 7350,
+            "implied": false
+          },
+          {
+            "categoryName": "Venue",
+            "requirementBrief": "Location: somewhere central, likely Soho. We're already sourcing a blank space for the pop-up and have a separate location site fee for this.",
+            "budgetEstimate": 2100,
+            "implied": false
+          },
+          {
+            "categoryName": "Photography",
+            "requirementBrief": "Press and content photography for launch event.",
+            "budgetEstimate": 840,
+            "implied": true
+          }
+        ],
+        "eventDate": "19 November",
+        "budget": 21000,
+        "budgetSignal": "professional",
+        "eventType": "activation"
+      },
+      "ms": 4
+    },
+    "ai": {
+      "output": {
+        "error": "ANTHROPIC_API_KEY is not configured"
+      },
+      "ms": 0
+    }
+  },
+  {
+    "key": "tiktok",
+    "name": "TikTok #SummerSkills",
+    "complexity": "structured brief",
+    "textLength": 1483,
+    "rule": {
+      "output": {
+        "categories": [
+          {
+            "categoryName": "Graphics & Signage",
+            "requirementBrief": "Summary: Create a launch event for the TikTok #SummerSkills campaign, focused on 3x chosen skills (STEM, literature and music), which incorporates hero talent, media, teen attendees and broader stakeholders and drives widespread launch coverage of the campaign across mainstream broadcast, print and online titles. -…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Health & Safety",
+            "requirementBrief": "- Relevant event documentation (H&S, RAMS, relevant permits etc.)",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Staffing",
+            "requirementBrief": "Venue must have lock capabilities to host a TikTok LIVE.",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Entertainment",
+            "requirementBrief": "Summary: Create a launch event for the TikTok #SummerSkills campaign, focused on 3x chosen skills (STEM, literature and music), which incorporates hero talent, media, teen attendees and broader stakeholders and drives widespread launch coverage of the campaign across mainstream broadcast, print and online titles. -…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Venue",
+            "requirementBrief": "NB: Production company to support on venue identification and contracting. Venue must have lock capabilities to host a TikTok LIVE. 09.00-14.00 (TBC on venue). - Invite teens (15-19) through our creators, PR, venue database and local organisations (in relation to each of the skills) - Maximum capacity of circa 80-10…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Photography",
+            "requirementBrief": "Press and content photography for launch event.",
+            "budgetEstimate": null,
+            "implied": true
+          }
+        ],
+        "eventDate": "23 July",
+        "budgetSignal": "unknown",
+        "venue": "Science Museum",
+        "city": "London",
+        "eventType": "activation"
+      },
+      "ms": 2
+    },
+    "ai": {
+      "output": {
+        "error": "ANTHROPIC_API_KEY is not configured"
+      },
+      "ms": 0
+    }
+  },
+  {
+    "key": "hellofresh",
+    "name": "HelloFresh @ Latitude",
+    "complexity": "formal RFP",
+    "textLength": 27671,
+    "rule": {
+      "output": {
+        "categories": [
+          {
+            "categoryName": "Stand Structure",
+            "requirementBrief": "UK's pop-up cooking workshop and brand experience at Latitude Festival, 23-26 July 2026. Modular Flexibility: Practicality - modular elements need to be able to easily dismantle, move & store. The �200k must cover all build, staffing etc (as breakdown covering all staffing, build, production, and tangible elements r…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Lighting",
+            "requirementBrief": "Lighting, AV, and technical equipment",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "AV & Technology",
+            "requirementBrief": "Lighting, AV, and technical equipment",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Graphics & Signage",
+            "requirementBrief": "Evergreen branding - needs to have more generic HelloFresh branding rather than being Can have removable banners so that branding can be tweaked if different Branding materials and signage",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Furniture & Fixtures",
+            "requirementBrief": "Furniture and fixtures (e.g., counters, seating, workstations)",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Catering & Hospitality",
+            "requirementBrief": "While there will be multiple food vendors food and recipes for different meal occasions. The majority of the menu requires only 6 steps to prepare The ingredients for each meal are pre-portioned in individual kits, reducing food waste. choice for families midweek dinner across the UK. Midweek dinner is tough for a l…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Health & Safety",
+            "requirementBrief": "Health and safety, compliance, and risk assessment production",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Photography",
+            "requirementBrief": "Content of this proposal and/or any addenda. stations, content capture setups, and branded experiences - to be adapted for smaller events Additional creative or content capture packages",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Staffing",
+            "requirementBrief": "The �200k must cover all build, staffing etc (as breakdown covering all staffing, build, production, and tangible elements required for the festival Staffing Costs Role type and day rate (e.g., event manager, chef, brand ambassador, crew) Number of staff required per event Staffing ramp-up plan (e.g., build days, tr…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Entertainment",
+            "requirementBrief": "Resulting from any act or omission of Supplier in connection with the agreement.",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Logistics & Transport",
+            "requirementBrief": "Delivery of Proposals 9 Transport and logistics for the build Storage and handling (pre, during, and post event) Packaging for transportation and storage Delivery of Proposals",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Venue",
+            "requirementBrief": "At Latitude, the HelloFresh space will be a space for families to convene, cook along with our expert chefs, the space provided on the Proposal Form. We envisage a cookalong experience, with an integrated space to eat together. sheltered /weatherproof space. Our pitch area is 10m x 12m and we would like to maximise…",
+            "budgetEstimate": null,
+            "implied": false
+          }
+        ],
+        "eventDate": "23–26 July 2026",
+        "durationDays": 4,
+        "budgetSignal": "unknown",
+        "venue": "ExCeL",
+        "city": "London",
+        "eventType": "activation"
+      },
+      "ms": 26
+    },
+    "ai": {
+      "output": {
+        "error": "ANTHROPIC_API_KEY is not configured"
+      },
+      "ms": 0
+    }
+  },
+  {
+    "key": "lavazza",
+    "name": "Lavazza TABLÉ",
+    "complexity": "creative deck",
+    "textLength": 5931,
+    "rule": {
+      "output": {
+        "categories": [
+          {
+            "categoryName": "Stand Structure",
+            "requirementBrief": "A MODULAR",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Lighting",
+            "requirementBrief": "Utilising light in an interesting way that feels stretch or layer them until they become ambient",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "AV & Technology",
+            "requirementBrief": "The sound carries a natural \"Italian pace\" slower,",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Catering & Hospitality",
+            "requirementBrief": "The senses for authentic Italian coffee, only Lavazza TABL� can provide. experience, meaning the machine and coffee coffee you're drinking before it goes into the A curated coffee aroma drifts through the Created and sampled from real coffee sounds like With coffee and TABL� at the heart of the simply try the machin…",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Staffing",
+            "requirementBrief": "Has the pull of combining historic with CSM next door, the re- the area it provides an audience",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Entertainment",
+            "requirementBrief": "TALENT & CREATORS them, exactly as our audience would act.",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Logistics & Transport",
+            "requirementBrief": "Alternatively, instead of the logistics of a retail",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Venue",
+            "requirementBrief": "THE SPACE 12m the space is putting TABL� at the heart of the room and the space in controlled waves rather than a RETAIL SPACE Finally, a section of the space will be setup for SPACE space can be re-purposed for other events LANDING IN A LOCATION IN ORDER OF PREFERENCE as part of their day to day lives, a space that's",
+            "budgetEstimate": null,
+            "implied": false
+          },
+          {
+            "categoryName": "Photography",
+            "requirementBrief": "Press and content photography for launch event.",
+            "budgetEstimate": null,
+            "implied": true
+          }
+        ],
+        "eventDate": "late Rather",
+        "guestCount": 60,
+        "budgetSignal": "unknown",
+        "venue": "Battersea Power Station",
+        "city": "London",
+        "eventType": "activation"
+      },
+      "ms": 8
+    },
+    "ai": {
+      "output": {
+        "error": "ANTHROPIC_API_KEY is not configured"
+      },
+      "ms": 0
+    }
+  }
+]

@@ -182,6 +182,63 @@ Branches:  dev → preview → master
 Deploy:    Vercel (frontend) + Railway (backend)
 ```
 
+### Version label bumping — CRITICAL
+
+The version label rendered bottom-right of the app (e.g. `[Dev] v1.36`)
+comes from a **different env file per build target**. Bumping only
+`environment.ts` is a silent failure — preview/master keep reporting
+the OLD version even though new code has shipped, which makes it
+impossible to confirm a deploy landed.
+
+| Build target  | Env file                          | angular.json config |
+|---------------|-----------------------------------|---------------------|
+| Dev (local)   | `environment.ts`                  | `development`       |
+| Preview       | `environment.staging.ts`          | `preview`           |
+| Master (prod) | `environment.prod.ts`             | `production`        |
+
+**Rules**
+- Every code commit on `dev` bumps `environment.ts` (`[Dev] vX.Y`).
+- The commit that **merges dev → preview** must also bump
+  `environment.staging.ts` to the same number (`[Preview] vX.Y`),
+  ideally in the merge or in a dedicated `chore:` commit on dev
+  immediately before the merge.
+- The commit that **merges preview → master** must also bump
+  `environment.prod.ts` (`[Master] vX.Y`).
+- Never bump `environment.prod.ts` outside of a master release.
+- Never bump `environment.staging.ts` outside of a preview promotion.
+
+Quick sanity check after deploy: open the deployed URL, look at the
+version label, confirm it matches what you just promoted. If it
+still shows the old number, the env file for that target wasn't
+bumped — fix that before assuming the deploy worked.
+
+### Schema migrations — single source of truth
+
+`server/src/db/migrate-schemas.js` is the **only** sanctioned way to
+bring a schema (dev/preview/master) into the current shape. Running
+it must be idempotent and complete in one pass — `IF NOT EXISTS`
+everywhere, `ON CONFLICT DO NOTHING` on all seeds.
+
+**Rules — no exceptions**
+- Every commit that adds/alters a column, table, index, codelist row,
+  or seed entry on dev MUST update `migrate-schemas.js` in the same
+  commit. Ad-hoc `ALTER TABLE` against the dev DB without recording
+  it in the script causes silent drift that surfaces weeks later
+  when preview/master is promoted (e.g. v1.36 → preview hit a
+  20-version backlog of missing columns).
+- The script targets `public.`, `preview.`, and `master.` explicitly
+  in each statement. Don't write `ALTER TABLE items ...` — write
+  three statements, one per schema.
+- Before merging dev → preview (or preview → master), run
+  `node server/src/db/migrate-schemas.js`. It is idempotent and safe
+  to run repeatedly.
+- Don't write inline backticks in SQL comments inside the JS
+  template literal — they break the parser. Use plain quotes or
+  unquoted names in `--` comments.
+- New seed data (codelists, demo rows) goes in the same script under
+  `ON CONFLICT DO NOTHING`. Don't lean on one-off `seed-vX.Y.js`
+  scripts as canonical — they're history, not state.
+
 ---
 
 ## Authentication & Authorisation

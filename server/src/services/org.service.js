@@ -42,7 +42,10 @@ async function update(id, data) {
     name, description, type, address, city, country, phone, email, website,
     logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
     default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-    cover_image_url, image_display, auto_publish_items
+    cover_image_url, image_display, auto_publish_items,
+    // v1.39: project-ref prefix lives on the org. Counter is not
+    // updatable through this path — it's driven by project creates.
+    ref_prefix
   } = data;
   const result = await pool.query(
     `UPDATE orgs SET
@@ -62,12 +65,15 @@ async function update(id, data) {
       cover_image_url = COALESCE($19, cover_image_url),
       image_display = COALESCE($20, image_display),
       auto_publish_items = COALESCE($21, auto_publish_items),
+      ref_prefix = COALESCE($22, ref_prefix),
       updated_at = NOW()
-     WHERE id = $22 RETURNING *`,
+     WHERE id = $23 RETURNING *`,
     [name, description, type, address, city, country, phone, email, website,
      logo_url, subscription_tier, balls_balance, balls_monthly_allowance,
      default_vat_pct, vat_registered, vat_number, default_margin_pct, default_contingency_pct,
-     cover_image_url, image_display, auto_publish_items, id]
+     cover_image_url, image_display, auto_publish_items,
+     ref_prefix ? String(ref_prefix).toUpperCase() : null,
+     id]
   );
   return result.rows[0] || null;
 }

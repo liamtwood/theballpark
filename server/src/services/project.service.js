@@ -51,8 +51,42 @@ async function create(data) {
     default_vat_pct, tier, status_id,
     // v1.30: extended so the create-project intake modal can persist
     // everything the rule-based parser extracts on the first save.
-    event_type, duration_days, po_ref, currency
+    event_type, duration_days, po_ref, currency,
+    // v1.39: allow caller-supplied ref to short-circuit the auto-gen
+    // (e.g. seed scripts that want a known value).
+    ref,
+    // v1.39d: AI-first create-project modal sends client_name (free
+    // text from the brief — e.g. "Angel Delight"). projects has no
+    // such column, so we find-or-create against clients and use
+    // client_id below. Same pattern as the Event drawer's save.
+    client_name
   } = data;
+
+  // v1.39d — resolve client_name → client_id (find-or-create against
+  // the clients table). Skipped if the caller already passed client_id
+  // explicitly (modal future-proofing), or if no name was supplied.
+  if (!client_id && client_name && org_id && typeof client_name === 'string') {
+    const trimmed = client_name.trim();
+    if (trimmed) {
+      const existing = await pool.query(
+        `SELECT id FROM clients
+          WHERE org_id = $1 AND LOWER(name) = LOWER($2) AND is_active = true
+          LIMIT 1`,
+        [org_id, trimmed]
+      );
+      if (existing.rows.length) {
+        client_id = existing.rows[0].id;
+      } else {
+        const created = await pool.query(
+          `INSERT INTO clients (org_id, name, is_active)
+           VALUES ($1, $2, true)
+           RETURNING id`,
+          [org_id, trimmed]
+        );
+        client_id = created.rows[0].id;
+      }
+    }
+  }
   // v1.31: default new projects to the draft status row so they land
   // in the Active Events bucket on the dashboard. Previously the
   // intake modal created projects with status_id=null which made them
@@ -63,6 +97,37 @@ async function create(data) {
     );
     if (draft.rows.length) status_id = draft.rows[0].id;
   }
+
+  // v1.39: always advance the org's ref counter atomically on create
+  // (UPDATE…RETURNING is a single statement → no race between two
+  // concurrent creates). The counter is the source of truth — the
+  // caller-supplied `ref`, if present, is honoured as the *value*
+  // saved on the project (preserves what the modal showed the user)
+  // but the counter still ticks so future previews are accurate.
+  // Both branches still produce a unique number per org.
+  if (org_id) {
+    const r = await pool.query(
+      `UPDATE orgs
+          SET ref_counter = COALESCE(ref_counter, 0) + 1
+        WHERE id = $1
+       RETURNING ref_prefix, ref_counter, name`,
+      [org_id]
+    );
+    if (r.rows.length) {
+      const row = r.rows[0];
+      let prefix = (row.ref_prefix || '').trim();
+      if (!prefix) {
+        prefix = ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+      }
+      const padded = String(row.ref_counter).padStart(3, '0');
+      const generated = `${prefix.toUpperCase()}-${padded}`;
+      // Prefer the caller's value (it's what the modal showed). Fall
+      // back to the freshly generated one if the caller didn't pass
+      // one (e.g. seed scripts, future API consumers).
+      ref = ref || generated;
+    }
+  }
+
   const result = await pool.query(
     `INSERT INTO projects (
       org_id, client_id, name, description, event_name, event_date,
@@ -71,8 +136,9 @@ async function create(data) {
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
-      event_type, duration_days, po_ref, currency
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
+      event_type, duration_days, po_ref, currency,
+      ref
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31) RETURNING *`,
     [
       org_id, client_id, name, description, event_name, event_date,
       venue_name, venue_city, venue_address, guest_count, stand_size,
@@ -80,7 +146,8 @@ async function create(data) {
       parsed_brief_json, ai_hints, missing_fields, project_budget,
       share_budget_with_suppliers, default_margin_pct, default_contingency_pct,
       default_vat_pct, tier, status_id,
-      event_type, duration_days, po_ref, currency
+      event_type, duration_days, po_ref, currency,
+      ref
     ]
   );
   return result.rows[0];
@@ -234,4 +301,26 @@ async function recalcTotals(projectId) {
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals };
+/** v1.39 — preview the *next* project ref for an org, without
+    consuming the counter. Used by the create-project modal so the
+    "Ref WA-014 auto-generated" chip can render before the user
+    confirms create. The real ref is still generated inside create()
+    so a cancelled modal doesn't burn a number. */
+async function previewNextRef(orgId) {
+  if (!orgId) return null;
+  const r = await pool.query(
+    `SELECT ref_prefix, COALESCE(ref_counter, 0) AS ref_counter, name
+       FROM orgs WHERE id = $1`,
+    [orgId]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  let prefix = (row.ref_prefix || '').trim();
+  if (!prefix) {
+    prefix = ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+  }
+  const next = row.ref_counter + 1;
+  return `${prefix.toUpperCase()}-${String(next).padStart(3, '0')}`;
+}
+
+module.exports = { getAll, getById, create, update, duplicate, softDelete, getByClient, recalcTotals, previewNextRef };

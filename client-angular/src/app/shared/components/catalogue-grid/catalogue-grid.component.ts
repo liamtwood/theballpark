@@ -85,6 +85,21 @@ export type DetailMode = 'inline' | 'drawer';
       (footerToggle)="toggleShowAllCategories()">
     </app-category-circles>
 
+    <!-- v1.41 — SUBCATEGORY CHIP STRIP.
+         Renders only when the parent has populated [subcategories].
+         "All" chip clears the filter; subcat chips set
+         activeSubcategoryId. Text pills (not image circles) per the
+         design spec; one CSS variable away from theme accent. -->
+    <div *ngIf="subcategories?.length" class="bp-subcat-strip">
+      <button type="button" class="bp-subcat-chip"
+              [class.active]="!activeSubcategoryId"
+              (click)="onSubcategoryClick('')">All</button>
+      <button *ngFor="let sc of subcategories"
+              type="button" class="bp-subcat-chip"
+              [class.active]="activeSubcategoryId === sc.id"
+              (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
+    </div>
+
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
          filter bar, bulk-action bar). -->
@@ -103,72 +118,44 @@ export type DetailMode = 'inline' | 'drawer';
             placeholder="Search..." class="bp-sidebar-search-input"/>
         </div>
 
-        <!-- Not drilled in: show category list -->
-        <ng-container *ngIf="!drilledCategory">
-          <div class="bp-sidebar-sublabel">{{ sidebarCategoryLabel }}</div>
-          <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
-            <span>All</span>
-            <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
-          </button>
-          <!-- sidebarParentCategories filters to in-scope only in
-               project mode; identical to parentCategories otherwise. -->
-          <button *ngFor="let cat of sidebarParentCategories"
-            class="bp-sidebar-item"
-            [class.active]="activeCategory === cat.id"
-            (click)="setCategory(cat.id)">
-            <span>{{ cat.name }}</span>
-            <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
-          </button>
-        </ng-container>
+        <!-- v1.41a — single sidebar mode. The drill-down FORMAT
+             section was removed (subcat pills handle that role).
+             Sidebar always shows the parent-category list + the
+             aggregated TYPE/tag checkboxes when the parent has tags. -->
+        <div class="bp-sidebar-sublabel">{{ sidebarCategoryLabel }}</div>
+        <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
+          <span>All</span>
+          <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
+        </button>
+        <!-- sidebarParentCategories filters to in-scope only in
+             project mode; identical to parentCategories otherwise. -->
+        <button *ngFor="let cat of sidebarParentCategories"
+          class="bp-sidebar-item"
+          [class.active]="activeCategory === cat.id"
+          (click)="setCategory(cat.id)">
+          <span>{{ cat.name }}</span>
+          <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
+        </button>
 
-        <!-- Drilled in: FORMAT + TYPE sections -->
-        <ng-container *ngIf="drilledCategory">
-          <button class="bp-sidebar-back" (click)="drillOut()">
-            <lucide-icon name="chevron-left" [size]="13"></lucide-icon>
-            All categories
-          </button>
-
-          <!-- FORMAT section (model=A subcategories). All / None links
-               only render when there are children to act on; the empty
-               state ("No subcategories") sits in their place so the
-               drilled-in sidebar still reads as a coherent unit. -->
+        <!-- TYPE section (items.tags aggregated for active category).
+             Kept as-is — independent free-text keywords, separate
+             concept from the controlled subcategory pills above. -->
+        <ng-container *ngIf="tags.length && activeCategory !== 'all'">
           <div class="bp-sidebar-section-header mt-4">
-            <span class="bp-sidebar-sublabel">Format</span>
-            <div class="bp-sidebar-check-actions" *ngIf="childCategories.length">
-              <button class="bp-sidebar-check-link" (click)="checkAll()">All</button>
+            <span class="bp-sidebar-sublabel">Type</span>
+            <div class="bp-sidebar-check-actions">
+              <button class="bp-sidebar-check-link" (click)="checkAllTags()">All</button>
               <span class="bp-sidebar-check-sep">·</span>
-              <button class="bp-sidebar-check-link" (click)="uncheckAll()">None</button>
+              <button class="bp-sidebar-check-link" (click)="uncheckAllTags()">None</button>
             </div>
           </div>
-          <div *ngFor="let child of childCategories" class="bp-sidebar-check-item">
+          <div *ngFor="let tag of tags" class="bp-sidebar-check-item">
             <p-checkbox [binary]="true"
-              [ngModel]="checkedChildIds.has(child.id)"
-              (onChange)="toggleChild(child.id)"
-              [label]="child.name">
+              [ngModel]="checkedTags.has(tag)"
+              (onChange)="toggleTag(tag)"
+              [label]="tag">
             </p-checkbox>
           </div>
-          <div *ngIf="!childCategories.length" class="bp-sidebar-empty">
-            No subcategories
-          </div>
-
-          <!-- TYPE section (tags aggregated from items in this category) -->
-          <ng-container *ngIf="tags.length">
-            <div class="bp-sidebar-section-header mt-4">
-              <span class="bp-sidebar-sublabel">Type</span>
-              <div class="bp-sidebar-check-actions">
-                <button class="bp-sidebar-check-link" (click)="checkAllTags()">All</button>
-                <span class="bp-sidebar-check-sep">·</span>
-                <button class="bp-sidebar-check-link" (click)="uncheckAllTags()">None</button>
-              </div>
-            </div>
-            <div *ngFor="let tag of tags" class="bp-sidebar-check-item">
-              <p-checkbox [binary]="true"
-                [ngModel]="checkedTags.has(tag)"
-                (onChange)="toggleTag(tag)"
-                [label]="tag">
-              </p-checkbox>
-            </div>
-          </ng-container>
         </ng-container>
       </div>
 
@@ -605,6 +592,35 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     :host { display: block; }
 
+    /* v1.41 — subcategory chip strip below the category circles. Text
+       pills, theme-accent active state, hairline border default. */
+    .bp-subcat-strip {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 8px 28px 0;
+      margin-bottom: 4px;
+    }
+    .bp-subcat-chip {
+      display: inline-flex; align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-subcat-chip:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    .bp-subcat-chip.active {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: #fff;
+    }
+
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
       background: var(--theme-bg);
@@ -990,6 +1006,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() breadcrumbAll: string = '';
   @Input() breadcrumbActive: string = '';
   @Input() tags: string[] = [];
+  /** v1.41 — subcategory chip strip rendered below the category
+      circles. Each entry maps to a child category row. Empty array →
+      strip is hidden. Only the marketplace page populates this for
+      now; project Marketplace tab can opt in later. */
+  @Input() subcategories: Array<{ id: string; name: string }> = [];
+  @Input() activeSubcategoryId: string = '';
   @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
   @Input() sectionTitle: string = 'CATALOGUE';
@@ -1057,6 +1079,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       should reset that state in response. */
   @Output() breadcrumbBackClicked = new EventEmitter<void>();
   @Output() tagChanged = new EventEmitter<string>();
+  /** v1.41 — emits the clicked subcategory id, or '' when "All" is
+      clicked. Parent re-fetches items with the new filter. */
+  @Output() subcategoryChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
   @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
 
@@ -1336,8 +1361,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         : this.inScopeParentCategories();
     }
 
-    // Marketplace / supplier default — drill behaviour unchanged.
-    return this.drilledCategory ? this.childCategories : this.parentCategories;
+    // v1.41a — Marketplace / supplier mode no longer "drills" into a
+    // second row of child-category circles. The subcategory pills
+    // (rendered between circles and body) own the level-2 nav now;
+    // showing both would duplicate the filter. Circles always show
+    // parents in this mode.
+    return this.parentCategories;
   }
 
   /** Categories shown in the sidebar's parent-list (visible when not
@@ -1428,35 +1457,31 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       return;
     }
 
-    // v1.21b: every non-'all' selection drills in. Previously a
-    // category without children fell through a separate "simple
-    // filter" branch that didn't reset prior drill state — so
-    // switching from a cat-with-subcats to a cat-without left the
-    // sidebar's FORMAT checkboxes stale. drillIn() resets cleanly.
-    // The FORMAT section's empty state renders "No subcategories"
-    // when childCategories is empty.
+    // v1.41a — no drill. Selecting a parent just activates it; the
+    // subcategory pill row (driven externally via [subcategories])
+    // handles the second filter level. drilledCategory stays null
+    // permanently in marketplace/supplier mode; remaining dead state
+    // is harmless (kept to minimise churn elsewhere in the file).
     const cat = this.categories.find(c => c.id === catId);
-    if (cat) this.drillIn(cat);
-  }
-
-  // ── Drill-down ────────────────────────────────────────────────────────
-
-  drillIn(cat: CategoryInfo) {
-    this.drilledCategory = cat;
+    if (!cat) return;
+    this.drilledCategory = null;
     this.activeCategory = cat.id;
     this.activeChildCategory = null;
     this.activeTag = '';
     this.selectedEntity = null;
-
-    // Check all children by default
-    this.checkedChildIds = new Set(
-      this.categories.filter(c => c.parent_id === cat.id).map(c => c.id)
-    );
-
     this.categoryChanged.emit(cat.id);
-    this.drillChanged.emit(cat.id);
+    this.drillChanged.emit(null);
     this.applyFilter();
     this.cdr.detectChanges();
+  }
+
+  // ── Drill-down (legacy — kept as no-op for any external caller) ──────
+
+  drillIn(cat: CategoryInfo) {
+    // v1.41a — drillIn collapses to setCategory. The old multi-step
+    // drill model (parent click → child circles → format sidebar)
+    // is gone; pills replace it.
+    this.setCategory(cat.id);
   }
 
   drillOut() {
@@ -1512,6 +1537,19 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       this.checkedTags.add(tag);
     }
     this.checkedTags = new Set(this.checkedTags); // trigger change detection
+    this.applyFilter();
+  }
+
+  /** v1.41 — subcategory chip click. Parent owns the filter state
+      via [activeSubcategoryId]; we emit so it can re-fetch (supplier
+      list) and also re-run the internal filter immediately so
+      pre-loaded entities (project marketplace) update without a
+      round-trip.
+      v1.41a — chip toggles: clicking the active chip clears the filter. */
+  onSubcategoryClick(id: string) {
+    const next = (id && id === this.activeSubcategoryId) ? '' : id;
+    this.activeSubcategoryId = next;
+    this.subcategoryChanged.emit(next);
     this.applyFilter();
   }
 
@@ -1805,33 +1843,23 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   private applyFilter() {
     let result = this.entities;
 
-    if (this.drilledCategory) {
-      // FORMAT filter — restrict by checked subcategory IDs.
-      // Items assigned directly to the parent category also pass.
-      const validIds = new Set(this.checkedChildIds);
-      validIds.add(this.drilledCategory.id);
-
-      if (this.activeChildCategory) {
-        result = result.filter(e => e.category_id === this.activeChildCategory);
-      } else {
-        result = result.filter(e => e.category_id && validIds.has(e.category_id));
-      }
-
-      // TYPE filter — only applied if the user has unchecked at least one tag.
-      // Default (all tags checked) passes everything, including items with no tags.
-      // Once filtered, items must have >=1 tag in the checked set (items with
-      // empty tags are excluded, which is the honest behaviour).
-      if (this.tags.length && this.checkedTags.size < this.tags.length) {
-        result = result.filter(e => {
-          const itemTags: string[] = e._raw?.tags || [];
-          return itemTags.some(t => this.checkedTags.has(t));
-        });
-      }
-    } else if (this.activeCategory !== 'all') {
-      // Simple filter (no drill — used by orgs/admin grids)
+    // v1.41a — flattened filter chain. Two layers:
+    //   1. activeCategory (parent)   filters on e.category_id
+    //   2. activeSubcategoryId       filters on e.subcategory_id
+    // Plus the optional Type/tags filter (independent free-text)
+    // and the search box. No more drill state in this branch.
+    if (this.activeCategory !== 'all') {
       result = result.filter(e => e.category_id === this.activeCategory);
     }
-
+    if (this.activeSubcategoryId) {
+      result = result.filter(e => (e as any).subcategory_id === this.activeSubcategoryId);
+    }
+    if (this.tags.length && this.checkedTags.size < this.tags.length) {
+      result = result.filter(e => {
+        const itemTags: string[] = e._raw?.tags || [];
+        return itemTags.some(t => this.checkedTags.has(t));
+      });
+    }
     if (this.searchQuery.trim()) {
       const term = this.searchQuery.toLowerCase();
       result = result.filter(e =>

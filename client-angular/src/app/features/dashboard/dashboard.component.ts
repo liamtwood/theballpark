@@ -269,7 +269,10 @@ type DashTab = 'projects';
                 </ng-template>
                 <div class="bp-card-content">
                   <div class="bp-card-name-row">
-                    <div class="bp-card-name">{{ p.event_name || p.name }}</div>
+                    <div class="bp-card-name">
+                      <span *ngIf="p.ref" class="bp-card-ref-chip">{{ p.ref }}</span>
+                      {{ p.event_name || p.name }}
+                    </div>
                     <button type="button" class="bp-card-menu-btn"
                             (click)="toggleMenu($event, p)"
                             title="More actions">⋯</button>
@@ -605,6 +608,16 @@ type DashTab = 'projects';
       margin-bottom:4px;
     }
     .bp-card-name { font-size:13px; font-weight:600; color:var(--color-text-primary); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* v1.39h — auto-ref chip on dashboard card name row. */
+    .bp-card-ref-chip {
+      display:inline-block; margin-right:6px;
+      padding:1px 7px; border-radius:999px;
+      background:var(--theme-bg);
+      border:0.5px solid var(--color-border);
+      font-size:10px; font-weight:500; letter-spacing:0.04em;
+      color:var(--color-text-secondary);
+      vertical-align:middle;
+    }
     .bp-card-menu-btn {
       width:24px; height:24px;
       border-radius:50%;

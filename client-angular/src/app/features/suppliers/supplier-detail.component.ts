@@ -237,6 +237,10 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [currentOrgId]="currentOrgId"
           [currentOrgType]="currentOrgType"
           panelContext="supplier"
+          [subcategories]="availableSubcategories"
+          [activeSubcategoryId]="activeSubcategoryId"
+          (categoryChanged)="onCategoryChanged($event)"
+          (subcategoryChanged)="onSubcategoryChanged($event)"
           (entitySelected)="onEntitySelected($event)"
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
@@ -681,6 +685,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       Build tab. */
   showAllStoreCategories = false;
 
+  // v1.41a — supplier store now mirrors the marketplaces:
+  // category circle → subcat pill row → filtered items.
+  // availableSubcategories repopulates whenever a parent circle is
+  // clicked; activeSubcategoryId is the FK passed to the grid.
+  availableSubcategories: Array<{ id: string; name: string }> = [];
+  activeSubcategoryId = '';
+
   // Home tab — subcategory cards grouped by parent. Built from items'
   // category_ids merged with the full catalogue category hierarchy so
   // each section can show its parent name as a header.
@@ -805,6 +816,9 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       cover_image_url: this.supplier?.cover_image_url,
       image_display: i.image_url ? (i.image_display || 'cover') : (this.supplier?.image_display || 'cover'),
       category_id: i.category_id,
+      // v1.41a — surface subcategory FK so the catalogue-grid's
+      // internal pill filter matches on pre-loaded entities.
+      subcategory_id: i.subcategory_id,
       subtitle: i.category_name,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
@@ -871,6 +885,51 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
   toggleShowAllStoreCategories() {
     this.showAllStoreCategories = !this.showAllStoreCategories;
+    // v1.41a — re-evaluate the chip strip whenever the "Show all
+    // categories" toggle flips so scoped/all rules stay aligned with
+    // the parent circle strip. activeChip set is captured via the
+    // grid's last (categoryChanged) emission — derived here from the
+    // active parent on the grid via activeSubcategoryId membership.
+    if (this.availableSubcategories.length) {
+      const activeParent = this.availableSubcategories[0]
+        ? this.allCatalogueCategories.find(c =>
+            c.id === this.availableSubcategories[0].id)?.parent_id || null
+        : null;
+      if (activeParent) this.onCategoryChanged(activeParent);
+    }
+    this.cdr.detectChanges();
+  }
+
+  // v1.41a — subcategory chip strip on the supplier store. Same UX
+  // as the main + project marketplaces. Scoped to children the
+  // supplier actually has items in unless "Show all categories" is
+  // active, in which case we show every child of the parent.
+  onCategoryChanged(catId: string) {
+    this.activeSubcategoryId = '';
+    if (catId === 'all') {
+      this.availableSubcategories = [];
+    } else {
+      // Build the chip list from the same allCatalogueCategories tree
+      // used elsewhere on this page. Filter to children of the active
+      // parent; in scoped mode also drop children with no items.
+      const supplierChildIds = new Set(
+        this.catalogueItems
+          .map(i => i.subcategory_id)
+          .filter(id => !!id)
+      );
+      this.availableSubcategories = (this.allCatalogueCategories || [])
+        .filter(c => c.parent_id === catId)
+        .filter(c => this.showAllStoreCategories || supplierChildIds.has(c.id))
+        .sort((a, b) => ((a as any).sort_order || 0) - ((b as any).sort_order || 0))
+        .map(c => ({ id: c.id, name: c.name }));
+    }
+    this.cdr.detectChanges();
+  }
+
+  /** Track the chip click — internal filter inside catalogue-grid
+      does the actual entity-narrowing on pre-loaded items. */
+  onSubcategoryChanged(id: string) {
+    this.activeSubcategoryId = id || '';
     this.cdr.detectChanges();
   }
 

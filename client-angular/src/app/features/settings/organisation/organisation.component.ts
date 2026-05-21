@@ -73,6 +73,22 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
                 <input pInputText [value]="form.phone || '—'" class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
+            <!-- v1.39: project reference prefix — drives auto-generated
+                 project ref ({prefix}-001, {prefix}-002, …). Counter is
+                 displayed read-only so owners can see how many projects
+                 have been numbered against this prefix. -->
+            <div class="bp-field-grid-2 mt-4">
+              <div>
+                <label class="bp-field-label">Project reference prefix</label>
+                <input pInputText [value]="form.ref_prefix || '—'"
+                       class="w-full bp-field-readonly" readonly/>
+              </div>
+              <div>
+                <label class="bp-field-label">Projects numbered so far</label>
+                <input pInputText [value]="(refCounter || 0).toString()"
+                       class="w-full bp-field-readonly" readonly/>
+              </div>
+            </div>
           </ng-container>
 
           <ng-container *ngIf="editingOrg">
@@ -98,6 +114,24 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
               <div>
                 <label class="bp-field-label">Phone</label>
                 <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-edit" type="tel"/>
+              </div>
+            </div>
+            <div class="bp-field-grid-2 mt-4">
+              <div>
+                <label class="bp-field-label">
+                  Project reference prefix
+                  <span class="bp-help">2-4 letters, uppercase. Used on every project number — e.g. WA-014.</span>
+                </label>
+                <input pInputText [(ngModel)]="form.ref_prefix"
+                       maxlength="4"
+                       (ngModelChange)="form.ref_prefix = ($event || '').toUpperCase()"
+                       placeholder="e.g. WA"
+                       class="w-full bp-input-edit"/>
+              </div>
+              <div>
+                <label class="bp-field-label">Projects numbered so far</label>
+                <input pInputText [value]="(refCounter || 0).toString()"
+                       class="w-full bp-field-readonly" readonly/>
               </div>
             </div>
           </ng-container>
@@ -166,6 +200,12 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   // Exception: bp-page-divider is local to this component
   styles: [`
     .bp-page-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 0 0 32px; }
+    .bp-help {
+      display: block;
+      font-size: 10.5px; font-weight: 400;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
   `]
 })
 export class OrganisationComponent implements OnInit {
@@ -175,8 +215,12 @@ export class OrganisationComponent implements OnInit {
 
   form = {
     name: '', city: '', address: '', email: '', phone: '',
-    vat: 20, margin: 20, contingency: 5
+    vat: 20, margin: 20, contingency: 5,
+    // v1.39: project ref prefix (e.g. WA). Display-only counter
+    // tracked alongside.
+    ref_prefix: ''
   };
+  refCounter = 0;
 
   editingOrg = false;
   editingFin = false;
@@ -202,8 +246,10 @@ export class OrganisationComponent implements OnInit {
             phone: (org as any).phone || '',
             vat: +org.default_vat_pct || 20,
             margin: +org.default_margin_pct || 20,
-            contingency: +org.default_contingency_pct || 5
+            contingency: +org.default_contingency_pct || 5,
+            ref_prefix: (org.ref_prefix || '').toUpperCase()
           };
+          this.refCounter = org.ref_counter || 0;
         }
         this.loading = false;
         this.cdr.detectChanges();
@@ -231,7 +277,8 @@ export class OrganisationComponent implements OnInit {
       address: this.form.address,
       default_vat_pct: this.form.vat,
       default_margin_pct: this.form.margin,
-      default_contingency_pct: this.form.contingency
+      default_contingency_pct: this.form.contingency,
+      ref_prefix: (this.form.ref_prefix || '').trim().toUpperCase() || null
     }).subscribe({
       next: () => {
         this.saving = false;
