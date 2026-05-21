@@ -12,7 +12,9 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
       o.name  AS supplier_name,
       o.city  AS supplier_city,
       o.cover_image_url AS supplier_cover_url,
-      o.image_display   AS supplier_image_display
+      o.image_display   AS supplier_image_display,
+      COALESCE((SELECT array_agg(sit.tag_id)
+                  FROM supplier_item_tag sit WHERE sit.item_id = i.id), '{}') AS tag_ids
     FROM items i
     LEFT JOIN categories c  ON i.category_id    = c.id
     LEFT JOIN categories sc ON i.subcategory_id = sc.id

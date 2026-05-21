@@ -21,6 +21,7 @@ import {
   CategoryCirclesComponent, CategoryCircle
 } from '../category-circles/category-circles.component';
 import { CodelistService } from '../../../core/services/codelist.service';
+import { ApiService } from '../../../core/services/api.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -100,6 +101,69 @@ export type DetailMode = 'inline' | 'drawer';
               (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
     </div>
 
+    <!-- v1.44 — DIMENSION FILTER PANEL (Part 4).
+         Shows when a real category is active. Loads that category's tag
+         dimensions and filters items via supplier_item_tag; tier and
+         lead-time are read straight off the item. -->
+    <ng-container *ngIf="canFilter">
+      <div class="bp-filter-bar">
+        <button type="button" class="bp-filter-toggle"
+                [class.active]="filtersOpen || hasActiveFilters"
+                (click)="toggleFiltersPanel()">
+          Filters
+          <span *ngIf="activeFilterCount" class="bp-filter-count">{{ activeFilterCount }}</span>
+          <span class="bp-filter-caret">{{ filtersOpen ? '▾' : '▸' }}</span>
+        </button>
+        <button *ngIf="hasActiveFilters" type="button"
+                class="bp-filter-clear" (click)="clearAllFilters()">Clear all</button>
+      </div>
+
+      <div *ngIf="filtersOpen" class="bp-filter-panel">
+        <!-- per-category tag dimensions -->
+        <div *ngFor="let g of dimensionGroups" class="bp-filter-group">
+          <button type="button" class="bp-filter-group-head" (click)="toggleDimension(g)">
+            <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+            <span class="bp-filter-group-name">{{ g.dimension }}</span>
+            <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-group-badge">{{ dimensionSelectedCount(g) }}</span>
+          </button>
+          <div *ngIf="g.expanded" class="bp-filter-chips">
+            <button type="button" *ngFor="let v of g.values"
+                    class="bp-filter-chip"
+                    [class.bp-filter-chip--on]="selectedTagIds.has(v.tag_id)"
+                    (click)="toggleFilterTag(v.tag_id)">{{ v.label }}</button>
+          </div>
+        </div>
+        <!-- tier (items.tier) -->
+        <div class="bp-filter-group">
+          <button type="button" class="bp-filter-group-head" (click)="tierExpanded = !tierExpanded">
+            <span class="bp-filter-caret">{{ tierExpanded ? '▾' : '▸' }}</span>
+            <span class="bp-filter-group-name">tier</span>
+            <span *ngIf="selectedTiers.size" class="bp-filter-group-badge">{{ selectedTiers.size }}</span>
+          </button>
+          <div *ngIf="tierExpanded" class="bp-filter-chips">
+            <button type="button" *ngFor="let t of tierFilterOptions"
+                    class="bp-filter-chip"
+                    [class.bp-filter-chip--on]="selectedTiers.has(t.value)"
+                    (click)="toggleTierFilter(t.value)">{{ t.label }}</button>
+          </div>
+        </div>
+        <!-- lead time (items.lead_time_days) -->
+        <div class="bp-filter-group">
+          <button type="button" class="bp-filter-group-head" (click)="leadExpanded = !leadExpanded">
+            <span class="bp-filter-caret">{{ leadExpanded ? '▾' : '▸' }}</span>
+            <span class="bp-filter-group-name">lead time</span>
+            <span *ngIf="selectedLeadBuckets.size" class="bp-filter-group-badge">{{ selectedLeadBuckets.size }}</span>
+          </button>
+          <div *ngIf="leadExpanded" class="bp-filter-chips">
+            <button type="button" *ngFor="let b of leadTimeBuckets"
+                    class="bp-filter-chip"
+                    [class.bp-filter-chip--on]="selectedLeadBuckets.has(b.key)"
+                    (click)="toggleLeadBucket(b.key)">{{ b.label }}</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
          filter bar, bulk-action bar). -->
@@ -137,26 +201,9 @@ export type DetailMode = 'inline' | 'drawer';
           <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
         </button>
 
-        <!-- TYPE section (items.tags aggregated for active category).
-             Kept as-is — independent free-text keywords, separate
-             concept from the controlled subcategory pills above. -->
-        <ng-container *ngIf="tags.length && activeCategory !== 'all'">
-          <div class="bp-sidebar-section-header mt-4">
-            <span class="bp-sidebar-sublabel">Type</span>
-            <div class="bp-sidebar-check-actions">
-              <button class="bp-sidebar-check-link" (click)="checkAllTags()">All</button>
-              <span class="bp-sidebar-check-sep">·</span>
-              <button class="bp-sidebar-check-link" (click)="uncheckAllTags()">None</button>
-            </div>
-          </div>
-          <div *ngFor="let tag of tags" class="bp-sidebar-check-item">
-            <p-checkbox [binary]="true"
-              [ngModel]="checkedTags.has(tag)"
-              (onChange)="toggleTag(tag)"
-              [label]="tag">
-            </p-checkbox>
-          </div>
-        </ng-container>
+        <!-- v1.44 — the legacy free-text "Type" tag checklist was removed.
+             Structured, dimension-scoped filtering now lives in the
+             filter panel below the subcategory chips. -->
       </div>
 
       <!-- ── MAIN ── -->
@@ -620,6 +667,90 @@ export type DetailMode = 'inline' | 'drawer';
       border-color: var(--theme-accent);
       color: #fff;
     }
+
+    /* ── v1.44 — DIMENSION FILTER PANEL (Part 4) ──────────────────────
+       Sits below the subcategory chips. A "Filters" toggle reveals a
+       panel of collapsible dimension groups + tier + lead-time. */
+    .bp-filter-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 28px 0;
+    }
+    .bp-filter-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 12px; font-weight: 500;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .bp-filter-toggle:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-filter-toggle.active { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-filter-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 999px;
+      background: var(--theme-accent); color: #fff;
+      font-size: 10px; font-weight: 700;
+    }
+    .bp-filter-caret { font-size: 9px; opacity: 0.7; }
+    .bp-filter-clear {
+      background: none; border: none; padding: 0;
+      color: var(--color-text-muted);
+      font-size: 11px; font-family: var(--font-body);
+      cursor: pointer;
+    }
+    .bp-filter-clear:hover { color: var(--theme-accent); text-decoration: underline; }
+
+    .bp-filter-panel {
+      display: flex; flex-wrap: wrap; gap: 8px 20px;
+      padding: 10px 28px 4px;
+      margin-top: 6px;
+    }
+    .bp-filter-group { min-width: 140px; }
+    .bp-filter-group-head {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 2px 0;
+      cursor: pointer; font-family: var(--font-body);
+    }
+    .bp-filter-group-name {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--color-text-secondary);
+    }
+    .bp-filter-group-head:hover .bp-filter-group-name { color: var(--theme-accent); }
+    .bp-filter-group-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 15px; height: 15px; padding: 0 4px;
+      border-radius: 999px;
+      background: var(--theme-accent); color: #fff;
+      font-size: 9px; font-weight: 700;
+    }
+    .bp-filter-chips {
+      display: flex; flex-wrap: wrap; gap: 5px;
+      padding: 6px 0 4px;
+    }
+    .bp-filter-chip {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 0.5px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 11px; font-weight: 500;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-filter-chip:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-filter-chip--on {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: #fff;
+    }
+    .bp-filter-chip--on:hover { background: var(--theme-accent); color: #fff; }
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
@@ -1147,6 +1278,34 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   checkedChildIds: Set<string> = new Set();
   checkedTags: Set<string> = new Set();
 
+  // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
+  // Tag dimensions for the active category, loaded from /taxonomy/dimensions.
+  dimensionGroups: Array<{
+    dimension: string;
+    values: Array<{ tag_id: string; label: string }>;
+    expanded: boolean;
+  }> = [];
+  /** tag_id → dimension, so applyFilter can OR within / AND across. */
+  private tagDimensionOf = new Map<string, string>();
+  selectedTagIds = new Set<string>();
+  selectedTiers = new Set<string>();
+  selectedLeadBuckets = new Set<string>();
+  filtersOpen = false;
+  tierExpanded = false;
+  leadExpanded = false;
+  /** Tier values mirror items.tier (basic/mid/premium). */
+  readonly tierFilterOptions = [
+    { value: 'basic',   label: 'Core' },
+    { value: 'mid',     label: 'Signature' },
+    { value: 'premium', label: 'Premium' }
+  ];
+  /** Lead-time buckets filter items.lead_time_days directly. */
+  readonly leadTimeBuckets = [
+    { key: 'express',  label: 'Express · ≤1 wk',    min: 0,  max: 7 },
+    { key: 'standard', label: 'Standard · 1–3 wks', min: 8,  max: 21 },
+    { key: 'extended', label: 'Extended · 3 wks+',  min: 22, max: 999999 }
+  ];
+
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
   }
@@ -1396,7 +1555,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private codelistSvc: CodelistService
+    private codelistSvc: CodelistService,
+    private api: ApiService
   ) {}
 
   ngOnInit() {
@@ -1471,6 +1631,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedEntity = null;
     this.categoryChanged.emit(cat.id);
     this.drillChanged.emit(null);
+    this.loadDimensions();
     this.applyFilter();
     this.cdr.detectChanges();
   }
@@ -1495,6 +1656,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
     this.categoryChanged.emit('all');
     this.drillChanged.emit(null);
+    this.loadDimensions();
     this.applyFilter();
     this.cdr.detectChanges();
   }
@@ -1550,6 +1712,82 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     const next = (id && id === this.activeSubcategoryId) ? '' : id;
     this.activeSubcategoryId = next;
     this.subcategoryChanged.emit(next);
+    this.applyFilter();
+  }
+
+  // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
+
+  /** Load the active category's tag dimensions from the taxonomy and
+      reset all filter selections. Called on every category change. */
+  private loadDimensions(): void {
+    this.dimensionGroups = [];
+    this.tagDimensionOf.clear();
+    this.selectedTagIds.clear();
+    this.selectedTiers.clear();
+    this.selectedLeadBuckets.clear();
+    this.filtersOpen = false;
+    this.tierExpanded = false;
+    this.leadExpanded = false;
+    // Dimensions are catalogue-item facets only; skip for 'all' and for
+    // non-item grids (suppliers / feedback).
+    if (this.entityType !== 'item' || !this.activeCategory || this.activeCategory === 'all') {
+      return;
+    }
+    const catId = this.activeCategory;
+    this.api.get<Array<{ dimension: string; values: Array<{ tag_id: string; label: string }> }>>(
+      `/taxonomy/dimensions?category_id=${catId}`
+    ).subscribe({
+      next: groups => {
+        if (catId !== this.activeCategory) return; // category changed mid-flight
+        this.dimensionGroups = (groups || []).map(g => ({ ...g, expanded: false }));
+        for (const g of this.dimensionGroups) {
+          for (const v of g.values) this.tagDimensionOf.set(v.tag_id, g.dimension);
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => { this.dimensionGroups = []; this.cdr.detectChanges(); }
+    });
+  }
+
+  /** True when the filter panel should be offered (item grid, a real
+      category active, and that category has dimensions to filter on). */
+  get canFilter(): boolean {
+    return this.entityType === 'item' && this.activeCategory !== 'all';
+  }
+  get activeFilterCount(): number {
+    return this.selectedTagIds.size + this.selectedTiers.size + this.selectedLeadBuckets.size;
+  }
+  get hasActiveFilters(): boolean { return this.activeFilterCount > 0; }
+
+  toggleFiltersPanel(): void { this.filtersOpen = !this.filtersOpen; }
+  toggleDimension(g: { expanded: boolean }): void { g.expanded = !g.expanded; }
+
+  dimensionSelectedCount(g: { values: Array<{ tag_id: string }> }): number {
+    return g.values.reduce((n, v) => n + (this.selectedTagIds.has(v.tag_id) ? 1 : 0), 0);
+  }
+
+  toggleFilterTag(tagId: string): void {
+    if (this.selectedTagIds.has(tagId)) this.selectedTagIds.delete(tagId);
+    else this.selectedTagIds.add(tagId);
+    this.selectedTagIds = new Set(this.selectedTagIds);
+    this.applyFilter();
+  }
+  toggleTierFilter(value: string): void {
+    if (this.selectedTiers.has(value)) this.selectedTiers.delete(value);
+    else this.selectedTiers.add(value);
+    this.selectedTiers = new Set(this.selectedTiers);
+    this.applyFilter();
+  }
+  toggleLeadBucket(key: string): void {
+    if (this.selectedLeadBuckets.has(key)) this.selectedLeadBuckets.delete(key);
+    else this.selectedLeadBuckets.add(key);
+    this.selectedLeadBuckets = new Set(this.selectedLeadBuckets);
+    this.applyFilter();
+  }
+  clearAllFilters(): void {
+    this.selectedTagIds = new Set();
+    this.selectedTiers = new Set();
+    this.selectedLeadBuckets = new Set();
     this.applyFilter();
   }
 
@@ -1854,10 +2092,39 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     if (this.activeSubcategoryId) {
       result = result.filter(e => (e as any).subcategory_id === this.activeSubcategoryId);
     }
-    if (this.tags.length && this.checkedTags.size < this.tags.length) {
+    // v1.44 — structured dimension facets. OR within a dimension,
+    // AND across dimensions; matched against the item's tag_ids[].
+    if (this.selectedTagIds.size) {
+      const byDim = new Map<string, Set<string>>();
+      for (const id of this.selectedTagIds) {
+        const dim = this.tagDimensionOf.get(id) || '_';
+        if (!byDim.has(dim)) byDim.set(dim, new Set());
+        byDim.get(dim)!.add(id);
+      }
       result = result.filter(e => {
-        const itemTags: string[] = e._raw?.tags || [];
-        return itemTags.some(t => this.checkedTags.has(t));
+        const owned = new Set<string>((e._raw && e._raw.tag_ids) || []);
+        for (const ids of byDim.values()) {
+          let hit = false;
+          for (const id of ids) { if (owned.has(id)) { hit = true; break; } }
+          if (!hit) return false;
+        }
+        return true;
+      });
+    }
+    // Tier facet — items.tier column directly.
+    if (this.selectedTiers.size) {
+      result = result.filter(e => {
+        const tier = e._raw && e._raw.tier;
+        return !!tier && this.selectedTiers.has(tier);
+      });
+    }
+    // Lead-time facet — buckets over items.lead_time_days.
+    if (this.selectedLeadBuckets.size) {
+      result = result.filter(e => {
+        const d = e._raw && e._raw.lead_time_days;
+        if (d == null) return false;
+        return this.leadTimeBuckets.some(b =>
+          this.selectedLeadBuckets.has(b.key) && d >= b.min && d <= b.max);
       });
     }
     if (this.searchQuery.trim()) {
