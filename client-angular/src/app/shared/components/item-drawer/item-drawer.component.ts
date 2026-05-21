@@ -56,6 +56,9 @@ interface ItemForm {
   image_url: string | null;
   image_display: 'cover' | 'contain';
   tags: string[];
+  /** v1.45a: structured (dimension-scoped) tag ids — edited on the Index
+      tab, persisted via /taxonomy/item-tags. */
+  tagIds: string[];
   external_url: string | null;
   /** v1.17: ordered gallery (8 slots). Maintained client-side; on save we
       send the whole array and the server keeps image_url in sync with
@@ -376,6 +379,34 @@ interface DimensionGroup {
             <div *ngIf="isView" class="bp-readonly-value">
               <span *ngIf="form.tier" class="bp-tier-badge">{{ tierLabel(form.tier) }}</span>
               <span *ngIf="!form.tier">—</span>
+            </div>
+          </div>
+
+          <!-- v1.45a — structured (dimension-scoped) attribute tags.
+               Editable here; the post-save AI classifier can also fill
+               them. Persisted via /taxonomy/item-tags. -->
+          <div class="bp-field" *ngIf="form.category_id">
+            <label class="bp-field-label">Attributes</label>
+            <div *ngIf="indexDimensionsLoading" class="bp-field-hint">Loading attribute tags…</div>
+            <div *ngIf="!indexDimensionsLoading && !indexDimensions.length" class="bp-field-hint">
+              This category has no attribute dimensions.
+            </div>
+            <div class="bp-classify-tags" *ngIf="indexDimensions.length">
+              <div class="bp-classify-tag-group" *ngFor="let d of indexDimensions">
+                <span class="bp-classify-dim">{{ d.dimension }}</span>
+                <div class="bp-classify-chip-row">
+                  <ng-container *ngIf="!isView">
+                    <button type="button" *ngFor="let v of d.values"
+                            class="bp-classify-toggle"
+                            [class.bp-classify-toggle--on]="form.tagIds.includes(v.tag_id)"
+                            (click)="toggleIndexTag(v.tag_id)">{{ v.label }}</button>
+                  </ng-container>
+                  <ng-container *ngIf="isView">
+                    <span class="bp-classify-chip" *ngFor="let v of selectedInDimension(d)">{{ v.label }}</span>
+                    <span *ngIf="!selectedInDimension(d).length" class="bp-readonly-value">—</span>
+                  </ng-container>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1260,6 +1291,15 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   editDimensions: DimensionGroup[] = [];
   editDimensionsLoading = false;
 
+  // ── v1.45a — Index-tab structured tag editor ────────────────────────
+  /** Dimensions for the form's current category — shown on the Index tab. */
+  indexDimensions: DimensionGroup[] = [];
+  indexDimensionsLoading = false;
+  /** True once the supplier touches a tag chip (or changes category) —
+      gates the save-time /taxonomy/item-tags write so an untouched edit
+      never rewrites the junction. */
+  tagsTouched = false;
+
   /** Active tab inside the drawer — Details by default. Reset to Details
       whenever the drawer is re-opened with a new item so the user lands
       where they expect. */
@@ -1374,6 +1414,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       image_url: null,
       image_display: 'cover',
       tags: [],
+      tagIds: [],
       external_url: null,
       images: []
     };
@@ -1403,6 +1444,9 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   }
 
   private populateForm(): void {
+    // v1.45a — reset Index-tab structured-tag state on every (re)populate.
+    this.tagsTouched = false;
+    this.indexDimensions = [];
     if (this.mode === 'add') {
       this.form = this.emptyForm();
       this.subcategories = [];
@@ -1437,6 +1481,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
         if (category_id) {
           this.form.category_id = category_id;
           this.refreshSubcategories(category_id);
+          this.loadIndexDimensions(category_id);
         }
         if (subcategory_id) {
           this.form.subcategory_id = subcategory_id;
@@ -1495,10 +1540,24 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       image_url: this.item.image_url ?? null,
       image_display: (this.item.image_display === 'contain') ? 'contain' : 'cover',
       tags: Array.isArray(this.item.tags) ? [...this.item.tags] : [],
+      tagIds: this.tagIdsFromItem(this.item),
       external_url: this.item.external_url ?? null,
       images: this.imagesFromItem(this.item)
     };
-    if (category_id) this.refreshSubcategories(category_id);
+    if (category_id) {
+      this.refreshSubcategories(category_id);
+      this.loadIndexDimensions(category_id);
+    }
+  }
+
+  /** Resolve an item's structured tag ids from whichever shape the
+      caller's endpoint returned — item_tags (getById) or tag_ids
+      (the list endpoints). */
+  private tagIdsFromItem(item: Item): string[] {
+    const fromJoined = (item as any).item_tags;
+    if (Array.isArray(fromJoined)) return fromJoined.map((t: any) => t.tag_id).filter(Boolean);
+    const ids = (item as any).tag_ids;
+    return Array.isArray(ids) ? [...ids] : [];
   }
 
   private loadLineageOptions(orgId: string): void {
@@ -1517,6 +1576,48 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     this.form.subcategory_id = null;
     if (this.form.category_id) this.refreshSubcategories(this.form.category_id);
     else this.subcategories = [];
+    // v1.45a — a category change invalidates the structured tags (they are
+    // category-scoped). Clear them and reload the dimension list.
+    this.form.tagIds = [];
+    this.tagsTouched = true;
+    this.loadIndexDimensions(this.form.category_id);
+  }
+
+  // ── v1.45a — Index-tab structured tag editor ────────────────────────
+
+  /** Load the dimension list for a category (Index tab attribute editor). */
+  private loadIndexDimensions(categoryId: string | null): void {
+    this.indexDimensions = [];
+    if (!categoryId) return;
+    this.indexDimensionsLoading = true;
+    this.cdr.markForCheck();
+    this.apiSvc.get<DimensionGroup[]>(
+      `/taxonomy/dimensions?category_id=${categoryId}`
+    ).subscribe({
+      next: d => {
+        this.indexDimensions = d || [];
+        this.indexDimensionsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.indexDimensions = [];
+        this.indexDimensionsLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** Toggle a structured tag on the Index tab. */
+  toggleIndexTag(tagId: string): void {
+    const i = this.form.tagIds.indexOf(tagId);
+    if (i >= 0) this.form.tagIds.splice(i, 1);
+    else this.form.tagIds.push(tagId);
+    this.tagsTouched = true;
+  }
+
+  /** Values of a dimension currently selected on the item (view mode). */
+  selectedInDimension(d: DimensionGroup): { tag_id: string; label: string }[] {
+    return d.values.filter(v => this.form.tagIds.includes(v.tag_id));
   }
 
   private refreshSubcategories(parentId: string): void {
@@ -1982,10 +2083,19 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
         });
         // Refresh the parent's list behind the drawer…
         this.saved.emit(result);
-        // …then classify the saved item against the full taxonomy and
-        // show the suggestion panel. The drawer self-closes once the
-        // supplier accepts / edits / skips the suggestion. (v1.43)
-        this.runClassification(result.id, result.name || this.form.name);
+        // v1.45a — persist the Index-tab structured tags (only when the
+        // supplier touched them, or for a brand-new item), THEN classify
+        // the saved item and show the suggestion panel. The drawer
+        // self-closes once the supplier accepts / edits / skips. (v1.43)
+        const afterTags = () =>
+          this.runClassification(result.id, result.name || this.form.name);
+        if (this.tagsTouched || this.mode === 'add') {
+          this.apiSvc.post('/taxonomy/item-tags',
+            { itemId: result.id, tag_ids: this.form.tagIds }
+          ).subscribe({ next: afterTags, error: afterTags });
+        } else {
+          afterTags();
+        }
         this.cdr.markForCheck();
       },
       error: () => {

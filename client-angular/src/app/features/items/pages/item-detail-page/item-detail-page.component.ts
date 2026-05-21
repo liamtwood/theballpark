@@ -169,9 +169,7 @@ import { Item, Org, Project } from '../../../../models';
             </div>
             <div class="bp-itempage-spec-row">
               <div class="bp-itempage-spec-label">Subcategory</div>
-              <!-- v1.34: items.subcategory doesn't exist on the model today;
-                   render an em-dash until a subcategory field lands. -->
-              <div class="bp-itempage-spec-value">—</div>
+              <div class="bp-itempage-spec-value">{{ item.subcategory_name || '—' }}</div>
             </div>
             <div class="bp-itempage-spec-row">
               <div class="bp-itempage-spec-label">Lead time</div>
@@ -206,6 +204,17 @@ import { Item, Org, Project } from '../../../../models';
             <div class="bp-itempage-section-label">Tags</div>
             <div class="bp-itempage-tags">
               <span *ngFor="let t of item.tags" class="bp-itempage-tag">{{ t }}</span>
+            </div>
+          </div>
+
+          <!-- v1.45a — structured attribute tags, grouped by dimension -->
+          <div class="bp-itempage-section" *ngIf="attributeGroups.length">
+            <div class="bp-itempage-section-label">Attributes</div>
+            <div class="bp-itempage-attr-group" *ngFor="let g of attributeGroups">
+              <span class="bp-itempage-attr-dim">{{ g.dimension }}</span>
+              <div class="bp-itempage-tags">
+                <span *ngFor="let l of g.labels" class="bp-itempage-tag">{{ l }}</span>
+              </div>
             </div>
           </div>
 
@@ -487,6 +496,21 @@ import { Item, Org, Project } from '../../../../models';
       border: 0.5px solid var(--color-border);
       background: var(--color-surface);
       color: var(--color-text-muted);
+    }
+    /* v1.45a — structured attribute tags, grouped by dimension */
+    .bp-itempage-attr-group { margin-bottom: 10px; }
+    .bp-itempage-attr-group:last-child { margin-bottom: 0; }
+    .bp-itempage-attr-dim {
+      display: block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 5px;
+    }
+    .bp-itempage-attr-group .bp-itempage-tag {
+      color: var(--theme-accent);
+      border-color: var(--theme-border);
+      background: var(--theme-bg);
     }
 
     /* Supplier card — v1.34b: constrained width + taller cover for a more
@@ -844,6 +868,20 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
   }
 
   openEdit() { this.showEditDrawer = true; }
+
+  /** v1.45a — the item's structured tags grouped by dimension, for the
+      read-only Attributes section. */
+  get attributeGroups(): { dimension: string; labels: string[] }[] {
+    const tags: Array<{ dimension: string; label: string }> =
+      (this.item && (this.item as any).item_tags) || [];
+    const order: string[] = [];
+    const map = new Map<string, string[]>();
+    for (const t of tags) {
+      if (!map.has(t.dimension)) { map.set(t.dimension, []); order.push(t.dimension); }
+      map.get(t.dimension)!.push(t.label);
+    }
+    return order.map(d => ({ dimension: d, labels: map.get(d)! }));
+  }
 
   onItemSaved(updated: Item) {
     if (updated) {

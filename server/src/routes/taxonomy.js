@@ -41,6 +41,14 @@ router.post('/dismiss-classification', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Replace an item's structured tags (item drawer Index tab).
+router.post('/item-tags', async (req, res, next) => {
+  try {
+    const { itemId, tag_ids } = req.body || {};
+    res.json(await TaxonomyService.setItemTags(itemId, tag_ids));
+  } catch (err) { next(err); }
+});
+
 router.get('/dimensions', async (req, res, next) => {
   try {
     if (!req.query.category_id) {

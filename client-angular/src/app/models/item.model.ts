@@ -53,4 +53,7 @@ export interface Item {
   /** v1.43: the structured (dimension-scoped) tags accepted for this item,
       joined from supplier_item_tag. Read-only — populated by getById. */
   item_tags?: Array<{ tag_id: string; dimension: string; label: string }>;
+  /** v1.45a: the item's structured tag ids — returned by the list
+      endpoints (getAll / getCatalogue) for client-side filtering. */
+  tag_ids?: string[];
 }

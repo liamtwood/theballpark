@@ -101,69 +101,6 @@ export type DetailMode = 'inline' | 'drawer';
               (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
     </div>
 
-    <!-- v1.44 — DIMENSION FILTER PANEL (Part 4).
-         Shows when a real category is active. Loads that category's tag
-         dimensions and filters items via supplier_item_tag; tier and
-         lead-time are read straight off the item. -->
-    <ng-container *ngIf="canFilter">
-      <div class="bp-filter-bar">
-        <button type="button" class="bp-filter-toggle"
-                [class.active]="filtersOpen || hasActiveFilters"
-                (click)="toggleFiltersPanel()">
-          Filters
-          <span *ngIf="activeFilterCount" class="bp-filter-count">{{ activeFilterCount }}</span>
-          <span class="bp-filter-caret">{{ filtersOpen ? '▾' : '▸' }}</span>
-        </button>
-        <button *ngIf="hasActiveFilters" type="button"
-                class="bp-filter-clear" (click)="clearAllFilters()">Clear all</button>
-      </div>
-
-      <div *ngIf="filtersOpen" class="bp-filter-panel">
-        <!-- per-category tag dimensions -->
-        <div *ngFor="let g of dimensionGroups" class="bp-filter-group">
-          <button type="button" class="bp-filter-group-head" (click)="toggleDimension(g)">
-            <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
-            <span class="bp-filter-group-name">{{ g.dimension }}</span>
-            <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-group-badge">{{ dimensionSelectedCount(g) }}</span>
-          </button>
-          <div *ngIf="g.expanded" class="bp-filter-chips">
-            <button type="button" *ngFor="let v of g.values"
-                    class="bp-filter-chip"
-                    [class.bp-filter-chip--on]="selectedTagIds.has(v.tag_id)"
-                    (click)="toggleFilterTag(v.tag_id)">{{ v.label }}</button>
-          </div>
-        </div>
-        <!-- tier (items.tier) -->
-        <div class="bp-filter-group">
-          <button type="button" class="bp-filter-group-head" (click)="tierExpanded = !tierExpanded">
-            <span class="bp-filter-caret">{{ tierExpanded ? '▾' : '▸' }}</span>
-            <span class="bp-filter-group-name">tier</span>
-            <span *ngIf="selectedTiers.size" class="bp-filter-group-badge">{{ selectedTiers.size }}</span>
-          </button>
-          <div *ngIf="tierExpanded" class="bp-filter-chips">
-            <button type="button" *ngFor="let t of tierFilterOptions"
-                    class="bp-filter-chip"
-                    [class.bp-filter-chip--on]="selectedTiers.has(t.value)"
-                    (click)="toggleTierFilter(t.value)">{{ t.label }}</button>
-          </div>
-        </div>
-        <!-- lead time (items.lead_time_days) -->
-        <div class="bp-filter-group">
-          <button type="button" class="bp-filter-group-head" (click)="leadExpanded = !leadExpanded">
-            <span class="bp-filter-caret">{{ leadExpanded ? '▾' : '▸' }}</span>
-            <span class="bp-filter-group-name">lead time</span>
-            <span *ngIf="selectedLeadBuckets.size" class="bp-filter-group-badge">{{ selectedLeadBuckets.size }}</span>
-          </button>
-          <div *ngIf="leadExpanded" class="bp-filter-chips">
-            <button type="button" *ngFor="let b of leadTimeBuckets"
-                    class="bp-filter-chip"
-                    [class.bp-filter-chip--on]="selectedLeadBuckets.has(b.key)"
-                    (click)="toggleLeadBucket(b.key)">{{ b.label }}</button>
-          </div>
-        </div>
-      </div>
-    </ng-container>
-
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
          filter bar, bulk-action bar). -->
@@ -201,9 +138,71 @@ export type DetailMode = 'inline' | 'drawer';
           <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
         </button>
 
-        <!-- v1.44 — the legacy free-text "Type" tag checklist was removed.
-             Structured, dimension-scoped filtering now lives in the
-             filter panel below the subcategory chips. -->
+        <!-- v1.45a — DIMENSION FILTERS (Part 4). One collapsible section
+             per tag dimension of the active category, plus tier and lead
+             time. Replaces the legacy free-text "Type" checklist. Shown
+             only when a real category is active. -->
+        <ng-container *ngIf="canFilter">
+          <div class="bp-sidebar-section-header mt-4">
+            <span class="bp-sidebar-sublabel">Filters</span>
+            <button *ngIf="hasActiveFilters" class="bp-sidebar-check-link"
+                    (click)="clearAllFilters()">Clear all</button>
+          </div>
+
+          <!-- per-category tag dimensions -->
+          <div *ngFor="let g of dimensionGroups" class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="toggleDimension(g)">
+              <span class="bp-filter-sec-name">{{ g.dimension }}</span>
+              <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-sec-badge">{{ dimensionSelectedCount(g) }}</span>
+              <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="g.expanded" class="bp-filter-sec-body">
+              <div *ngFor="let v of g.values" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTagIds.has(v.tag_id)"
+                  (onChange)="toggleFilterTag(v.tag_id)"
+                  [label]="v.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- tier -->
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="tierExpanded = !tierExpanded">
+              <span class="bp-filter-sec-name">tier</span>
+              <span *ngIf="selectedTiers.size" class="bp-filter-sec-badge">{{ selectedTiers.size }}</span>
+              <span class="bp-filter-caret">{{ tierExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="tierExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let t of tierFilterOptions" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTiers.has(t.value)"
+                  (onChange)="toggleTierFilter(t.value)"
+                  [label]="t.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- lead time -->
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="leadExpanded = !leadExpanded">
+              <span class="bp-filter-sec-name">lead time</span>
+              <span *ngIf="selectedLeadBuckets.size" class="bp-filter-sec-badge">{{ selectedLeadBuckets.size }}</span>
+              <span class="bp-filter-caret">{{ leadExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="leadExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let b of leadTimeBuckets" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedLeadBuckets.has(b.key)"
+                  (onChange)="toggleLeadBucket(b.key)"
+                  [label]="b.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+        </ng-container>
       </div>
 
       <!-- ── MAIN ── -->
@@ -668,89 +667,36 @@ export type DetailMode = 'inline' | 'drawer';
       color: #fff;
     }
 
-    /* ── v1.44 — DIMENSION FILTER PANEL (Part 4) ──────────────────────
-       Sits below the subcategory chips. A "Filters" toggle reveals a
-       panel of collapsible dimension groups + tier + lead-time. */
-    .bp-filter-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 4px 28px 0;
-    }
-    .bp-filter-toggle {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      border: 0.5px solid var(--color-border);
-      background: transparent;
-      color: var(--color-text-secondary);
-      font-size: 12px; font-weight: 500;
-      font-family: var(--font-body);
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .bp-filter-toggle:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-filter-toggle.active { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-filter-count {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 16px; height: 16px; padding: 0 4px;
-      border-radius: 999px;
-      background: var(--theme-accent); color: #fff;
-      font-size: 10px; font-weight: 700;
-    }
-    .bp-filter-caret { font-size: 9px; opacity: 0.7; }
-    .bp-filter-clear {
-      background: none; border: none; padding: 0;
-      color: var(--color-text-muted);
-      font-size: 11px; font-family: var(--font-body);
-      cursor: pointer;
-    }
-    .bp-filter-clear:hover { color: var(--theme-accent); text-decoration: underline; }
-
-    .bp-filter-panel {
-      display: flex; flex-wrap: wrap; gap: 8px 20px;
-      padding: 10px 28px 4px;
-      margin-top: 6px;
-    }
-    .bp-filter-group { min-width: 140px; }
-    .bp-filter-group-head {
+    /* ── v1.45a — SIDEBAR DIMENSION FILTERS (Part 4) ──────────────────
+       Collapsible filter sections in the left sidebar — one per tag
+       dimension of the active category, plus tier + lead time. */
+    .bp-filter-caret { font-size: 9px; opacity: 0.6; }
+    .bp-filter-sec { border-top: 0.5px solid var(--color-border); }
+    .bp-filter-sec:first-of-type { border-top: none; }
+    .bp-filter-sec-head {
       display: flex; align-items: center; gap: 6px;
-      background: none; border: none; padding: 2px 0;
-      cursor: pointer; font-family: var(--font-body);
+      width: 100%;
+      background: none; border: none;
+      padding: 8px 2px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-align: left;
     }
-    .bp-filter-group-name {
+    .bp-filter-sec-name {
+      flex: 1;
       font-size: 11px; font-weight: 600;
       letter-spacing: 0.04em; text-transform: uppercase;
       color: var(--color-text-secondary);
     }
-    .bp-filter-group-head:hover .bp-filter-group-name { color: var(--theme-accent); }
-    .bp-filter-group-badge {
+    .bp-filter-sec-head:hover .bp-filter-sec-name { color: var(--theme-accent); }
+    .bp-filter-sec-badge {
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 15px; height: 15px; padding: 0 4px;
       border-radius: 999px;
       background: var(--theme-accent); color: #fff;
       font-size: 9px; font-weight: 700;
     }
-    .bp-filter-chips {
-      display: flex; flex-wrap: wrap; gap: 5px;
-      padding: 6px 0 4px;
-    }
-    .bp-filter-chip {
-      padding: 3px 9px;
-      border-radius: 999px;
-      border: 0.5px solid var(--color-border);
-      background: transparent;
-      color: var(--color-text-secondary);
-      font-size: 11px; font-weight: 500;
-      font-family: var(--font-body);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .bp-filter-chip:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-filter-chip--on {
-      background: var(--theme-accent);
-      border-color: var(--theme-accent);
-      color: #fff;
-    }
-    .bp-filter-chip--on:hover { background: var(--theme-accent); color: #fff; }
+    .bp-filter-sec-body { padding: 0 0 8px 2px; }
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {

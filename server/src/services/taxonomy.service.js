@@ -401,6 +401,52 @@ async function applyClassification(itemId, edited) {
   return getItemWithTags(itemId);
 }
 
+/**
+ * Replace an item's structured (dimension-scoped) tags. Used by the item
+ * drawer's Index tab, where the supplier edits tags manually. Validates
+ * every tag belongs to the item's category, then rewrites the
+ * supplier_item_tag junction in one transaction.
+ *
+ * @returns the updated item (with item_tags)
+ */
+async function setItemTags(itemId, tagIds) {
+  if (!itemId) throw httpErr('itemId is required', 400);
+  const itm = await pool.query('SELECT id, category_id FROM items WHERE id = $1', [itemId]);
+  if (!itm.rows.length) throw httpErr(`Item ${itemId} not found`, 404);
+  const categoryId = itm.rows[0].category_id;
+
+  let ids = Array.isArray(tagIds) ? tagIds.filter(Boolean) : [];
+  if (ids.length && categoryId) {
+    const v = await pool.query(
+      'SELECT id FROM tag WHERE id = ANY($1::uuid[]) AND category_id = $2',
+      [ids, categoryId]
+    );
+    ids = v.rows.map(r => r.id);
+  } else {
+    ids = [];
+  }
+
+  const conn = await pool.connect();
+  try {
+    await conn.query('BEGIN');
+    await conn.query('DELETE FROM supplier_item_tag WHERE item_id = $1', [itemId]);
+    for (const tid of ids) {
+      await conn.query(
+        `INSERT INTO supplier_item_tag (item_id, tag_id)
+         VALUES ($1, $2) ON CONFLICT (item_id, tag_id) DO NOTHING`,
+        [itemId, tid]
+      );
+    }
+    await conn.query('COMMIT');
+  } catch (e) {
+    await conn.query('ROLLBACK');
+    throw e;
+  } finally {
+    conn.release();
+  }
+  return getItemWithTags(itemId);
+}
+
 /** Supplier skipped the suggestion — clear it so the prompt doesn't
     resurface. */
 async function dismissClassification(itemId) {
@@ -580,6 +626,7 @@ module.exports = {
   classifyItem,
   applyClassification,
   dismissClassification,
+  setItemTags,
   getDimensions,
   suggestSubcategory,
   backfillSubcategories
