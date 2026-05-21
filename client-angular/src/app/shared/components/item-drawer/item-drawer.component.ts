@@ -449,22 +449,12 @@ interface DimensionGroup {
             Derived = born from another item. Parent = variant of a product family.
           </div>
 
-          <div class="bp-field">
-            <label class="bp-field-label">
-              Tags
-              <span *ngIf="!isView" class="bp-field-hint-inline">— press Enter to add</span>
-            </label>
-            <p-chips *ngIf="!isView" [(ngModel)]="form.tags"
-                     styleClass="w-full bp-input-edit"
-                     [allowDuplicate]="false"
-                     [addOnBlur]="true"
-                     placeholder="e.g. led, screen, rental...">
-            </p-chips>
-            <div *ngIf="isView" class="bp-readonly-chips">
-              <span *ngFor="let tag of form.tags" class="bp-readonly-chip">{{ tag }}</span>
-              <span *ngIf="!form.tags.length" class="bp-readonly-value">—</span>
-            </div>
-          </div>
+          <!-- v1.45c — the free-text Tags field was removed. Structured,
+               dimension-scoped tags (the Attributes section above) are
+               the single source of truth, stored in supplier_item_tag.
+               The legacy items.tags[] column is kept as a data fallback
+               but is no longer surfaced or written from the UI. -->
+
 
           <div class="bp-field">
             <label class="bp-field-label">External URL</label>
@@ -2046,7 +2036,8 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       parent_item_id: this.form.parent_item_id,
       image_url: heroUrl,
       image_display: this.form.image_display,
-      tags: this.form.tags,
+      // v1.45c — items.tags[] (free-text) is no longer written from the
+      // drawer; structured tags persist via /taxonomy/item-tags.
       external_url: this.form.external_url,
       images: this.form.images
     };

@@ -140,36 +140,35 @@ export type DetailMode = 'inline' | 'drawer';
         </button>
         </ng-container>
 
-        <!-- v1.45a — DIMENSION FILTERS (Part 4). One collapsible section
-             per tag dimension of the active category, plus tier and lead
-             time. Replaces the legacy free-text "Type" checklist. Shown
-             only when a real category is active. -->
+        <!-- v1.45c — DIMENSION FILTERS in three fixed groups: PRICE
+             (price + tier), the active category's own dimensions
+             (alphabetical), then EVENT (event-type + lead time). The
+             common groups keep a fixed position so the user always
+             knows where they are. Shown only when a category is active. -->
         <ng-container *ngIf="canFilter">
-          <div class="bp-sidebar-section-header mt-4">
-            <span class="bp-sidebar-sublabel">Filters</span>
+
+          <!-- ── GROUP 1 · PRICE ─────────────────────────────────── -->
+          <div class="bp-filter-grouphdr mt-4">
+            <span class="bp-sidebar-sublabel">Price</span>
             <button *ngIf="hasActiveFilters" class="bp-sidebar-check-link"
                     (click)="clearAllFilters()">Clear all</button>
           </div>
-
-          <!-- per-category tag dimensions -->
-          <div *ngFor="let g of dimensionGroups" class="bp-filter-sec">
-            <button type="button" class="bp-filter-sec-head" (click)="toggleDimension(g)">
-              <span class="bp-filter-sec-name">{{ g.dimension }}</span>
-              <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-sec-badge">{{ dimensionSelectedCount(g) }}</span>
-              <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="priceExpanded = !priceExpanded">
+              <span class="bp-filter-sec-name">price</span>
+              <span *ngIf="selectedPriceBuckets.size" class="bp-filter-sec-badge">{{ selectedPriceBuckets.size }}</span>
+              <span class="bp-filter-caret">{{ priceExpanded ? '▾' : '▸' }}</span>
             </button>
-            <div *ngIf="g.expanded" class="bp-filter-sec-body">
-              <div *ngFor="let v of g.values" class="bp-sidebar-check-item">
+            <div *ngIf="priceExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let b of priceBuckets" class="bp-sidebar-check-item">
                 <p-checkbox [binary]="true"
-                  [ngModel]="selectedTagIds.has(v.tag_id)"
-                  (onChange)="toggleFilterTag(v.tag_id)"
-                  [label]="v.label">
+                  [ngModel]="selectedPriceBuckets.has(b.key)"
+                  (onChange)="togglePriceBucket(b.key)"
+                  [label]="b.label">
                 </p-checkbox>
               </div>
             </div>
           </div>
-
-          <!-- tier -->
           <div class="bp-filter-sec">
             <button type="button" class="bp-filter-sec-head" (click)="tierExpanded = !tierExpanded">
               <span class="bp-filter-sec-name">tier</span>
@@ -187,7 +186,48 @@ export type DetailMode = 'inline' | 'drawer';
             </div>
           </div>
 
-          <!-- lead time -->
+          <!-- ── GROUP 2 · CATEGORY-SPECIFIC (alphabetical) ───────── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
+               *ngIf="categoryDimensions.length">
+            <span class="bp-sidebar-sublabel">{{ activeCategoryName }}</span>
+          </div>
+          <div *ngFor="let g of categoryDimensions" class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="toggleDimension(g)">
+              <span class="bp-filter-sec-name">{{ g.dimension }}</span>
+              <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-sec-badge">{{ dimensionSelectedCount(g) }}</span>
+              <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="g.expanded" class="bp-filter-sec-body">
+              <div *ngFor="let v of g.values" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTagIds.has(v.tag_id)"
+                  (onChange)="toggleFilterTag(v.tag_id)"
+                  [label]="v.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GROUP 3 · EVENT (common — fixed at the bottom) ───── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule">
+            <span class="bp-sidebar-sublabel">Event</span>
+          </div>
+          <div class="bp-filter-sec" *ngIf="eventTypeGroup as g">
+            <button type="button" class="bp-filter-sec-head" (click)="toggleDimension(g)">
+              <span class="bp-filter-sec-name">event-type</span>
+              <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-sec-badge">{{ dimensionSelectedCount(g) }}</span>
+              <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="g.expanded" class="bp-filter-sec-body">
+              <div *ngFor="let v of g.values" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTagIds.has(v.tag_id)"
+                  (onChange)="toggleFilterTag(v.tag_id)"
+                  [label]="v.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
           <div class="bp-filter-sec">
             <button type="button" class="bp-filter-sec-head" (click)="leadExpanded = !leadExpanded">
               <span class="bp-filter-sec-name">lead time</span>
@@ -669,25 +709,32 @@ export type DetailMode = 'inline' | 'drawer';
       color: #fff;
     }
 
-    /* ── v1.45a — SIDEBAR DIMENSION FILTERS (Part 4) ──────────────────
-       Collapsible filter sections in the left sidebar — one per tag
-       dimension of the active category, plus tier + lead time. */
+    /* ── v1.45c — SIDEBAR DIMENSION FILTERS ───────────────────────────
+       Three fixed groups (Price · Category · Event), each a labelled
+       header over a set of collapsible dimension rows. */
     .bp-filter-caret { font-size: 9px; opacity: 0.6; }
-    .bp-filter-sec { border-top: 0.5px solid var(--color-border); }
-    .bp-filter-sec:first-of-type { border-top: none; }
+    .bp-filter-grouphdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 2px 2px;
+    }
+    .bp-filter-grouphdr--rule {
+      margin-top: 10px;
+      padding-top: 12px;
+      border-top: 0.5px solid var(--color-border);
+    }
     .bp-filter-sec-head {
       display: flex; align-items: center; gap: 6px;
       width: 100%;
       background: none; border: none;
-      padding: 8px 2px;
+      padding: 7px 2px;
       cursor: pointer;
       font-family: var(--font-body);
       text-align: left;
     }
     .bp-filter-sec-name {
       flex: 1;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 0.04em; text-transform: uppercase;
+      font-size: 12px; font-weight: 500;
+      text-transform: capitalize;
       color: var(--color-text-secondary);
     }
     .bp-filter-sec-head:hover .bp-filter-sec-name { color: var(--theme-accent); }
@@ -698,7 +745,7 @@ export type DetailMode = 'inline' | 'drawer';
       background: var(--theme-accent); color: #fff;
       font-size: 9px; font-weight: 700;
     }
-    .bp-filter-sec-body { padding: 0 0 8px 2px; }
+    .bp-filter-sec-body { padding: 0 0 6px 2px; }
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
@@ -1233,14 +1280,29 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     values: Array<{ tag_id: string; label: string }>;
     expanded: boolean;
   }> = [];
+  /** v1.45c — the active category's own dimensions, event-type stripped
+      out and sorted alphabetically (middle "[Category]" filter group). */
+  categoryDimensions: Array<{
+    dimension: string;
+    values: Array<{ tag_id: string; label: string }>;
+    expanded: boolean;
+  }> = [];
+  /** v1.45c — the shared event-type dimension, pulled out of the
+      category list so it can sit in the fixed "Event" group. */
+  eventTypeGroup: {
+    dimension: string;
+    values: Array<{ tag_id: string; label: string }>;
+    expanded: boolean;
+  } | null = null;
   /** tag_id → dimension, so applyFilter can OR within / AND across. */
   private tagDimensionOf = new Map<string, string>();
   selectedTagIds = new Set<string>();
   selectedTiers = new Set<string>();
   selectedLeadBuckets = new Set<string>();
-  filtersOpen = false;
+  selectedPriceBuckets = new Set<string>();
   tierExpanded = false;
   leadExpanded = false;
+  priceExpanded = false;
   /** Tier values mirror items.tier (basic/mid/premium). */
   readonly tierFilterOptions = [
     { value: 'basic',   label: 'Core' },
@@ -1252,6 +1314,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     { key: 'express',  label: 'Express · ≤1 wk',    min: 0,  max: 7 },
     { key: 'standard', label: 'Standard · 1–3 wks', min: 8,  max: 21 },
     { key: 'extended', label: 'Extended · 3 wks+',  min: 22, max: 999999 }
+  ];
+  /** Price buckets filter items.base_price directly. */
+  readonly priceBuckets = [
+    { key: 'p1', label: 'Under £1,000',      min: 0,     max: 999 },
+    { key: 'p2', label: '£1,000 – £5,000',   min: 1000,  max: 4999 },
+    { key: 'p3', label: '£5,000 – £20,000',  min: 5000,  max: 19999 },
+    { key: 'p4', label: '£20,000+',          min: 20000, max: 1e12 }
   ];
 
   get parentCategories(): CategoryInfo[] {
@@ -1665,17 +1734,21 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
   // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
 
-  /** Load the active category's tag dimensions from the taxonomy and
-      reset all filter selections. Called on every category change. */
+  /** Load the active category's tag dimensions, split them into the
+      category group (alphabetical) and the shared event-type group, and
+      reset every filter selection. Called on each category change. */
   private loadDimensions(): void {
     this.dimensionGroups = [];
+    this.categoryDimensions = [];
+    this.eventTypeGroup = null;
     this.tagDimensionOf.clear();
     this.selectedTagIds.clear();
     this.selectedTiers.clear();
     this.selectedLeadBuckets.clear();
-    this.filtersOpen = false;
+    this.selectedPriceBuckets.clear();
     this.tierExpanded = false;
     this.leadExpanded = false;
+    this.priceExpanded = false;
     // Dimensions are catalogue-item facets only; skip for 'all' and for
     // non-item grids (suppliers / feedback).
     if (this.entityType !== 'item' || !this.activeCategory || this.activeCategory === 'all') {
@@ -1687,27 +1760,42 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     ).subscribe({
       next: groups => {
         if (catId !== this.activeCategory) return; // category changed mid-flight
-        this.dimensionGroups = (groups || []).map(g => ({ ...g, expanded: false }));
-        for (const g of this.dimensionGroups) {
+        const all = (groups || []).map(g => ({ ...g, expanded: false }));
+        for (const g of all) {
           for (const v of g.values) this.tagDimensionOf.set(v.tag_id, g.dimension);
         }
+        this.dimensionGroups = all;
+        this.eventTypeGroup = all.find(g => g.dimension === 'event-type') || null;
+        this.categoryDimensions = all
+          .filter(g => g.dimension !== 'event-type')
+          .sort((a, b) => a.dimension.localeCompare(b.dimension));
         this.cdr.detectChanges();
       },
-      error: () => { this.dimensionGroups = []; this.cdr.detectChanges(); }
+      error: () => {
+        this.dimensionGroups = [];
+        this.categoryDimensions = [];
+        this.eventTypeGroup = null;
+        this.cdr.detectChanges();
+      }
     });
   }
 
   /** True when the filter panel should be offered (item grid, a real
-      category active, and that category has dimensions to filter on). */
+      category active). */
   get canFilter(): boolean {
     return this.entityType === 'item' && this.activeCategory !== 'all';
   }
+  /** Display name of the active category — the middle filter group's label. */
+  get activeCategoryName(): string {
+    const c = this.categories.find(x => x.id === this.activeCategory);
+    return c ? c.name : '';
+  }
   get activeFilterCount(): number {
-    return this.selectedTagIds.size + this.selectedTiers.size + this.selectedLeadBuckets.size;
+    return this.selectedTagIds.size + this.selectedTiers.size
+         + this.selectedLeadBuckets.size + this.selectedPriceBuckets.size;
   }
   get hasActiveFilters(): boolean { return this.activeFilterCount > 0; }
 
-  toggleFiltersPanel(): void { this.filtersOpen = !this.filtersOpen; }
   toggleDimension(g: { expanded: boolean }): void { g.expanded = !g.expanded; }
 
   dimensionSelectedCount(g: { values: Array<{ tag_id: string }> }): number {
@@ -1732,10 +1820,17 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedLeadBuckets = new Set(this.selectedLeadBuckets);
     this.applyFilter();
   }
+  togglePriceBucket(key: string): void {
+    if (this.selectedPriceBuckets.has(key)) this.selectedPriceBuckets.delete(key);
+    else this.selectedPriceBuckets.add(key);
+    this.selectedPriceBuckets = new Set(this.selectedPriceBuckets);
+    this.applyFilter();
+  }
   clearAllFilters(): void {
     this.selectedTagIds = new Set();
     this.selectedTiers = new Set();
     this.selectedLeadBuckets = new Set();
+    this.selectedPriceBuckets = new Set();
     this.applyFilter();
   }
 
@@ -2073,6 +2168,15 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         if (d == null) return false;
         return this.leadTimeBuckets.some(b =>
           this.selectedLeadBuckets.has(b.key) && d >= b.min && d <= b.max);
+      });
+    }
+    // v1.45c — price facet — buckets over the item's base price.
+    if (this.selectedPriceBuckets.size) {
+      result = result.filter(e => {
+        const p = e.price;
+        if (p == null) return false;
+        return this.priceBuckets.some(b =>
+          this.selectedPriceBuckets.has(b.key) && p >= b.min && p <= b.max);
       });
     }
     if (this.searchQuery.trim()) {

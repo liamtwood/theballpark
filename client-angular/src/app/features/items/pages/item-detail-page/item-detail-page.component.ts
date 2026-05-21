@@ -199,13 +199,8 @@ import { Item, Org, Project } from '../../../../models';
             </div>
           </div>
 
-          <!-- Tags -->
-          <div class="bp-itempage-section" *ngIf="item.tags && item.tags.length">
-            <div class="bp-itempage-section-label">Tags</div>
-            <div class="bp-itempage-tags">
-              <span *ngFor="let t of item.tags" class="bp-itempage-tag">{{ t }}</span>
-            </div>
-          </div>
+          <!-- v1.45c — the legacy free-text "Tags" section was removed;
+               structured attribute tags below are the source of truth. -->
 
           <!-- v1.45a — structured attribute tags, grouped by dimension -->
           <div class="bp-itempage-section" *ngIf="attributeGroups.length">

@@ -39,7 +39,6 @@ import {
         <app-catalogue-grid
           [entities]="currentEntities"
           [categories]="categories"
-          [tags]="availableTags"
           [entityType]="entityType"
           [entityLabel]="viewMode === 'suppliers' ? 'supplier' : 'item'"
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
@@ -60,7 +59,6 @@ import {
           (actionClicked)="onAction($event)"
           (parentClicked)="onParentClicked($event)"
           (categoryChanged)="onCategoryChanged($event)"
-          (tagChanged)="onTagChanged($event)"
           [subcategories]="availableSubcategories"
           [activeSubcategoryId]="activeSubcategoryId"
           (subcategoryChanged)="onSubcategoryChanged($event)"
@@ -152,7 +150,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   suppliers: (Org & { category_ids?: string[]; item_count?: number })[] = [];
   rawItems: any[] = [];
   categories: CategoryInfo[] = [];
-  availableTags: string[] = [];
 
   // State
   loading = true;
@@ -531,13 +528,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadTags(categoryId: string) {
-    this.supplierSvc.getTagsByCategory(categoryId).subscribe({
-      next: (tags: string[]) => { this.availableTags = (tags || []).sort(); this.cdr.detectChanges(); },
-      error: () => this.cdr.detectChanges()
-    });
-  }
-
   // ── Event handlers ────────────────────────────────────────────────────
 
   switchMode(mode: 'items' | 'suppliers') {
@@ -550,7 +540,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   onCategoryChanged(catId: string) {
     this.activeCategory = catId;
     this.activeTag = '';
-    this.availableTags = [];
     // v1.41 — subcategory chip strip mirrors the active parent.
     // Clear filter + repopulate options.
     this.activeSubcategoryId = '';
@@ -560,14 +549,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
           .filter(c => c.parent_id === catId)
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
           .map(c => ({ id: c.id, name: c.name }));
-    if (catId !== 'all') this.loadTags(catId);
     if (this.viewMode === 'items') this.loadItems();
     else this.mapSuppliers();
-  }
-
-  onTagChanged(tag: string) {
-    this.activeTag = tag;
-    if (this.viewMode === 'items') this.loadItems();
   }
 
   /** v1.41 — chip click from <app-catalogue-grid>. '' = All. */
