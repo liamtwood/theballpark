@@ -472,6 +472,10 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       image_display: i.image_url ? (i.image_display || 'cover') : (i.supplier_image_display || 'cover'),
       subtitle: i.supplier_name,
       category_id: i.category_id,
+      // v1.41a — surface subcategory FK so the catalogue grid's
+      // internal subcategory-pill filter (cast on `e.subcategory_id`)
+      // works on pre-loaded entities too.
+      subcategory_id: i.subcategory_id,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,

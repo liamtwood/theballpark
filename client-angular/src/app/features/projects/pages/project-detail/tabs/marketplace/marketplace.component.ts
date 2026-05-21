@@ -75,6 +75,10 @@ import {
       [currentOrgId]="currentOrgId"
       [currentOrgType]="currentOrgType"
       panelContext="project"
+      [subcategories]="availableSubcategories"
+      [activeSubcategoryId]="activeSubcategoryId"
+      (subcategoryChanged)="onSubcategoryChanged($event)"
+      (categoryChanged)="onCategoryChanged($event)"
       (categoryScopeChange)="onCategoryScopeChange($event)"
       (projectBriefChange)="onProjectBriefChange($event)"
       (categoryBriefChange)="onCategoryBriefChange($event)"
@@ -128,6 +132,13 @@ export class MarketplaceComponent implements OnInit {
   drawerMode: ItemDrawerMode = 'view';
   drawerItem: Item | null = null;
 
+  // v1.41a — subcategory chip strip state (mirrors supplier-list).
+  // Populated on every category change from the cached child rows
+  // below; activeSubcategoryId is the FK passed to catalogue-grid.
+  availableSubcategories: Array<{ id: string; name: string }> = [];
+  activeSubcategoryId = '';
+  private allChildCategories: Array<{ id: string; name: string; parent_id: string; sort_order?: number }> = [];
+
   private project: Project | null = null;
   private projectCategories: ProjectCategory[] = [];
   projectId = '';
@@ -171,6 +182,14 @@ export class MarketplaceComponent implements OnInit {
       next: ({ project, projectCat, categories, items, cart, org, itemCounts }) => {
         this.project = project || null;
         this.projectCategories = (projectCat || []).filter(p => p.is_active);
+        // v1.41a — cache child categories once so the subcat chip
+        // strip can slice by parent on every circle click.
+        this.allChildCategories = ((categories || []) as any[])
+          .filter((c: any) => c.parent_id)
+          .map((c: any) => ({
+            id: c.id, name: c.name, parent_id: c.parent_id,
+            sort_order: c.sort_order
+          }));
         this.categories = this.mapCategories(categories || [], itemCounts?.counts || {});
         this.rawItems = items || [];
         this.itemEntities = this.mapItems(this.rawItems);
@@ -217,6 +236,28 @@ export class MarketplaceComponent implements OnInit {
       this.cdr.detectChanges();
     });
     this.drawerItem = null;
+  }
+
+  // v1.41a — keep the subcat chip strip aligned with the active
+  // category circle. Mirrors supplier-list.onCategoryChanged. Clears
+  // the chip filter on every parent change.
+  onCategoryChanged(catId: string) {
+    this.activeSubcategoryId = '';
+    this.availableSubcategories = (catId === 'all')
+      ? []
+      : this.allChildCategories
+          .filter(c => c.parent_id === catId)
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map(c => ({ id: c.id, name: c.name }));
+    this.cdr.detectChanges();
+  }
+
+  /** v1.41a — chip click from <app-catalogue-grid>. Internal filter
+      runs inside the grid; we just track the active id so the chip's
+      "active" state stays in sync with the URL bar. */
+  onSubcategoryChanged(id: string) {
+    this.activeSubcategoryId = id || '';
+    this.cdr.detectChanges();
   }
 
   onAddToProject(event: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
@@ -383,6 +424,10 @@ export class MarketplaceComponent implements OnInit {
       image_display: i.image_url ? (i.image_display || 'cover') : (i.supplier_image_display || 'cover'),
       subtitle: i.supplier_name,
       category_id: i.category_id,
+      // v1.41a — surface subcategory FK so the catalogue grid's
+      // chip-filter works on pre-loaded entities (project marketplace
+      // pre-loads all items rather than re-fetching on every filter).
+      subcategory_id: i.subcategory_id,
       price: i.base_price ? Number(i.base_price) : undefined,
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
