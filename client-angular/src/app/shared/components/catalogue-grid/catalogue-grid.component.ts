@@ -119,10 +119,11 @@ export type DetailMode = 'inline' | 'drawer';
             placeholder="Search..." class="bp-sidebar-search-input"/>
         </div>
 
-        <!-- v1.41a — single sidebar mode. The drill-down FORMAT
-             section was removed (subcat pills handle that role).
-             Sidebar always shows the parent-category list + the
-             aggregated TYPE/tag checkboxes when the parent has tags. -->
+        <!-- v1.45b — the sidebar category list is only a fallback for
+             grids without the category-circle strip; when the circles
+             are shown they own category navigation, so the list is
+             hidden and the sidebar is purely the dimension filter. -->
+        <ng-container *ngIf="!showCategoryCircles">
         <div class="bp-sidebar-sublabel">{{ sidebarCategoryLabel }}</div>
         <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
           <span>All</span>
@@ -137,6 +138,7 @@ export type DetailMode = 'inline' | 'drawer';
           <span>{{ cat.name }}</span>
           <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
         </button>
+        </ng-container>
 
         <!-- v1.45a — DIMENSION FILTERS (Part 4). One collapsible section
              per tag dimension of the active category, plus tier and lead
