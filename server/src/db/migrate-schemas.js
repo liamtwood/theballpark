@@ -974,6 +974,35 @@ const migrate = async () => {
     }
     console.log('  items.pending_classification + supplier_item_tag table + trg_check_item_tag_category installed (v1.43).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.46 — Part 3 Brief tab: AI item matching.
+    //   project_items.source           — 'catalogue' | 'ai_proposed'
+    //   project_items.ai_confidence    — 1-10 score from the matcher
+    //   project_items.ai_match_reason  — one-line rationale
+    //   project_items.ai_estimated_price — AI price for proposed items
+    //   ai_search_hints                — captures the AI's search terms
+    //     + the user's "I'd have looked for…" hint (training data).
+    // All additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'catalogue';
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_confidence INTEGER;
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_match_reason TEXT;
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_estimated_price NUMERIC(12,2);
+
+        CREATE TABLE IF NOT EXISTS ${schema}.ai_search_hints (
+          id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          project_id      UUID REFERENCES ${schema}.projects(id) ON DELETE CASCADE,
+          category_id     UUID REFERENCES ${schema}.categories(id),
+          ai_search_terms TEXT[],
+          user_hint       TEXT,
+          created_at      TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+    }
+    console.log('  project_items AI-match columns + ai_search_hints table installed (v1.46).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`

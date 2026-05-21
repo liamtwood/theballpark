@@ -477,6 +477,257 @@ async function getDimensions(categoryId) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+   BRIEF-TAB ITEM MATCHING (v1.46 — Brief tab upgrade)
+   ───────────────────────────────────────────────────────────────────── */
+
+const MATCH_SYSTEM = `You are an event production item matcher. You have a project brief requirement and a catalogue of real items + suppliers.
+
+Do THREE things:
+
+1. SCORE each item 1-10 against the brief. Consider: does the item TYPE match? Is the SCALE right? Could this supplier deliver? Is the PRICE reasonable for this brief?
+
+2. If no item scores 7+, pick the BEST-FIT SUPPLIER based on their other items and speciality.
+
+3. CREATE a proposed item for that supplier with an estimated price. Base the estimate on similar items in the catalogue (scale up/down), the budget hint if provided, and your knowledge of London event-production costs.
+
+Also return the search terms you used to match — this helps us understand your reasoning.
+
+Return ONLY valid JSON, no markdown:
+{
+  "search_terms": ["inflatable", "bespoke"],
+  "matched_items": [ { "item_id": "uuid", "score": 8, "reason": "one sentence" } ],
+  "closest_item": { "item_id": "uuid", "score": 6, "reason": "one sentence" },
+  "suppliers_ranked": [ { "supplier_id": "uuid", "fit_reason": "short phrase" } ],
+  "proposed_item": { "name": "...", "description": "...", "supplier_id": "uuid", "estimated_price": 15000, "confidence": 4, "reason": "one sentence" }
+}
+
+If good matches exist (7+), proposed_item can be null. If no items exist in this category at all, return empty matched_items and still propose one.`;
+
+/**
+ * Match a category brief against the catalogue. ONE Haiku call scores
+ * every item in the category, ranks suppliers, and proposes a new item
+ * if nothing fits. Returns a fully-hydrated result for the Brief tab.
+ */
+async function matchItems(brief, categoryId, budgetEstimate) {
+  if (!categoryId) throw httpErr('categoryId is required', 400);
+  const briefText = (brief || '').trim();
+  if (!briefText) throw httpErr('brief is required', 400);
+
+  const cat = await pool.query('SELECT id, name FROM categories WHERE id = $1', [categoryId]);
+  if (!cat.rows.length) throw httpErr('category not found', 404);
+  const categoryName = cat.rows[0].name;
+
+  const inCategory =
+    `(i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
+
+  const itemsRes = await pool.query(
+    `SELECT i.id, i.name, i.description, i.base_price, i.org_id,
+            sc.name AS subcategory_name, o.name AS supplier_name
+       FROM items i
+       LEFT JOIN categories sc ON sc.id = i.subcategory_id
+       LEFT JOIN orgs o ON o.id = i.org_id
+      WHERE i.is_active = true AND ${inCategory}
+      ORDER BY i.name`,
+    [categoryId]
+  );
+  const items = itemsRes.rows;
+  const itemById = new Map(items.map(i => [i.id, i]));
+
+  const supRes = await pool.query(
+    `SELECT o.id, o.name, o.description, COUNT(i.id)::int AS item_count
+       FROM items i JOIN orgs o ON o.id = i.org_id
+      WHERE i.is_active = true AND ${inCategory}
+      GROUP BY o.id, o.name, o.description
+      ORDER BY item_count DESC`,
+    [categoryId]
+  );
+  const suppliers = supRes.rows;
+  const supById = new Map(suppliers.map(s => [s.id, s]));
+
+  const client = getClient();
+  const msg = await client.messages.create({
+    model: HAIKU_MODEL,
+    max_tokens: 1600,
+    system: MATCH_SYSTEM,
+    messages: [{
+      role: 'user',
+      content:
+`Brief requirement: "${briefText}"
+Category: ${categoryName}
+Budget for this category: ${budgetEstimate ? '£' + budgetEstimate : 'not set'}
+
+Catalogue items in this category:
+${JSON.stringify(items.map(i => ({
+  id: i.id, name: i.name,
+  description: (i.description || '').slice(0, 240),
+  base_price: i.base_price, subcategory: i.subcategory_name,
+  supplier_name: i.supplier_name
+})), null, 1)}
+
+Suppliers in this category:
+${JSON.stringify(suppliers.map(s => ({
+  id: s.id, name: s.name,
+  description: (s.description || '').slice(0, 200),
+  item_count: s.item_count
+})), null, 1)}
+
+Score items and propose if needed.`
+    }]
+  });
+
+  const parsed = parseJson(msg.content?.[0]?.text);
+  if (!parsed) throw httpErr('AI matcher returned an unparseable response', 502);
+
+  // Hydrate matched / closest items with real catalogue data.
+  const hydrate = (m) => {
+    if (!m || !m.item_id) return null;
+    const it = itemById.get(m.item_id);
+    if (!it) return null;
+    return {
+      item_id:       it.id,
+      name:          it.name,
+      base_price:    it.base_price != null ? Number(it.base_price) : null,
+      supplier_name: it.supplier_name,
+      score:         Math.max(1, Math.min(10, Number(m.score) || 0)),
+      reason:        m.reason || ''
+    };
+  };
+  const matched = (Array.isArray(parsed.matched_items) ? parsed.matched_items : [])
+    .map(hydrate).filter(Boolean)
+    .filter(m => m.score >= 7)
+    .sort((a, b) => b.score - a.score);
+  const matchedIds = new Set(matched.map(m => m.item_id));
+  let closest = hydrate(parsed.closest_item);
+  if (closest && matchedIds.has(closest.item_id)) closest = null;
+
+  const suppliersRanked = (Array.isArray(parsed.suppliers_ranked) ? parsed.suppliers_ranked : [])
+    .filter(s => s && supById.has(s.supplier_id))
+    .map(s => {
+      const db = supById.get(s.supplier_id);
+      return {
+        supplier_id:   s.supplier_id,
+        supplier_name: db.name,
+        fit_reason:    s.fit_reason || '',
+        item_count:    db.item_count
+      };
+    });
+
+  let proposed = null;
+  if (parsed.proposed_item && parsed.proposed_item.name) {
+    const p = parsed.proposed_item;
+    const db = supById.get(p.supplier_id);
+    const fallback = suppliers[0] || null;
+    proposed = {
+      name:            p.name,
+      description:     p.description || briefText,
+      supplier_id:     db ? p.supplier_id : (fallback ? fallback.id : null),
+      supplier_name:   db ? db.name : (fallback ? fallback.name : 'Supplier'),
+      estimated_price: Math.max(0, Number(p.estimated_price) || 0),
+      confidence:      Math.max(1, Math.min(10, Number(p.confidence) || 1)),
+      reason:          p.reason || ''
+    };
+  }
+
+  return {
+    category_id:       categoryId,
+    category_name:     categoryName,
+    search_terms:      Array.isArray(parsed.search_terms) ? parsed.search_terms : [],
+    items_scanned:     items.length,
+    suppliers_scanned: suppliers.length,
+    matched_items:     matched,
+    closest_item:      closest,
+    suppliers_ranked:  suppliersRanked,
+    proposed_item:     proposed
+  };
+}
+
+/** Sum the catalogue value of a project's items in one category and
+    write it onto project_categories.ballpark_cost. */
+async function recomputeCategoryBallpark(projectId, categoryId) {
+  const r = await pool.query(
+    `SELECT COALESCE(SUM(COALESCE(i.base_price, 0)), 0)::numeric AS total
+       FROM project_items pi
+       JOIN items i ON i.id = pi.item_id
+      WHERE pi.project_id = $1
+        AND (i.category_id = $2 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $2))`,
+    [projectId, categoryId]
+  );
+  const total = Number(r.rows[0].total) || 0;
+  await pool.query(
+    `UPDATE project_categories SET ballpark_cost = $1, updated_at = NOW()
+      WHERE project_id = $2 AND category_id = $3 AND is_active = true`,
+    [total, projectId, categoryId]
+  );
+  return total;
+}
+
+/**
+ * Add a Brief-tab match to a project. For a catalogue match (kind
+ * 'matched') it links the existing item; for an AI proposal (kind
+ * 'proposed') it first creates the item under the proposed supplier.
+ * Either way it records the AI metadata and recomputes the category's
+ * ballpark cost.
+ */
+async function addMatchToProject(body) {
+  const {
+    project_id, project_category_id, category_id, kind,
+    item_id, ai_confidence, ai_match_reason, proposed
+  } = body || {};
+  if (!project_id || !category_id) throw httpErr('project_id and category_id are required', 400);
+
+  let finalItemId = item_id;
+  let source = 'catalogue';
+  let estPrice = null;
+
+  if (kind === 'proposed') {
+    if (!proposed || !proposed.name) throw httpErr('proposed item details are required', 400);
+    if (!proposed.supplier_id) throw httpErr('proposed item needs a supplier', 400);
+    source = 'ai_proposed';
+    estPrice = Math.max(0, Number(proposed.estimated_price) || 0);
+    const ins = await pool.query(
+      `INSERT INTO items (org_id, category_id, name, description, base_price, is_active)
+       VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id`,
+      [proposed.supplier_id, category_id, proposed.name, proposed.description || '', estPrice]
+    );
+    finalItemId = ins.rows[0].id;
+  }
+  if (!finalItemId) throw httpErr('item_id is required for a catalogue match', 400);
+
+  const conf = ai_confidence != null ? Math.round(Number(ai_confidence)) : null;
+  const pi = await pool.query(
+    `INSERT INTO project_items
+       (project_id, item_id, project_category_id, selection_type,
+        source, ai_confidence, ai_match_reason, ai_estimated_price)
+     VALUES ($1, $2, $3, 'selected', $4, $5, $6, $7)
+     ON CONFLICT (project_id, item_id) DO UPDATE SET
+       selection_type      = 'selected',
+       project_category_id = COALESCE(EXCLUDED.project_category_id, project_items.project_category_id),
+       source              = EXCLUDED.source,
+       ai_confidence       = EXCLUDED.ai_confidence,
+       ai_match_reason     = EXCLUDED.ai_match_reason,
+       ai_estimated_price  = EXCLUDED.ai_estimated_price
+     RETURNING *`,
+    [project_id, finalItemId, project_category_id || null, source, conf,
+     ai_match_reason || null, estPrice]
+  );
+
+  const ballpark_cost = await recomputeCategoryBallpark(project_id, category_id);
+  return { project_item: pi.rows[0], ballpark_cost };
+}
+
+/** Store the AI's search terms + the user's training hint. */
+async function saveSearchHint(projectId, categoryId, searchTerms, userHint) {
+  if (!projectId || !categoryId) throw httpErr('projectId and categoryId are required', 400);
+  await pool.query(
+    `INSERT INTO ai_search_hints (project_id, category_id, ai_search_terms, user_hint)
+     VALUES ($1, $2, $3, $4)`,
+    [projectId, categoryId, Array.isArray(searchTerms) ? searchTerms : [], userHint || '']
+  );
+  return { saved: true };
+}
+
+/* ─────────────────────────────────────────────────────────────────────
    v1.41 SUBCATEGORY-ONLY HELPERS — kept for the drawer "✦ Suggest" link
    and the Part 3 bulk backfill.
    ───────────────────────────────────────────────────────────────────── */
@@ -628,6 +879,9 @@ module.exports = {
   dismissClassification,
   setItemTags,
   getDimensions,
+  matchItems,
+  addMatchToProject,
+  saveSearchHint,
   suggestSubcategory,
   backfillSubcategories
 };

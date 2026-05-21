@@ -58,6 +58,27 @@ router.get('/dimensions', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── v1.46 — Brief-tab item matching ────────────────────────────────────
+router.post('/match-items', async (req, res, next) => {
+  try {
+    const { brief, categoryId, budgetEstimate } = req.body || {};
+    res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate));
+  } catch (err) { next(err); }
+});
+
+router.post('/add-match', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.addMatchToProject(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+router.post('/search-hint', async (req, res, next) => {
+  try {
+    const { projectId, categoryId, searchTerms, userHint } = req.body || {};
+    res.json(await TaxonomyService.saveSearchHint(projectId, categoryId, searchTerms, userHint));
+  } catch (err) { next(err); }
+});
+
 // ── v1.41 — subcategory-only helpers ───────────────────────────────────
 router.post('/suggest-subcategory', async (req, res, next) => {
   try {
