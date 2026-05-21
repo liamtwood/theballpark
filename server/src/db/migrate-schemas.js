@@ -596,38 +596,10 @@ const migrate = async () => {
          WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
       );
 
-      -- v1.40: three new catalogue categories required by the full
-      -- subcategory taxonomy.
-      --   Set Build         — scenic, dressing, theming (distinct
-      --                       from Stand Structure which is the
-      --                       physical build)
-      --   Event Accessories — red carpets, gift bags, lanyards,
-      --                       scent design, etc.
-      --   Other             — PM fees, contingency, design fees and
-      --                       other admin lines that don't fit a
-      --                       supplier category.
-      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM public.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM preview.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM master.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-
+      -- v1.42: "Set Build" was retired here — the Taxonomy v2 migration
+      -- (migrate-taxonomy-v2.js) merges it into Stand Structure. Only
+      -- Event Accessories + Other remain as standalone v2 categories;
+      -- both are seeded below (idempotent WHERE NOT EXISTS).
       INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
       SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
              'Sparkles', 14, 'catalogue', NULL
@@ -673,41 +645,33 @@ const migrate = async () => {
       );
     `);
 
-    // v1.40: ensure tag table exists in preview + master. It was
-    // created in public via a one-off migration (migration_category_tags
-    // .sql) but never carried across. Mirror the public schema exactly
-    // so the same INSERTs below work uniformly.
-    for (const schema of ['preview', 'master']) {
+    // v1.42: ensure the tag table exists in all 3 schemas with the v2
+    // shape — a `dimension` column and UNIQUE(category_id, dimension,
+    // label) so values like "Both"/"Yes" can recur across dimensions.
+    // The actual taxonomy + tag VALUES are seeded by
+    // migrate-taxonomy-v2.js (run per schema after this script).
+    for (const schema of ['public', 'preview', 'master']) {
       await client.query(`
         CREATE TABLE IF NOT EXISTS ${schema}.tag (
           id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           category_id UUID NOT NULL REFERENCES ${schema}.categories(id) ON DELETE CASCADE,
+          dimension   VARCHAR(50),
           label       TEXT NOT NULL,
           sort_order  INTEGER NOT NULL DEFAULT 0,
           created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_category_id_label_key
-          ON ${schema}.tag (category_id, label);
+        ALTER TABLE ${schema}.tag ADD COLUMN IF NOT EXISTS dimension VARCHAR(50);
+        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_cat_dim_label_key
+          ON ${schema}.tag (category_id, dimension, label);
       `);
     }
 
-    // v1.40: seed the complete subcategory taxonomy. ~140 tags across
-    // 17 catalogue groupings. Idempotent — `ON CONFLICT (category_id,
-    // label) DO NOTHING` thanks to the unique constraint on
-    // (category_id, label). Lookup is by category name so the same
-    // SQL works across public/preview/master (UUIDs differ per schema).
-    //
-    // Mapping decisions (Liam, v1.40 brief):
-    //   - "Set Build" → new category (NOT Stand Structure)
-    //   - "Talent & Staffing" tags → existing "Staffing" (no rename)
-    //   - "Photography & Content" tags → existing "Photography"
-    //   - "Event Accessories" → new category
-    //   - "Venues" tags → existing "Venue" (singular)
-    //   - "Other" → new category
-    //   - Construction & Build left as-is (its 5 existing tags untouched)
-    //
-    // No dedupe — if a label already exists with slight variation
-    // (e.g. "Outdoor Structures" vs "Outdoor Structure") both stay.
+    // ─────────────────────────────────────────────────────────────────
+    // SUPERSEDED (v1.42) — the v1.40 taxonomy array below is kept for
+    // history only. It is NOT executed: the loops that consumed it were
+    // removed when Taxonomy v2 landed. The live taxonomy is defined in
+    // FINAL_TAXONOMY_v2.md and seeded by migrate-taxonomy-v2.js.
+    // ─────────────────────────────────────────────────────────────────
     const TAXONOMY = [
       // Stand Structure
       ['Stand Structure', 'Shell Scheme', 1],
@@ -876,68 +840,23 @@ const migrate = async () => {
       ['Other', 'Travel & Accommodation', 5],
       ['Other', 'Miscellaneous', 6],
     ];
-    // Render the VALUES list once. Single-quotes need doubling for SQL.
-    const valuesSql = TAXONOMY
-      .map(([cat, label, ord]) => `(${"'"}${cat.replace(/'/g, "''")}${"'"}, ${"'"}${label.replace(/'/g, "''")}${"'"}, ${ord})`)
-      .join(',\n        ');
-    for (const schema of ['public', 'preview', 'master']) {
-      await client.query(`
-        WITH src(cat_name, label, sort_order) AS (
-          VALUES
-            ${valuesSql}
-        )
-        INSERT INTO ${schema}.tag (category_id, label, sort_order)
-        SELECT c.id, src.label, src.sort_order
-          FROM src
-          JOIN ${schema}.categories c
-            ON c.name = src.cat_name
-           AND c.namespace = 'catalogue'
-           AND c.parent_id IS NULL
-        ON CONFLICT (category_id, label) DO NOTHING;
-      `);
-    }
+    void TAXONOMY; // referenced only by the superseded loops removed below.
+
+    // v1.42 — the v1.40 tag seed + v1.41 child-category promotion that
+    // used the TAXONOMY array above are REMOVED. They seeded the old
+    // (pre-v2) taxonomy and the old tag shape, and the
+    // `ON CONFLICT (category_id,label)` they relied on no longer exists
+    // (the constraint moved to (category_id,dimension,label)). The
+    // canonical v2 taxonomy + tag dimensions are seeded by
+    // migrate-taxonomy-v2.js, run per schema after this script.
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
     console.log('  project_items table + unique index ensured.');
     console.log('  orgs.auto_publish_items ensured.');
     console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
-    console.log('  Photography catalogue category ensured (v1.39f).');
-    console.log('  Set Build / Event Accessories / Other catalogue categories ensured (v1.40).');
-    console.log(`  Subcategory taxonomy seeded — ${TAXONOMY.length} tags × 3 schemas (v1.40).`);
-
-    // ─────────────────────────────────────────────────────────────────
-    // v1.41 — promote the TAXONOMY labels into CHILD CATEGORY rows so
-    // the categories table is the canonical subcategory source (the
-    // two-field model on items uses categories.parent_id, not the tag
-    // table). Tag table stays seeded for a future use.
-    //
-    // Idempotent: only inserts labels that don't already exist as a
-    // child of the same parent. Preserves the 27 existing Catering
-    // children (Working Lunch, Canapes, etc.) — they coexist with
-    // the new ones from the taxonomy.
-    // ─────────────────────────────────────────────────────────────────
-    for (const schema of ['public', 'preview', 'master']) {
-      await client.query(`
-        WITH src(cat_name, label, sort_order) AS (
-          VALUES
-            ${valuesSql}
-        )
-        INSERT INTO ${schema}.categories (name, parent_id, sort_order, namespace, icon, icon_name)
-        SELECT src.label, p.id, src.sort_order, 'catalogue', NULL, NULL
-          FROM src
-          JOIN ${schema}.categories p
-            ON p.name = src.cat_name
-           AND p.namespace = 'catalogue'
-           AND p.parent_id IS NULL
-         WHERE NOT EXISTS (
-            SELECT 1 FROM ${schema}.categories c
-             WHERE c.name = src.label
-               AND c.parent_id = p.id
-         );
-      `);
-    }
-    console.log('  Child categories promoted from taxonomy (v1.41).');
+    console.log('  Photography / Event Accessories / Other catalogue categories ensured.');
+    console.log('  tag table (v2 shape) ensured — taxonomy seeded separately by migrate-taxonomy-v2.js.');
 
     // ─────────────────────────────────────────────────────────────────
     // v1.41 — two-field subcategory model on items.
