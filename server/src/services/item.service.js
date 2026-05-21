@@ -85,7 +85,20 @@ async function getById(id) {
      WHERE i.id = $1`,
     [id]
   );
-  return result.rows[0] || null;
+  const item = result.rows[0] || null;
+  if (!item) return null;
+  // v1.43: hydrate the structured (dimension-scoped) tags from the
+  // supplier_item_tag junction so detail/drawer surfaces can show them.
+  const tags = await pool.query(
+    `SELECT t.id AS tag_id, t.dimension, t.label
+       FROM supplier_item_tag sit
+       JOIN tag t ON t.id = sit.tag_id
+      WHERE sit.item_id = $1
+      ORDER BY t.dimension ASC, t.sort_order ASC`,
+    [id]
+  );
+  item.item_tags = tags.rows;
+  return item;
 }
 
 // v1.17: derive the legacy single-image column from the new images[] array.

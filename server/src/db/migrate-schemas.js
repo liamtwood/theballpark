@@ -917,6 +917,63 @@ const migrate = async () => {
     }
     console.log('  items.subcategory_id column ensured + 15 items migrated + trg_check_item_subcategory installed (v1.41).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.43 — Taxonomy v2 Part 2: AI classification + pending suggestions.
+    //   items.pending_classification JSONB — the latest unaccepted AI
+    //     classification suggestion ({category, subcategory, tags,
+    //     confidence}); NULL once the supplier accepts or skips it.
+    //   supplier_item_tag                  — junction items ↔ tag, the
+    //     structured (dimension-scoped) tag system. Eventually replaces
+    //     the legacy free-text items.tags[] (migrated in Part 3).
+    //   trg_check_item_tag_category        — rejects a junction row whose
+    //     tag.category_id ≠ item.category_id (mirrors the subcategory
+    //     trigger; this constraint drove the Option-A decision to
+    //     duplicate the event-type dimension across categories).
+    // All additive + IF NOT EXISTS — safe to re-run on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+    `);
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.supplier_item_tag (
+          id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          item_id    UUID NOT NULL REFERENCES ${schema}.items(id) ON DELETE CASCADE,
+          tag_id     UUID NOT NULL REFERENCES ${schema}.tag(id)   ON DELETE CASCADE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          UNIQUE (item_id, tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS ${schema}_supplier_item_tag_item_idx
+          ON ${schema}.supplier_item_tag (item_id);
+        CREATE INDEX IF NOT EXISTS ${schema}_supplier_item_tag_tag_idx
+          ON ${schema}.supplier_item_tag (tag_id);
+
+        CREATE OR REPLACE FUNCTION ${schema}.check_item_tag_category()
+        RETURNS TRIGGER AS $body$
+        DECLARE
+          tag_cat  UUID;
+          item_cat UUID;
+        BEGIN
+          SELECT category_id INTO tag_cat  FROM ${schema}.tag   WHERE id = NEW.tag_id;
+          SELECT category_id INTO item_cat FROM ${schema}.items WHERE id = NEW.item_id;
+          IF tag_cat IS DISTINCT FROM item_cat THEN
+            RAISE EXCEPTION 'Tag % (category %) does not match item % (category %)',
+              NEW.tag_id, tag_cat, NEW.item_id, item_cat;
+          END IF;
+          RETURN NEW;
+        END;
+        $body$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trg_check_item_tag_category ON ${schema}.supplier_item_tag;
+        CREATE TRIGGER trg_check_item_tag_category
+          BEFORE INSERT OR UPDATE ON ${schema}.supplier_item_tag
+          FOR EACH ROW EXECUTE FUNCTION ${schema}.check_item_tag_category();
+      `);
+    }
+    console.log('  items.pending_classification + supplier_item_tag table + trg_check_item_tag_category installed (v1.43).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`

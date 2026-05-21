@@ -72,6 +72,22 @@ const TIER_OPTIONS: TierOption[] = [
 const IMAGE_SLOT_COUNT = 8;
 type DrawerTab = 'details' | 'index' | 'images';
 
+/** v1.43 — AI classification (pending-suggestion workflow) shapes. */
+interface ClassTag { tag_id: string; dimension: string; label: string; }
+interface PendingClassification {
+  category_id: string;
+  category_name: string;
+  subcategory_id: string | null;
+  subcategory_name: string | null;
+  tags: ClassTag[];
+  confidence: number;
+  classified_at?: string;
+}
+interface DimensionGroup {
+  dimension: string;
+  values: { tag_id: string; label: string }[];
+}
+
 @Component({
   selector: 'app-item-drawer',
   standalone: true,
@@ -109,7 +125,7 @@ type DrawerTab = 'details' | 'index' | 'images';
            Underline-style tabs matching the project / supplier hero tab
            pattern (see .bp-hero-tabs in styles.css). Scoped locally so
            the in-drawer strip doesn't fight the page-level hero tabs. -->
-      <div class="bp-drawer-tabs">
+      <div class="bp-drawer-tabs" *ngIf="!classifyActive">
         <button class="bp-drawer-tab"
                 [class.active]="activeTab === 'details'"
                 (click)="activeTab = 'details'"
@@ -131,6 +147,18 @@ type DrawerTab = 'details' | 'index' | 'images';
       </div>
 
       <div class="bp-drawer-body">
+
+        <!-- v1.43 — banner: a saved item has an un-reviewed AI
+             classification. Click to re-open the suggestion panel. -->
+        <button *ngIf="!isView && !classifyActive && hasPendingSuggestion"
+                type="button" class="bp-classify-banner" (click)="reviewPending()">
+          <span class="bp-classify-banner-spark">✦</span>
+          <span class="bp-classify-banner-text">AI suggested a classification for this item.</span>
+          <span class="bp-classify-banner-cta">Review</span>
+        </button>
+
+        <!-- ═══ NORMAL BODY (tabs) — hidden while the classify panel shows ═══ -->
+        <ng-container *ngIf="!classifyActive">
 
         <!-- ═══════════════ TAB 1: DETAILS ═══════════════ -->
         <ng-container *ngIf="activeTab === 'details'">
@@ -485,11 +513,150 @@ type DrawerTab = 'details' | 'index' | 'images';
 
         </ng-container>
 
+        </ng-container>
+        <!-- ═══ END NORMAL BODY ═══ -->
+
+        <!-- ═══════════════ AI CLASSIFICATION PANEL (v1.43) ═══════════════
+             Replaces the tabbed body after a save. The supplier reviews
+             the AI's category / subcategory / tag suggestion, then
+             Accepts, Edits, or Skips. -->
+        <div class="bp-classify-panel" *ngIf="classifyActive">
+
+          <!-- Loading -->
+          <div *ngIf="classifying" class="bp-classify-loading">
+            <div class="bp-classify-spark-lg">✦</div>
+            <div class="bp-classify-loading-title">Analysing your item…</div>
+            <div class="bp-classify-loading-sub">Matching it to the Ballpark taxonomy.</div>
+          </div>
+
+          <!-- Result -->
+          <ng-container *ngIf="!classifying && classification as cl">
+            <div class="bp-classify-head">
+              <span class="bp-classify-badge">✦ AI CLASSIFICATION</span>
+              <span class="bp-classify-conf" *ngIf="cl.confidence">
+                {{ confidencePct(cl.confidence) }}% confident
+              </span>
+            </div>
+
+            <!-- ─── SUMMARY ─── -->
+            <ng-container *ngIf="classifyMode === 'summary'">
+              <p class="bp-classify-intro">
+                We analysed <strong>{{ classifySubject || 'this item' }}</strong>
+                and suggest the classification below.
+              </p>
+
+              <div class="bp-classify-row">
+                <span class="bp-classify-row-label">Category</span>
+                <span class="bp-classify-row-value">{{ cl.category_name }}</span>
+              </div>
+              <div class="bp-classify-row">
+                <span class="bp-classify-row-label">Subcategory</span>
+                <span class="bp-classify-row-value"
+                      [class.bp-classify-row-value--muted]="!cl.subcategory_name">
+                  {{ cl.subcategory_name || 'None' }}
+                </span>
+              </div>
+
+              <div class="bp-classify-tags" *ngIf="cl.tags.length">
+                <div class="bp-classify-tag-group" *ngFor="let g of groupedTags(cl.tags)">
+                  <span class="bp-classify-dim">{{ g.dimension }}</span>
+                  <div class="bp-classify-chip-row">
+                    <span class="bp-classify-chip" *ngFor="let t of g.tags">{{ t.label }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-classify-none" *ngIf="!cl.tags.length">
+                No attribute tags suggested.
+              </div>
+            </ng-container>
+
+            <!-- ─── EDIT ─── -->
+            <ng-container *ngIf="classifyMode === 'edit'">
+              <p class="bp-classify-intro">
+                Adjust the category, subcategory and attribute tags, then Apply.
+              </p>
+
+              <div class="bp-field">
+                <label class="bp-field-label">Category</label>
+                <p-dropdown [(ngModel)]="editClass.category_id"
+                            [options]="topCategories"
+                            optionLabel="name" optionValue="id"
+                            (onChange)="onEditCategoryChange()"
+                            styleClass="w-full bp-input-edit"
+                            placeholder="Select category">
+                </p-dropdown>
+              </div>
+              <div class="bp-field">
+                <label class="bp-field-label">Subcategory</label>
+                <p-dropdown [(ngModel)]="editClass.subcategory_id"
+                            [options]="editSubcategories"
+                            optionLabel="name" optionValue="id"
+                            [showClear]="true"
+                            [disabled]="!editClass.category_id || editSubcategories.length === 0"
+                            styleClass="w-full bp-input-edit"
+                            placeholder="None">
+                </p-dropdown>
+              </div>
+
+              <div class="bp-classify-none" *ngIf="editDimensionsLoading">
+                Loading attribute tags…
+              </div>
+              <div class="bp-field" *ngFor="let d of editDimensions">
+                <label class="bp-field-label">{{ d.dimension }}</label>
+                <div class="bp-classify-chip-row">
+                  <button type="button"
+                          class="bp-classify-toggle"
+                          *ngFor="let v of d.values"
+                          [class.bp-classify-toggle--on]="editTagIds.has(v.tag_id)"
+                          (click)="toggleEditTag(v.tag_id)">
+                    {{ v.label }}
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+          </ng-container>
+        </div>
+
       </div>
 
       <ng-template pTemplate="footer">
         <div class="bp-drawer-footer-row">
-          <ng-container *ngIf="!isView">
+          <!-- v1.43 — classification panel actions -->
+          <ng-container *ngIf="classifyActive">
+            <ng-container *ngIf="classifyMode === 'summary'">
+              <p-button label="Skip"
+                        styleClass="bp-btn-cancel"
+                        [disabled]="classifying || applyingClassification"
+                        (onClick)="skipClassification()">
+              </p-button>
+              <p-button label="Edit"
+                        styleClass="bp-btn-cancel"
+                        [disabled]="classifying || applyingClassification || !classification"
+                        (onClick)="enterClassifyEdit()">
+              </p-button>
+              <p-button label="Accept all"
+                        styleClass="bp-btn-save"
+                        [disabled]="classifying || applyingClassification || !classification"
+                        [loading]="applyingClassification"
+                        (onClick)="acceptClassification()">
+              </p-button>
+            </ng-container>
+            <ng-container *ngIf="classifyMode === 'edit'">
+              <p-button label="Cancel"
+                        styleClass="bp-btn-cancel"
+                        [disabled]="applyingClassification"
+                        (onClick)="classifyMode = 'summary'">
+              </p-button>
+              <p-button label="Apply"
+                        styleClass="bp-btn-save"
+                        [disabled]="applyingClassification || !editClass.category_id"
+                        [loading]="applyingClassification"
+                        (onClick)="applyEditedClassification()">
+              </p-button>
+            </ng-container>
+          </ng-container>
+
+          <ng-container *ngIf="!classifyActive && !isView">
             <p-button label="Cancel"
                       styleClass="bp-btn-cancel"
                       (onClick)="onCancel()">
@@ -501,7 +668,7 @@ type DrawerTab = 'details' | 'index' | 'images';
                       (onClick)="onSave()">
             </p-button>
           </ng-container>
-          <ng-container *ngIf="isView">
+          <ng-container *ngIf="!classifyActive && isView">
             <p-button label="Close"
                       styleClass="bp-btn-save"
                       (onClick)="onCancel()">
@@ -873,6 +1040,163 @@ type DrawerTab = 'details' | 'index' | 'images';
       justify-content: flex-end;
       gap: 8px;
     }
+
+    /* ── v1.43 — AI CLASSIFICATION ──────────────────────────────────
+       Banner (re-open a pending suggestion) + the in-drawer panel that
+       replaces the tabbed body after a save. */
+    .bp-classify-banner {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .bp-classify-banner:hover { border-color: var(--theme-accent); }
+    .bp-classify-banner-spark { color: var(--theme-accent); font-size: 13px; }
+    .bp-classify-banner-text {
+      flex: 1;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+    .bp-classify-banner-cta {
+      font-size: 11px; font-weight: 600;
+      color: var(--theme-accent);
+    }
+
+    .bp-classify-panel { padding-top: 4px; }
+
+    /* Loading state */
+    .bp-classify-loading {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 56px 20px;
+      gap: 8px;
+    }
+    .bp-classify-spark-lg {
+      font-size: 28px;
+      color: var(--theme-accent);
+      animation: bp-classify-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes bp-classify-pulse {
+      0%, 100% { opacity: 0.35; transform: scale(0.9); }
+      50%      { opacity: 1;    transform: scale(1.1); }
+    }
+    .bp-classify-loading-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--color-text-primary);
+    }
+    .bp-classify-loading-sub {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    /* Result header */
+    .bp-classify-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .bp-classify-badge {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--theme-accent);
+      font-family: var(--font-body);
+    }
+    .bp-classify-conf {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--color-text-muted);
+      background: var(--color-surface-2, var(--theme-bg));
+      border: 0.5px solid var(--color-border);
+      border-radius: 20px;
+      padding: 3px 9px;
+    }
+    .bp-classify-intro {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      line-height: 1.55;
+      margin: 0 0 14px;
+    }
+    .bp-classify-intro strong { color: var(--color-text-primary); font-weight: 600; }
+
+    /* Summary rows */
+    .bp-classify-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 0.5px solid var(--color-border);
+      font-size: 13px;
+    }
+    .bp-classify-row-label {
+      font-size: 11px; font-weight: 500;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .bp-classify-row-value {
+      font-weight: 600;
+      color: var(--color-text-primary);
+      text-align: right;
+    }
+    .bp-classify-row-value--muted { font-weight: 400; color: var(--color-text-muted); }
+
+    /* Summary tag groups */
+    .bp-classify-tags { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .bp-classify-tag-group { display: flex; flex-direction: column; gap: 5px; }
+    .bp-classify-dim {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+    }
+    .bp-classify-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .bp-classify-chip {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 500;
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border);
+      border-radius: 20px;
+      font-family: var(--font-body);
+    }
+    .bp-classify-none {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      padding: 10px 0;
+    }
+
+    /* Edit-mode toggle chips */
+    .bp-classify-toggle {
+      padding: 5px 11px;
+      font-size: 11px; font-weight: 500;
+      border-radius: 20px;
+      border: 0.5px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-classify-toggle:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    .bp-classify-toggle--on {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border-color: var(--theme-accent);
+    }
+    .bp-classify-toggle--on:hover {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
   `]
 })
 export class ItemDrawerComponent implements OnInit, OnChanges {
@@ -911,6 +1235,30 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   /** v1.41 — AI suggest-subcategory state. True while the
       /api/taxonomy/suggest-subcategory call is in flight. */
   suggesting = false;
+
+  // ── v1.43 — AI classification (pending-suggestion workflow) ──────────
+  /** classify request in flight (fired after a save). */
+  classifying = false;
+  /** the suggestion currently shown in the panel, or null. */
+  classification: PendingClassification | null = null;
+  /** panel sub-state — read-only summary vs. editable form. */
+  classifyMode: 'summary' | 'edit' = 'summary';
+  /** apply / dismiss request in flight. */
+  applyingClassification = false;
+  /** id of the item the panel is acting on. Held separately because the
+      parent nulls [item] right after `saved`, wiping this.item. */
+  classifyItemId: string | null = null;
+  /** the saved item's name — shown in the panel intro (the form is wiped
+      when the parent nulls [item]). */
+  classifySubject = '';
+
+  /** Edit-mode working copy of the classification. */
+  editClass: { category_id: string | null; subcategory_id: string | null } =
+    { category_id: null, subcategory_id: null };
+  editTagIds = new Set<string>();
+  editSubcategories: Category[] = [];
+  editDimensions: DimensionGroup[] = [];
+  editDimensionsLoading = false;
 
   /** Active tab inside the drawer — Details by default. Reset to Details
       whenever the drawer is re-opened with a new item so the user lands
@@ -979,11 +1327,12 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     if (changes['mode'] && !changes['mode'].firstChange) {
       this.activeTab = 'details';
     }
-    // When the drawer opens, default to the Details tab regardless of
-    // previous state.
+    // When the drawer opens, default to the Details tab and clear any
+    // stale classification-panel state from a previous session.
     if (changes['visible'] && changes['visible'].currentValue
         && !changes['visible'].previousValue) {
       this.activeTab = 'details';
+      this.resetClassification();
     }
   }
 
@@ -1343,6 +1692,207 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     });
   }
 
+  // ── v1.43 — AI classification panel ──────────────────────────────────
+
+  /** True while the classification panel (loading or result) is shown.
+      It replaces the normal tabbed body. */
+  get classifyActive(): boolean {
+    return this.classifying || !!this.classification;
+  }
+
+  /** True when the open item carries an un-reviewed AI suggestion — drives
+      the "Review" banner. */
+  get hasPendingSuggestion(): boolean {
+    const p = (this.item as any)?.pending_classification;
+    return !!(p && p.category_id);
+  }
+
+  confidencePct(c: number): number { return Math.round((c || 0) * 100); }
+
+  /** Group a flat tag list by dimension, preserving first-seen order. */
+  groupedTags(tags: ClassTag[]): { dimension: string; tags: ClassTag[] }[] {
+    const order: string[] = [];
+    const map = new Map<string, ClassTag[]>();
+    for (const t of tags || []) {
+      if (!map.has(t.dimension)) { map.set(t.dimension, []); order.push(t.dimension); }
+      map.get(t.dimension)!.push(t);
+    }
+    return order.map(d => ({ dimension: d, tags: map.get(d)! }));
+  }
+
+  /** Clear all classification panel state. Called when the drawer opens. */
+  private resetClassification(): void {
+    this.classifying = false;
+    this.classification = null;
+    this.classifyMode = 'summary';
+    this.applyingClassification = false;
+    this.classifyItemId = null;
+    this.classifySubject = '';
+    this.editDimensions = [];
+    this.editDimensionsLoading = false;
+    this.editTagIds = new Set<string>();
+  }
+
+  /** Post-save: classify the saved item against the full taxonomy and
+      show the suggestion panel. Non-blocking — the save already
+      succeeded; the drawer self-closes once the supplier responds. */
+  private runClassification(itemId: string, subject: string): void {
+    this.classifyItemId = itemId;
+    this.classifySubject = subject || '';
+    this.classifying = true;
+    this.classification = null;
+    this.classifyMode = 'summary';
+    this.cdr.markForCheck();
+    this.apiSvc.post<PendingClassification>('/taxonomy/classify', { itemId }).subscribe({
+      next: r => {
+        this.classifying = false;
+        this.classification = (r && r.category_id) ? r : null;
+        if (!this.classification) this.finishClassification();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.classifying = false;
+        this.classification = null;
+        this.msg.add({
+          severity: 'info', summary: 'Item saved',
+          detail: 'AI classification is unavailable — set the category manually.',
+          life: 4000
+        });
+        this.finishClassification();
+      }
+    });
+  }
+
+  /** Banner click — re-open a saved-but-unreviewed suggestion. */
+  reviewPending(): void {
+    const p = (this.item as any)?.pending_classification as PendingClassification | undefined;
+    if (!p || !p.category_id || !this.item) return;
+    this.classifyItemId = this.item.id;
+    this.classifySubject = this.item.name || this.form.name || '';
+    this.classification = p;
+    this.classifyMode = 'summary';
+    this.classifying = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Switch the panel from read-only summary into the editable form. */
+  enterClassifyEdit(): void {
+    if (!this.classification) return;
+    this.editClass = {
+      category_id: this.classification.category_id,
+      subcategory_id: this.classification.subcategory_id
+    };
+    this.editTagIds = new Set(this.classification.tags.map(t => t.tag_id));
+    this.refreshEditSubcategories();
+    this.loadEditDimensions(this.classification.category_id);
+    this.classifyMode = 'edit';
+    this.cdr.markForCheck();
+  }
+
+  onEditCategoryChange(): void {
+    this.editClass.subcategory_id = null;
+    this.editTagIds = new Set<string>();
+    this.refreshEditSubcategories();
+    this.loadEditDimensions(this.editClass.category_id);
+  }
+
+  private refreshEditSubcategories(): void {
+    const pid = this.editClass.category_id;
+    this.editSubcategories = pid
+      ? this.allCategories.filter(c => c.parent_id === pid)
+      : [];
+  }
+
+  private loadEditDimensions(categoryId: string | null): void {
+    if (!categoryId) { this.editDimensions = []; return; }
+    this.editDimensionsLoading = true;
+    this.editDimensions = [];
+    this.cdr.markForCheck();
+    this.apiSvc.get<DimensionGroup[]>(
+      `/taxonomy/dimensions?category_id=${categoryId}`
+    ).subscribe({
+      next: d => {
+        this.editDimensions = d || [];
+        this.editDimensionsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.editDimensions = [];
+        this.editDimensionsLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  toggleEditTag(tagId: string): void {
+    if (this.editTagIds.has(tagId)) this.editTagIds.delete(tagId);
+    else this.editTagIds.add(tagId);
+  }
+
+  /** "Accept all" — apply the suggestion verbatim. */
+  acceptClassification(): void {
+    if (!this.classification) return;
+    this.applyClassification({
+      category_id: this.classification.category_id,
+      subcategory_id: this.classification.subcategory_id,
+      tag_ids: this.classification.tags.map(t => t.tag_id)
+    });
+  }
+
+  /** "Apply" — commit the edited working copy. */
+  applyEditedClassification(): void {
+    if (!this.editClass.category_id) return;
+    this.applyClassification({
+      category_id: this.editClass.category_id,
+      subcategory_id: this.editClass.subcategory_id,
+      tag_ids: [...this.editTagIds]
+    });
+  }
+
+  private applyClassification(payload: {
+    category_id: string; subcategory_id: string | null; tag_ids: string[];
+  }): void {
+    if (!this.classifyItemId) return;
+    this.applyingClassification = true;
+    this.cdr.markForCheck();
+    this.apiSvc.post<Item>('/taxonomy/apply-classification', {
+      itemId: this.classifyItemId, ...payload
+    }).subscribe({
+      next: updated => {
+        this.applyingClassification = false;
+        this.msg.add({ severity: 'success', summary: 'Classification applied', life: 2500 });
+        if (updated) this.saved.emit(updated);
+        this.finishClassification();
+      },
+      error: err => {
+        this.applyingClassification = false;
+        this.msg.add({
+          severity: 'error', summary: 'Could not apply classification',
+          detail: err?.error?.error || 'Please try again.', life: 4000
+        });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** "Skip" — dismiss the suggestion (clears it server-side so the banner
+      won't resurface). */
+  skipClassification(): void {
+    if (!this.classifyItemId) { this.finishClassification(); return; }
+    this.apiSvc.post('/taxonomy/dismiss-classification', {
+      itemId: this.classifyItemId
+    }).subscribe({
+      next: () => this.finishClassification(),
+      error: () => this.finishClassification()
+    });
+  }
+
+  private finishClassification(): void {
+    this.resetClassification();
+    this.close();
+    this.cdr.markForCheck();
+  }
+
   // ── Save / cancel ────────────────────────────────────────────────────
 
   onSave(): void {
@@ -1428,8 +1978,12 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
           detail: result.name,
           life: 3000
         });
+        // Refresh the parent's list behind the drawer…
         this.saved.emit(result);
-        this.close();
+        // …then classify the saved item against the full taxonomy and
+        // show the suggestion panel. The drawer self-closes once the
+        // supplier accepts / edits / skips the suggestion. (v1.43)
+        this.runClassification(result.id, result.name || this.form.name);
         this.cdr.markForCheck();
       },
       error: () => {

@@ -853,7 +853,9 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
       this.currentImg = 0;
       this.cdr.markForCheck();
     }
-    this.showEditDrawer = false;
+    // v1.43 — do NOT force the drawer shut here: after a save it stays
+    // open to show the AI classification panel and self-closes once the
+    // supplier accepts / edits / skips it.
   }
 
   copyLink() {

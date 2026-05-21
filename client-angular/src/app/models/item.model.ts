@@ -37,4 +37,20 @@ export interface Item {
   images?: Array<{ url: string; sort_order: number; is_hero: boolean }>;
   external_url?: string | null;
   is_active: boolean;
+  /** v1.43: latest unaccepted AI classification suggestion. NULL once
+      the supplier accepts or skips it. Shape mirrors the /taxonomy/classify
+      response — { category_id, category_name, subcategory_id,
+      subcategory_name, tags[], confidence, classified_at }. */
+  pending_classification?: {
+    category_id: string;
+    category_name: string;
+    subcategory_id: string | null;
+    subcategory_name: string | null;
+    tags: Array<{ tag_id: string; dimension: string; label: string }>;
+    confidence: number;
+    classified_at?: string;
+  } | null;
+  /** v1.43: the structured (dimension-scoped) tags accepted for this item,
+      joined from supplier_item_tag. Read-only — populated by getById. */
+  item_tags?: Array<{ tag_id: string; dimension: string; label: string }>;
 }
