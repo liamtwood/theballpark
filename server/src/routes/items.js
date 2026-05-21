@@ -16,7 +16,12 @@ router.get('/tags', async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await ItemService.getAll(req.query.org_id, req.query.category_id, req.query.tag));
+    res.json(await ItemService.getAll(
+      req.query.org_id,
+      req.query.category_id,
+      req.query.tag,
+      req.query.subcategory_id
+    ));
   } catch (err) { next(err); }
 });
 

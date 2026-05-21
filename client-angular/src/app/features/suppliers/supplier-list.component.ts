@@ -61,6 +61,9 @@ import {
           (parentClicked)="onParentClicked($event)"
           (categoryChanged)="onCategoryChanged($event)"
           (tagChanged)="onTagChanged($event)"
+          [subcategories]="availableSubcategories"
+          [activeSubcategoryId]="activeSubcategoryId"
+          (subcategoryChanged)="onSubcategoryChanged($event)"
           (searchChanged)="onSearchChanged($event)"
           (categoryImageEditRequested)="onCategoryImageEdit($event)"
           (viewRequested)="onViewItem($event)"
@@ -161,6 +164,14 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   favouritesOnly = false;
   activeCategory = 'all';
   activeTag = '';
+  /** v1.41 — child-category chip filter on the marketplace. Empty
+      string means "All" (no subcategory filter); a UUID filters items
+      to exactly that subcategory_id. Cleared on category change. */
+  activeSubcategoryId = '';
+  availableSubcategories: Array<{ id: string; name: string }> = [];
+  /** All catalogue child rows, indexed in memory once on init. The
+      chip strip slices this by parent on every category change. */
+  private allChildCategories: Array<{ id: string; name: string; parent_id: string; sort_order?: number }> = [];
   searchTerm = '';
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
@@ -299,8 +310,17 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.loadCategoryCounts();
     this.categorySvc.getAll('catalogue').subscribe({
       next: cats => {
-        this.categories = ((cats || []) as any[])
-          .filter((c: any) => c.enabled !== false)
+        const raw = ((cats || []) as any[]).filter((c: any) => c.enabled !== false);
+        // v1.41 — cache the child rows once so the chip strip can
+        // slice by parent on every category change without another
+        // round-trip.
+        this.allChildCategories = raw
+          .filter((c: any) => c.parent_id)
+          .map((c: any) => ({
+            id: c.id, name: c.name, parent_id: c.parent_id,
+            sort_order: c.sort_order
+          }));
+        this.categories = raw
           .map((c: any) => ({
             id: c.id,
             name: c.name,
@@ -472,6 +492,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   loadItems() {
     const params: any = {};
     if (this.activeCategory !== 'all') params.category_id = this.activeCategory;
+    if (this.activeSubcategoryId)      params.subcategory_id = this.activeSubcategoryId;
     if (this.activeTag) params.tag = this.activeTag;
     this.supplierSvc.getItems(params).subscribe({
       next: (items: any[]) => {
@@ -526,6 +547,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.activeCategory = catId;
     this.activeTag = '';
     this.availableTags = [];
+    // v1.41 — subcategory chip strip mirrors the active parent.
+    // Clear filter + repopulate options.
+    this.activeSubcategoryId = '';
+    this.availableSubcategories = (catId === 'all')
+      ? []
+      : this.allChildCategories
+          .filter(c => c.parent_id === catId)
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map(c => ({ id: c.id, name: c.name }));
     if (catId !== 'all') this.loadTags(catId);
     if (this.viewMode === 'items') this.loadItems();
     else this.mapSuppliers();
@@ -533,6 +563,12 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   onTagChanged(tag: string) {
     this.activeTag = tag;
+    if (this.viewMode === 'items') this.loadItems();
+  }
+
+  /** v1.41 — chip click from <app-catalogue-grid>. '' = All. */
+  onSubcategoryChanged(id: string) {
+    this.activeSubcategoryId = id || '';
     if (this.viewMode === 'items') this.loadItems();
   }
 

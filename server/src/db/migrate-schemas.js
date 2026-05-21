@@ -906,6 +906,98 @@ const migrate = async () => {
     console.log('  Set Build / Event Accessories / Other catalogue categories ensured (v1.40).');
     console.log(`  Subcategory taxonomy seeded — ${TAXONOMY.length} tags × 3 schemas (v1.40).`);
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.41 — promote the TAXONOMY labels into CHILD CATEGORY rows so
+    // the categories table is the canonical subcategory source (the
+    // two-field model on items uses categories.parent_id, not the tag
+    // table). Tag table stays seeded for a future use.
+    //
+    // Idempotent: only inserts labels that don't already exist as a
+    // child of the same parent. Preserves the 27 existing Catering
+    // children (Working Lunch, Canapes, etc.) — they coexist with
+    // the new ones from the taxonomy.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        WITH src(cat_name, label, sort_order) AS (
+          VALUES
+            ${valuesSql}
+        )
+        INSERT INTO ${schema}.categories (name, parent_id, sort_order, namespace, icon, icon_name)
+        SELECT src.label, p.id, src.sort_order, 'catalogue', NULL, NULL
+          FROM src
+          JOIN ${schema}.categories p
+            ON p.name = src.cat_name
+           AND p.namespace = 'catalogue'
+           AND p.parent_id IS NULL
+         WHERE NOT EXISTS (
+            SELECT 1 FROM ${schema}.categories c
+             WHERE c.name = src.label
+               AND c.parent_id = p.id
+         );
+      `);
+    }
+    console.log('  Child categories promoted from taxonomy (v1.41).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.41 — two-field subcategory model on items.
+    //   items.category_id    = ALWAYS a parent category (parent_id IS NULL)
+    //   items.subcategory_id = NULL or a child category (parent_id set)
+    // Plus a BEFORE INSERT/UPDATE trigger that rejects rows where the
+    // subcategory's parent_id doesn't match the row's category_id.
+    // ─────────────────────────────────────────────────────────────────
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES public.categories(id);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES preview.categories(id);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES master.categories(id);
+    `);
+
+    // Idempotent migration: any item whose category_id currently
+    // points at a CHILD category gets split — move category_id up to
+    // the parent, set subcategory_id to the original child. Re-runs
+    // are no-ops (items already on parents won't match the JOIN).
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        UPDATE ${schema}.items i
+           SET subcategory_id = i.category_id,
+               category_id    = c.parent_id
+          FROM ${schema}.categories c
+         WHERE c.id = i.category_id
+           AND c.parent_id IS NOT NULL;
+      `);
+    }
+
+    // Subcategory ↔ category validation trigger. The function is
+    // schema-qualified to keep public/preview/master functions
+    // independent. CREATE OR REPLACE + DROP TRIGGER IF EXISTS makes
+    // both safe to re-run.
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE OR REPLACE FUNCTION ${schema}.check_item_subcategory()
+        RETURNS TRIGGER AS $body$
+        BEGIN
+          IF NEW.subcategory_id IS NOT NULL THEN
+            IF NOT EXISTS (
+              SELECT 1 FROM ${schema}.categories
+               WHERE id = NEW.subcategory_id
+                 AND parent_id = NEW.category_id
+            ) THEN
+              RAISE EXCEPTION 'Subcategory % does not belong to category %',
+                NEW.subcategory_id, NEW.category_id;
+            END IF;
+          END IF;
+          RETURN NEW;
+        END;
+        $body$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trg_check_item_subcategory ON ${schema}.items;
+        CREATE TRIGGER trg_check_item_subcategory
+          BEFORE INSERT OR UPDATE ON ${schema}.items
+          FOR EACH ROW EXECUTE FUNCTION ${schema}.check_item_subcategory();
+      `);
+    }
+    console.log('  items.subcategory_id column ensured + 15 items migrated + trg_check_item_subcategory installed (v1.41).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`

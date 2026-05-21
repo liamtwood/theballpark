@@ -4,6 +4,12 @@ export interface Item {
   category_id: string;
   category_name?: string;
   category_icon?: string;
+  /** v1.41: two-field subcategory model. category_id is always the
+      parent category; subcategory_id is the optional child category
+      (must satisfy categories.parent_id = items.category_id — the
+      trg_check_item_subcategory trigger enforces this). */
+  subcategory_id?: string | null;
+  subcategory_name?: string;
   name: string;
   description?: string;
   unit?: string;

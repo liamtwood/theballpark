@@ -166,6 +166,7 @@ app.use('/api/estimate-items', require('./routes/estimateItems'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/balls-transactions', require('./routes/ballsTransactions'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/taxonomy', require('./routes/taxonomy'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));

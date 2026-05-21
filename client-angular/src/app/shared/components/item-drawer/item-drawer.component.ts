@@ -21,6 +21,7 @@ import { CodelistService } from '../../../core/services/codelist.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { ItemService } from '../../../core/services/item.service';
 import { OrgService } from '../../../core/services/org.service';
+import { ApiService } from '../../../core/services/api.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
@@ -170,7 +171,18 @@ type DrawerTab = 'details' | 'index' | 'images';
               <div *ngIf="isView" class="bp-readonly-value">{{ categoryLabel(form.category_id) || '—' }}</div>
             </div>
             <div class="bp-field">
-              <label class="bp-field-label">Subcategory</label>
+              <label class="bp-field-label">
+                Subcategory
+                <!-- v1.41: AI suggestion when item has description + category.
+                     Calls /api/taxonomy/suggest-subcategory and pre-fills. -->
+                <button *ngIf="!isView && canSuggestSubcat"
+                        type="button"
+                        class="bp-suggest-link"
+                        [disabled]="suggesting"
+                        (click)="suggestSubcategory()">
+                  {{ suggesting ? '…' : '✦ Suggest' }}
+                </button>
+              </label>
               <p-dropdown *ngIf="!isView" [(ngModel)]="form.subcategory_id"
                           [options]="subcategories"
                           optionLabel="name"
@@ -574,6 +586,18 @@ type DrawerTab = 'details' | 'index' | 'images';
       margin-bottom: 4px;
       font-family: var(--font-body);
     }
+    /* v1.41 — "✦ Suggest" link sat next to the Subcategory label. */
+    .bp-suggest-link {
+      margin-left: 8px;
+      background: none; border: none; padding: 0;
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 500;
+      color: var(--theme-accent);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .bp-suggest-link:hover:not(:disabled) { text-decoration: underline; }
+    .bp-suggest-link:disabled { opacity: 0.5; cursor: default; }
     .bp-field-hint {
       font-size: 11px;
       color: var(--color-text-muted);
@@ -884,6 +908,9 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   lineageOptions: { id: string; name: string }[] = [];
   currentOrg: Org | null = null;
   saving = false;
+  /** v1.41 — AI suggest-subcategory state. True while the
+      /api/taxonomy/suggest-subcategory call is in flight. */
+  suggesting = false;
 
   /** Active tab inside the drawer — Details by default. Reset to Details
       whenever the drawer is re-opened with a new item so the user lands
@@ -910,6 +937,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     private categorySvc: CategoryService,
     private itemSvc: ItemService,
     private orgSvc: OrgService,
+    private apiSvc: ApiService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1077,17 +1105,18 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       return;
     }
 
-    // Split DB category_id back into category/subcategory.
-    const itemCat = this.allCategories.find(c => c.id === this.item!.category_id);
-    let category_id: string | null = null;
-    let subcategory_id: string | null = null;
-    if (itemCat) {
-      if (itemCat.parent_id) {
-        // Item is on a child category → store parent as category, child as subcategory.
-        category_id = itemCat.parent_id;
+    // v1.41 — items now carry category_id (parent) AND subcategory_id
+    // (child) explicitly. Read them directly. The legacy split-on-load
+    // logic stays as a fallback for any item still on a child cat
+    // (shouldn't happen post-migration, but keep the safety net).
+    let category_id:    string | null = this.item!.category_id    ?? null;
+    let subcategory_id: string | null = (this.item! as any).subcategory_id ?? null;
+    if (category_id && !subcategory_id) {
+      const itemCat = this.allCategories.find(c => c.id === category_id);
+      if (itemCat?.parent_id) {
+        // Legacy: item still on a child category. Split for the UI.
         subcategory_id = itemCat.id;
-      } else {
-        category_id = itemCat.id;
+        category_id    = itemCat.parent_id;
       }
     }
 
@@ -1259,6 +1288,61 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     );
   }
 
+  /** v1.41 — show the "✦ Suggest" button only when we have something
+      meaningful to send the AI: an edit-mode item (so it has an id),
+      a parent category selected, and a description to work from. */
+  get canSuggestSubcat(): boolean {
+    return this.mode === 'edit'
+      && !!this.item?.id
+      && !!this.form.category_id
+      && (this.form.description || '').trim().length > 0
+      && this.subcategories.length > 0;
+  }
+
+  /** v1.41 — call TaxonomyService.suggestSubcategory and pre-fill
+      the dropdown with the AI's choice. The user can still override
+      before save. */
+  suggestSubcategory(): void {
+    if (!this.canSuggestSubcat || this.suggesting) return;
+    this.suggesting = true;
+    this.cdr.markForCheck();
+    this.apiSvc.post<{ subcategory_id: string | null; subcategory_name: string | null; confidence: number }>(
+      '/taxonomy/suggest-subcategory',
+      { itemId: this.item!.id }
+    ).subscribe({
+      next: r => {
+        this.suggesting = false;
+        if (r?.subcategory_id) {
+          this.form.subcategory_id = r.subcategory_id;
+          this.msg.add({
+            severity: 'success',
+            summary: '✦ Suggested: ' + (r.subcategory_name || ''),
+            detail: r.confidence ? `Confidence ${Math.round(r.confidence * 100)}%` : undefined,
+            life: 3000
+          });
+        } else {
+          this.msg.add({
+            severity: 'info',
+            summary: '✦ No subcategory match',
+            detail: r?.subcategory_name ? `AI proposed "${r.subcategory_name}" — not in this category's list.` : undefined,
+            life: 4000
+          });
+        }
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.suggesting = false;
+        this.msg.add({
+          severity: 'error',
+          summary: 'Suggest failed',
+          detail: err?.error?.error || 'AI parser unreachable.',
+          life: 3500
+        });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   // ── Save / cancel ────────────────────────────────────────────────────
 
   onSave(): void {
@@ -1266,9 +1350,12 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     this.saving = true;
     this.cdr.markForCheck();
 
-    // The item's stored category_id is the most specific one — subcategory
-    // if set, else the top-level category.
-    const categoryId = this.form.subcategory_id || this.form.category_id;
+    // v1.41 — items now use the two-field model. category_id is
+    // ALWAYS the parent; subcategory_id is the optional child. The
+    // DB trigger (trg_check_item_subcategory) rejects any pair where
+    // the child's parent_id ≠ category_id.
+    const categoryId    = this.form.category_id;
+    const subcategoryId = this.form.subcategory_id ?? null;
 
     // Lead time: persist in days, multiplying by 7 when user picked Weeks.
     let leadTimeDays: number | null = this.form.lead_time_value;
@@ -1294,6 +1381,9 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
       name: this.form.name.trim(),
       description: this.form.description || '',
       category_id: categoryId || undefined,
+      // v1.41 — explicit subcategory FK. Send null to clear; backend
+      // handles undefined as "leave alone".
+      subcategory_id: subcategoryId,
       unit: this.form.unit || undefined,
       time_unit: this.form.time_unit,
       tier: this.form.tier,

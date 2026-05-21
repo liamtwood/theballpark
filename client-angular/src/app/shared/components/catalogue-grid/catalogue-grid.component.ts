@@ -85,6 +85,21 @@ export type DetailMode = 'inline' | 'drawer';
       (footerToggle)="toggleShowAllCategories()">
     </app-category-circles>
 
+    <!-- v1.41 — SUBCATEGORY CHIP STRIP.
+         Renders only when the parent has populated [subcategories].
+         "All" chip clears the filter; subcat chips set
+         activeSubcategoryId. Text pills (not image circles) per the
+         design spec; one CSS variable away from theme accent. -->
+    <div *ngIf="subcategories?.length" class="bp-subcat-strip">
+      <button type="button" class="bp-subcat-chip"
+              [class.active]="!activeSubcategoryId"
+              (click)="onSubcategoryClick('')">All</button>
+      <button *ngFor="let sc of subcategories"
+              type="button" class="bp-subcat-chip"
+              [class.active]="activeSubcategoryId === sc.id"
+              (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
+    </div>
+
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
          filter bar, bulk-action bar). -->
@@ -605,6 +620,35 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     :host { display: block; }
 
+    /* v1.41 — subcategory chip strip below the category circles. Text
+       pills, theme-accent active state, hairline border default. */
+    .bp-subcat-strip {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 8px 28px 0;
+      margin-bottom: 4px;
+    }
+    .bp-subcat-chip {
+      display: inline-flex; align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-subcat-chip:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    .bp-subcat-chip.active {
+      background: var(--theme-accent);
+      border-color: var(--theme-accent);
+      color: #fff;
+    }
+
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
       background: var(--theme-bg);
@@ -990,6 +1034,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() breadcrumbAll: string = '';
   @Input() breadcrumbActive: string = '';
   @Input() tags: string[] = [];
+  /** v1.41 — subcategory chip strip rendered below the category
+      circles. Each entry maps to a child category row. Empty array →
+      strip is hidden. Only the marketplace page populates this for
+      now; project Marketplace tab can opt in later. */
+  @Input() subcategories: Array<{ id: string; name: string }> = [];
+  @Input() activeSubcategoryId: string = '';
   @Input() entityType: 'item' | 'supplier' | 'feedback' = 'item';
   @Input() entityLabel: string = 'item';
   @Input() sectionTitle: string = 'CATALOGUE';
@@ -1057,6 +1107,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       should reset that state in response. */
   @Output() breadcrumbBackClicked = new EventEmitter<void>();
   @Output() tagChanged = new EventEmitter<string>();
+  /** v1.41 — emits the clicked subcategory id, or '' when "All" is
+      clicked. Parent re-fetches items with the new filter. */
+  @Output() subcategoryChanged = new EventEmitter<string>();
   @Output() searchChanged = new EventEmitter<string>();
   @Output() categoryImageEditRequested = new EventEmitter<CategoryInfo>();
 
@@ -1513,6 +1566,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     }
     this.checkedTags = new Set(this.checkedTags); // trigger change detection
     this.applyFilter();
+  }
+
+  /** v1.41 — subcategory chip click. Parent owns the filter state
+      via [activeSubcategoryId]; we just emit and let it re-fetch. */
+  onSubcategoryClick(id: string) {
+    this.subcategoryChanged.emit(id);
   }
 
   checkAllTags() {
