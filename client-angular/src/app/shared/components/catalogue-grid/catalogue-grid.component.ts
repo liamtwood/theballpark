@@ -2206,6 +2206,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   onRequestQuoteClick(event: MouseEvent, entity: CatalogueEntity) {
     event.stopPropagation();
     if (!this.projectId || !entity.category_id) return;
+    // v1.52a — requesting a quote on an item implies selecting it for
+    // the project (don't toggle off one already selected).
+    if (this.getSelectionType(entity.id) !== 'selected') {
+      this.addToProject.emit({ entity, type: 'selected' });
+    }
     this.outreach.open({
       item: {
         item_id:     entity.id,

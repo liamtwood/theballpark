@@ -1071,6 +1071,9 @@ export class BriefComponent implements OnInit, OnDestroy {
         supplier_id: s.supplier_id, supplier_name: s.supplier_name
       })) : []
     });
+    // v1.52a — emailing a supplier about a catalogue match implies
+    // selecting that item for the project.
+    if (!isNew) this.addMatched(ac, m as MatchItem, 'selected');
   }
 
   // ── Hint ──────────────────────────────────────────────────────────────

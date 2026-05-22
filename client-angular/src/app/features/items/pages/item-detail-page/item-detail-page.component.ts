@@ -876,6 +876,8 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
 
   requestQuote() {
     if (!this.item || !this.projectId) return;
+    // v1.52a — requesting a quote implies selecting the item.
+    this.addToProject();
     this.outreach.open({
       item: {
         item_id:     this.item.id,
