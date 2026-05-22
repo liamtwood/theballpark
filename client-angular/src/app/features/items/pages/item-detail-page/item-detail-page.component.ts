@@ -19,6 +19,7 @@ import { FavouriteService } from '../../../../core/services/favourite.service';
 import { ProjectService } from '../../../../core/services/project.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { ShellContextService } from '../../../../core/services/shell-context.service';
+import { OutreachService } from '../../../../core/services/outreach.service';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemDrawerComponent } from '../../../../shared/components/item-drawer/item-drawer.component';
@@ -146,6 +147,10 @@ import { Item, Org, Project } from '../../../../models';
                     [class.is-active]="isFav">
               <lucide-icon name="heart" [size]="14"></lucide-icon>
               {{ isFav ? 'Wishlisted' : 'Wishlist' }}
+            </button>
+            <button *ngIf="canRequestQuote" class="bp-itempage-btn bp-itempage-btn--secondary"
+                    (click)="requestQuote()">
+              <lucide-icon name="mail" [size]="14"></lucide-icon> Request quote
             </button>
             <button class="bp-itempage-btn bp-itempage-btn--icon" (click)="openEdit()" title="Edit">
               <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -631,6 +636,7 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     private projectSvc: ProjectService,
     private configSvc: ConfigService,
     private shellCtx: ShellContextService,
+    private outreach: OutreachService,
     private msg: MessageService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
@@ -863,6 +869,25 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
   }
 
   openEdit() { this.showEditDrawer = true; }
+
+  /** v1.51a — Request-quote outreach. Only available inside a project
+      context (you need a project to send a quote request from). */
+  get canRequestQuote(): boolean { return !!this.projectId && !!this.item; }
+
+  requestQuote() {
+    if (!this.item || !this.projectId) return;
+    this.outreach.open({
+      item: {
+        item_id:     this.item.id,
+        name:        this.item.name,
+        description: this.item.description,
+        price:       this.item.base_price ?? null,
+        isNew:       false
+      },
+      categoryId: this.item.category_id || '',
+      projectId:  this.projectId
+    });
+  }
 
   /** v1.45a — the item's structured tags grouped by dimension, for the
       read-only Attributes section. */

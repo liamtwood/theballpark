@@ -22,6 +22,7 @@ import {
 } from '../category-circles/category-circles.component';
 import { CodelistService } from '../../../core/services/codelist.service';
 import { ApiService } from '../../../core/services/api.service';
+import { OutreachService } from '../../../core/services/outreach.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -356,6 +357,10 @@ export type DetailMode = 'inline' | 'drawer';
                       [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
                 <lucide-icon name="heart" [size]="14"></lucide-icon>
               </button>
+              <button type="button" class="bp-cart-btn"
+                      (click)="onRequestQuoteClick($event, e)" title="Request a quote">
+                <lucide-icon name="mail" [size]="14"></lucide-icon>
+              </button>
             </ng-container>
 
             <button *ngIf="showFavourite" class="bp-heart-btn" [class.active]="favouriteIds.has(e.id)"
@@ -398,6 +403,11 @@ export type DetailMode = 'inline' | 'drawer';
                           (click)="onCartLikeClick($event, e)"
                           [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
                     <lucide-icon name="heart" [size]="14"></lucide-icon>
+                  </button>
+                  <button *ngIf="showCartActions" type="button"
+                          class="bp-grid-action-btn"
+                          (click)="onRequestQuoteClick($event, e)" title="Request a quote">
+                    <lucide-icon name="mail" [size]="14"></lucide-icon>
                   </button>
                   <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
                     <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -1606,7 +1616,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   constructor(
     private cdr: ChangeDetectorRef,
     private codelistSvc: CodelistService,
-    private api: ApiService
+    private api: ApiService,
+    private outreach: OutreachService
   ) {}
 
   ngOnInit() {
@@ -2187,6 +2198,26 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   onCartLikeClick(event: MouseEvent, entity: CatalogueEntity) {
     event.stopPropagation();
     this.onLikeForProject(entity);
+  }
+
+  /** v1.51a — ✉ click: open the shared outreach drawer with this item as
+      the requirement. Same gate as +/♡ (showCartActions ⇒ a projectId is
+      bound), so the icon only appears within a project context. */
+  onRequestQuoteClick(event: MouseEvent, entity: CatalogueEntity) {
+    event.stopPropagation();
+    if (!this.projectId || !entity.category_id) return;
+    this.outreach.open({
+      item: {
+        item_id:     entity.id,
+        name:        entity.name,
+        description: entity.description,
+        price:       entity.price ?? null,
+        isNew:       false
+      },
+      categoryId:   entity.category_id,
+      categoryName: entity.categoryLabel,
+      projectId:    this.projectId
+    });
   }
 
   /** + button — adds the item to the project as 'selected', or removes
