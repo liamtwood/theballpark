@@ -23,10 +23,12 @@ interface MatchItem {
   item_id: string; name: string; description?: string; base_price: number | null;
   supplier_id?: string; supplier_name: string; subcategory_name?: string | null;
   score: number; reason: string;
+  image_url?: string | null; image_display?: string | null;
 }
 interface MatchSupplier {
   supplier_id: string; supplier_name: string; description?: string;
   fit_reason: string; item_count: number;
+  image_url?: string | null; image_display?: string | null;
 }
 interface ProposedItem {
   name: string; description: string; supplier_id: string; supplier_name: string;
@@ -342,7 +344,14 @@ type DetailView =
 
                 <!-- supplier -->
                 <ng-container *ngSwitchCase="'supplier'">
-                  <div class="bp-b2-d-hero sup">{{ supplierInitials(detailSupplier!.supplier_name) }}</div>
+                  <div class="bp-b2-d-hero sup"
+                       [class.is-logo]="detailSupplier!.image_url && detailSupplier!.image_display === 'contain'"
+                       [style.background-image]="detailSupplier!.image_url && detailSupplier!.image_display !== 'contain' ? 'url(' + detailSupplier!.image_url + ')' : null">
+                    <img *ngIf="detailSupplier!.image_url && detailSupplier!.image_display === 'contain'"
+                         [src]="detailSupplier!.image_url" [alt]="detailSupplier!.supplier_name"
+                         class="bp-b2-d-hero-img"/>
+                    <span *ngIf="!detailSupplier!.image_url">{{ supplierInitials(detailSupplier!.supplier_name) }}</span>
+                  </div>
                   <div class="bp-b2-d-body">
                     <div class="bp-b2-d-eyebrow">Supplier</div>
                     <div class="bp-b2-d-name">{{ detailSupplier!.supplier_name }}</div>
@@ -383,7 +392,13 @@ type DetailView =
 
     <!-- shared item / proposed-item detail body -->
     <ng-template #itemDetail let-d>
-      <div class="bp-b2-d-hero">{{ d.proposed ? '🤖' : catLetter(d.name) }}</div>
+      <div class="bp-b2-d-hero"
+           [class.is-logo]="d.image_url && d.image_display === 'contain'"
+           [style.background-image]="d.image_url && d.image_display !== 'contain' ? 'url(' + d.image_url + ')' : null">
+        <img *ngIf="d.image_url && d.image_display === 'contain'"
+             [src]="d.image_url" [alt]="d.name" class="bp-b2-d-hero-img"/>
+        <span *ngIf="!d.image_url">{{ d.proposed ? '🤖' : catLetter(d.name) }}</span>
+      </div>
       <div class="bp-b2-d-body">
         <div class="bp-b2-d-eyebrow">
           {{ activeCategory?.category_name }} · {{ d.proposed ? 'Proposed item' : 'Catalogue item' }}
@@ -587,8 +602,11 @@ type DetailView =
     .bp-b2-d-empty .s { font-size: 11.5px; color: var(--color-text-muted); max-width: 210px; line-height: 1.5; }
     .bp-b2-d-hero { height: 144px; display: flex; align-items: center; justify-content: center;
       color: #fff; font-family: var(--font-display); font-size: 40px; font-weight: 600;
-      background: linear-gradient(150deg, var(--theme-accent), rgba(0,0,0,0.55)); }
+      background: linear-gradient(150deg, var(--theme-accent), rgba(0,0,0,0.55));
+      background-size: cover; background-position: center; }
     .bp-b2-d-hero.sup { font-size: 28px; letter-spacing: 0.04em; }
+    .bp-b2-d-hero.is-logo { background: var(--theme-bg); }
+    .bp-b2-d-hero-img { max-width: 76%; max-height: 76%; object-fit: contain; }
     .bp-b2-d-body { padding: 14px 16px; }
     .bp-b2-d-eyebrow { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--theme-accent); margin-bottom: 4px; }
@@ -911,7 +929,8 @@ export class BriefComponent implements OnInit, OnDestroy {
       return {
         proposed: false, name: it.name, supplier_name: it.supplier_name,
         price: it.base_price, score: it.score, reason: it.reason,
-        description: it.description, added: this.isItemAdded(it.item_id)
+        description: it.description, added: this.isItemAdded(it.item_id),
+        image_url: it.image_url || null, image_display: it.image_display || null
       };
     }
     if (this.detail.kind === 'proposed') {
@@ -919,7 +938,8 @@ export class BriefComponent implements OnInit, OnDestroy {
       return {
         proposed: true, name: p.name, supplier_name: p.supplier_name,
         price: p.estimated_price, score: p.confidence, reason: p.reason,
-        description: p.description, added: this.addedProposed.has(this.activeCategoryId || '')
+        description: p.description, added: this.addedProposed.has(this.activeCategoryId || ''),
+        image_url: null, image_display: null
       };
     }
     return null;

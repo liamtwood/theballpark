@@ -591,6 +591,7 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
 
   const itemsRes = await pool.query(
     `SELECT i.id, i.name, i.description, i.base_price, i.org_id,
+            i.image_url, i.external_url, i.image_display,
             sc.name AS subcategory_name, o.name AS supplier_name
        FROM items i
        LEFT JOIN categories sc ON sc.id = i.subcategory_id
@@ -603,10 +604,11 @@ async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   const itemById = new Map(items.map(i => [i.id, i]));
 
   const supRes = await pool.query(
-    `SELECT o.id, o.name, o.description, COUNT(i.id)::int AS item_count
+    `SELECT o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display,
+            COUNT(i.id)::int AS item_count
        FROM items i JOIN orgs o ON o.id = i.org_id
       WHERE i.is_active = true AND ${inCategory}
-      GROUP BY o.id, o.name, o.description
+      GROUP BY o.id, o.name, o.description, o.cover_image_url, o.logo_url, o.image_display
       ORDER BY item_count DESC`,
     [categoryId]
   );
@@ -660,6 +662,8 @@ Score items and propose if needed.`
       supplier_id:      it.org_id,
       supplier_name:    it.supplier_name,
       subcategory_name: it.subcategory_name || null,
+      image_url:        it.image_url || it.external_url || null,
+      image_display:    it.image_display || null,
       score:            Math.max(1, Math.min(10, Number(m.score) || 0)),
       reason:           m.reason || ''
     };
@@ -676,12 +680,19 @@ Score items and propose if needed.`
     .filter(s => s && supById.has(s.supplier_id))
     .map(s => {
       const db = supById.get(s.supplier_id);
+      // Prefer the cover photo (rendered cover) and fall back to the
+      // logo (rendered contain) so the preview card always has artwork.
+      const supImg = db.cover_image_url || db.logo_url || null;
       return {
         supplier_id:   s.supplier_id,
         supplier_name: db.name,
         description:   (db.description || '').slice(0, 320),
         fit_reason:    s.fit_reason || '',
-        item_count:    db.item_count
+        item_count:    db.item_count,
+        image_url:     supImg,
+        image_display: db.cover_image_url
+          ? (db.image_display || null)
+          : (supImg ? 'contain' : null)
       };
     });
 
