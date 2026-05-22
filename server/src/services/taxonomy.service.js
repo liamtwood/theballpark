@@ -95,7 +95,7 @@ function getClient() {
     raw Anthropic error body. */
 async function aiCreate(client, params) {
   try {
-    return await aiCreate(client,params);
+    return await client.messages.create(params);
   } catch (e) {
     const status = e && e.status;
     const type = e && e.error && e.error.error && e.error.error.type;
