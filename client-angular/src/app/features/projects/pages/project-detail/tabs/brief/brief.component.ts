@@ -40,6 +40,11 @@ interface ProposedItem {
       approval-pending) catalogue row, so it carries a stable id.
       May be absent on match results cached before v1.52f. */
   item_id?: string;
+  /** v1.52g — hero image. `undefined` = not yet hydrated from the item
+      row; `null` = hydrated, no image. A user adds one via the ✎ drawer
+      to show the supplier what they are looking for. */
+  image_url?: string | null;
+  image_display?: string | null;
 }
 interface MatchResult {
   category_id: string; category_name: string;
@@ -473,8 +478,10 @@ type DetailView =
            class="bp-b2-row proposed"
            [class.active]="detail?.kind === 'proposed'"
            (click)="openProposedDetail(p)">
-        <div class="bp-b2-thumb">
-          <lucide-icon name="bot" [size]="16"></lucide-icon>
+        <div class="bp-b2-thumb"
+             [class.bp-b2-thumb--img]="p.image_url"
+             [style.background-image]="p.image_url ? 'url(' + p.image_url + ')' : null">
+          <lucide-icon *ngIf="!p.image_url" name="bot" [size]="16"></lucide-icon>
         </div>
         <div class="bp-b2-row-mid">
           <div class="bp-b2-row-name">{{ p.name }}</div>
@@ -789,6 +796,9 @@ export class BriefComponent implements OnInit, OnDestroy {
   /** v1.52e — item drawer for editing a materialised proposed item. */
   drawerVisible = false;
   drawerItem: Item | null = null;
+  /** v1.52g — the proposed item the drawer is currently editing, so a
+      save can be reflected straight back onto its preview card. */
+  private proposedBeingEdited: ProposedItem | null = null;
 
   private briefTimers = new Map<string, any>();
 
@@ -1054,7 +1064,7 @@ export class BriefComponent implements OnInit, OnDestroy {
         proposed: true, name: p.name, supplier_name: p.supplier_name,
         price: p.estimated_price, score: p.confidence, reason: p.reason,
         description: p.description, added: this.addedProposed.has(this.activeCategoryId || ''),
-        image_url: null, image_display: null
+        image_url: p.image_url ?? null, image_display: p.image_display ?? null
       };
     }
     return null;
@@ -1070,8 +1080,28 @@ export class BriefComponent implements OnInit, OnDestroy {
   }
 
   openItemDetail(m: MatchItem): void { this.detail = { kind: 'item', item: m, tier: '' }; }
-  openProposedDetail(p: ProposedItem): void { this.detail = { kind: 'proposed', item: p }; }
   openSupplierDetail(s: MatchSupplier): void { this.detail = { kind: 'supplier', supplier: s }; }
+
+  openProposedDetail(p: ProposedItem): void {
+    this.detail = { kind: 'proposed', item: p };
+    // v1.52g — the proposed item is a real catalogue row; hydrate its
+    // hero image (and refresh name / price / description) from that
+    // row, which is the source of truth after any ✎ edit. Runs once
+    // per page load — in-session edits update the card directly.
+    if (p.item_id && p.image_url === undefined) {
+      this.itemSvc.getById(p.item_id).subscribe({
+        next: item => {
+          p.image_url     = item.image_url ?? null;
+          p.image_display = item.image_display ?? null;
+          if (item.name) p.name = item.name;
+          if (item.base_price != null) p.estimated_price = item.base_price;
+          if (item.description != null) p.description = item.description;
+          this.cdr.markForCheck();
+        },
+        error: () => { p.image_url = null; this.cdr.markForCheck(); }
+      });
+    }
+  }
 
   viewStore(supplierId: string): void {
     if (supplierId) this.router.navigate(['/suppliers', supplierId]);
@@ -1134,6 +1164,7 @@ export class BriefComponent implements OnInit, OnDestroy {
   editProposed(): void {
     if (this.detail?.kind !== 'proposed') return;
     const p = this.detail.item;
+    this.proposedBeingEdited = p;
     if (p.item_id) {
       this.itemSvc.getById(p.item_id).subscribe({
         next: item => {
@@ -1164,9 +1195,20 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.materializeProposed(p, row => this.goToItem(row.id));
   }
 
-  /** v1.52e — item drawer saved a materialised proposed item. */
-  onProposedSaved(_item: Item): void {
+  /** v1.52e — item drawer saved a materialised proposed item. v1.52g —
+      reflect the saved hero image (+ name / price / description) straight
+      back onto the proposed item's preview card. */
+  onProposedSaved(item: Item): void {
     this.drawerVisible = false;
+    const p = this.proposedBeingEdited;
+    if (p) {
+      p.image_url     = item.image_url ?? null;
+      p.image_display = item.image_display ?? null;
+      if (item.name) p.name = item.name;
+      if (item.base_price != null) p.estimated_price = item.base_price;
+      if (item.description != null) p.description = item.description;
+      this.proposedBeingEdited = null;
+    }
     this.msg.add({ severity: 'success', summary: 'Item saved', life: 2500 });
     this.cdr.markForCheck();
   }
