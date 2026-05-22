@@ -200,9 +200,10 @@ type DetailView =
                     </div>
 
                     <!-- v1.50 — item matches (matched + closest, one section) -->
-                    <div>
+                    <div *ngIf="r.matched_items.length || r.closest_item">
                       <div class="bp-b2-sech">Item matches</div>
-                      <ng-container *ngIf="r.matched_items.length || r.closest_item; else noMatched">
+                      <div class="bp-b2-rec"><span class="bp-b2-spark">✦</span> {{ itemMatchRec }}</div>
+                      <ng-container>
                         <div *ngFor="let m of r.matched_items"
                              class="bp-b2-row"
                              [class.active]="isDetailItem(m.item_id)"
@@ -258,14 +259,12 @@ type DetailView =
                           </div>
                         </div>
                       </ng-container>
-                      <ng-template #noMatched>
-                        <div class="bp-b2-emptyln">No catalogue matches — see the proposed new item below.</div>
-                      </ng-template>
                     </div>
 
-                    <!-- v1.50 — new item (the AI proposal) -->
+                    <!-- v1.52 — new item (the AI proposal) -->
                     <div *ngIf="r.proposed_item as p">
                       <div class="bp-b2-sech">New item</div>
+                      <div class="bp-b2-rec"><span class="bp-b2-spark">✦</span> {{ newItemRec }}</div>
                       <div class="bp-b2-row proposed"
                            [class.active]="detail?.kind === 'proposed'"
                            (click)="openProposedDetail(p)">
@@ -559,6 +558,8 @@ type DetailView =
       display: flex; align-items: center; justify-content: center; color: var(--theme-accent);
       font-family: var(--font-display); font-size: 13px; font-weight: 600; overflow: hidden; }
     .bp-b2-thumb--img { background-size: cover; background-position: center; }
+    .bp-b2-rec { font-size: 11px; color: var(--color-text-secondary); line-height: 1.55;
+      margin: -2px 0 10px; }
     .bp-b2-row-mid { flex: 1; min-width: 0; }
     .bp-b2-row-name { font-size: 12.5px; font-weight: 600; line-height: 1.25;
       color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -747,6 +748,21 @@ export class BriefComponent implements OnInit, OnDestroy {
   }
   get activeResult(): MatchResult | null {
     return this.activeCategoryId ? (this.matchResults.get(this.activeCategoryId) || null) : null;
+  }
+  /** v1.52 — AI-voiced recommendation copy framing each results section. */
+  get itemMatchRec(): string {
+    const r = this.activeResult;
+    if (!r) return '';
+    return r.matched_items.length
+      ? 'Found these in the catalogue — strong matches for your brief. Pick one and request an updated quote from the supplier.'
+      : 'The closest I found in the catalogue — not an exact fit. Request a quote on it, or send the new item below.';
+  }
+  get newItemRec(): string {
+    const r = this.activeResult;
+    if (!r) return '';
+    return (r.matched_items.length || r.closest_item)
+      ? 'Prefer something bespoke? Here’s a new item to send out for a quote.'
+      : 'I didn’t find anything close enough in the catalogue — here’s a new item to send out for a quote.';
   }
   get unusedCategories(): Category[] {
     const used = new Set(this.projectCategories.map(p => p.category_id));
