@@ -502,18 +502,38 @@ async function getDimensions(categoryId) {
  * ordered by item_count desc.
  */
 async function categorySuppliers(categoryId) {
-  if (!categoryId) throw httpErr('categoryId is required', 400);
-  const inCategory =
-    `(i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
+  const params = [];
+  let filter = 'i.is_active = true';
+  if (categoryId) {
+    params.push(categoryId);
+    filter += ` AND (i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
+  }
   const r = await pool.query(
     `SELECT o.id AS supplier_id, o.name AS supplier_name,
             o.description, o.city, COUNT(i.id)::int AS item_count
        FROM items i
        JOIN orgs o ON o.id = i.org_id
-      WHERE i.is_active = true AND ${inCategory}
+      WHERE ${filter}
       GROUP BY o.id, o.name, o.description, o.city
       ORDER BY item_count DESC, o.name ASC`,
-    [categoryId]
+    params
+  );
+  return r.rows;
+}
+
+/**
+ * Event-type values, each with every tag id that carries it. The
+ * event-type dimension is duplicated per category, so the "All"
+ * marketplace view needs all ids behind a value to filter across
+ * categories. Returns [{ label, tag_ids: [...] }].
+ */
+async function eventTypes() {
+  const r = await pool.query(
+    `SELECT label, ARRAY_AGG(id) AS tag_ids
+       FROM tag
+      WHERE dimension = 'event-type'
+      GROUP BY label
+      ORDER BY MIN(sort_order)`
   );
   return r.rows;
 }
@@ -927,6 +947,7 @@ module.exports = {
   setItemTags,
   getDimensions,
   categorySuppliers,
+  eventTypes,
   matchItems,
   addMatchToProject,
   saveSearchHint,

@@ -58,13 +58,18 @@ router.get('/dimensions', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── v1.49 — suppliers in a category (category card) ────────────────────
+// ── v1.49 — suppliers in a category (category card + sidebar filter).
+//   category_id optional: omitted = every supplier with active items.
 router.get('/category-suppliers', async (req, res, next) => {
   try {
-    if (!req.query.category_id) {
-      return res.status(400).json({ error: 'category_id required' });
-    }
-    res.json(await TaxonomyService.categorySuppliers(req.query.category_id));
+    res.json(await TaxonomyService.categorySuppliers(req.query.category_id || null));
+  } catch (err) { next(err); }
+});
+
+// Event-type values aggregated across categories (the "All" view filter).
+router.get('/event-types', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.eventTypes());
   } catch (err) { next(err); }
 });
 
