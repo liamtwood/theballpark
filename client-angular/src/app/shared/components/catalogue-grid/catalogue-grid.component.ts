@@ -2130,7 +2130,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     // Plus the optional Type/tags filter (independent free-text)
     // and the search box. No more drill state in this branch.
     if (this.activeCategory !== 'all') {
-      result = result.filter(e => e.category_id === this.activeCategory);
+      // v1.49a — an item has one category_id, but a supplier belongs to
+      // many: filter supplier entities on their category_ids[] so the
+      // Suppliers view actually shows the suppliers for a category.
+      result = (this.entityType === 'supplier')
+        ? result.filter(e => (((e._raw && e._raw.category_ids) as string[]) || [])
+            .includes(this.activeCategory))
+        : result.filter(e => e.category_id === this.activeCategory);
     }
     if (this.activeSubcategoryId) {
       result = result.filter(e => (e as any).subcategory_id === this.activeSubcategoryId);
