@@ -125,25 +125,25 @@ type DetailView =
                    [class.bp-b2-card--dim]="categoryDimmed(pc)"
                    (click)="selectCategory(pc.category_id)">
                 <div class="bp-b2-ic">
-                  <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="14"></lucide-icon>
+                  <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="16"></lucide-icon>
                 </div>
                 <div class="bp-b2-card-mid">
-                  <div class="bp-b2-card-nrow">
-                    <div class="bp-b2-card-name">{{ pc.category_name }}</div>
+                  <div class="bp-b2-card-top">
+                    <span class="bp-b2-card-name">{{ pc.category_name }}</span>
+                    <span class="bp-b2-card-cost">{{
+                      pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
+                    }}</span>
+                  </div>
+                  <div class="bp-b2-card-sub">
                     <span class="bp-cat-pill" [ngStyle]="statusPillStyle(pc.status_code)">
+                      <span class="bp-cat-dot"
+                            [style.background]="statusColor(pc.status_code) || null"></span>
                       {{ categoryStatusLabel(pc.status_code) }}
                     </span>
+                    <span class="bp-b2-card-count" *ngIf="catItemCount(pc.category_id) as n">
+                      <lucide-icon name="check" [size]="11"></lucide-icon>{{ n }}
+                    </span>
                   </div>
-                  <div class="bp-b2-card-bud">
-                    {{ pc.ballpark_budget ? (pc.ballpark_budget | gbp) : 'No budget' }}
-                    <ng-container *ngIf="pc.ballpark_cost && pc.ballpark_cost > 0">
-                      · est. {{ pc.ballpark_cost | gbp }}
-                    </ng-container>
-                  </div>
-                </div>
-                <div class="bp-b2-count" *ngIf="catItemCount(pc.category_id) as n"
-                     [title]="n + ' item' + (n === 1 ? '' : 's') + ' · ' + (pc.ballpark_cost | gbp) + ' total'">
-                  {{ n }}
                 </div>
                 <button class="bp-icon-btn bp-b2-remove" type="button"
                         title="Remove category"
@@ -254,12 +254,10 @@ type DetailView =
                     </div>
 
                     <!-- v1.53 — two-option layout: side-by-side when BOTH a
-                         match/closest item AND a proposed item exist. -->
+                         match/closest item AND a proposed item exist.
+                         v1.55 — one clean header per column (the heavy
+                         "OPTION N" bars + duplicate section headers cut). -->
                     <ng-container *ngIf="(r.matched_items.length || r.closest_item) && r.proposed_item; else singleOption">
-                      <div class="bp-b2-optbars">
-                        <div class="bp-b2-optbar">Option 1 — Pick existing</div>
-                        <div class="bp-b2-optbar">Option 2 — Quote a new item</div>
-                      </div>
                       <div class="bp-b2-optgrid">
                         <div class="bp-b2-optcol">
                           <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
@@ -424,7 +422,7 @@ type DetailView =
         <div class="bp-b2-d-sub">{{ d.supplier_name }}</div>
         <div class="bp-b2-d-pricerow">
           <span class="bp-b2-d-price">{{ d.price | gbp }}</span>
-          <span class="bp-b2-d-score">{{ d.proposed ? 'Confidence ' : '' }}{{ d.score }}/10</span>
+          <span class="bp-b2-d-score" *ngIf="!d.proposed">{{ d.score }}/10</span>
         </div>
         <div class="bp-b2-d-box" *ngIf="d.reason">
           <div class="l">
@@ -438,7 +436,7 @@ type DetailView =
 
     <!-- Item matches section (Option 1) — matched + closest, one section -->
     <ng-template #itemMatches let-r let-ac="ac">
-      <div class="bp-b2-sech">Item matches</div>
+      <div class="bp-b2-opthead">Pick an existing item</div>
       <div class="bp-b2-rec">
         <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
         {{ itemMatchRec }}
@@ -513,7 +511,7 @@ type DetailView =
 
     <!-- New item section (Option 2) — the AI proposal -->
     <ng-template #newItem let-r let-ac="ac">
-      <div class="bp-b2-sech">New item</div>
+      <div class="bp-b2-opthead">Quote a new item</div>
       <div class="bp-b2-rec">
         <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
         {{ newItemRec }}
@@ -532,7 +530,6 @@ type DetailView =
           <div class="bp-b2-row-sub">→ {{ p.supplier_name }}</div>
         </div>
         <span class="bp-b2-row-price">{{ p.estimated_price | gbp }}</span>
-        <span class="bp-b2-score">{{ p.confidence }}/10</span>
         <div class="bp-b2-qa">
           <button class="bp-icon-btn bp-b2-iact" [class.on]="proposedAdded(p, ac)"
                   [title]="proposedAdded(p, ac) ? 'Remove from project' : 'Add the proposed item'"
@@ -602,7 +599,7 @@ type DetailView =
     .bp-b2 { padding: 24px var(--section-pad, 40px) 60px; }
 
     /* shared uppercase-eyebrow recipe — FIX 7 */
-    .bp-b2-colhdr, .bp-b2-flabel, .bp-b2-sech, .bp-b2-optbar {
+    .bp-b2-colhdr, .bp-b2-flabel {
       font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--color-text-muted); }
 
@@ -623,28 +620,30 @@ type DetailView =
       gap: 14px; align-items: start; }
     .bp-b2-colhdr { padding: 0 4px 6px; }
 
-    /* col 1 */
-    .bp-b2-catlist { display: flex; flex-direction: column; gap: 5px; }
-    .bp-b2-card { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
-      border: 0.5px solid var(--color-border); border-left: 3px solid transparent;
-      border-radius: var(--radius-button); padding: 12px 14px; cursor: pointer; transition: all 0.12s; }
-    .bp-b2-card:hover { border-color: var(--theme-border); }
+    /* col 1 — category cards (v1.55, aligned with the Build tab) */
+    .bp-b2-catlist { display: flex; flex-direction: column; gap: 8px; }
+    .bp-b2-card { display: flex; align-items: center; gap: 11px; background: var(--color-surface);
+      border: 0.5px solid var(--color-border); border-left: 3px solid var(--theme-accent);
+      border-radius: var(--radius-card); padding: 11px 13px; cursor: pointer;
+      transition: border-color 0.12s, box-shadow 0.12s; }
+    .bp-b2-card:hover { border-color: var(--theme-accent); }
     .bp-b2-card:hover .bp-b2-remove { opacity: 1; }
-    .bp-b2-card.active { border-left: 3px solid var(--theme-accent);
-      box-shadow: var(--shadow-sm); }
-    .bp-b2-ic { width: 26px; height: 26px; border-radius: 50%; background: var(--theme-bg);
+    .bp-b2-card.active { border-color: var(--theme-accent); box-shadow: var(--shadow-sm); }
+    .bp-b2-ic { width: 36px; height: 36px; border-radius: 50%; background: var(--theme-bg);
       color: var(--theme-accent); display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
+      flex-shrink: 0; }
     .bp-b2-card.active .bp-b2-ic { background: var(--theme-accent); color: var(--color-surface); }
-    .bp-b2-card-mid { flex: 1; min-width: 0; }
-    .bp-b2-card-name { font-size: var(--text-sm); font-weight: 600; line-height: 1.25;
-      color: var(--color-text-primary); }
-    .bp-b2-card-bud { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 1px; }
-    .bp-b2-count { min-width: 19px; height: 19px; border-radius: var(--radius-button);
-      background: var(--theme-accent);
-      color: var(--color-surface); font-size: var(--text-xs); font-weight: 700;
-      display: flex; align-items: center;
-      justify-content: center; padding: 0 5px; flex-shrink: 0; }
+    .bp-b2-card-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .bp-b2-card-top { display: flex; align-items: baseline; gap: 8px; }
+    .bp-b2-card-name { flex: 1; min-width: 0; font-size: var(--text-md); font-weight: 600;
+      line-height: 1.25; color: var(--color-text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-b2-card-cost { flex-shrink: 0; font-size: var(--text-sm); font-weight: 700;
+      color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+    .bp-b2-card-sub { display: flex; align-items: center; gap: 8px; }
+    .bp-b2-card-count { display: inline-flex; align-items: center; gap: 3px;
+      font-size: var(--text-xs); font-weight: 600; color: var(--theme-accent); }
+    .bp-b2-card-count lucide-icon { display: inline-flex; }
     .bp-b2-remove { flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; }
     .bp-b2-remove:hover { color: var(--color-danger); background: none; }
 
@@ -700,9 +699,10 @@ type DetailView =
     /* A2 — category status dropdown + pill */
     :host ::ng-deep .bp-b2-statusdd .p-dropdown-label {
       font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body); }
-    .bp-cat-pill { display: inline-flex; align-items: center; flex-shrink: 0;
-      font-size: var(--text-xs); font-weight: 700; padding: 3px 9px;
-      border-radius: var(--radius-pill); white-space: nowrap; line-height: 1.3; }
+    .bp-cat-pill { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      font-size: var(--text-xs); font-weight: 600; padding: 2px 8px;
+      border-radius: var(--radius-pill); white-space: nowrap; line-height: 1.5; }
+    .bp-cat-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
     .bp-b2-card-nrow { display: flex; align-items: center; gap: 6px; }
     .bp-b2-card-nrow .bp-b2-card-name { flex: 1; min-width: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -718,15 +718,12 @@ type DetailView =
       font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.5; }
     .bp-b2-searchln em { font-style: normal; font-weight: 600; color: var(--color-text-secondary); }
     .bp-b2-spark { color: var(--theme-accent); display: inline-flex; vertical-align: middle; }
-    .bp-b2-sech { margin-bottom: 7px; }
 
-    /* two-option layout — FIX / TWO-OPTION LAYOUT */
-    .bp-b2-optbars { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .bp-b2-optbar { background: var(--theme-bg); color: var(--color-text-primary);
-      padding: 9px 14px; border-radius: var(--radius-button) var(--radius-button) 0 0; }
-    .bp-b2-optgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-      margin-top: -6px; }
-    .bp-b2-optcol { border-top: 0.5px solid var(--color-border); padding-top: 12px; }
+    /* two-option layout — v1.55: one clean header per column */
+    .bp-b2-optgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .bp-b2-optcol { min-width: 0; }
+    .bp-b2-opthead { font-family: var(--font-display); font-size: var(--text-lg);
+      color: var(--color-text-primary); margin-bottom: 5px; }
 
     .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
@@ -849,8 +846,7 @@ type DetailView =
     @media (max-width: 1000px) {
       .bp-b2-panes { grid-template-columns: 1fr; }
       .bp-b2-detail { position: static; }
-      .bp-b2-optbars, .bp-b2-optgrid { grid-template-columns: 1fr; }
-      .bp-b2-optgrid { margin-top: 0; }
+      .bp-b2-optgrid { grid-template-columns: 1fr; }
       .bp-b2-briefgrid { grid-template-columns: 1fr; }
     }
   `]
@@ -1124,11 +1120,15 @@ export class BriefComponent implements OnInit, OnDestroy {
     return this.categoryStatuses.find(s => s.code === c)?.meta?.color || '';
   }
 
-  /** A2 — inline pill style: a solid fill in the codelist colour with
-      surface-coloured text. Empty object until the codelist loads. */
+  /** A2 — inline pill style: a soft tint of the codelist colour with a
+      darkened readable text colour (the standard status-pill look).
+      Empty object until the codelist loads. */
   statusPillStyle(code?: string): { [k: string]: string } {
     const col = this.statusColor(code);
-    return col ? { color: 'var(--color-surface)', background: col } : {};
+    return col ? {
+      background: `color-mix(in srgb, ${col} 16%, white)`,
+      color: `color-mix(in srgb, ${col} 72%, black)`
+    } : {};
   }
 
   /** A2 Step 7 — Client Managed categories aren't actioned by the agency
