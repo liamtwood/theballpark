@@ -336,6 +336,30 @@ type DetailView =
              [src]="d.image_url" [alt]="d.name" class="bp-b2-d-hero-img"/>
         <lucide-icon *ngIf="!d.image_url && d.proposed" name="bot" [size]="40"></lucide-icon>
         <span *ngIf="!d.image_url && !d.proposed">{{ catLetter(d.name) }}</span>
+        <!-- v1.52d — action cluster, matching the marketplace detail card -->
+        <div class="bp-b2-d-cluster">
+          <button class="bp-b2-d-cbtn" type="button" [class.on]="d.added"
+                  [title]="d.added ? 'Selected for project' : 'Select for project'"
+                  (click)="addFromDetail('selected')">
+            <lucide-icon name="plus" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-b2-d-cbtn" type="button" title="Add to wishlist"
+                  (click)="addFromDetail('liked')">
+            <lucide-icon name="heart" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-b2-d-cbtn" type="button" title="Request a quote"
+                  (click)="requestQuoteFromDetail()">
+            <lucide-icon name="mail" [size]="14"></lucide-icon>
+          </button>
+          <button *ngIf="!d.proposed" class="bp-b2-d-cbtn" type="button" title="Edit item"
+                  (click)="openFullItem()">
+            <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+          </button>
+          <button *ngIf="!d.proposed" class="bp-b2-d-cbtn" type="button" title="View item"
+                  (click)="openFullItem()">
+            <lucide-icon name="eye" [size]="14"></lucide-icon>
+          </button>
+        </div>
       </div>
       <div class="bp-b2-d-body">
         <div class="bp-b2-d-eyebrow">
@@ -354,17 +378,6 @@ type DetailView =
           <div class="r">{{ d.reason }}</div>
         </div>
         <div class="bp-b2-d-desc" *ngIf="d.description">{{ d.description }}</div>
-        <div class="bp-b2-d-actions">
-          <p-button [label]="d.added ? 'Selected' : 'Select for project'"
-                    icon="pi pi-check"
-                    styleClass="p-button bp-b2-d-sel"
-                    (onClick)="addFromDetail('selected')"></p-button>
-          <button class="bp-icon-btn bp-b2-d-like" type="button"
-                  title="Add to wishlist"
-                  (click)="addFromDetail('liked')">
-            <lucide-icon name="heart" [size]="16"></lucide-icon>
-          </button>
-        </div>
       </div>
     </ng-template>
 
@@ -665,7 +678,7 @@ type DetailView =
       max-width: 210px; line-height: 1.5; }
     .bp-b2-d-hero { height: 144px; display: flex; align-items: center; justify-content: center;
       color: var(--color-surface); font-family: var(--font-display);
-      font-size: var(--text-2xl); font-weight: 600;
+      font-size: var(--text-2xl); font-weight: 600; position: relative;
       background: linear-gradient(150deg, var(--theme-accent), rgba(0,0,0,0.55));
       background-size: cover; background-position: center; }
     .bp-b2-d-hero.sup { letter-spacing: 0.04em; }
@@ -696,11 +709,17 @@ type DetailView =
     .bp-b2-d-box .r { font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.5; }
     .bp-b2-d-desc { font-size: var(--text-sm); color: var(--color-text-secondary);
       line-height: 1.6; margin-bottom: 13px; }
-    .bp-b2-d-actions { display: flex; gap: 8px; }
-    .bp-b2-d-sel { flex: 1; }
-    .bp-b2-d-like { width: 42px; height: auto; align-self: stretch;
-      border: 0.5px solid var(--color-border); border-radius: var(--radius-button); }
-    .bp-b2-d-like:hover { color: var(--color-danger); }
+    /* v1.52d — preview action cluster, mirrors the marketplace detail card */
+    .bp-b2-d-cluster { display: flex; gap: 6px; position: absolute;
+      top: 10px; right: 10px; z-index: 2; }
+    .bp-b2-d-cbtn { width: 32px; height: 32px; border-radius: 50%;
+      border: 0.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-secondary); display: flex; align-items: center;
+      justify-content: center; cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .bp-b2-d-cbtn:hover,
+    .bp-b2-d-cbtn.on { background: var(--theme-accent);
+      border-color: var(--theme-accent); color: var(--color-surface); }
     .bp-b2-d-store { width: 100%; }
 
     .bp-b2-empty { font-size: var(--text-sm); color: var(--color-text-muted); font-style: italic;
@@ -1044,6 +1063,21 @@ export class BriefComponent implements OnInit, OnDestroy {
       this.addMatched(this.activeCategory, this.detail.item, stype);
     } else if (this.detail.kind === 'proposed') {
       this.addProposed(this.activeCategory, this.detail.item, stype);
+    }
+  }
+
+  /** v1.52d — Request a quote from the col-3 preview's action cluster. */
+  requestQuoteFromDetail(): void {
+    if (!this.detail) return;
+    if (this.detail.kind === 'item')          this.requestQuote(this.detail.item, false);
+    else if (this.detail.kind === 'proposed') this.requestQuote(this.detail.item, true);
+  }
+
+  /** v1.52d — open the full catalogue item page (matched items only). */
+  openFullItem(): void {
+    if (this.detail?.kind === 'item' && this.detail.item.item_id) {
+      this.router.navigate(['/items', this.detail.item.item_id],
+        { queryParams: { context: 'project', projectId: this.pid } });
     }
   }
 
