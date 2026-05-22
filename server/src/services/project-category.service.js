@@ -129,6 +129,8 @@ async function upsert(projectId, categoryId, data) {
   const requirement_brief  = data.requirement_brief  !== undefined ? data.requirement_brief  : null;
   const requirement_detail = data.requirement_detail !== undefined ? data.requirement_detail : null;
   const ballpark_budget    = data.ballpark_budget    !== undefined ? data.ballpark_budget    : null;
+  // v1.53 — per-category workflow status (category_status codelist).
+  const status_code        = data.status_code        !== undefined ? data.status_code        : null;
 
   // INSERT ... ON CONFLICT requires a unique constraint on
   // (project_id, category_id). A composite constraint isn't guaranteed
@@ -146,19 +148,23 @@ async function upsert(projectId, categoryId, data) {
         requirement_brief  = COALESCE($1, requirement_brief),
         requirement_detail = COALESCE($2, requirement_detail),
         ballpark_budget    = COALESCE($3, ballpark_budget),
+        status_code        = COALESCE($4, status_code),
         updated_at = NOW()
-       WHERE id = $4 RETURNING *`,
-      [requirement_brief, requirement_detail, ballpark_budget, existing.rows[0].id]
+       WHERE id = $5 RETURNING *`,
+      [requirement_brief, requirement_detail, ballpark_budget, status_code,
+       existing.rows[0].id]
     );
     return result.rows[0];
   }
 
   const inserted = await pool.query(
     `INSERT INTO project_categories
-       (project_id, category_id, requirement_brief, requirement_detail, ballpark_budget)
-     VALUES ($1, $2, $3, $4, $5)
+       (project_id, category_id, requirement_brief, requirement_detail,
+        ballpark_budget, status_code)
+     VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'draft'))
      RETURNING *`,
-    [projectId, categoryId, requirement_brief, requirement_detail, ballpark_budget]
+    [projectId, categoryId, requirement_brief, requirement_detail,
+     ballpark_budget, status_code]
   );
   return inserted.rows[0];
 }

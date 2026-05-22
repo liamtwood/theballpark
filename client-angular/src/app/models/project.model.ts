@@ -95,6 +95,10 @@ export interface ProjectCategory {
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  /** v1.53 — per-category workflow status. Code from the
+      category_status codelist (draft | briefed | awaiting |
+      client_managed | out_for_quote | quoted | confirmed | na). */
+  status_code?: string;
   category_name?: string;
   category_icon_name?: string;
   category_icon_color?: string;

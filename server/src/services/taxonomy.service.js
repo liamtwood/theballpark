@@ -1101,6 +1101,21 @@ async function requestQuotes(body) {
       }
     }
 
+    // v1.53 — sending a category out for competitive quotes moves it to
+    // "Out for Quote" automatically (Brief-tab category status). A
+    // category the agency has already marked Confirmed is not regressed.
+    // The reverse rule — flip to "Quoted" once every quote_request for
+    // the category is quoted/declined — belongs in the Phase 2 supplier
+    // quote-response handler (no quote_requests status ever changes
+    // today, so there is nothing to react to yet).
+    await client.query(
+      `UPDATE project_categories
+          SET status_code = 'out_for_quote', updated_at = NOW()
+        WHERE project_id = $1 AND category_id = $2 AND is_active = true
+          AND status_code <> 'confirmed'`,
+      [project_id, category_id]
+    );
+
     await client.query('COMMIT');
 
     // Best-effort email nudge — fire-and-forget so it never delays or

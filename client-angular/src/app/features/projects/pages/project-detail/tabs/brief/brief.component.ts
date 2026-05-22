@@ -2,11 +2,13 @@ import {
   Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
+import { DropdownModule } from 'primeng/dropdown';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 
@@ -15,6 +17,7 @@ import { CategoryService } from '../../../../../../core/services/category.servic
 import { ApiService } from '../../../../../../core/services/api.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { ItemService } from '../../../../../../core/services/item.service';
+import { CodelistService } from '../../../../../../core/services/codelist.service';
 import { OutreachService } from '../../../../../../core/services/outreach.service';
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
@@ -79,8 +82,9 @@ type DetailView =
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, ButtonModule, SidebarModule, ToastModule,
-    LucideAngularModule, LoadingSpinnerComponent, ItemDrawerComponent, GbpPipe
+    CommonModule, FormsModule, ButtonModule, SidebarModule, ToastModule,
+    DropdownModule, LucideAngularModule, LoadingSpinnerComponent,
+    ItemDrawerComponent, GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -118,12 +122,18 @@ type DetailView =
               <div *ngFor="let pc of projectCategories"
                    class="bp-b2-card"
                    [class.active]="pc.category_id === activeCategoryId"
+                   [class.bp-b2-card--dim]="categoryDimmed(pc)"
                    (click)="selectCategory(pc.category_id)">
                 <div class="bp-b2-ic">
                   <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="14"></lucide-icon>
                 </div>
                 <div class="bp-b2-card-mid">
-                  <div class="bp-b2-card-name">{{ pc.category_name }}</div>
+                  <div class="bp-b2-card-nrow">
+                    <div class="bp-b2-card-name">{{ pc.category_name }}</div>
+                    <span class="bp-cat-pill" [ngStyle]="statusPillStyle(pc.status_code)">
+                      {{ categoryStatusLabel(pc.status_code) }}
+                    </span>
+                  </div>
                   <div class="bp-b2-card-bud">
                     {{ pc.ballpark_budget ? (pc.ballpark_budget | gbp) : 'No budget' }}
                     <ng-container *ngIf="pc.ballpark_cost && pc.ballpark_cost > 0">
@@ -167,7 +177,29 @@ type DetailView =
                             [value]="ac.requirement_brief || ''"
                             placeholder="What you need from this category — keep it specific."
                             (blur)="onBriefBlur(ac, $event)"></textarea>
+
+                  <!-- A1 — private Notes (project_categories.requirement_detail) -->
+                  <div class="bp-b2-flabel">Notes</div>
+                  <div class="bp-b2-fhelp">Your own notes — not included in supplier emails</div>
+                  <textarea class="bp-input-edit bp-b2-notes"
+                            rows="2"
+                            [value]="ac.requirement_detail || ''"
+                            placeholder="Private notes for your team."
+                            (blur)="onNotesBlur(ac, $event)"></textarea>
+
                   <div class="bp-b2-ws-row">
+                    <!-- A2 — per-category workflow status -->
+                    <div>
+                      <div class="bp-b2-flabel">Status</div>
+                      <p-dropdown [options]="categoryStatuses"
+                                  optionLabel="label" optionValue="code"
+                                  [(ngModel)]="ac.status_code"
+                                  (onChange)="saveStatus(ac)"
+                                  placeholder="Draft"
+                                  appendTo="body"
+                                  styleClass="bp-b2-statusdd"
+                                  [style]="{ width: '168px' }"></p-dropdown>
+                    </div>
                     <div>
                       <div class="bp-b2-flabel">Budget</div>
                       <div class="bp-b2-money">
@@ -189,7 +221,10 @@ type DetailView =
                         <ng-template #noEst><small>— not found yet</small></ng-template>
                       </div>
                     </div>
-                    <p-button class="bp-b2-find"
+                    <!-- A2 Step 7 — Client Managed categories aren't
+                         actioned by the agency, so hide "Find items". -->
+                    <p-button *ngIf="!isClientManaged(ac)"
+                              class="bp-b2-find"
                               [styleClass]="activeResult ? 'p-button-outlined' : 'p-button'"
                               [disabled]="findDisabled(ac)"
                               [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
@@ -197,6 +232,10 @@ type DetailView =
                       <lucide-icon [name]="briefSearched(ac) ? 'check' : 'sparkles'" [size]="14"></lucide-icon>
                       <span>{{ findBtnLabel(ac) }}</span>
                     </p-button>
+                    <span *ngIf="isClientManaged(ac)" class="bp-b2-cmnote">
+                      <lucide-icon name="user" [size]="13"></lucide-icon>
+                      Managed by client
+                    </span>
                   </div>
                 </div>
 
@@ -631,6 +670,31 @@ type DetailView =
     .bp-b2-est small { color: var(--color-text-muted); font-weight: 500; }
     .bp-b2-find { margin-left: auto; }
     .bp-b2-find lucide-icon { display: inline-flex; }
+    .bp-b2-cmnote { margin-left: auto; display: inline-flex; align-items: center;
+      gap: 5px; font-size: var(--text-sm); color: var(--color-text-muted); }
+
+    /* A1 — private Notes field (distinct from the supplier-facing Brief) */
+    .bp-b2-fhelp { font-size: var(--text-xs); color: var(--color-text-muted);
+      text-transform: none; letter-spacing: 0; margin: -2px 0 5px; }
+    .bp-b2-notes { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      border-radius: var(--radius-button); padding: 9px 12px;
+      resize: vertical; outline: none; }
+    textarea.bp-b2-notes.bp-input-edit {
+      background: var(--color-surface) !important;
+      border-color: var(--color-border) !important; }
+
+    /* A2 — category status dropdown + pill */
+    :host ::ng-deep .bp-b2-statusdd .p-dropdown-label {
+      font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body); }
+    .bp-cat-pill { display: inline-flex; align-items: center; flex-shrink: 0;
+      font-size: var(--text-xs); font-weight: 600; padding: 2px 8px;
+      border-radius: var(--radius-pill); white-space: nowrap; }
+    .bp-b2-card-nrow { display: flex; align-items: center; gap: 6px; }
+    .bp-b2-card-nrow .bp-b2-card-name { flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-b2-card--dim { opacity: 0.6; }
+    .bp-b2-card--dim:hover { opacity: 0.85; }
 
     .bp-b2-res { padding: 13px 17px 18px; display: flex; flex-direction: column; gap: 14px; }
     .bp-b2-prompt { display: flex; flex-direction: column; align-items: center;
@@ -790,6 +854,10 @@ export class BriefComponent implements OnInit, OnDestroy {
   /** category ids whose AI-proposed item has been added. */
   addedProposed = new Set<string>();
 
+  /** v1.53 — category_status codelist rows (drives the status dropdown
+      + pill). Each row: { code, label, meta: { color } }. */
+  categoryStatuses: any[] = [];
+
   detail: DetailView = null;
   addDrawerOpen = false;
 
@@ -810,6 +878,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private api: ApiService,
     private projItemSvc: ProjectItemService,
     private itemSvc: ItemService,
+    private codelistSvc: CodelistService,
     private outreach: OutreachService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
@@ -818,6 +887,13 @@ export class BriefComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.pid = this.route.parent?.snapshot.paramMap.get('id') || '';
     if (!this.pid) { this.loading = false; this.cdr.markForCheck(); return; }
+
+    // v1.53 — load the category_status codelist (cached by the service)
+    // for the status dropdown + pill colours.
+    this.codelistSvc.getByName('category_status').subscribe({
+      next: rows => { this.categoryStatuses = rows || []; this.cdr.markForCheck(); },
+      error: () => {}
+    });
 
     forkJoin({
       cats:    this.catSvc.getAll('catalogue'),
@@ -989,6 +1065,64 @@ export class BriefComponent implements OnInit, OnDestroy {
       next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
       error: () => this.msg.add({ severity: 'error', summary: 'Failed to save budget', life: 3000 })
     });
+  }
+
+  // ── A1 Notes / A2 Status ──────────────────────────────────────────────
+
+  /** A1 — private notes save on blur (project_categories.requirement_detail).
+      Unlike the Brief, this never reaches a supplier. */
+  onNotesBlur(pc: ProjectCategory, ev: Event): void {
+    const value = (ev.target as HTMLTextAreaElement).value;
+    if (value === (pc.requirement_detail || '')) return;
+    pc.requirement_detail = value;
+    this.projSvc.upsertCategory(this.pid, pc.category_id, { requirement_detail: value }).subscribe({
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save notes', life: 3000 })
+    });
+  }
+
+  /** A2 — category workflow status save on change. */
+  saveStatus(pc: ProjectCategory): void {
+    const code = pc.status_code || 'draft';
+    this.projSvc.upsertCategory(this.pid, pc.category_id, { status_code: code }).subscribe({
+      next: () => this.msg.add({
+        severity: 'success', summary: 'Status — ' + this.categoryStatusLabel(code), life: 1400
+      }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save status', life: 3000 })
+    });
+    this.cdr.markForCheck();
+  }
+
+  /** A2 — codelist label for a category_status code. */
+  categoryStatusLabel(code?: string): string {
+    const c = code || 'draft';
+    return this.categoryStatuses.find(s => s.code === c)?.label
+      || (c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' '));
+  }
+
+  /** A2 — pill colour, read from the codelist meta.color field. Empty
+      until the codelist loads (a few ms); the pill renders uncoloured. */
+  statusColor(code?: string): string {
+    const c = code || 'draft';
+    return this.categoryStatuses.find(s => s.code === c)?.meta?.color || '';
+  }
+
+  /** A2 — inline pill style: the codelist colour as text, a soft tint of
+      it as the background. Empty object until the codelist loads. */
+  statusPillStyle(code?: string): { [k: string]: string } {
+    const col = this.statusColor(code);
+    return col ? { color: col, background: col + '22' } : {};
+  }
+
+  /** A2 Step 7 — Client Managed categories aren't actioned by the agency
+      (the "Find items" action is hidden). */
+  isClientManaged(pc: ProjectCategory): boolean {
+    return pc.status_code === 'client_managed';
+  }
+
+  /** A2 Step 7 — Client Managed + N/A categories are dimmed in the list. */
+  categoryDimmed(pc: ProjectCategory): boolean {
+    return pc.status_code === 'client_managed' || pc.status_code === 'na';
   }
 
   // ── Find items ────────────────────────────────────────────────────────

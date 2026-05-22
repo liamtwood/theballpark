@@ -1107,6 +1107,29 @@ const migrate = async () => {
     }
     console.log('  quote_requests table installed (v1.50).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.53 — Brief tab: category form upgrades.
+    //  • ballpark_budget — historically added only by the standalone
+    //    migrate-v1.12-brief-tab.js, which targets APP_SCHEMA (dev only),
+    //    so preview + master were missing it. Folded in here, idempotent.
+    //  • status_code — per-category workflow status (Draft, Briefed,
+    //    Out for Quote, Confirmed, …). Drives the Brief-tab status pill +
+    //    dropdown and the Client-Managed / N-A card behaviour. Codes come
+    //    from the category_status codelist seeded in shared.codelists.
+    // Additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS ballpark_budget NUMERIC DEFAULT 0`
+      );
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS status_code VARCHAR(30) DEFAULT 'draft'`
+      );
+    }
+    console.log('  project_categories.ballpark_budget + status_code installed (v1.53).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`
@@ -1332,6 +1355,20 @@ const migrate = async () => {
         ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
         ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
         ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
+
+      -- v1.53: category_status drives the Brief-tab per-category status
+      -- pill + dropdown. meta.color is read by the pill via
+      -- CodelistService.getMeta('category_status', code).color.
+      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
+        ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
+        ('category_status', 'awaiting',       'Awaiting Client', 3, '{"color":"#F59E0B"}'::jsonb, true),
+        ('category_status', 'client_managed', 'Client Managed',  4, '{"color":"#8B5CF6"}'::jsonb, true),
+        ('category_status', 'out_for_quote',  'Out for Quote',   5, '{"color":"#6366F1"}'::jsonb, true),
+        ('category_status', 'quoted',         'Quoted',          6, '{"color":"#0EA5E9"}'::jsonb, true),
+        ('category_status', 'confirmed',      'Confirmed',       7, '{"color":"#22C55E"}'::jsonb, true),
+        ('category_status', 'na',             'N/A',             8, '{"color":"#9CA3AF"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
