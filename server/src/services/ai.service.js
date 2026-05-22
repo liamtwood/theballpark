@@ -21,6 +21,11 @@ Resolve relative dates to actual dates. May Half Term = 25-30 May. Easter = look
 DETAIL STANDARD:
 Each category oneLiner must be specific enough for a supplier to start quoting. Not "set build" but "Custom inflatable jelly structure with ball pit, approx 4m tall, Angel Delight branded, engineered for public interaction." Dimensions, quantities, brands, durations where mentioned.
 
+FORMATTING — applies to every oneLiner and the summary:
+- Plain prose: one or two complete sentences, sentence case, ending with a full stop.
+- NO bullet points, dashes, asterisks, numbering, markdown or line breaks inside a field.
+- Specs (dimensions, quantities, brands) sit inline within the sentence, never as a list.
+
 Return exactly:
 {
   "projectName": "Client — Event Type",
@@ -93,6 +98,23 @@ async function parseBrief(rawBriefText) {
   // server logs readable; full body is in the API response.
   try {
     const parsed = JSON.parse(responseText);
+
+    // v1.51b — formatting cleanup: strip any bullet residue / stray line
+    // breaks the model leaves in oneLiners + summary, so the brief reads
+    // as clean prose everywhere downstream (Brief tab, outreach email).
+    const tidy = (s) => typeof s === 'string'
+      ? s.replace(/[\r\n]+/g, ' ')
+          .replace(/^[\s•·\-–—*]+/, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+      : s;
+    if (Array.isArray(parsed.categories)) {
+      for (const c of parsed.categories) {
+        if (c && typeof c.oneLiner === 'string') c.oneLiner = tidy(c.oneLiner);
+      }
+    }
+    if (parsed.summary) parsed.summary = tidy(parsed.summary);
+
     console.log('[ai.parseBrief] response',
       JSON.stringify({
         projectName:  parsed.projectName,

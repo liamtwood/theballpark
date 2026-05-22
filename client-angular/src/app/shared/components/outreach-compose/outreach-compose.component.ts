@@ -414,6 +414,7 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
   emailBody = '';
 
   private agencyName = '';
+  private agencyEmail = '';
   private projectRef = '';
   private sub?: Subscription;
 
@@ -453,6 +454,7 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     this.evDate = this.evVenue = this.evGuests = '';
     this.subject = this.emailBody = '';
     this.agencyName = '';
+    this.agencyEmail = '';
 
     forkJoin({
       project: this.projSvc.getById(req.projectId).pipe(catchError(() => of(null as any))),
@@ -492,7 +494,11 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
   private fetchAgencyName(orgId?: string): void {
     if (!orgId) return;
     this.api.get<any>(`/orgs/${orgId}`).pipe(catchError(() => of(null))).subscribe(org => {
-      if (org && org.name) { this.agencyName = org.name; this.cdr.markForCheck(); }
+      if (org) {
+        if (org.name)  this.agencyName  = org.name;
+        if (org.email) this.agencyEmail = org.email;
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -511,23 +517,35 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
 
   private buildEmail(): void {
     const r = this.req!;
-    // v1.51a — lead the subject with the project ref (e.g. "WA-014") so
-    // suppliers can file the quote against the right job.
-    this.subject = (this.projectRef ? this.projectRef + ' · ' : '') + `Brief: ${r.item.name}`;
-    const reqLines = [this.oneLiner, this.details].filter(t => t && t.trim()).join('\n');
-    this.emailBody =
-`Hi,
+    // Project ref leads the subject so suppliers can file the quote
+    // against the right job.
+    this.subject = (this.projectRef ? this.projectRef + ' — ' : '') + `Brief: ${r.item.name}`;
 
-We're looking for a quote for ${r.item.name} for an upcoming event.
+    // v1.51b — clean, professional plain-text template. Section blocks
+    // separated by a single blank line; no monospace-only column padding
+    // (it rendered ragged in a proportional font), no fragile inline
+    // conditionals. Empty sections are simply dropped.
+    const requirement = [this.oneLiner, this.details]
+      .map(t => (t || '').trim()).filter(Boolean).join('\n');
+    const eventDetails = [
+      this.evDate   ? `Date: ${this.evDate}`     : '',
+      this.evVenue  ? `Venue: ${this.evVenue}`   : '',
+      this.evGuests ? `Guests: ${this.evGuests}` : ''
+    ].filter(Boolean).join('\n');
 
-Venue:   ${this.evVenue || 'TBC'}
-Date:    ${this.evDate || 'TBC'}
-Guests:  ${this.evGuests || 'TBC'}
-${reqLines ? '\nOur requirements:\n' + reqLines + '\n' : ''}
-Could you please send us a quote at your earliest convenience?
+    const blocks: string[] = [
+      'Hi,',
+      `We're sourcing quotes for ${r.item.name} for an upcoming event and would like to include you.`
+    ];
+    if (requirement)  blocks.push(`What we need\n${requirement}`);
+    if (eventDetails) blocks.push(`Event details\n${eventDetails}`);
+    blocks.push('Could you send your price and lead time at your earliest convenience?');
 
-Many thanks,
-${this.agencyName || 'The team'}`;
+    const signoff = ['Many thanks,', this.agencyName || 'The team'];
+    if (this.agencyEmail) signoff.push(this.agencyEmail);
+    blocks.push(signoff.join('\n'));
+
+    this.emailBody = blocks.join('\n\n');
   }
 
   // ── Send ──────────────────────────────────────────────────────────────
