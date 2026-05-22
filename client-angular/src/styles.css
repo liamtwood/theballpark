@@ -788,6 +788,20 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-pill-agreed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
 .bp-dot-agreed  { background: #16A34A; }
 
+/* Brief-tab category statuses (category_status codelist) */
+.bp-pill-briefed        { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-briefed         { background: #3B82F6; }
+.bp-pill-need_supplier  { background: #FFEDD5; color: #9A3412; border: 0.5px solid #FDBA74; }
+.bp-dot-need_supplier   { background: #F97316; }
+.bp-pill-out_for_quote  { background: #E0E7FF; color: #3730A3; border: 0.5px solid #A5B4FC; }
+.bp-dot-out_for_quote   { background: #6366F1; }
+.bp-pill-awaiting       { background: #FEF3C7; color: #92400E; border: 0.5px solid #FDE68A; }
+.bp-dot-awaiting        { background: #F59E0B; }
+.bp-pill-client_managed { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+.bp-dot-client_managed  { background: #8B5CF6; }
+.bp-pill-na             { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-na              { background: #9CA3AF; }
+
 /* Team roles — no dot */
 .bp-pill-owner  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
 .bp-pill-member { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }

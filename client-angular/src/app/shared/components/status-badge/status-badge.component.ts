@@ -36,8 +36,14 @@ import { CommonModule } from '@angular/common';
 export class StatusBadgeComponent {
   @Input() status: string | null | undefined;
   @Input() statusName: string | null | undefined;
+  /** Optional explicit display text. When set it is shown verbatim
+      (no sentence-casing) while the pill colour still keys off `status`
+      — lets callers pass a code for the colour and a proper label for
+      the text (e.g. "N/A", "Awaiting Client"). */
+  @Input() label: string | null | undefined;
 
   get displayName(): string {
+    if (this.label) return this.label;
     // v1.26: sentence case across all status pills (e.g. "Draft", not
     // "draft" or "DRAFT"). Underscores normalised to spaces first so
     // raw DB values like "in_progress" → "In progress".

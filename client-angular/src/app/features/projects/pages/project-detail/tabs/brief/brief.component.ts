@@ -21,6 +21,7 @@ import { CodelistService } from '../../../../../../core/services/codelist.servic
 import { OutreachService } from '../../../../../../core/services/outreach.service';
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { StatusBadgeComponent } from '../../../../../../shared/components/status-badge/status-badge.component';
 import { ItemDrawerComponent } from '../../../../../../shared/components/item-drawer/item-drawer.component';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 
@@ -84,7 +85,7 @@ type DetailView =
   imports: [
     CommonModule, FormsModule, ButtonModule, SidebarModule, ToastModule,
     DropdownModule, LucideAngularModule, LoadingSpinnerComponent,
-    ItemDrawerComponent, GbpPipe
+    StatusBadgeComponent, ItemDrawerComponent, GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -100,37 +101,41 @@ type DetailView =
           <div>
             <div class="bp-b2-colhdr">Categories</div>
             <div class="bp-b2-catlist">
+              <!-- v1.61 — single-row card, identical layout to the
+                   Build/Estimate tab cards. -->
               <div *ngFor="let pc of projectCategories"
                    class="bp-b2-card"
                    [class.active]="pc.category_id === activeCategoryId"
                    [class.bp-b2-card--dim]="categoryDimmed(pc)"
                    (click)="selectCategory(pc.category_id)">
-                <div class="bp-b2-ic">
-                  <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="16"></lucide-icon>
-                </div>
-                <div class="bp-b2-card-mid">
-                  <div class="bp-b2-card-top">
-                    <span class="bp-b2-card-name">{{ pc.category_name }}</span>
-                    <span class="bp-b2-card-cost">{{
-                      pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
-                    }}</span>
-                  </div>
-                  <div class="bp-b2-card-sub">
-                    <span class="bp-cat-pill" [ngStyle]="statusPillStyle(pc.status_code)">
-                      <span class="bp-cat-dot"
-                            [style.background]="statusColor(pc.status_code) || null"></span>
-                      {{ categoryStatusLabel(pc.status_code) }}
+                <span class="bp-b2-card-ic">
+                  <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="18"></lucide-icon>
+                </span>
+                <div class="bp-b2-card-body">
+                  <div class="bp-b2-card-name">{{ pc.category_name }}</div>
+                  <div class="bp-b2-card-meta">
+                    <span class="bp-b2-count" *ngIf="catItemCount(pc.category_id) as n">
+                      <lucide-icon name="check" [size]="11"></lucide-icon> {{ n }}
                     </span>
-                    <span class="bp-b2-card-count" *ngIf="catItemCount(pc.category_id) as n">
-                      <lucide-icon name="check" [size]="11"></lucide-icon>{{ n }}
+                    <span class="bp-b2-brief-dot"
+                          [class.filled]="!!(pc.requirement_brief || '').trim()"
+                          [title]="(pc.requirement_brief || '').trim() ? 'Brief written' : 'No brief yet'">
                     </span>
                   </div>
                 </div>
-                <button class="bp-icon-btn bp-b2-remove" type="button"
-                        title="Remove category"
-                        (click)="removeCategory(pc, $event)">
-                  <lucide-icon name="x" [size]="14"></lucide-icon>
-                </button>
+                <div class="bp-b2-card-cost">{{
+                  pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
+                }}</div>
+                <app-status-badge [status]="pc.status_code || 'draft'"
+                                  [label]="categoryStatusLabel(pc.status_code)"></app-status-badge>
+                <span class="bp-b2-card-end">
+                  <lucide-icon class="bp-b2-card-chev" name="chevron-right" [size]="16"></lucide-icon>
+                  <button class="bp-icon-btn bp-b2-card-rm" type="button"
+                          title="Remove category"
+                          (click)="removeCategory(pc, $event)">
+                    <lucide-icon name="x" [size]="14"></lucide-icon>
+                  </button>
+                </span>
               </div>
               <div *ngIf="!projectCategories.length" class="bp-b2-empty">
                 No categories yet — add one to scope this project.
@@ -605,36 +610,46 @@ type DetailView =
       text-transform: uppercase; color: var(--color-text-muted); }
 
     /* 3-col */
-    .bp-b2-panes { display: grid; grid-template-columns: 300px minmax(0,1fr) 340px;
+    .bp-b2-panes { display: grid; grid-template-columns: 340px minmax(0,1fr) 320px;
       gap: 14px; align-items: start; }
     .bp-b2-colhdr { padding: 0 4px 6px; }
 
-    /* col 1 — category cards (v1.55, aligned with the Build tab) */
+    /* col 1 — category cards (v1.61, 1:1 with the Build/Estimate cards) */
     .bp-b2-catlist { display: flex; flex-direction: column; gap: 8px; }
-    .bp-b2-card { display: flex; align-items: center; gap: 11px; background: var(--color-surface);
+    .bp-b2-card { display: grid;
+      grid-template-columns: 36px minmax(0,1fr) auto auto 16px;
+      align-items: center; gap: 12px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-left: 3px solid var(--theme-accent);
       border-radius: var(--radius-card); padding: 11px 13px; cursor: pointer;
       transition: border-color 0.12s, box-shadow 0.12s; }
     .bp-b2-card:hover { border-color: var(--theme-accent); }
-    .bp-b2-card:hover .bp-b2-remove { opacity: 1; }
     .bp-b2-card.active { border-color: var(--theme-accent); box-shadow: var(--shadow-sm); }
-    .bp-b2-ic { width: 36px; height: 36px; border-radius: 50%; background: var(--theme-bg);
+    .bp-b2-card-ic { width: 36px; height: 36px; border-radius: 50%; background: var(--theme-bg);
       color: var(--theme-accent); display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; }
-    .bp-b2-card.active .bp-b2-ic { background: var(--theme-accent); color: var(--color-surface); }
-    .bp-b2-card-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .bp-b2-card-top { display: flex; align-items: baseline; gap: 8px; }
-    .bp-b2-card-name { flex: 1; min-width: 0; font-size: var(--text-md); font-weight: 600;
-      line-height: 1.25; color: var(--color-text-primary);
+    .bp-b2-card.active .bp-b2-card-ic { background: var(--theme-accent); color: var(--color-surface); }
+    .bp-b2-card-body { min-width: 0; }
+    .bp-b2-card-name { font-size: var(--text-md); font-weight: 600; line-height: 1.3;
+      color: var(--color-text-primary);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bp-b2-card-cost { flex-shrink: 0; font-size: var(--text-sm); font-weight: 700;
+    .bp-b2-card-meta { display: flex; align-items: center; gap: 9px; margin-top: 2px; }
+    .bp-b2-count { display: inline-flex; align-items: center; gap: 3px;
+      font-size: var(--text-xs); font-weight: 600; color: var(--theme-accent);
+      font-variant-numeric: tabular-nums; }
+    .bp-b2-count lucide-icon { display: inline-flex; }
+    .bp-b2-brief-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      border: 1px solid var(--color-text-muted); background: transparent; }
+    .bp-b2-brief-dot.filled { background: var(--theme-accent); border-color: var(--theme-accent); }
+    .bp-b2-card-cost { font-size: var(--text-base); font-weight: 700;
       color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
-    .bp-b2-card-sub { display: flex; align-items: center; gap: 8px; }
-    .bp-b2-card-count { display: inline-flex; align-items: center; gap: 3px;
-      font-size: var(--text-xs); font-weight: 600; color: var(--theme-accent); }
-    .bp-b2-card-count lucide-icon { display: inline-flex; }
-    .bp-b2-remove { flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; }
-    .bp-b2-remove:hover { color: var(--color-danger); background: none; }
+    .bp-b2-card-end { position: relative; width: 16px; height: 26px;
+      display: flex; align-items: center; justify-content: center; }
+    .bp-b2-card-chev { color: var(--color-text-muted); transition: opacity 0.12s; }
+    .bp-b2-card:hover .bp-b2-card-chev { opacity: 0; }
+    .bp-b2-card-rm { position: absolute; inset: -4px -6px; width: auto; height: auto;
+      opacity: 0; transition: opacity 0.12s, color 0.12s; }
+    .bp-b2-card:hover .bp-b2-card-rm { opacity: 1; }
+    .bp-b2-card-rm:hover { color: var(--color-danger); background: none; }
     /* + Add category — under the last category card */
     .bp-b2-addcat { display: flex; align-items: center; justify-content: center; gap: 6px;
       width: 100%; margin-top: 2px; background: transparent;
@@ -718,11 +733,6 @@ type DetailView =
       color: var(--color-surface); }
     :host ::ng-deep .bp-b2-statusdd .p-dropdown-trigger { color: var(--color-surface); }
 
-    /* category status pill (col-1 cards) */
-    .bp-cat-pill { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
-      font-size: var(--text-xs); font-weight: 600; padding: 2px 8px;
-      border-radius: var(--radius-pill); white-space: nowrap; line-height: 1.5; }
-    .bp-cat-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
     .bp-b2-card--dim { opacity: 0.6; }
     .bp-b2-card--dim:hover { opacity: 0.85; }
 
@@ -1123,24 +1133,6 @@ export class BriefComponent implements OnInit, OnDestroy {
     const c = code || 'draft';
     return this.categoryStatuses.find(s => s.code === c)?.label
       || (c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' '));
-  }
-
-  /** A2 — pill colour, read from the codelist meta.color field. Empty
-      until the codelist loads (a few ms); the pill renders uncoloured. */
-  statusColor(code?: string): string {
-    const c = code || 'draft';
-    return this.categoryStatuses.find(s => s.code === c)?.meta?.color || '';
-  }
-
-  /** A2 — inline pill style: a soft tint of the codelist colour with a
-      darkened readable text colour (the standard status-pill look).
-      Empty object until the codelist loads. */
-  statusPillStyle(code?: string): { [k: string]: string } {
-    const col = this.statusColor(code);
-    return col ? {
-      background: `color-mix(in srgb, ${col} 16%, white)`,
-      color: `color-mix(in srgb, ${col} 72%, black)`
-    } : {};
   }
 
   /** A2 Step 7 — Client Managed categories aren't actioned by the agency
