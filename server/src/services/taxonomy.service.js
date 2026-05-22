@@ -34,6 +34,7 @@
  * reject any mismatch anyway.
  */
 const pool = require('../db/pool');
+const { sendEmail } = require('./email.service');
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 15;
@@ -843,6 +844,55 @@ async function saveSearchHint(projectId, categoryId, searchTerms, userHint) {
    v1.50 — COMPETITIVE QUOTE OUTREACH (RFQ, Phase 1)
    ───────────────────────────────────────────────────────────────────── */
 
+/** v1.50 — outreach emails are fully wired but OFF by default: there are
+    no supplier user accounts to receive them yet. Flip
+    QUOTE_REQUEST_EMAILS_ENABLED=true in the env once supplier accounts
+    go live — no code change needed. */
+const QUOTE_REQUEST_EMAILS_ENABLED = process.env.QUOTE_REQUEST_EMAILS_ENABLED === 'true';
+
+/**
+ * Best-effort email nudge to each supplier in a quote outreach. Reuses
+ * the existing EmailService (Resend) — no new notification service. The
+ * on-platform supplier inbox (Phase 2) is the real surface; this email
+ * only says "log in to view and respond". Never throws — a failed or
+ * disabled send must not affect the outreach itself.
+ */
+async function notifyQuoteRequestSuppliers(
+  { agencyName, projectName, categoryName, briefExcerpt, suppliers }
+) {
+  const subject = `New quote request from ${agencyName}`;
+  const briefLine = briefExcerpt
+    ? `Brief:\n${briefExcerpt}`
+    : 'Brief: see the request for full details.';
+  for (const s of suppliers || []) {
+    const text =
+`${agencyName} has sent you a quote request on Ballpark.
+
+Project:   ${projectName}
+Category:  ${categoryName}
+
+${briefLine}
+
+Log in to Ballpark to view the full request and respond with your quote.
+
+— Ballpark`;
+    if (!QUOTE_REQUEST_EMAILS_ENABLED) {
+      console.log(`[quote-email] disabled — would notify ${s.name || s.id} <${s.email || 'no email'}>`);
+      continue;
+    }
+    if (!s.email) {
+      console.warn(`[quote-email] supplier ${s.name || s.id} has no email on file — skipped`);
+      continue;
+    }
+    try {
+      await sendEmail({ to: s.email, subject, text });
+      console.log(`[quote-email] sent to ${s.email}`);
+    } catch (e) {
+      console.error(`[quote-email] send failed for ${s.email}:`, e.message);
+    }
+  }
+}
+
 /**
  * Send Brief-tab requirement(s) out to suppliers for competitive quotes.
  *
@@ -880,18 +930,24 @@ async function requestQuotes(body) {
   if (!reqs.length)        throw httpErr('at least one requirement is required', 400);
   if (!supplierIds.length) throw httpErr('select at least one supplier', 400);
 
-  // Project → agency org; category name for the message copy.
+  // Project → agency org + name; category name + brief for the message
+  // copy and the supplier email.
   const proj = await pool.query(
-    `SELECT p.org_id, p.name, c.name AS category_name
+    `SELECT p.org_id, p.name AS project_name, ag.name AS agency_name,
+            c.name AS category_name, pc.requirement_brief
        FROM projects p
+       JOIN orgs ag ON ag.id = p.org_id
        LEFT JOIN categories c ON c.id = $2
+       LEFT JOIN project_categories pc ON pc.id = $3
       WHERE p.id = $1`,
-    [project_id, category_id]
+    [project_id, category_id, project_category_id || null]
   );
   if (!proj.rows.length) throw httpErr('project not found', 404);
   const agencyOrgId  = proj.rows[0].org_id;
-  const projectName  = proj.rows[0].name || 'this project';
+  const agencyName   = proj.rows[0].agency_name || 'An agency';
+  const projectName  = proj.rows[0].project_name || 'this project';
   const categoryName = proj.rows[0].category_name || 'this category';
+  const briefExcerpt = (proj.rows[0].requirement_brief || '').trim().slice(0, 280);
 
   // One Ball per outreach — verify the agency can afford it.
   const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
@@ -901,9 +957,10 @@ async function requestQuotes(body) {
   }
 
   const supRes = await pool.query(
-    'SELECT id, name FROM orgs WHERE id = ANY($1::uuid[])', [supplierIds]
+    'SELECT id, name, email FROM orgs WHERE id = ANY($1::uuid[])', [supplierIds]
   );
-  const supName = new Map(supRes.rows.map(s => [s.id, s.name]));
+  const supName  = new Map(supRes.rows.map(s => [s.id, s.name]));
+  const supEmail = new Map(supRes.rows.map(s => [s.id, s.email]));
 
   const client = await pool.connect();
   try {
@@ -1001,6 +1058,16 @@ async function requestQuotes(body) {
     }
 
     await client.query('COMMIT');
+
+    // Best-effort email nudge — fire-and-forget so it never delays or
+    // breaks the outreach response. OFF by default (see the flag above).
+    notifyQuoteRequestSuppliers({
+      agencyName, projectName, categoryName, briefExcerpt,
+      suppliers: supplierIds.map(sid => ({
+        id: sid, name: supName.get(sid), email: supEmail.get(sid)
+      }))
+    }).catch(e => console.error('[quote-email] batch failed:', e.message));
+
     return {
       ok: true,
       quote_request_ids: createdIds,
