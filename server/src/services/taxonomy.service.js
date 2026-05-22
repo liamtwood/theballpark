@@ -702,15 +702,37 @@ Score items and propose if needed.`
     const p = parsed.proposed_item;
     const db = supById.get(p.supplier_id);
     const fallback = suppliers[0] || null;
+    const supplierId = db ? p.supplier_id : (fallback ? fallback.id : null);
     proposed = {
       name:            p.name,
       description:     p.description || briefText,
-      supplier_id:     db ? p.supplier_id : (fallback ? fallback.id : null),
+      supplier_id:     supplierId,
       supplier_name:   db ? db.name : (fallback ? fallback.name : 'Supplier'),
       estimated_price: Math.max(0, Number(p.estimated_price) || 0),
       confidence:      Math.max(1, Math.min(10, Number(p.confidence) || 1)),
       reason:          p.reason || ''
     };
+    // v1.52f — create the proposed item up front as a real (inactive,
+    // approval-pending) catalogue row so it carries a stable item_id for
+    // the Brief tab's ✎ / 👁 actions with no on-demand round trip. The
+    // row is inert — is_active=false hides it from the catalogue /
+    // marketplace / matcher until the named supplier approves it.
+    // Best-effort: a failed insert just leaves item_id null and the
+    // lazy /materialize-proposed fallback still covers it.
+    if (supplierId) {
+      try {
+        const row = await materializeProposedItem({
+          supplier_id:     supplierId,
+          category_id:     categoryId,
+          name:            proposed.name,
+          description:     proposed.description,
+          estimated_price: proposed.estimated_price
+        });
+        proposed.item_id = row.id;
+      } catch (e) {
+        console.error('[matchItems] could not pre-create proposed item:', e.message);
+      }
+    }
   }
 
   const result = {

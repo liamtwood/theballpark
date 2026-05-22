@@ -14,6 +14,7 @@ import { ProjectService } from '../../../../../../core/services/project.service'
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { ApiService } from '../../../../../../core/services/api.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
+import { ItemService } from '../../../../../../core/services/item.service';
 import { OutreachService } from '../../../../../../core/services/outreach.service';
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
@@ -35,6 +36,10 @@ interface MatchSupplier {
 interface ProposedItem {
   name: string; description: string; supplier_id: string; supplier_name: string;
   estimated_price: number; confidence: number; reason: string;
+  /** v1.52f — the proposed item is pre-created as a real (inactive,
+      approval-pending) catalogue row, so it carries a stable id.
+      May be absent on match results cached before v1.52f. */
+  item_id?: string;
 }
 interface MatchResult {
   category_id: string; category_name: string;
@@ -794,6 +799,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private catSvc: CategoryService,
     private api: ApiService,
     private projItemSvc: ProjectItemService,
+    private itemSvc: ItemService,
     private outreach: OutreachService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
@@ -1096,10 +1102,14 @@ export class BriefComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** v1.52e — an AI-proposed item has no real catalogue row yet. Promote
-      it to an inactive, approval-pending `items` row, then run `cb` with
-      the saved row. Mirrors addMatchToProject's 'proposed' upsert so a
-      later "select for project" reuses the same row. */
+  private goToItem(id: string): void {
+    this.router.navigate(['/items', id],
+      { queryParams: { context: 'project', projectId: this.pid } });
+  }
+
+  /** v1.52e — fallback for match results cached before v1.52f, where the
+      proposed item was not pre-created. Promotes it to an inactive,
+      approval-pending `items` row, then runs `cb` with the saved row. */
   private materializeProposed(p: ProposedItem, cb: (row: any) => void): void {
     const ac = this.activeCategory;
     if (!ac) return;
@@ -1117,25 +1127,41 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** v1.52e — ✎ on a proposed item: materialise then open the item
-      drawer in edit mode, exactly as the marketplace edit action does. */
+  /** v1.52e — ✎ on a proposed item: open the item drawer in edit mode,
+      exactly as the marketplace edit action does. v1.52f — the proposed
+      item is pre-created, so load its current row by id (preserving any
+      saved edits); only materialise for pre-v1.52f cached results. */
   editProposed(): void {
     if (this.detail?.kind !== 'proposed') return;
-    this.materializeProposed(this.detail.item, row => {
+    const p = this.detail.item;
+    if (p.item_id) {
+      this.itemSvc.getById(p.item_id).subscribe({
+        next: item => {
+          this.drawerItem = item;
+          this.drawerVisible = true;
+          this.cdr.markForCheck();
+        },
+        error: () => this.msg.add({
+          severity: 'error', summary: 'Could not open item for editing', life: 3500
+        })
+      });
+      return;
+    }
+    this.materializeProposed(p, row => {
       this.drawerItem = row as Item;
       this.drawerVisible = true;
       this.cdr.markForCheck();
     });
   }
 
-  /** v1.52e — 👁 on a proposed item: materialise then open the full
-      item detail page. */
+  /** v1.52e — 👁 on a proposed item: open the full item detail page.
+      v1.52f — navigate straight to the pre-created row; only materialise
+      for pre-v1.52f cached results. */
   viewProposed(): void {
     if (this.detail?.kind !== 'proposed') return;
-    this.materializeProposed(this.detail.item, row => {
-      this.router.navigate(['/items', row.id],
-        { queryParams: { context: 'project', projectId: this.pid } });
-    });
+    const p = this.detail.item;
+    if (p.item_id) { this.goToItem(p.item_id); return; }
+    this.materializeProposed(p, row => this.goToItem(row.id));
   }
 
   /** v1.52e — item drawer saved a materialised proposed item. */
