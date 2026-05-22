@@ -1053,6 +1053,23 @@ const migrate = async () => {
     }
     console.log('  project_categories.match_result_json column installed (v1.49e).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.49k — items.approval_status. AI-proposed items (created when an
+    // agency picks a Brief-tab "proposed" match) must NOT enter the live
+    // catalogue until the supplier approves them. They are inserted
+    // is_active = false + approval_status = 'pending' — hidden from every
+    // catalogue query (all filter is_active = true) yet still usable on
+    // the project that proposed them. Existing + supplier-created items
+    // default to 'approved'. Values: pending | approved | rejected.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.items
+           ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'approved'`
+      );
+    }
+    console.log('  items.approval_status column installed (v1.49k).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`

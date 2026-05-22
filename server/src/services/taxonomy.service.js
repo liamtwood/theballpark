@@ -789,9 +789,16 @@ async function addMatchToProject(body) {
     if (!proposed.supplier_id) throw httpErr('proposed item needs a supplier', 400);
     source = 'ai_proposed';
     estPrice = Math.max(0, Number(proposed.estimated_price) || 0);
+    // v1.49k — an AI-proposed item is NOT a real catalogue listing yet.
+    // Create it is_active = false + approval_status = 'pending' so it is
+    // hidden from the catalogue / marketplace / store / matcher (all of
+    // which filter is_active = true) until the named supplier approves
+    // it. It still works on the project that proposed it — project_items
+    // references the row by id regardless of is_active.
     const ins = await pool.query(
-      `INSERT INTO items (org_id, category_id, name, description, base_price, is_active)
-       VALUES ($1, $2, $3, $4, $5, true)
+      `INSERT INTO items (org_id, category_id, name, description, base_price,
+                          is_active, approval_status)
+       VALUES ($1, $2, $3, $4, $5, false, 'pending')
        RETURNING id`,
       [proposed.supplier_id, category_id, proposed.name, proposed.description || '', estPrice]
     );
