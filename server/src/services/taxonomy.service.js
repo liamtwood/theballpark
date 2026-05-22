@@ -1123,6 +1123,33 @@ async function listProjectQuoteRequests(projectId) {
   return r.rows;
 }
 
+/** v1.52e — turn an AI-proposed brief item into a real (but inactive,
+    approval-pending) catalogue row so the Brief tab's ✎ / 👁 actions can
+    open it in the item drawer / on the item detail page. Mirrors the
+    'proposed' branch of addMatchToProject exactly — same org_id
+    (the AI-named supplier) + same ON CONFLICT (org_id, name) upsert — so
+    materialising then adding reuses one row instead of creating two. */
+async function materializeProposedItem(body) {
+  const { supplier_id, category_id, name, description, estimated_price } = body || {};
+  if (!supplier_id || !category_id || !name) {
+    throw httpErr('supplier_id, category_id and name are required', 400);
+  }
+  const price = Math.max(0, Number(estimated_price) || 0);
+  const r = await pool.query(
+    `INSERT INTO items (org_id, category_id, name, description, base_price,
+                        is_active, approval_status)
+     VALUES ($1, $2, $3, $4, $5, false, 'pending')
+     ON CONFLICT (org_id, name) DO UPDATE SET
+       category_id = EXCLUDED.category_id,
+       description = EXCLUDED.description,
+       base_price  = EXCLUDED.base_price,
+       updated_at  = NOW()
+     RETURNING *`,
+    [supplier_id, category_id, name, description || '', price]
+  );
+  return r.rows[0];
+}
+
 /* ─────────────────────────────────────────────────────────────────────
    v1.41 SUBCATEGORY-ONLY HELPERS — kept for the drawer "✦ Suggest" link
    and the Part 3 bulk backfill.
@@ -1282,6 +1309,7 @@ module.exports = {
   saveSearchHint,
   requestQuotes,
   listProjectQuoteRequests,
+  materializeProposedItem,
   suggestSubcategory,
   backfillSubcategories
 };

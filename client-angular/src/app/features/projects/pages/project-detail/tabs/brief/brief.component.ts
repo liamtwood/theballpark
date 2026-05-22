@@ -15,8 +15,9 @@ import { CategoryService } from '../../../../../../core/services/category.servic
 import { ApiService } from '../../../../../../core/services/api.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { OutreachService } from '../../../../../../core/services/outreach.service';
-import { ProjectCategory, Category } from '../../../../../../models';
+import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { ItemDrawerComponent } from '../../../../../../shared/components/item-drawer/item-drawer.component';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 
 /** v1.46 — Brief-tab AI item-matching shapes (POST /taxonomy/match-items). */
@@ -69,7 +70,7 @@ type DetailView =
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, ButtonModule, SidebarModule, ToastModule,
-    LucideAngularModule, LoadingSpinnerComponent, GbpPipe
+    LucideAngularModule, LoadingSpinnerComponent, ItemDrawerComponent, GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -351,12 +352,12 @@ type DetailView =
                   (click)="requestQuoteFromDetail()">
             <lucide-icon name="mail" [size]="14"></lucide-icon>
           </button>
-          <button *ngIf="!d.proposed" class="bp-b2-d-cbtn" type="button" title="Edit item"
-                  (click)="openFullItem()">
+          <button class="bp-b2-d-cbtn" type="button" title="Edit item"
+                  (click)="d.proposed ? editProposed() : openFullItem()">
             <lucide-icon name="square-pen" [size]="14"></lucide-icon>
           </button>
-          <button *ngIf="!d.proposed" class="bp-b2-d-cbtn" type="button" title="View item"
-                  (click)="openFullItem()">
+          <button class="bp-b2-d-cbtn" type="button" title="View item"
+                  (click)="d.proposed ? viewProposed() : openFullItem()">
             <lucide-icon name="eye" [size]="14"></lucide-icon>
           </button>
         </div>
@@ -527,6 +528,16 @@ type DetailView =
         </div>
       </div>
     </p-sidebar>
+
+    <!-- v1.52e — edit drawer for an AI-proposed item (after it is
+         materialised into a real, approval-pending catalogue row). -->
+    <app-item-drawer
+      [(visible)]="drawerVisible"
+      [mode]="'edit'"
+      [item]="drawerItem"
+      (saved)="onProposedSaved($event)"
+      (cancelled)="drawerVisible = false">
+    </app-item-drawer>
 
     <p-toast></p-toast>
   `,
@@ -769,6 +780,10 @@ export class BriefComponent implements OnInit, OnDestroy {
 
   detail: DetailView = null;
   addDrawerOpen = false;
+
+  /** v1.52e — item drawer for editing a materialised proposed item. */
+  drawerVisible = false;
+  drawerItem: Item | null = null;
 
   private briefTimers = new Map<string, any>();
 
@@ -1079,6 +1094,55 @@ export class BriefComponent implements OnInit, OnDestroy {
       this.router.navigate(['/items', this.detail.item.item_id],
         { queryParams: { context: 'project', projectId: this.pid } });
     }
+  }
+
+  /** v1.52e — an AI-proposed item has no real catalogue row yet. Promote
+      it to an inactive, approval-pending `items` row, then run `cb` with
+      the saved row. Mirrors addMatchToProject's 'proposed' upsert so a
+      later "select for project" reuses the same row. */
+  private materializeProposed(p: ProposedItem, cb: (row: any) => void): void {
+    const ac = this.activeCategory;
+    if (!ac) return;
+    this.api.post<any>('/taxonomy/materialize-proposed', {
+      supplier_id:     p.supplier_id,
+      category_id:     ac.category_id,
+      name:            p.name,
+      description:     p.description,
+      estimated_price: p.estimated_price
+    }).subscribe({
+      next: cb,
+      error: () => this.msg.add({
+        severity: 'error', summary: 'Could not open the proposed item', life: 3500
+      })
+    });
+  }
+
+  /** v1.52e — ✎ on a proposed item: materialise then open the item
+      drawer in edit mode, exactly as the marketplace edit action does. */
+  editProposed(): void {
+    if (this.detail?.kind !== 'proposed') return;
+    this.materializeProposed(this.detail.item, row => {
+      this.drawerItem = row as Item;
+      this.drawerVisible = true;
+      this.cdr.markForCheck();
+    });
+  }
+
+  /** v1.52e — 👁 on a proposed item: materialise then open the full
+      item detail page. */
+  viewProposed(): void {
+    if (this.detail?.kind !== 'proposed') return;
+    this.materializeProposed(this.detail.item, row => {
+      this.router.navigate(['/items', row.id],
+        { queryParams: { context: 'project', projectId: this.pid } });
+    });
+  }
+
+  /** v1.52e — item drawer saved a materialised proposed item. */
+  onProposedSaved(_item: Item): void {
+    this.drawerVisible = false;
+    this.msg.add({ severity: 'success', summary: 'Item saved', life: 2500 });
+    this.cdr.markForCheck();
   }
 
   // ── Add to project ────────────────────────────────────────────────────

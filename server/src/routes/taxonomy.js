@@ -110,6 +110,16 @@ router.get('/quote-requests', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.52e — promote an AI-proposed brief item to a real (inactive,
+// approval-pending) catalogue row so it can be edited / viewed.
+//   POST /materialize-proposed  body: { supplier_id, category_id,
+//     name, description?, estimated_price? }
+router.post('/materialize-proposed', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.materializeProposedItem(req.body || {}));
+  } catch (err) { next(err); }
+});
+
 // ── v1.41 — subcategory-only helpers ───────────────────────────────────
 router.post('/suggest-subcategory', async (req, res, next) => {
   try {
