@@ -207,7 +207,11 @@ type DetailView =
                              class="bp-b2-row"
                              [class.active]="isDetailItem(m.item_id)"
                              (click)="openItemDetail(m)">
-                          <div class="bp-b2-thumb">{{ catLetter(m.name) }}</div>
+                          <div class="bp-b2-thumb"
+                               [class.bp-b2-thumb--img]="m.image_url"
+                               [style.background-image]="m.image_url ? 'url(' + m.image_url + ')' : null">
+                            <span *ngIf="!m.image_url">{{ catLetter(m.name) }}</span>
+                          </div>
                           <div class="bp-b2-row-mid">
                             <div class="bp-b2-row-name">{{ m.name }}</div>
                             <div class="bp-b2-row-sub">{{ m.supplier_name }}</div>
@@ -230,7 +234,11 @@ type DetailView =
                              class="bp-b2-row"
                              [class.active]="isDetailItem(ci.item_id)"
                              (click)="openItemDetail(ci)">
-                          <div class="bp-b2-thumb">{{ catLetter(ci.name) }}</div>
+                          <div class="bp-b2-thumb"
+                               [class.bp-b2-thumb--img]="ci.image_url"
+                               [style.background-image]="ci.image_url ? 'url(' + ci.image_url + ')' : null">
+                            <span *ngIf="!ci.image_url">{{ catLetter(ci.name) }}</span>
+                          </div>
                           <div class="bp-b2-row-mid">
                             <div class="bp-b2-row-name">{{ ci.name }}</div>
                             <div class="bp-b2-row-sub">{{ ci.supplier_name }} · closest fit</div>
@@ -549,7 +557,8 @@ type DetailView =
     .bp-b2-row.proposed { border-style: dashed; border-color: var(--theme-accent); background: var(--theme-bg); }
     .bp-b2-thumb { width: 34px; height: 34px; border-radius: 6px; flex-shrink: 0; background: var(--theme-bg);
       display: flex; align-items: center; justify-content: center; color: var(--theme-accent);
-      font-family: var(--font-display); font-size: 13px; font-weight: 600; }
+      font-family: var(--font-display); font-size: 13px; font-weight: 600; overflow: hidden; }
+    .bp-b2-thumb--img { background-size: cover; background-position: center; }
     .bp-b2-row-mid { flex: 1; min-width: 0; }
     .bp-b2-row-name { font-size: 12.5px; font-weight: 600; line-height: 1.25;
       color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
