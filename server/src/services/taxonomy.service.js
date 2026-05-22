@@ -796,10 +796,17 @@ async function addMatchToProject(body) {
     // which filter is_active = true) until the named supplier approves
     // it. It still works on the project that proposed it — project_items
     // references the row by id regardless of is_active.
+    // v1.51f — reuse + refresh on the UNIQUE(org_id, name) index so
+    // adding the same proposed item twice doesn't error.
     const ins = await pool.query(
       `INSERT INTO items (org_id, category_id, name, description, base_price,
                           is_active, approval_status)
        VALUES ($1, $2, $3, $4, $5, false, 'pending')
+       ON CONFLICT (org_id, name) DO UPDATE SET
+         category_id = EXCLUDED.category_id,
+         description = EXCLUDED.description,
+         base_price  = EXCLUDED.base_price,
+         updated_at  = NOW()
        RETURNING id`,
       [proposed.supplier_id, category_id, proposed.name, proposed.description || '', estPrice]
     );
@@ -980,10 +987,18 @@ async function requestQuotes(body) {
       if (r && r.kind === 'new') {
         if (!r.name) throw httpErr('a new requirement needs a name', 400);
         const price = Math.max(0, Number(r.estimated_price) || 0);
+        // v1.51f — items has a UNIQUE(org_id, name) index; re-sending a
+        // brief for the same new requirement must reuse + refresh that
+        // row, not error. ON CONFLICT keeps the outreach idempotent.
         const ins = await client.query(
           `INSERT INTO items (org_id, category_id, name, description, base_price,
                               is_active, approval_status)
            VALUES ($1, $2, $3, $4, $5, false, 'pending')
+           ON CONFLICT (org_id, name) DO UPDATE SET
+             category_id = EXCLUDED.category_id,
+             description = EXCLUDED.description,
+             base_price  = EXCLUDED.base_price,
+             updated_at  = NOW()
            RETURNING id, name, description, base_price`,
           [agencyOrgId, category_id, r.name, r.description || '', price]
         );
