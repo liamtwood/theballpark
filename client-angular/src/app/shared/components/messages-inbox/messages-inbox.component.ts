@@ -637,7 +637,8 @@ interface VendorThread {
     .bp-msg-out    { background: var(--color-msg-out-bg); border-color: var(--color-msg-out-border); }
     .bp-msg-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .bp-msg-card-sender { font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
-    .bp-msg-card-body   { font-size: 13px; color: var(--color-text-primary); line-height: 1.5; }
+    .bp-msg-card-body   { font-size: 13px; color: var(--color-text-primary); line-height: 1.5;
+      white-space: pre-wrap; }
     .bp-quoted-items { margin-top: 10px; border-top: 0.5px solid var(--color-border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .bp-quoted-items-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
     .bp-quoted-item { display: flex; align-items: center; gap: 10px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 8px; padding: 9px 11px; }
