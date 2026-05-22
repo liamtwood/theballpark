@@ -584,12 +584,15 @@ Score items and propose if needed.`
     const it = itemById.get(m.item_id);
     if (!it) return null;
     return {
-      item_id:       it.id,
-      name:          it.name,
-      base_price:    it.base_price != null ? Number(it.base_price) : null,
-      supplier_name: it.supplier_name,
-      score:         Math.max(1, Math.min(10, Number(m.score) || 0)),
-      reason:        m.reason || ''
+      item_id:          it.id,
+      name:             it.name,
+      description:      (it.description || '').slice(0, 320),
+      base_price:       it.base_price != null ? Number(it.base_price) : null,
+      supplier_id:      it.org_id,
+      supplier_name:    it.supplier_name,
+      subcategory_name: it.subcategory_name || null,
+      score:            Math.max(1, Math.min(10, Number(m.score) || 0)),
+      reason:           m.reason || ''
     };
   };
   const matched = (Array.isArray(parsed.matched_items) ? parsed.matched_items : [])
@@ -607,6 +610,7 @@ Score items and propose if needed.`
       return {
         supplier_id:   s.supplier_id,
         supplier_name: db.name,
+        description:   (db.description || '').slice(0, 320),
         fit_reason:    s.fit_reason || '',
         item_count:    db.item_count
       };
@@ -671,9 +675,10 @@ async function recomputeCategoryBallpark(projectId, categoryId) {
 async function addMatchToProject(body) {
   const {
     project_id, project_category_id, category_id, kind,
-    item_id, ai_confidence, ai_match_reason, proposed
+    item_id, ai_confidence, ai_match_reason, proposed, selection_type
   } = body || {};
   if (!project_id || !category_id) throw httpErr('project_id and category_id are required', 400);
+  const stype = selection_type === 'liked' ? 'liked' : 'selected';
 
   let finalItemId = item_id;
   let source = 'catalogue';
@@ -699,16 +704,16 @@ async function addMatchToProject(body) {
     `INSERT INTO project_items
        (project_id, item_id, project_category_id, selection_type,
         source, ai_confidence, ai_match_reason, ai_estimated_price)
-     VALUES ($1, $2, $3, 'selected', $4, $5, $6, $7)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (project_id, item_id) DO UPDATE SET
-       selection_type      = 'selected',
+       selection_type      = EXCLUDED.selection_type,
        project_category_id = COALESCE(EXCLUDED.project_category_id, project_items.project_category_id),
        source              = EXCLUDED.source,
        ai_confidence       = EXCLUDED.ai_confidence,
        ai_match_reason     = EXCLUDED.ai_match_reason,
        ai_estimated_price  = EXCLUDED.ai_estimated_price
      RETURNING *`,
-    [project_id, finalItemId, project_category_id || null, source, conf,
+    [project_id, finalItemId, project_category_id || null, stype, source, conf,
      ai_match_reason || null, estPrice]
   );
 
