@@ -185,23 +185,6 @@ export type DetailMode = 'inline' | 'drawer';
               </div>
             </div>
           </div>
-          <!-- v1.49b — supplier filter (suppliers with items in this category) -->
-          <div class="bp-filter-sec" *ngIf="categorySuppliers.length">
-            <button type="button" class="bp-filter-sec-head" (click)="supplierExpanded = !supplierExpanded">
-              <span class="bp-filter-sec-name">supplier</span>
-              <span *ngIf="selectedSupplierIds.size" class="bp-filter-sec-badge">{{ selectedSupplierIds.size }}</span>
-              <span class="bp-filter-caret">{{ supplierExpanded ? '▾' : '▸' }}</span>
-            </button>
-            <div *ngIf="supplierExpanded" class="bp-filter-sec-body">
-              <div *ngFor="let s of categorySuppliers" class="bp-sidebar-check-item">
-                <p-checkbox [binary]="true"
-                  [ngModel]="selectedSupplierIds.has(s.supplier_id)"
-                  (onChange)="toggleSupplierFilter(s.supplier_id)"
-                  [label]="s.supplier_name">
-                </p-checkbox>
-              </div>
-            </div>
-          </div>
 
           <!-- ── GROUP 2 · CATEGORY-SPECIFIC (alphabetical) ───────── -->
           <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
@@ -225,7 +208,29 @@ export type DetailMode = 'inline' | 'drawer';
             </div>
           </div>
 
-          <!-- ── GROUP 3 · EVENT (common — fixed at the bottom) ───── -->
+          <!-- ── GROUP 3 · SUPPLIER (v1.49d — own header) ─────────── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
+               *ngIf="categorySuppliers.length">
+            <span class="bp-sidebar-sublabel">Supplier</span>
+          </div>
+          <div class="bp-filter-sec" *ngIf="categorySuppliers.length">
+            <button type="button" class="bp-filter-sec-head" (click)="supplierExpanded = !supplierExpanded">
+              <span class="bp-filter-sec-name">supplier</span>
+              <span *ngIf="selectedSupplierIds.size" class="bp-filter-sec-badge">{{ selectedSupplierIds.size }}</span>
+              <span class="bp-filter-caret">{{ supplierExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="supplierExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let s of categorySuppliers" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedSupplierIds.has(s.supplier_id)"
+                  (onChange)="toggleSupplierFilter(s.supplier_id)"
+                  [label]="s.supplier_name">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GROUP 4 · EVENT (common — fixed at the bottom) ───── -->
           <div class="bp-filter-grouphdr bp-filter-grouphdr--rule">
             <span class="bp-sidebar-sublabel">Event</span>
           </div>
@@ -1311,7 +1316,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   eventTypeValues: Array<{ label: string; tag_ids: string[] }> = [];
   /** tag_id → dimension, so applyFilter can OR within / AND across. */
   private tagDimensionOf = new Map<string, string>();
+  /** Category-specific dimension tags. These cannot survive a category
+      change (their tag_ids belong to one category) so they are reset by
+      loadDimensions; every other facet below is category-agnostic. */
   selectedTagIds = new Set<string>();
+  /** v1.49d — event-type selection tracked by label (stable across
+      categories), so it survives a category switch and applies on the
+      "All" view. applyFilter resolves labels → tag_ids per scope. */
+  selectedEventLabels = new Set<string>();
   selectedTiers = new Set<string>();
   selectedLeadBuckets = new Set<string>();
   selectedPriceBuckets = new Set<string>();
@@ -1758,28 +1770,22 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
   // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
 
-  /** Load the filter facets for the current scope and reset every filter
-      selection. For a real category: its own dimensions (alphabetical) +
-      event-type. For the "All" view (v1.49c): every supplier with active
-      items + event-type aggregated across categories — the category-
-      specific middle group stays empty. Called on each category change
-      and once on init. */
+  /** Reload the filter facets for the current scope. v1.49d — only the
+      category-specific middle group is rebuilt; the Price / Supplier /
+      Event facets and every expanded section are category-agnostic and
+      are deliberately preserved so the sidebar does not reset under the
+      user when they change category. Called on each category change and
+      once on init. */
   private loadDimensions(): void {
     this.dimensionGroups = [];
     this.categoryDimensions = [];
     this.eventTypeValues = [];
-    this.tagDimensionOf.clear();
-    this.selectedTagIds.clear();
-    this.selectedTiers.clear();
-    this.selectedLeadBuckets.clear();
-    this.selectedPriceBuckets.clear();
-    this.selectedSupplierIds.clear();
     this.categorySuppliers = [];
-    this.tierExpanded = false;
-    this.leadExpanded = false;
-    this.priceExpanded = false;
-    this.supplierExpanded = false;
-    this.eventExpanded = false;
+    this.tagDimensionOf.clear();
+    // Category-specific dimension tags belong to the old category — they
+    // are the only selection that cannot be carried across. Everything
+    // else (price / tier / lead / supplier / event-type) is preserved.
+    this.selectedTagIds.clear();
     // Dimension facets are catalogue-item only; skip supplier / feedback grids.
     if (this.entityType !== 'item') return;
 
@@ -1795,27 +1801,31 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       supplierUrl
     ).subscribe({
       next: rows => {
-        if (catId === this.activeCategory) {
-          this.categorySuppliers = rows || [];
-          this.cdr.detectChanges();
+        if (catId !== this.activeCategory) return;
+        this.categorySuppliers = rows || [];
+        // Drop any preserved supplier selection that the new scope no
+        // longer offers, so there is no hidden ghost filter.
+        const valid = new Set(this.categorySuppliers.map(s => s.supplier_id));
+        const kept = [...this.selectedSupplierIds].filter(id => valid.has(id));
+        if (kept.length !== this.selectedSupplierIds.size) {
+          this.selectedSupplierIds = new Set(kept);
+          this.applyFilter();
         }
+        this.cdr.detectChanges();
       },
       error: () => {}
     });
 
     if (isAll) {
       // v1.49c — "All" view: event-type is duplicated per category, so the
-      // backend aggregates every tag_id sharing a label. Register each one
-      // under the 'event-type' dimension so applyFilter ORs them together.
+      // backend aggregates every tag_id sharing a label.
       this.api.get<Array<{ label: string; tag_ids: string[] }>>(
         '/taxonomy/event-types'
       ).subscribe({
         next: rows => {
           if (this.activeCategory !== catId) return;
           this.eventTypeValues = rows || [];
-          for (const et of this.eventTypeValues) {
-            for (const id of et.tag_ids) this.tagDimensionOf.set(id, 'event-type');
-          }
+          this.applyFilter();
           this.cdr.detectChanges();
         },
         error: () => { this.eventTypeValues = []; this.cdr.detectChanges(); }
@@ -1841,6 +1851,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         this.categoryDimensions = all
           .filter(g => g.dimension !== 'event-type')
           .sort((a, b) => a.dimension.localeCompare(b.dimension));
+        this.applyFilter();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -1867,7 +1878,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get activeFilterCount(): number {
     return this.selectedTagIds.size + this.selectedTiers.size
          + this.selectedLeadBuckets.size + this.selectedPriceBuckets.size
-         + this.selectedSupplierIds.size;
+         + this.selectedSupplierIds.size + this.selectedEventLabels.size;
   }
   get hasActiveFilters(): boolean { return this.activeFilterCount > 0; }
 
@@ -1907,23 +1918,20 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedSupplierIds = new Set(this.selectedSupplierIds);
     this.applyFilter();
   }
-  /** v1.49c — toggle an event-type label. On the "All" view a label maps
-      to many tag_ids (one per category); flip them as a unit. */
-  toggleEventType(et: { tag_ids: string[] }): void {
-    const allOn = et.tag_ids.length > 0
-      && et.tag_ids.every(id => this.selectedTagIds.has(id));
-    for (const id of et.tag_ids) {
-      if (allOn) this.selectedTagIds.delete(id);
-      else this.selectedTagIds.add(id);
-    }
-    this.selectedTagIds = new Set(this.selectedTagIds);
+  /** v1.49d — toggle an event-type label. Tracked by label so the
+      selection survives a category change; applyFilter resolves the
+      label to the current scope's tag_ids. */
+  toggleEventType(et: { label: string }): void {
+    if (this.selectedEventLabels.has(et.label)) this.selectedEventLabels.delete(et.label);
+    else this.selectedEventLabels.add(et.label);
+    this.selectedEventLabels = new Set(this.selectedEventLabels);
     this.applyFilter();
   }
-  eventTypeOn(et: { tag_ids: string[] }): boolean {
-    return et.tag_ids.some(id => this.selectedTagIds.has(id));
+  eventTypeOn(et: { label: string }): boolean {
+    return this.selectedEventLabels.has(et.label);
   }
   get eventTypeSelectedCount(): number {
-    return this.eventTypeValues.reduce((n, et) => n + (this.eventTypeOn(et) ? 1 : 0), 0);
+    return this.selectedEventLabels.size;
   }
   clearAllFilters(): void {
     this.selectedTagIds = new Set();
@@ -1931,6 +1939,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedLeadBuckets = new Set();
     this.selectedPriceBuckets = new Set();
     this.selectedSupplierIds = new Set();
+    this.selectedEventLabels = new Set();
     this.applyFilter();
   }
 
@@ -2259,6 +2268,25 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         }
         return true;
       });
+    }
+    // v1.49d — event-type facet. Tracked by label (category-agnostic);
+    // resolve the selected labels to tag_ids for the current scope and
+    // OR them. Skipped while eventTypeValues is still loading so the
+    // grid doesn't flash empty on a category change.
+    if (this.selectedEventLabels.size && this.eventTypeValues.length) {
+      const evtTagIds = new Set<string>();
+      for (const et of this.eventTypeValues) {
+        if (this.selectedEventLabels.has(et.label)) {
+          for (const id of et.tag_ids) evtTagIds.add(id);
+        }
+      }
+      if (evtTagIds.size) {
+        result = result.filter(e => {
+          const owned = (e._raw && e._raw.tag_ids) || [];
+          for (const id of owned) { if (evtTagIds.has(id)) return true; }
+          return false;
+        });
+      }
     }
     // Tier facet — items.tier column directly.
     if (this.selectedTiers.size) {
