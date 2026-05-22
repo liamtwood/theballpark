@@ -840,6 +840,201 @@ async function saveSearchHint(projectId, categoryId, searchTerms, userHint) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+   v1.50 — COMPETITIVE QUOTE OUTREACH (RFQ, Phase 1)
+   ───────────────────────────────────────────────────────────────────── */
+
+/**
+ * Send Brief-tab requirement(s) out to suppliers for competitive quotes.
+ *
+ * quote_requests is a STATUS TRACKER on top of existing infrastructure —
+ * it does not replace it:
+ *   • the Ball spend     → balls_transactions — ONE 'debit' per outreach
+ *     (project-level, shared by every quote_request in the batch).
+ *   • the conversation   → messages — one outbound anchor per supplier.
+ *   • the quote lines    → message_items — one per requirement per message.
+ *   • quote_requests     → one row per (requirement × supplier) holding
+ *     status + links to the message thread and the Ball transaction.
+ *
+ * All writes run inside a single DB transaction so a failure leaves no
+ * half-sent outreach (and no spent Ball).
+ *
+ * body: {
+ *   project_id, project_category_id?, category_id,
+ *   requirements: [ { kind:'matched', item_id } |
+ *                   { kind:'new', name, description?, estimated_price? } ],
+ *   supplier_ids: [ orgId, ... ],
+ *   user_id?
+ * }
+ */
+async function requestQuotes(body) {
+  const {
+    project_id, project_category_id, category_id,
+    requirements, supplier_ids, user_id
+  } = body || {};
+
+  if (!project_id)  throw httpErr('project_id is required', 400);
+  if (!category_id) throw httpErr('category_id is required', 400);
+  const reqs = Array.isArray(requirements) ? requirements : [];
+  const supplierIds = Array.isArray(supplier_ids)
+    ? [...new Set(supplier_ids.filter(Boolean))] : [];
+  if (!reqs.length)        throw httpErr('at least one requirement is required', 400);
+  if (!supplierIds.length) throw httpErr('select at least one supplier', 400);
+
+  // Project → agency org; category name for the message copy.
+  const proj = await pool.query(
+    `SELECT p.org_id, p.name, c.name AS category_name
+       FROM projects p
+       LEFT JOIN categories c ON c.id = $2
+      WHERE p.id = $1`,
+    [project_id, category_id]
+  );
+  if (!proj.rows.length) throw httpErr('project not found', 404);
+  const agencyOrgId  = proj.rows[0].org_id;
+  const projectName  = proj.rows[0].name || 'this project';
+  const categoryName = proj.rows[0].category_name || 'this category';
+
+  // One Ball per outreach — verify the agency can afford it.
+  const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
+  const balance = bal.rows.length ? Number(bal.rows[0].balls_balance) || 0 : 0;
+  if (balance < 1) {
+    throw httpErr('Not enough Balls to send this outreach — top up to continue.', 402);
+  }
+
+  const supRes = await pool.query(
+    'SELECT id, name FROM orgs WHERE id = ANY($1::uuid[])', [supplierIds]
+  );
+  const supName = new Map(supRes.rows.map(s => [s.id, s.name]));
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Resolve each requirement to a concrete items row + a display spec.
+    //  • matched → an existing catalogue item.
+    //  • new     → create an agency-owned item, is_active = false +
+    //    approval_status = 'pending' so it never enters the catalogue on
+    //    its own; it only goes live if a supplier wins the quote.
+    const resolved = [];
+    for (const r of reqs) {
+      if (r && r.kind === 'new') {
+        if (!r.name) throw httpErr('a new requirement needs a name', 400);
+        const price = Math.max(0, Number(r.estimated_price) || 0);
+        const ins = await client.query(
+          `INSERT INTO items (org_id, category_id, name, description, base_price,
+                              is_active, approval_status)
+           VALUES ($1, $2, $3, $4, $5, false, 'pending')
+           RETURNING id, name, description, base_price`,
+          [agencyOrgId, category_id, r.name, r.description || '', price]
+        );
+        const it = ins.rows[0];
+        resolved.push({
+          item_id: it.id, name: it.name,
+          description: it.description, price: it.base_price
+        });
+      } else {
+        const itemId = r && r.item_id;
+        if (!itemId) throw httpErr('a matched requirement needs an item_id', 400);
+        const got = await client.query(
+          'SELECT id, name, description, base_price FROM items WHERE id = $1', [itemId]
+        );
+        if (!got.rows.length) throw httpErr(`item ${itemId} not found`, 404);
+        const it = got.rows[0];
+        resolved.push({
+          item_id: it.id, name: it.name,
+          description: it.description, price: it.base_price
+        });
+      }
+    }
+
+    // ONE Ball debit for the whole outreach (project-level).
+    const ballTx = await client.query(
+      `INSERT INTO balls_transactions
+         (org_id, project_id, supplier_org_id, user_id, amount, direction, reason, description)
+       VALUES ($1, $2, NULL, $3, 1, 'debit', 'spend', $4)
+       RETURNING id`,
+      [agencyOrgId, project_id, user_id || null,
+       `Quote outreach — ${categoryName}: ${supplierIds.length} supplier(s)`]
+    );
+    const ballTxId = ballTx.rows[0].id;
+    await client.query(
+      'UPDATE orgs SET balls_balance = balls_balance - 1, updated_at = NOW() WHERE id = $1',
+      [agencyOrgId]
+    );
+
+    // Per supplier: one outbound message (the conversation anchor), its
+    // line items, and a quote_requests row per requirement.
+    const createdIds = [];
+    for (const sid of supplierIds) {
+      // NB: messages.category_id is a FK to project_categories(id) — the
+      // project's scoped category row, NOT the catalogue category.
+      const msg = await client.query(
+        `INSERT INTO messages
+           (project_id, user_id, supplier_org_id, category_id, category_name,
+            supplier_name, subject, body, direction, msg_status, read)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'outbound', 'sent', false)
+         RETURNING id`,
+        [project_id, user_id || null, sid, project_category_id || null, categoryName,
+         supName.get(sid) || null,
+         `Quote request — ${projectName}`,
+         `We'd like a quote for the following on "${projectName}" (${categoryName}). ` +
+         `Please review the item(s) below and reply with your price and lead time.`]
+      );
+      const msgId = msg.rows[0].id;
+
+      for (const rq of resolved) {
+        await client.query(
+          `INSERT INTO message_items (message_id, name, description, price, item_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [msgId, rq.name, rq.description || '', rq.price, rq.item_id]
+        );
+        const qr = await client.query(
+          `INSERT INTO quote_requests
+             (project_id, project_category_id, category_id, item_id,
+              supplier_org_id, status, message_thread_id, ball_transaction_id)
+           VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+           RETURNING id`,
+          [project_id, project_category_id || null, category_id, rq.item_id,
+           sid, msgId, ballTxId]
+        );
+        createdIds.push(qr.rows[0].id);
+      }
+    }
+
+    await client.query('COMMIT');
+    return {
+      ok: true,
+      quote_request_ids: createdIds,
+      suppliers: supplierIds.length,
+      requirements: resolved.length,
+      ball_transaction_id: ballTxId,
+      balls_balance: balance - 1
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Quote-request status for a project — lets the Brief tab show which
+    requirements are already out for quote. */
+async function listProjectQuoteRequests(projectId) {
+  if (!projectId) throw httpErr('projectId is required', 400);
+  const r = await pool.query(
+    `SELECT qr.id, qr.item_id, qr.category_id, qr.project_category_id,
+            qr.supplier_org_id, qr.status, qr.created_at,
+            o.name AS supplier_name
+       FROM quote_requests qr
+       LEFT JOIN orgs o ON o.id = qr.supplier_org_id
+      WHERE qr.project_id = $1
+      ORDER BY qr.created_at DESC`,
+    [projectId]
+  );
+  return r.rows;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
    v1.41 SUBCATEGORY-ONLY HELPERS — kept for the drawer "✦ Suggest" link
    and the Part 3 bulk backfill.
    ───────────────────────────────────────────────────────────────────── */
@@ -996,6 +1191,8 @@ module.exports = {
   matchItems,
   addMatchToProject,
   saveSearchHint,
+  requestQuotes,
+  listProjectQuoteRequests,
   suggestSubcategory,
   backfillSubcategories
 };

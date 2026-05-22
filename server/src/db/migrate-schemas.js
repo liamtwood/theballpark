@@ -1070,6 +1070,43 @@ const migrate = async () => {
     }
     console.log('  items.approval_status column installed (v1.49k).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.50 — quote_requests: the RFQ status tracker. When an agency
+    // sends a Brief-tab requirement out for competitive quotes, one row
+    // per (requirement item × supplier) tracks where each ask stands.
+    // It sits ON TOP of existing infrastructure — it does NOT replace it:
+    //   • the conversation     → messages   (message_thread_id → the
+    //                            anchor / opening message of the thread)
+    //   • the quote line items → message_items
+    //   • the Ball spend       → balls_transactions (ONE debit per
+    //                            project/category outreach, shared by
+    //                            every quote_request in that batch)
+    // quote_requests only carries status + the links to those records.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.quote_requests (
+          id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          project_id          UUID NOT NULL REFERENCES ${schema}.projects(id) ON DELETE CASCADE,
+          project_category_id UUID REFERENCES ${schema}.project_categories(id) ON DELETE SET NULL,
+          category_id         UUID REFERENCES ${schema}.categories(id),
+          item_id             UUID REFERENCES ${schema}.items(id) ON DELETE SET NULL,
+          supplier_org_id     UUID NOT NULL REFERENCES ${schema}.orgs(id),
+          status              VARCHAR(20) NOT NULL DEFAULT 'pending'
+                                CHECK (status IN ('pending','quoted','declined','won','cancelled')),
+          message_thread_id   UUID REFERENCES ${schema}.messages(id) ON DELETE SET NULL,
+          ball_transaction_id UUID REFERENCES ${schema}.balls_transactions(id) ON DELETE SET NULL,
+          created_at          TIMESTAMPTZ DEFAULT NOW(),
+          updated_at          TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS ${schema}_quote_requests_supplier_idx
+          ON ${schema}.quote_requests (supplier_org_id, status);
+        CREATE INDEX IF NOT EXISTS ${schema}_quote_requests_project_idx
+          ON ${schema}.quote_requests (project_id);
+      `);
+    }
+    console.log('  quote_requests table installed (v1.50).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`

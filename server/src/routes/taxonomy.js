@@ -94,6 +94,22 @@ router.post('/search-hint', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── v1.50 — competitive quote outreach (RFQ, Phase 1) ──────────────────
+//   POST /request-quotes  body: { project_id, category_id,
+//     project_category_id?, requirements[], supplier_ids[], user_id? }
+//   GET  /quote-requests?projectId=...
+router.post('/request-quotes', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.requestQuotes(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+router.get('/quote-requests', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.listProjectQuoteRequests(req.query.projectId));
+  } catch (err) { next(err); }
+});
+
 // ── v1.41 — subcategory-only helpers ───────────────────────────────────
 router.post('/suggest-subcategory', async (req, res, next) => {
   try {
