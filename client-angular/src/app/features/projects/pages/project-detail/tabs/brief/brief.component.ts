@@ -159,9 +159,10 @@ type DetailView =
                       <div class="bp-b2-flabel">Budget</div>
                       <div class="bp-b2-money">
                         <span>£</span>
-                        <input type="number" min="0"
-                               [value]="ac.ballpark_budget ?? ''"
+                        <input type="text" inputmode="numeric"
+                               [value]="budgetDisplay(ac)"
                                placeholder="0"
+                               (focus)="onBudgetFocus(ac, $event)"
                                (blur)="onBudgetBlur(ac, $event)"/>
                       </div>
                     </div>
@@ -819,12 +820,28 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.briefTimers.set(pc.category_id, t);
   }
 
+  /** v1.49h — budget shown with thousand separators ("12,000") so it
+      reads consistently with the gbp-formatted costs. */
+  budgetDisplay(pc: ProjectCategory): string {
+    return pc.ballpark_budget == null
+      ? '' : Number(pc.ballpark_budget).toLocaleString('en-GB');
+  }
+
+  /** Drop the separators on focus so the number is easy to edit. */
+  onBudgetFocus(pc: ProjectCategory, ev: Event): void {
+    (ev.target as HTMLInputElement).value =
+      pc.ballpark_budget == null ? '' : String(pc.ballpark_budget);
+  }
+
   onBudgetBlur(pc: ProjectCategory, ev: Event): void {
-    const raw = (ev.target as HTMLInputElement).value.trim();
-    const next: number | null = raw === '' ? null : Number(raw);
+    const el = ev.target as HTMLInputElement;
+    const raw = el.value.replace(/[^0-9.]/g, '');
+    let next: number | null = raw === '' ? null : Number(raw);
+    if (next != null && !isFinite(next)) next = null;
     const current = pc.ballpark_budget != null ? Number(pc.ballpark_budget) : null;
-    if (next === current) return;
     pc.ballpark_budget = next ?? undefined;
+    el.value = this.budgetDisplay(pc);   // re-render in the canonical format
+    if (next === current) return;        // nothing actually changed
     this.projSvc.upsertCategory(this.pid, pc.category_id, { ballpark_budget: next }).subscribe({
       next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1000 }),
       error: () => this.msg.add({ severity: 'error', summary: 'Failed to save budget', life: 3000 })
