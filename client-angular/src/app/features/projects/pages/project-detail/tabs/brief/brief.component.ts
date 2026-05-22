@@ -55,12 +55,12 @@ type DetailView =
  *
  * Col 1  category list (the project's scoped categories)
  * Col 2  focus panel — the selected category's editable brief + budget,
- *        the "✦ Find items" action, and the AI match results
+ *        the "Find items" action, and the AI match results
  * Col 3  preview — the clicked result item OR supplier
  *
  * Categories are added through a right-side drawer of unused catalogue
- * categories. Briefs and budgets save on blur. "✦ Find items" calls the
- * v1.46 matcher; ✓ / ♡ on a result add it to the project via
+ * categories. Briefs and budgets save on blur. "Find items" calls the
+ * v1.46 matcher; select / like on a result add it to the project via
  * /taxonomy/add-match, which recomputes the category's ballpark cost.
  */
 @Component({
@@ -79,14 +79,11 @@ type DetailView =
       <div class="bp-b2">
 
         <!-- ── HEADER ── -->
+        <h2 class="bp-page-title">Brief</h2>
+        <div class="bp-page-divider"></div>
         <div class="bp-b2-head">
-          <div>
-            <h2 class="bp-b2-title">Brief</h2>
-            <div class="bp-b2-sub">Pick a category, review its brief, find items — click an item or supplier to preview it.</div>
-          </div>
-          <button class="bp-b2-addcat" type="button" (click)="addDrawerOpen = true">
-            + Add category
-          </button>
+          <p-button label="Add category" styleClass="p-button"
+                    (onClick)="addDrawerOpen = true"></p-button>
         </div>
 
         <!-- ── PROGRESS ── -->
@@ -127,9 +124,11 @@ type DetailView =
                      [title]="n + ' item' + (n === 1 ? '' : 's') + ' · ' + (pc.ballpark_cost | gbp) + ' total'">
                   {{ n }}
                 </div>
-                <button class="bp-b2-remove" type="button"
+                <button class="bp-icon-btn bp-b2-remove" type="button"
                         title="Remove category"
-                        (click)="removeCategory(pc, $event)">×</button>
+                        (click)="removeCategory(pc, $event)">
+                  <lucide-icon name="x" [size]="14"></lucide-icon>
+                </button>
               </div>
               <div *ngIf="!projectCategories.length" class="bp-b2-empty">
                 No categories yet — use <b>+ Add category</b> to scope this project.
@@ -152,7 +151,7 @@ type DetailView =
                     <div class="bp-b2-ws-name">{{ ac.category_name }}</div>
                   </div>
                   <div class="bp-b2-flabel">Brief — what suppliers quote against</div>
-                  <textarea class="bp-b2-brief"
+                  <textarea class="bp-input-edit bp-b2-brief"
                             rows="3"
                             [value]="ac.requirement_brief || ''"
                             placeholder="What you need from this category — keep it specific."
@@ -179,14 +178,14 @@ type DetailView =
                         <ng-template #noEst><small>— not found yet</small></ng-template>
                       </div>
                     </div>
-                    <button class="bp-b2-find"
-                            type="button"
-                            [class.ghost]="!!activeResult"
-                            [disabled]="findDisabled(ac)"
-                            [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
-                            (click)="findItems(ac)">
-                      {{ briefSearched(ac) ? '✓' : '✦' }} {{ findBtnLabel(ac) }}
-                    </button>
+                    <p-button class="bp-b2-find"
+                              [styleClass]="activeResult ? 'p-button-outlined' : 'p-button'"
+                              [disabled]="findDisabled(ac)"
+                              [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
+                              (onClick)="findItems(ac)">
+                      <lucide-icon [name]="briefSearched(ac) ? 'check' : 'sparkles'" [size]="14"></lucide-icon>
+                      <span>{{ findBtnLabel(ac) }}</span>
+                    </p-button>
                   </div>
                 </div>
 
@@ -194,110 +193,51 @@ type DetailView =
                 <ng-container *ngIf="activeResult as r; else findPrompt">
                   <div class="bp-b2-res">
                     <div class="bp-b2-searchln">
-                      <span class="bp-b2-spark">✦</span>
+                      <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
                       Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
                       · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
                     </div>
 
-                    <!-- v1.50 — item matches (matched + closest, one section) -->
-                    <div *ngIf="r.matched_items.length || r.closest_item">
-                      <div class="bp-b2-sech">Item matches</div>
-                      <div class="bp-b2-rec"><span class="bp-b2-spark">✦</span> {{ itemMatchRec }}</div>
-                      <ng-container>
-                        <div *ngFor="let m of r.matched_items"
-                             class="bp-b2-row"
-                             [class.active]="isDetailItem(m.item_id)"
-                             (click)="openItemDetail(m)">
-                          <div class="bp-b2-thumb"
-                               [class.bp-b2-thumb--img]="m.image_url"
-                               [style.background-image]="m.image_url ? 'url(' + m.image_url + ')' : null">
-                            <span *ngIf="!m.image_url">{{ catLetter(m.name) }}</span>
-                          </div>
-                          <div class="bp-b2-row-mid">
-                            <div class="bp-b2-row-name">{{ m.name }}</div>
-                            <div class="bp-b2-row-sub">{{ m.supplier_name }}</div>
-                          </div>
-                          <span class="bp-b2-row-price">{{ m.base_price != null ? (m.base_price | gbp) : '—' }}</span>
-                          <span class="bp-b2-score">{{ m.score }}/10</span>
-                          <div class="bp-b2-qa">
-                            <button class="bp-b2-iact" [class.on]="isItemAdded(m.item_id)"
-                                    title="Select for project"
-                                    (click)="addMatched(ac, m, 'selected', $event)">✓</button>
-                            <button class="bp-b2-iact like"
-                                    title="Add to wishlist"
-                                    (click)="addMatched(ac, m, 'liked', $event)">♡</button>
-                            <button class="bp-b2-iact"
-                                    title="Request a quote"
-                                    (click)="requestQuote(m, false, $event)">✉</button>
-                          </div>
+                    <!-- v1.53 — two-option layout: side-by-side when BOTH a
+                         match/closest item AND a proposed item exist. -->
+                    <ng-container *ngIf="(r.matched_items.length || r.closest_item) && r.proposed_item; else singleOption">
+                      <div class="bp-b2-optbars">
+                        <div class="bp-b2-optbar">Option 1 — Pick existing</div>
+                        <div class="bp-b2-optbar">Option 2 — Quote a new item</div>
+                      </div>
+                      <div class="bp-b2-optgrid">
+                        <div class="bp-b2-optcol">
+                          <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
                         </div>
-                        <div *ngIf="r.closest_item as ci"
-                             class="bp-b2-row"
-                             [class.active]="isDetailItem(ci.item_id)"
-                             (click)="openItemDetail(ci)">
-                          <div class="bp-b2-thumb"
-                               [class.bp-b2-thumb--img]="ci.image_url"
-                               [style.background-image]="ci.image_url ? 'url(' + ci.image_url + ')' : null">
-                            <span *ngIf="!ci.image_url">{{ catLetter(ci.name) }}</span>
-                          </div>
-                          <div class="bp-b2-row-mid">
-                            <div class="bp-b2-row-name">{{ ci.name }}</div>
-                            <div class="bp-b2-row-sub">{{ ci.supplier_name }} · closest fit</div>
-                          </div>
-                          <span class="bp-b2-row-price">{{ ci.base_price != null ? (ci.base_price | gbp) : '—' }}</span>
-                          <span class="bp-b2-score">{{ ci.score }}/10</span>
-                          <div class="bp-b2-qa">
-                            <button class="bp-b2-iact" [class.on]="isItemAdded(ci.item_id)"
-                                    title="Select for project"
-                                    (click)="addMatched(ac, ci, 'selected', $event)">✓</button>
-                            <button class="bp-b2-iact like"
-                                    title="Add to wishlist"
-                                    (click)="addMatched(ac, ci, 'liked', $event)">♡</button>
-                            <button class="bp-b2-iact"
-                                    title="Request a quote"
-                                    (click)="requestQuote(ci, false, $event)">✉</button>
-                          </div>
-                        </div>
-                      </ng-container>
-                    </div>
-
-                    <!-- v1.52 — new item (the AI proposal) -->
-                    <div *ngIf="r.proposed_item as p">
-                      <div class="bp-b2-sech">New item</div>
-                      <div class="bp-b2-rec"><span class="bp-b2-spark">✦</span> {{ newItemRec }}</div>
-                      <div class="bp-b2-row proposed"
-                           [class.active]="detail?.kind === 'proposed'"
-                           (click)="openProposedDetail(p)">
-                        <div class="bp-b2-thumb">🤖</div>
-                        <div class="bp-b2-row-mid">
-                          <div class="bp-b2-row-name">{{ p.name }}</div>
-                          <div class="bp-b2-row-sub">→ {{ p.supplier_name }}</div>
-                        </div>
-                        <span class="bp-b2-row-price">{{ p.estimated_price | gbp }}</span>
-                        <span class="bp-b2-score">{{ p.confidence }}/10</span>
-                        <div class="bp-b2-qa">
-                          <button class="bp-b2-iact" [class.on]="addedProposed.has(ac.category_id)"
-                                  title="Add the proposed item"
-                                  (click)="addProposed(ac, p, 'selected', $event)">✓</button>
-                          <button class="bp-b2-iact like"
-                                  title="Add to wishlist"
-                                  (click)="addProposed(ac, p, 'liked', $event)">♡</button>
-                          <button class="bp-b2-iact"
-                                  title="Request a quote"
-                                  (click)="requestQuote(p, true, $event)">✉</button>
+                        <div class="bp-b2-optcol">
+                          <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
                         </div>
                       </div>
-                    </div>
+                    </ng-container>
+
+                    <!-- single-option fallback — only one side has content -->
+                    <ng-template #singleOption>
+                      <div *ngIf="r.matched_items.length || r.closest_item">
+                        <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
+                      </div>
+                      <div *ngIf="r.proposed_item">
+                        <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                      </div>
+                    </ng-template>
 
                     <!-- hint -->
                     <div class="bp-b2-hint">
-                      <label>💬 I would have looked for…</label>
+                      <label>
+                        <lucide-icon name="message-square" [size]="14"></lucide-icon>
+                        I would have looked for…
+                      </label>
                       <div class="bp-b2-hint-row">
                         <input type="text"
                                [value]="hintDrafts.get(ac.category_id) || ''"
                                placeholder="search terms the AI missed"
                                (input)="onHintInput(ac, $event)"/>
-                        <button type="button" (click)="submitHint(ac)">Submit</button>
+                        <p-button label="Submit" styleClass="p-button"
+                                  (onClick)="submitHint(ac)"></p-button>
                       </div>
                     </div>
                   </div>
@@ -305,17 +245,19 @@ type DetailView =
 
                 <ng-template #findPrompt>
                   <div class="bp-b2-prompt">
-                    <div class="bp-b2-prompt-spark">✦</div>
-                    Click <b>✦ Find items</b> to match this brief against the catalogue —
-                    scored items, ranked suppliers, and a proposed item if nothing fits.
+                    <lucide-icon class="bp-b2-prompt-spark" name="sparkles" [size]="22"></lucide-icon>
+                    <div>
+                      Click <b>Find items</b> to match this brief against the catalogue —
+                      scored items, ranked suppliers, and a proposed item if nothing fits.
+                    </div>
                   </div>
                 </ng-template>
 
               </ng-container>
               <ng-template #noCat>
                 <div class="bp-b2-prompt">
-                  <div class="bp-b2-prompt-spark">✦</div>
-                  Select a category on the left to review its brief and find items.
+                  <lucide-icon class="bp-b2-prompt-spark" name="sparkles" [size]="22"></lucide-icon>
+                  <div>Select a category on the left to review its brief and find items.</div>
                 </div>
               </ng-template>
             </div>
@@ -355,22 +297,23 @@ type DetailView =
                       <div class="k">items in this category</div>
                     </div>
                     <div class="bp-b2-d-box" *ngIf="detailSupplier!.fit_reason">
-                      <div class="l">✦ Why this supplier</div>
+                      <div class="l">
+                        <lucide-icon name="sparkles" [size]="14"></lucide-icon> Why this supplier
+                      </div>
                       <div class="r">{{ detailSupplier!.fit_reason }}</div>
                     </div>
                     <div class="bp-b2-d-desc" *ngIf="detailSupplier!.description">
                       {{ detailSupplier!.description }}
                     </div>
-                    <button class="bp-b2-d-store" type="button"
-                            (click)="viewStore(detailSupplier!.supplier_id)">
-                      View store →
-                    </button>
+                    <p-button label="View store" styleClass="p-button-outlined bp-b2-d-store"
+                              icon="pi pi-arrow-right" iconPos="right"
+                              (onClick)="viewStore(detailSupplier!.supplier_id)"></p-button>
                   </div>
                 </ng-container>
 
                 <!-- empty -->
                 <div *ngSwitchDefault class="bp-b2-d-empty">
-                  <div class="big">◳</div>
+                  <lucide-icon class="big" name="image" [size]="24"></lucide-icon>
                   <div class="t">Nothing selected</div>
                   <div class="s">Click an item or a supplier in the results to preview it here.</div>
                 </div>
@@ -391,7 +334,8 @@ type DetailView =
            [style.background-image]="d.image_url && d.image_display !== 'contain' ? 'url(' + d.image_url + ')' : null">
         <img *ngIf="d.image_url && d.image_display === 'contain'"
              [src]="d.image_url" [alt]="d.name" class="bp-b2-d-hero-img"/>
-        <span *ngIf="!d.image_url">{{ d.proposed ? '🤖' : catLetter(d.name) }}</span>
+        <lucide-icon *ngIf="!d.image_url && d.proposed" name="bot" [size]="40"></lucide-icon>
+        <span *ngIf="!d.image_url && !d.proposed">{{ catLetter(d.name) }}</span>
       </div>
       <div class="bp-b2-d-body">
         <div class="bp-b2-d-eyebrow">
@@ -404,16 +348,137 @@ type DetailView =
           <span class="bp-b2-d-score">{{ d.proposed ? 'Confidence ' : '' }}{{ d.score }}/10</span>
         </div>
         <div class="bp-b2-d-box" *ngIf="d.reason">
-          <div class="l">✦ Why this matched</div>
+          <div class="l">
+            <lucide-icon name="sparkles" [size]="14"></lucide-icon> Why this matched
+          </div>
           <div class="r">{{ d.reason }}</div>
         </div>
         <div class="bp-b2-d-desc" *ngIf="d.description">{{ d.description }}</div>
         <div class="bp-b2-d-actions">
-          <button class="bp-b2-d-sel" [class.on]="d.added" type="button"
-                  (click)="addFromDetail('selected')">
-            {{ d.added ? '✓ Selected' : '✓ Select for project' }}
+          <p-button [label]="d.added ? 'Selected' : 'Select for project'"
+                    icon="pi pi-check"
+                    styleClass="p-button bp-b2-d-sel"
+                    (onClick)="addFromDetail('selected')"></p-button>
+          <button class="bp-icon-btn bp-b2-d-like" type="button"
+                  title="Add to wishlist"
+                  (click)="addFromDetail('liked')">
+            <lucide-icon name="heart" [size]="16"></lucide-icon>
           </button>
-          <button class="bp-b2-d-like" type="button" (click)="addFromDetail('liked')">♡</button>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Item matches section (Option 1) — matched + closest, one section -->
+    <ng-template #itemMatches let-r let-ac="ac">
+      <div class="bp-b2-sech">Item matches</div>
+      <div class="bp-b2-rec">
+        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
+        {{ itemMatchRec }}
+      </div>
+      <div *ngFor="let m of r.matched_items"
+           class="bp-b2-row"
+           [class.active]="isDetailItem(m.item_id)"
+           (click)="openItemDetail(m)">
+        <div class="bp-b2-thumb"
+             [class.bp-b2-thumb--img]="m.image_url"
+             [style.background-image]="m.image_url ? 'url(' + m.image_url + ')' : null">
+          <span *ngIf="!m.image_url">{{ catLetter(m.name) }}</span>
+        </div>
+        <div class="bp-b2-row-mid">
+          <div class="bp-b2-row-name">{{ m.name }}</div>
+          <div class="bp-b2-row-sub">{{ m.supplier_name }}</div>
+        </div>
+        <span class="bp-b2-row-price">{{ m.base_price != null ? (m.base_price | gbp) : '—' }}</span>
+        <span class="bp-b2-score">{{ m.score }}/10</span>
+        <div class="bp-b2-qa">
+          <button class="bp-icon-btn bp-b2-iact" [class.on]="isItemAdded(m.item_id)"
+                  title="Select for project"
+                  (click)="addMatched(ac, m, 'selected', $event)">
+            <lucide-icon name="check" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact like"
+                  title="Add to wishlist"
+                  (click)="addMatched(ac, m, 'liked', $event)">
+            <lucide-icon name="heart" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact"
+                  title="Request a quote"
+                  (click)="requestQuote(m, false, $event)">
+            <lucide-icon name="mail" [size]="14"></lucide-icon>
+          </button>
+        </div>
+      </div>
+      <div *ngIf="r.closest_item as ci"
+           class="bp-b2-row"
+           [class.active]="isDetailItem(ci.item_id)"
+           (click)="openItemDetail(ci)">
+        <div class="bp-b2-thumb"
+             [class.bp-b2-thumb--img]="ci.image_url"
+             [style.background-image]="ci.image_url ? 'url(' + ci.image_url + ')' : null">
+          <span *ngIf="!ci.image_url">{{ catLetter(ci.name) }}</span>
+        </div>
+        <div class="bp-b2-row-mid">
+          <div class="bp-b2-row-name">{{ ci.name }}</div>
+          <div class="bp-b2-row-sub">{{ ci.supplier_name }} · closest fit</div>
+        </div>
+        <span class="bp-b2-row-price">{{ ci.base_price != null ? (ci.base_price | gbp) : '—' }}</span>
+        <span class="bp-b2-score">{{ ci.score }}/10</span>
+        <div class="bp-b2-qa">
+          <button class="bp-icon-btn bp-b2-iact" [class.on]="isItemAdded(ci.item_id)"
+                  title="Select for project"
+                  (click)="addMatched(ac, ci, 'selected', $event)">
+            <lucide-icon name="check" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact like"
+                  title="Add to wishlist"
+                  (click)="addMatched(ac, ci, 'liked', $event)">
+            <lucide-icon name="heart" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact"
+                  title="Request a quote"
+                  (click)="requestQuote(ci, false, $event)">
+            <lucide-icon name="mail" [size]="14"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- New item section (Option 2) — the AI proposal -->
+    <ng-template #newItem let-r let-ac="ac">
+      <div class="bp-b2-sech">New item</div>
+      <div class="bp-b2-rec">
+        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
+        {{ newItemRec }}
+      </div>
+      <div *ngIf="r.proposed_item as p"
+           class="bp-b2-row proposed"
+           [class.active]="detail?.kind === 'proposed'"
+           (click)="openProposedDetail(p)">
+        <div class="bp-b2-thumb">
+          <lucide-icon name="bot" [size]="16"></lucide-icon>
+        </div>
+        <div class="bp-b2-row-mid">
+          <div class="bp-b2-row-name">{{ p.name }}</div>
+          <div class="bp-b2-row-sub">→ {{ p.supplier_name }}</div>
+        </div>
+        <span class="bp-b2-row-price">{{ p.estimated_price | gbp }}</span>
+        <span class="bp-b2-score">{{ p.confidence }}/10</span>
+        <div class="bp-b2-qa">
+          <button class="bp-icon-btn bp-b2-iact" [class.on]="addedProposed.has(ac.category_id)"
+                  title="Add the proposed item"
+                  (click)="addProposed(ac, p, 'selected', $event)">
+            <lucide-icon name="check" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact like"
+                  title="Add to wishlist"
+                  (click)="addProposed(ac, p, 'liked', $event)">
+            <lucide-icon name="heart" [size]="14"></lucide-icon>
+          </button>
+          <button class="bp-icon-btn bp-b2-iact"
+                  title="Request a quote"
+                  (click)="requestQuote(p, true, $event)">
+            <lucide-icon name="mail" [size]="14"></lucide-icon>
+          </button>
         </div>
       </div>
     </ng-template>
@@ -423,24 +488,27 @@ type DetailView =
                styleClass="bp-b2-drawer" [showCloseIcon]="false">
       <div class="bp-b2-dw-head">
         <div>
-          <div class="bp-b2-dw-label">SCOPE</div>
+          <div class="bp-drawer-label">Scope</div>
           <div class="bp-b2-dw-title">Add a category</div>
         </div>
-        <button class="bp-b2-dw-x" type="button" (click)="addDrawerOpen = false">×</button>
+        <button class="bp-icon-btn" type="button" (click)="addDrawerOpen = false">
+          <lucide-icon name="x" [size]="16"></lucide-icon>
+        </button>
       </div>
       <div class="bp-b2-dw-body">
         <div class="bp-b2-dw-hint">
           Categories already in the project are hidden. Click one to add it.
         </div>
-        <button *ngFor="let c of unusedCategories"
-                type="button" class="bp-b2-dw-cat"
-                (click)="addCategory(c)">
+        <div *ngFor="let c of unusedCategories"
+             role="button" tabindex="0" class="bp-b2-dw-cat"
+             (click)="addCategory(c)"
+             (keydown.enter)="addCategory(c)">
           <div class="bp-b2-ic">
             <lucide-icon [name]="c.icon_name || 'layers'" [size]="14"></lucide-icon>
           </div>
           <span class="bp-b2-dw-cat-name">{{ c.name }}</span>
-          <span class="bp-b2-dw-plus">+</span>
-        </button>
+          <lucide-icon class="bp-b2-dw-plus" name="plus" [size]="16"></lucide-icon>
+        </div>
         <div *ngIf="!unusedCategories.length" class="bp-b2-empty">
           Every catalogue category is already in this project.
         </div>
@@ -453,220 +521,214 @@ type DetailView =
     :host { display: block; }
     .bp-b2 { padding: 24px var(--section-pad, 40px) 60px; }
 
+    /* shared uppercase-eyebrow recipe — FIX 7 */
+    .bp-b2-colhdr, .bp-b2-flabel, .bp-b2-sech, .bp-b2-optbar {
+      font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--color-text-muted); }
+
     /* header */
-    .bp-b2-head { display: flex; align-items: flex-end; justify-content: space-between; }
-    .bp-b2-title { font-family: var(--font-display); font-size: 30px; font-weight: 400;
-      letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }
-    .bp-b2-sub { font-size: 12.5px; color: var(--color-text-secondary); margin-top: 3px; }
-    .bp-b2-addcat { display: inline-flex; align-items: center; gap: 6px;
-      font-family: var(--font-body); font-size: 12px; font-weight: 600;
-      color: var(--theme-accent); background: var(--color-surface);
-      border: 0.5px solid var(--theme-border); padding: 7px 13px;
-      border-radius: 7px; cursor: pointer; transition: background 0.15s; }
-    .bp-b2-addcat:hover { background: var(--theme-bg); }
+    .bp-b2-head { display: flex; align-items: flex-end; justify-content: flex-end; }
 
     /* progress */
     .bp-b2-progress { margin: 14px 0 18px; }
-    .bp-b2-pbar { height: 5px; background: var(--color-border); border-radius: 3px; overflow: hidden; }
+    .bp-b2-pbar { height: 5px; background: var(--color-border);
+      border-radius: var(--radius-input); overflow: hidden; }
     .bp-b2-pfill { height: 100%; background: var(--theme-accent); transition: width 0.3s; }
-    .bp-b2-plbl { display: flex; justify-content: space-between; font-size: 11px;
+    .bp-b2-plbl { display: flex; justify-content: space-between; font-size: var(--text-sm);
       color: var(--color-text-muted); margin-top: 6px; }
     .bp-b2-plbl b { color: var(--color-text-secondary); font-weight: 600; }
 
     /* 3-col */
     .bp-b2-panes { display: grid; grid-template-columns: 236px minmax(0,1fr) 340px;
       gap: 14px; align-items: start; }
-    .bp-b2-colhdr { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--color-text-muted); padding: 0 4px 6px; }
+    .bp-b2-colhdr { padding: 0 4px 6px; }
 
     /* col 1 */
     .bp-b2-catlist { display: flex; flex-direction: column; gap: 5px; }
     .bp-b2-card { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-left: 3px solid transparent;
-      border-radius: 8px; padding: 9px 11px; cursor: pointer; transition: all 0.12s; }
+      border-radius: var(--radius-button); padding: 12px 14px; cursor: pointer; transition: all 0.12s; }
     .bp-b2-card:hover { border-color: var(--theme-border); }
     .bp-b2-card:hover .bp-b2-remove { opacity: 1; }
-    .bp-b2-card.active { border-left-color: var(--theme-accent);
-      box-shadow: 0 3px 12px rgba(0,0,0,0.07); }
+    .bp-b2-card.active { border-left: 3px solid var(--theme-accent);
+      box-shadow: var(--shadow-sm); }
     .bp-b2-ic { width: 26px; height: 26px; border-radius: 50%; background: var(--theme-bg);
       color: var(--theme-accent); display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: 12px; font-weight: 600; flex-shrink: 0; }
-    .bp-b2-card.active .bp-b2-ic { background: var(--theme-accent); color: #fff; }
+      font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
+    .bp-b2-card.active .bp-b2-ic { background: var(--theme-accent); color: var(--color-surface); }
     .bp-b2-card-mid { flex: 1; min-width: 0; }
-    .bp-b2-card-name { font-size: 12.5px; font-weight: 600; line-height: 1.25;
+    .bp-b2-card-name { font-size: var(--text-sm); font-weight: 600; line-height: 1.25;
       color: var(--color-text-primary); }
-    .bp-b2-card-bud { font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
-    .bp-b2-count { min-width: 19px; height: 19px; border-radius: 10px; background: var(--theme-accent);
-      color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center;
+    .bp-b2-card-bud { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 1px; }
+    .bp-b2-count { min-width: 19px; height: 19px; border-radius: var(--radius-button);
+      background: var(--theme-accent);
+      color: var(--color-surface); font-size: var(--text-xs); font-weight: 700;
+      display: flex; align-items: center;
       justify-content: center; padding: 0 5px; flex-shrink: 0; }
-    .bp-b2-remove { width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
-      border: none; background: none; color: var(--color-text-muted); cursor: pointer;
-      font-size: 15px; line-height: 1; opacity: 0; transition: opacity 0.12s, color 0.12s; }
-    .bp-b2-remove:hover { color: var(--color-danger); }
+    .bp-b2-remove { flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; }
+    .bp-b2-remove:hover { color: var(--color-danger); background: none; }
 
     /* col 2 */
     .bp-b2-panel { background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 11px; overflow: hidden; min-height: 540px; }
+      border-radius: var(--radius-card); overflow: hidden; min-height: 540px; }
     .bp-b2-ws { padding: 15px 17px 14px; border-bottom: 0.5px solid var(--color-border); }
     .bp-b2-ws-top { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
     .bp-b2-ws-ic { width: 30px; height: 30px; border-radius: 50%; background: var(--theme-accent);
-      color: #fff; display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: 13px; font-weight: 600; }
-    .bp-b2-ws-name { font-family: var(--font-display); font-size: 17px; color: var(--color-text-primary); }
-    .bp-b2-flabel { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 5px; }
-    .bp-b2-brief { width: 100%; font-family: var(--font-body); font-size: 13px; line-height: 1.6;
-      color: var(--color-text-primary); background: var(--theme-bg);
-      border: 0.5px solid var(--color-border); border-radius: 8px; padding: 10px 12px;
+      color: var(--color-surface); display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; }
+    .bp-b2-ws-name { font-family: var(--font-display); font-size: var(--text-lg);
+      color: var(--color-text-primary); }
+    .bp-b2-flabel { margin-bottom: 5px; }
+    .bp-b2-brief { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.6; color: var(--color-text-primary);
+      border-radius: var(--radius-button); padding: 10px 12px;
       resize: vertical; outline: none; }
-    .bp-b2-brief:focus { border-color: var(--theme-accent); background: var(--color-surface); }
     .bp-b2-ws-row { display: flex; align-items: flex-end; gap: 14px; margin-top: 11px; }
     .bp-b2-money { display: flex; align-items: center; gap: 3px; background: var(--color-surface);
-      border: 0.5px solid var(--color-border); border-radius: 6px; padding: 5px 9px; width: 118px; }
-    .bp-b2-money span { color: var(--color-text-muted); font-size: 12.5px; }
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-input);
+      padding: 5px 9px; width: 118px; }
+    .bp-b2-money span { color: var(--color-text-muted); font-size: var(--text-sm); }
     .bp-b2-money input { border: none; outline: none; font-family: var(--font-body);
-      font-size: 12.5px; width: 100%; background: transparent; color: var(--color-text-primary); }
-    .bp-b2-est { font-size: 13px; font-weight: 600; padding: 5px 0; color: var(--color-text-primary); }
+      font-size: var(--text-sm); width: 100%; background: transparent; color: var(--color-text-primary); }
+    .bp-b2-est { font-size: var(--text-base); font-weight: 600; padding: 5px 0;
+      color: var(--color-text-primary); }
     .bp-b2-est small { color: var(--color-text-muted); font-weight: 500; }
-    .bp-b2-find { margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
-      font-family: var(--font-body); font-size: 12px; font-weight: 600; color: #fff;
-      background: var(--theme-accent); border: none; padding: 8px 15px; border-radius: 8px;
-      cursor: pointer; transition: filter 0.15s; }
-    .bp-b2-find:hover:not(:disabled) { filter: brightness(1.07); }
-    .bp-b2-find:disabled { opacity: 0.55; cursor: default; }
-    .bp-b2-find.ghost { background: var(--color-surface); color: var(--theme-accent);
-      border: 0.5px solid var(--theme-border); }
+    .bp-b2-find { margin-left: auto; }
+    .bp-b2-find lucide-icon { display: inline-flex; }
 
     .bp-b2-res { padding: 13px 17px 18px; display: flex; flex-direction: column; gap: 14px; }
-    .bp-b2-prompt { text-align: center; padding: 60px 32px; color: var(--color-text-muted);
-      font-size: 12.5px; line-height: 1.6; }
-    .bp-b2-prompt-spark { font-size: 22px; color: var(--theme-accent); margin-bottom: 6px; }
-    .bp-b2-searchln { font-size: 10.5px; color: var(--color-text-muted); line-height: 1.5; }
+    .bp-b2-prompt { display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 60px 32px; color: var(--color-text-muted);
+      font-size: var(--text-sm); line-height: 1.6; gap: 8px; }
+    .bp-b2-prompt-spark { color: var(--theme-accent); }
+    .bp-b2-searchln { display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.5; }
     .bp-b2-searchln em { font-style: normal; font-weight: 600; color: var(--color-text-secondary); }
-    .bp-b2-spark { color: var(--theme-accent); }
-    .bp-b2-sech { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 7px; }
-    .bp-b2-dim { color: var(--color-text-muted); }
-    .bp-b2-emptyln { font-size: 11px; color: var(--color-text-muted); font-style: italic; }
+    .bp-b2-spark { color: var(--theme-accent); display: inline-flex; vertical-align: middle; }
+    .bp-b2-sech { margin-bottom: 7px; }
 
-    .bp-b2-row { display: flex; align-items: center; gap: 9px; border: 0.5px solid var(--color-border);
-      border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; }
+    /* two-option layout — FIX / TWO-OPTION LAYOUT */
+    .bp-b2-optbars { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .bp-b2-optbar { background: var(--theme-bg); color: var(--color-text-primary);
+      padding: 9px 14px; border-radius: var(--radius-button) var(--radius-button) 0 0; }
+    .bp-b2-optgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      margin-top: -6px; }
+    .bp-b2-optcol { border-top: 0.5px solid var(--color-border); padding-top: 12px; }
+
+    .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
+      padding: 12px 14px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; }
     .bp-b2-row:hover { border-color: var(--theme-border); }
-    .bp-b2-row.active { border-color: var(--theme-accent); background: var(--theme-bg); }
-    .bp-b2-row.proposed { border-style: dashed; border-color: var(--theme-accent); background: var(--theme-bg); }
-    .bp-b2-thumb { width: 34px; height: 34px; border-radius: 6px; flex-shrink: 0; background: var(--theme-bg);
+    .bp-b2-row.active { border-left: 3px solid var(--theme-accent); box-shadow: var(--shadow-sm); }
+    .bp-b2-row.proposed { border-style: dashed; border-color: var(--theme-accent);
+      background: var(--theme-bg); }
+    .bp-b2-thumb { width: 34px; height: 34px; border-radius: var(--radius-input); flex-shrink: 0;
+      background: var(--theme-bg);
       display: flex; align-items: center; justify-content: center; color: var(--theme-accent);
-      font-family: var(--font-display); font-size: 13px; font-weight: 600; overflow: hidden; }
+      font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; overflow: hidden; }
     .bp-b2-thumb--img { background-size: cover; background-position: center; }
-    .bp-b2-rec { font-size: 11px; color: var(--color-text-secondary); line-height: 1.55;
+    .bp-b2-rec { display: flex; align-items: flex-start; gap: 4px;
+      font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.55;
       margin: -2px 0 10px; }
     .bp-b2-row-mid { flex: 1; min-width: 0; }
-    .bp-b2-row-name { font-size: 12.5px; font-weight: 600; line-height: 1.25;
+    .bp-b2-row-name { font-size: var(--text-sm); font-weight: 600; line-height: 1.25;
       color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bp-b2-row-sub { font-size: 10px; color: var(--color-text-muted); margin-top: 1px;
+    .bp-b2-row-sub { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 1px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bp-b2-row-price { font-size: 12px; font-weight: 600; flex-shrink: 0; color: var(--color-text-primary); }
-    .bp-b2-score { font-size: 9.5px; font-weight: 700; color: var(--theme-accent);
-      background: var(--theme-bg); border-radius: 10px; padding: 1px 6px; flex-shrink: 0; }
-    .bp-b2-star { color: var(--theme-accent); margin-right: 4px; }
-    .bp-b2-chev { color: var(--color-text-muted); font-size: 13px; flex-shrink: 0; }
+    .bp-b2-row-price { font-size: var(--text-sm); font-weight: 600; flex-shrink: 0;
+      color: var(--color-text-primary); }
+    .bp-b2-score { font-size: var(--text-xs); font-weight: 700; color: var(--theme-accent);
+      background: var(--theme-bg); border-radius: var(--radius-pill); padding: 1px 6px; flex-shrink: 0; }
     .bp-b2-qa { display: flex; gap: 4px; flex-shrink: 0; }
-    .bp-b2-iact { width: 26px; height: 26px; border-radius: 6px; border: 0.5px solid var(--color-border);
-      background: var(--color-surface); cursor: pointer; display: flex; align-items: center;
-      justify-content: center; font-size: 12px; color: var(--color-text-muted); transition: all 0.12s; }
-    .bp-b2-iact:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-b2-iact.on { background: var(--theme-accent); border-color: var(--theme-accent); color: #fff; }
-    .bp-b2-iact.like:hover { border-color: #E11D48; color: #E11D48; }
+    .bp-b2-iact.on { color: var(--theme-accent); }
+    .bp-b2-iact.like:hover { color: var(--color-danger); background: var(--theme-bg); }
 
     .bp-b2-hint { border-top: 0.5px solid var(--color-border); padding-top: 11px; }
-    .bp-b2-hint label { font-size: 10.5px; color: var(--color-text-secondary);
-      display: block; margin-bottom: 5px; }
+    .bp-b2-hint label { display: flex; align-items: center; gap: 4px;
+      font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 5px; }
     .bp-b2-hint-row { display: flex; gap: 6px; }
-    .bp-b2-hint-row input { flex: 1; min-width: 0; font-family: var(--font-body); font-size: 11px;
-      padding: 6px 8px; border: 0.5px solid var(--color-border); border-radius: 6px; outline: none; }
+    .bp-b2-hint-row input { flex: 1; min-width: 0; font-family: var(--font-body);
+      font-size: var(--text-sm);
+      padding: 6px 8px; border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input); outline: none; }
     .bp-b2-hint-row input:focus { border-color: var(--theme-accent); }
-    .bp-b2-hint-row button { font-family: var(--font-body); font-size: 10.5px; font-weight: 600;
-      padding: 6px 11px; border-radius: 6px; background: var(--color-surface);
-      color: var(--theme-accent); border: 0.5px solid var(--theme-border); cursor: pointer; }
 
     /* col 3 */
     .bp-b2-detail { background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 11px; overflow: hidden; position: sticky; top: 16px; }
+      border-radius: var(--radius-card); overflow: hidden; position: sticky; top: 16px; }
     .bp-b2-d-empty { display: flex; flex-direction: column; align-items: center;
       justify-content: center; text-align: center; padding: 110px 30px; gap: 7px; }
-    .bp-b2-d-empty .big { font-size: 24px; color: var(--color-text-muted); }
-    .bp-b2-d-empty .t { font-family: var(--font-display); font-size: 15px; color: var(--color-text-primary); }
-    .bp-b2-d-empty .s { font-size: 11.5px; color: var(--color-text-muted); max-width: 210px; line-height: 1.5; }
+    .bp-b2-d-empty .big { color: var(--color-text-muted); }
+    .bp-b2-d-empty .t { font-family: var(--font-display); font-size: var(--text-lg);
+      color: var(--color-text-primary); }
+    .bp-b2-d-empty .s { font-size: var(--text-sm); color: var(--color-text-muted);
+      max-width: 210px; line-height: 1.5; }
     .bp-b2-d-hero { height: 144px; display: flex; align-items: center; justify-content: center;
-      color: #fff; font-family: var(--font-display); font-size: 40px; font-weight: 600;
+      color: var(--color-surface); font-family: var(--font-display);
+      font-size: var(--text-2xl); font-weight: 600;
       background: linear-gradient(150deg, var(--theme-accent), rgba(0,0,0,0.55));
       background-size: cover; background-position: center; }
-    .bp-b2-d-hero.sup { font-size: 28px; letter-spacing: 0.04em; }
+    .bp-b2-d-hero.sup { letter-spacing: 0.04em; }
     .bp-b2-d-hero.is-logo { background: var(--theme-bg); }
     .bp-b2-d-hero-img { max-width: 76%; max-height: 76%; object-fit: contain; }
     .bp-b2-d-body { padding: 14px 16px; }
-    .bp-b2-d-eyebrow { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+    .bp-b2-d-eyebrow { font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--theme-accent); margin-bottom: 4px; }
-    .bp-b2-d-name { font-family: var(--font-display); font-size: 18px; line-height: 1.25;
+    .bp-b2-d-name { font-family: var(--font-display); font-size: var(--text-xl); line-height: 1.25;
       color: var(--color-text-primary); }
-    .bp-b2-d-sub { font-size: 11.5px; color: var(--color-text-secondary); margin-top: 3px; }
+    .bp-b2-d-sub { font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 3px; }
     .bp-b2-d-pricerow { display: flex; align-items: center; gap: 10px; margin: 11px 0;
       padding: 10px 0; border-top: 0.5px solid var(--color-border);
       border-bottom: 0.5px solid var(--color-border); }
-    .bp-b2-d-price { font-family: var(--font-display); font-size: 22px; color: var(--color-text-primary); }
-    .bp-b2-d-score { font-size: 10px; font-weight: 700; color: var(--theme-accent);
-      background: var(--theme-bg); border-radius: 10px; padding: 2px 9px; }
+    .bp-b2-d-price { font-family: var(--font-display); font-size: var(--text-2xl);
+      color: var(--color-text-primary); }
+    .bp-b2-d-score { font-size: var(--text-xs); font-weight: 700; color: var(--theme-accent);
+      background: var(--theme-bg); border-radius: var(--radius-pill); padding: 2px 9px; }
     .bp-b2-d-stat { display: flex; gap: 6px; align-items: baseline; margin: 11px 0; }
-    .bp-b2-d-stat .n { font-family: var(--font-display); font-size: 20px; color: var(--color-text-primary); }
-    .bp-b2-d-stat .k { font-size: 11px; color: var(--color-text-muted); }
+    .bp-b2-d-stat .n { font-family: var(--font-display); font-size: var(--text-2xl);
+      color: var(--color-text-primary); }
+    .bp-b2-d-stat .k { font-size: var(--text-sm); color: var(--color-text-muted); }
     .bp-b2-d-box { background: var(--theme-bg); border: 0.5px solid var(--theme-border);
-      border-radius: 8px; padding: 9px 11px; margin-bottom: 11px; }
-    .bp-b2-d-box .l { font-size: 9px; font-weight: 700; letter-spacing: 0.07em;
+      border-radius: var(--radius-button); padding: 9px 11px; margin-bottom: 11px; }
+    .bp-b2-d-box .l { display: flex; align-items: center; gap: 4px;
+      font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.07em;
       text-transform: uppercase; color: var(--theme-accent); margin-bottom: 3px; }
-    .bp-b2-d-box .r { font-size: 11.5px; color: var(--color-text-secondary); line-height: 1.5; }
-    .bp-b2-d-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 13px; }
+    .bp-b2-d-box .r { font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.5; }
+    .bp-b2-d-desc { font-size: var(--text-sm); color: var(--color-text-secondary);
+      line-height: 1.6; margin-bottom: 13px; }
     .bp-b2-d-actions { display: flex; gap: 8px; }
-    .bp-b2-d-sel { flex: 1; font-family: var(--font-body); font-size: 12.5px; font-weight: 600;
-      color: #fff; background: var(--theme-accent); border: none; padding: 10px;
-      border-radius: 8px; cursor: pointer; }
-    .bp-b2-d-sel.on { filter: brightness(0.9); }
-    .bp-b2-d-like { width: 42px; font-size: 15px; background: var(--color-surface);
-      border: 0.5px solid var(--color-border); border-radius: 8px; cursor: pointer;
-      color: var(--color-text-muted); }
-    .bp-b2-d-like:hover { color: #E11D48; border-color: #E11D48; }
-    .bp-b2-d-store { width: 100%; font-family: var(--font-body); font-size: 12.5px; font-weight: 600;
-      color: var(--theme-accent); background: var(--color-surface);
-      border: 0.5px solid var(--theme-border); padding: 10px; border-radius: 8px; cursor: pointer; }
-    .bp-b2-d-store:hover { background: var(--theme-bg); }
+    .bp-b2-d-sel { flex: 1; }
+    .bp-b2-d-like { width: 42px; height: auto; align-self: stretch;
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-button); }
+    .bp-b2-d-like:hover { color: var(--color-danger); }
+    .bp-b2-d-store { width: 100%; }
 
-    .bp-b2-empty { font-size: 12px; color: var(--color-text-muted); font-style: italic;
+    .bp-b2-empty { font-size: var(--text-sm); color: var(--color-text-muted); font-style: italic;
       text-align: center; padding: 22px 14px; border: 0.5px dashed var(--color-border);
-      border-radius: 8px; }
+      border-radius: var(--radius-button); }
 
     /* add-category drawer */
     .bp-b2-dw-head { display: flex; align-items: flex-start; justify-content: space-between;
       padding: 16px 18px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-b2-dw-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-      color: var(--theme-accent); }
-    .bp-b2-dw-title { font-family: var(--font-display); font-size: 19px; color: var(--color-text-primary);
-      margin-top: 2px; }
-    .bp-b2-dw-x { background: none; border: none; font-size: 20px; line-height: 1; cursor: pointer;
-      color: var(--color-text-muted); }
+    .bp-b2-dw-title { font-family: var(--font-display); font-size: var(--text-xl);
+      color: var(--color-text-primary); margin-top: 2px; }
     .bp-b2-dw-body { padding: 14px 18px; }
-    .bp-b2-dw-hint { font-size: 11.5px; color: var(--color-text-muted); line-height: 1.5;
+    .bp-b2-dw-hint { font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.5;
       margin-bottom: 12px; }
     .bp-b2-dw-cat { display: flex; align-items: center; gap: 10px; width: 100%;
       background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: 8px; padding: 9px 11px; margin-bottom: 6px; cursor: pointer;
+      border-radius: var(--radius-button); padding: 12px 14px; margin-bottom: 6px; cursor: pointer;
       font-family: var(--font-body); transition: all 0.12s; }
-    .bp-b2-dw-cat:hover { border-color: var(--theme-accent); background: var(--theme-bg); }
-    .bp-b2-dw-cat-name { flex: 1; text-align: left; font-size: 13px; font-weight: 600;
+    .bp-b2-dw-cat:hover { border-color: var(--theme-border); }
+    .bp-b2-dw-cat-name { flex: 1; text-align: left; font-size: var(--text-base); font-weight: 600;
       color: var(--color-text-primary); }
-    .bp-b2-dw-plus { font-size: 16px; font-weight: 700; color: var(--theme-accent); }
+    .bp-b2-dw-plus { color: var(--theme-accent); display: inline-flex; }
 
     @media (max-width: 1000px) {
       .bp-b2-panes { grid-template-columns: 1fr; }
       .bp-b2-detail { position: static; }
+      .bp-b2-optbars, .bp-b2-optgrid { grid-template-columns: 1fr; }
+      .bp-b2-optgrid { margin-top: 0; }
     }
   `]
 })
@@ -844,7 +906,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     const t = setTimeout(() => {
       this.briefTimers.delete(pc.category_id);
       this.projSvc.upsertCategory(this.pid, pc.category_id, { requirement_brief: value }).subscribe({
-        next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1000 }),
+        next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
         error: () => this.msg.add({ severity: 'error', summary: 'Failed to save brief', life: 3000 })
       });
     }, 700);
@@ -874,7 +936,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     el.value = this.budgetDisplay(pc);   // re-render in the canonical format
     if (next === current) return;        // nothing actually changed
     this.projSvc.upsertCategory(this.pid, pc.category_id, { ballpark_budget: next }).subscribe({
-      next: () => this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1000 }),
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
       error: () => this.msg.add({ severity: 'error', summary: 'Failed to save budget', life: 3000 })
     });
   }
@@ -975,7 +1037,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     if (supplierId) this.router.navigate(['/suppliers', supplierId]);
   }
 
-  /** ✓ / ♡ inside the col-3 detail panel. */
+  /** Select / like inside the col-3 detail panel. */
   addFromDetail(stype: 'selected' | 'liked'): void {
     if (!this.detail || !this.activeCategory) return;
     if (this.detail.kind === 'item') {
