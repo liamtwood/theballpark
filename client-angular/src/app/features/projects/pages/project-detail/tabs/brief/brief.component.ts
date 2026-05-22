@@ -93,21 +93,13 @@ type DetailView =
     <ng-container *ngIf="!loading">
       <div class="bp-b2">
 
-        <!-- ── HEADER ── -->
-        <h2 class="bp-page-title">Brief</h2>
-        <div class="bp-page-divider"></div>
-        <div class="bp-b2-head">
-          <p-button label="Add category" styleClass="p-button"
-                    (onClick)="addDrawerOpen = true"></p-button>
-        </div>
-
-        <!-- ── PROGRESS ── -->
+        <!-- ── PROGRESS — items + estimate only (the project hero
+             already titles the tab) ── -->
         <div class="bp-b2-progress">
           <div class="bp-b2-pbar">
             <div class="bp-b2-pfill" [style.width.%]="sourcedPct"></div>
           </div>
           <div class="bp-b2-plbl">
-            <span><b>{{ categoriesWithItems }}</b> of {{ projectCategories.length }} categories sourced</span>
             <span><b>{{ totalItemCount }}</b> items · <b>{{ projectTotal | gbp }}</b> estimated</span>
           </div>
         </div>
@@ -152,8 +144,13 @@ type DetailView =
                 </button>
               </div>
               <div *ngIf="!projectCategories.length" class="bp-b2-empty">
-                No categories yet — use <b>+ Add category</b> to scope this project.
+                No categories yet — add one to scope this project.
               </div>
+              <!-- + Add category — sits under the last category card -->
+              <button type="button" class="bp-b2-addcat" (click)="addDrawerOpen = true">
+                <lucide-icon name="plus" [size]="15"></lucide-icon>
+                Add category
+              </button>
             </div>
           </div>
 
@@ -163,29 +160,29 @@ type DetailView =
             <div class="bp-b2-panel">
               <ng-container *ngIf="activeCategory as ac; else noCat">
 
-                <!-- workspace -->
-                <div class="bp-b2-ws">
-                  <div class="bp-b2-ws-top">
-                    <div class="bp-b2-ws-ic">
-                      <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="16"></lucide-icon>
-                    </div>
-                    <div class="bp-b2-ws-name">{{ ac.category_name }}</div>
-                    <!-- A2 — per-category workflow status, on the title line -->
-                    <p-dropdown class="bp-b2-ws-status"
-                                [options]="categoryStatuses"
-                                optionLabel="label" optionValue="code"
-                                [(ngModel)]="ac.status_code"
-                                (onChange)="saveStatus(ac)"
-                                placeholder="Draft"
-                                appendTo="body"
-                                styleClass="bp-b2-statusdd"
-                                [style]="{ width: '172px' }"></p-dropdown>
+                <!-- pink card header (image 2) — icon · name · status -->
+                <div class="bp-b2-chead">
+                  <div class="bp-b2-chead-ic">
+                    <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="18"></lucide-icon>
                   </div>
+                  <div class="bp-b2-chead-title">{{ ac.category_name }}</div>
+                  <p-dropdown class="bp-b2-ws-status"
+                              [options]="categoryStatuses"
+                              optionLabel="label" optionValue="code"
+                              [(ngModel)]="ac.status_code"
+                              (onChange)="saveStatus(ac)"
+                              placeholder="Draft"
+                              appendTo="body"
+                              styleClass="bp-b2-statusdd"
+                              [style]="{ width: '170px' }"></p-dropdown>
+                </div>
 
-                  <!-- Brief + Notes side by side -->
+                <!-- DETAILS — brief + notes -->
+                <div class="bp-b2-sec">
+                  <div class="bp-b2-sechd">Details</div>
                   <div class="bp-b2-briefgrid">
                     <div class="bp-b2-bcol">
-                      <div class="bp-b2-flabel">Brief</div>
+                      <div class="bp-b2-fieldlbl">brief</div>
                       <div class="bp-b2-fhelp">Sent to suppliers in the quote request</div>
                       <textarea class="bp-input-edit bp-b2-brief"
                                 rows="4"
@@ -194,7 +191,7 @@ type DetailView =
                                 (blur)="onBriefBlur(ac, $event)"></textarea>
                     </div>
                     <div class="bp-b2-bcol">
-                      <div class="bp-b2-flabel">Notes</div>
+                      <div class="bp-b2-fieldlbl">notes</div>
                       <div class="bp-b2-fhelp">Your own notes — not included in supplier emails</div>
                       <textarea class="bp-input-edit bp-b2-notes"
                                 rows="4"
@@ -203,10 +200,14 @@ type DetailView =
                                 (blur)="onNotesBlur(ac, $event)"></textarea>
                     </div>
                   </div>
+                </div>
 
+                <!-- BALLPARK — budget + estimate + find -->
+                <div class="bp-b2-sec">
+                  <div class="bp-b2-sechd">Ballpark</div>
                   <div class="bp-b2-ws-row">
                     <div>
-                      <div class="bp-b2-flabel">Budget</div>
+                      <div class="bp-b2-fieldlbl">budget</div>
                       <div class="bp-b2-money">
                         <span>£</span>
                         <input type="text" inputmode="numeric"
@@ -217,7 +218,7 @@ type DetailView =
                       </div>
                     </div>
                     <div>
-                      <div class="bp-b2-flabel">Est. cost</div>
+                      <div class="bp-b2-fieldlbl">estimate</div>
                       <div class="bp-b2-est">
                         <ng-container *ngIf="ac.ballpark_cost && ac.ballpark_cost > 0; else noEst">
                           {{ ac.ballpark_cost | gbp }}
@@ -244,67 +245,75 @@ type DetailView =
                   </div>
                 </div>
 
-                <!-- results -->
-                <ng-container *ngIf="activeResult as r; else findPrompt">
-                  <div class="bp-b2-res">
-                    <div class="bp-b2-searchln">
-                      <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
-                      Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
-                      · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
+                <!-- OPTIONS — subcard holding the matcher results.
+                     Pink header (image 2); two light subcards inside. -->
+                <div class="bp-b2-optcard">
+                  <div class="bp-b2-chead bp-b2-chead--sub">
+                    <div class="bp-b2-chead-ic">
+                      <lucide-icon name="sparkles" [size]="15"></lucide-icon>
                     </div>
+                    <div class="bp-b2-chead-title">Options</div>
+                  </div>
+                  <div class="bp-b2-optcard-body">
+                    <ng-container *ngIf="activeResult as r; else findPrompt">
+                      <div class="bp-b2-searchln">
+                        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
+                        Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
+                        · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
+                      </div>
 
-                    <!-- v1.53 — two-option layout: side-by-side when BOTH a
-                         match/closest item AND a proposed item exist.
-                         v1.55 — one clean header per column (the heavy
-                         "OPTION N" bars + duplicate section headers cut). -->
-                    <ng-container *ngIf="(r.matched_items.length || r.closest_item) && r.proposed_item; else singleOption">
+                      <!-- two light subcards (image 1 header) — one shows
+                           if only one side has content. -->
                       <div class="bp-b2-optgrid">
-                        <div class="bp-b2-optcol">
-                          <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
+                        <div class="bp-b2-subcard"
+                             *ngIf="r.matched_items.length || r.closest_item">
+                          <div class="bp-b2-subhd">
+                            <lucide-icon name="search" [size]="13"></lucide-icon>
+                            Pick Existing
+                          </div>
+                          <div class="bp-b2-subcard-body">
+                            <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
+                          </div>
                         </div>
-                        <div class="bp-b2-optcol">
-                          <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                        <div class="bp-b2-subcard" *ngIf="r.proposed_item">
+                          <div class="bp-b2-subhd">
+                            <lucide-icon name="plus" [size]="13"></lucide-icon>
+                            Quote New
+                          </div>
+                          <div class="bp-b2-subcard-body">
+                            <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- hint -->
+                      <div class="bp-b2-hint">
+                        <label>
+                          <lucide-icon name="message-square" [size]="14"></lucide-icon>
+                          I would have looked for…
+                        </label>
+                        <div class="bp-b2-hint-row">
+                          <input type="text"
+                                 [value]="hintDrafts.get(ac.category_id) || ''"
+                                 placeholder="search terms the AI missed"
+                                 (input)="onHintInput(ac, $event)"/>
+                          <p-button label="Submit" styleClass="p-button"
+                                    (onClick)="submitHint(ac)"></p-button>
                         </div>
                       </div>
                     </ng-container>
 
-                    <!-- single-option fallback — only one side has content -->
-                    <ng-template #singleOption>
-                      <div *ngIf="r.matched_items.length || r.closest_item">
-                        <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
-                      </div>
-                      <div *ngIf="r.proposed_item">
-                        <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                    <ng-template #findPrompt>
+                      <div class="bp-b2-prompt">
+                        <lucide-icon class="bp-b2-prompt-spark" name="sparkles" [size]="22"></lucide-icon>
+                        <div>
+                          Click <b>Find items</b> to match this brief against the catalogue —
+                          scored items, ranked suppliers, and a proposed item if nothing fits.
+                        </div>
                       </div>
                     </ng-template>
-
-                    <!-- hint -->
-                    <div class="bp-b2-hint">
-                      <label>
-                        <lucide-icon name="message-square" [size]="14"></lucide-icon>
-                        I would have looked for…
-                      </label>
-                      <div class="bp-b2-hint-row">
-                        <input type="text"
-                               [value]="hintDrafts.get(ac.category_id) || ''"
-                               placeholder="search terms the AI missed"
-                               (input)="onHintInput(ac, $event)"/>
-                        <p-button label="Submit" styleClass="p-button"
-                                  (onClick)="submitHint(ac)"></p-button>
-                      </div>
-                    </div>
                   </div>
-                </ng-container>
-
-                <ng-template #findPrompt>
-                  <div class="bp-b2-prompt">
-                    <lucide-icon class="bp-b2-prompt-spark" name="sparkles" [size]="22"></lucide-icon>
-                    <div>
-                      Click <b>Find items</b> to match this brief against the catalogue —
-                      scored items, ranked suppliers, and a proposed item if nothing fits.
-                    </div>
-                  </div>
-                </ng-template>
+                </div>
 
               </ng-container>
               <ng-template #noCat>
@@ -436,7 +445,6 @@ type DetailView =
 
     <!-- Item matches section (Option 1) — matched + closest, one section -->
     <ng-template #itemMatches let-r let-ac="ac">
-      <div class="bp-b2-opthead">Pick an existing item</div>
       <div class="bp-b2-rec">
         <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
         {{ itemMatchRec }}
@@ -511,7 +519,6 @@ type DetailView =
 
     <!-- New item section (Option 2) — the AI proposal -->
     <ng-template #newItem let-r let-ac="ac">
-      <div class="bp-b2-opthead">Quote a new item</div>
       <div class="bp-b2-rec">
         <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
         {{ newItemRec }}
@@ -599,19 +606,16 @@ type DetailView =
     .bp-b2 { padding: 24px var(--section-pad, 40px) 60px; }
 
     /* shared uppercase-eyebrow recipe — FIX 7 */
-    .bp-b2-colhdr, .bp-b2-flabel {
+    .bp-b2-colhdr {
       font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--color-text-muted); }
 
-    /* header */
-    .bp-b2-head { display: flex; align-items: flex-end; justify-content: flex-end; }
-
     /* progress */
-    .bp-b2-progress { margin: 14px 0 18px; }
+    .bp-b2-progress { margin: 0 0 18px; }
     .bp-b2-pbar { height: 5px; background: var(--color-border);
       border-radius: var(--radius-input); overflow: hidden; }
     .bp-b2-pfill { height: 100%; background: var(--theme-accent); transition: width 0.3s; }
-    .bp-b2-plbl { display: flex; justify-content: space-between; font-size: var(--text-sm);
+    .bp-b2-plbl { display: flex; justify-content: flex-end; font-size: var(--text-sm);
       color: var(--color-text-muted); margin-top: 6px; }
     .bp-b2-plbl b { color: var(--color-text-secondary); font-weight: 600; }
 
@@ -646,31 +650,61 @@ type DetailView =
     .bp-b2-card-count lucide-icon { display: inline-flex; }
     .bp-b2-remove { flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; }
     .bp-b2-remove:hover { color: var(--color-danger); background: none; }
+    /* + Add category — under the last category card */
+    .bp-b2-addcat { display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; margin-top: 2px; background: transparent;
+      border: 1px dashed var(--theme-border); border-radius: var(--radius-card);
+      padding: 11px; cursor: pointer; font-family: var(--font-body);
+      font-size: var(--text-sm); font-weight: 600; color: var(--theme-accent);
+      transition: background 0.12s, border-color 0.12s; }
+    .bp-b2-addcat:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
+    .bp-b2-addcat lucide-icon { display: inline-flex; }
 
-    /* col 2 */
+    /* col 2 — the focused-category card (v1.56) */
     .bp-b2-panel { background: var(--color-surface); border: 0.5px solid var(--color-border);
       border-radius: var(--radius-card); overflow: hidden; min-height: 540px; }
-    .bp-b2-ws { padding: 15px 17px 14px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-b2-ws-top { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-    .bp-b2-ws-ic { width: 30px; height: 30px; border-radius: 50%; background: var(--theme-accent);
-      color: var(--color-surface); display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: var(--text-base); font-weight: 600;
-      flex-shrink: 0; }
-    .bp-b2-ws-name { flex: 1; min-width: 0; font-family: var(--font-display);
-      font-size: var(--text-lg); color: var(--color-text-primary);
+
+    /* pink card header (image 2) — panel + Options card */
+    .bp-b2-chead { display: flex; align-items: center; gap: 10px;
+      background: var(--theme-accent); padding: 13px 16px; }
+    .bp-b2-chead-ic { width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); color: var(--color-surface);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bp-b2-chead-title { flex: 1; min-width: 0; font-family: var(--font-display);
+      font-size: var(--text-lg); color: var(--color-surface);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-b2-chead--sub { padding: 9px 14px; }
+    .bp-b2-chead--sub .bp-b2-chead-ic { width: 24px; height: 24px; }
+    .bp-b2-chead--sub .bp-b2-chead-title { font-size: var(--text-base); }
     .bp-b2-ws-status { flex-shrink: 0; }
+
+    /* sections — DETAILS / BALLPARK */
+    .bp-b2-sec { padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); }
+    .bp-b2-sechd { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 9px; }
+    .bp-b2-fieldlbl { font-size: var(--text-sm); font-weight: 500;
+      color: var(--color-text-muted); margin-bottom: 2px; }
 
     /* Brief + Notes side by side */
     .bp-b2-briefgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .bp-b2-bcol { display: flex; flex-direction: column; }
     .bp-b2-bcol .bp-b2-brief, .bp-b2-bcol .bp-b2-notes { flex: 1; }
-    .bp-b2-flabel { margin-bottom: 5px; }
     .bp-b2-brief { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
       line-height: 1.6; color: var(--color-text-primary);
       border-radius: var(--radius-button); padding: 10px 12px;
       resize: vertical; outline: none; }
-    .bp-b2-ws-row { display: flex; align-items: flex-end; gap: 14px; margin-top: 11px; }
+    .bp-b2-fhelp { font-size: var(--text-xs); color: var(--color-text-muted);
+      margin: 0 0 6px; }
+    .bp-b2-notes { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      border-radius: var(--radius-button); padding: 9px 12px;
+      resize: vertical; outline: none; }
+    textarea.bp-b2-notes.bp-input-edit {
+      background: var(--color-surface) !important;
+      border-color: var(--color-border) !important; }
+
+    /* BALLPARK row */
+    .bp-b2-ws-row { display: flex; align-items: flex-end; gap: 14px; }
     .bp-b2-money { display: flex; align-items: center; gap: 3px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-input);
       padding: 5px 9px; width: 118px; }
@@ -685,33 +719,28 @@ type DetailView =
     .bp-b2-cmnote { margin-left: auto; display: inline-flex; align-items: center;
       gap: 5px; font-size: var(--text-sm); color: var(--color-text-muted); }
 
-    /* A1 — private Notes field (distinct from the supplier-facing Brief) */
-    .bp-b2-fhelp { font-size: var(--text-xs); color: var(--color-text-muted);
-      text-transform: none; letter-spacing: 0; margin: -2px 0 5px; }
-    .bp-b2-notes { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
-      line-height: 1.55; color: var(--color-text-primary);
-      border-radius: var(--radius-button); padding: 9px 12px;
-      resize: vertical; outline: none; }
-    textarea.bp-b2-notes.bp-input-edit {
-      background: var(--color-surface) !important;
-      border-color: var(--color-border) !important; }
-
-    /* A2 — category status dropdown + pill */
+    /* status dropdown — sits on the pink header, light-on-pink */
+    :host ::ng-deep .bp-b2-statusdd.p-dropdown {
+      background: rgba(255,255,255,0.18); border: none; border-radius: var(--radius-input); }
     :host ::ng-deep .bp-b2-statusdd .p-dropdown-label {
-      font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body); }
+      font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body);
+      color: var(--color-surface); }
+    :host ::ng-deep .bp-b2-statusdd .p-dropdown-trigger { color: var(--color-surface); }
+
+    /* category status pill (col-1 cards) */
     .bp-cat-pill { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
       font-size: var(--text-xs); font-weight: 600; padding: 2px 8px;
       border-radius: var(--radius-pill); white-space: nowrap; line-height: 1.5; }
     .bp-cat-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-    .bp-b2-card-nrow { display: flex; align-items: center; gap: 6px; }
-    .bp-b2-card-nrow .bp-b2-card-name { flex: 1; min-width: 0;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bp-b2-card--dim { opacity: 0.6; }
     .bp-b2-card--dim:hover { opacity: 0.85; }
 
-    .bp-b2-res { padding: 13px 17px 18px; display: flex; flex-direction: column; gap: 14px; }
+    /* OPTIONS subcard */
+    .bp-b2-optcard { margin: 14px 16px 16px; border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card); overflow: hidden; }
+    .bp-b2-optcard-body { padding: 13px 14px; display: flex; flex-direction: column; gap: 13px; }
     .bp-b2-prompt { display: flex; flex-direction: column; align-items: center;
-      text-align: center; padding: 60px 32px; color: var(--color-text-muted);
+      text-align: center; padding: 44px 32px; color: var(--color-text-muted);
       font-size: var(--text-sm); line-height: 1.6; gap: 8px; }
     .bp-b2-prompt-spark { color: var(--theme-accent); }
     .bp-b2-searchln { display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
@@ -719,11 +748,16 @@ type DetailView =
     .bp-b2-searchln em { font-style: normal; font-weight: 600; color: var(--color-text-secondary); }
     .bp-b2-spark { color: var(--theme-accent); display: inline-flex; vertical-align: middle; }
 
-    /* two-option layout — v1.55: one clean header per column */
-    .bp-b2-optgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    .bp-b2-optcol { min-width: 0; }
-    .bp-b2-opthead { font-family: var(--font-display); font-size: var(--text-lg);
-      color: var(--color-text-primary); margin-bottom: 5px; }
+    /* two result subcards (image-1 light header) */
+    .bp-b2-optgrid { display: flex; gap: 14px; }
+    .bp-b2-subcard { flex: 1; min-width: 0; border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button); overflow: hidden; }
+    .bp-b2-subhd { display: flex; align-items: center; gap: 6px;
+      background: var(--theme-bg); padding: 8px 12px;
+      font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--color-text-secondary); }
+    .bp-b2-subhd lucide-icon { color: var(--theme-accent); display: inline-flex; }
+    .bp-b2-subcard-body { padding: 11px 12px; }
 
     .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
@@ -846,7 +880,7 @@ type DetailView =
     @media (max-width: 1000px) {
       .bp-b2-panes { grid-template-columns: 1fr; }
       .bp-b2-detail { position: static; }
-      .bp-b2-optgrid { grid-template-columns: 1fr; }
+      .bp-b2-optgrid { flex-direction: column; }
       .bp-b2-briefgrid { grid-template-columns: 1fr; }
     }
   `]
