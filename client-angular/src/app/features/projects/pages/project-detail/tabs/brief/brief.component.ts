@@ -246,23 +246,36 @@ type DetailView =
                       <!-- two light subcards (image 1 header) — one shows
                            if only one side has content. -->
                       <div class="bp-b2-optgrid">
-                        <div class="bp-b2-subcard"
-                             *ngIf="r.matched_items.length || r.closest_item">
+                        <div class="bp-b2-subcard">
                           <div class="bp-b2-subhd">
                             <lucide-icon name="search" [size]="13"></lucide-icon>
                             Pick Existing
                           </div>
                           <div class="bp-b2-subcard-body">
-                            <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
+                            <ng-container *ngIf="r.matched_items.length || r.closest_item; else noExisting">
+                              <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
+                            </ng-container>
+                            <ng-template #noExisting>
+                              <div class="bp-b2-subempty">
+                                No close matches in the catalogue — quote a new item instead.
+                              </div>
+                            </ng-template>
                           </div>
                         </div>
-                        <div class="bp-b2-subcard" *ngIf="r.proposed_item">
+                        <div class="bp-b2-subcard">
                           <div class="bp-b2-subhd">
                             <lucide-icon name="plus" [size]="13"></lucide-icon>
                             Quote New
                           </div>
                           <div class="bp-b2-subcard-body">
-                            <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                            <ng-container *ngIf="r.proposed_item; else noProposed">
+                              <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
+                            </ng-container>
+                            <ng-template #noProposed>
+                              <div class="bp-b2-subempty">
+                                The catalogue already has strong matches — pick one on the left.
+                              </div>
+                            </ng-template>
                           </div>
                         </div>
                       </div>
@@ -736,6 +749,8 @@ type DetailView =
       text-transform: uppercase; color: var(--color-text-secondary); }
     .bp-b2-subhd lucide-icon { color: var(--theme-accent); display: inline-flex; }
     .bp-b2-subcard-body { padding: 11px 12px; }
+    .bp-b2-subempty { font-size: var(--text-sm); color: var(--color-text-muted);
+      line-height: 1.5; text-align: center; padding: 22px 8px; }
 
     .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
