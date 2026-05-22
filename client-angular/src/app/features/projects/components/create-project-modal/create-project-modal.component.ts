@@ -638,10 +638,7 @@ interface PendingCategory {
       font-size: 10.5px;
       color: var(--color-text-muted);
       line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      white-space: pre-wrap;
     }
     .bp-cp-cat-est {
       font-family: var(--font-display);
