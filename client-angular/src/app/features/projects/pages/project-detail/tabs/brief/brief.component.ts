@@ -4,7 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
@@ -893,6 +893,7 @@ export class BriefComponent implements OnInit, OnDestroy {
   private proposedBeingEdited: ProposedItem | null = null;
 
   private briefTimers = new Map<string, any>();
+  private outreachSentSub?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -917,6 +918,17 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.codelistSvc.getByName('category_status').subscribe({
       next: rows => { this.categoryStatuses = rows || []; this.cdr.markForCheck(); },
       error: () => {}
+    });
+
+    // v1.59 — when an outreach is sent, flip that category to
+    // "Out for Quote" live (the backend already does it server-side).
+    this.outreachSentSub = this.outreach.sent$.subscribe(({ projectId, categoryId }) => {
+      if (projectId !== this.pid) return;
+      const pc = this.projectCategories.find(p => p.category_id === categoryId);
+      if (pc && pc.status_code !== 'confirmed') {
+        pc.status_code = 'out_for_quote';
+        this.cdr.markForCheck();
+      }
     });
 
     forkJoin({
@@ -951,6 +963,7 @@ export class BriefComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     for (const t of this.briefTimers.values()) clearTimeout(t);
+    this.outreachSentSub?.unsubscribe();
   }
 
   // ── Derived ───────────────────────────────────────────────────────────

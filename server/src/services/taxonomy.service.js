@@ -1128,7 +1128,7 @@ async function requestQuotes(body) {
       `UPDATE project_categories
           SET status_code = 'out_for_quote', updated_at = NOW()
         WHERE project_id = $1 AND category_id = $2 AND is_active = true
-          AND status_code <> 'confirmed'`,
+          AND status_code IS DISTINCT FROM 'confirmed'`,
       [project_id, category_id]
     );
 

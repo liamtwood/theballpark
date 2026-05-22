@@ -620,6 +620,9 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
         this.sending = false;
         this.confirmingSend = false;
         this.step = 4;
+        // Let the Brief tab (and any other live surface) react — the
+        // category status flips to "Out for Quote" server-side.
+        this.outreach.markSent(r.projectId, r.categoryId);
         this.cdr.markForCheck();
       },
       error: err => {
