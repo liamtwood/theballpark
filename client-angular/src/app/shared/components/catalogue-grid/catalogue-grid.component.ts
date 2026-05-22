@@ -528,6 +528,16 @@ export type DetailMode = 'inline' | 'drawer';
                                : 'Like for project'">
                 <lucide-icon name="heart" [size]="14"></lucide-icon>
               </button>
+              <!-- v1.52c — Request a quote. Same gate as the card/row mail
+                   action (showCartActions ⇒ agency + a projectId bound),
+                   so it only appears inside a project context. -->
+              <button *ngIf="showCartActions"
+                      type="button"
+                      class="bp-detail-action"
+                      (click)="onRequestQuoteClick($event, selectedEntity)"
+                      title="Request a quote">
+                <lucide-icon name="mail" [size]="14"></lucide-icon>
+              </button>
               <!-- Edit — visible for all users until auth + roles ship.
                    Future gate: own-org items OR platform admin role.
                    See canEdit() for the relaxed-now / strict-later logic.
