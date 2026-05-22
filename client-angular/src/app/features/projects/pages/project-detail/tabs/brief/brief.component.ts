@@ -1084,22 +1084,32 @@ export class BriefComponent implements OnInit, OnDestroy {
 
   openProposedDetail(p: ProposedItem): void {
     this.detail = { kind: 'proposed', item: p };
-    // v1.52g — the proposed item is a real catalogue row; hydrate its
-    // hero image (and refresh name / price / description) from that
-    // row, which is the source of truth after any ✎ edit. Runs once
-    // per page load — in-session edits update the card directly.
-    if (p.item_id && p.image_url === undefined) {
-      this.itemSvc.getById(p.item_id).subscribe({
-        next: item => {
-          p.image_url     = item.image_url ?? null;
-          p.image_display = item.image_display ?? null;
-          if (item.name) p.name = item.name;
-          if (item.base_price != null) p.estimated_price = item.base_price;
-          if (item.description != null) p.description = item.description;
-          this.cdr.markForCheck();
-        },
-        error: () => { p.image_url = null; this.cdr.markForCheck(); }
-      });
+    this.hydrateProposed(p);
+  }
+
+  /** v1.52h — refresh a proposed item's hero image (+ name / price /
+      description) from its real catalogue row, the source of truth.
+      Runs every time the detail card opens so an image added on the
+      item detail page — or anywhere outside this tab — is picked up.
+      Self-heals match results cached before v1.52f (no item_id) by
+      materialising once to acquire a stable id. */
+  private hydrateProposed(p: ProposedItem): void {
+    const apply = (row: any) => {
+      if (!row) return;
+      p.item_id       = row.id || p.item_id;
+      p.image_url     = row.image_url ?? null;
+      p.image_display = row.image_display ?? null;
+      if (row.name) p.name = row.name;
+      if (row.base_price != null) p.estimated_price = row.base_price;
+      if (row.description != null) p.description = row.description;
+      this.cdr.markForCheck();
+    };
+    if (p.item_id) {
+      this.itemSvc.getById(p.item_id).subscribe({ next: apply, error: () => {} });
+    } else {
+      // Legacy match result — materialise once to obtain item_id;
+      // every later open then uses getById.
+      this.materializeProposed(p, apply);
     }
   }
 
