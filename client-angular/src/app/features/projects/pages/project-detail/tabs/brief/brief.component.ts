@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule } from 'lucide-angular';
 
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { CategoryService } from '../../../../../../core/services/category.service';
@@ -65,7 +66,7 @@ type DetailView =
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, ButtonModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, GbpPipe
+    LucideAngularModule, LoadingSpinnerComponent, GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -107,7 +108,9 @@ type DetailView =
                    class="bp-b2-card"
                    [class.active]="pc.category_id === activeCategoryId"
                    (click)="selectCategory(pc.category_id)">
-                <div class="bp-b2-ic">{{ catLetter(pc.category_name) }}</div>
+                <div class="bp-b2-ic">
+                  <lucide-icon [name]="pc.category_icon_name || 'layers'" [size]="14"></lucide-icon>
+                </div>
                 <div class="bp-b2-card-mid">
                   <div class="bp-b2-card-name">{{ pc.category_name }}</div>
                   <div class="bp-b2-card-bud">
@@ -140,7 +143,9 @@ type DetailView =
                 <!-- workspace -->
                 <div class="bp-b2-ws">
                   <div class="bp-b2-ws-top">
-                    <div class="bp-b2-ws-ic">{{ catLetter(ac.category_name) }}</div>
+                    <div class="bp-b2-ws-ic">
+                      <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="16"></lucide-icon>
+                    </div>
                     <div class="bp-b2-ws-name">{{ ac.category_name }}</div>
                   </div>
                   <div class="bp-b2-flabel">Brief — what suppliers quote against</div>
@@ -420,7 +425,9 @@ type DetailView =
         <button *ngFor="let c of unusedCategories"
                 type="button" class="bp-b2-dw-cat"
                 (click)="addCategory(c)">
-          <div class="bp-b2-ic">{{ catLetter(c.name) }}</div>
+          <div class="bp-b2-ic">
+            <lucide-icon [name]="c.icon_name || 'layers'" [size]="14"></lucide-icon>
+          </div>
           <span class="bp-b2-dw-cat-name">{{ c.name }}</span>
           <span class="bp-b2-dw-plus">+</span>
         </button>
