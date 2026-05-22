@@ -58,6 +58,16 @@ router.get('/dimensions', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── v1.49 — suppliers in a category (category card) ────────────────────
+router.get('/category-suppliers', async (req, res, next) => {
+  try {
+    if (!req.query.category_id) {
+      return res.status(400).json({ error: 'category_id required' });
+    }
+    res.json(await TaxonomyService.categorySuppliers(req.query.category_id));
+  } catch (err) { next(err); }
+});
+
 // ── v1.46 — Brief-tab item matching ────────────────────────────────────
 router.post('/match-items', async (req, res, next) => {
   try {

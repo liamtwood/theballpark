@@ -495,6 +495,29 @@ async function getDimensions(categoryId) {
   return [...map.entries()].map(([dimension, values]) => ({ dimension, values }));
 }
 
+/**
+ * Suppliers with at least one active item in a category — derived live
+ * from the catalogue. Powers the category card's Suppliers section.
+ * Returns [{ supplier_id, supplier_name, description, city, item_count }]
+ * ordered by item_count desc.
+ */
+async function categorySuppliers(categoryId) {
+  if (!categoryId) throw httpErr('categoryId is required', 400);
+  const inCategory =
+    `(i.category_id = $1 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $1))`;
+  const r = await pool.query(
+    `SELECT o.id AS supplier_id, o.name AS supplier_name,
+            o.description, o.city, COUNT(i.id)::int AS item_count
+       FROM items i
+       JOIN orgs o ON o.id = i.org_id
+      WHERE i.is_active = true AND ${inCategory}
+      GROUP BY o.id, o.name, o.description, o.city
+      ORDER BY item_count DESC, o.name ASC`,
+    [categoryId]
+  );
+  return r.rows;
+}
+
 /* ─────────────────────────────────────────────────────────────────────
    BRIEF-TAB ITEM MATCHING (v1.46 — Brief tab upgrade)
    ───────────────────────────────────────────────────────────────────── */
@@ -903,6 +926,7 @@ module.exports = {
   dismissClassification,
   setItemTags,
   getDimensions,
+  categorySuppliers,
   matchItems,
   addMatchToProject,
   saveSearchHint,

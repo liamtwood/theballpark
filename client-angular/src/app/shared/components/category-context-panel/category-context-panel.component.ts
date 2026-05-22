@@ -12,6 +12,8 @@ import { MessageService } from 'primeng/api';
 import {
   LucideAngularModule, Heart, Clock, ArrowRight, Plus, SquarePen, Mail
 } from 'lucide-angular';
+import { Router } from '@angular/router';
+import { ApiService } from '../../../core/services/api.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { ProjectItemRowComponent } from '../project-item-row/project-item-row.component';
 import { ProjectItem } from '../../../models';
@@ -87,6 +89,18 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           <div *ngIf="longestLeadDays > 0" class="bp-ctx-sub-line">
             <lucide-icon name="clock" [size]="11"></lucide-icon>
             {{ longestLeadDays }} day longest lead
+          </div>
+        </div>
+
+        <!-- v1.49 — marketplace / supplier stat block, mirrors the
+             project subtotal slot. -->
+        <div class="bp-ctx-subtotal" *ngIf="context !== 'project'">
+          <div class="bp-ctx-sub-row">
+            <span class="bp-ctx-sub-amount">{{ cardItemCount }}</span>
+            <span class="bp-ctx-sub-label">item{{ cardItemCount === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="bp-ctx-sub-line" *ngIf="cardSupplierCount">
+            from {{ cardSupplierCount }} supplier{{ cardSupplierCount === 1 ? '' : 's' }}
           </div>
         </div>
 
@@ -183,25 +197,46 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </div>
         </ng-container>
 
-        <!-- Non-project fallback: show description + favourites copy. -->
+        <!-- v1.49 — marketplace / supplier category card: About,
+             Suppliers, Favourites. -->
         <ng-container *ngIf="context !== 'project'">
-          <div class="bp-ctx-desc" *ngIf="!briefText && category?.description">
-            {{ category.description }}
+
+          <div class="bp-ctx-cardsec" *ngIf="category?.description">
+            <div class="bp-ctx-cardsec-h">About</div>
+            <div class="bp-ctx-cardabout">{{ category.description }}</div>
           </div>
-          <ng-container *ngIf="selectedItems.length; else emptyFav">
-            <app-project-item-row *ngFor="let item of selectedItems; trackBy: trackByItemKey"
-              [item]="item"
-              mode="selected"
-              [compact]="true"
-              (clicked)="itemClicked.emit($event)"
-              (removed)="itemRemoved.emit($event)">
-            </app-project-item-row>
-          </ng-container>
-          <ng-template #emptyFav>
-            <div class="bp-ctx-empty">
-              No favourites in this category yet.
-            </div>
-          </ng-template>
+
+          <div class="bp-ctx-cardsec" *ngIf="cardSupplierCount">
+            <div class="bp-ctx-cardsec-h">Suppliers · {{ cardSupplierCount }}</div>
+            <button type="button" class="bp-ctx-sup"
+                    *ngFor="let s of categorySuppliers"
+                    (click)="openSupplier(s.supplier_id)">
+              <span class="bp-ctx-sup-ic">{{ (s.supplier_name || '?').charAt(0) }}</span>
+              <span class="bp-ctx-sup-mid">
+                <span class="bp-ctx-sup-name">{{ s.supplier_name }}</span>
+                <span class="bp-ctx-sup-sub" *ngIf="s.city">{{ s.city }}</span>
+              </span>
+              <span class="bp-ctx-sup-count">{{ s.item_count }} item{{ s.item_count === 1 ? '' : 's' }}</span>
+              <span class="bp-ctx-sup-chev">›</span>
+            </button>
+          </div>
+
+          <div class="bp-ctx-cardsec">
+            <div class="bp-ctx-cardsec-h">Favourites · {{ selectedItems.length }}</div>
+            <ng-container *ngIf="selectedItems.length; else emptyFav">
+              <app-project-item-row *ngFor="let item of selectedItems; trackBy: trackByItemKey"
+                [item]="item"
+                mode="selected"
+                [compact]="true"
+                (clicked)="itemClicked.emit($event)"
+                (removed)="itemRemoved.emit($event)">
+              </app-project-item-row>
+            </ng-container>
+            <ng-template #emptyFav>
+              <div class="bp-ctx-empty">Heart an item to save it here.</div>
+            </ng-template>
+          </div>
+
         </ng-container>
 
       </div>
@@ -251,19 +286,21 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     /* v1.25: simplified header — 36px themed icon circle + Playfair
        category name. Hairline separator handled by the subtotal
        block below (border-top there) so the row sits clean. */
+    /* v1.49 — themed header: fills with the standard theme accent
+       (same colour a selected subcategory chip uses). */
     .bp-ctx-head {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 14px 16px;
-      border-bottom: 0.5px solid var(--color-border);
+      background: var(--theme-accent);
     }
     .bp-ctx-head-icon {
       width: 36px;
       height: 36px;
       flex-shrink: 0;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: #fff;
       color: var(--theme-accent);
       display: flex;
       align-items: center;
@@ -278,7 +315,8 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       font-family: var(--font-display);
       font-size: 17px;
       font-weight: 400;
-      color: var(--color-text-primary);
+      letter-spacing: 0.015em;
+      color: #fff;
       line-height: 1.2;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -446,6 +484,50 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     }
     .bp-ctx-contact:hover { filter: brightness(1.05); }
     .bp-ctx-contact:active { transform: scale(0.99); }
+
+    /* ── v1.49 — marketplace / supplier category-card sections ── */
+    .bp-ctx-cardsec {
+      padding: 12px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-ctx-cardsec:last-child { border-bottom: none; }
+    .bp-ctx-cardsec-h {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--color-text-secondary);
+      margin-bottom: 8px;
+    }
+    .bp-ctx-cardabout {
+      font-size: 12.5px; line-height: 1.6; color: var(--color-text-secondary);
+    }
+    .bp-ctx-sup {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px; padding: 8px 10px;
+      cursor: pointer; font-family: var(--font-body);
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .bp-ctx-sup + .bp-ctx-sup { margin-top: 6px; }
+    .bp-ctx-sup:hover { border-color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-ctx-sup-ic {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: var(--theme-bg); color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 12px; font-weight: 600;
+    }
+    .bp-ctx-sup-mid { flex: 1; min-width: 0; text-align: left; }
+    .bp-ctx-sup-name {
+      display: block; font-size: 12.5px; font-weight: 600;
+      color: var(--color-text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bp-ctx-sup-sub { display: block; font-size: 10px; color: var(--color-text-muted); }
+    .bp-ctx-sup-count {
+      font-size: 10px; font-weight: 600; flex-shrink: 0;
+      color: var(--theme-accent); background: var(--theme-bg);
+      border-radius: 10px; padding: 2px 7px;
+    }
+    .bp-ctx-sup-chev { color: var(--color-text-muted); font-size: 13px; flex-shrink: 0; }
   `]
 })
 export class CategoryContextPanelComponent implements OnChanges {
@@ -478,9 +560,19 @@ export class CategoryContextPanelComponent implements OnChanges {
   /** Local edit state for the inline brief editor. */
   briefDraft = '';
 
+  /** v1.49 — suppliers with items in this category (marketplace /
+      supplier card). Loaded from /taxonomy/category-suppliers. */
+  categorySuppliers: Array<{
+    supplier_id: string; supplier_name: string;
+    description?: string; city?: string; item_count: number;
+  }> = [];
+  private suppliersForCat: string | null = null;
+
   constructor(
     private cdr: ChangeDetectorRef,
     private msg: MessageService,
+    private api: ApiService,
+    private router: Router,
   ) {}
 
   ngOnChanges() {
@@ -489,6 +581,32 @@ export class CategoryContextPanelComponent implements OnChanges {
     if (this.briefText !== this.briefDraft && document.activeElement?.tagName !== 'INPUT') {
       this.briefDraft = this.briefText || '';
     }
+    // v1.49 — marketplace / supplier card: load the category's suppliers
+    // when the active category changes.
+    const catId = this.category?.id || null;
+    if (this.context !== 'project' && catId && catId !== this.suppliersForCat) {
+      this.suppliersForCat = catId;
+      this.loadCategorySuppliers(catId);
+    }
+  }
+
+  private loadCategorySuppliers(catId: string): void {
+    this.categorySuppliers = [];
+    this.api.get<any[]>(`/taxonomy/category-suppliers?category_id=${catId}`).subscribe({
+      next: rows => { this.categorySuppliers = rows || []; this.cdr.markForCheck(); },
+      error: () => { this.categorySuppliers = []; this.cdr.markForCheck(); }
+    });
+  }
+
+  /** Total catalogue items in this category — summed from its suppliers. */
+  get cardItemCount(): number {
+    return this.categorySuppliers.reduce((s, x) => s + (Number(x.item_count) || 0), 0);
+  }
+  get cardSupplierCount(): number { return this.categorySuppliers.length; }
+
+  /** Open a supplier's store front. */
+  openSupplier(id: string): void {
+    if (id) this.router.navigate(['/suppliers', id]);
   }
 
   // ── Computed summaries ───────────────────────────────────────────────
