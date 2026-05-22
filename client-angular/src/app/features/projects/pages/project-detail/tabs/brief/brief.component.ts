@@ -210,12 +210,14 @@ type DetailView =
                     </div>
                     <div>
                       <div class="bp-b2-fieldlbl">Estimate</div>
-                      <div class="bp-b2-est">
-                        <ng-container *ngIf="ac.ballpark_cost && ac.ballpark_cost > 0; else noEst">
-                          {{ ac.ballpark_cost | gbp }}
-                          <small>· {{ catItemCount(ac.category_id) }} selected</small>
-                        </ng-container>
-                        <ng-template #noEst><small>— not found yet</small></ng-template>
+                      <div class="bp-b2-money">
+                        <span>£</span>
+                        <input type="text" inputmode="numeric"
+                               [value]="estimateDisplay(ac)"
+                               placeholder="0"
+                               (focus)="onEstimateFocus(ac, $event)"
+                               (blur)="onEstimateBlur(ac, $event)"
+                               [title]="catItemCount(ac.category_id) + ' selected — recomputed when items change'"/>
                       </div>
                     </div>
                   </div>
@@ -276,8 +278,17 @@ type DetailView =
                               <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
                             </ng-container>
                             <ng-template #noProposed>
-                              <div class="bp-b2-subempty">
-                                The catalogue already has strong matches — pick one on the left.
+                              <div class="bp-b2-newcompose">
+                                <div class="bp-b2-newcompose-t">
+                                  Have something specific in mind?
+                                </div>
+                                <input class="bp-b2-newcompose-input" type="text" #newNameInput
+                                       placeholder="e.g. Custom inflatable structure"
+                                       (keyup.enter)="composeNew(newNameInput.value); newNameInput.value=''"/>
+                                <p-button label="Compose new item"
+                                          styleClass="p-button"
+                                          (onClick)="composeNew(newNameInput.value); newNameInput.value=''">
+                                </p-button>
                               </div>
                             </ng-template>
                           </div>
@@ -759,6 +770,16 @@ type DetailView =
     .bp-b2-subcard-body { padding: 11px 12px; }
     .bp-b2-subempty { font-size: var(--text-sm); color: var(--color-text-muted);
       line-height: 1.5; text-align: center; padding: 22px 8px; }
+    /* Quote New empty state — compose-a-new-item form */
+    .bp-b2-newcompose { display: flex; flex-direction: column; gap: 8px;
+      padding: 12px 4px 4px; }
+    .bp-b2-newcompose-t { font-size: var(--text-sm); color: var(--color-text-muted);
+      text-align: center; margin-bottom: 2px; }
+    .bp-b2-newcompose-input { font-family: var(--font-body); font-size: var(--text-sm);
+      padding: 7px 10px; border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input); outline: none;
+      background: var(--color-surface); color: var(--color-text-primary); }
+    .bp-b2-newcompose-input:focus { border-color: var(--theme-accent); }
 
     .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
@@ -1097,6 +1118,32 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.projSvc.upsertCategory(this.pid, pc.category_id, { ballpark_budget: next }).subscribe({
       next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
       error: () => this.msg.add({ severity: 'error', summary: 'Failed to save budget', life: 3000 })
+    });
+  }
+
+  /** v1.63 — Estimate is now user-editable. Recompute on item add/remove
+      still overwrites this value (which is what you want most of the
+      time); meantime the user can type their own number. */
+  estimateDisplay(pc: ProjectCategory): string {
+    return pc.ballpark_cost == null || Number(pc.ballpark_cost) === 0
+      ? '' : Number(pc.ballpark_cost).toLocaleString('en-GB');
+  }
+  onEstimateFocus(pc: ProjectCategory, ev: Event): void {
+    (ev.target as HTMLInputElement).value =
+      pc.ballpark_cost == null || Number(pc.ballpark_cost) === 0 ? '' : String(pc.ballpark_cost);
+  }
+  onEstimateBlur(pc: ProjectCategory, ev: Event): void {
+    const el = ev.target as HTMLInputElement;
+    const raw = el.value.replace(/[^0-9.]/g, '');
+    let next: number | null = raw === '' ? null : Number(raw);
+    if (next != null && !isFinite(next)) next = null;
+    const current = pc.ballpark_cost != null ? Number(pc.ballpark_cost) : null;
+    pc.ballpark_cost = (next ?? 0) as any;
+    el.value = this.estimateDisplay(pc);
+    if (next === current) return;
+    this.projSvc.upsertCategory(this.pid, pc.category_id, { ballpark_cost: next }).subscribe({
+      next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
+      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save estimate', life: 3000 })
     });
   }
 
@@ -1507,6 +1554,26 @@ export class BriefComponent implements OnInit, OnDestroy {
     // v1.52a — emailing a supplier about a catalogue match implies
     // selecting that item for the project.
     if (!isNew) this.addMatched(ac, m as MatchItem, 'selected');
+  }
+
+  /** v1.63 — Compose a brand-new requirement from scratch (the Quote
+      New empty state). Opens the outreach drawer pre-loaded with the
+      typed name; the user fills in details + suppliers in the drawer. */
+  composeNew(name: string): void {
+    const ac = this.activeCategory;
+    const trimmed = (name || '').trim();
+    if (!ac || !trimmed) return;
+    const r = this.activeResult;
+    this.outreach.open({
+      item: { name: trimmed, description: '', price: 0, isNew: true },
+      categoryId:        ac.category_id,
+      categoryName:      ac.category_name,
+      projectId:         this.pid,
+      projectCategoryId: this.pcId(ac),
+      suppliers: r ? r.suppliers_ranked.map(s => ({
+        supplier_id: s.supplier_id, supplier_name: s.supplier_name
+      })) : []
+    });
   }
 
   // ── Hint ──────────────────────────────────────────────────────────────
