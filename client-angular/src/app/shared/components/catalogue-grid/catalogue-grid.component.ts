@@ -185,6 +185,23 @@ export type DetailMode = 'inline' | 'drawer';
               </div>
             </div>
           </div>
+          <!-- v1.49b — supplier filter (suppliers with items in this category) -->
+          <div class="bp-filter-sec" *ngIf="categorySuppliers.length">
+            <button type="button" class="bp-filter-sec-head" (click)="supplierExpanded = !supplierExpanded">
+              <span class="bp-filter-sec-name">supplier</span>
+              <span *ngIf="selectedSupplierIds.size" class="bp-filter-sec-badge">{{ selectedSupplierIds.size }}</span>
+              <span class="bp-filter-caret">{{ supplierExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="supplierExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let s of categorySuppliers" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedSupplierIds.has(s.supplier_id)"
+                  (onChange)="toggleSupplierFilter(s.supplier_id)"
+                  [label]="s.supplier_name">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
 
           <!-- ── GROUP 2 · CATEGORY-SPECIFIC (alphabetical) ───────── -->
           <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
@@ -1300,9 +1317,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   selectedTiers = new Set<string>();
   selectedLeadBuckets = new Set<string>();
   selectedPriceBuckets = new Set<string>();
+  /** v1.49b — suppliers with items in the active category, used as a
+      "supplier" filter section in the sidebar. */
+  categorySuppliers: Array<{ supplier_id: string; supplier_name: string; item_count: number }> = [];
+  selectedSupplierIds = new Set<string>();
   tierExpanded = false;
   leadExpanded = false;
   priceExpanded = false;
+  supplierExpanded = false;
   /** Tier values mirror items.tier (basic/mid/premium). */
   readonly tierFilterOptions = [
     { value: 'basic',   label: 'Core' },
@@ -1746,15 +1768,30 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedTiers.clear();
     this.selectedLeadBuckets.clear();
     this.selectedPriceBuckets.clear();
+    this.selectedSupplierIds.clear();
+    this.categorySuppliers = [];
     this.tierExpanded = false;
     this.leadExpanded = false;
     this.priceExpanded = false;
+    this.supplierExpanded = false;
     // Dimensions are catalogue-item facets only; skip for 'all' and for
     // non-item grids (suppliers / feedback).
     if (this.entityType !== 'item' || !this.activeCategory || this.activeCategory === 'all') {
       return;
     }
     const catId = this.activeCategory;
+    // v1.49b — suppliers with items in this category (sidebar filter).
+    this.api.get<Array<{ supplier_id: string; supplier_name: string; item_count: number }>>(
+      `/taxonomy/category-suppliers?category_id=${catId}`
+    ).subscribe({
+      next: rows => {
+        if (catId === this.activeCategory) {
+          this.categorySuppliers = rows || [];
+          this.cdr.detectChanges();
+        }
+      },
+      error: () => {}
+    });
     this.api.get<Array<{ dimension: string; values: Array<{ tag_id: string; label: string }> }>>(
       `/taxonomy/dimensions?category_id=${catId}`
     ).subscribe({
@@ -1792,7 +1829,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
   get activeFilterCount(): number {
     return this.selectedTagIds.size + this.selectedTiers.size
-         + this.selectedLeadBuckets.size + this.selectedPriceBuckets.size;
+         + this.selectedLeadBuckets.size + this.selectedPriceBuckets.size
+         + this.selectedSupplierIds.size;
   }
   get hasActiveFilters(): boolean { return this.activeFilterCount > 0; }
 
@@ -1824,6 +1862,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     if (this.selectedPriceBuckets.has(key)) this.selectedPriceBuckets.delete(key);
     else this.selectedPriceBuckets.add(key);
     this.selectedPriceBuckets = new Set(this.selectedPriceBuckets);
+    this.applyFilter();
+  }
+  toggleSupplierFilter(id: string): void {
+    if (this.selectedSupplierIds.has(id)) this.selectedSupplierIds.delete(id);
+    else this.selectedSupplierIds.add(id);
+    this.selectedSupplierIds = new Set(this.selectedSupplierIds);
     this.applyFilter();
   }
   clearAllFilters(): void {
@@ -2183,6 +2227,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         if (p == null) return false;
         return this.priceBuckets.some(b =>
           this.selectedPriceBuckets.has(b.key) && p >= b.min && p <= b.max);
+      });
+    }
+    // v1.49b — supplier facet — item's org_id against the chosen suppliers.
+    if (this.selectedSupplierIds.size) {
+      result = result.filter(e => {
+        const oid = e._raw && e._raw.org_id;
+        return !!oid && this.selectedSupplierIds.has(oid);
       });
     }
     if (this.searchQuery.trim()) {
