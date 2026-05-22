@@ -56,19 +56,33 @@ async function parseBrief(rawBriefText) {
   }
 
   const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // maxRetries rides out transient 429 / 5xx / 529 overloads with backoff.
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 4 });
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
-      },
-    ],
-  });
+  let message;
+  try {
+    message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
+        },
+      ],
+    });
+  } catch (e) {
+    const status = e && e.status;
+    const type = e && e.error && e.error.error && e.error.error.type;
+    if (status === 429 || status === 529 || (status >= 500 && status < 600)
+        || type === 'overloaded_error' || type === 'rate_limit_error') {
+      const err = new Error('The AI service is busy right now — please try again in a moment.');
+      err.status = 503;
+      throw err;
+    }
+    throw e;
+  }
 
   const responseText = message.content[0].text;
 

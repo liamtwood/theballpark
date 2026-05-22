@@ -85,7 +85,26 @@ function getClient() {
     throw httpErr('ANTHROPIC_API_KEY is not configured', 500);
   }
   const Anthropic = require('@anthropic-ai/sdk');
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // maxRetries lets the SDK ride out transient 429 / 5xx / 529 overloads
+  // with exponential backoff before the call ever fails.
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 4 });
+}
+
+/** Wrap a Haiku call so an exhausted-retries overload (429 / 5xx / 529 /
+    overloaded_error) surfaces as a clean, retryable 503 instead of the
+    raw Anthropic error body. */
+async function aiCreate(client, params) {
+  try {
+    return await aiCreate(client,params);
+  } catch (e) {
+    const status = e && e.status;
+    const type = e && e.error && e.error.error && e.error.error.type;
+    if (status === 429 || status === 529 || (status >= 500 && status < 600)
+        || type === 'overloaded_error' || type === 'rate_limit_error') {
+      throw httpErr('The AI service is busy right now — please try again in a moment.', 503);
+    }
+    throw e;
+  }
 }
 
 /** Try strict JSON.parse first; fall back to ```json … ``` extraction
@@ -218,7 +237,7 @@ async function classifyItem(itemId) {
   const promptTax = buildTaxonomyForPrompt(tax);
 
   const client = getClient();
-  const msg = await client.messages.create({
+  const msg = await aiCreate(client,{
     model: HAIKU_MODEL,
     max_tokens: 700,
     system: CLASSIFY_SYSTEM,
@@ -545,7 +564,7 @@ async function matchItems(brief, categoryId, budgetEstimate) {
   const supById = new Map(suppliers.map(s => [s.id, s]));
 
   const client = getClient();
-  const msg = await client.messages.create({
+  const msg = await aiCreate(client,{
     model: HAIKU_MODEL,
     max_tokens: 1600,
     system: MATCH_SYSTEM,
@@ -756,7 +775,7 @@ async function suggestSubcategory(itemId) {
 
   const client = getClient();
   const labels = children.map(c => c.name);
-  const msg = await client.messages.create({
+  const msg = await aiCreate(client,{
     model: HAIKU_MODEL,
     max_tokens: 200,
     system:
@@ -829,7 +848,7 @@ async function backfillSubcategories(categoryId) {
     }));
     let parsed = null;
     try {
-      const msg = await client.messages.create({
+      const msg = await aiCreate(client,{
         model: HAIKU_MODEL,
         max_tokens: 1500,
         system:
