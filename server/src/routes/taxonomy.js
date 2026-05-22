@@ -87,6 +87,13 @@ router.post('/add-match', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.54 — un-add a Brief-tab match. body: { project_id, category_id, item_id }
+router.post('/remove-match', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.removeMatchFromProject(req.body || {}));
+  } catch (err) { next(err); }
+});
+
 router.post('/search-hint', async (req, res, next) => {
   try {
     const { projectId, categoryId, searchTerms, userHint } = req.body || {};

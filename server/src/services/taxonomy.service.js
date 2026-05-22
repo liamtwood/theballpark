@@ -858,6 +858,22 @@ async function addMatchToProject(body) {
   return { project_item: pi.rows[0], ballpark_cost };
 }
 
+/** v1.54 — un-add a Brief-tab match. Mirror of addMatchToProject: drops
+    the project_items row and recomputes the category's ballpark cost so
+    the Brief-tab estimate stays accurate. */
+async function removeMatchFromProject(body) {
+  const { project_id, category_id, item_id } = body || {};
+  if (!project_id || !category_id || !item_id) {
+    throw httpErr('project_id, category_id and item_id are required', 400);
+  }
+  await pool.query(
+    'DELETE FROM project_items WHERE project_id = $1 AND item_id = $2',
+    [project_id, item_id]
+  );
+  const ballpark_cost = await recomputeCategoryBallpark(project_id, category_id);
+  return { ok: true, ballpark_cost };
+}
+
 /** Store the AI's search terms + the user's training hint. */
 async function saveSearchHint(projectId, categoryId, searchTerms, userHint) {
   if (!projectId || !categoryId) throw httpErr('projectId and categoryId are required', 400);
@@ -1343,6 +1359,7 @@ module.exports = {
   eventTypes,
   matchItems,
   addMatchToProject,
+  removeMatchFromProject,
   saveSearchHint,
   requestQuotes,
   listProjectQuoteRequests,

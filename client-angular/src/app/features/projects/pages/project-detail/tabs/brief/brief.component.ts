@@ -170,36 +170,41 @@ type DetailView =
                       <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="16"></lucide-icon>
                     </div>
                     <div class="bp-b2-ws-name">{{ ac.category_name }}</div>
+                    <!-- A2 — per-category workflow status, on the title line -->
+                    <p-dropdown class="bp-b2-ws-status"
+                                [options]="categoryStatuses"
+                                optionLabel="label" optionValue="code"
+                                [(ngModel)]="ac.status_code"
+                                (onChange)="saveStatus(ac)"
+                                placeholder="Draft"
+                                appendTo="body"
+                                styleClass="bp-b2-statusdd"
+                                [style]="{ width: '172px' }"></p-dropdown>
                   </div>
-                  <div class="bp-b2-flabel">Brief — what suppliers quote against</div>
-                  <textarea class="bp-input-edit bp-b2-brief"
-                            rows="3"
-                            [value]="ac.requirement_brief || ''"
-                            placeholder="What you need from this category — keep it specific."
-                            (blur)="onBriefBlur(ac, $event)"></textarea>
 
-                  <!-- A1 — private Notes (project_categories.requirement_detail) -->
-                  <div class="bp-b2-flabel">Notes</div>
-                  <div class="bp-b2-fhelp">Your own notes — not included in supplier emails</div>
-                  <textarea class="bp-input-edit bp-b2-notes"
-                            rows="2"
-                            [value]="ac.requirement_detail || ''"
-                            placeholder="Private notes for your team."
-                            (blur)="onNotesBlur(ac, $event)"></textarea>
+                  <!-- Brief + Notes side by side -->
+                  <div class="bp-b2-briefgrid">
+                    <div class="bp-b2-bcol">
+                      <div class="bp-b2-flabel">Brief</div>
+                      <div class="bp-b2-fhelp">Sent to suppliers in the quote request</div>
+                      <textarea class="bp-input-edit bp-b2-brief"
+                                rows="4"
+                                [value]="ac.requirement_brief || ''"
+                                placeholder="What you need from this category — keep it specific."
+                                (blur)="onBriefBlur(ac, $event)"></textarea>
+                    </div>
+                    <div class="bp-b2-bcol">
+                      <div class="bp-b2-flabel">Notes</div>
+                      <div class="bp-b2-fhelp">Your own notes — not included in supplier emails</div>
+                      <textarea class="bp-input-edit bp-b2-notes"
+                                rows="4"
+                                [value]="ac.requirement_detail || ''"
+                                placeholder="Private notes for your team."
+                                (blur)="onNotesBlur(ac, $event)"></textarea>
+                    </div>
+                  </div>
 
                   <div class="bp-b2-ws-row">
-                    <!-- A2 — per-category workflow status -->
-                    <div>
-                      <div class="bp-b2-flabel">Status</div>
-                      <p-dropdown [options]="categoryStatuses"
-                                  optionLabel="label" optionValue="code"
-                                  [(ngModel)]="ac.status_code"
-                                  (onChange)="saveStatus(ac)"
-                                  placeholder="Draft"
-                                  appendTo="body"
-                                  styleClass="bp-b2-statusdd"
-                                  [style]="{ width: '168px' }"></p-dropdown>
-                    </div>
                     <div>
                       <div class="bp-b2-flabel">Budget</div>
                       <div class="bp-b2-money">
@@ -389,9 +394,9 @@ type DetailView =
         <!-- v1.52d — action cluster, matching the marketplace detail card -->
         <div class="bp-b2-d-cluster">
           <button class="bp-b2-d-cbtn" type="button" [class.on]="d.added"
-                  [title]="d.added ? 'Selected for project' : 'Select for project'"
+                  [title]="d.added ? 'Remove from project' : 'Select for project'"
                   (click)="addFromDetail('selected')">
-            <lucide-icon name="plus" [size]="14"></lucide-icon>
+            <lucide-icon [name]="d.added ? 'check' : 'plus'" [size]="14"></lucide-icon>
           </button>
           <button class="bp-b2-d-cbtn" type="button" title="Add to wishlist"
                   (click)="addFromDetail('liked')">
@@ -455,8 +460,8 @@ type DetailView =
         <span class="bp-b2-score">{{ m.score }}/10</span>
         <div class="bp-b2-qa">
           <button class="bp-icon-btn bp-b2-iact" [class.on]="isItemAdded(m.item_id)"
-                  title="Select for project"
-                  (click)="addMatched(ac, m, 'selected', $event)">
+                  [title]="isItemAdded(m.item_id) ? 'Remove from project' : 'Select for project'"
+                  (click)="toggleMatched(ac, m, $event)">
             <lucide-icon name="check" [size]="14"></lucide-icon>
           </button>
           <button class="bp-icon-btn bp-b2-iact like"
@@ -488,8 +493,8 @@ type DetailView =
         <span class="bp-b2-score">{{ ci.score }}/10</span>
         <div class="bp-b2-qa">
           <button class="bp-icon-btn bp-b2-iact" [class.on]="isItemAdded(ci.item_id)"
-                  title="Select for project"
-                  (click)="addMatched(ac, ci, 'selected', $event)">
+                  [title]="isItemAdded(ci.item_id) ? 'Remove from project' : 'Select for project'"
+                  (click)="toggleMatched(ac, ci, $event)">
             <lucide-icon name="check" [size]="14"></lucide-icon>
           </button>
           <button class="bp-icon-btn bp-b2-iact like"
@@ -529,9 +534,9 @@ type DetailView =
         <span class="bp-b2-row-price">{{ p.estimated_price | gbp }}</span>
         <span class="bp-b2-score">{{ p.confidence }}/10</span>
         <div class="bp-b2-qa">
-          <button class="bp-icon-btn bp-b2-iact" [class.on]="addedProposed.has(ac.category_id)"
-                  title="Add the proposed item"
-                  (click)="addProposed(ac, p, 'selected', $event)">
+          <button class="bp-icon-btn bp-b2-iact" [class.on]="proposedAdded(p, ac)"
+                  [title]="proposedAdded(p, ac) ? 'Remove from project' : 'Add the proposed item'"
+                  (click)="toggleProposed(ac, p, $event)">
             <lucide-icon name="check" [size]="14"></lucide-icon>
           </button>
           <button class="bp-icon-btn bp-b2-iact like"
@@ -614,7 +619,7 @@ type DetailView =
     .bp-b2-plbl b { color: var(--color-text-secondary); font-weight: 600; }
 
     /* 3-col */
-    .bp-b2-panes { display: grid; grid-template-columns: 236px minmax(0,1fr) 340px;
+    .bp-b2-panes { display: grid; grid-template-columns: 300px minmax(0,1fr) 340px;
       gap: 14px; align-items: start; }
     .bp-b2-colhdr { padding: 0 4px 6px; }
 
@@ -647,12 +652,20 @@ type DetailView =
     .bp-b2-panel { background: var(--color-surface); border: 0.5px solid var(--color-border);
       border-radius: var(--radius-card); overflow: hidden; min-height: 540px; }
     .bp-b2-ws { padding: 15px 17px 14px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-b2-ws-top { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+    .bp-b2-ws-top { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
     .bp-b2-ws-ic { width: 30px; height: 30px; border-radius: 50%; background: var(--theme-accent);
       color: var(--color-surface); display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; }
-    .bp-b2-ws-name { font-family: var(--font-display); font-size: var(--text-lg);
-      color: var(--color-text-primary); }
+      font-family: var(--font-display); font-size: var(--text-base); font-weight: 600;
+      flex-shrink: 0; }
+    .bp-b2-ws-name { flex: 1; min-width: 0; font-family: var(--font-display);
+      font-size: var(--text-lg); color: var(--color-text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-b2-ws-status { flex-shrink: 0; }
+
+    /* Brief + Notes side by side */
+    .bp-b2-briefgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .bp-b2-bcol { display: flex; flex-direction: column; }
+    .bp-b2-bcol .bp-b2-brief, .bp-b2-bcol .bp-b2-notes { flex: 1; }
     .bp-b2-flabel { margin-bottom: 5px; }
     .bp-b2-brief { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
       line-height: 1.6; color: var(--color-text-primary);
@@ -688,8 +701,8 @@ type DetailView =
     :host ::ng-deep .bp-b2-statusdd .p-dropdown-label {
       font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body); }
     .bp-cat-pill { display: inline-flex; align-items: center; flex-shrink: 0;
-      font-size: var(--text-xs); font-weight: 600; padding: 2px 8px;
-      border-radius: var(--radius-pill); white-space: nowrap; }
+      font-size: var(--text-xs); font-weight: 700; padding: 3px 9px;
+      border-radius: var(--radius-pill); white-space: nowrap; line-height: 1.3; }
     .bp-b2-card-nrow { display: flex; align-items: center; gap: 6px; }
     .bp-b2-card-nrow .bp-b2-card-name { flex: 1; min-width: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -740,7 +753,10 @@ type DetailView =
     .bp-b2-score { font-size: var(--text-xs); font-weight: 700; color: var(--theme-accent);
       background: var(--theme-bg); border-radius: var(--radius-pill); padding: 1px 6px; flex-shrink: 0; }
     .bp-b2-qa { display: flex; gap: 4px; flex-shrink: 0; }
-    .bp-b2-iact.on { color: var(--theme-accent); }
+    /* v1.54 — added items get a solid accent fill so "in the project"
+       reads at a glance; clicking again removes the item. */
+    .bp-b2-iact.on { background: var(--theme-accent); color: var(--color-surface); }
+    .bp-b2-iact.on:hover { background: var(--theme-accent); filter: brightness(0.92); }
     .bp-b2-iact.like:hover { color: var(--color-danger); background: var(--theme-bg); }
 
     .bp-b2-hint { border-top: 0.5px solid var(--color-border); padding-top: 11px; }
@@ -835,6 +851,7 @@ type DetailView =
       .bp-b2-detail { position: static; }
       .bp-b2-optbars, .bp-b2-optgrid { grid-template-columns: 1fr; }
       .bp-b2-optgrid { margin-top: 0; }
+      .bp-b2-briefgrid { grid-template-columns: 1fr; }
     }
   `]
 })
@@ -1107,11 +1124,11 @@ export class BriefComponent implements OnInit, OnDestroy {
     return this.categoryStatuses.find(s => s.code === c)?.meta?.color || '';
   }
 
-  /** A2 — inline pill style: the codelist colour as text, a soft tint of
-      it as the background. Empty object until the codelist loads. */
+  /** A2 — inline pill style: a solid fill in the codelist colour with
+      surface-coloured text. Empty object until the codelist loads. */
   statusPillStyle(code?: string): { [k: string]: string } {
     const col = this.statusColor(code);
-    return col ? { color: col, background: col + '22' } : {};
+    return col ? { color: 'var(--color-surface)', background: col } : {};
   }
 
   /** A2 Step 7 — Client Managed categories aren't actioned by the agency
@@ -1197,7 +1214,8 @@ export class BriefComponent implements OnInit, OnDestroy {
       return {
         proposed: true, name: p.name, supplier_name: p.supplier_name,
         price: p.estimated_price, score: p.confidence, reason: p.reason,
-        description: p.description, added: this.addedProposed.has(this.activeCategoryId || ''),
+        description: p.description,
+        added: !!this.activeCategory && this.proposedAdded(p, this.activeCategory),
         image_url: p.image_url ?? null, image_display: p.image_display ?? null
       };
     }
@@ -1251,13 +1269,17 @@ export class BriefComponent implements OnInit, OnDestroy {
     if (supplierId) this.router.navigate(['/suppliers', supplierId]);
   }
 
-  /** Select / like inside the col-3 detail panel. */
+  /** Select / like inside the col-3 detail panel. v1.54 — the select
+      action toggles project membership (add ⇄ remove). */
   addFromDetail(stype: 'selected' | 'liked'): void {
     if (!this.detail || !this.activeCategory) return;
+    const ac = this.activeCategory;
     if (this.detail.kind === 'item') {
-      this.addMatched(this.activeCategory, this.detail.item, stype);
+      if (stype === 'selected') this.toggleMatched(ac, this.detail.item);
+      else this.addMatched(ac, this.detail.item, stype);
     } else if (this.detail.kind === 'proposed') {
-      this.addProposed(this.activeCategory, this.detail.item, stype);
+      if (stype === 'selected') this.toggleProposed(ac, this.detail.item);
+      else this.addProposed(ac, this.detail.item, stype);
     }
   }
 
@@ -1379,6 +1401,40 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** v1.54 — the select button toggles project membership. */
+  toggleMatched(pc: ProjectCategory, m: MatchItem, ev?: Event): void {
+    if (ev) ev.stopPropagation();
+    if (this.isItemAdded(m.item_id)) this.removeMatched(pc, m.item_id, m.name);
+    else this.addMatched(pc, m, 'selected');
+  }
+
+  /** v1.54 — un-add an item; recomputes the category's est. cost. */
+  removeMatched(pc: ProjectCategory, itemId: string, name: string): void {
+    this.api.post<{ ballpark_cost: number }>('/taxonomy/remove-match', {
+      project_id: this.pid, category_id: pc.category_id, item_id: itemId
+    }).subscribe({
+      next: res => this.afterAdd(pc, res, 'Removed from project', name),
+      error: () => this.msg.add({ severity: 'error', summary: 'Could not remove item', life: 3500 })
+    });
+  }
+
+  /** v1.54 — is the proposed item's catalogue row already in the project? */
+  proposedAdded(p: ProposedItem, pc: ProjectCategory): boolean {
+    return (!!p.item_id && this.isItemAdded(p.item_id)) || this.addedProposed.has(pc.category_id);
+  }
+
+  /** v1.54 — the proposed-item select button toggles project membership. */
+  toggleProposed(pc: ProjectCategory, p: ProposedItem, ev?: Event): void {
+    if (ev) ev.stopPropagation();
+    if (this.proposedAdded(p, pc)) {
+      this.addedProposed.delete(pc.category_id);
+      if (p.item_id) this.removeMatched(pc, p.item_id, p.name);
+      else this.cdr.markForCheck();
+    } else {
+      this.addProposed(pc, p, 'selected');
+    }
+  }
+
   addProposed(pc: ProjectCategory, p: ProposedItem, stype: 'selected' | 'liked', ev?: Event): void {
     if (ev) ev.stopPropagation();
     this.api.post<{ project_item: any; ballpark_cost: number }>('/taxonomy/add-match', {
@@ -1392,6 +1448,9 @@ export class BriefComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: res => {
         this.addedProposed.add(pc.category_id);
+        // v1.54 — capture the materialised row id so the select button
+        // can later toggle it back off.
+        if (res?.project_item?.item_id) p.item_id = res.project_item.item_id;
         this.afterAdd(pc, res, stype === 'liked' ? 'Added to wishlist' : 'Proposed item added', p.name);
       },
       error: () => this.msg.add({ severity: 'error', summary: 'Could not add proposed item', life: 3500 })
