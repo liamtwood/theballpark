@@ -114,20 +114,19 @@ type DetailView =
                 <div class="bp-b2-card-body">
                   <div class="bp-b2-card-name">{{ pc.category_name }}</div>
                   <div class="bp-b2-card-meta">
-                    <span class="bp-b2-count" *ngIf="catItemCount(pc.category_id) as n">
-                      <lucide-icon name="check" [size]="11"></lucide-icon> {{ n }}
-                    </span>
-                    <span class="bp-b2-brief-dot"
-                          [class.filled]="!!(pc.requirement_brief || '').trim()"
-                          [title]="(pc.requirement_brief || '').trim() ? 'Brief written' : 'No brief yet'">
+                    <span class="bp-b2-count">
+                      <lucide-icon name="check" [size]="11"></lucide-icon>
+                      {{ catItemCount(pc.category_id) }}
                     </span>
                   </div>
                 </div>
-                <div class="bp-b2-card-cost">{{
-                  pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
-                }}</div>
-                <app-status-badge [status]="pc.status_code || 'draft'"
-                                  [label]="categoryStatusLabel(pc.status_code)"></app-status-badge>
+                <div class="bp-b2-card-rt">
+                  <app-status-badge [status]="pc.status_code || 'draft'"
+                                    [label]="categoryStatusLabel(pc.status_code)"></app-status-badge>
+                  <div class="bp-b2-card-cost">{{
+                    pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
+                  }}</div>
+                </div>
                 <span class="bp-b2-card-end">
                   <lucide-icon class="bp-b2-card-chev" name="chevron-right" [size]="16"></lucide-icon>
                   <button class="bp-icon-btn bp-b2-card-rm" type="button"
@@ -617,7 +616,7 @@ type DetailView =
     /* col 1 — category cards (v1.61, 1:1 with the Build/Estimate cards) */
     .bp-b2-catlist { display: flex; flex-direction: column; gap: 8px; }
     .bp-b2-card { display: grid;
-      grid-template-columns: 36px minmax(0,1fr) auto auto 16px;
+      grid-template-columns: 36px minmax(0,1fr) auto 16px;
       align-items: center; gap: 12px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-left: 3px solid var(--theme-accent);
       border-radius: var(--radius-card); padding: 11px 13px; cursor: pointer;
@@ -632,15 +631,14 @@ type DetailView =
     .bp-b2-card-name { font-size: var(--text-md); font-weight: 600; line-height: 1.3;
       color: var(--color-text-primary);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bp-b2-card-meta { display: flex; align-items: center; gap: 9px; margin-top: 2px; }
+    .bp-b2-card-meta { display: flex; align-items: center; gap: 9px; margin-top: 3px; }
     .bp-b2-count { display: inline-flex; align-items: center; gap: 3px;
       font-size: var(--text-xs); font-weight: 600; color: var(--theme-accent);
       font-variant-numeric: tabular-nums; }
     .bp-b2-count lucide-icon { display: inline-flex; }
-    .bp-b2-brief-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-      border: 1px solid var(--color-text-muted); background: transparent; }
-    .bp-b2-brief-dot.filled { background: var(--theme-accent); border-color: var(--theme-accent); }
-    .bp-b2-card-cost { font-size: var(--text-base); font-weight: 700;
+    /* status pill + estimate, stacked on the right */
+    .bp-b2-card-rt { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .bp-b2-card-cost { font-size: var(--text-sm); font-weight: 700;
       color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
     .bp-b2-card-end { position: relative; width: 16px; height: 26px;
       display: flex; align-items: center; justify-content: center; }
