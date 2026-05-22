@@ -1363,12 +1363,13 @@ const migrate = async () => {
       INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
         ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
         ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
-        ('category_status', 'awaiting',       'Awaiting Client', 3, '{"color":"#F59E0B"}'::jsonb, true),
-        ('category_status', 'client_managed', 'Client Managed',  4, '{"color":"#8B5CF6"}'::jsonb, true),
-        ('category_status', 'out_for_quote',  'Out for Quote',   5, '{"color":"#6366F1"}'::jsonb, true),
-        ('category_status', 'quoted',         'Quoted',          6, '{"color":"#0EA5E9"}'::jsonb, true),
-        ('category_status', 'confirmed',      'Confirmed',       7, '{"color":"#22C55E"}'::jsonb, true),
-        ('category_status', 'na',             'N/A',             8, '{"color":"#9CA3AF"}'::jsonb, true)
+        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"#F97316"}'::jsonb, true),
+        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"#6366F1"}'::jsonb, true),
+        ('category_status', 'quoted',         'Quoted',          5, '{"color":"#0EA5E9"}'::jsonb, true),
+        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"#22C55E"}'::jsonb, true),
+        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"#F59E0B"}'::jsonb, true),
+        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"#8B5CF6"}'::jsonb, true),
+        ('category_status', 'na',             'N/A',             9, '{"color":"#9CA3AF"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

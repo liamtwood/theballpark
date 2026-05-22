@@ -189,7 +189,7 @@ type DetailView =
                   </div>
                 </div>
 
-                <!-- BALLPARK — budget + estimate + find -->
+                <!-- BALLPARK — budget + estimate -->
                 <div class="bp-b2-sec">
                   <div class="bp-b2-sechd">Ballpark</div>
                   <div class="bp-b2-ws-row">
@@ -214,21 +214,6 @@ type DetailView =
                         <ng-template #noEst><small>— not found yet</small></ng-template>
                       </div>
                     </div>
-                    <!-- A2 Step 7 — Client Managed categories aren't
-                         actioned by the agency, so hide "Find items". -->
-                    <p-button *ngIf="!isClientManaged(ac)"
-                              class="bp-b2-find"
-                              [styleClass]="activeResult ? 'p-button-outlined' : 'p-button'"
-                              [disabled]="findDisabled(ac)"
-                              [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
-                              (onClick)="findItems(ac)">
-                      <lucide-icon [name]="briefSearched(ac) ? 'check' : 'sparkles'" [size]="14"></lucide-icon>
-                      <span>{{ findBtnLabel(ac) }}</span>
-                    </p-button>
-                    <span *ngIf="isClientManaged(ac)" class="bp-b2-cmnote">
-                      <lucide-icon name="user" [size]="13"></lucide-icon>
-                      Managed by client
-                    </span>
                   </div>
                 </div>
 
@@ -240,6 +225,20 @@ type DetailView =
                       <lucide-icon name="sparkles" [size]="15"></lucide-icon>
                     </div>
                     <div class="bp-b2-chead-title">Options</div>
+                    <!-- Find items — A2 Step 7: hidden for Client Managed -->
+                    <p-button *ngIf="!isClientManaged(ac)"
+                              class="bp-b2-find"
+                              styleClass="p-button bp-b2-findbtn"
+                              [disabled]="findDisabled(ac)"
+                              [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
+                              (onClick)="findItems(ac)">
+                      <lucide-icon [name]="briefSearched(ac) ? 'check' : 'sparkles'" [size]="14"></lucide-icon>
+                      <span>{{ findBtnLabel(ac) }}</span>
+                    </p-button>
+                    <span *ngIf="isClientManaged(ac)" class="bp-b2-cmnote bp-b2-cmnote--head">
+                      <lucide-icon name="user" [size]="13"></lucide-icon>
+                      Managed by client
+                    </span>
                   </div>
                   <div class="bp-b2-optcard-body">
                     <ng-container *ngIf="activeResult as r; else findPrompt">
@@ -435,10 +434,6 @@ type DetailView =
 
     <!-- Item matches section (Option 1) — matched + closest, one section -->
     <ng-template #itemMatches let-r let-ac="ac">
-      <div class="bp-b2-rec">
-        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
-        {{ itemMatchRec }}
-      </div>
       <div *ngFor="let m of r.matched_items"
            class="bp-b2-row"
            [class.active]="isDetailItem(m.item_id)"
@@ -689,10 +684,18 @@ type DetailView =
     .bp-b2-est { font-size: var(--text-base); font-weight: 600; padding: 5px 0;
       color: var(--color-text-primary); }
     .bp-b2-est small { color: var(--color-text-muted); font-weight: 500; }
-    .bp-b2-find { margin-left: auto; }
+    /* Find items — lives in the pink Options header, so light-on-pink */
+    .bp-b2-find { margin-left: auto; flex-shrink: 0; }
     .bp-b2-find lucide-icon { display: inline-flex; }
+    :host ::ng-deep .bp-b2-findbtn {
+      background: var(--color-surface) !important; border-color: var(--color-surface) !important;
+      color: var(--theme-accent) !important; padding: 6px 12px !important; }
+    :host ::ng-deep .bp-b2-findbtn:enabled:hover {
+      background: var(--theme-bg) !important; border-color: var(--theme-bg) !important; }
+    :host ::ng-deep .bp-b2-findbtn:disabled { opacity: 0.65; }
     .bp-b2-cmnote { margin-left: auto; display: inline-flex; align-items: center;
       gap: 5px; font-size: var(--text-sm); color: var(--color-text-muted); }
+    .bp-b2-cmnote--head { color: var(--color-surface); }
 
     /* status dropdown — sits on the pink header, light-on-pink */
     :host ::ng-deep .bp-b2-statusdd.p-dropdown {
@@ -746,9 +749,6 @@ type DetailView =
       display: flex; align-items: center; justify-content: center; color: var(--theme-accent);
       font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; overflow: hidden; }
     .bp-b2-thumb--img { background-size: cover; background-position: center; }
-    .bp-b2-rec { display: flex; align-items: flex-start; gap: 4px;
-      font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.55;
-      margin: -2px 0 10px; }
     .bp-b2-row-mid { flex: 1; min-width: 0; }
     .bp-b2-row-name { font-size: var(--text-sm); font-weight: 600; line-height: 1.25;
       color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -960,14 +960,6 @@ export class BriefComponent implements OnInit, OnDestroy {
   }
   get activeResult(): MatchResult | null {
     return this.activeCategoryId ? (this.matchResults.get(this.activeCategoryId) || null) : null;
-  }
-  /** v1.52 — AI-voiced recommendation copy framing each results section. */
-  get itemMatchRec(): string {
-    const r = this.activeResult;
-    if (!r) return '';
-    return r.matched_items.length
-      ? 'Found these in the catalogue — strong matches for your brief. Pick one and request an updated quote from the supplier.'
-      : 'The closest I found in the catalogue — not an exact fit. Request a quote on it, or send the new item below.';
   }
   get unusedCategories(): Category[] {
     const used = new Set(this.projectCategories.map(p => p.category_id));
