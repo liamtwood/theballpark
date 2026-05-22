@@ -1003,6 +1003,40 @@ const migrate = async () => {
     }
     console.log('  project_items AI-match columns + ai_search_hints table installed (v1.46).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.48 — refreshed user-facing descriptions for the 15 v2 catalogue
+    // parent categories. The old seed copy predated Taxonomy v2 and was
+    // inconsistent with it (e.g. Lighting still claimed "electrical
+    // distribution", which is now AV's). Idempotent — plain UPDATE on name.
+    // ─────────────────────────────────────────────────────────────────
+    const CATEGORY_DESCRIPTIONS = {
+      'Stand Structure':       'Exhibition stands, custom builds and the trades behind them — joinery, metalwork, scenic finishes, flooring and install.',
+      'Lighting':              'Lighting design and fixtures — architectural wash, feature spots, uplighting, moving heads, festoon, neon and ambient effects.',
+      'AV & Technology':       'Sound, screens and show technology — PA, LED walls, projection, interactive, streaming, connectivity, rigging and power.',
+      'Furniture & Fixtures':  'Hired furniture and display units — seating, tables, lounge sets, bars, plinths, shelving and reception desks.',
+      'Catering':              'Food and drink — canapés, bowl food, buffets, street food, live stations, sampling, desserts, bars and coffee.',
+      'Florals':               'Event floristry and botanical installations — centrepieces, arches, hanging features, feature walls, greenery and bouquets.',
+      'Graphics & Signage':    'Printed and branded materials — banners, wayfinding, vinyl, large-format print, portable displays, stationery and merchandise.',
+      'Staffing':              'Event crew and talent — producers, brand ambassadors, hospitality, technical crew, specialists and multilingual staff.',
+      'Health & Safety':       'Risk, compliance and safety services — RAMS, insurance, fire and first-aid cover, crowd management, certification and permits.',
+      'Logistics & Transport': 'Moving and supporting the event — transport, crew, storage, temporary power, water, waste, freight and traffic.',
+      'Entertainment':         'Live performance and hosted experiences — bands, DJs, hosts, speakers, performers, interactive and roaming acts.',
+      'Photography':           'Capture and content — event photography, videography, drone, social content, photo booths and immersive capture.',
+      'Event Accessories':     'The finishing touches — red carpet, gift bags, lanyards, linen, glassware hire, branded uniforms, pyro and scent.',
+      'Venue':                 'Spaces to hire — exhibition centres, hotels, museums, outdoor sites, warehouses, restaurants and unique venues.',
+      'Other':                 'Agency line items — project management and design fees, contingency, client hospitality, travel and site surveys.'
+    };
+    for (const schema of ['public', 'preview', 'master']) {
+      for (const [name, desc] of Object.entries(CATEGORY_DESCRIPTIONS)) {
+        await client.query(
+          `UPDATE ${schema}.categories SET description = $1
+            WHERE name = $2 AND parent_id IS NULL AND namespace = 'catalogue'`,
+          [desc, name]
+        );
+      }
+    }
+    console.log('  v2 category descriptions refreshed on all schemas (v1.48).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`
