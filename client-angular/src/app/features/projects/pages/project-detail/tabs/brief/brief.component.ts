@@ -93,17 +93,6 @@ type DetailView =
     <ng-container *ngIf="!loading">
       <div class="bp-b2">
 
-        <!-- ── PROGRESS — items + estimate only (the project hero
-             already titles the tab) ── -->
-        <div class="bp-b2-progress">
-          <div class="bp-b2-pbar">
-            <div class="bp-b2-pfill" [style.width.%]="sourcedPct"></div>
-          </div>
-          <div class="bp-b2-plbl">
-            <span><b>{{ totalItemCount }}</b> items · <b>{{ projectTotal | gbp }}</b> estimated</span>
-          </div>
-        </div>
-
         <!-- ── 3-COLUMN BODY ── -->
         <div class="bp-b2-panes">
 
@@ -182,8 +171,7 @@ type DetailView =
                   <div class="bp-b2-sechd">Details</div>
                   <div class="bp-b2-briefgrid">
                     <div class="bp-b2-bcol">
-                      <div class="bp-b2-fieldlbl">brief</div>
-                      <div class="bp-b2-fhelp">Sent to suppliers in the quote request</div>
+                      <div class="bp-b2-fieldlbl">Brief</div>
                       <textarea class="bp-input-edit bp-b2-brief"
                                 rows="4"
                                 [value]="ac.requirement_brief || ''"
@@ -191,8 +179,7 @@ type DetailView =
                                 (blur)="onBriefBlur(ac, $event)"></textarea>
                     </div>
                     <div class="bp-b2-bcol">
-                      <div class="bp-b2-fieldlbl">notes</div>
-                      <div class="bp-b2-fhelp">Your own notes — not included in supplier emails</div>
+                      <div class="bp-b2-fieldlbl">Notes</div>
                       <textarea class="bp-input-edit bp-b2-notes"
                                 rows="4"
                                 [value]="ac.requirement_detail || ''"
@@ -207,7 +194,7 @@ type DetailView =
                   <div class="bp-b2-sechd">Ballpark</div>
                   <div class="bp-b2-ws-row">
                     <div>
-                      <div class="bp-b2-fieldlbl">budget</div>
+                      <div class="bp-b2-fieldlbl">Budget</div>
                       <div class="bp-b2-money">
                         <span>£</span>
                         <input type="text" inputmode="numeric"
@@ -218,7 +205,7 @@ type DetailView =
                       </div>
                     </div>
                     <div>
-                      <div class="bp-b2-fieldlbl">estimate</div>
+                      <div class="bp-b2-fieldlbl">Estimate</div>
                       <div class="bp-b2-est">
                         <ng-container *ngIf="ac.ballpark_cost && ac.ballpark_cost > 0; else noEst">
                           {{ ac.ballpark_cost | gbp }}
@@ -256,11 +243,6 @@ type DetailView =
                   </div>
                   <div class="bp-b2-optcard-body">
                     <ng-container *ngIf="activeResult as r; else findPrompt">
-                      <div class="bp-b2-searchln">
-                        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
-                        Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
-                        · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
-                      </div>
 
                       <!-- two light subcards (image 1 header) — one shows
                            if only one side has content. -->
@@ -286,19 +268,27 @@ type DetailView =
                         </div>
                       </div>
 
-                      <!-- hint -->
-                      <div class="bp-b2-hint">
-                        <label>
-                          <lucide-icon name="message-square" [size]="14"></lucide-icon>
-                          I would have looked for…
-                        </label>
-                        <div class="bp-b2-hint-row">
-                          <input type="text"
-                                 [value]="hintDrafts.get(ac.category_id) || ''"
-                                 placeholder="search terms the AI missed"
-                                 (input)="onHintInput(ac, $event)"/>
-                          <p-button label="Submit" styleClass="p-button"
-                                    (onClick)="submitHint(ac)"></p-button>
+                      <!-- AI FEEDBACK — what was searched + train the matcher -->
+                      <div class="bp-b2-aifb">
+                        <div class="bp-b2-sechd">AI feedback</div>
+                        <div class="bp-b2-searchln">
+                          <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
+                          Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
+                          · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
+                        </div>
+                        <div class="bp-b2-hint">
+                          <label>
+                            <lucide-icon name="message-square" [size]="14"></lucide-icon>
+                            I would have looked for…
+                          </label>
+                          <div class="bp-b2-hint-row">
+                            <input type="text"
+                                   [value]="hintDrafts.get(ac.category_id) || ''"
+                                   placeholder="search terms the AI missed"
+                                   (input)="onHintInput(ac, $event)"/>
+                            <p-button label="Submit" styleClass="p-button"
+                                      (onClick)="submitHint(ac)"></p-button>
+                          </div>
                         </div>
                       </div>
                     </ng-container>
@@ -519,10 +509,6 @@ type DetailView =
 
     <!-- New item section (Option 2) — the AI proposal -->
     <ng-template #newItem let-r let-ac="ac">
-      <div class="bp-b2-rec">
-        <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
-        {{ newItemRec }}
-      </div>
       <div *ngIf="r.proposed_item as p"
            class="bp-b2-row proposed"
            [class.active]="detail?.kind === 'proposed'"
@@ -610,15 +596,6 @@ type DetailView =
       font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--color-text-muted); }
 
-    /* progress */
-    .bp-b2-progress { margin: 0 0 18px; }
-    .bp-b2-pbar { height: 5px; background: var(--color-border);
-      border-radius: var(--radius-input); overflow: hidden; }
-    .bp-b2-pfill { height: 100%; background: var(--theme-accent); transition: width 0.3s; }
-    .bp-b2-plbl { display: flex; justify-content: flex-end; font-size: var(--text-sm);
-      color: var(--color-text-muted); margin-top: 6px; }
-    .bp-b2-plbl b { color: var(--color-text-secondary); font-weight: 600; }
-
     /* 3-col */
     .bp-b2-panes { display: grid; grid-template-columns: 300px minmax(0,1fr) 340px;
       gap: 14px; align-items: start; }
@@ -683,7 +660,7 @@ type DetailView =
     .bp-b2-sechd { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 9px; }
     .bp-b2-fieldlbl { font-size: var(--text-sm); font-weight: 500;
-      color: var(--color-text-muted); margin-bottom: 2px; }
+      color: var(--color-text-muted); margin-bottom: 5px; }
 
     /* Brief + Notes side by side */
     .bp-b2-briefgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -693,8 +670,6 @@ type DetailView =
       line-height: 1.6; color: var(--color-text-primary);
       border-radius: var(--radius-button); padding: 10px 12px;
       resize: vertical; outline: none; }
-    .bp-b2-fhelp { font-size: var(--text-xs); color: var(--color-text-muted);
-      margin: 0 0 6px; }
     .bp-b2-notes { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
       line-height: 1.55; color: var(--color-text-primary);
       border-radius: var(--radius-button); padding: 9px 12px;
@@ -790,7 +765,9 @@ type DetailView =
     .bp-b2-iact.on:hover { background: var(--theme-accent); filter: brightness(0.92); }
     .bp-b2-iact.like:hover { color: var(--color-danger); background: var(--theme-bg); }
 
-    .bp-b2-hint { border-top: 0.5px solid var(--color-border); padding-top: 11px; }
+    /* AI feedback — search recap + matcher training */
+    .bp-b2-aifb { border-top: 0.5px solid var(--color-border); padding-top: 12px;
+      display: flex; flex-direction: column; gap: 8px; }
     .bp-b2-hint label { display: flex; align-items: center; gap: 4px;
       font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 5px; }
     .bp-b2-hint-row { display: flex; gap: 6px; }
@@ -992,29 +969,10 @@ export class BriefComponent implements OnInit, OnDestroy {
       ? 'Found these in the catalogue — strong matches for your brief. Pick one and request an updated quote from the supplier.'
       : 'The closest I found in the catalogue — not an exact fit. Request a quote on it, or send the new item below.';
   }
-  get newItemRec(): string {
-    const r = this.activeResult;
-    if (!r) return '';
-    return (r.matched_items.length || r.closest_item)
-      ? 'Prefer something bespoke? Here’s a new item to send out for a quote.'
-      : 'I didn’t find anything close enough in the catalogue — here’s a new item to send out for a quote.';
-  }
   get unusedCategories(): Category[] {
     const used = new Set(this.projectCategories.map(p => p.category_id));
     return this.catalogueParents.filter(c => !used.has(c.id));
   }
-  get categoriesWithItems(): number {
-    return this.projectCategories.filter(p => this.catItemCount(p.category_id) > 0).length;
-  }
-  get totalItemCount(): number { return this.projectItems.length; }
-  get sourcedPct(): number {
-    const n = this.projectCategories.length;
-    return n ? Math.round(this.categoriesWithItems / n * 100) : 0;
-  }
-  get projectTotal(): number {
-    return this.projectCategories.reduce((s, p) => s + (Number(p.ballpark_cost) || 0), 0);
-  }
-
   catItemCount(catId: string): number {
     return this.projectItems.filter(pi => (pi.item_category_id) === catId).length;
   }
