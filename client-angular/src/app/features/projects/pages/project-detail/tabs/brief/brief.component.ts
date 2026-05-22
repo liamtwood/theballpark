@@ -527,7 +527,7 @@ type DetailView =
       resize: vertical; outline: none; }
     .bp-b2-brief:focus { border-color: var(--theme-accent); background: var(--color-surface); }
     .bp-b2-ws-row { display: flex; align-items: flex-end; gap: 14px; margin-top: 11px; }
-    .bp-b2-money { display: flex; align-items: center; background: var(--color-surface);
+    .bp-b2-money { display: flex; align-items: center; gap: 3px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: 6px; padding: 5px 9px; width: 118px; }
     .bp-b2-money span { color: var(--color-text-muted); font-size: 12.5px; }
     .bp-b2-money input { border: none; outline: none; font-family: var(--font-body);
