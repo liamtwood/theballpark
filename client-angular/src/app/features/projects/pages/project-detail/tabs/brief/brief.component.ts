@@ -610,7 +610,7 @@ type DetailView =
       text-transform: uppercase; color: var(--color-text-muted); }
 
     /* 3-col */
-    .bp-b2-panes { display: grid; grid-template-columns: 340px minmax(0,1fr) 320px;
+    .bp-b2-panes { display: grid; grid-template-columns: 400px minmax(0,1fr) 320px;
       gap: 14px; align-items: start; }
     .bp-b2-colhdr { padding: 0 4px 6px; }
 
