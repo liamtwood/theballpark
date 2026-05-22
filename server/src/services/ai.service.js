@@ -56,8 +56,10 @@ async function parseBrief(rawBriefText) {
   }
 
   const Anthropic = require('@anthropic-ai/sdk');
-  // maxRetries rides out transient 429 / 5xx / 529 overloads with backoff.
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 4 });
+  // v1.49f — maxRetries 8 (was 4): rides out transient 429 / 5xx / 529
+  // overloads with exponential backoff. 4 wasn't always enough to
+  // outlast an Anthropic overload window before the call failed.
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 8 });
 
   let message;
   try {
