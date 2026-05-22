@@ -198,9 +198,8 @@ interface SupplierRow {
             </div>
             <div class="bp-oc-foot">
               <button type="button" class="bp-oc-btn-ghost" (click)="goStep(2)">← Back</button>
-              <button type="button" class="bp-oc-btn-primary"
-                      [disabled]="sending" (click)="send()">
-                {{ sending ? 'Sending…' : 'Send brief →' }}
+              <button type="button" class="bp-oc-btn-primary" (click)="confirmingSend = true">
+                Send brief →
               </button>
             </div>
           </ng-container>
@@ -227,13 +226,50 @@ interface SupplierRow {
           </ng-container>
 
         </ng-container>
+
+        <!-- v1.51e — "use 1 ball?" confirmation before the brief sends -->
+        <div class="bp-oc-confirm" *ngIf="confirmingSend">
+          <div class="bp-oc-confirm-card">
+            <div class="bp-oc-confirm-ic">🎱</div>
+            <div class="bp-oc-confirm-h">Send brief — use 1 ball?</div>
+            <div class="bp-oc-confirm-p">
+              This sends the brief to {{ selectedCount }} supplier{{ selectedCount === 1 ? '' : 's' }}
+              and uses <b>1 ball</b><span *ngIf="ballsBalance != null"> — you'll have
+              {{ ballsBalance > 0 ? ballsBalance - 1 : 0 }} left</span>.
+            </div>
+            <div class="bp-oc-confirm-actions">
+              <button type="button" class="bp-oc-btn-ghost"
+                      [disabled]="sending" (click)="confirmingSend = false">Cancel</button>
+              <button type="button" class="bp-oc-btn-primary"
+                      [disabled]="sending" (click)="send()">
+                {{ sending ? 'Sending…' : 'Confirm & send' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </p-sidebar>
   `,
   styles: [`
     :host ::ng-deep .bp-oc-drawer .p-sidebar-content { padding: 0; height: 100%; }
-    .bp-oc { display: flex; flex-direction: column; height: 100%;
+    .bp-oc { display: flex; flex-direction: column; height: 100%; position: relative;
       font-family: var(--font-body); background: var(--color-surface); }
+
+    /* ball-spend confirmation overlay */
+    .bp-oc-confirm { position: absolute; inset: 0; z-index: 20; display: flex;
+      align-items: center; justify-content: center; padding: 28px;
+      background: rgba(20,20,18,0.4); }
+    .bp-oc-confirm-card { background: var(--color-surface); border-radius: 12px;
+      padding: 24px 22px; max-width: 320px; width: 100%; text-align: center;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.22); }
+    .bp-oc-confirm-ic { font-size: 30px; margin-bottom: 10px; }
+    .bp-oc-confirm-h { font-family: var(--font-display); font-size: 18px;
+      color: var(--color-text-primary); }
+    .bp-oc-confirm-p { font-size: 12px; color: var(--color-text-secondary);
+      line-height: 1.6; margin-top: 7px; }
+    .bp-oc-confirm-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .bp-oc-confirm-actions .bp-oc-btn-ghost,
+    .bp-oc-confirm-actions .bp-oc-btn-primary { flex: 1; }
 
     /* train */
     .bp-oc-train { display: flex; align-items: flex-start; padding: 16px 24px 4px; flex-shrink: 0; }
@@ -394,6 +430,9 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
   step = 1;
   loading = false;
   sending = false;
+  /** v1.51e — the "use 1 ball?" confirmation gate before the brief sends. */
+  confirmingSend = false;
+  ballsBalance: number | null = null;
 
   readonly trainSteps = [
     { n: 1, label: 'Suppliers' },
@@ -447,6 +486,8 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     this.step = 1;
     this.loading = true;
     this.sending = false;
+    this.confirmingSend = false;
+    this.ballsBalance = null;
     this.suppliers = [];
     this.selected.clear();
     this.oneLiner = (req.item.description || '').trim();
@@ -497,6 +538,7 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
       if (org) {
         if (org.name)  this.agencyName  = org.name;
         if (org.email) this.agencyEmail = org.email;
+        if (org.balls_balance != null) this.ballsBalance = Number(org.balls_balance);
         this.cdr.markForCheck();
       }
     });
@@ -576,6 +618,7 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.sending = false;
+        this.confirmingSend = false;
         this.step = 4;
         this.cdr.markForCheck();
       },
