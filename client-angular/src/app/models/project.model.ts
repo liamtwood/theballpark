@@ -101,4 +101,7 @@ export interface ProjectCategory {
   category_cover_image_url?: string;
   category_sort_order?: number;
   is_active: boolean;
+  /** v1.49e — persisted Brief-tab "Find items" result (full matcher
+      payload + the brief it was searched against). */
+  match_result_json?: any;
 }

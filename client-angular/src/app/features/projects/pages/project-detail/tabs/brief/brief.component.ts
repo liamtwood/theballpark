@@ -36,6 +36,9 @@ interface MatchResult {
   search_terms: string[]; items_scanned: number; suppliers_scanned: number;
   matched_items: MatchItem[]; closest_item: MatchItem | null;
   suppliers_ranked: MatchSupplier[]; proposed_item: ProposedItem | null;
+  /** v1.49e — the brief text this search ran against (drives whether
+      "Find again" should re-enable) + when it ran. */
+  searched_brief?: string; searched_at?: string;
 }
 type DetailView =
   | { kind: 'item'; item: MatchItem; tier: string }
@@ -170,9 +173,10 @@ type DetailView =
                     <button class="bp-b2-find"
                             type="button"
                             [class.ghost]="!!activeResult"
-                            [disabled]="matchLoading.has(ac.category_id)"
+                            [disabled]="findDisabled(ac)"
+                            [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
                             (click)="findItems(ac)">
-                      ✦ {{ findBtnLabel(ac) }}
+                      {{ briefSearched(ac) ? '✓' : '✦' }} {{ findBtnLabel(ac) }}
                     </button>
                   </div>
                 </div>
@@ -692,6 +696,14 @@ export class BriefComponent implements OnInit, OnDestroy {
         this.projectCategories = (pcs || []) as ProjectCategory[];
         this.project = project || null;
         this.projectItems = items || [];
+        // v1.49e — rehydrate previously-saved "Find items" results so
+        // they re-display without re-running the AI matcher.
+        for (const pc of this.projectCategories) {
+          const saved = pc.match_result_json;
+          if (saved && saved.category_id) {
+            this.matchResults.set(pc.category_id, saved as MatchResult);
+          }
+        }
         this.activeCategoryId = this.projectCategories.length
           ? this.projectCategories[0].category_id : null;
         this.loading = false;
@@ -814,8 +826,22 @@ export class BriefComponent implements OnInit, OnDestroy {
 
   // ── Find items ────────────────────────────────────────────────────────
 
+  /** v1.49e — true once a brief has been searched and the brief text
+      has not changed since. Used to grey out "Find items" so the AI
+      isn't re-run needlessly; editing the brief re-enables it. */
+  briefSearched(pc: ProjectCategory): boolean {
+    const r = this.matchResults.get(pc.category_id);
+    if (!r) return false;
+    return (pc.requirement_brief || '').trim() === (r.searched_brief || '').trim();
+  }
+
+  findDisabled(pc: ProjectCategory): boolean {
+    return this.matchLoading.has(pc.category_id) || this.briefSearched(pc);
+  }
+
   findBtnLabel(pc: ProjectCategory): string {
     if (this.matchLoading.has(pc.category_id)) return 'Searching…';
+    if (this.briefSearched(pc)) return 'Items found';
     return this.matchResults.has(pc.category_id) ? 'Find again' : 'Find items';
   }
 
@@ -832,7 +858,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.matchLoading.add(catId);
     this.cdr.markForCheck();
     this.api.post<MatchResult>('/taxonomy/match-items', {
-      brief, categoryId: catId,
+      brief, categoryId: catId, projectId: this.pid,
       budgetEstimate: pc.ballpark_budget != null ? Number(pc.ballpark_budget) : undefined
     }).subscribe({
       next: r => {

@@ -569,8 +569,12 @@ If good matches exist (7+), proposed_item can be null. If no items exist in this
  * Match a category brief against the catalogue. ONE Haiku call scores
  * every item in the category, ranks suppliers, and proposes a new item
  * if nothing fits. Returns a fully-hydrated result for the Brief tab.
+ *
+ * v1.49e — when projectId is supplied the result is persisted to
+ * project_categories.match_result_json so the Brief tab can re-display
+ * the previous search without re-running the AI.
  */
-async function matchItems(brief, categoryId, budgetEstimate) {
+async function matchItems(brief, categoryId, budgetEstimate, projectId) {
   if (!categoryId) throw httpErr('categoryId is required', 400);
   const briefText = (brief || '').trim();
   if (!briefText) throw httpErr('brief is required', 400);
@@ -694,7 +698,7 @@ Score items and propose if needed.`
     };
   }
 
-  return {
+  const result = {
     category_id:       categoryId,
     category_name:     categoryName,
     search_terms:      Array.isArray(parsed.search_terms) ? parsed.search_terms : [],
@@ -703,8 +707,28 @@ Score items and propose if needed.`
     matched_items:     matched,
     closest_item:      closest,
     suppliers_ranked:  suppliersRanked,
-    proposed_item:     proposed
+    proposed_item:     proposed,
+    searched_brief:    briefText,
+    searched_at:       new Date().toISOString()
   };
+
+  // v1.49e — persist the result onto the project-category scope row so
+  // the Brief tab re-displays it later. Best-effort: a failed write here
+  // must never break the search response the user is waiting on.
+  if (projectId) {
+    try {
+      await pool.query(
+        `UPDATE project_categories
+            SET match_result_json = $1, updated_at = NOW()
+          WHERE project_id = $2 AND category_id = $3 AND is_active = true`,
+        [JSON.stringify(result), projectId, categoryId]
+      );
+    } catch (e) {
+      console.error('[matchItems] could not persist match_result_json:', e.message);
+    }
+  }
+
+  return result;
 }
 
 /** Sum the catalogue value of a project's items in one category and

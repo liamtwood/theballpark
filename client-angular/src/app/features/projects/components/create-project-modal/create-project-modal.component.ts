@@ -1125,7 +1125,10 @@ export class CreateProjectModalComponent implements OnInit {
     this.creating = false;
     this.projSvc.triggerRefresh();
     this.cpSvc.close();
-    this.router.navigate(['/projects', project.id], { queryParams: { tab: 'brief' } });
+    // v1.49e — land on the Brief tab. Tabs are route segments
+    // (/projects/:id/brief), not a ?tab= query param, so navigate to the
+    // child route directly — otherwise this redirects to Overview.
+    this.router.navigate(['/projects', project.id, 'brief']);
     this.msg.add({
       severity: 'success',
       summary: n > 0

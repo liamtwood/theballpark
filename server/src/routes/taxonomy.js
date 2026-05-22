@@ -76,8 +76,8 @@ router.get('/event-types', async (req, res, next) => {
 // ── v1.46 — Brief-tab item matching ────────────────────────────────────
 router.post('/match-items', async (req, res, next) => {
   try {
-    const { brief, categoryId, budgetEstimate } = req.body || {};
-    res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate));
+    const { brief, categoryId, budgetEstimate, projectId } = req.body || {};
+    res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate, projectId));
   } catch (err) { next(err); }
 });
 

@@ -1037,6 +1037,22 @@ const migrate = async () => {
     }
     console.log('  v2 category descriptions refreshed on all schemas (v1.48).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.49e — Brief tab: persist the AI "Find items" result so it
+    // re-displays after the user navigates away. match_result_json holds
+    // the full matcher payload plus the brief text it was searched
+    // against (used to decide when "Find again" should re-enable),
+    // keyed by the project_categories (project_id, category_id) row.
+    // Additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS match_result_json JSONB`
+      );
+    }
+    console.log('  project_categories.match_result_json column installed (v1.49e).');
+
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
     await client.query(`
