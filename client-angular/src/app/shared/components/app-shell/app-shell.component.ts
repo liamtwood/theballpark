@@ -15,6 +15,9 @@ import { TemplateRef } from '@angular/core';
 import {
   CreateProjectModalComponent
 } from '../../../features/projects/components/create-project-modal/create-project-modal.component';
+import {
+  OutreachComposeComponent
+} from '../outreach-compose/outreach-compose.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -22,7 +25,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -148,6 +151,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- v1.30: single shared "+ New project" intake modal. Every
          entry point in the app opens it via CreateProjectService.open(). -->
     <app-create-project-modal></app-create-project-modal>
+
+    <!-- v1.50: single shared competitive-quote outreach drawer. Opened
+         from the Brief tab, project marketplace and item detail via
+         OutreachService.open(). -->
+    <app-outreach-compose></app-outreach-compose>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

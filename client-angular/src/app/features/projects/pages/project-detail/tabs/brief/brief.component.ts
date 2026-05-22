@@ -14,6 +14,7 @@ import { ProjectService } from '../../../../../../core/services/project.service'
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { ApiService } from '../../../../../../core/services/api.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
+import { OutreachService } from '../../../../../../core/services/outreach.service';
 import { ProjectCategory, Category } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
@@ -198,10 +199,10 @@ type DetailView =
                       · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
                     </div>
 
-                    <!-- matched -->
+                    <!-- v1.50 — item matches (matched + closest, one section) -->
                     <div>
-                      <div class="bp-b2-sech">Matched <span class="bp-b2-dim">7+</span></div>
-                      <ng-container *ngIf="r.matched_items.length; else noMatched">
+                      <div class="bp-b2-sech">Item matches</div>
+                      <ng-container *ngIf="r.matched_items.length || r.closest_item; else noMatched">
                         <div *ngFor="let m of r.matched_items"
                              class="bp-b2-row"
                              [class.active]="isDetailItem(m.item_id)"
@@ -220,60 +221,43 @@ type DetailView =
                             <button class="bp-b2-iact like"
                                     title="Add to wishlist"
                                     (click)="addMatched(ac, m, 'liked', $event)">♡</button>
+                            <button class="bp-b2-iact"
+                                    title="Request a quote"
+                                    (click)="requestQuote(m, false, $event)">✉</button>
+                          </div>
+                        </div>
+                        <div *ngIf="r.closest_item as ci"
+                             class="bp-b2-row"
+                             [class.active]="isDetailItem(ci.item_id)"
+                             (click)="openItemDetail(ci)">
+                          <div class="bp-b2-thumb">{{ catLetter(ci.name) }}</div>
+                          <div class="bp-b2-row-mid">
+                            <div class="bp-b2-row-name">{{ ci.name }}</div>
+                            <div class="bp-b2-row-sub">{{ ci.supplier_name }} · closest fit</div>
+                          </div>
+                          <span class="bp-b2-row-price">{{ ci.base_price != null ? (ci.base_price | gbp) : '—' }}</span>
+                          <span class="bp-b2-score">{{ ci.score }}/10</span>
+                          <div class="bp-b2-qa">
+                            <button class="bp-b2-iact" [class.on]="isItemAdded(ci.item_id)"
+                                    title="Select for project"
+                                    (click)="addMatched(ac, ci, 'selected', $event)">✓</button>
+                            <button class="bp-b2-iact like"
+                                    title="Add to wishlist"
+                                    (click)="addMatched(ac, ci, 'liked', $event)">♡</button>
+                            <button class="bp-b2-iact"
+                                    title="Request a quote"
+                                    (click)="requestQuote(ci, false, $event)">✉</button>
                           </div>
                         </div>
                       </ng-container>
                       <ng-template #noMatched>
-                        <div class="bp-b2-emptyln">No exact matches — see the proposal below.</div>
+                        <div class="bp-b2-emptyln">No catalogue matches — see the proposed new item below.</div>
                       </ng-template>
                     </div>
 
-                    <!-- closest -->
-                    <div *ngIf="r.closest_item as ci">
-                      <div class="bp-b2-sech">Closest <span class="bp-b2-dim">4–6</span></div>
-                      <div class="bp-b2-row"
-                           [class.active]="isDetailItem(ci.item_id)"
-                           (click)="openItemDetail(ci)">
-                        <div class="bp-b2-thumb">{{ catLetter(ci.name) }}</div>
-                        <div class="bp-b2-row-mid">
-                          <div class="bp-b2-row-name">{{ ci.name }}</div>
-                          <div class="bp-b2-row-sub">{{ ci.supplier_name }}</div>
-                        </div>
-                        <span class="bp-b2-row-price">{{ ci.base_price != null ? (ci.base_price | gbp) : '—' }}</span>
-                        <span class="bp-b2-score">{{ ci.score }}/10</span>
-                        <div class="bp-b2-qa">
-                          <button class="bp-b2-iact" [class.on]="isItemAdded(ci.item_id)"
-                                  title="Select for project"
-                                  (click)="addMatched(ac, ci, 'selected', $event)">✓</button>
-                          <button class="bp-b2-iact like"
-                                  title="Add to wishlist"
-                                  (click)="addMatched(ac, ci, 'liked', $event)">♡</button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- suppliers -->
-                    <div *ngIf="r.suppliers_ranked.length">
-                      <div class="bp-b2-sech">Suppliers <span class="bp-b2-dim">— click to preview</span></div>
-                      <div *ngFor="let s of r.suppliers_ranked; let i = index"
-                           class="bp-b2-row"
-                           [class.active]="isDetailSupplier(s.supplier_id)"
-                           (click)="openSupplierDetail(s)">
-                        <div class="bp-b2-thumb">{{ catLetter(s.supplier_name) }}</div>
-                        <div class="bp-b2-row-mid">
-                          <div class="bp-b2-row-name">
-                            <span *ngIf="i === 0" class="bp-b2-star">★</span>{{ s.supplier_name }}
-                          </div>
-                          <div class="bp-b2-row-sub">{{ s.fit_reason }}</div>
-                        </div>
-                        <span class="bp-b2-score">{{ s.item_count }} items</span>
-                        <span class="bp-b2-chev">›</span>
-                      </div>
-                    </div>
-
-                    <!-- proposed -->
+                    <!-- v1.50 — new item (the AI proposal) -->
                     <div *ngIf="r.proposed_item as p">
-                      <div class="bp-b2-sech">Proposed</div>
+                      <div class="bp-b2-sech">New item</div>
                       <div class="bp-b2-row proposed"
                            [class.active]="detail?.kind === 'proposed'"
                            (click)="openProposedDetail(p)">
@@ -291,6 +275,9 @@ type DetailView =
                           <button class="bp-b2-iact like"
                                   title="Add to wishlist"
                                   (click)="addProposed(ac, p, 'liked', $event)">♡</button>
+                          <button class="bp-b2-iact"
+                                  title="Request a quote"
+                                  (click)="requestQuote(p, true, $event)">✉</button>
                         </div>
                       </div>
                     </div>
@@ -701,6 +688,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private catSvc: CategoryService,
     private api: ApiService,
     private projItemSvc: ProjectItemService,
+    private outreach: OutreachService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1023,6 +1011,41 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
     this.projSvc.triggerRefresh();
     this.cdr.markForCheck();
+  }
+
+  // ── v1.50 — competitive quote outreach ────────────────────────────────
+
+  /** Open the shared outreach drawer for a matched or proposed item.
+      The AI's ranked suppliers ride along to pre-select + sort the list. */
+  requestQuote(m: MatchItem | ProposedItem, isNew: boolean, ev?: Event): void {
+    if (ev) ev.stopPropagation();
+    const ac = this.activeCategory;
+    if (!ac) return;
+    const r = this.activeResult;
+    const item = isNew
+      ? {
+          name:        (m as ProposedItem).name,
+          description: (m as ProposedItem).description,
+          price:       (m as ProposedItem).estimated_price,
+          isNew:       true
+        }
+      : {
+          item_id:     (m as MatchItem).item_id,
+          name:        (m as MatchItem).name,
+          description: (m as MatchItem).description,
+          price:       (m as MatchItem).base_price,
+          isNew:       false
+        };
+    this.outreach.open({
+      item,
+      categoryId:        ac.category_id,
+      categoryName:      ac.category_name,
+      projectId:         this.pid,
+      projectCategoryId: this.pcId(ac),
+      suppliers: r ? r.suppliers_ranked.map(s => ({
+        supplier_id: s.supplier_id, supplier_name: s.supplier_name
+      })) : []
+    });
   }
 
   // ── Hint ──────────────────────────────────────────────────────────────

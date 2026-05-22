@@ -913,13 +913,17 @@ Log in to Ballpark to view the full request and respond with your quote.
  *   requirements: [ { kind:'matched', item_id } |
  *                   { kind:'new', name, description?, estimated_price? } ],
  *   supplier_ids: [ orgId, ... ],
+ *   subject?, body?   — the agency-composed email (the user edits it before
+ *                       sending). Stored verbatim on each supplier message;
+ *                       falls back to generated copy when omitted.
  *   user_id?
  * }
  */
 async function requestQuotes(body) {
   const {
     project_id, project_category_id, category_id,
-    requirements, supplier_ids, user_id
+    requirements, supplier_ids, user_id,
+    subject: composedSubject, body: composedBody
   } = body || {};
 
   if (!project_id)  throw httpErr('project_id is required', 400);
@@ -1032,9 +1036,12 @@ async function requestQuotes(body) {
          RETURNING id`,
         [project_id, user_id || null, sid, project_category_id || null, categoryName,
          supName.get(sid) || null,
-         `Quote request — ${projectName}`,
-         `We'd like a quote for the following on "${projectName}" (${categoryName}). ` +
-         `Please review the item(s) below and reply with your price and lead time.`]
+         // The agency edits the email before sending — store it verbatim.
+         (composedSubject && composedSubject.trim())
+           || `Quote request — ${projectName}`,
+         (composedBody && composedBody.trim())
+           || (`We'd like a quote for the following on "${projectName}" (${categoryName}). ` +
+               `Please review the item(s) below and reply with your price and lead time.`)]
       );
       const msgId = msg.rows[0].id;
 
