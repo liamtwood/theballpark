@@ -147,10 +147,13 @@ type DetailView =
               </button>
 
               <!-- v1.64 — Estimate summary card: opens the shared
-                   Estimate drawer. No status, no remove. -->
+                   Estimate drawer. No status, no remove. Inverted
+                   (pink) colours so it reads as a special card,
+                   matching the Options pink header. Icon = the
+                   marketplace "All" icon (layers). -->
               <div class="bp-b2-card bp-b2-card--est" (click)="openEstimate()">
                 <span class="bp-b2-card-ic">
-                  <lucide-icon name="calculator" [size]="18"></lucide-icon>
+                  <lucide-icon name="layers" [size]="18"></lucide-icon>
                 </span>
                 <div class="bp-b2-card-body">
                   <div class="bp-b2-card-name">Estimate</div>
@@ -690,6 +693,19 @@ type DetailView =
       transition: background 0.12s, border-color 0.12s; }
     .bp-b2-addcat:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
     .bp-b2-addcat lucide-icon { display: inline-flex; }
+
+    /* v1.64a — Estimate summary card: inverted pink scheme matching
+       the Options card's pink header. */
+    .bp-b2-card--est { background: var(--theme-accent);
+      border-color: var(--theme-accent); }
+    .bp-b2-card--est:hover { border-color: var(--theme-accent); filter: brightness(0.95); }
+    .bp-b2-card--est .bp-b2-card-ic { background: rgba(255,255,255,0.2);
+      color: var(--color-surface); }
+    .bp-b2-card--est .bp-b2-card-name,
+    .bp-b2-card--est .bp-b2-card-cost { color: var(--color-surface); }
+    .bp-b2-card--est .bp-b2-count { color: var(--color-surface); }
+    .bp-b2-card--est .bp-b2-card-chev { color: var(--color-surface); opacity: 1; }
+    .bp-b2-card--est:hover .bp-b2-card-chev { opacity: 1; }
 
     /* col 2 — the focused-category card (v1.56) */
     .bp-b2-panel { background: var(--color-surface); border: 0.5px solid var(--color-border);
