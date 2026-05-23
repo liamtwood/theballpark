@@ -21,6 +21,9 @@ import {
 import {
   EstimateDrawerComponent
 } from '../estimate-drawer/estimate-drawer.component';
+import {
+  AddCategoryDrawerComponent
+} from '../add-category-drawer/add-category-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -28,7 +31,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -164,6 +167,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          Overview, Brief col-1 card and Marketplace via
          EstimateDrawerService.open(projectId). -->
     <app-estimate-drawer></app-estimate-drawer>
+
+    <!-- v1.65b: single shared "Add category" drawer. Opened from the
+         Plan tab and the project Marketplace via
+         AddCategoryService.open(projectId, unusedCategories). -->
+    <app-add-category-drawer></app-add-category-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

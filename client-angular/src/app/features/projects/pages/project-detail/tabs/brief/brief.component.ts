@@ -20,6 +20,7 @@ import { ItemService } from '../../../../../../core/services/item.service';
 import { CodelistService } from '../../../../../../core/services/codelist.service';
 import { OutreachService } from '../../../../../../core/services/outreach.service';
 import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
+import { AddCategoryService } from '../../../../../../core/services/add-category.service';
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StatusBadgeComponent } from '../../../../../../shared/components/status-badge/status-badge.component';
@@ -140,8 +141,9 @@ type DetailView =
               <div *ngIf="!projectCategories.length" class="bp-b2-empty">
                 No categories yet — add one to scope this project.
               </div>
-              <!-- + Add category — sits under the last category card -->
-              <button type="button" class="bp-b2-addcat" (click)="addDrawerOpen = true">
+              <!-- + Add category — sits under the last category card.
+                   v1.65b: opens the shared AddCategoryService drawer. -->
+              <button type="button" class="bp-b2-addcat" (click)="openAddCategory()">
                 <lucide-icon name="plus" [size]="15"></lucide-icon>
                 Add category
               </button>
@@ -574,37 +576,8 @@ type DetailView =
       </div>
     </ng-template>
 
-    <!-- ── ADD CATEGORY DRAWER ── -->
-    <p-sidebar [(visible)]="addDrawerOpen" position="right" [style]="{ width: '380px' }"
-               styleClass="bp-b2-drawer" [showCloseIcon]="false">
-      <div class="bp-b2-dw-head">
-        <div>
-          <div class="bp-drawer-label">Scope</div>
-          <div class="bp-b2-dw-title">Add a category</div>
-        </div>
-        <button class="bp-icon-btn" type="button" (click)="addDrawerOpen = false">
-          <lucide-icon name="x" [size]="16"></lucide-icon>
-        </button>
-      </div>
-      <div class="bp-b2-dw-body">
-        <div class="bp-b2-dw-hint">
-          Categories already in the project are hidden. Click one to add it.
-        </div>
-        <div *ngFor="let c of unusedCategories"
-             role="button" tabindex="0" class="bp-b2-dw-cat"
-             (click)="addCategory(c)"
-             (keydown.enter)="addCategory(c)">
-          <div class="bp-b2-ic">
-            <lucide-icon [name]="c.icon_name || 'layers'" [size]="14"></lucide-icon>
-          </div>
-          <span class="bp-b2-dw-cat-name">{{ c.name }}</span>
-          <lucide-icon class="bp-b2-dw-plus" name="plus" [size]="16"></lucide-icon>
-        </div>
-        <div *ngIf="!unusedCategories.length" class="bp-b2-empty">
-          Every catalogue category is already in this project.
-        </div>
-      </div>
-    </p-sidebar>
+    <!-- v1.65b — Add-category drawer is now shared (mounted in
+         app-shell). Brief tab opens it via AddCategoryService.open(). -->
 
     <!-- v1.65 — Plan tab help drawer. Opens from the "? How does this
          work?" button in the right-side form stack. -->
@@ -1023,7 +996,6 @@ export class BriefComponent implements OnInit, OnDestroy {
   categoryStatuses: any[] = [];
 
   detail: DetailView = null;
-  addDrawerOpen = false;
 
   /** v1.65 — Plan tab centre column. */
   notesOpen = false;
@@ -1054,6 +1026,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private codelistSvc: CodelistService,
     private outreach: OutreachService,
     private estimateDrawer: EstimateDrawerService,
+    private addCategorySvc: AddCategoryService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1067,6 +1040,19 @@ export class BriefComponent implements OnInit, OnDestroy {
     this.codelistSvc.getByName('category_status').subscribe({
       next: rows => { this.categoryStatuses = rows || []; this.cdr.markForCheck(); },
       error: () => {}
+    });
+
+    // v1.65b — when a category is added via the shared drawer, refresh
+    // our list and select it.
+    this.addCategorySvc.added$.subscribe(({ projectId, category }) => {
+      if (projectId !== this.pid) return;
+      this.projSvc.getCategories(this.pid).subscribe(rows => {
+        this.projectCategories = (rows || []) as ProjectCategory[];
+        this.activeCategoryId = category.id;
+        this.detail = null;
+        this.projSvc.triggerRefresh();
+        this.cdr.markForCheck();
+      });
     });
 
     // v1.59 — when an outreach is sent, flip that category to
@@ -1166,26 +1152,11 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
   }
 
-  addCategory(c: Category): void {
-    if (this.projectCategories.some(p => p.category_id === c.id)) return;
-    this.projSvc.upsertCategory(this.pid, c.id, {}).subscribe({
-      next: row => {
-        const enriched = {
-          ...row,
-          category_name: c.name,
-          category_icon_name: (c as any).icon_name,
-          category_sort_order: (c as any).sort_order
-        } as ProjectCategory;
-        this.projectCategories = [...this.projectCategories, enriched]
-          .sort((a, b) => ((a as any).category_sort_order || 0) - ((b as any).category_sort_order || 0));
-        this.activeCategoryId = c.id;
-        this.detail = null;
-        this.projSvc.triggerRefresh();
-        this.msg.add({ severity: 'success', summary: c.name + ' added', life: 2000 });
-        this.cdr.markForCheck();
-      },
-      error: () => this.msg.add({ severity: 'error', summary: 'Failed to add category', life: 3000 })
-    });
+  /** v1.65b — open the shared "Add category" drawer (mounted in
+      app-shell). The drawer handles the upsert and emits via
+      AddCategoryService.added$, which we subscribe to in ngOnInit. */
+  openAddCategory(): void {
+    if (this.pid) this.addCategorySvc.open(this.pid, this.unusedCategories);
   }
 
   // ── Brief / budget — save on blur ─────────────────────────────────────

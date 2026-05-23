@@ -595,7 +595,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circles-wrap[data-circle-size="sm"] { --bp-circle-w: 56px; }
 .bp-cat-circles-wrap[data-circle-size="md"] { --bp-circle-w: 72px; }
 .bp-cat-circles-wrap[data-circle-size="lg"] { --bp-circle-w: 96px; }
-.bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
+.bp-cat-circles { display: flex; gap: 20px; justify-content: center; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
 .bp-cat-circles::-webkit-scrollbar { display: none; }
 .bp-circles-arrow {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
@@ -619,6 +619,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
 .bp-cat-circle--all       { background-color: var(--color-surface); }
 .bp-cat-circle--no-image  { background-color: var(--theme-bg); }
+/* v1.65b — "+ Add category" trailing pseudo-circle: solid theme fill,
+   white icon, scaled up on hover. */
+.bp-cat-circle--add       { background-color: var(--theme-accent);
+                            color: var(--color-surface); box-shadow: none;
+                            border-color: var(--theme-accent); }
+.bp-cat-circle-btn--add:hover .bp-cat-circle--add { filter: brightness(0.95); }
+.bp-cat-circle-btn--add .bp-cat-circle-label { color: var(--theme-accent);
+                                               font-weight: 600; }
 .bp-cat-circle--logo      { background: var(--theme-bg); }
 .bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
 .bp-cat-circle-icon       { color: var(--theme-accent); }

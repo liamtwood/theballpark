@@ -14,6 +14,7 @@ import { CategoryService } from '../../../../../../core/services/category.servic
 import { SupplierService } from '../../../../../../core/services/supplier.service';
 import { OrgService } from '../../../../../../core/services/org.service';
 import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
+import { AddCategoryService } from '../../../../../../core/services/add-category.service';
 import {
   Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
   Item, ProjectItem
@@ -65,6 +66,7 @@ import {
       sectionTitle="CATALOGUE"
       actionLabel="View item"
       detailSize="lg"
+      [showAdd]="true"
       [projectContext]="projectContext"
       [showEdit]="false"
       [showFavourite]="false"
@@ -86,7 +88,8 @@ import {
       (addToProject)="onAddToProject($event)"
       (removeFromProject)="onRemoveFromProject($event)"
       (briefUpdated)="onContextBriefUpdated($event)"
-      (openEstimate)="onOpenEstimate()">
+      (openEstimate)="onOpenEstimate()"
+      (addClicked)="onAddCategory()">
     </app-catalogue-grid>
 
     <!-- Item drawer — view (read-only) and edit (own-org items only).
@@ -151,6 +154,7 @@ export class MarketplaceComponent implements OnInit {
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
     private estimateDrawer: EstimateDrawerService,
+    private addCategorySvc: AddCategoryService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -165,6 +169,12 @@ export class MarketplaceComponent implements OnInit {
     }
     this.projectId = pid;
     if (!pid) { this.loading = false; return; }
+
+    // v1.65b — when a category is added via the shared drawer, refresh.
+    this.addCategorySvc.added$.subscribe(({ projectId }) => {
+      if (projectId !== this.projectId) return;
+      this.refreshProjectCategories();
+    });
 
     forkJoin({
       project:    this.projectSvc.getById(pid),
@@ -371,6 +381,18 @@ export class MarketplaceComponent implements OnInit {
       shared Estimate drawer (was: routed to the Estimate tab). */
   onOpenEstimate() {
     if (this.projectId) this.estimateDrawer.open(this.projectId);
+  }
+
+  /** v1.65b — trailing "+" pseudo-circle in the marketplace category
+      strip. Fetches unused catalogue categories and opens the shared
+      AddCategoryService drawer. */
+  onAddCategory() {
+    if (!this.projectId) return;
+    this.categorySvc.getAll('catalogue').subscribe(all => {
+      const used = new Set(this.projectCategories.map(p => p.category_id));
+      const unused = (all || []).filter((c: any) => !c.parent_id && !used.has(c.id));
+      this.addCategorySvc.open(this.projectId, unused);
+    });
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────

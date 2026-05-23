@@ -99,6 +99,19 @@ export interface CategoryCircle {
           </div>
           <span class="bp-cat-circle-label">{{ cat.name }}</span>
         </button>
+
+        <!-- v1.65b — "+ Add category" pseudo-circle. Caller decides
+             whether to render it; click bubbles up via (addClicked). -->
+        <button *ngIf="showAdd"
+                type="button"
+                class="bp-cat-circle-btn bp-cat-circle-btn--add"
+                title="Add category"
+                (click)="addClicked.emit()">
+          <div class="bp-cat-circle bp-cat-circle--add">
+            <lucide-icon name="plus" [size]="iconSize"></lucide-icon>
+          </div>
+          <span class="bp-cat-circle-label">Add category</span>
+        </button>
       </div>
 
       <button type="button"
@@ -141,6 +154,9 @@ export class CategoryCirclesComponent implements AfterViewInit, OnChanges {
   /** Renders a right-aligned text toggle (e.g. "Show all categories"
       on the Build/Estimate tab). Omit to hide. */
   @Input() footerToggleLabel?: string;
+  /** v1.65b — render a trailing "+" pseudo-circle. Caller wires the
+      click event (addClicked) to open the Add Category drawer. */
+  @Input() showAdd = false;
 
   /** Fires with 'all' or a category id. */
   @Output() select = new EventEmitter<string>();
@@ -149,6 +165,8 @@ export class CategoryCirclesComponent implements AfterViewInit, OnChanges {
   @Output() edit = new EventEmitter<CategoryCircle>();
   /** Fires when the optional footer toggle button is clicked. */
   @Output() footerToggle = new EventEmitter<void>();
+  /** Fires when the trailing "+" pseudo-circle is clicked. */
+  @Output() addClicked = new EventEmitter<void>();
 
   @ViewChild('strip') stripRef?: ElementRef<HTMLDivElement>;
   canScrollLeft = false;

@@ -81,10 +81,10 @@ export type DetailMode = 'inline' | 'drawer';
       [size]="circleSize"
       [showEdit]="showEdit && !projectContext"
       [unscopedIds]="circleUnscopedIds"
-      [footerToggleLabel]="circleFooterToggleLabel"
+      [showAdd]="showAdd"
       (select)="onCircleSelect($event)"
       (edit)="onCategoryEdit($event)"
-      (footerToggle)="toggleShowAllCategories()">
+      (addClicked)="addClicked.emit()">
     </app-category-circles>
 
     <!-- v1.41 — SUBCATEGORY CHIP STRIP.
@@ -1147,6 +1147,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   /** When false, suppresses the top horizontal category-circle row.
       Sidebar category list is unaffected. Default true (existing usages). */
   @Input() showCategoryCircles: boolean = true;
+  /** v1.65b — render a trailing "+" pseudo-circle on the strip. The
+      caller handles the actual "open the drawer" via (addClicked). */
+  @Input() showAdd: boolean = false;
   /** Header text for the sidebar category section. Default "Category". */
   @Input() sidebarCategoryLabel: string = 'Category';
   /** Hero block — eyebrow, h1 title, subtitle. Hero only renders when
@@ -1272,6 +1275,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       Both are simple pass-throughs from the category-context-panel. */
   @Output() briefUpdated = new EventEmitter<{ categoryId: string; brief: string }>();
   @Output() openEstimate = new EventEmitter<void>();
+  /** v1.65b — bubbles the trailing "+" pseudo-circle click up to the
+      parent, which opens the shared AddCategoryService drawer. */
+  @Output() addClicked = new EventEmitter<void>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
