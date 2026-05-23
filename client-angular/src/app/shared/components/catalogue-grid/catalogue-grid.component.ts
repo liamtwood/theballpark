@@ -118,7 +118,9 @@ export type DetailMode = 'inline' | 'drawer';
       <button *ngIf="canRecommend" type="button"
               class="bp-strip-recommend"
               [disabled]="recommending"
-              [title]="'Recommend items from the catalogue based on this category\\'s brief'"
+              [title]="activeCategory === 'all'
+                ? 'Recommend items across every category that has a brief'
+                : 'Recommend items based on this category\\'s brief'"
               (click)="recommendItems()">
         <lucide-icon name="sparkles" [size]="14"></lucide-icon>
         {{ recommending ? 'Recommending…' : 'Recommend' }}
@@ -2357,14 +2359,24 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       (POST /taxonomy/match-items) which scores existing catalogue items
       against the project_category's requirement_brief. Returned item_ids
       are stashed in recommendedIds and surfaced as an "AI RECOMMENDATIONS"
-      section in the centre column. Project context + a non-"all"
-      category + a non-empty brief are all required. */
+      section in the centre column.
+      v1.65l — "all" view also supported: fans out one matcher request per
+      project_category that has a brief and merges all results. */
   recommending = false;
   recommendedIds = new Set<string>();
 
+  /** Project_categories that have a non-empty brief — eligible inputs for
+      the matcher when running across the whole project. */
+  private briefedProjectCategories(): ProjectCategory[] {
+    return (this.projectContext?.projectCategories || [])
+      .filter(pc => !!(pc.requirement_brief || '').trim());
+  }
+
   get canRecommend(): boolean {
     if (!this.projectContext) return false;
-    if (this.activeCategory === 'all') return false;
+    if (this.activeCategory === 'all') {
+      return this.briefedProjectCategories().length > 0;
+    }
     const brief = (this.currentProjectCategory?.requirement_brief || '').trim();
     return !!brief;
   }
@@ -2374,24 +2386,40 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return this.filteredEntities.filter(e => this.recommendedIds.has(e.id));
   }
 
-  recommendItems(): void {
-    if (this.recommending) return;
-    const pc = this.currentProjectCategory;
-    if (!pc) return;
-    const brief = (pc.requirement_brief || '').trim();
-    if (!brief) return;
-    this.recommending = true;
-    this.cdr.detectChanges();
-    this.api.post<any>('/taxonomy/match-items', {
-      brief,
+  /** Build a single match-items request for a project_category. */
+  private matchRequest$(pc: ProjectCategory) {
+    return this.api.post<any>('/taxonomy/match-items', {
+      brief: (pc.requirement_brief || '').trim(),
       categoryId: pc.category_id,
       projectId: this.projectContext?.projectId,
       budgetEstimate: pc.ballpark_budget != null ? Number(pc.ballpark_budget) : undefined
-    }).subscribe({
-      next: r => {
+    });
+  }
+
+  /** Extract item_ids from a match-items response (matched_items + closest_item). */
+  private collectMatchIds(r: any, into: Set<string>): void {
+    (r?.matched_items || []).forEach((m: any) => { if (m?.item_id) into.add(m.item_id); });
+    if (r?.closest_item?.item_id) into.add(r.closest_item.item_id);
+  }
+
+  recommendItems(): void {
+    if (this.recommending || !this.projectContext) return;
+
+    // Fan-out target list: single category in scoped view, every briefed
+    // project_category in "all" view.
+    const targets: ProjectCategory[] = this.activeCategory === 'all'
+      ? this.briefedProjectCategories()
+      : (this.currentProjectCategory && (this.currentProjectCategory.requirement_brief || '').trim()
+          ? [this.currentProjectCategory] : []);
+    if (!targets.length) return;
+
+    this.recommending = true;
+    this.cdr.detectChanges();
+
+    forkJoin(targets.map(pc => this.matchRequest$(pc))).subscribe({
+      next: results => {
         const ids = new Set<string>();
-        (r?.matched_items || []).forEach((m: any) => { if (m?.item_id) ids.add(m.item_id); });
-        if (r?.closest_item?.item_id) ids.add(r.closest_item.item_id);
+        results.forEach(r => this.collectMatchIds(r, ids));
         this.recommendedIds = ids;
         this.recommending = false;
         this.cdr.detectChanges();
