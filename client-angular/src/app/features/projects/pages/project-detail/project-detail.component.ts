@@ -119,12 +119,16 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     ];
 
     // Pills: auto-ref (v1.39g — was missing from the hero), client
-    // name, then venue. The ref is the project's identifier; surfacing
-    // it as the leftmost pill keeps it visible on every project tab.
+    // name. The ref is the project's identifier; surfacing it as the
+    // leftmost pill keeps it visible on every project tab.
+    // v1.65v — venue_name pill removed from the hero. AI parses can
+    // produce long descriptive text ("Family-friendly venue (TBC —
+    // high footfall location for families with tweens)") that bloats
+    // the hero; the venue still appears in the Overview event strip
+    // and the project Marketplace's Project Summary panel.
     const pills: string[] = [];
     if (p.ref)         pills.push(p.ref);
     if (p.client_name) pills.push(p.client_name);
-    if (p.venue_name)  pills.push(p.venue_name);
 
     // v1.24: eyebrow tracks the current tab. Spec calls for "PROJECT
     // OVERVIEW" only on the Overview tab — other tabs use their own
