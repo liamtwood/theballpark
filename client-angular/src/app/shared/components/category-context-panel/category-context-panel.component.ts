@@ -14,6 +14,7 @@ import {
 } from 'lucide-angular';
 import { Router } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { CodelistService } from '../../../core/services/codelist.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { ProjectItemRowComponent } from '../project-item-row/project-item-row.component';
 import { ProjectItem } from '../../../models';
@@ -72,24 +73,32 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
             </span>
           </div>
           <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
+          <!-- v1.65f — category status pill on the pink header. -->
+          <span class="bp-ctx-head-status" *ngIf="context === 'project' && categoryStatuses.length">
+            <span class="bp-ctx-head-status-dot" [style.background]="statusColor() || null"></span>
+            {{ statusLabel() }}
+          </span>
         </div>
 
-        <!-- Subtotal block — project mode only. v1.25: wishlist
-             impact + longest lead are now separate vertical lines
-             (was a wrap-flex row with " · " separator). -->
-        <div class="bp-ctx-subtotal" *ngIf="context === 'project'">
-          <div class="bp-ctx-sub-row">
-            <span class="bp-ctx-sub-amount">{{ subtotalAmount | gbp }}</span>
-            <span class="bp-ctx-sub-label">subtotal</span>
-          </div>
-          <div *ngIf="wishlistAmount > 0" class="bp-ctx-sub-line">
+        <!-- v1.65f — badge row: Budget / Estimate pills + Items /
+             Wishlist count circles. Replaces the subtotal block. -->
+        <div class="bp-ctx-badges" *ngIf="context === 'project'">
+          <span class="bp-ctx-badge">
+            <span class="bp-ctx-badge-l">Budget</span>
+            <span class="bp-ctx-badge-v">{{ (budgetPrice || 0) | gbp }}</span>
+          </span>
+          <span class="bp-ctx-badge">
+            <span class="bp-ctx-badge-l">Estimate</span>
+            <span class="bp-ctx-badge-v">{{ subtotalAmount | gbp }}</span>
+          </span>
+          <span class="bp-ctx-countpill" title="Items selected">
+            <lucide-icon name="check" [size]="11"></lucide-icon>
+            {{ selectedItems.length }}
+          </span>
+          <span class="bp-ctx-countpill" title="Wishlist items">
             <lucide-icon name="heart" [size]="11"></lucide-icon>
-            +{{ wishlistAmount | gbp }} if wishlist approved
-          </div>
-          <div *ngIf="longestLeadDays > 0" class="bp-ctx-sub-line">
-            <lucide-icon name="clock" [size]="11"></lucide-icon>
-            {{ longestLeadDays }} day longest lead
-          </div>
+            {{ likedItems.length }}
+          </span>
         </div>
 
         <!-- v1.49 — marketplace / supplier stat block, mirrors the
@@ -104,96 +113,28 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </div>
         </div>
 
-        <!-- Tab bar — same Items / Wishlist / Brief structure as the
-             Build/Estimate expanded card. Underline accent on active. -->
-        <div class="bp-ctx-tabs" *ngIf="context === 'project'">
-          <button type="button"
-                  class="bp-ctx-tab"
-                  [class.active]="activeTab === 'items'"
-                  (click)="setTab('items')">
-            Items
-            <span *ngIf="selectedItems.length" class="bp-ctx-tab-count">
-              {{ selectedItems.length }}
-            </span>
-          </button>
-          <button type="button"
-                  class="bp-ctx-tab"
-                  [class.active]="activeTab === 'wishlist'"
-                  (click)="setTab('wishlist')">
-            Wishlist
-            <span *ngIf="likedItems.length" class="bp-ctx-tab-count">
-              {{ likedItems.length }}
-            </span>
-          </button>
-          <button type="button"
-                  class="bp-ctx-tab"
-                  [class.active]="activeTab === 'brief'"
-                  (click)="setTab('brief')">
-            Brief
-          </button>
-        </div>
+        <!-- v1.65f — tabs removed. Items/Wishlist counts surfaced as
+             count pills in the badge row above. The panel shows only
+             the brief in project mode now. -->
       </div>
 
-      <!-- ── Scrolling middle: tab content ────────────────────────── -->
+      <!-- ── Scrolling middle: brief (project mode) + marketplace
+           card sections (other modes) ──────────────────────────────── -->
       <div class="bp-ctx-body">
 
-        <!-- ITEMS tab -->
-        <ng-container *ngIf="context === 'project' && activeTab === 'items'">
-          <ng-container *ngIf="selectedItems.length; else emptyItems">
-            <app-project-item-row *ngFor="let item of selectedItems; trackBy: trackByItemKey"
-              [item]="item"
-              mode="selected"
-              [compact]="true"
-              (clicked)="itemClicked.emit($event)"
-              (removed)="itemRemoved.emit($event)"
-              (movedToWishlist)="itemMoved.emit({ item: $event, toType: 'liked' })">
-            </app-project-item-row>
-          </ng-container>
-          <ng-template #emptyItems>
-            <div class="bp-ctx-empty">
-              No items added yet.
+        <!-- BRIEF — read-only formatted text. Editing happens on the
+             Plan tab; this panel is now a summary view. -->
+        <ng-container *ngIf="context === 'project'">
+          <div class="bp-ctx-brief-section">
+            <div class="bp-drawer-label">Brief</div>
+            <div class="bp-ctx-brief-text" *ngIf="(briefText || briefDraft); else emptyBrief">
+              {{ briefText || briefDraft }}
             </div>
-          </ng-template>
-          <!-- v1.25: "Add more {category}" link + "Longest lead Xd"
-               line removed. Longest lead now lives in the subtotal
-               block above; browsing happens via the catalogue grid
-               on the left. -->
-        </ng-container>
-
-        <!-- WISHLIST tab — slightly tinted band per spec. -->
-        <ng-container *ngIf="context === 'project' && activeTab === 'wishlist'">
-          <div class="bp-ctx-wish-hint" *ngIf="likedItems.length">
-            awaiting client approval
-          </div>
-          <ng-container *ngIf="likedItems.length; else emptyWish">
-            <app-project-item-row *ngFor="let item of likedItems; trackBy: trackByItemKey"
-              [item]="item"
-              mode="wishlist"
-              [compact]="true"
-              (clicked)="itemClicked.emit($event)"
-              (removed)="itemRemoved.emit($event)"
-              (confirmed)="itemMoved.emit({ item: $event, toType: 'selected' })">
-            </app-project-item-row>
-          </ng-container>
-          <ng-template #emptyWish>
-            <div class="bp-ctx-empty">
-              No wishlist items yet — heart an item to add it here.
-            </div>
-          </ng-template>
-        </ng-container>
-
-        <!-- BRIEF tab — inline edit, saves on blur. -->
-        <ng-container *ngIf="context === 'project' && activeTab === 'brief'">
-          <div class="bp-ctx-brief-field">
-            <label class="bp-ctx-brief-label">BRIEF</label>
-            <input pInputText
-                   [(ngModel)]="briefDraft"
-                   (blur)="saveBriefIfChanged()"
-                   class="w-full bp-input-edit"
-                   [placeholder]="'One-line requirement for ' + catNameLower + '…'"/>
-          </div>
-          <div class="bp-ctx-brief-empty" *ngIf="!briefDraft && !briefText">
-            Add a brief for this category to share with suppliers.
+            <ng-template #emptyBrief>
+              <div class="bp-ctx-brief-empty">
+                No brief yet — add one on the Plan tab to share with suppliers.
+              </div>
+            </ng-template>
           </div>
         </ng-container>
 
@@ -276,7 +217,6 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       flex-direction: column;
       font-family: var(--font-body);
       background: var(--color-surface);
-      border-radius: 12px;
       overflow: hidden;
     }
 
@@ -312,6 +252,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       font-weight: 500;
     }
     .bp-ctx-head-name {
+      flex: 1;
       font-family: var(--font-display);
       font-size: 17px;
       font-weight: 400;
@@ -322,6 +263,57 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+    }
+    /* v1.65f — status pill on the pink header */
+    .bp-ctx-head-status {
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      background: rgba(255,255,255,0.18); color: #fff;
+      font-size: var(--text-xs); font-weight: 600;
+      padding: 3px 9px; border-radius: var(--radius-pill);
+    }
+    .bp-ctx-head-status-dot {
+      width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+      background: #fff;
+    }
+
+    /* v1.65f — badge row: Budget / Estimate pills + count circles */
+    .bp-ctx-badges {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-ctx-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--theme-bg); border-radius: var(--radius-pill);
+      padding: 4px 10px;
+    }
+    .bp-ctx-badge-l {
+      font-size: var(--text-xs); color: var(--color-text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    }
+    .bp-ctx-badge-v {
+      font-size: var(--text-sm); font-weight: 600;
+      color: var(--color-text-primary); font-variant-numeric: tabular-nums;
+    }
+    .bp-ctx-countpill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--theme-accent); color: var(--color-surface);
+      border-radius: var(--radius-pill); padding: 3px 9px;
+      font-size: var(--text-xs); font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-ctx-countpill lucide-icon { display: inline-flex; }
+
+    /* v1.65f — brief section: plain text, no border */
+    .bp-ctx-brief-section { padding: 14px 16px; }
+    .bp-ctx-brief-section .bp-drawer-label { margin-bottom: 6px; }
+    .bp-ctx-brief-text {
+      font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      white-space: pre-wrap;
+    }
+    .bp-ctx-brief-empty {
+      font-size: var(--text-sm); color: var(--color-text-muted);
+      line-height: 1.55; font-style: italic;
     }
 
     /* Subtotal block — v1.25 layout: amount row, then each meta
@@ -541,6 +533,9 @@ export class CategoryContextPanelComponent implements OnChanges {
   /** Sum of selected items' base_price for this category. The parent
       computes this — keeps the panel a pure view. */
   @Input() categoryTotal = 0;
+  /** v1.65f — category status code (from project_categories.status_code).
+      Rendered as a pill in the pink header when in project mode. */
+  @Input() statusCode: string | null = null;
   /** Sum of selected items' base_price across ALL the project's
       categories (not just this one). Shown in the pinned footer. */
   @Input() projectTotal = 0;
@@ -570,12 +565,33 @@ export class CategoryContextPanelComponent implements OnChanges {
   }> = [];
   private suppliersForCat: string | null = null;
 
+  /** v1.65f — category_status codelist for the header status pill. */
+  categoryStatuses: any[] = [];
+
   constructor(
     private cdr: ChangeDetectorRef,
     private msg: MessageService,
     private api: ApiService,
+    private codelistSvc: CodelistService,
     private router: Router,
-  ) {}
+  ) {
+    // Cache-aware — fires immediately if already loaded.
+    this.codelistSvc.getByName('category_status').subscribe({
+      next: rows => { this.categoryStatuses = rows || []; this.cdr.markForCheck(); },
+      error: () => {}
+    });
+  }
+
+  /** v1.65f — codelist label / colour for the active category status. */
+  statusLabel(): string {
+    const code = this.statusCode || 'draft';
+    return this.categoryStatuses.find(s => s.code === code)?.label
+      || (code.charAt(0).toUpperCase() + code.slice(1).replace(/_/g, ' '));
+  }
+  statusColor(): string {
+    const code = this.statusCode || 'draft';
+    return this.categoryStatuses.find(s => s.code === code)?.meta?.color || '';
+  }
 
   ngOnChanges() {
     // Keep the brief draft in sync when the parent passes new text

@@ -704,6 +704,7 @@ export type DetailMode = 'inline' | 'drawer';
             [briefText]="ctxBriefText"
             [briefDetail]="ctxBriefDetail"
             [budgetPrice]="ctxBudget"
+            [statusCode]="ctxStatusCode"
             [selectedItems]="getCategorySelectedItems()"
             [likedItems]="getCategoryLikedItems()"
             [context]="panelContext"
@@ -2148,6 +2149,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     if (this.panelContext !== 'project') return null;
     const v = this.currentProjectCategory?.ballpark_budget;
     return v != null ? Number(v) : null;
+  }
+  /** v1.65f — category_status code of the active project_category. */
+  get ctxStatusCode(): string | null {
+    if (this.panelContext !== 'project') return null;
+    return (this.currentProjectCategory as any)?.status_code || null;
   }
 
   /** Items in this category that the project has selected. Matches by
