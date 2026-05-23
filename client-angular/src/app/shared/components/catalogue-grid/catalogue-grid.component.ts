@@ -96,10 +96,10 @@ export type DetailMode = 'inline' | 'drawer';
          circles. -->
     <div *ngIf="categories.length && showCategoryCircles" class="bp-strip-bar">
       <div class="bp-strip-search">
-        <p-dropdown *ngIf="subcategories?.length"
-                    [options]="subcatDropdownOptions"
-                    [ngModel]="activeSubcategoryId || ''"
-                    (onChange)="onSubcategoryClick($event.value || '')"
+        <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+                    [options]="stripDropdownOptions"
+                    [ngModel]="stripDropdownValue"
+                    (onChange)="onStripDropdownChange($event.value)"
                     optionLabel="name" optionValue="id"
                     styleClass="bp-strip-search-dd"
                     appendTo="body"
@@ -1524,10 +1524,34 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     if (!this.projectContext) return undefined;
     return this.showAllCategories ? 'Show scoped only' : 'Show all categories';
   }
-  /** v1.65d — options for the strip search bar's left dropdown:
-      "All" first, then each subcategory. */
-  get subcatDropdownOptions(): Array<{ id: string; name: string }> {
+  /** v1.65d — options for the strip search bar's left dropdown.
+      v1.65h — context-aware: "All" view lists every category; once a
+      category is active it switches to the subcategory list. */
+  get stripDropdownOptions(): Array<{ id: string; name: string }> {
+    if (this.activeCategory === 'all') {
+      return [
+        { id: 'all', name: 'All' },
+        ...this.displayedCircles.map(c => ({ id: c.id, name: c.name || '' }))
+      ];
+    }
     return [{ id: '', name: 'All' }, ...(this.subcategories || [])];
+  }
+  /** v1.65h — current dropdown selection, derived from active category /
+      subcategory state. */
+  get stripDropdownValue(): string {
+    return this.activeCategory === 'all'
+      ? 'all'
+      : (this.activeSubcategoryId || '');
+  }
+  /** v1.65h — dropdown change handler. In "All" view picking a category
+      activates it (same as clicking the circle); in category view
+      picking a subcategory filters the grid. */
+  onStripDropdownChange(value: string): void {
+    if (this.activeCategory === 'all') {
+      this.onCircleSelect(value || 'all');
+    } else {
+      this.onSubcategoryClick(value || '');
+    }
   }
   onCircleSelect(id: string) {
     if (id === 'all') {
