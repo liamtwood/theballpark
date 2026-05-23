@@ -107,7 +107,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     // /event and /estimate still route — they redirect or back-compat.
     const tabs = [
       { label: 'Overview',    path: `/projects/${this.pid}/overview` },
-      { label: 'Brief',       path: `/projects/${this.pid}/brief` },
+      { label: 'Plan',        path: `/projects/${this.pid}/plan` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
       {
         label: 'Messages',
@@ -145,7 +145,8 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       Returns '' for tabs that prefer their own page-level title. */
   private eyebrowForUrl(url: string): string {
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
-    if (url.includes('/brief'))        return 'BRIEF';
+    if (url.includes('/plan'))         return 'PLAN';
+    if (url.includes('/brief'))        return 'PLAN';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
     if (url.includes('/estimate'))     return 'ESTIMATE';
     if (url.includes('/messages'))     return 'MESSAGES';

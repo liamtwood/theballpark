@@ -21,9 +21,17 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     pathMatch: 'full'
   },
   {
-    // Brief tab — In Scope picker (split out of the original Brief tab).
-    path: 'brief',
+    // Plan tab (v1.65 rename of "Brief") — category form + AI-powered
+    // marketplace search. The file lives at tabs/brief/ for git-history
+    // continuity; only the user-visible label + URL slug were renamed.
+    path: 'plan',
     loadComponent: () => import('./tabs/brief/brief.component').then(m => m.BriefComponent)
+  },
+  {
+    // Backward compat: anyone with a saved /brief link lands on /plan.
+    path: 'brief',
+    redirectTo: 'plan',
+    pathMatch: 'full'
   },
   {
     // Marketplace tab (v1.18) — catalogue-grid browse in project context.

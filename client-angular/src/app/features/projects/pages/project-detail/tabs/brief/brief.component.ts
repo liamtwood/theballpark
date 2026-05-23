@@ -23,7 +23,7 @@ import { EstimateDrawerService } from '../../../../../../core/services/estimate-
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StatusBadgeComponent } from '../../../../../../shared/components/status-badge/status-badge.component';
-import { ItemDrawerComponent } from '../../../../../../shared/components/item-drawer/item-drawer.component';
+import { ItemDrawerComponent, ItemDrawerMode } from '../../../../../../shared/components/item-drawer/item-drawer.component';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 
 /** v1.46 — Brief-tab AI item-matching shapes (POST /taxonomy/match-items). */
@@ -172,59 +172,61 @@ type DetailView =
             </div>
           </div>
 
-          <!-- COL 2 — brief + matches -->
+          <!-- COL 2 — Plan (v1.65 rebuild) -->
           <div>
-            <div class="bp-b2-colhdr">Brief &amp; matches</div>
+            <div class="bp-b2-colhdr">Plan</div>
             <div class="bp-b2-panel">
               <ng-container *ngIf="activeCategory as ac; else noCat">
 
-                <!-- pink card header (image 2) — icon · name · status -->
-                <div class="bp-b2-chead">
-                  <div class="bp-b2-chead-ic">
-                    <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="18"></lucide-icon>
-                  </div>
-                  <div class="bp-b2-chead-title">{{ ac.category_name }}</div>
-                  <p-dropdown class="bp-b2-ws-status"
-                              [options]="categoryStatuses"
-                              optionLabel="label" optionValue="code"
-                              [(ngModel)]="ac.status_code"
-                              (onChange)="saveStatus(ac)"
-                              placeholder="Draft"
-                              appendTo="body"
-                              styleClass="bp-b2-statusdd"
-                              [style]="{ width: '170px' }"></p-dropdown>
+                <!-- Tiny category header: icon + name -->
+                <div class="bp-plan-cathd">
+                  <lucide-icon [name]="ac.category_icon_name || 'layers'" [size]="16"></lucide-icon>
+                  <span>{{ ac.category_name }}</span>
                 </div>
 
-                <!-- DETAILS — brief + notes -->
-                <div class="bp-b2-sec">
-                  <div class="bp-b2-sechd">Details</div>
-                  <div class="bp-b2-briefgrid">
-                    <div class="bp-b2-bcol">
-                      <div class="bp-b2-fieldlbl">Brief</div>
-                      <textarea class="bp-input-edit bp-b2-brief"
-                                rows="4"
-                                [value]="ac.requirement_brief || ''"
-                                placeholder="What you need from this category — keep it specific."
-                                (blur)="onBriefBlur(ac, $event)"></textarea>
-                    </div>
-                    <div class="bp-b2-bcol">
-                      <div class="bp-b2-fieldlbl">Notes</div>
-                      <textarea class="bp-input-edit bp-b2-notes"
-                                rows="4"
+                <!-- Zone 1 — category form (2-col grid) -->
+                <div class="bp-plan-form">
+
+                  <!-- LEFT: Brief + collapsible Notes -->
+                  <div class="bp-plan-l">
+                    <div class="bp-field-label">Brief</div>
+                    <div class="bp-plan-fhelp">What suppliers quote against</div>
+                    <textarea pInputTextarea class="bp-input-edit bp-plan-brief"
+                              rows="3"
+                              [value]="ac.requirement_brief || ''"
+                              placeholder="What you need from this category — keep it specific."
+                              (blur)="onBriefBlur(ac, $event)"></textarea>
+
+                    <button type="button" class="bp-plan-notes-toggle"
+                            [class.open]="notesOpen"
+                            (click)="notesOpen = !notesOpen">
+                      <lucide-icon class="bp-plan-notes-chev" name="chevron-right" [size]="12"></lucide-icon>
+                      Notes — not included in emails
+                    </button>
+                    <div class="bp-plan-notes-body" [class.open]="notesOpen">
+                      <textarea pInputTextarea class="bp-input-edit bp-plan-notes"
+                                rows="2"
                                 [value]="ac.requirement_detail || ''"
                                 placeholder="Private notes for your team."
                                 (blur)="onNotesBlur(ac, $event)"></textarea>
                     </div>
                   </div>
-                </div>
 
-                <!-- BALLPARK — budget + estimate -->
-                <div class="bp-b2-sec">
-                  <div class="bp-b2-sechd">Ballpark</div>
-                  <div class="bp-b2-ws-row">
-                    <div>
-                      <div class="bp-b2-fieldlbl">Budget</div>
-                      <div class="bp-b2-money">
+                  <!-- RIGHT: Status / Budget / Estimate / Help -->
+                  <div class="bp-plan-r">
+                    <div class="bp-plan-r-field">
+                      <div class="bp-field-label">Status</div>
+                      <p-dropdown [options]="categoryStatuses"
+                                  optionLabel="label" optionValue="code"
+                                  [(ngModel)]="ac.status_code"
+                                  (onChange)="saveStatus(ac)"
+                                  placeholder="Draft"
+                                  appendTo="body"
+                                  [style]="{ width: '100%' }"></p-dropdown>
+                    </div>
+                    <div class="bp-plan-r-field">
+                      <div class="bp-field-label">Budget</div>
+                      <div class="bp-plan-money">
                         <span>£</span>
                         <input type="text" inputmode="numeric"
                                [value]="budgetDisplay(ac)"
@@ -233,128 +235,109 @@ type DetailView =
                                (blur)="onBudgetBlur(ac, $event)"/>
                       </div>
                     </div>
-                    <div>
-                      <div class="bp-b2-fieldlbl">Estimate</div>
-                      <div class="bp-b2-money">
-                        <span>£</span>
-                        <input type="text" inputmode="numeric"
-                               [value]="estimateDisplay(ac)"
-                               placeholder="0"
-                               (focus)="onEstimateFocus(ac, $event)"
-                               (blur)="onEstimateBlur(ac, $event)"
-                               [title]="catItemCount(ac.category_id) + ' selected — recomputed when items change'"/>
+                    <div class="bp-plan-r-field">
+                      <div class="bp-field-label">Estimate</div>
+                      <div class="bp-plan-estimate"
+                           [title]="catItemCount(ac.category_id) + ' selected'">
+                        {{ ac.ballpark_cost == null ? '—' : (ac.ballpark_cost | gbp) }}
                       </div>
                     </div>
+                    <button type="button" class="bp-plan-helpbtn"
+                            (click)="helpOpen = true">
+                      <lucide-icon name="help-circle" [size]="13"></lucide-icon>
+                      How does this work?
+                    </button>
                   </div>
                 </div>
 
-                <!-- OPTIONS — subcard holding the matcher results.
-                     Pink header (image 2); two light subcards inside. -->
-                <div class="bp-b2-optcard">
-                  <div class="bp-b2-chead bp-b2-chead--sub">
-                    <div class="bp-b2-chead-ic">
-                      <lucide-icon name="sparkles" [size]="15"></lucide-icon>
+                <hr class="bp-plan-divider"/>
+
+                <!-- Zone 2 — results -->
+                <div class="bp-plan-results">
+
+                  <!-- Results bar -->
+                  <div class="bp-plan-resbar">
+                    <div class="bp-plan-resbar-l">
+                      <ng-container *ngIf="activeResult as r; else resbarEmpty">
+                        <span class="bp-plan-matchcount">Matches ({{ matchCount(r) }})</span>
+                        <span class="bp-plan-searchterms" *ngIf="r.search_terms.length">
+                          · {{ formatSearchTerms(r.search_terms) }}
+                        </span>
+                      </ng-container>
+                      <ng-template #resbarEmpty>
+                        <span class="bp-plan-matchcount">No search yet</span>
+                      </ng-template>
                     </div>
-                    <div class="bp-b2-chead-title">Options</div>
-                    <!-- Find items — A2 Step 7: hidden for Client Managed -->
-                    <p-button *ngIf="!isClientManaged(ac)"
-                              class="bp-b2-find"
-                              styleClass="p-button bp-b2-findbtn"
-                              [disabled]="findDisabled(ac)"
-                              [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
-                              (onClick)="findItems(ac)">
-                      <lucide-icon [name]="briefSearched(ac) ? 'check' : 'sparkles'" [size]="14"></lucide-icon>
-                      <span>{{ findBtnLabel(ac) }}</span>
-                    </p-button>
-                    <span *ngIf="isClientManaged(ac)" class="bp-b2-cmnote bp-b2-cmnote--head">
-                      <lucide-icon name="user" [size]="13"></lucide-icon>
-                      Managed by client
-                    </span>
+                    <div class="bp-plan-resbar-r">
+                      <p-button *ngIf="!isClientManaged(ac)"
+                                styleClass="p-button p-button-sm"
+                                [disabled]="findDisabled(ac)"
+                                [title]="briefSearched(ac) ? 'Items already found — edit the brief to search again' : ''"
+                                (onClick)="findItems(ac)">
+                        <lucide-icon name="sparkles" [size]="13"></lucide-icon>
+                        <span>Search</span>
+                      </p-button>
+                      <p-button styleClass="p-button-outlined p-button-sm"
+                                (onClick)="onAddNew(ac)">
+                        <lucide-icon name="plus" [size]="13"></lucide-icon>
+                        <span>Add new</span>
+                      </p-button>
+                      <div class="bp-plan-viewtoggle">
+                        <button type="button" class="bp-icon-btn"
+                                [class.on]="viewMode === 'grid'"
+                                (click)="viewMode = 'grid'" title="Grid">
+                          <lucide-icon name="layout-grid" [size]="13"></lucide-icon>
+                        </button>
+                        <button type="button" class="bp-icon-btn"
+                                [class.on]="viewMode === 'list'"
+                                (click)="viewMode = 'list'" title="List">
+                          <lucide-icon name="list" [size]="13"></lucide-icon>
+                        </button>
+                        <button type="button" class="bp-icon-btn"
+                                [class.on]="viewMode === 'table'"
+                                (click)="viewMode = 'table'" title="Table">
+                          <lucide-icon name="table" [size]="13"></lucide-icon>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div class="bp-b2-optcard-body">
-                    <ng-container *ngIf="activeResult as r; else findPrompt">
 
-                      <!-- two light subcards (image 1 header) — one shows
-                           if only one side has content. -->
-                      <div class="bp-b2-optgrid">
-                        <div class="bp-b2-subcard">
-                          <div class="bp-b2-subhd">
-                            <lucide-icon name="search" [size]="13"></lucide-icon>
-                            Pick Existing
-                          </div>
-                          <div class="bp-b2-subcard-body">
-                            <ng-container *ngIf="r.matched_items.length || r.closest_item; else noExisting">
-                              <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
-                            </ng-container>
-                            <ng-template #noExisting>
-                              <div class="bp-b2-subempty">
-                                No close matches in the catalogue — quote a new item instead.
-                              </div>
-                            </ng-template>
-                          </div>
-                        </div>
-                        <div class="bp-b2-subcard">
-                          <div class="bp-b2-subhd">
-                            <lucide-icon name="plus" [size]="13"></lucide-icon>
-                            Quote New
-                          </div>
-                          <div class="bp-b2-subcard-body">
-                            <ng-container *ngIf="r.proposed_item; else noProposed">
-                              <ng-container *ngTemplateOutlet="newItem; context: { $implicit: r, ac: ac }"></ng-container>
-                            </ng-container>
-                            <ng-template #noProposed>
-                              <div class="bp-b2-newcompose">
-                                <div class="bp-b2-newcompose-t">
-                                  Have something specific in mind?
-                                </div>
-                                <input class="bp-b2-newcompose-input" type="text" #newNameInput
-                                       placeholder="e.g. Custom inflatable structure"
-                                       (keyup.enter)="composeNew(newNameInput.value); newNameInput.value=''"/>
-                                <p-button label="Compose new item"
-                                          styleClass="p-button"
-                                          (onClick)="composeNew(newNameInput.value); newNameInput.value=''">
-                                </p-button>
-                              </div>
-                            </ng-template>
-                          </div>
-                        </div>
-                      </div>
+                  <ng-container *ngIf="activeResult as r; else findPrompt">
+                    <div class="bp-plan-sechd" *ngIf="r.matched_items.length || r.closest_item">
+                      {{ r.matched_items.length ? 'Matched' : 'Closest' }}
+                    </div>
+                    <ng-container *ngTemplateOutlet="itemMatches; context: { $implicit: r, ac: ac }"></ng-container>
 
-                      <!-- AI FEEDBACK — what was searched + train the matcher -->
-                      <div class="bp-b2-aifb">
-                        <div class="bp-b2-sechd">AI feedback</div>
-                        <div class="bp-b2-searchln">
-                          <lucide-icon class="bp-b2-spark" name="sparkles" [size]="14"></lucide-icon>
-                          Searched <em>{{ r.search_terms.length ? r.search_terms.join(', ') : '—' }}</em>
-                          · scanned {{ r.items_scanned }} items / {{ r.suppliers_scanned }} suppliers
-                        </div>
-                        <div class="bp-b2-hint">
-                          <label>
-                            <lucide-icon name="message-square" [size]="14"></lucide-icon>
-                            I would have looked for…
-                          </label>
-                          <div class="bp-b2-hint-row">
-                            <input type="text"
-                                   [value]="hintDrafts.get(ac.category_id) || ''"
-                                   placeholder="search terms the AI missed"
-                                   (input)="onHintInput(ac, $event)"/>
-                            <p-button label="Submit" styleClass="p-button"
-                                      (onClick)="submitHint(ac)"></p-button>
-                          </div>
-                        </div>
+                    <div class="bp-plan-sechd" *ngIf="r.suppliers_ranked.length">Suppliers</div>
+                    <div class="bp-plan-suppliers" *ngIf="r.suppliers_ranked.length">
+                      <div *ngFor="let s of r.suppliers_ranked; let i = index" class="bp-plan-supp">
+                        <span class="bp-plan-supp-star" [class.is-top]="i === 0">★</span>
+                        <span class="bp-plan-supp-name">{{ s.supplier_name }}</span>
+                        <span class="bp-plan-supp-meta">{{ s.item_count }} items{{ i === 0 ? ' · recommended' : '' }}</span>
                       </div>
-                    </ng-container>
+                    </div>
 
-                    <ng-template #findPrompt>
-                      <div class="bp-b2-prompt">
-                        <lucide-icon class="bp-b2-prompt-spark" name="sparkles" [size]="22"></lucide-icon>
-                        <div>
-                          Click <b>Find items</b> to match this brief against the catalogue —
-                          scored items, ranked suppliers, and a proposed item if nothing fits.
-                        </div>
+                    <div class="bp-b2-hint">
+                      <label>
+                        <lucide-icon name="message-circle" [size]="14"></lucide-icon>
+                        I would have looked for…
+                      </label>
+                      <div class="bp-b2-hint-row">
+                        <input type="text"
+                               [value]="hintDrafts.get(ac.category_id) || ''"
+                               placeholder="search terms the AI missed"
+                               (input)="onHintInput(ac, $event)"/>
+                        <p-button label="Submit" styleClass="p-button"
+                                  (onClick)="submitHint(ac)"></p-button>
                       </div>
-                    </ng-template>
-                  </div>
+                    </div>
+                  </ng-container>
+
+                  <ng-template #findPrompt>
+                    <div class="bp-plan-empty">
+                      Update the brief above then click Search
+                    </div>
+                  </ng-template>
                 </div>
 
               </ng-container>
@@ -623,12 +606,62 @@ type DetailView =
       </div>
     </p-sidebar>
 
-    <!-- v1.52e — edit drawer for an AI-proposed item (after it is
-         materialised into a real, approval-pending catalogue row). -->
+    <!-- v1.65 — Plan tab help drawer. Opens from the "? How does this
+         work?" button in the right-side form stack. -->
+    <p-sidebar [(visible)]="helpOpen" position="right" [style]="{ width: '360px' }"
+               styleClass="bp-plan-help" [showCloseIcon]="false">
+      <div class="bp-plan-help-head">
+        <div>
+          <div class="bp-drawer-label">Guide</div>
+          <div class="bp-drawer-title">How the Plan tab works</div>
+        </div>
+        <button class="bp-icon-btn" type="button" (click)="helpOpen = false">
+          <lucide-icon name="x" [size]="16"></lucide-icon>
+        </button>
+      </div>
+      <div class="bp-plan-help-body">
+        <div class="bp-plan-help-step">
+          <div class="bp-plan-help-num">1</div>
+          <div>
+            <div class="bp-plan-help-t">Update the brief</div>
+            <div class="bp-plan-help-d">Edit the brief for each category. This is what suppliers will quote against — be specific about dimensions, quantities, and requirements.</div>
+          </div>
+        </div>
+        <div class="bp-plan-help-step">
+          <div class="bp-plan-help-num">2</div>
+          <div>
+            <div class="bp-plan-help-t">Click Search</div>
+            <div class="bp-plan-help-d">Our AI-powered engine will search the marketplace and propose items that best meet your needs. Results are scored 1-10 by relevance.</div>
+          </div>
+        </div>
+        <div class="bp-plan-help-step">
+          <div class="bp-plan-help-num">3</div>
+          <div>
+            <div class="bp-plan-help-t">Select or request quotes</div>
+            <div class="bp-plan-help-d">Pick items from the catalogue with <lucide-icon name="check" [size]="12"></lucide-icon>, save favourites with <lucide-icon name="heart" [size]="12"></lucide-icon>, or request a quote from a supplier with <lucide-icon name="mail" [size]="12"></lucide-icon>.</div>
+          </div>
+        </div>
+        <div class="bp-plan-help-step">
+          <div class="bp-plan-help-num">4</div>
+          <div>
+            <div class="bp-plan-help-t">Add custom items</div>
+            <div class="bp-plan-help-d">Can't find what you need? Click <b>+ Add new</b> to create a custom item and send it to suppliers for quoting.</div>
+          </div>
+        </div>
+        <div class="bp-plan-help-tip">
+          <lucide-icon name="lightbulb" [size]="14"></lucide-icon>
+          <div><b>Tip:</b> Use the "I would have looked for…" hint at the bottom of results to help train our AI to find better matches next time.</div>
+        </div>
+      </div>
+    </p-sidebar>
+
+    <!-- v1.52e — item drawer (edit a materialised proposed item OR
+         add a brand-new one via the Plan tab's "+ Add new"). -->
     <app-item-drawer
       [(visible)]="drawerVisible"
-      [mode]="'edit'"
+      [mode]="drawerMode"
       [item]="drawerItem"
+      [prefill]="drawerPrefill"
       (saved)="onProposedSaved($event)"
       (cancelled)="drawerVisible = false">
     </app-item-drawer>
@@ -707,117 +740,142 @@ type DetailView =
     .bp-b2-card--est .bp-b2-card-chev { color: var(--color-surface); opacity: 1; }
     .bp-b2-card--est:hover .bp-b2-card-chev { opacity: 1; }
 
-    /* col 2 — the focused-category card (v1.56) */
+    /* col 2 — Plan tab (v1.65) */
     .bp-b2-panel { background: var(--color-surface); border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-card); overflow: hidden; min-height: 540px; }
+      border-radius: var(--radius-card); overflow: hidden; min-height: 540px;
+      padding: 14px 16px 16px; }
 
-    /* pink card header (image 2) — panel + Options card */
-    .bp-b2-chead { display: flex; align-items: center; gap: 10px;
-      background: var(--theme-accent); padding: 13px 16px; }
-    .bp-b2-chead-ic { width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(255,255,255,0.2); color: var(--color-surface);
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .bp-b2-chead-title { flex: 1; min-width: 0; font-family: var(--font-display);
-      font-size: var(--text-lg); color: var(--color-surface);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bp-b2-chead--sub { padding: 9px 14px; }
-    .bp-b2-chead--sub .bp-b2-chead-ic { width: 24px; height: 24px; }
-    .bp-b2-chead--sub .bp-b2-chead-title { font-size: var(--text-base); }
-    .bp-b2-ws-status { flex-shrink: 0; }
+    /* Tiny category header */
+    .bp-plan-cathd { display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-display); font-size: var(--text-lg);
+      color: var(--color-text-primary); margin-bottom: 12px; }
+    .bp-plan-cathd lucide-icon { color: var(--theme-accent); display: inline-flex; }
 
-    /* sections — DETAILS / BALLPARK */
-    .bp-b2-sec { padding: 14px 16px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-b2-sechd { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 9px; }
-    .bp-b2-fieldlbl { font-size: var(--text-sm); font-weight: 500;
-      color: var(--color-text-muted); margin-bottom: 5px; }
+    /* Zone 1 — category form */
+    .bp-plan-form { display: grid; grid-template-columns: 1fr 160px; gap: 18px;
+      align-items: start; }
+    .bp-plan-l { min-width: 0; display: flex; flex-direction: column; }
+    .bp-plan-fhelp { font-size: var(--text-xs); color: var(--color-text-muted);
+      margin: -3px 0 5px; }
+    .bp-plan-brief { width: 100%; font-family: var(--font-body);
+      font-size: var(--text-base); line-height: 1.5; color: var(--color-text-primary);
+      border-radius: var(--radius-button); padding: 9px 12px; resize: vertical;
+      outline: none; min-height: 72px; }
 
-    /* Brief + Notes side by side */
-    .bp-b2-briefgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .bp-b2-bcol { display: flex; flex-direction: column; }
-    .bp-b2-bcol .bp-b2-brief, .bp-b2-bcol .bp-b2-notes { flex: 1; }
-    .bp-b2-brief { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
-      line-height: 1.6; color: var(--color-text-primary);
-      border-radius: var(--radius-button); padding: 10px 12px;
-      resize: vertical; outline: none; }
-    .bp-b2-notes { width: 100%; font-family: var(--font-body); font-size: var(--text-base);
-      line-height: 1.55; color: var(--color-text-primary);
-      border-radius: var(--radius-button); padding: 9px 12px;
-      resize: vertical; outline: none; }
-    textarea.bp-b2-notes.bp-input-edit {
-      background: var(--color-surface) !important;
+    /* Notes — collapsible */
+    .bp-plan-notes-toggle { display: inline-flex; align-items: center; gap: 5px;
+      background: none; border: none; cursor: pointer;
+      font-family: var(--font-body); font-size: var(--text-xs);
+      color: var(--color-text-muted); padding: 8px 0 4px; text-align: left; }
+    .bp-plan-notes-toggle:hover { color: var(--color-text-secondary); }
+    .bp-plan-notes-chev { display: inline-flex; transition: transform 0.18s; }
+    .bp-plan-notes-toggle.open .bp-plan-notes-chev { transform: rotate(90deg); }
+    .bp-plan-notes-body { max-height: 0; overflow: hidden;
+      transition: max-height 0.22s ease; }
+    .bp-plan-notes-body.open { max-height: 200px; }
+    .bp-plan-notes { width: 100%; font-family: var(--font-body);
+      font-size: var(--text-base); line-height: 1.5; color: var(--color-text-primary);
+      border-radius: var(--radius-button); padding: 8px 12px; resize: vertical;
+      outline: none; min-height: 40px; margin-top: 4px; }
+    textarea.bp-plan-notes.bp-input-edit {
+      background: var(--color-background-secondary, var(--color-surface)) !important;
       border-color: var(--color-border) !important; }
 
-    /* BALLPARK row */
-    .bp-b2-ws-row { display: flex; align-items: flex-end; gap: 14px; }
-    .bp-b2-money { display: flex; align-items: center; gap: 3px; background: var(--color-surface);
-      border: 0.5px solid var(--color-border); border-radius: var(--radius-input);
-      padding: 5px 9px; width: 118px; }
-    .bp-b2-money span { color: var(--color-text-muted); font-size: var(--text-sm); }
-    .bp-b2-money input { border: none; outline: none; font-family: var(--font-body);
-      font-size: var(--text-sm); width: 100%; background: transparent; color: var(--color-text-primary); }
-    .bp-b2-est { font-size: var(--text-base); font-weight: 600; padding: 5px 0;
+    /* Right column — Status / Budget / Estimate / Help */
+    .bp-plan-r { display: flex; flex-direction: column; gap: 8px; }
+    .bp-plan-r-field { display: flex; flex-direction: column; gap: 3px; }
+    .bp-plan-money { display: flex; align-items: center; gap: 4px;
+      background: var(--theme-bg); border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input); padding: 6px 9px; }
+    .bp-plan-money span { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .bp-plan-money input { border: none; outline: none; background: transparent;
+      font-family: var(--font-body); font-size: var(--text-sm); width: 100%;
       color: var(--color-text-primary); }
-    .bp-b2-est small { color: var(--color-text-muted); font-weight: 500; }
-    /* Find items — lives in the pink Options header, so light-on-pink */
-    .bp-b2-find { margin-left: auto; flex-shrink: 0; }
-    .bp-b2-find lucide-icon { display: inline-flex; }
-    :host ::ng-deep .bp-b2-findbtn {
-      background: var(--color-surface) !important; border-color: var(--color-surface) !important;
-      color: var(--theme-accent) !important; padding: 6px 12px !important; }
-    :host ::ng-deep .bp-b2-findbtn:enabled:hover {
-      background: var(--theme-bg) !important; border-color: var(--theme-bg) !important; }
-    :host ::ng-deep .bp-b2-findbtn:disabled { opacity: 0.65; }
-    .bp-b2-cmnote { margin-left: auto; display: inline-flex; align-items: center;
-      gap: 5px; font-size: var(--text-sm); color: var(--color-text-muted); }
-    .bp-b2-cmnote--head { color: var(--color-surface); }
+    .bp-plan-estimate { font-family: var(--font-display); font-size: var(--text-md);
+      color: var(--color-text-primary); background: var(--color-surface);
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-input);
+      padding: 6px 9px; }
+    .bp-plan-helpbtn { display: inline-flex; align-items: center; justify-content: center;
+      gap: 5px; width: 100%; background: transparent;
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-input);
+      padding: 6px 8px; cursor: pointer; font-family: var(--font-body);
+      font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;
+      transition: border-color 0.12s, color 0.12s; }
+    .bp-plan-helpbtn:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-plan-helpbtn lucide-icon { display: inline-flex; }
 
-    /* status dropdown — sits on the pink header, light-on-pink */
-    :host ::ng-deep .bp-b2-statusdd.p-dropdown {
-      background: rgba(255,255,255,0.18); border: none; border-radius: var(--radius-input); }
-    :host ::ng-deep .bp-b2-statusdd .p-dropdown-label {
-      font-size: var(--text-sm); padding: 6px 10px; font-family: var(--font-body);
-      color: var(--color-surface); }
-    :host ::ng-deep .bp-b2-statusdd .p-dropdown-trigger { color: var(--color-surface); }
+    /* Divider between zones */
+    .bp-plan-divider { border: none; border-top: 0.5px solid var(--color-border);
+      margin: 14px -16px 10px; }
 
-    .bp-b2-card--dim { opacity: 0.6; }
-    .bp-b2-card--dim:hover { opacity: 0.85; }
+    /* Zone 2 — results */
+    .bp-plan-results { display: flex; flex-direction: column; gap: 11px; }
+    .bp-plan-resbar { display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap; }
+    .bp-plan-resbar-l { display: flex; align-items: baseline; gap: 4px;
+      min-width: 0; flex: 1; }
+    .bp-plan-matchcount { font-size: var(--text-sm); font-weight: 500;
+      color: var(--color-text-primary); flex-shrink: 0; }
+    .bp-plan-searchterms { font-size: var(--text-xs); font-style: italic;
+      color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; }
+    .bp-plan-resbar-r { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .bp-plan-resbar-r lucide-icon { display: inline-flex; }
+    .bp-plan-viewtoggle { display: inline-flex; border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input); overflow: hidden; }
+    .bp-plan-viewtoggle .bp-icon-btn { border-radius: 0; padding: 4px 6px;
+      color: var(--color-text-muted); }
+    .bp-plan-viewtoggle .bp-icon-btn.on { background: var(--theme-bg);
+      color: var(--theme-accent); }
+    .bp-plan-viewtoggle .bp-icon-btn:not(:last-child) {
+      border-right: 0.5px solid var(--color-border); }
 
-    /* OPTIONS subcard */
-    .bp-b2-optcard { margin: 14px 16px 16px; border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-card); overflow: hidden; }
-    .bp-b2-optcard-body { padding: 13px 14px; display: flex; flex-direction: column; gap: 13px; }
+    .bp-plan-sechd { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--color-text-secondary);
+      margin: 4px 0 2px; }
+
+    .bp-plan-suppliers { display: flex; flex-direction: column; gap: 5px; }
+    .bp-plan-supp { display: flex; align-items: center; gap: 8px;
+      font-size: var(--text-xs); color: var(--color-text-secondary); }
+    .bp-plan-supp-star { color: var(--color-text-muted); flex-shrink: 0; }
+    .bp-plan-supp-star.is-top { color: var(--theme-accent); }
+    .bp-plan-supp-name { font-weight: 600; color: var(--color-text-primary); }
+    .bp-plan-supp-meta { color: var(--color-text-muted); }
+
+    .bp-plan-empty { padding: 36px 16px; text-align: center;
+      font-size: var(--text-sm); color: var(--color-text-muted); }
+
+    /* noCat prompt (kept) + spark icon used by templates */
     .bp-b2-prompt { display: flex; flex-direction: column; align-items: center;
       text-align: center; padding: 44px 32px; color: var(--color-text-muted);
       font-size: var(--text-sm); line-height: 1.6; gap: 8px; }
     .bp-b2-prompt-spark { color: var(--theme-accent); }
-    .bp-b2-searchln { display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
-      font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.5; }
-    .bp-b2-searchln em { font-style: normal; font-weight: 600; color: var(--color-text-secondary); }
     .bp-b2-spark { color: var(--theme-accent); display: inline-flex; vertical-align: middle; }
 
-    /* two result subcards (image-1 light header) */
-    .bp-b2-optgrid { display: flex; gap: 14px; }
-    .bp-b2-subcard { flex: 1; min-width: 0; border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-button); overflow: hidden; }
-    .bp-b2-subhd { display: flex; align-items: center; gap: 6px;
-      background: var(--theme-bg); padding: 8px 12px;
-      font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.04em;
-      text-transform: uppercase; color: var(--color-text-secondary); }
-    .bp-b2-subhd lucide-icon { color: var(--theme-accent); display: inline-flex; }
-    .bp-b2-subcard-body { padding: 11px 12px; }
-    .bp-b2-subempty { font-size: var(--text-sm); color: var(--color-text-muted);
-      line-height: 1.5; text-align: center; padding: 22px 8px; }
-    /* Quote New empty state — compose-a-new-item form */
-    .bp-b2-newcompose { display: flex; flex-direction: column; gap: 8px;
-      padding: 12px 4px 4px; }
-    .bp-b2-newcompose-t { font-size: var(--text-sm); color: var(--color-text-muted);
-      text-align: center; margin-bottom: 2px; }
-    .bp-b2-newcompose-input { font-family: var(--font-body); font-size: var(--text-sm);
-      padding: 7px 10px; border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-input); outline: none;
-      background: var(--color-surface); color: var(--color-text-primary); }
-    .bp-b2-newcompose-input:focus { border-color: var(--theme-accent); }
+    .bp-b2-card--dim { opacity: 0.6; }
+    .bp-b2-card--dim:hover { opacity: 0.85; }
+
+    /* Help drawer */
+    :host ::ng-deep .bp-plan-help .p-sidebar-content { padding: 0; }
+    .bp-plan-help-head { display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 16px 18px; border-bottom: 0.5px solid var(--color-border); }
+    .bp-plan-help-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+    .bp-plan-help-step { display: flex; gap: 10px; }
+    .bp-plan-help-num { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: var(--theme-bg); color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-weight: 600; font-size: var(--text-sm); }
+    .bp-plan-help-t { font-size: var(--text-base); font-weight: 500;
+      color: var(--color-text-primary); margin-bottom: 2px; }
+    .bp-plan-help-d { font-size: var(--text-sm); color: var(--color-text-muted);
+      line-height: 1.5; }
+    .bp-plan-help-d lucide-icon { display: inline-flex; vertical-align: middle;
+      color: var(--theme-accent); }
+    .bp-plan-help-tip { display: flex; gap: 8px; padding: 12px;
+      background: var(--theme-bg); border-radius: var(--radius-card);
+      font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.5; }
+    .bp-plan-help-tip lucide-icon { color: var(--theme-accent); flex-shrink: 0;
+      display: inline-flex; margin-top: 2px; }
 
     .bp-b2-row { display: flex; align-items: center; gap: 9px; background: var(--color-surface);
       border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
@@ -847,9 +905,9 @@ type DetailView =
     .bp-b2-iact.on:hover { background: var(--theme-accent); filter: brightness(0.92); }
     .bp-b2-iact.like:hover { color: var(--color-danger); background: var(--theme-bg); }
 
-    /* AI feedback — search recap + matcher training */
-    .bp-b2-aifb { border-top: 0.5px solid var(--color-border); padding-top: 12px;
-      display: flex; flex-direction: column; gap: 8px; }
+    /* Hint — kept (used at the bottom of the results) */
+    .bp-b2-hint { border-top: 0.5px solid var(--color-border); padding-top: 11px;
+      margin-top: 6px; }
     .bp-b2-hint label { display: flex; align-items: center; gap: 4px;
       font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 5px; }
     .bp-b2-hint-row { display: flex; gap: 6px; }
@@ -967,9 +1025,17 @@ export class BriefComponent implements OnInit, OnDestroy {
   detail: DetailView = null;
   addDrawerOpen = false;
 
-  /** v1.52e — item drawer for editing a materialised proposed item. */
+  /** v1.65 — Plan tab centre column. */
+  notesOpen = false;
+  helpOpen = false;
+  viewMode: 'grid' | 'list' | 'table' = 'grid';
+
+  /** v1.52e — item drawer for editing a materialised proposed item.
+      v1.65 — also used by "+ Add new" in add mode with prefill. */
   drawerVisible = false;
   drawerItem: Item | null = null;
+  drawerMode: ItemDrawerMode = 'edit';
+  drawerPrefill: { category_id?: string; subcategory_id?: string; org_id?: string } | null = null;
   /** v1.52g — the proposed item the drawer is currently editing, so a
       save can be reflected straight back onto its preview card. */
   private proposedBeingEdited: ProposedItem | null = null;
@@ -1168,32 +1234,24 @@ export class BriefComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** v1.63 — Estimate is now user-editable. Recompute on item add/remove
-      still overwrites this value (which is what you want most of the
-      time); meantime the user can type their own number.
-      v1.63a — 0 is a valid value (e.g. client-managed = explicitly £0)
-      so it displays as "0" rather than emptying the field. */
-  estimateDisplay(pc: ProjectCategory): string {
-    return pc.ballpark_cost == null
-      ? '' : Number(pc.ballpark_cost).toLocaleString('en-GB');
+  /** v1.65 — Plan tab helpers. */
+  matchCount(r: MatchResult): number {
+    return (r.matched_items?.length || 0) + (r.closest_item ? 1 : 0);
   }
-  onEstimateFocus(pc: ProjectCategory, ev: Event): void {
-    (ev.target as HTMLInputElement).value =
-      pc.ballpark_cost == null ? '' : String(pc.ballpark_cost);
+  formatSearchTerms(terms: string[]): string {
+    return terms.slice(0, 4).map(t => `'${t}'`).join(', ');
   }
-  onEstimateBlur(pc: ProjectCategory, ev: Event): void {
-    const el = ev.target as HTMLInputElement;
-    const raw = el.value.replace(/[^0-9.]/g, '');
-    let next: number | null = raw === '' ? null : Number(raw);
-    if (next != null && !isFinite(next)) next = null;
-    const current = pc.ballpark_cost != null ? Number(pc.ballpark_cost) : null;
-    pc.ballpark_cost = (next ?? 0) as any;
-    el.value = this.estimateDisplay(pc);
-    if (next === current) return;
-    this.projSvc.upsertCategory(this.pid, pc.category_id, { ballpark_cost: next }).subscribe({
-      next: () => this.msg.add({ severity: 'success', summary: 'Saved', life: 1000 }),
-      error: () => this.msg.add({ severity: 'error', summary: 'Failed to save estimate', life: 3000 })
-    });
+  /** v1.65 — "+ Add new" opens the standard item drawer in add mode,
+      with the active category pre-selected. Saving creates a real
+      catalogue row that the user can later request a quote for.
+      (AI-prefill of name/description/price is a follow-up.) */
+  onAddNew(ac: ProjectCategory): void {
+    this.drawerItem = null;
+    this.proposedBeingEdited = null;
+    this.drawerMode = 'add';
+    this.drawerPrefill = { category_id: ac.category_id };
+    this.drawerVisible = true;
+    this.cdr.markForCheck();
   }
 
   // ── A1 Notes / A2 Status ──────────────────────────────────────────────
@@ -1429,6 +1487,8 @@ export class BriefComponent implements OnInit, OnDestroy {
     if (this.detail?.kind !== 'proposed') return;
     const p = this.detail.item;
     this.proposedBeingEdited = p;
+    this.drawerMode = 'edit';
+    this.drawerPrefill = null;
     if (p.item_id) {
       this.itemSvc.getById(p.item_id).subscribe({
         next: item => {
@@ -1605,25 +1665,6 @@ export class BriefComponent implements OnInit, OnDestroy {
     if (!isNew) this.addMatched(ac, m as MatchItem, 'selected');
   }
 
-  /** v1.63 — Compose a brand-new requirement from scratch (the Quote
-      New empty state). Opens the outreach drawer pre-loaded with the
-      typed name; the user fills in details + suppliers in the drawer. */
-  composeNew(name: string): void {
-    const ac = this.activeCategory;
-    const trimmed = (name || '').trim();
-    if (!ac || !trimmed) return;
-    const r = this.activeResult;
-    this.outreach.open({
-      item: { name: trimmed, description: '', price: 0, isNew: true },
-      categoryId:        ac.category_id,
-      categoryName:      ac.category_name,
-      projectId:         this.pid,
-      projectCategoryId: this.pcId(ac),
-      suppliers: r ? r.suppliers_ranked.map(s => ({
-        supplier_id: s.supplier_id, supplier_name: s.supplier_name
-      })) : []
-    });
-  }
 
   // ── Hint ──────────────────────────────────────────────────────────────
 
