@@ -74,6 +74,17 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
             </span>
           </div>
           <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
+          <!-- v1.65x — cart icon + count of selected items for this
+               category. Same affordance Amazon / Best Buy use to signal
+               cart-state. Display only; clicking does nothing here
+               because the selected items render in the centre column
+               on the All view (no separate cart page). -->
+          <span class="bp-ctx-cart" *ngIf="context === 'project'"
+                [attr.title]="selectedItems.length + ' item' + (selectedItems.length === 1 ? '' : 's') + ' in cart'">
+            <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
+            <span class="bp-ctx-cart-badge"
+                  *ngIf="selectedItems.length">{{ selectedItems.length }}</span>
+          </span>
         </div>
 
         <!-- v1.65w — badge row redone:
@@ -91,13 +102,16 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
             <span class="bp-ctx-badge-v">{{ (budgetPrice || 0) | gbp }}</span>
           </span>
           <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingBudget">
-            <span class="bp-ctx-badge-l">Budget £</span>
-            <input #budgetInput type="number" min="0" step="100"
-                   class="bp-ctx-badge-input"
-                   [(ngModel)]="budgetDraft"
-                   (blur)="commitBudget()"
-                   (keyup.enter)="commitBudget()"
-                   (keyup.escape)="cancelBudget()"/>
+            <span class="bp-ctx-badge-l">Budget</span>
+            <span class="bp-ctx-badge-v bp-ctx-badge-input-wrap">
+              <span class="bp-ctx-badge-input-prefix">£</span>
+              <input #budgetInput type="number" min="0" step="100"
+                     class="bp-ctx-badge-input"
+                     [(ngModel)]="budgetDraft"
+                     (blur)="commitBudget()"
+                     (keyup.enter)="commitBudget()"
+                     (keyup.escape)="cancelBudget()"/>
+            </span>
           </span>
 
           <!-- Estimate — click to edit (ballpark_cost on project_category) -->
@@ -109,13 +123,16 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
             <span class="bp-ctx-badge-v">{{ (estimatePrice || 0) | gbp }}</span>
           </span>
           <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingEstimate">
-            <span class="bp-ctx-badge-l">Estimate £</span>
-            <input #estimateInput type="number" min="0" step="100"
-                   class="bp-ctx-badge-input"
-                   [(ngModel)]="estimateDraft"
-                   (blur)="commitEstimate()"
-                   (keyup.enter)="commitEstimate()"
-                   (keyup.escape)="cancelEstimate()"/>
+            <span class="bp-ctx-badge-l">Estimate</span>
+            <span class="bp-ctx-badge-v bp-ctx-badge-input-wrap">
+              <span class="bp-ctx-badge-input-prefix">£</span>
+              <input #estimateInput type="number" min="0" step="100"
+                     class="bp-ctx-badge-input"
+                     [(ngModel)]="estimateDraft"
+                     (blur)="commitEstimate()"
+                     (keyup.enter)="commitEstimate()"
+                     (keyup.escape)="cancelEstimate()"/>
+            </span>
           </span>
 
           <!-- Status — right-justified. View mode is a pill; click pops
@@ -358,7 +375,18 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     }
     .bp-ctx-countpill lucide-icon { display: inline-flex; }
 
-    /* v1.65w — editable badges. Hover hint + inline input swap. */
+    /* v1.65x — editable badges. View and edit share padding, height
+       and font-size so flipping between modes doesn't reflow the row.
+       The badge-v field carries a fixed min-width so the pill width is
+       the same whether it's a static value or an input. */
+    .bp-ctx-badge {
+      min-height: 24px;
+      box-sizing: border-box;
+    }
+    .bp-ctx-badge-v {
+      min-width: 64px;
+      display: inline-flex; align-items: center;
+    }
     .bp-ctx-badge--editable {
       cursor: pointer;
       transition: background 0.15s, box-shadow 0.15s;
@@ -371,21 +399,43 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       background: var(--color-surface);
       box-shadow: 0 0 0 0.5px var(--theme-accent);
     }
+    .bp-ctx-badge-input-wrap {
+      display: inline-flex; align-items: baseline; gap: 1px;
+    }
+    .bp-ctx-badge-input-prefix {
+      font-size: var(--text-sm); font-weight: 600;
+      color: var(--color-text-primary);
+    }
     .bp-ctx-badge-input {
-      width: 88px;
+      /* Same font + weight as .bp-ctx-badge-v so the only visual
+         difference between view and edit is the caret. Width tuned to
+         hold 6 digits without forcing the pill any wider than the
+         view-mode value. */
+      width: 56px;
       border: none; outline: none; background: transparent;
       font-family: var(--font-body); font-size: var(--text-sm);
       font-weight: 600; color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
       padding: 0; margin: 0;
+      line-height: inherit;
     }
-    /* Status pill — right-justified inside the badge row. */
+    /* Hide the spinner that some browsers render for type=number — it
+       widens the input and breaks pill alignment. */
+    .bp-ctx-badge-input::-webkit-outer-spin-button,
+    .bp-ctx-badge-input::-webkit-inner-spin-button {
+      -webkit-appearance: none; margin: 0;
+    }
+    .bp-ctx-badge-input { -moz-appearance: textfield; }
+
+    /* Status pill — right-justified inside the badge row. View + edit
+       sized identically so the row doesn't jump on dropdown open. */
     .bp-ctx-status-wrap {
       margin-left: auto;
       display: inline-flex; align-items: center;
     }
     .bp-ctx-status-pill {
       display: inline-flex; align-items: center; gap: 6px;
+      min-height: 24px; box-sizing: border-box;
       padding: 3px 10px;
       border-radius: var(--radius-pill);
       background: var(--theme-bg);
@@ -397,16 +447,51 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       background: var(--theme-accent); flex-shrink: 0;
     }
     :host ::ng-deep .bp-ctx-status-dd.p-dropdown {
-      min-width: 132px; height: 26px;
+      min-width: 110px; height: 24px;
+      background: var(--theme-bg) !important;
       border: 0.5px solid var(--theme-accent) !important;
       border-radius: var(--radius-pill) !important;
       box-shadow: none !important;
     }
     :host ::ng-deep .bp-ctx-status-dd .p-dropdown-label {
-      padding: 2px 8px; font-size: var(--text-xs);
-      font-family: var(--font-body); line-height: 22px;
+      padding: 0 8px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      font-family: var(--font-body);
+      line-height: 22px;
+      color: var(--color-text-primary);
     }
-    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger { width: 22px; }
+    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger { width: 20px; }
+    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger-icon { font-size: 10px; }
+
+    /* v1.65x — cart icon + count badge on the pink header. Replaces
+       nothing visually (the status pill moved to the badge row in
+       v1.65w; the cart slots into that spot). White icon over the pink
+       header; the count sits as a small yellow chip on the cart's
+       top-right corner, Amazon / Best Buy style. */
+    .bp-ctx-cart {
+      position: relative;
+      display: inline-flex; align-items: center;
+      flex-shrink: 0;
+      color: #fff;
+      padding: 2px;
+    }
+    .bp-ctx-cart lucide-icon { display: inline-flex; }
+    .bp-ctx-cart-badge {
+      position: absolute;
+      top: -4px; right: -8px;
+      min-width: 16px; height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: var(--theme-accent);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      box-shadow: 0 0 0 1.5px #fff;
+      font-variant-numeric: tabular-nums;
+    }
 
     /* v1.65w — brief click-to-edit. View text gets a soft hover hint; the
        editor is a borderless textarea so it doesn't compete with the
