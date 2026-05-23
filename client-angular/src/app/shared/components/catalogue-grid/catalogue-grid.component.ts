@@ -730,6 +730,11 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
             </div>
+            <!-- v1.65w — count pills (selected + wishlist) dropped.
+                 Project status now sits on the right; click → opens the
+                 shared Event drawer in 'details' (same as the header
+                 pencil) so the user can change project_status. Budget /
+                 Estimate stay as read-only aggregates across categories. -->
             <div class="bp-allctx-badges">
               <span class="bp-allctx-badge">
                 <span class="bp-allctx-badge-l">Budget</span>
@@ -739,13 +744,14 @@ export type DetailMode = 'inline' | 'drawer';
                 <span class="bp-allctx-badge-l">Estimate</span>
                 <span class="bp-allctx-badge-v">{{ allEstimateTotal | gbp }}</span>
               </span>
-              <span class="bp-allctx-countpill" title="Items selected across the project">
-                <lucide-icon name="check" [size]="11"></lucide-icon>
-                {{ allSelectedCount }}
-              </span>
-              <span class="bp-allctx-countpill" title="Wishlist items across the project">
-                <lucide-icon name="heart" [size]="11"></lucide-icon>
-                {{ allLikedCount }}
+              <span class="bp-allctx-status-wrap"
+                    *ngIf="projectStatusLabel"
+                    (click)="openProjectEdit()"
+                    title="Click to edit project status">
+                <span class="bp-allctx-status-pill">
+                  <span class="bp-allctx-status-dot"></span>
+                  {{ projectStatusLabel }}
+                </span>
               </span>
             </div>
             <!-- v1.65o — project details strip. Same fields as the
@@ -816,6 +822,7 @@ export type DetailMode = 'inline' | 'drawer';
             [briefText]="ctxBriefText"
             [briefDetail]="ctxBriefDetail"
             [budgetPrice]="ctxBudget"
+            [estimatePrice]="ctxEstimate"
             [statusCode]="ctxStatusCode"
             [selectedItems]="getCategorySelectedItems()"
             [likedItems]="getCategoryLikedItems()"
@@ -827,6 +834,9 @@ export type DetailMode = 'inline' | 'drawer';
             (itemMoved)="onContextItemMoved($event)"
             (browseClicked)="onContextBrowseClicked()"
             (briefUpdated)="onContextBriefUpdated($event)"
+            (budgetUpdated)="onContextBudgetUpdated($event)"
+            (estimateUpdated)="onContextEstimateUpdated($event)"
+            (statusUpdated)="onContextStatusUpdated($event)"
             (openEstimate)="onContextOpenEstimate()">
           </app-category-context-panel>
         </ng-container>
@@ -1338,6 +1348,28 @@ export type DetailMode = 'inline' | 'drawer';
       font-variant-numeric: tabular-nums;
     }
     .bp-allctx-countpill lucide-icon { display: inline-flex; }
+
+    /* v1.65w — All view status pill, right-justified in the badge row.
+       Click opens the Event drawer (project_status lives there). */
+    .bp-allctx-status-wrap {
+      margin-left: auto;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-allctx-status-wrap:hover { opacity: 0.85; }
+    .bp-allctx-status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-bg);
+      font-size: var(--text-xs); font-weight: 600;
+      color: var(--color-text-primary);
+      text-transform: capitalize;
+    }
+    .bp-allctx-status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--theme-accent); flex-shrink: 0;
+    }
     .bp-allctx-brief { padding: 14px 16px; }
     .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }
     .bp-allctx-brief-text {
@@ -1604,6 +1636,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         openEstimate → parent navigates to the Build/Estimate tab.
       Both are simple pass-throughs from the category-context-panel. */
   @Output() briefUpdated = new EventEmitter<{ categoryId: string; brief: string }>();
+  /** v1.65w — inline edits on the category context panel surface here
+      so the parent (marketplace) can persist them via upsertCategory. */
+  @Output() budgetUpdated = new EventEmitter<{ categoryId: string; ballpark_budget: number | null }>();
+  @Output() estimateUpdated = new EventEmitter<{ categoryId: string; ballpark_cost: number | null }>();
+  @Output() statusUpdated = new EventEmitter<{ categoryId: string; status_code: string }>();
   @Output() openEstimate = new EventEmitter<void>();
   /** v1.65b — bubbles the trailing "+" pseudo-circle click up to the
       parent, which opens the shared AddCategoryService drawer. */
@@ -2464,6 +2501,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return this.currentProjectCategory?.requirement_detail?.trim() || null;
   }
 
+  /** v1.65w — manual estimate (ballpark_cost) for the active
+      project_category. Read by category-context-panel via [estimatePrice]. */
+  get ctxEstimate(): number | null {
+    if (this.panelContext !== 'project') return null;
+    const v = (this.currentProjectCategory as any)?.ballpark_cost;
+    return v != null ? Number(v) : null;
+  }
   get ctxBudget(): number | null {
     if (this.panelContext !== 'project') return null;
     const v = this.currentProjectCategory?.ballpark_budget;
@@ -2590,6 +2634,16 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get allLikedCount(): number {
     return (this.projectItems || []).filter(pi => pi.selection_type === 'liked').length;
   }
+  /** v1.65w — project_status label for the All-view status pill.
+      Project pushes status_name or status_code on its model; we accept
+      either. Falls back to "Draft" so the pill never renders empty. */
+  get projectStatusLabel(): string {
+    const p = this.projectContext?.project as any;
+    if (!p) return '';
+    return p.status_name
+        || p.status_code
+        || 'Draft';
+  }
 
   /** Items in this category that the project has selected. Matches by
       item_category_id directly, or by walking up the parent chain so
@@ -2687,6 +2741,23 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     const catId = this.currentCategoryInfo?.id;
     if (!catId) return;
     this.briefUpdated.emit({ categoryId: catId, brief });
+  }
+
+  /** v1.65w — inline-edit pass-throughs for Budget / Estimate / Status. */
+  onContextBudgetUpdated(ballpark_budget: number | null) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.budgetUpdated.emit({ categoryId: catId, ballpark_budget });
+  }
+  onContextEstimateUpdated(ballpark_cost: number | null) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.estimateUpdated.emit({ categoryId: catId, ballpark_cost });
+  }
+  onContextStatusUpdated(status_code: string) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.statusUpdated.emit({ categoryId: catId, status_code });
   }
 
   /** v1.22 — "Open estimate →" link click. Bubble to the parent which

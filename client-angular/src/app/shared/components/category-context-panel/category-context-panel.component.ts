@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import {
@@ -49,7 +50,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule,
-    InputTextareaModule, InputTextModule, ButtonModule, ToastModule,
+    InputTextareaModule, InputTextModule, ButtonModule, DropdownModule, ToastModule,
     LucideAngularModule, GbpPipe,
     ProjectItemRowComponent
   ],
@@ -73,31 +74,70 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
             </span>
           </div>
           <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
-          <!-- v1.65f — category status pill on the pink header. -->
-          <span class="bp-ctx-head-status" *ngIf="context === 'project' && categoryStatuses.length">
-            <span class="bp-ctx-head-status-dot" [style.background]="statusColor() || null"></span>
-            {{ statusLabel() }}
-          </span>
         </div>
 
-        <!-- v1.65f — badge row: Budget / Estimate pills + Items /
-             Wishlist count circles. Replaces the subtotal block. -->
+        <!-- v1.65w — badge row redone:
+             · count pills (selected + wishlist) removed
+             · status pill moved here from the pink header, right-justified
+             · Budget / Estimate / Status all click-to-edit
+             · Brief is also editable (further down) — click on text. -->
         <div class="bp-ctx-badges" *ngIf="context === 'project'">
-          <span class="bp-ctx-badge">
+          <!-- Budget — click to edit -->
+          <span class="bp-ctx-badge bp-ctx-badge--editable"
+                *ngIf="!editingBudget"
+                (click)="startEditBudget()"
+                title="Click to edit budget">
             <span class="bp-ctx-badge-l">Budget</span>
             <span class="bp-ctx-badge-v">{{ (budgetPrice || 0) | gbp }}</span>
           </span>
-          <span class="bp-ctx-badge">
+          <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingBudget">
+            <span class="bp-ctx-badge-l">Budget £</span>
+            <input #budgetInput type="number" min="0" step="100"
+                   class="bp-ctx-badge-input"
+                   [(ngModel)]="budgetDraft"
+                   (blur)="commitBudget()"
+                   (keyup.enter)="commitBudget()"
+                   (keyup.escape)="cancelBudget()"/>
+          </span>
+
+          <!-- Estimate — click to edit (ballpark_cost on project_category) -->
+          <span class="bp-ctx-badge bp-ctx-badge--editable"
+                *ngIf="!editingEstimate"
+                (click)="startEditEstimate()"
+                title="Click to edit estimate">
             <span class="bp-ctx-badge-l">Estimate</span>
-            <span class="bp-ctx-badge-v">{{ subtotalAmount | gbp }}</span>
+            <span class="bp-ctx-badge-v">{{ (estimatePrice || 0) | gbp }}</span>
           </span>
-          <span class="bp-ctx-countpill" title="Items selected">
-            <lucide-icon name="check" [size]="11"></lucide-icon>
-            {{ selectedItems.length }}
+          <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingEstimate">
+            <span class="bp-ctx-badge-l">Estimate £</span>
+            <input #estimateInput type="number" min="0" step="100"
+                   class="bp-ctx-badge-input"
+                   [(ngModel)]="estimateDraft"
+                   (blur)="commitEstimate()"
+                   (keyup.enter)="commitEstimate()"
+                   (keyup.escape)="cancelEstimate()"/>
           </span>
-          <span class="bp-ctx-countpill" title="Wishlist items">
-            <lucide-icon name="heart" [size]="11"></lucide-icon>
-            {{ likedItems.length }}
+
+          <!-- Status — right-justified. View mode is a pill; click pops
+               the dropdown of category_status options. -->
+          <span class="bp-ctx-status-wrap" *ngIf="categoryStatuses.length">
+            <span class="bp-ctx-status-pill bp-ctx-badge--editable"
+                  *ngIf="!editingStatus"
+                  (click)="startEditStatus()"
+                  title="Click to change status">
+              <span class="bp-ctx-status-dot" [style.background]="statusColor() || null"></span>
+              {{ statusLabel() }}
+            </span>
+            <p-dropdown *ngIf="editingStatus"
+                        [options]="categoryStatuses"
+                        [ngModel]="statusCode"
+                        (onChange)="commitStatus($event.value)"
+                        (onHide)="editingStatus = false"
+                        optionLabel="label" optionValue="code"
+                        appendTo="body"
+                        styleClass="bp-ctx-status-dd"
+                        [autoDisplayFirst]="false"
+                        placeholder="—"></p-dropdown>
           </span>
         </div>
 
@@ -122,19 +162,34 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
            card sections (other modes) ──────────────────────────────── -->
       <div class="bp-ctx-body">
 
-        <!-- BRIEF — read-only formatted text. Editing happens on the
-             Plan tab; this panel is now a summary view. -->
+        <!-- v1.65w — Brief is click-to-edit. View mode shows formatted
+             text; click → textarea, blur/Enter saves, Escape cancels. -->
         <ng-container *ngIf="context === 'project'">
           <div class="bp-ctx-brief-section">
             <div class="bp-drawer-label">Brief</div>
-            <div class="bp-ctx-brief-text" *ngIf="(briefText || briefDraft); else emptyBrief">
-              {{ briefText || briefDraft }}
-            </div>
-            <ng-template #emptyBrief>
-              <div class="bp-ctx-brief-empty">
-                No brief yet — add one on the Plan tab to share with suppliers.
+            <textarea *ngIf="editingBrief"
+                      #briefInput
+                      class="bp-ctx-brief-input"
+                      [(ngModel)]="briefDraft"
+                      (blur)="commitBrief()"
+                      (keyup.escape)="cancelBrief()"
+                      rows="5"
+                      placeholder="What does this category need? Anything specific to share with suppliers."></textarea>
+            <ng-container *ngIf="!editingBrief">
+              <div class="bp-ctx-brief-text bp-ctx-brief-editable"
+                   *ngIf="briefText; else emptyBriefEditable"
+                   (click)="startEditBrief()"
+                   title="Click to edit brief">
+                {{ briefText }}
               </div>
-            </ng-template>
+              <ng-template #emptyBriefEditable>
+                <div class="bp-ctx-brief-empty bp-ctx-brief-editable"
+                     (click)="startEditBrief()"
+                     title="Click to add a brief">
+                  No brief yet — click to add one.
+                </div>
+              </ng-template>
+            </ng-container>
           </div>
         </ng-container>
 
@@ -302,6 +357,78 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       font-variant-numeric: tabular-nums;
     }
     .bp-ctx-countpill lucide-icon { display: inline-flex; }
+
+    /* v1.65w — editable badges. Hover hint + inline input swap. */
+    .bp-ctx-badge--editable {
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .bp-ctx-badge--editable:hover {
+      background: var(--color-surface);
+      box-shadow: 0 0 0 0.5px var(--theme-accent);
+    }
+    .bp-ctx-badge--editing {
+      background: var(--color-surface);
+      box-shadow: 0 0 0 0.5px var(--theme-accent);
+    }
+    .bp-ctx-badge-input {
+      width: 88px;
+      border: none; outline: none; background: transparent;
+      font-family: var(--font-body); font-size: var(--text-sm);
+      font-weight: 600; color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      padding: 0; margin: 0;
+    }
+    /* Status pill — right-justified inside the badge row. */
+    .bp-ctx-status-wrap {
+      margin-left: auto;
+      display: inline-flex; align-items: center;
+    }
+    .bp-ctx-status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-bg);
+      font-size: var(--text-xs); font-weight: 600;
+      color: var(--color-text-primary);
+    }
+    .bp-ctx-status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--theme-accent); flex-shrink: 0;
+    }
+    :host ::ng-deep .bp-ctx-status-dd.p-dropdown {
+      min-width: 132px; height: 26px;
+      border: 0.5px solid var(--theme-accent) !important;
+      border-radius: var(--radius-pill) !important;
+      box-shadow: none !important;
+    }
+    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-label {
+      padding: 2px 8px; font-size: var(--text-xs);
+      font-family: var(--font-body); line-height: 22px;
+    }
+    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger { width: 22px; }
+
+    /* v1.65w — brief click-to-edit. View text gets a soft hover hint; the
+       editor is a borderless textarea so it doesn't compete with the
+       surrounding panel chrome. */
+    .bp-ctx-brief-editable {
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 2px 4px; margin: -2px -4px;
+      transition: background 0.15s;
+    }
+    .bp-ctx-brief-editable:hover { background: var(--theme-bg); }
+    .bp-ctx-brief-input {
+      width: 100%; min-height: 96px;
+      padding: 8px 10px;
+      border: 0.5px solid var(--theme-accent);
+      border-radius: 6px;
+      outline: none;
+      font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      background: var(--color-surface);
+      resize: vertical;
+    }
 
     /* v1.65f — brief section: plain text, no border */
     .bp-ctx-brief-section { padding: 14px 16px; }
@@ -536,6 +663,9 @@ export class CategoryContextPanelComponent implements OnChanges {
   /** v1.65f — category status code (from project_categories.status_code).
       Rendered as a pill in the pink header when in project mode. */
   @Input() statusCode: string | null = null;
+  /** v1.65w — manual estimate (project_categories.ballpark_cost). Replaces
+      the computed subtotalAmount in the Estimate badge; click-to-edit. */
+  @Input() estimatePrice: number | null = null;
   /** Sum of selected items' base_price across ALL the project's
       categories (not just this one). Shown in the pinned footer. */
   @Input() projectTotal = 0;
@@ -545,7 +675,20 @@ export class CategoryContextPanelComponent implements OnChanges {
   @Output() itemMoved = new EventEmitter<{ item: any; toType: 'selected' | 'liked' }>();
   @Output() browseClicked = new EventEmitter<void>();
   @Output() briefUpdated = new EventEmitter<string>();
+  /** v1.65w — inline-edit emits for the new editable badges. */
+  @Output() budgetUpdated = new EventEmitter<number | null>();
+  @Output() estimateUpdated = new EventEmitter<number | null>();
+  @Output() statusUpdated = new EventEmitter<string>();
   @Output() openEstimate = new EventEmitter<void>();
+
+  /** v1.65w — local edit flags. Click a badge / brief → flip true,
+      input renders, blur/Enter commits, Escape cancels. */
+  editingBudget = false;
+  budgetDraft: number | null = null;
+  editingEstimate = false;
+  estimateDraft: number | null = null;
+  editingStatus = false;
+  editingBrief = false;
 
   /** Active tab. Items by default; if the user has only wishlist
       items, we still default to Items (clear empty state) — the user
@@ -591,6 +734,54 @@ export class CategoryContextPanelComponent implements OnChanges {
   statusColor(): string {
     const code = this.statusCode || 'draft';
     return this.categoryStatuses.find(s => s.code === code)?.meta?.color || '';
+  }
+
+  // ── v1.65w — click-to-edit handlers ──────────────────────────────────
+  startEditBudget(): void {
+    this.budgetDraft = this.budgetPrice;
+    this.editingBudget = true;
+  }
+  commitBudget(): void {
+    if (!this.editingBudget) return;
+    const v = this.budgetDraft;
+    const next = (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+    this.editingBudget = false;
+    if (next !== this.budgetPrice) this.budgetUpdated.emit(next);
+  }
+  cancelBudget(): void { this.editingBudget = false; }
+
+  startEditEstimate(): void {
+    this.estimateDraft = this.estimatePrice;
+    this.editingEstimate = true;
+  }
+  commitEstimate(): void {
+    if (!this.editingEstimate) return;
+    const v = this.estimateDraft;
+    const next = (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+    this.editingEstimate = false;
+    if (next !== this.estimatePrice) this.estimateUpdated.emit(next);
+  }
+  cancelEstimate(): void { this.editingEstimate = false; }
+
+  startEditStatus(): void { this.editingStatus = true; }
+  commitStatus(code: string): void {
+    this.editingStatus = false;
+    if (code && code !== this.statusCode) this.statusUpdated.emit(code);
+  }
+
+  startEditBrief(): void {
+    this.briefDraft = this.briefText || '';
+    this.editingBrief = true;
+  }
+  commitBrief(): void {
+    if (!this.editingBrief) return;
+    const next = (this.briefDraft || '').trim();
+    this.editingBrief = false;
+    if (next !== (this.briefText || '').trim()) this.briefUpdated.emit(next);
+  }
+  cancelBrief(): void {
+    this.editingBrief = false;
+    this.briefDraft = this.briefText || '';
   }
 
   ngOnChanges() {

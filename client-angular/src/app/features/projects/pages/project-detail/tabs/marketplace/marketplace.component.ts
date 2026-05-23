@@ -90,6 +90,9 @@ import {
       (addToProject)="onAddToProject($event)"
       (removeFromProject)="onRemoveFromProject($event)"
       (briefUpdated)="onContextBriefUpdated($event)"
+      (budgetUpdated)="onContextBudgetUpdated($event)"
+      (estimateUpdated)="onContextEstimateUpdated($event)"
+      (statusUpdated)="onContextStatusUpdated($event)"
       (openEstimate)="onOpenEstimate()"
       (addClicked)="onAddCategory()">
     </app-catalogue-grid>
@@ -397,13 +400,28 @@ export class MarketplaceComponent implements OnInit {
       new requirement_brief on project_categories. Same endpoint the
       Brief tab uses. */
   onContextBriefUpdated(e: { categoryId: string; brief: string }) {
-    this.projectSvc.upsertCategory(this.projectId, e.categoryId, { requirement_brief: e.brief }).subscribe({
+    this.persistCategoryPatch(e.categoryId, { requirement_brief: e.brief }, 'Brief');
+  }
+  /** v1.65w — inline category edits (budget / estimate / status) from
+      the category-context-panel all funnel through upsertCategory with
+      a single field patch. Same toast feedback as the brief edit. */
+  onContextBudgetUpdated(e: { categoryId: string; ballpark_budget: number | null }) {
+    this.persistCategoryPatch(e.categoryId, { ballpark_budget: e.ballpark_budget }, 'Budget');
+  }
+  onContextEstimateUpdated(e: { categoryId: string; ballpark_cost: number | null }) {
+    this.persistCategoryPatch(e.categoryId, { ballpark_cost: e.ballpark_cost }, 'Estimate');
+  }
+  onContextStatusUpdated(e: { categoryId: string; status_code: string }) {
+    this.persistCategoryPatch(e.categoryId, { status_code: e.status_code }, 'Status');
+  }
+  private persistCategoryPatch(catId: string, patch: any, label: string) {
+    this.projectSvc.upsertCategory(this.projectId, catId, patch).subscribe({
       next: () => {
         this.refreshProjectCategories();
-        this.msg.add({ severity: 'success', summary: 'Brief saved', life: 1500 });
+        this.msg.add({ severity: 'success', summary: `${label} saved`, life: 1500 });
       },
       error: () => {
-        this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
+        this.msg.add({ severity: 'error', summary: `${label} save failed`, life: 3000 });
       }
     });
   }
