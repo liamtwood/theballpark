@@ -124,7 +124,7 @@ type DetailView =
                   <app-status-badge [status]="pc.status_code || 'draft'"
                                     [label]="categoryStatusLabel(pc.status_code)"></app-status-badge>
                   <div class="bp-b2-card-cost">{{
-                    pc.ballpark_cost && pc.ballpark_cost > 0 ? (pc.ballpark_cost | gbp) : '—'
+                    pc.ballpark_cost == null ? '—' : (pc.ballpark_cost | gbp)
                   }}</div>
                 </div>
                 <span class="bp-b2-card-end">
@@ -1123,14 +1123,16 @@ export class BriefComponent implements OnInit, OnDestroy {
 
   /** v1.63 — Estimate is now user-editable. Recompute on item add/remove
       still overwrites this value (which is what you want most of the
-      time); meantime the user can type their own number. */
+      time); meantime the user can type their own number.
+      v1.63a — 0 is a valid value (e.g. client-managed = explicitly £0)
+      so it displays as "0" rather than emptying the field. */
   estimateDisplay(pc: ProjectCategory): string {
-    return pc.ballpark_cost == null || Number(pc.ballpark_cost) === 0
+    return pc.ballpark_cost == null
       ? '' : Number(pc.ballpark_cost).toLocaleString('en-GB');
   }
   onEstimateFocus(pc: ProjectCategory, ev: Event): void {
     (ev.target as HTMLInputElement).value =
-      pc.ballpark_cost == null || Number(pc.ballpark_cost) === 0 ? '' : String(pc.ballpark_cost);
+      pc.ballpark_cost == null ? '' : String(pc.ballpark_cost);
   }
   onEstimateBlur(pc: ProjectCategory, ev: Event): void {
     const el = ev.target as HTMLInputElement;
