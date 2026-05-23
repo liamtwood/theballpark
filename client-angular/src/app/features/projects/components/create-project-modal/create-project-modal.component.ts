@@ -84,8 +84,12 @@ interface PendingCategory {
       <ng-template pTemplate="header">
         <div class="bp-cp-head">
           <div>
-            <div class="bp-cp-title">New project</div>
-            <div class="bp-cp-sub">{{ subtitle }}</div>
+            <!-- v1.65r — title becomes the AI-derived project name once
+                 we're past the input/loading states. Subtitle only shows
+                 on input + loading; on results / confirm the hero card
+                 already carries all the meta the user needs. -->
+            <div class="bp-cp-title">{{ headerTitle }}</div>
+            <div class="bp-cp-sub" *ngIf="subtitle">{{ subtitle }}</div>
           </div>
           <button type="button" class="bp-icon-btn" (click)="close()" title="Close">
             <i class="pi pi-times"></i>
@@ -208,10 +212,11 @@ interface PendingCategory {
 
           <!-- v1.65p — emoji icons swapped for "Label: value" pairs.
                Easier to scan and reads as a real project detail card. -->
+          <!-- v1.65r — project name now lives in the dialog header
+               (headerTitle). Hero is just the meta chips + ref. -->
           <div class="bp-cp-hero">
             <div class="bp-cp-hero-row">
               <div class="bp-cp-hero-main">
-                <div class="bp-cp-hero-name">{{ aiResult.projectName || 'Untitled project' }}</div>
                 <div class="bp-cp-hero-meta">
                   <span class="bp-cp-chip" *ngIf="aiResult.client">
                     <span class="bp-cp-chip-l">Client</span>{{ aiResult.client }}
@@ -241,40 +246,35 @@ interface PendingCategory {
             “{{ aiResult.summary }}”
           </div>
 
-          <!-- v1.65p — at-a-glance stats row. Replaces the previous
-               two separate "{N} categories" / "{N} questions" headings
-               with a single line, plus the total budget estimate. -->
-          <div class="bp-cp-stats">
-            <div class="bp-cp-stat">
-              <span class="bp-cp-stat-v">{{ activeCategoryCount }}</span>
-              <span class="bp-cp-stat-l">categor{{ activeCategoryCount === 1 ? 'y' : 'ies' }}</span>
+          <!-- v1.65r — KPI circles in the same style as the project home
+               overview cards (bp-ov-kpis / bp-ov-kpi-circle / bp-ov-kpi-glyph
+               / bp-ov-kpi-lab). Categories, questions, estimate. -->
+          <div class="bp-cp-kpis">
+            <div class="bp-cp-kpi">
+              <span class="bp-cp-kpi-circle">
+                <span class="bp-cp-kpi-glyph">{{ activeCategoryCount }}</span>
+              </span>
+              <span class="bp-cp-kpi-lab">CATEGORIES</span>
             </div>
-            <div class="bp-cp-stat">
-              <span class="bp-cp-stat-v">{{ aiResult.topQuestions?.length || 0 }}</span>
-              <span class="bp-cp-stat-l">question{{ (aiResult.topQuestions?.length || 0) === 1 ? '' : 's' }}</span>
+            <div class="bp-cp-kpi">
+              <span class="bp-cp-kpi-circle">
+                <span class="bp-cp-kpi-glyph">{{ aiResult.topQuestions?.length || 0 }}</span>
+              </span>
+              <span class="bp-cp-kpi-lab">QUESTIONS</span>
             </div>
-            <div class="bp-cp-stat" *ngIf="totalEstimate">
-              <span class="bp-cp-stat-v">{{ totalEstimate | gbp }}</span>
-              <span class="bp-cp-stat-l">estimate</span>
+            <div class="bp-cp-kpi" *ngIf="totalEstimate">
+              <span class="bp-cp-kpi-circle bp-cp-kpi-circle--accent">
+                <span class="bp-cp-kpi-glyph">{{ totalEstimate | gbp }}</span>
+              </span>
+              <span class="bp-cp-kpi-lab">ESTIMATE</span>
             </div>
           </div>
 
-          <!-- v1.65q — per-category card list removed from the dialog.
-               The summary stats row already shows the category count;
-               individual category details live on the Plan tab once the
-               project is created. Toggling them in this modal was noise
-               (the rows still exist as pendingCategories internally and
-               get upserted on Create, just not surfaced here). -->
-
-          <ng-container *ngIf="aiResult.topQuestions?.length">
-            <div class="bp-cp-section">Questions to resolve</div>
-            <div class="bp-cp-questions">
-              <div class="bp-cp-question" *ngFor="let q of aiResult.topQuestions">
-                <lucide-icon name="help-circle" [size]="12"></lucide-icon>
-                {{ q }}
-              </div>
-            </div>
-          </ng-container>
+          <!-- v1.65q — per-category card list and v1.65r — questions
+               list both removed. Category details surface on the Plan tab;
+               questions appear in the Overview's collapsible "Questions
+               to resolve" panel once the project is created. The KPI
+               circles above tell the user what's coming. -->
 
           <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
@@ -643,26 +643,45 @@ interface PendingCategory {
       color: var(--color-text-muted);
     }
 
-    /* v1.65p — at-a-glance stats line on the results screen. */
-    .bp-cp-stats {
-      display: flex; align-items: center; gap: 18px;
-      padding: 8px 0;
+    /* v1.65r — KPI circles matching the project home Overview cards
+       (.bp-ov-kpis / .bp-ov-kpi-circle / .bp-ov-kpi-glyph /
+       .bp-ov-kpi-lab). Same metrics on the new-project review dialog
+       so the user sees a familiar pattern when they land. */
+    .bp-cp-kpis {
+      display: flex; justify-content: space-around; align-items: flex-start;
+      gap: 12px; padding: 4px 0;
     }
-    .bp-cp-stat {
-      display: flex; flex-direction: column; align-items: flex-start;
-      line-height: 1.1;
+    .bp-cp-kpi {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; min-width: 60px;
     }
-    .bp-cp-stat-v {
-      font-family: var(--font-display);
-      font-size: 22px; font-weight: 500;
-      color: var(--theme-accent);
-      font-variant-numeric: tabular-nums;
+    .bp-cp-kpi-circle {
+      display: inline-grid; place-items: center;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      box-shadow: 0 0 0 0.5px var(--theme-border);
+      padding: 0 6px;
     }
-    .bp-cp-stat-l {
-      font-size: 10px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.06em;
+    .bp-cp-kpi-circle--accent {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      box-shadow: 0 0 0 0.5px var(--theme-accent);
+    }
+    .bp-cp-kpi-glyph {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 18px; font-weight: 700; line-height: 1;
+      font-feature-settings: 'tnum' 1, 'lnum' 1;
+      white-space: nowrap;
+    }
+    .bp-cp-kpi-lab {
+      font-family: var(--font-body);
+      font-size: 9px; font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
       color: var(--color-text-muted);
-      margin-top: 2px;
+      text-align: center;
     }
 
     /* v1.65p — confirm-recommend state: centred prompt with sparkles
@@ -944,10 +963,23 @@ export class CreateProjectModalComponent implements OnInit {
     });
   }
 
+  /** v1.65r — dialog title swaps to the AI-derived project name on
+      results / confirm. Falls back to "New project" while we're still
+      gathering the brief. */
+  get headerTitle(): string {
+    if ((this.state === 'results' || this.state === 'confirm')
+        && this.aiResult?.projectName) {
+      return this.aiResult.projectName;
+    }
+    return 'New project';
+  }
+
   get subtitle(): string {
     if (this.state === 'input')   return 'Upload a brief or paste text — AI will do the rest';
     if (this.state === 'loading') return this.nextRef || '';
-    return 'Review AI results — remove categories before creating';
+    // v1.65r — empty on results / confirm so the title sits cleanly on
+    // its own. The body's hero card already carries the meta.
+    return '';
   }
 
   get canParse(): boolean {
