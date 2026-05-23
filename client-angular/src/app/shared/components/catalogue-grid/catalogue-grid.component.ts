@@ -797,15 +797,27 @@ export type DetailMode = 'inline' | 'drawer';
     /* v1.65d — centred segmented search bar below the category circles.
        Left: subcategory dropdown. Middle: text input. Right: search btn.
        v1.65e — tightened padding + font, longer bar, no pink focus
-       ring or rounded inner segments. */
+       ring or rounded inner segments.
+       v1.65m — strip-bar is a 3-col grid (1fr | auto | 1fr) so the
+       search stays optically centred and Recommend anchors to the right
+       flank regardless of whether it's shown. Border-bottom traded for
+       a faint tinted band so the bar feels like a container rather than
+       a thin line under a floating capsule. Search max-width halved
+       (980 → 490) per design feedback. Min-heights matched so the
+       Recommend pill sits flush with the segmented search. */
     .bp-strip-bar {
-      display: flex; justify-content: center; align-items: center;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
       gap: 12px;
-      padding: 10px 28px; border-bottom: 0.5px solid var(--color-border);
+      padding: 10px 28px;
+      background: var(--theme-bg);
     }
     .bp-strip-search {
+      grid-column: 2;
+      justify-self: center;
       display: flex; align-items: stretch;
-      width: 100%; max-width: 980px;
+      width: 100%; max-width: 490px; min-height: 32px;
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-input);
       overflow: hidden; background: var(--color-surface);
@@ -853,10 +865,14 @@ export type DetailMode = 'inline' | 'drawer';
     /* v1.65k — AI Recommend pill in the strip bar. Outlined accent
        button (matches the AI/match aesthetic on the Plan tab) that
        fires the same /taxonomy/match-items matcher and pops an
-       AI RECOMMENDATIONS section above SELECTED ITEMS. */
+       AI RECOMMENDATIONS section above SELECTED ITEMS.
+       v1.65m — pinned to the right flank of the 3-col grid, height
+       matched to the segmented search (32px) so they sit flush. */
     .bp-strip-recommend {
+      grid-column: 3;
+      justify-self: end;
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px;
+      height: 32px; padding: 0 12px;
       border: 0.5px solid var(--theme-accent);
       border-radius: var(--radius-input);
       background: var(--color-surface);
