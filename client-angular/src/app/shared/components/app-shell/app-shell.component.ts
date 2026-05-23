@@ -99,9 +99,16 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
       <!-- SUB -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
+    </div>
 
-      <!-- TABS -->
-      <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+    <!-- v1.65n — TAB BAND. Moved out of .bp-hero into its own sibling
+         parchment strip so on the project Marketplace the tabs read as
+         one continuous tinted band with the strip-bar's search/recommend
+         row below. Tabs are centred to match the strip-bar's centred
+         search. -->
+    <div class="bp-hero-tab-band"
+         *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+      <div class="bp-hero-tabs">
         <button *ngFor="let tab of activeTabs"
           class="bp-hero-tab"
           [class.active]="isTabActive(tab)"

@@ -917,7 +917,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
   margin-bottom: 20px;
   display: block;
 }
-.bp-hero-tabs { display: flex; border-bottom: 0.5px solid var(--color-border); }
+.bp-hero-tabs { display: flex; }
+/* v1.65n — tab band. Sibling of .bp-hero, painted in the same
+   parchment so the tabs feel like a continuation of the hero rather
+   than a row at the bottom of it. On the project Marketplace the
+   strip-bar below (also parchment) extends this same band, giving
+   one continuous tinted region for hero → tabs → search. The tonal
+   step into white content below handles the boundary, so no
+   hairline rule. */
+.bp-hero-tab-band {
+  background: var(--theme-bg);
+  padding: 0 var(--section-pad);
+}
 .bp-hero-tab {
   padding: 10px 20px;
   font-size: var(--text-sm);
