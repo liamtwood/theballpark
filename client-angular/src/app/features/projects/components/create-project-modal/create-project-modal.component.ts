@@ -212,33 +212,41 @@ interface PendingCategory {
 
           <!-- v1.65p — emoji icons swapped for "Label: value" pairs.
                Easier to scan and reads as a real project detail card. -->
-          <!-- v1.65r — project name now lives in the dialog header
-               (headerTitle). Hero is just the meta chips + ref. -->
-          <div class="bp-cp-hero">
-            <div class="bp-cp-hero-row">
-              <div class="bp-cp-hero-main">
-                <div class="bp-cp-hero-meta">
-                  <span class="bp-cp-chip" *ngIf="aiResult.client">
-                    <span class="bp-cp-chip-l">Client</span>{{ aiResult.client }}
-                  </span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.dates">
-                    <span class="bp-cp-chip-l">Date</span>{{ aiResult.dates }}
-                  </span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.location">
-                    <span class="bp-cp-chip-l">Venue</span>{{ aiResult.location }}
-                  </span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.guestCount">
-                    <span class="bp-cp-chip-l">Guests</span>{{ aiResult.guestCount }}
-                  </span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.budget">
-                    <span class="bp-cp-chip-l">Budget</span>{{ aiResult.budget }}
-                  </span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">
-                    <span class="bp-cp-chip-l">Tier</span>{{ aiResult.budgetSignal }}
-                  </span>
-                </div>
+          <!-- v1.65s — project details rendered in the same style as the
+               project Overview's event strip (.bp-event-strip / -cols /
+               -col / -eyebrow / -value / -sub). Two rows of three:
+                 ROW 1 — REF (narrow) | CLIENT | EVENT NAME
+                 ROW 2 — GUESTS (narrow) | DATE | VENUE
+               so the new-project review matches the post-create page. -->
+          <div class="bp-event-strip bp-cp-strip">
+            <div class="bp-event-cols">
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">REF</span>
+                <span class="bp-event-value">{{ nextRef || '—' }}</span>
               </div>
-              <span class="bp-cp-hero-ref">{{ nextRef || '—' }}</span>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">CLIENT</span>
+                <span class="bp-event-value">{{ aiResult.client || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">EVENT NAME</span>
+                <span class="bp-event-value">{{ aiResult.projectName || '—' }}</span>
+              </div>
+
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">GUESTS</span>
+                <span class="bp-event-value">{{ aiResult.guestCount || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">DATE</span>
+                <span class="bp-event-value">{{ aiResult.dates || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">{{ aiResult.budgetSignal }} tier</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">VENUE</span>
+                <span class="bp-event-value">{{ aiResult.location || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="aiResult.city">{{ aiResult.city }}</span>
+              </div>
             </div>
           </div>
 
@@ -262,10 +270,12 @@ interface PendingCategory {
               </span>
               <span class="bp-cp-kpi-lab">QUESTIONS</span>
             </div>
-            <div class="bp-cp-kpi" *ngIf="totalEstimate">
-              <span class="bp-cp-kpi-circle bp-cp-kpi-circle--accent">
-                <span class="bp-cp-kpi-glyph">{{ totalEstimate | gbp }}</span>
-              </span>
+            <!-- v1.65s — Estimate drops the circle chrome so the full
+                 money figure is visible (e.g. £52,500 was clipping the
+                 52px circle). Number sits on its own; label still below
+                 for visual rhythm with the two circled KPIs. -->
+            <div class="bp-cp-kpi bp-cp-kpi--wide" *ngIf="totalEstimate">
+              <span class="bp-cp-kpi-figure">{{ totalEstimate | gbp }}</span>
               <span class="bp-cp-kpi-lab">ESTIMATE</span>
             </div>
           </div>
@@ -643,6 +653,17 @@ interface PendingCategory {
       color: var(--color-text-muted);
     }
 
+    /* v1.65s — event-strip used as a read-only project-details card
+       inside the create-project dialog. Re-uses the project Overview's
+       .bp-event-strip rules, just neuters the click affordance (no
+       hover lift, no pointer cursor) since the modal can't open the
+       Event drawer (the project doesn't exist yet). */
+    .bp-cp-strip.bp-event-strip {
+      cursor: default;
+      box-shadow: none;
+    }
+    .bp-cp-strip.bp-event-strip:hover { box-shadow: none; }
+
     /* v1.65r — KPI circles matching the project home Overview cards
        (.bp-ov-kpis / .bp-ov-kpi-circle / .bp-ov-kpi-glyph /
        .bp-ov-kpi-lab). Same metrics on the new-project review dialog
@@ -664,17 +685,27 @@ interface PendingCategory {
       box-shadow: 0 0 0 0.5px var(--theme-border);
       padding: 0 6px;
     }
-    .bp-cp-kpi-circle--accent {
-      background: var(--theme-accent);
-      color: var(--color-surface);
-      box-shadow: 0 0 0 0.5px var(--theme-accent);
-    }
     .bp-cp-kpi-glyph {
       display: block;
       font-family: var(--font-body);
       font-size: 18px; font-weight: 700; line-height: 1;
       font-feature-settings: 'tnum' 1, 'lnum' 1;
       white-space: nowrap;
+    }
+    /* v1.65s — Estimate variant: no circle chrome, just the number on
+       its own. The 52px circle was clipping money figures like £52,500.
+       Sits at roughly the same optical height as the circled glyphs so
+       the three KPIs still feel like a row. */
+    .bp-cp-kpi--wide { min-width: 96px; }
+    .bp-cp-kpi-figure {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 22px; font-weight: 700; line-height: 1;
+      color: var(--theme-accent);
+      font-feature-settings: 'tnum' 1, 'lnum' 1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding: 14px 0;
     }
     .bp-cp-kpi-lab {
       font-family: var(--font-body);
