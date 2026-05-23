@@ -302,22 +302,31 @@ export type DetailMode = 'inline' | 'drawer';
 
         <!-- v1.65i — Selected + Wishlist sections (project context only).
              Render as card grids using the same card markup as the
-             main RESULTS grid, just sourced from the project_items. -->
+             main RESULTS grid, just sourced from the project_items.
+             v1.65j — always shown; empty state "no items yet" when the
+             section has nothing. -->
         <ng-container *ngIf="projectContext">
-          <ng-container *ngIf="selectedEntities.length">
-            <div class="bp-cat-section-header bp-cat-section-header--sub">
-              <span class="bp-cat-section-title">SELECTED ITEMS</span>
-              <span class="bp-cat-section-count">{{ selectedEntities.length }} item{{ selectedEntities.length === 1 ? '' : 's' }}</span>
-            </div>
+          <div class="bp-cat-section-header bp-cat-section-header--sub">
+            <span class="bp-cat-section-title">SELECTED ITEMS</span>
+            <span class="bp-cat-section-count">{{ selectedEntities.length }} item{{ selectedEntities.length === 1 ? '' : 's' }}</span>
+          </div>
+          <ng-container *ngIf="selectedEntities.length; else noSelected">
             <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: selectedEntities }"></ng-container>
           </ng-container>
-          <ng-container *ngIf="wishlistEntities.length">
-            <div class="bp-cat-section-header bp-cat-section-header--sub">
-              <span class="bp-cat-section-title">WISHLIST ITEMS</span>
-              <span class="bp-cat-section-count">{{ wishlistEntities.length }} item{{ wishlistEntities.length === 1 ? '' : 's' }}</span>
-            </div>
+          <ng-template #noSelected>
+            <div class="bp-cat-section-empty">No items yet — add items from the catalogue below.</div>
+          </ng-template>
+
+          <div class="bp-cat-section-header bp-cat-section-header--sub">
+            <span class="bp-cat-section-title">WISHLIST ITEMS</span>
+            <span class="bp-cat-section-count">{{ wishlistEntities.length }} item{{ wishlistEntities.length === 1 ? '' : 's' }}</span>
+          </div>
+          <ng-container *ngIf="wishlistEntities.length; else noWishlist">
             <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: wishlistEntities }"></ng-container>
           </ng-container>
+          <ng-template #noWishlist>
+            <div class="bp-cat-section-empty">No items yet — heart an item to save it here.</div>
+          </ng-template>
         </ng-container>
 
         <div class="bp-cat-section-header">
