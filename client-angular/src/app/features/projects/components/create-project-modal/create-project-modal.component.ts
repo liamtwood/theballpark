@@ -218,7 +218,7 @@ interface PendingCategory {
                  ROW 1 — REF (narrow) | CLIENT | EVENT NAME
                  ROW 2 — GUESTS (narrow) | DATE | VENUE
                so the new-project review matches the post-create page. -->
-          <div class="bp-event-strip bp-cp-strip">
+          <div class="bp-cp-strip">
             <div class="bp-event-cols">
               <div class="bp-event-col bp-event-col--narrow">
                 <span class="bp-event-eyebrow">REF</span>
@@ -653,16 +653,65 @@ interface PendingCategory {
       color: var(--color-text-muted);
     }
 
-    /* v1.65s — event-strip used as a read-only project-details card
-       inside the create-project dialog. Re-uses the project Overview's
-       .bp-event-strip rules, just neuters the click affordance (no
-       hover lift, no pointer cursor) since the modal can't open the
-       Event drawer (the project doesn't exist yet). */
-    .bp-cp-strip.bp-event-strip {
+    /* v1.65t — event-strip styles re-declared locally because Angular
+       view-encapsulation scopes .bp-event-* to the overview component.
+       Lifted verbatim from overview.component.ts and neutered for the
+       modal context (no hover lift, no pointer cursor since the
+       project doesn't exist yet, so the Event drawer can't open).
+       Eventually these should move to styles.css as a design-system
+       primitive — for now duplicated to fix the immediate render. */
+    .bp-cp-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px 20px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
       cursor: default;
-      box-shadow: none;
     }
-    .bp-cp-strip.bp-event-strip:hover { box-shadow: none; }
+    .bp-cp-strip .bp-event-cols {
+      display: grid;
+      grid-template-columns: minmax(96px, 0.5fr) minmax(140px, 1fr) minmax(140px, 1fr);
+      column-gap: 24px;
+      row-gap: 14px;
+      flex: 1;
+    }
+    .bp-cp-strip .bp-event-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .bp-cp-strip .bp-event-col--narrow { max-width: 140px; }
+    .bp-cp-strip .bp-event-eyebrow {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-cp-strip .bp-event-value {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--color-text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-cp-strip .bp-event-sub {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     /* v1.65r — KPI circles matching the project home Overview cards
        (.bp-ov-kpis / .bp-ov-kpi-circle / .bp-ov-kpi-glyph /
