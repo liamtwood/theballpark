@@ -11,6 +11,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { EstimateItemService } from '../../../../../../core/services/estimate-item.service';
+import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
 import { MessageService } from '../../../../../../core/services/message.service';
 import { ClientService } from '../../../../../../core/services/client.service';
 import {
@@ -297,8 +298,9 @@ interface MessagesSummary {
             </div>
           </div>
 
-          <!-- ESTIMATE CARD -->
-          <div class="bp-ov-card" (click)="goTo('estimate')">
+          <!-- ESTIMATE CARD — v1.64: opens the shared Estimate drawer
+               (was: route navigation to the Estimate tab). -->
+          <div class="bp-ov-card" (click)="openEstimate()">
             <div class="bp-ov-head">
               <span class="bp-ov-label">ESTIMATE</span>
               <span class="bp-ov-status" *ngIf="estimateStatus">{{ estimateStatus }}</span>
@@ -983,6 +985,7 @@ export class OverviewComponent implements OnInit {
     private projSvc: ProjectService,
     private projItemSvc: ProjectItemService,
     private estItemSvc: EstimateItemService,
+    private estimateDrawer: EstimateDrawerService,
     private msgSvc: MessageService,
     private clientSvc: ClientService,
     private cdr: ChangeDetectorRef
@@ -1045,6 +1048,11 @@ export class OverviewComponent implements OnInit {
   // opens the drawer instead. Other tabs still route normally.
   goTo(tab: 'brief' | 'marketplace' | 'estimate' | 'messages') {
     this.router.navigate([`/projects/${this.pid}/${tab}`]);
+  }
+
+  /** v1.64 — Estimate is no longer a tab; click opens the shared drawer. */
+  openEstimate(): void {
+    if (this.pid) this.estimateDrawer.open(this.pid);
   }
 
   openEventDrawer() {

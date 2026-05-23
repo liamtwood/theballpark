@@ -25,6 +25,7 @@ import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
+import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CodelistService } from '../../core/services/codelist.service';
 
 type DashTab = 'projects';
@@ -286,6 +287,11 @@ type DashTab = 'projects';
                        class="bp-card-menu"
                        (click)="$event.stopPropagation(); $event.preventDefault()">
                     <button type="button" class="bp-card-menu-item"
+                            (click)="onMenuAction('estimate', p, $event)">
+                      Estimate
+                    </button>
+                    <div class="bp-card-menu-sep"></div>
+                    <button type="button" class="bp-card-menu-item"
                             (click)="onMenuAction('edit-image', p, $event)">
                       Edit image
                     </button>
@@ -342,6 +348,9 @@ type DashTab = 'projects';
                     <div *ngIf="openMenuProjectId === p.id"
                          class="bp-card-menu"
                          (click)="$event.stopPropagation(); $event.preventDefault()">
+                      <button type="button" class="bp-card-menu-item"
+                              (click)="onMenuAction('estimate', p, $event)">Estimate</button>
+                      <div class="bp-card-menu-sep"></div>
                       <button type="button" class="bp-card-menu-item"
                               (click)="onMenuAction('edit-image', p, $event)">Edit image</button>
                       <button type="button" class="bp-card-menu-item"
@@ -1072,6 +1081,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private configStripSvc: ConfigStripService,
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
+    private estimateDrawer: EstimateDrawerService,
     private codelistSvc: CodelistService,
     private confirm: ConfirmationService,
     private msg: MessageService,
@@ -1130,11 +1140,13 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  onMenuAction(action: 'edit-image' | 'copy' | 'delete', p: Project, event: MouseEvent) {
+  onMenuAction(action: 'estimate' | 'edit-image' | 'copy' | 'delete', p: Project, event: MouseEvent) {
     event.stopPropagation();
     event.preventDefault();
     this.openMenuProjectId = '';
-    if (action === 'edit-image') {
+    if (action === 'estimate') {
+      this.estimateDrawer.open(p.id);
+    } else if (action === 'edit-image') {
       this.uploadPanelProjectId = p.id;
     } else if (action === 'copy') {
       this.duplicateProject(p);

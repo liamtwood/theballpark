@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -134,6 +134,11 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
   `]
 })
 export class EstimateComponent implements OnInit {
+  /** v1.64 — when set, this overrides the route param; lets the
+      EstimateDrawerComponent reuse this view outside the /estimate-legacy
+      route (project home, Overview, Brief col-1, Marketplace). */
+  @Input() projectId?: string;
+
   loading = true;
   categories: any[] = [];
   subtotal = 0;
@@ -156,9 +161,13 @@ export class EstimateComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    let r = this.route;
-    while (r.parent) r = r.parent;
-    this.pid = r.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id') || '';
+    if (this.projectId) {
+      this.pid = this.projectId;
+    } else {
+      let r = this.route;
+      while (r.parent) r = r.parent;
+      this.pid = r.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id') || '';
+    }
 
     if (this.pid) {
       this.projectSvc.getById(this.pid).subscribe({

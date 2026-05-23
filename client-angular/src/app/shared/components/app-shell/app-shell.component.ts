@@ -18,6 +18,9 @@ import {
 import {
   OutreachComposeComponent
 } from '../outreach-compose/outreach-compose.component';
+import {
+  EstimateDrawerComponent
+} from '../estimate-drawer/estimate-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -25,7 +28,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -156,6 +159,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          from the Brief tab, project marketplace and item detail via
          OutreachService.open(). -->
     <app-outreach-compose></app-outreach-compose>
+
+    <!-- v1.64: single shared Estimate drawer. Opened from project home,
+         Overview, Brief col-1 card and Marketplace via
+         EstimateDrawerService.open(projectId). -->
+    <app-estimate-drawer></app-estimate-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

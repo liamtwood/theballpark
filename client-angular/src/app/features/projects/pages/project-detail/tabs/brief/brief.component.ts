@@ -19,6 +19,7 @@ import { ProjectItemService } from '../../../../../../core/services/project-item
 import { ItemService } from '../../../../../../core/services/item.service';
 import { CodelistService } from '../../../../../../core/services/codelist.service';
 import { OutreachService } from '../../../../../../core/services/outreach.service';
+import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
 import { ProjectCategory, Category, Item } from '../../../../../../models';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StatusBadgeComponent } from '../../../../../../shared/components/status-badge/status-badge.component';
@@ -144,6 +145,27 @@ type DetailView =
                 <lucide-icon name="plus" [size]="15"></lucide-icon>
                 Add category
               </button>
+
+              <!-- v1.64 — Estimate summary card: opens the shared
+                   Estimate drawer. No status, no remove. -->
+              <div class="bp-b2-card bp-b2-card--est" (click)="openEstimate()">
+                <span class="bp-b2-card-ic">
+                  <lucide-icon name="calculator" [size]="18"></lucide-icon>
+                </span>
+                <div class="bp-b2-card-body">
+                  <div class="bp-b2-card-name">Estimate</div>
+                  <div class="bp-b2-card-meta">
+                    <span class="bp-b2-count">
+                      <lucide-icon name="check" [size]="11"></lucide-icon>
+                      {{ projectItems.length }}
+                    </span>
+                  </div>
+                </div>
+                <div class="bp-b2-card-cost">{{ projectTotalCost | gbp }}</div>
+                <span class="bp-b2-card-end">
+                  <lucide-icon class="bp-b2-card-chev" name="chevron-right" [size]="16"></lucide-icon>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -949,6 +971,7 @@ export class BriefComponent implements OnInit, OnDestroy {
     private itemSvc: ItemService,
     private codelistSvc: CodelistService,
     private outreach: OutreachService,
+    private estimateDrawer: EstimateDrawerService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1021,6 +1044,14 @@ export class BriefComponent implements OnInit, OnDestroy {
   get unusedCategories(): Category[] {
     const used = new Set(this.projectCategories.map(p => p.category_id));
     return this.catalogueParents.filter(c => !used.has(c.id));
+  }
+  /** v1.64 — sum of every category's est. cost, for the col-1 Estimate card. */
+  get projectTotalCost(): number {
+    return this.projectCategories.reduce((s, p) => s + (Number(p.ballpark_cost) || 0), 0);
+  }
+  /** v1.64 — open the shared Estimate drawer for this project. */
+  openEstimate(): void {
+    if (this.pid) this.estimateDrawer.open(this.pid);
   }
   catItemCount(catId: string): number {
     return this.projectItems.filter(pi => (pi.item_category_id) === catId).length;

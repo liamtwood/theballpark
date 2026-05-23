@@ -13,6 +13,7 @@ import { ProjectItemService } from '../../../../../../core/services/project-item
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { SupplierService } from '../../../../../../core/services/supplier.service';
 import { OrgService } from '../../../../../../core/services/org.service';
+import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
 import {
   Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
   Item, ProjectItem
@@ -151,6 +152,7 @@ export class MarketplaceComponent implements OnInit {
     private categorySvc: CategoryService,
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
+    private estimateDrawer: EstimateDrawerService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -367,10 +369,10 @@ export class MarketplaceComponent implements OnInit {
     });
   }
 
-  /** "Open estimate →" link in the panel footer → route to the
-      Build/Estimate tab. Post-v1.18b that's /estimate. */
+  /** "Open estimate →" link in the panel footer → v1.64 opens the
+      shared Estimate drawer (was: routed to the Estimate tab). */
   onOpenEstimate() {
-    this.router.navigate(['/projects', this.projectId, 'estimate']);
+    if (this.projectId) this.estimateDrawer.open(this.projectId);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────

@@ -100,15 +100,15 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // v1.29 tab bar — Event removed. Event details are now reached
-    // via the drawer opened from the Overview event strip.
-    //   Overview · Brief · Marketplace · Estimate · Messages
-    // /event still routes — redirects to /overview for bookmarks.
+    // v1.29 tab bar — Event removed. v1.64 Estimate removed too — it
+    // now opens as a shared drawer from the Overview card, Brief col-1
+    // Estimate card, Marketplace footer link, and dashboard menu.
+    //   Overview · Brief · Marketplace · Messages
+    // /event and /estimate still route — they redirect or back-compat.
     const tabs = [
       { label: 'Overview',    path: `/projects/${this.pid}/overview` },
       { label: 'Brief',       path: `/projects/${this.pid}/brief` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
-      { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
       {
         label: 'Messages',
         path: `/projects/${this.pid}/messages`,
