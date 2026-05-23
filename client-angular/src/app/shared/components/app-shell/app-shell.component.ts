@@ -24,6 +24,9 @@ import {
 import {
   AddCategoryDrawerComponent
 } from '../add-category-drawer/add-category-drawer.component';
+import {
+  EventDrawerComponent
+} from '../event-drawer/event-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -31,7 +34,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -179,6 +182,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          Plan tab and the project Marketplace via
          AddCategoryService.open(projectId, unusedCategories). -->
     <app-add-category-drawer></app-add-category-drawer>
+
+    <!-- v1.65o: single shared Event drawer (project details + brief).
+         Opened from Overview event strip, the project Marketplace
+         summary panel, and any future surface via
+         EventDrawerService.open(projectId, section?). -->
+    <app-event-drawer></app-event-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

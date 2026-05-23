@@ -69,6 +69,12 @@ export interface ProjectContext {
   projectBrief: string;
   /** Active project_categories rows for this project, keyed off category_id. */
   projectCategories: ProjectCategory[];
+  /** v1.65o — full project row. Surfaces in the "Project Summary" panel
+      (catalogue-grid "All" view) so we can render REF / CLIENT / EVENT
+      NAME / GUESTS / DATE / VENUE without re-fetching. Optional so
+      existing call sites (which only need projectId + brief + categories)
+      don't break. */
+  project?: Project;
 }
 
 export interface ProjectCategory {

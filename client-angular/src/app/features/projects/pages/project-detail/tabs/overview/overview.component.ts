@@ -1,6 +1,6 @@
 import {
   Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef,
-  ViewChild, HostListener
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -21,7 +21,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 import { EventDatePipe } from '../../../../../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../../../../../shared/pipes/compact-currency.pipe';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
-import { EventDrawerComponent } from '../../../../components/event-drawer/event-drawer.component';
+import { EventDrawerService } from '../../../../../../core/services/event-drawer.service';
 
 /**
  * v1.24 — Project Overview tab.
@@ -94,7 +94,6 @@ interface MessagesSummary {
   imports: [
     CommonModule, LucideAngularModule, LoadingSpinnerComponent,
     EventDatePipe, CompactCurrencyPipe, GbpPipe,
-    EventDrawerComponent
   ],
   template: `
     <app-loading *ngIf="loading"></app-loading>
@@ -186,14 +185,10 @@ interface MessagesSummary {
           </ul>
         </div>
 
-        <!-- v1.29: shared Event drawer — same instance reused on every
-             open. projectUpdated rehydrates the local copy so the strip
-             above updates immediately on save. -->
-        <app-event-drawer #eventDrawer
-          [project]="project"
-          [(visible)]="eventDrawerVisible"
-          (projectUpdated)="onProjectUpdated($event)">
-        </app-event-drawer>
+        <!-- v1.65o — Event drawer is now mounted globally in app-shell
+             and opened via EventDrawerService.open(projectId, section?).
+             We subscribe to .saved$ in this component to keep the event
+             strip + KPI cards in sync after a save. -->
 
         <!-- ── 2×2 CARD GRID ───────────────────────────────────── -->
         <div class="bp-overview-grid">
@@ -961,11 +956,8 @@ export class OverviewComponent implements OnInit {
   questions: string[] = [];
   questionsOpen = true;
 
-  /** v1.29: Event drawer state — opened by clicking the event strip. */
-  eventDrawerVisible = false;
   /** v1.29b: Kebab menu (Edit event / Project brief) on the event strip. */
   eventMenuOpen = false;
-  @ViewChild('eventDrawer') eventDrawerRef?: any;
 
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
@@ -986,6 +978,7 @@ export class OverviewComponent implements OnInit {
     private projItemSvc: ProjectItemService,
     private estItemSvc: EstimateItemService,
     private estimateDrawer: EstimateDrawerService,
+    private eventDrawer: EventDrawerService,
     private msgSvc: MessageService,
     private clientSvc: ClientService,
     private cdr: ChangeDetectorRef
@@ -999,6 +992,17 @@ export class OverviewComponent implements OnInit {
     this.pid = match?.[1] || this.route.parent?.snapshot.paramMap.get('id') || '';
 
     if (!this.pid) { this.loading = false; this.cdr.markForCheck(); return; }
+
+    // v1.65o — re-hydrate from the shared EventDrawerService whenever the
+    // user saves changes. Replaces the old (projectUpdated) Output that
+    // came back from the locally-mounted drawer.
+    this.eventDrawer.saved$.subscribe(p => {
+      if (p && p.id === this.pid) {
+        this.project = p;
+        this.recompute();
+        this.cdr.markForCheck();
+      }
+    });
 
     forkJoin({
       project:    this.projSvc.getById(this.pid).pipe(catchError(() => of(null))),
@@ -1058,7 +1062,7 @@ export class OverviewComponent implements OnInit {
   }
 
   openEventDrawer() {
-    this.eventDrawerVisible = true;
+    if (this.pid) this.eventDrawer.open(this.pid);
     this.eventMenuOpen = false;
     this.cdr.markForCheck();
   }
@@ -1077,13 +1081,11 @@ export class OverviewComponent implements OnInit {
   onEventMenu(action: 'edit' | 'brief', ev: MouseEvent) {
     ev.stopPropagation();
     this.eventMenuOpen = false;
-    this.eventDrawerVisible = true;
-    // Wait a frame so the drawer mounts before we drive its edit state.
-    setTimeout(() => {
+    if (this.pid) {
       const section = action === 'brief' ? 'brief' : 'details';
-      this.eventDrawerRef?.openSection?.(section);
-      this.cdr.markForCheck();
-    }, 0);
+      // v1.65o — service handles loading + section jump in one call.
+      this.eventDrawer.open(this.pid, section);
+    }
     this.cdr.markForCheck();
   }
 
@@ -1096,14 +1098,8 @@ export class OverviewComponent implements OnInit {
     }
   }
 
-  /** Save handler from <app-event-drawer>. Replaces the local project
-      copy and recomputes derived summaries so the event strip + KPI
-      cards reflect the new values without a full reload. */
-  onProjectUpdated(p: Project) {
-    this.project = p;
-    this.recompute();
-    this.cdr.markForCheck();
-  }
+  /* v1.65o — onProjectUpdated removed; EventDrawerService.saved$ now
+      delivers the fresh project to ngOnInit (above). */
 
   // ── DERIVATIONS ──────────────────────────────────────────────
 

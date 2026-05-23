@@ -14,6 +14,7 @@ import { CategoryService } from '../../../../../../core/services/category.servic
 import { SupplierService } from '../../../../../../core/services/supplier.service';
 import { OrgService } from '../../../../../../core/services/org.service';
 import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
+import { EventDrawerService } from '../../../../../../core/services/event-drawer.service';
 import { AddCategoryService } from '../../../../../../core/services/add-category.service';
 import {
   Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
@@ -154,6 +155,7 @@ export class MarketplaceComponent implements OnInit {
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
     private estimateDrawer: EstimateDrawerService,
+    private eventDrawer: EventDrawerService,
     private addCategorySvc: AddCategoryService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
@@ -174,6 +176,17 @@ export class MarketplaceComponent implements OnInit {
     this.addCategorySvc.added$.subscribe(({ projectId }) => {
       if (projectId !== this.projectId) return;
       this.refreshProjectCategories();
+    });
+
+    // v1.65o — when the Event drawer saves, swap in the fresh project so
+    // the catalogue's Project Summary panel reflects the new values
+    // (ref, client, event name, guests, date, venue, brief).
+    this.eventDrawer.saved$.subscribe(p => {
+      if (p && p.id === this.projectId) {
+        this.project = p;
+        this.rebuildContext();
+        this.cdr.detectChanges();
+      }
     });
 
     forkJoin({
@@ -408,7 +421,11 @@ export class MarketplaceComponent implements OnInit {
     this.projectContext = {
       projectId: this.projectId,
       projectBrief: this.project?.raw_brief_text || '',
-      projectCategories: this.projectCategories
+      projectCategories: this.projectCategories,
+      // v1.65o — surface the full project so the catalogue's "All" view
+      // can render the Project Summary details strip (REF / CLIENT /
+      // EVENT NAME / GUESTS / DATE / VENUE).
+      project: this.project || undefined
     };
   }
 

@@ -24,6 +24,7 @@ import {
 import { CodelistService } from '../../../core/services/codelist.service';
 import { ApiService } from '../../../core/services/api.service';
 import { OutreachService } from '../../../core/services/outreach.service';
+import { EventDrawerService } from '../../../core/services/event-drawer.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -710,9 +711,18 @@ export type DetailMode = 'inline' | 'drawer';
           <div *ngIf="activeCategory === 'all'" class="bp-allctx">
             <div class="bp-allctx-head">
               <div class="bp-allctx-head-icon">
-                <lucide-icon name="layers" [size]="18"></lucide-icon>
+                <lucide-icon name="clipboard-list" [size]="18"></lucide-icon>
               </div>
-              <div class="bp-allctx-head-name">All categories</div>
+              <div class="bp-allctx-head-name">Project Summary</div>
+              <!-- v1.65o — opens the shared EventDrawer for editing the
+                   project details / brief. Same drawer Overview uses. -->
+              <button *ngIf="projectContext?.project"
+                      type="button"
+                      class="bp-icon-btn bp-allctx-edit"
+                      title="Edit project details"
+                      (click)="openProjectEdit()">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
             </div>
             <div class="bp-allctx-badges">
               <span class="bp-allctx-badge">
@@ -731,6 +741,39 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon name="heart" [size]="11"></lucide-icon>
                 {{ allLikedCount }}
               </span>
+            </div>
+            <!-- v1.65o — project details strip. Same fields as the
+                 Overview event strip (REF / CLIENT / EVENT NAME / GUESTS
+                 / DATE / VENUE) rendered as compact label/value pairs so
+                 it doesn't overshadow the brief below. Click the pencil
+                 in the header to edit. -->
+            <div *ngIf="projectContext?.project as proj" class="bp-allctx-details">
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">REF</span>
+                <span class="bp-allctx-d-v">{{ proj.ref || '—' }}</span>
+              </div>
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">CLIENT</span>
+                <span class="bp-allctx-d-v">{{ proj.client_name || '—' }}</span>
+              </div>
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">EVENT</span>
+                <span class="bp-allctx-d-v">{{ proj.event_name || proj.name || '—' }}</span>
+              </div>
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">DATE</span>
+                <span class="bp-allctx-d-v">{{ proj.event_date ? (proj.event_date | date:'d MMM y') : '—' }}</span>
+              </div>
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">GUESTS</span>
+                <span class="bp-allctx-d-v">{{ proj.guest_count || '—' }}</span>
+              </div>
+              <div class="bp-allctx-d-row">
+                <span class="bp-allctx-d-l">VENUE</span>
+                <span class="bp-allctx-d-v">
+                  {{ proj.venue_name || '—' }}<span *ngIf="proj.venue_city">, {{ proj.venue_city }}</span>
+                </span>
+              </div>
             </div>
             <div class="bp-allctx-brief">
               <div class="bp-drawer-label">Project brief</div>
@@ -1214,6 +1257,39 @@ export type DetailMode = 'inline' | 'drawer';
       flex: 1; min-width: 0;
       font-family: var(--font-display); font-size: 17px; font-weight: 400;
       color: #fff; line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    /* v1.65o — edit-pencil affordance on the pink header, opens the
+       shared Event drawer via EventDrawerService. */
+    .bp-allctx-edit {
+      flex-shrink: 0;
+      color: #fff; background: transparent; border: none;
+      width: 28px; height: 28px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .bp-allctx-edit:hover { background: rgba(255, 255, 255, 0.15); }
+    .bp-allctx-edit lucide-icon { display: inline-flex; }
+
+    /* v1.65o — project details strip. Compact label/value rows between
+       the badges row and the read-only project brief. Same fields the
+       Overview event strip shows, but stacked here so the panel stays
+       narrow. */
+    .bp-allctx-details {
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--color-border);
+      display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 16px;
+    }
+    .bp-allctx-d-row { display: flex; flex-direction: column; min-width: 0; }
+    .bp-allctx-d-l {
+      font-size: 10px; font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+    .bp-allctx-d-v {
+      font-size: var(--text-sm); color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .bp-allctx-badges {
@@ -1887,8 +1963,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     private cdr: ChangeDetectorRef,
     private codelistSvc: CodelistService,
     private api: ApiService,
-    private outreach: OutreachService
+    private outreach: OutreachService,
+    private eventDrawerSvc: EventDrawerService
   ) {}
+
+  /** v1.65o — opens the shared Event drawer in 'details' edit mode so
+      the user can edit project details / brief from the catalogue's
+      Project Summary panel. The drawer is mounted globally in app-shell;
+      saved$ from the service rehydrates the marketplace's projectContext. */
+  openProjectEdit(): void {
+    const pid = this.projectContext?.projectId;
+    if (pid) this.eventDrawerSvc.open(pid, 'details');
+  }
 
   ngOnInit() {
     forkJoin({

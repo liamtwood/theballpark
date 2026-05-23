@@ -1,6 +1,6 @@
 import {
-  Component, Input, Output, EventEmitter,
-  ChangeDetectionStrategy, ChangeDetectorRef, OnChanges, SimpleChanges
+  Component, OnInit, OnDestroy,
+  ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,22 +13,36 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen, WandSparkles } from 'lucide-angular';
 
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 
-import { ProjectService } from '../../../../core/services/project.service';
-import { CodelistService } from '../../../../core/services/codelist.service';
-import { ClientService } from '../../../../core/services/client.service';
-import { CategoryService } from '../../../../core/services/category.service';
-import { AiService } from '../../../../core/services/ai.service';
-import { ApiService } from '../../../../core/services/api.service';
-import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../../models';
+import { ProjectService } from '../../../core/services/project.service';
+import { CodelistService } from '../../../core/services/codelist.service';
+import { ClientService } from '../../../core/services/client.service';
+import { CategoryService } from '../../../core/services/category.service';
+import { AiService } from '../../../core/services/ai.service';
+import { ApiService } from '../../../core/services/api.service';
+import {
+  EventDrawerService, EventDrawerSection
+} from '../../../core/services/event-drawer.service';
+import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../models';
 
 /**
- * Event drawer — v1.29b.
+ * Event drawer — v1.65o.
  *
- * Replaces the standalone /event tab. Opens from the Overview page's
- * event strip (and from the "⋯" menu on the strip). Mirrors the
- * Settings > Team "Member" drawer pattern exactly:
+ * v1.65o relocated this component from features/projects/components/ to
+ * shared/components/ and switched it from @Input-driven to
+ * service-driven. Mounted ONCE globally in app-shell, opened from any
+ * surface via `EventDrawerService.open(projectId, section?)`. Mirrors
+ * the established shared-drawer pattern (Outreach / Estimate / AddCategory).
+ *
+ * On a successful save the drawer re-fetches the project and pushes the
+ * fresh copy via `EventDrawerService.markSaved(p)`, so every subscriber
+ * (overview event strip, marketplace project-summary panel, etc.) can
+ * refresh local state without re-loading the page.
+ *
+ * Originally — v1.29b — replaced the standalone /event tab and opened
+ * from the Overview page's event strip (and from the "⋯" menu on the
+ * strip). Mirrors the Settings > Team "Member" drawer pattern exactly:
  *
  *   - p-sidebar position="right", styleClass="bp-drawer", 480px
  *   - parchment header — eyebrow + serif title + ✕ close
@@ -47,7 +61,7 @@ import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory }
  * git-history continuity; the field definitions + dropdown options here
  * are lifted directly from it.
  */
-type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
+type SectionKey = EventDrawerSection;
 
 @Component({
   selector: 'app-event-drawer',
@@ -63,7 +77,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     <p-sidebar [(visible)]="visible" position="right"
                styleClass="bp-drawer" [style]="{width:'480px'}"
                [showCloseIcon]="false"
-               (visibleChange)="visibleChange.emit($event)">
+               (visibleChange)="onVisibleChange($event)">
 
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
@@ -585,17 +599,13 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     }
   `]
 })
-export class EventDrawerComponent implements OnChanges {
-  /** Project loaded by the parent (Overview). When this swaps, the
-      drawer re-syncs its form from the new instance. */
-  @Input() project: Project | null = null;
-  @Input() visible = false;
+export class EventDrawerComponent implements OnInit, OnDestroy {
+  /** Service-driven — the drawer fetches the project itself when
+      EventDrawerService.open(projectId) fires. No @Inputs / @Outputs. */
+  project: Project | null = null;
+  visible = false;
 
-  @Output() visibleChange = new EventEmitter<boolean>();
-  /** Fires after a successful save with the updated project. Parent
-      replaces its local copy so the Overview event strip reflects the
-      new values immediately. */
-  @Output() projectUpdated = new EventEmitter<Project>();
+  private sub?: Subscription;
 
   saving = false;
   form: Partial<Project> = {};
@@ -655,7 +665,8 @@ export class EventDrawerComponent implements OnChanges {
     private catSvc: CategoryService,
     private aiSvc: AiService,
     private msg: MessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private svc: EventDrawerService
   ) {
     this.codelistSvc.getByName('currency').subscribe(rows => {
       this.currencyOptions = rows || [];
@@ -681,15 +692,54 @@ export class EventDrawerComponent implements OnChanges {
     this.clientSvc.getAll().subscribe(rows => { this.clients = rows || []; });
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['project'] && this.project) {
-      this.syncForm(this.project);
-    }
+  ngOnInit(): void {
+    // v1.65o — service-driven. open(projectId, section?) fetches the
+    // project and surfaces the drawer; close() (or the sidebar close
+    // button) clears it. Optional `section` jumps straight into edit
+    // mode for that section (replaces the legacy openSection() call
+    // that the Overview kebab menu used).
+    this.sub = this.svc.request$.subscribe(req => {
+      if (!req) {
+        this.visible = false;
+        this.project = null;
+        this.cdr.markForCheck();
+        return;
+      }
+      this.projSvc.getById(req.projectId).subscribe({
+        next: p => {
+          this.project = p;
+          this.syncForm(p);
+          this.visible = true;
+          if (req.section) {
+            // Wait a frame so the section is rendered before flipping
+            // its edit flag (the pencil button needs to be in the DOM).
+            setTimeout(() => {
+              this.startEdit(req.section as SectionKey);
+              this.cdr.markForCheck();
+            }, 0);
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.msg.add({
+            severity: 'error', summary: 'Could not load project',
+            detail: 'Try refreshing the page.', life: 3000
+          });
+          this.svc.close();
+        }
+      });
+    });
   }
 
-  close() {
+  ngOnDestroy(): void { this.sub?.unsubscribe(); }
+
+  /** PrimeNG sidebar's two-way visible binding — only react on close,
+      since we control open via the service. */
+  onVisibleChange(open: boolean): void { if (!open) this.close(); }
+
+  close(): void {
     this.visible = false;
-    this.visibleChange.emit(false);
+    this.svc.close();
   }
 
   // ── Form sync ───────────────────────────────────────────────────────
@@ -773,7 +823,7 @@ export class EventDrawerComponent implements OnChanges {
               this.editing[section] = false;
               this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
               this.projSvc.triggerRefresh();
-              this.projectUpdated.emit(p);
+              this.svc.markSaved(p);
               this.cdr.markForCheck();
             },
             error: () => {
