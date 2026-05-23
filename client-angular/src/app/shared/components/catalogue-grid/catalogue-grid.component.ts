@@ -1507,6 +1507,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       marketplace behaviour. */
   @Input() projectContext: ProjectContext | null = null;
 
+  /** v1.65q — auto-fire AI Recommend once on mount, after projectContext
+      lands. Drives the post-create flow: when the user picks
+      "Yes, recommend" in the create-project modal we land them here
+      with this flag flipped via the marketplace's ?recommend=1 query
+      param. Cleared after firing so re-renders don't loop. */
+  @Input() autoRecommend = false;
+  private autoRecommendFired = false;
+
   /** v1.17 — project-cart context for the inline detail panel's action
       cluster (+ / ♡ / ✎ / 👁). Optional: when not set, only the View
       button renders (no project selection, no ownership-gated edit).
@@ -2000,6 +2008,19 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       // All tags checked by default whenever the tag list changes
       this.checkedTags = new Set(this.tags || []);
       this.applyFilter();
+    }
+    // v1.65q — autoRecommend fires once after projectContext lands.
+    // We listen on both inputs because either may arrive first (the
+    // marketplace sets autoRecommend up front and projectContext after
+    // its forkJoin resolves).
+    if ((changes['autoRecommend'] || changes['projectContext'])
+        && this.autoRecommend
+        && !this.autoRecommendFired
+        && this.projectContext) {
+      this.autoRecommendFired = true;
+      // Defer to the next macrotask so the grid finishes mounting any
+      // dependent children (category circles, dropdown options) first.
+      setTimeout(() => this.recommendItems(), 0);
     }
   }
 

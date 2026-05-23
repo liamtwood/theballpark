@@ -1,6 +1,5 @@
 import {
-  Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef,
-  ViewChild
+  Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -60,8 +59,9 @@ import {
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
-    <app-catalogue-grid #cat *ngIf="!loading"
+    <app-catalogue-grid *ngIf="!loading"
       [entities]="itemEntities"
+      [autoRecommend]="pendingRecommendOnLoad"
       [categories]="categories"
       entityType="item"
       entityLabel="item"
@@ -120,12 +120,12 @@ export class MarketplaceComponent implements OnInit {
   categories: CategoryInfo[] = [];
   itemEntities: CatalogueEntity[] = [];
 
-  /** v1.65p — ViewChild on the catalogue-grid so we can fire AI
-      Recommend after data lands when the user arrived via
-      /marketplace?recommend=1 from the create-project flow. */
-  @ViewChild('cat') catRef?: CatalogueGridComponent;
-  /** True if ?recommend=1 was on the URL; cleared once fired. */
-  private pendingRecommendOnLoad = false;
+  /** v1.65q — flipped true when the marketplace was opened with
+      ?recommend=1 (the create-project flow's "Yes, recommend" path).
+      Bound straight into <app-catalogue-grid [autoRecommend]="...">;
+      the grid fires its own recommendItems() once projectContext lands.
+      Template-bound, so left public. */
+  pendingRecommendOnLoad = false;
 
   /** Raw item rows from the supplier API — keyed by id for fast lookup
       when the detail panel emits view/edit and we need the full Item to
@@ -238,13 +238,10 @@ export class MarketplaceComponent implements OnInit {
         this.rebuildContext();
         this.loading = false;
         this.cdr.detectChanges();
-        // v1.65p — fire AI Recommend if the user came in from the
-        // create-project flow with "Yes, recommend". We wait a tick so
-        // the catalogue-grid (*ngIf="!loading") has actually mounted.
-        if (this.pendingRecommendOnLoad) {
-          this.pendingRecommendOnLoad = false;
-          setTimeout(() => this.catRef?.recommendItems(), 0);
-        }
+        // v1.65q — pendingRecommendOnLoad is bound through to the grid
+        // via [autoRecommend]; the grid fires recommendItems() itself
+        // on the next ngOnChanges once projectContext is set. No more
+        // race against ViewChild population.
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
     });

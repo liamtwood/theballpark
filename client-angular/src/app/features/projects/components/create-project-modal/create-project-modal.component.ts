@@ -259,34 +259,12 @@ interface PendingCategory {
             </div>
           </div>
 
-          <div class="bp-cp-section">Categories</div>
-          <div class="bp-cp-cats">
-            <div *ngFor="let p of pendingCategories; let i = index"
-                 class="bp-cp-cat" [class.removed]="p.removed">
-              <div class="bp-cp-cat-icon">
-                <lucide-icon *ngIf="p.db?.icon_name"
-                             [name]="p.db?.icon_name || 'circle'"
-                             [size]="14"></lucide-icon>
-                <span *ngIf="!p.db?.icon_name">{{ (p.ai.categoryLabel || '?').charAt(0) }}</span>
-              </div>
-              <div class="bp-cp-cat-body">
-                <div class="bp-cp-cat-name">
-                  {{ p.db?.name || p.ai.categoryLabel }}
-                  <span *ngIf="p.ai.implied" class="bp-cp-cat-implied">Implied</span>
-                  <span *ngIf="!p.db" class="bp-cp-cat-unmatched" title="Catalogue category not found — will be skipped on Create.">
-                    No match
-                  </span>
-                </div>
-                <div class="bp-cp-cat-brief">{{ p.ai.oneLiner }}</div>
-              </div>
-              <div class="bp-cp-cat-est" *ngIf="p.ai.budgetEstimate">{{ p.ai.budgetEstimate }}</div>
-              <button type="button" class="bp-cp-cat-x"
-                      (click)="toggleRemove(i)"
-                      [title]="p.removed ? 'Undo remove' : 'Remove category'">
-                <i class="pi" [class.pi-times]="!p.removed" [class.pi-undo]="p.removed"></i>
-              </button>
-            </div>
-          </div>
+          <!-- v1.65q — per-category card list removed from the dialog.
+               The summary stats row already shows the category count;
+               individual category details live on the Plan tab once the
+               project is created. Toggling them in this modal was noise
+               (the rows still exist as pendingCategories internally and
+               get upserted on Create, just not surfaced here). -->
 
           <ng-container *ngIf="aiResult.topQuestions?.length">
             <div class="bp-cp-section">Questions to resolve</div>
