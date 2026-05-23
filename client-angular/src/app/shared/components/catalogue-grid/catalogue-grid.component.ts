@@ -5,6 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
 import { forkJoin } from 'rxjs';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
@@ -34,6 +35,7 @@ export type DetailMode = 'inline' | 'drawer';
   imports: [
     CommonModule, FormsModule,
     InputTextModule, InputTextareaModule, ButtonModule, CheckboxModule,
+    DropdownModule,
     LucideAngularModule, GbpPipe, ConfigStripComponent,
     CategoryContextPanelComponent, CategoryCirclesComponent
   ],
@@ -87,25 +89,28 @@ export type DetailMode = 'inline' | 'drawer';
       (addClicked)="addClicked.emit()">
     </app-category-circles>
 
-    <!-- v1.65c — STRIP BAR: subcategory pills on the left (when a
-         category is picked) + search on the right. Spans the full
-         width below the category circles. Replaces both the old
-         standalone subcat-strip and the sidebar search. -->
+    <!-- v1.65d — STRIP BAR: centred segmented search bar. The left
+         dropdown shows the active category's subcategories ("All" +
+         each subcat); the middle is a free-text input; the right is
+         the search button. Spans the full width below the category
+         circles. -->
     <div *ngIf="categories.length && showCategoryCircles" class="bp-strip-bar">
-      <div class="bp-strip-bar-l" *ngIf="subcategories?.length; else stripSpacer">
-        <button type="button" class="bp-subcat-chip"
-                [class.active]="!activeSubcategoryId"
-                (click)="onSubcategoryClick('')">All</button>
-        <button *ngFor="let sc of subcategories"
-                type="button" class="bp-subcat-chip"
-                [class.active]="activeSubcategoryId === sc.id"
-                (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
-      </div>
-      <ng-template #stripSpacer><div class="bp-strip-bar-l"></div></ng-template>
       <div class="bp-strip-search">
-        <lucide-icon name="search" [size]="14" class="bp-strip-search-icon"></lucide-icon>
+        <p-dropdown *ngIf="subcategories?.length"
+                    [options]="subcatDropdownOptions"
+                    [ngModel]="activeSubcategoryId || ''"
+                    (onChange)="onSubcategoryClick($event.value || '')"
+                    optionLabel="name" optionValue="id"
+                    styleClass="bp-strip-search-dd"
+                    appendTo="body"
+                    placeholder="All"></p-dropdown>
         <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-               placeholder="Search..." class="bp-strip-search-input"/>
+               placeholder="Search..." class="bp-strip-search-input"
+               (keyup.enter)="applySearch()"/>
+        <button type="button" class="bp-strip-search-btn"
+                title="Search" (click)="applySearch()">
+          <lucide-icon name="search" [size]="15"></lucide-icon>
+        </button>
       </div>
     </div>
 
@@ -725,37 +730,49 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     :host { display: block; }
 
-    /* v1.65c — full-width strip below the category circles: subcat
-       pills on the left, search on the right. */
+    /* v1.65d — centred segmented search bar below the category circles.
+       Left: subcategory dropdown ("All" + subcats). Middle: text input.
+       Right: theme-accent search button. */
     .bp-strip-bar {
-      display: flex; align-items: center; gap: 14px;
-      padding: 10px 28px; border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-strip-bar-l {
-      flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px;
-      align-items: center;
+      display: flex; justify-content: center;
+      padding: 12px 28px; border-bottom: 0.5px solid var(--color-border);
     }
     .bp-strip-search {
-      position: relative; flex-shrink: 0; width: 240px;
+      display: flex; align-items: stretch;
+      width: 100%; max-width: 720px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      overflow: hidden; background: var(--color-surface);
     }
-    .bp-strip-search-icon {
-      position: absolute; left: 10px; top: 50%;
-      transform: translateY(-50%); color: var(--color-text-muted);
-      display: inline-flex; pointer-events: none;
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown {
+      background: var(--theme-bg); border: none;
+      border-right: 0.5px solid var(--color-border);
+      border-radius: 0; min-width: 96px; box-shadow: none;
     }
+    :host ::ng-deep .bp-strip-search-dd .p-dropdown-label {
+      font-size: var(--text-sm); padding: 8px 10px;
+      color: var(--color-text-secondary); font-family: var(--font-body); }
+    :host ::ng-deep .bp-strip-search-dd .p-dropdown-trigger {
+      color: var(--color-text-muted); width: 24px; }
     :host ::ng-deep .bp-strip-search-input.p-inputtext,
     .bp-strip-search-input {
-      width: 100%; font-family: var(--font-body); font-size: var(--text-sm);
-      padding: 6px 10px 6px 30px;
-      border: 0.5px solid var(--color-border) !important;
-      border-radius: var(--radius-input); outline: none;
-      background: var(--color-surface);
+      flex: 1; min-width: 0; border: none !important; outline: none;
+      padding: 8px 12px;
+      font-family: var(--font-body); font-size: var(--text-sm);
+      background: var(--color-surface) !important;
+      color: var(--color-text-primary);
+      border-radius: 0 !important;
     }
     :host ::ng-deep .bp-strip-search-input.p-inputtext:focus,
-    .bp-strip-search-input:focus {
-      border-color: var(--theme-accent) !important;
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 18%, transparent);
+    .bp-strip-search-input:focus { box-shadow: none !important; }
+    .bp-strip-search-btn {
+      background: var(--theme-accent); border: none; cursor: pointer;
+      padding: 0 18px; color: var(--color-surface);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: filter 0.12s; flex-shrink: 0;
     }
+    .bp-strip-search-btn:hover { filter: brightness(0.92); }
+    .bp-strip-search-btn lucide-icon { display: inline-flex; }
 
     /* v1.41 — subcategory chip pill (kept; used in the strip bar). */
     .bp-subcat-chip {
@@ -1434,6 +1451,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get circleFooterToggleLabel(): string | undefined {
     if (!this.projectContext) return undefined;
     return this.showAllCategories ? 'Show scoped only' : 'Show all categories';
+  }
+  /** v1.65d — options for the strip search bar's left dropdown:
+      "All" first, then each subcategory. */
+  get subcatDropdownOptions(): Array<{ id: string; name: string }> {
+    return [{ id: '', name: 'All' }, ...(this.subcategories || [])];
   }
   onCircleSelect(id: string) {
     if (id === 'all') {
