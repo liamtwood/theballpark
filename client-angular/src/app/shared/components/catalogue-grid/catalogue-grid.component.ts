@@ -170,8 +170,14 @@ export type DetailMode = 'inline' | 'drawer';
              knows where they are. Shown only when a category is active. -->
         <ng-container *ngIf="canFilter">
 
+          <!-- v1.65u — top-level FILTER heading sits above the price /
+               dimension / supplier / event groups so the sidebar names
+               what it is. The per-group sublabels (Price / Event etc.)
+               stay below as subheadings. -->
+          <div class="bp-filter-title">FILTER</div>
+
           <!-- ── GROUP 1 · PRICE ─────────────────────────────────── -->
-          <div class="bp-filter-grouphdr mt-4">
+          <div class="bp-filter-grouphdr">
             <span class="bp-sidebar-sublabel">Price</span>
             <button *ngIf="hasActiveFilters" class="bp-sidebar-check-link"
                     (click)="clearAllFilters()">Clear all</button>
@@ -968,6 +974,21 @@ export type DetailMode = 'inline' | 'drawer';
        Three fixed groups (Price · Category · Event), each a labelled
        header over a set of collapsible dimension rows. */
     .bp-filter-caret { font-size: 9px; opacity: 0.6; }
+    /* v1.65u — sidebar's top-level FILTER heading. Sits above the
+       Price / Event / dimension groups so the column names what it is.
+       Same eyebrow-style typography as the .bp-cat-section-header
+       title in the centre column, plus a hairline rule underneath to
+       anchor it as a column header. */
+    .bp-filter-title {
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--theme-accent);
+      padding: 4px 2px 8px;
+      margin-top: 4px;
+      border-bottom: 0.5px solid var(--color-border);
+      margin-bottom: 10px;
+    }
     .bp-filter-grouphdr {
       display: flex; align-items: center; justify-content: space-between;
       padding: 2px 2px 2px;
