@@ -731,43 +731,54 @@ export type DetailMode = 'inline' | 'drawer';
     :host { display: block; }
 
     /* v1.65d — centred segmented search bar below the category circles.
-       Left: subcategory dropdown ("All" + subcats). Middle: text input.
-       Right: theme-accent search button. */
+       Left: subcategory dropdown. Middle: text input. Right: search btn.
+       v1.65e — tightened padding + font, longer bar, no pink focus
+       ring or rounded inner segments. */
     .bp-strip-bar {
       display: flex; justify-content: center;
-      padding: 12px 28px; border-bottom: 0.5px solid var(--color-border);
+      padding: 10px 28px; border-bottom: 0.5px solid var(--color-border);
     }
     .bp-strip-search {
       display: flex; align-items: stretch;
-      width: 100%; max-width: 720px;
+      width: 100%; max-width: 980px;
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-input);
       overflow: hidden; background: var(--color-surface);
     }
     :host ::ng-deep .bp-strip-search-dd.p-dropdown {
-      background: var(--theme-bg); border: none;
-      border-right: 0.5px solid var(--color-border);
-      border-radius: 0; min-width: 96px; box-shadow: none;
-    }
+      background: var(--theme-bg);
+      border: none !important;
+      border-right: 0.5px solid var(--color-border) !important;
+      border-radius: 0 !important; box-shadow: none !important;
+      min-width: 92px; }
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown:not(.p-disabled).p-focus,
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown:not(.p-disabled):hover {
+      border-color: transparent !important;
+      border-right-color: var(--color-border) !important;
+      box-shadow: none !important; }
     :host ::ng-deep .bp-strip-search-dd .p-dropdown-label {
-      font-size: var(--text-sm); padding: 8px 10px;
+      font-size: var(--text-xs); padding: 5px 8px;
       color: var(--color-text-secondary); font-family: var(--font-body); }
     :host ::ng-deep .bp-strip-search-dd .p-dropdown-trigger {
-      color: var(--color-text-muted); width: 24px; }
+      color: var(--color-text-muted); width: 22px; }
     :host ::ng-deep .bp-strip-search-input.p-inputtext,
     .bp-strip-search-input {
-      flex: 1; min-width: 0; border: none !important; outline: none;
-      padding: 8px 12px;
+      flex: 1; min-width: 0; outline: none;
+      padding: 5px 10px;
       font-family: var(--font-body); font-size: var(--text-sm);
       background: var(--color-surface) !important;
       color: var(--color-text-primary);
-      border-radius: 0 !important;
+      border: none !important; border-radius: 0 !important;
+      box-shadow: none !important;
     }
     :host ::ng-deep .bp-strip-search-input.p-inputtext:focus,
-    .bp-strip-search-input:focus { box-shadow: none !important; }
+    .bp-strip-search-input:focus {
+      box-shadow: none !important; border: none !important;
+      outline: none !important;
+    }
     .bp-strip-search-btn {
       background: var(--theme-accent); border: none; cursor: pointer;
-      padding: 0 18px; color: var(--color-surface);
+      padding: 0 16px; color: var(--color-surface);
       display: inline-flex; align-items: center; justify-content: center;
       transition: filter 0.12s; flex-shrink: 0;
     }
