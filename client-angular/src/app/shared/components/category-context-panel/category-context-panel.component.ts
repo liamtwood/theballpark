@@ -554,8 +554,10 @@ export class CategoryContextPanelComponent implements OnChanges {
 
   /** Active tab. Items by default; if the user has only wishlist
       items, we still default to Items (clear empty state) — the user
-      can flip to Wishlist explicitly. */
-  activeTab: PanelTab = 'items';
+      can flip to Wishlist explicitly.
+      v1.65a — default flipped to Brief: when a category is selected on
+      the marketplace, the brief is the primary context. */
+  activeTab: PanelTab = 'brief';
 
   /** Local edit state for the inline brief editor. */
   briefDraft = '';

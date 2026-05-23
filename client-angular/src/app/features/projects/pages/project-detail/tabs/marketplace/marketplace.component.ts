@@ -57,9 +57,6 @@ import {
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
-    <h2 *ngIf="!loading" class="bp-page-title">Marketplace</h2>
-    <div *ngIf="!loading" class="bp-page-divider"></div>
-
     <app-catalogue-grid *ngIf="!loading"
       [entities]="itemEntities"
       [categories]="categories"
@@ -67,6 +64,7 @@ import {
       entityLabel="item"
       sectionTitle="CATALOGUE"
       actionLabel="View item"
+      detailSize="lg"
       [projectContext]="projectContext"
       [showEdit]="false"
       [showFavourite]="false"
