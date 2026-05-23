@@ -647,39 +647,44 @@ export type DetailMode = 'inline' | 'drawer';
         <!-- When projectContext is set and no item is selected, show the
              relevant brief in place of the empty state. -->
         <ng-container *ngIf="!useCustomDetail && !selectedEntity && projectContext">
-          <!-- "All" view → project brief card -->
-          <div *ngIf="activeCategory === 'all'" class="bp-brief-card">
-            <div class="bp-brief-card-h">
-              <span class="bp-brief-card-eyebrow">PROJECT BRIEF</span>
-              <button *ngIf="!editingProjectBrief" class="bp-icon-btn"
-                (click)="startEditProjectBrief()" title="Edit project brief">
-                <lucide-icon name="square-pen" [size]="12"></lucide-icon>
-              </button>
-              <ng-container *ngIf="editingProjectBrief">
-                <button class="bp-icon-btn bp-icon-save"
-                  (click)="saveProjectBrief()" title="Save">
-                  <i class="pi pi-check"></i>
-                </button>
-                <button class="bp-icon-btn bp-icon-cancel"
-                  (click)="cancelEditProjectBrief()" title="Cancel">
-                  <i class="pi pi-times"></i>
-                </button>
-              </ng-container>
+          <!-- v1.65g — "All" view: matches the per-category panel
+               style. Pink header · totals badge row · read-only brief. -->
+          <div *ngIf="activeCategory === 'all'" class="bp-allctx">
+            <div class="bp-allctx-head">
+              <div class="bp-allctx-head-icon">
+                <lucide-icon name="layers" [size]="18"></lucide-icon>
+              </div>
+              <div class="bp-allctx-head-name">All categories</div>
             </div>
-            <ng-container *ngIf="!editingProjectBrief">
-              <p *ngIf="projectContext.projectBrief" class="bp-brief-card-text bp-brief-card-text--project">
+            <div class="bp-allctx-badges">
+              <span class="bp-allctx-badge">
+                <span class="bp-allctx-badge-l">Budget</span>
+                <span class="bp-allctx-badge-v">{{ allBudgetTotal | gbp }}</span>
+              </span>
+              <span class="bp-allctx-badge">
+                <span class="bp-allctx-badge-l">Estimate</span>
+                <span class="bp-allctx-badge-v">{{ allEstimateTotal | gbp }}</span>
+              </span>
+              <span class="bp-allctx-countpill" title="Items selected across the project">
+                <lucide-icon name="check" [size]="11"></lucide-icon>
+                {{ allSelectedCount }}
+              </span>
+              <span class="bp-allctx-countpill" title="Wishlist items across the project">
+                <lucide-icon name="heart" [size]="11"></lucide-icon>
+                {{ allLikedCount }}
+              </span>
+            </div>
+            <div class="bp-allctx-brief">
+              <div class="bp-drawer-label">Project brief</div>
+              <div class="bp-allctx-brief-text" *ngIf="projectContext.projectBrief; else allBriefEmpty">
                 {{ projectContext.projectBrief }}
-              </p>
-              <p *ngIf="!projectContext.projectBrief" class="bp-brief-card-empty">
-                No project brief yet — click the pencil to add one.
-              </p>
-            </ng-container>
-            <textarea *ngIf="editingProjectBrief" pInputTextarea
-              class="bp-brief-card-edit"
-              [(ngModel)]="projectBriefDraft"
-              [rows]="6"
-              placeholder="Describe the project at a high level…">
-            </textarea>
+              </div>
+              <ng-template #allBriefEmpty>
+                <div class="bp-allctx-brief-empty">
+                  No project brief yet — add one on the Plan tab to share with suppliers.
+                </div>
+              </ng-template>
+            </div>
           </div>
 
           <!-- v1.19: per-category branch handed off to
@@ -1084,6 +1089,61 @@ export type DetailMode = 'inline' | 'drawer';
       display: flex; align-items: center; gap: 4px;
       font-size: 11px; color: var(--color-text-muted);
       margin-top: 10px;
+    }
+
+    /* v1.65g — "All" view summary panel. Mirrors the per-category
+       context panel: pink header · badge row · plain brief. */
+    .bp-allctx { font-family: var(--font-body); }
+    .bp-allctx-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; background: var(--theme-accent);
+    }
+    .bp-allctx-head-icon {
+      width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+      background: #fff; color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bp-allctx-head-name {
+      flex: 1; min-width: 0;
+      font-family: var(--font-display); font-size: 17px; font-weight: 400;
+      color: #fff; line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-allctx-badges {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-allctx-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--theme-bg); border-radius: var(--radius-pill);
+      padding: 4px 10px;
+    }
+    .bp-allctx-badge-l {
+      font-size: var(--text-xs); color: var(--color-text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    }
+    .bp-allctx-badge-v {
+      font-size: var(--text-sm); font-weight: 600;
+      color: var(--color-text-primary); font-variant-numeric: tabular-nums;
+    }
+    .bp-allctx-countpill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--theme-accent); color: var(--color-surface);
+      border-radius: var(--radius-pill); padding: 3px 9px;
+      font-size: var(--text-xs); font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-allctx-countpill lucide-icon { display: inline-flex; }
+    .bp-allctx-brief { padding: 14px 16px; }
+    .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }
+    .bp-allctx-brief-text {
+      font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      white-space: pre-wrap;
+    }
+    .bp-allctx-brief-empty {
+      font-size: var(--text-sm); color: var(--color-text-muted);
+      line-height: 1.55; font-style: italic;
     }
 
     /* Build mode — category header above the requirement_brief.
@@ -2154,6 +2214,22 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get ctxStatusCode(): string | null {
     if (this.panelContext !== 'project') return null;
     return (this.currentProjectCategory as any)?.status_code || null;
+  }
+
+  /** v1.65g — All-view totals (project Marketplace summary panel). */
+  get allBudgetTotal(): number {
+    return (this.projectContext?.projectCategories || [])
+      .reduce((s, p) => s + (Number((p as any).ballpark_budget) || 0), 0);
+  }
+  get allEstimateTotal(): number {
+    return (this.projectContext?.projectCategories || [])
+      .reduce((s, p) => s + (Number((p as any).ballpark_cost) || 0), 0);
+  }
+  get allSelectedCount(): number {
+    return (this.projectItems || []).filter(pi => pi.selection_type === 'selected').length;
+  }
+  get allLikedCount(): number {
+    return (this.projectItems || []).filter(pi => pi.selection_type === 'liked').length;
   }
 
   /** Items in this category that the project has selected. Matches by
