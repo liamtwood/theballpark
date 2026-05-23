@@ -87,19 +87,26 @@ export type DetailMode = 'inline' | 'drawer';
       (addClicked)="addClicked.emit()">
     </app-category-circles>
 
-    <!-- v1.41 — SUBCATEGORY CHIP STRIP.
-         Renders only when the parent has populated [subcategories].
-         "All" chip clears the filter; subcat chips set
-         activeSubcategoryId. Text pills (not image circles) per the
-         design spec; one CSS variable away from theme accent. -->
-    <div *ngIf="subcategories?.length" class="bp-subcat-strip">
-      <button type="button" class="bp-subcat-chip"
-              [class.active]="!activeSubcategoryId"
-              (click)="onSubcategoryClick('')">All</button>
-      <button *ngFor="let sc of subcategories"
-              type="button" class="bp-subcat-chip"
-              [class.active]="activeSubcategoryId === sc.id"
-              (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
+    <!-- v1.65c — STRIP BAR: subcategory pills on the left (when a
+         category is picked) + search on the right. Spans the full
+         width below the category circles. Replaces both the old
+         standalone subcat-strip and the sidebar search. -->
+    <div *ngIf="categories.length && showCategoryCircles" class="bp-strip-bar">
+      <div class="bp-strip-bar-l" *ngIf="subcategories?.length; else stripSpacer">
+        <button type="button" class="bp-subcat-chip"
+                [class.active]="!activeSubcategoryId"
+                (click)="onSubcategoryClick('')">All</button>
+        <button *ngFor="let sc of subcategories"
+                type="button" class="bp-subcat-chip"
+                [class.active]="activeSubcategoryId === sc.id"
+                (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
+      </div>
+      <ng-template #stripSpacer><div class="bp-strip-bar-l"></div></ng-template>
+      <div class="bp-strip-search">
+        <lucide-icon name="search" [size]="14" class="bp-strip-search-icon"></lucide-icon>
+        <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
+               placeholder="Search..." class="bp-strip-search-input"/>
+      </div>
     </div>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
@@ -114,11 +121,7 @@ export type DetailMode = 'inline' | 'drawer';
 
       <!-- ── SIDEBAR ── -->
       <div class="bp-cat-sidebar">
-        <div class="bp-sidebar-search">
-          <lucide-icon name="search" [size]="14" class="bp-sidebar-search-icon"></lucide-icon>
-          <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-            placeholder="Search..." class="bp-sidebar-search-input"/>
-        </div>
+        <!-- v1.65c — search moved out to the strip-bar above. -->
 
         <!-- v1.45b — the sidebar category list is only a fallback for
              grids without the category-circle strip; when the circles
@@ -722,13 +725,39 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     :host { display: block; }
 
-    /* v1.41 — subcategory chip strip below the category circles. Text
-       pills, theme-accent active state, hairline border default. */
-    .bp-subcat-strip {
-      display: flex; flex-wrap: wrap; gap: 6px;
-      padding: 8px 28px 0;
-      margin-bottom: 4px;
+    /* v1.65c — full-width strip below the category circles: subcat
+       pills on the left, search on the right. */
+    .bp-strip-bar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 28px; border-bottom: 0.5px solid var(--color-border);
     }
+    .bp-strip-bar-l {
+      flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px;
+      align-items: center;
+    }
+    .bp-strip-search {
+      position: relative; flex-shrink: 0; width: 240px;
+    }
+    .bp-strip-search-icon {
+      position: absolute; left: 10px; top: 50%;
+      transform: translateY(-50%); color: var(--color-text-muted);
+      display: inline-flex; pointer-events: none;
+    }
+    :host ::ng-deep .bp-strip-search-input.p-inputtext,
+    .bp-strip-search-input {
+      width: 100%; font-family: var(--font-body); font-size: var(--text-sm);
+      padding: 6px 10px 6px 30px;
+      border: 0.5px solid var(--color-border) !important;
+      border-radius: var(--radius-input); outline: none;
+      background: var(--color-surface);
+    }
+    :host ::ng-deep .bp-strip-search-input.p-inputtext:focus,
+    .bp-strip-search-input:focus {
+      border-color: var(--theme-accent) !important;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 18%, transparent);
+    }
+
+    /* v1.41 — subcategory chip pill (kept; used in the strip bar). */
     .bp-subcat-chip {
       display: inline-flex; align-items: center;
       padding: 4px 10px;
