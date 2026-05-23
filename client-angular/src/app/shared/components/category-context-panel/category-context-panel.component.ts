@@ -87,64 +87,53 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </span>
         </div>
 
-        <!-- v1.65w — badge row redone:
-             · count pills (selected + wishlist) removed
-             · status pill moved here from the pink header, right-justified
-             · Budget / Estimate / Status all click-to-edit
-             · Brief is also editable (further down) — click on text. -->
-        <div class="bp-ctx-badges" *ngIf="context === 'project'">
-          <!-- Budget — click to edit -->
-          <span class="bp-ctx-badge bp-ctx-badge--editable"
-                *ngIf="!editingBudget"
-                (click)="startEditBudget()"
-                title="Click to edit budget">
-            <span class="bp-ctx-badge-l">Budget</span>
-            <span class="bp-ctx-badge-v">{{ (budgetPrice || 0) | gbp }}</span>
-          </span>
-          <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingBudget">
-            <span class="bp-ctx-badge-l">Budget</span>
-            <span class="bp-ctx-badge-v bp-ctx-badge-input-wrap">
-              <span class="bp-ctx-badge-input-prefix">£</span>
-              <input #budgetInput type="number" min="0" step="100"
-                     class="bp-ctx-badge-input"
-                     [(ngModel)]="budgetDraft"
-                     (blur)="commitBudget()"
-                     (keyup.enter)="commitBudget()"
-                     (keyup.escape)="cancelBudget()"/>
+        <!-- v1.65z — Budget / Estimate / Status rendered as stats (label
+             above value), not pills. Same typography as the Overview
+             event strip (REF / WA-016 style): theme-accent eyebrow above
+             primary-text value. Click the value to edit; the value swaps
+             to an input / dropdown in place, no shape change. -->
+        <div class="bp-ctx-stats" *ngIf="context === 'project'">
+          <div class="bp-ctx-stat">
+            <span class="bp-ctx-stat-l">BUDGET</span>
+            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
+                  *ngIf="!editingBudget"
+                  (click)="startEditBudget()"
+                  title="Click to edit">{{ (budgetPrice || 0) | gbp }}</span>
+            <span class="bp-ctx-stat-v" *ngIf="editingBudget">
+              <span class="bp-ctx-stat-prefix">£</span><input
+                type="number" min="0" step="100"
+                class="bp-ctx-stat-input"
+                [(ngModel)]="budgetDraft"
+                (blur)="commitBudget()"
+                (keyup.enter)="commitBudget()"
+                (keyup.escape)="cancelBudget()"/>
             </span>
-          </span>
+          </div>
 
-          <!-- Estimate — click to edit (ballpark_cost on project_category) -->
-          <span class="bp-ctx-badge bp-ctx-badge--editable"
-                *ngIf="!editingEstimate"
-                (click)="startEditEstimate()"
-                title="Click to edit estimate">
-            <span class="bp-ctx-badge-l">Estimate</span>
-            <span class="bp-ctx-badge-v">{{ (estimatePrice || 0) | gbp }}</span>
-          </span>
-          <span class="bp-ctx-badge bp-ctx-badge--editing" *ngIf="editingEstimate">
-            <span class="bp-ctx-badge-l">Estimate</span>
-            <span class="bp-ctx-badge-v bp-ctx-badge-input-wrap">
-              <span class="bp-ctx-badge-input-prefix">£</span>
-              <input #estimateInput type="number" min="0" step="100"
-                     class="bp-ctx-badge-input"
-                     [(ngModel)]="estimateDraft"
-                     (blur)="commitEstimate()"
-                     (keyup.enter)="commitEstimate()"
-                     (keyup.escape)="cancelEstimate()"/>
+          <div class="bp-ctx-stat">
+            <span class="bp-ctx-stat-l">ESTIMATE</span>
+            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
+                  *ngIf="!editingEstimate"
+                  (click)="startEditEstimate()"
+                  title="Click to edit">{{ (estimatePrice || 0) | gbp }}</span>
+            <span class="bp-ctx-stat-v" *ngIf="editingEstimate">
+              <span class="bp-ctx-stat-prefix">£</span><input
+                type="number" min="0" step="100"
+                class="bp-ctx-stat-input"
+                [(ngModel)]="estimateDraft"
+                (blur)="commitEstimate()"
+                (keyup.enter)="commitEstimate()"
+                (keyup.escape)="cancelEstimate()"/>
             </span>
-          </span>
+          </div>
 
-          <!-- Status — right-justified. View mode is a pill; click pops
-               the dropdown of category_status options. -->
-          <span class="bp-ctx-status-wrap" *ngIf="categoryStatuses.length">
-            <span class="bp-ctx-status-pill bp-ctx-badge--editable"
+          <div class="bp-ctx-stat bp-ctx-stat--right"
+               *ngIf="categoryStatuses.length">
+            <span class="bp-ctx-stat-l">STATUS</span>
+            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
                   *ngIf="!editingStatus"
                   (click)="startEditStatus()"
-                  title="Click to change status">
-              <span class="bp-ctx-status-dot" [style.background]="statusColor() || null"></span>
-              {{ statusLabel() }}
-            </span>
+                  title="Click to change status">{{ statusLabel() }}</span>
             <p-dropdown *ngIf="editingStatus"
                         [options]="categoryStatuses"
                         [ngModel]="statusCode"
@@ -152,10 +141,10 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
                         (onHide)="editingStatus = false"
                         optionLabel="label" optionValue="code"
                         appendTo="body"
-                        styleClass="bp-ctx-status-dd"
+                        styleClass="bp-ctx-status-dd-plain"
                         [autoDisplayFirst]="false"
                         placeholder="—"></p-dropdown>
-          </span>
+          </div>
         </div>
 
         <!-- v1.49 — marketplace / supplier stat block, mirrors the
@@ -348,121 +337,86 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       background: #fff;
     }
 
-    /* v1.65f — badge row: Budget / Estimate pills + count circles */
-    .bp-ctx-badges {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    /* v1.65z — Budget / Estimate / Status as STATS (not pills). Same
+       eyebrow + value typography as the Overview event strip
+       (REF / WA-016) — theme-accent uppercase eyebrow above primary-
+       text value. No chip chrome, no background. Status sits to the
+       right of the row (margin-left: auto on the third stat). */
+    .bp-ctx-stats {
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px;
       padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
     }
-    .bp-ctx-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--theme-bg); border-radius: var(--radius-pill);
-      padding: 4px 10px;
+    .bp-ctx-stat {
+      display: flex; flex-direction: column; gap: 2px;
+      min-width: 0;
     }
-    .bp-ctx-badge-l {
-      font-size: var(--text-xs); color: var(--color-text-muted);
-      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    .bp-ctx-stat--right { margin-left: auto; align-items: flex-end; }
+    .bp-ctx-stat-l {
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--theme-accent);
     }
-    .bp-ctx-badge-v {
-      font-size: var(--text-sm); font-weight: 600;
-      color: var(--color-text-primary); font-variant-numeric: tabular-nums;
-    }
-    .bp-ctx-countpill {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: var(--theme-accent); color: var(--color-surface);
-      border-radius: var(--radius-pill); padding: 3px 9px;
-      font-size: var(--text-xs); font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-    .bp-ctx-countpill lucide-icon { display: inline-flex; }
-
-    /* v1.65x — editable badges. View and edit share padding, height
-       and font-size so flipping between modes doesn't reflow the row.
-       The badge-v field carries a fixed min-width so the pill width is
-       the same whether it's a static value or an input. */
-    .bp-ctx-badge {
-      min-height: 24px;
-      box-sizing: border-box;
-    }
-    .bp-ctx-badge-v {
-      min-width: 64px;
-      display: inline-flex; align-items: center;
-    }
-    .bp-ctx-badge--editable {
-      cursor: pointer;
-      transition: background 0.15s, box-shadow 0.15s;
-    }
-    .bp-ctx-badge--editable:hover {
-      background: var(--color-surface);
-      box-shadow: 0 0 0 0.5px var(--theme-accent);
-    }
-    .bp-ctx-badge--editing {
-      background: var(--color-surface);
-      box-shadow: 0 0 0 0.5px var(--theme-accent);
-    }
-    .bp-ctx-badge-input-wrap {
-      display: inline-flex; align-items: baseline; gap: 1px;
-    }
-    .bp-ctx-badge-input-prefix {
-      font-size: var(--text-sm); font-weight: 600;
+    .bp-ctx-stat-v {
+      font-family: var(--font-body);
+      font-size: 14px; font-weight: 500; line-height: 1.3;
       color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      display: inline-flex; align-items: baseline;
     }
-    .bp-ctx-badge-input {
-      /* Same font + weight as .bp-ctx-badge-v so the only visual
-         difference between view and edit is the caret. Width tuned to
-         hold 6 digits without forcing the pill any wider than the
-         view-mode value. */
-      width: 56px;
+    .bp-ctx-stat-v--editable {
+      cursor: pointer;
+      border-radius: 3px;
+      padding: 0 2px; margin: 0 -2px;
+      transition: background 0.15s;
+    }
+    .bp-ctx-stat-v--editable:hover {
+      background: var(--theme-bg);
+    }
+    .bp-ctx-stat-prefix {
+      font-size: 14px; font-weight: 500;
+      color: var(--color-text-primary);
+      margin-right: 1px;
+    }
+    .bp-ctx-stat-input {
+      width: 64px;
       border: none; outline: none; background: transparent;
-      font-family: var(--font-body); font-size: var(--text-sm);
-      font-weight: 600; color: var(--color-text-primary);
+      font-family: var(--font-body); font-size: 14px;
+      font-weight: 500; color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
       padding: 0; margin: 0;
       line-height: inherit;
+      border-bottom: 1px solid var(--theme-accent);
     }
-    /* Hide the spinner that some browsers render for type=number — it
-       widens the input and breaks pill alignment. */
-    .bp-ctx-badge-input::-webkit-outer-spin-button,
-    .bp-ctx-badge-input::-webkit-inner-spin-button {
+    .bp-ctx-stat-input::-webkit-outer-spin-button,
+    .bp-ctx-stat-input::-webkit-inner-spin-button {
       -webkit-appearance: none; margin: 0;
     }
-    .bp-ctx-badge-input { -moz-appearance: textfield; }
+    .bp-ctx-stat-input { -moz-appearance: textfield; }
 
-    /* Status pill — right-justified inside the badge row. View + edit
-       sized identically so the row doesn't jump on dropdown open. */
-    .bp-ctx-status-wrap {
-      margin-left: auto;
-      display: inline-flex; align-items: center;
-    }
-    .bp-ctx-status-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      min-height: 24px; box-sizing: border-box;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      background: var(--theme-bg);
-      font-size: var(--text-xs); font-weight: 600;
-      color: var(--color-text-primary);
-    }
-    .bp-ctx-status-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--theme-accent); flex-shrink: 0;
-    }
-    :host ::ng-deep .bp-ctx-status-dd.p-dropdown {
-      min-width: 110px; height: 24px;
-      background: var(--theme-bg) !important;
-      border: 0.5px solid var(--theme-accent) !important;
-      border-radius: var(--radius-pill) !important;
+    /* Borderless dropdown — looks like text + chevron so the status
+       editor matches the eyebrow/value typography. */
+    :host ::ng-deep .bp-ctx-status-dd-plain.p-dropdown {
+      background: transparent !important;
+      border: none !important;
+      border-bottom: 1px solid var(--theme-accent) !important;
+      border-radius: 0 !important;
       box-shadow: none !important;
+      min-width: 100px; height: 22px;
     }
-    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-label {
-      padding: 0 8px;
-      font-size: var(--text-xs);
-      font-weight: 600;
+    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-label {
+      padding: 0 4px 0 0;
       font-family: var(--font-body);
-      line-height: 22px;
+      font-size: 14px; font-weight: 500;
       color: var(--color-text-primary);
+      line-height: 22px;
     }
-    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger { width: 20px; }
-    :host ::ng-deep .bp-ctx-status-dd .p-dropdown-trigger-icon { font-size: 10px; }
+    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-trigger {
+      width: 18px;
+      color: var(--theme-accent);
+    }
+    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-trigger-icon { font-size: 10px; }
 
     /* v1.65x — cart icon + count badge on the pink header. Replaces
        nothing visually (the status pill moved to the badge row in

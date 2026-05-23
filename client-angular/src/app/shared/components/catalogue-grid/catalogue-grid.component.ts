@@ -730,27 +730,23 @@ export type DetailMode = 'inline' | 'drawer';
                       *ngIf="allSelectedCount">{{ allSelectedCount }}</span>
               </span>
             </div>
-            <!-- v1.65w — count pills (selected + wishlist) dropped.
-                 Project status now sits on the right; click → opens the
-                 shared Event drawer in 'details' (same as the header
-                 pencil) so the user can change project_status. Budget /
-                 Estimate stay as read-only aggregates across categories. -->
-            <div class="bp-allctx-badges">
-              <span class="bp-allctx-badge">
-                <span class="bp-allctx-badge-l">Budget</span>
-                <span class="bp-allctx-badge-v">{{ allBudgetTotal | gbp }}</span>
-              </span>
-              <span class="bp-allctx-badge">
-                <span class="bp-allctx-badge-l">Estimate</span>
-                <span class="bp-allctx-badge-v">{{ allEstimateTotal | gbp }}</span>
-              </span>
-              <!-- v1.65y — display only (edit deferred). -->
-              <span class="bp-allctx-status-wrap" *ngIf="projectStatusLabel">
-                <span class="bp-allctx-status-pill">
-                  <span class="bp-allctx-status-dot"></span>
-                  {{ projectStatusLabel }}
-                </span>
-              </span>
+            <!-- v1.65z — Budget / Estimate / Status as stats (REF /
+                 WA-016 style), not pills. Aggregates across categories;
+                 status is project-level. Display-only for now. -->
+            <div class="bp-allctx-stats">
+              <div class="bp-allctx-stat">
+                <span class="bp-allctx-stat-l">BUDGET</span>
+                <span class="bp-allctx-stat-v">{{ allBudgetTotal | gbp }}</span>
+              </div>
+              <div class="bp-allctx-stat">
+                <span class="bp-allctx-stat-l">ESTIMATE</span>
+                <span class="bp-allctx-stat-v">{{ allEstimateTotal | gbp }}</span>
+              </div>
+              <div class="bp-allctx-stat bp-allctx-stat--right"
+                   *ngIf="projectStatusLabel">
+                <span class="bp-allctx-stat-l">STATUS</span>
+                <span class="bp-allctx-stat-v">{{ projectStatusLabel }}</span>
+              </div>
             </div>
             <!-- v1.65o — project details strip. Same fields as the
                  Overview event strip (REF / CLIENT / EVENT NAME / GUESTS
@@ -1337,49 +1333,31 @@ export type DetailMode = 'inline' | 'drawer';
       font-variant-numeric: tabular-nums;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .bp-allctx-badges {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    /* v1.65z — Budget / Estimate / Status row as stats (no pill chrome).
+       Same eyebrow + value typography as the project details strip
+       below (REF / WA-016 style). Status uses --right to push it to the
+       far end of the row, value right-aligned to match. */
+    .bp-allctx-stats {
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px;
       padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
     }
-    .bp-allctx-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--theme-bg); border-radius: var(--radius-pill);
-      padding: 4px 10px;
+    .bp-allctx-stat {
+      display: flex; flex-direction: column; gap: 2px;
+      min-width: 0;
     }
-    .bp-allctx-badge-l {
-      font-size: var(--text-xs); color: var(--color-text-muted);
-      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    .bp-allctx-stat--right { margin-left: auto; align-items: flex-end; }
+    .bp-allctx-stat-l {
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--theme-accent);
     }
-    .bp-allctx-badge-v {
-      font-size: var(--text-sm); font-weight: 600;
-      color: var(--color-text-primary); font-variant-numeric: tabular-nums;
-    }
-    .bp-allctx-countpill {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: var(--theme-accent); color: var(--color-surface);
-      border-radius: var(--radius-pill); padding: 3px 9px;
-      font-size: var(--text-xs); font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-    .bp-allctx-countpill lucide-icon { display: inline-flex; }
-
-    /* v1.65w — All view status pill, right-justified in the badge row.
-       v1.65y — non-interactive for now (editing deferred). */
-    .bp-allctx-status-wrap {
-      margin-left: auto;
-    }
-    .bp-allctx-status-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      background: var(--theme-bg);
-      font-size: var(--text-xs); font-weight: 600;
+    .bp-allctx-stat-v {
+      font-family: var(--font-body);
+      font-size: 14px; font-weight: 500; line-height: 1.3;
       color: var(--color-text-primary);
-      text-transform: capitalize;
-    }
-    .bp-allctx-status-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--theme-accent); flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     .bp-allctx-brief { padding: 14px 16px; }
     .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }
