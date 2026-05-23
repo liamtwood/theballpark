@@ -720,15 +720,15 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon name="clipboard-list" [size]="18"></lucide-icon>
               </div>
               <div class="bp-allctx-head-name">Project Summary</div>
-              <!-- v1.65o — opens the shared EventDrawer for editing the
-                   project details / brief. Same drawer Overview uses. -->
-              <button *ngIf="projectContext?.project"
-                      type="button"
-                      class="bp-icon-btn bp-allctx-edit"
-                      title="Edit project details"
-                      (click)="openProjectEdit()">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
+              <!-- v1.65y — edit pencil removed (deferred). Cart icon +
+                   count badge in its spot, matching the per-cat panel.
+                   Count is total selected items across every category. -->
+              <span class="bp-allctx-cart"
+                    [attr.title]="allSelectedCount + ' item' + (allSelectedCount === 1 ? '' : 's') + ' in cart'">
+                <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
+                <span class="bp-allctx-cart-badge"
+                      *ngIf="allSelectedCount">{{ allSelectedCount }}</span>
+              </span>
             </div>
             <!-- v1.65w — count pills (selected + wishlist) dropped.
                  Project status now sits on the right; click → opens the
@@ -744,10 +744,8 @@ export type DetailMode = 'inline' | 'drawer';
                 <span class="bp-allctx-badge-l">Estimate</span>
                 <span class="bp-allctx-badge-v">{{ allEstimateTotal | gbp }}</span>
               </span>
-              <span class="bp-allctx-status-wrap"
-                    *ngIf="projectStatusLabel"
-                    (click)="openProjectEdit()"
-                    title="Click to edit project status">
+              <!-- v1.65y — display only (edit deferred). -->
+              <span class="bp-allctx-status-wrap" *ngIf="projectStatusLabel">
                 <span class="bp-allctx-status-pill">
                   <span class="bp-allctx-status-dot"></span>
                   {{ projectStatusLabel }}
@@ -1290,17 +1288,33 @@ export type DetailMode = 'inline' | 'drawer';
       color: #fff; line-height: 1.2;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    /* v1.65o — edit-pencil affordance on the pink header, opens the
-       shared Event drawer via EventDrawerService. */
-    .bp-allctx-edit {
+    /* v1.65y — cart icon + count badge on the pink header. Same
+       Amazon / Best Buy pattern used on the per-cat panel. White cart
+       icon over the pink header; the count chip pins to the top-right
+       corner with a thin white ring so it pops against the pink. */
+    .bp-allctx-cart {
+      position: relative;
+      display: inline-flex; align-items: center;
       flex-shrink: 0;
-      color: #fff; background: transparent; border: none;
-      width: 28px; height: 28px; border-radius: 50%;
-      display: inline-flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: background 0.15s;
+      color: #fff;
+      padding: 2px;
     }
-    .bp-allctx-edit:hover { background: rgba(255, 255, 255, 0.15); }
-    .bp-allctx-edit lucide-icon { display: inline-flex; }
+    .bp-allctx-cart lucide-icon { display: inline-flex; }
+    .bp-allctx-cart-badge {
+      position: absolute;
+      top: -4px; right: -8px;
+      min-width: 16px; height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: var(--theme-accent);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      box-shadow: 0 0 0 1.5px #fff;
+      font-variant-numeric: tabular-nums;
+    }
 
     /* v1.65o — project details strip. Compact label/value rows between
        the badges row and the read-only project brief. Same fields the
@@ -1350,13 +1364,10 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-allctx-countpill lucide-icon { display: inline-flex; }
 
     /* v1.65w — All view status pill, right-justified in the badge row.
-       Click opens the Event drawer (project_status lives there). */
+       v1.65y — non-interactive for now (editing deferred). */
     .bp-allctx-status-wrap {
       margin-left: auto;
-      cursor: pointer;
-      transition: opacity 0.15s;
     }
-    .bp-allctx-status-wrap:hover { opacity: 0.85; }
     .bp-allctx-status-pill {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 3px 10px;
