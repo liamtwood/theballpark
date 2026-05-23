@@ -23,6 +23,7 @@ import { AiService } from '../../../../core/services/ai.service';
 import {
   CreateProjectService
 } from '../../../../core/services/create-project.service';
+import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import {
   BriefParserService, EXAMPLE_BRIEFS, ParsedBrief as RuleParsedBrief
 } from '../../../../core/services/brief-parser.service';
@@ -52,7 +53,7 @@ import {
  * project" call site uses CreateProjectService.open() to surface this
  * single instance.
  */
-type ModalState = 'input' | 'loading' | 'results';
+type ModalState = 'input' | 'loading' | 'results' | 'confirm';
 
 interface PendingCategory {
   ai: ParsedBriefCategory;
@@ -68,7 +69,8 @@ interface PendingCategory {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule, LucideAngularModule,
-    DialogModule, ButtonModule, InputTextModule, InputTextareaModule, ToastModule
+    DialogModule, ButtonModule, InputTextModule, InputTextareaModule, ToastModule,
+    GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -166,7 +168,13 @@ interface PendingCategory {
         </div>
       </ng-container>
 
-      <!-- ═══════════════════════════════════════════════════ LOADING ═ -->
+      <!-- ═══════════════════════════════════════════════════ LOADING ═
+           v1.65p — status-text only. The previous version showed
+           "{aiCategoryCount} categories identified" which read as "0
+           categories identified" until the AI response arrived (the
+           loadStep timer fired before the counts populated). Pure
+           progression copy keeps the user informed without the misleading
+           zero. -->
       <ng-container *ngIf="state === 'loading'">
         <div class="bp-cp-loading">
           <div class="bp-cp-spinner"></div>
@@ -178,27 +186,17 @@ interface PendingCategory {
             Identifying categories, writing supplier briefs, flagging questions
           </div>
           <div class="bp-cp-loading-steps">
-            <div class="bp-cp-step" [class.done]="loadStep >= 1">
-              <lucide-icon *ngIf="loadStep >= 1" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 1">⏳</span>
-              {{ loadStep >= 1 ? 'Details extracted' : 'Extracting details' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 1" [class.active]="loadStep < 1">
+              {{ loadStep >= 1 ? 'Parsed event details' : 'Parsing event details…' }}
             </div>
-            <div class="bp-cp-step" [class.done]="loadStep >= 2" *ngIf="loadStep >= 1">
-              <lucide-icon *ngIf="loadStep >= 2" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 2">⏳</span>
-              {{ loadStep >= 2
-                  ? (aiCategoryCount + ' categories identified')
-                  : 'Writing category briefs' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 2" [class.active]="loadStep >= 1 && loadStep < 2" *ngIf="loadStep >= 1">
+              {{ loadStep >= 2 ? 'Identified categories' : 'Identifying categories…' }}
             </div>
-            <div class="bp-cp-step" [class.done]="loadStep >= 3" *ngIf="loadStep >= 2">
-              <lucide-icon *ngIf="loadStep >= 3" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 3">⏳</span>
-              {{ loadStep >= 3
-                  ? (aiQuestionCount + ' questions flagged')
-                  : 'Flagging questions' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 3" [class.active]="loadStep >= 2 && loadStep < 3" *ngIf="loadStep >= 2">
+              {{ loadStep >= 3 ? 'Flagged questions' : 'Flagging questions…' }}
             </div>
-            <div class="bp-cp-step" *ngIf="loadStep >= 3 && !aiSettled">
-              ⏳ Still working…
+            <div class="bp-cp-step bp-cp-step--active" *ngIf="loadStep >= 3 && !aiSettled">
+              Still working…
             </div>
           </div>
         </div>
@@ -208,17 +206,30 @@ interface PendingCategory {
       <ng-container *ngIf="state === 'results' && aiResult">
         <div class="bp-cp-body">
 
+          <!-- v1.65p — emoji icons swapped for "Label: value" pairs.
+               Easier to scan and reads as a real project detail card. -->
           <div class="bp-cp-hero">
             <div class="bp-cp-hero-row">
               <div class="bp-cp-hero-main">
                 <div class="bp-cp-hero-name">{{ aiResult.projectName || 'Untitled project' }}</div>
                 <div class="bp-cp-hero-meta">
-                  <span class="bp-cp-chip" *ngIf="aiResult.client">👤 {{ aiResult.client }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.dates">📅 {{ aiResult.dates }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.location">📍 {{ aiResult.location }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.budget">💰 {{ aiResult.budget }}</span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.client">
+                    <span class="bp-cp-chip-l">Client</span>{{ aiResult.client }}
+                  </span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.dates">
+                    <span class="bp-cp-chip-l">Date</span>{{ aiResult.dates }}
+                  </span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.location">
+                    <span class="bp-cp-chip-l">Venue</span>{{ aiResult.location }}
+                  </span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.guestCount">
+                    <span class="bp-cp-chip-l">Guests</span>{{ aiResult.guestCount }}
+                  </span>
+                  <span class="bp-cp-chip" *ngIf="aiResult.budget">
+                    <span class="bp-cp-chip-l">Budget</span>{{ aiResult.budget }}
+                  </span>
                   <span class="bp-cp-chip" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">
-                    🎯 {{ aiResult.budgetSignal }}
+                    <span class="bp-cp-chip-l">Tier</span>{{ aiResult.budgetSignal }}
                   </span>
                 </div>
               </div>
@@ -230,7 +241,25 @@ interface PendingCategory {
             “{{ aiResult.summary }}”
           </div>
 
-          <div class="bp-cp-section">{{ activeCategoryCount }} categories identified</div>
+          <!-- v1.65p — at-a-glance stats row. Replaces the previous
+               two separate "{N} categories" / "{N} questions" headings
+               with a single line, plus the total budget estimate. -->
+          <div class="bp-cp-stats">
+            <div class="bp-cp-stat">
+              <span class="bp-cp-stat-v">{{ activeCategoryCount }}</span>
+              <span class="bp-cp-stat-l">categor{{ activeCategoryCount === 1 ? 'y' : 'ies' }}</span>
+            </div>
+            <div class="bp-cp-stat">
+              <span class="bp-cp-stat-v">{{ aiResult.topQuestions?.length || 0 }}</span>
+              <span class="bp-cp-stat-l">question{{ (aiResult.topQuestions?.length || 0) === 1 ? '' : 's' }}</span>
+            </div>
+            <div class="bp-cp-stat" *ngIf="totalEstimate">
+              <span class="bp-cp-stat-v">{{ totalEstimate | gbp }}</span>
+              <span class="bp-cp-stat-l">estimate</span>
+            </div>
+          </div>
+
+          <div class="bp-cp-section">Categories</div>
           <div class="bp-cp-cats">
             <div *ngFor="let p of pendingCategories; let i = index"
                  class="bp-cp-cat" [class.removed]="p.removed">
@@ -260,7 +289,7 @@ interface PendingCategory {
           </div>
 
           <ng-container *ngIf="aiResult.topQuestions?.length">
-            <div class="bp-cp-section">{{ aiResult.topQuestions?.length }} questions to resolve</div>
+            <div class="bp-cp-section">Questions to resolve</div>
             <div class="bp-cp-questions">
               <div class="bp-cp-question" *ngFor="let q of aiResult.topQuestions">
                 <lucide-icon name="help-circle" [size]="12"></lucide-icon>
@@ -269,6 +298,28 @@ interface PendingCategory {
             </div>
           </ng-container>
 
+          <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
+        </div>
+      </ng-container>
+
+      <!-- ════════════════════════════════════════════════ CONFIRM RECOMMEND ═
+           v1.65p — after the user clicks Continue on results we ask
+           whether to also run the AI item matcher. Yes → create the
+           project and land on /marketplace?recommend=1 (the marketplace
+           tab fires the Recommend fan-out on mount). No → create the
+           project and land on /marketplace as normal. -->
+      <ng-container *ngIf="state === 'confirm'">
+        <div class="bp-cp-body bp-cp-confirm">
+          <div class="bp-cp-confirm-icon">
+            <lucide-icon name="sparkles" [size]="28"></lucide-icon>
+          </div>
+          <div class="bp-cp-confirm-title">Recommend items now?</div>
+          <div class="bp-cp-confirm-sub">
+            AI can suggest catalogue items for each category based on the
+            brief. You'll see them in the Marketplace under
+            <strong>AI Recommendations</strong>. You can always run this
+            later from the Marketplace.
+          </div>
           <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
       </ng-container>
@@ -295,21 +346,39 @@ interface PendingCategory {
           </p-button>
         </ng-container>
 
-        <!-- RESULTS footer: ← Edit brief · Cancel · Create project → -->
+        <!-- RESULTS footer: Back · Continue (→ confirm-recommend) -->
         <ng-container *ngIf="state === 'results'">
           <button type="button" class="bp-cp-back" (click)="backToInput()">
-            ← Edit brief
+            ← Back
           </button>
           <div class="bp-cp-footer-r">
-            <p-button label="Cancel" styleClass="bp-btn-cancel"
-                      [disabled]="creating"
-                      (onClick)="close()"></p-button>
             <p-button styleClass="bp-btn-save"
                       [disabled]="creating"
-                      (onClick)="createProject()">
+                      (onClick)="goToConfirm()">
+              <ng-template pTemplate="content">
+                Continue →
+              </ng-template>
+            </p-button>
+          </div>
+        </ng-container>
+
+        <!-- CONFIRM footer: ← Back · Skip · Yes, recommend -->
+        <ng-container *ngIf="state === 'confirm'">
+          <button type="button" class="bp-cp-back" (click)="backToResults()"
+                  [disabled]="creating">
+            ← Back
+          </button>
+          <div class="bp-cp-footer-r">
+            <p-button label="Skip" styleClass="bp-btn-cancel"
+                      [disabled]="creating"
+                      (onClick)="createProject(false)"></p-button>
+            <p-button styleClass="bp-btn-save"
+                      [disabled]="creating"
+                      (onClick)="createProject(true)">
               <ng-template pTemplate="content">
                 <i *ngIf="creating" class="pi pi-spin pi-spinner" style="margin-right:6px"></i>
-                {{ creating ? 'Creating…' : 'Create project →' }}
+                <lucide-icon *ngIf="!creating" name="sparkles" [size]="13" style="margin-right:6px"></lucide-icon>
+                {{ creating ? 'Creating…' : 'Yes, recommend' }}
               </ng-template>
             </p-button>
           </div>
@@ -528,9 +597,35 @@ interface PendingCategory {
     .bp-cp-step {
       display: flex; align-items: center; gap: 6px;
       transition: color 0.2s;
+      opacity: 0.5;
+    }
+    .bp-cp-step.active, .bp-cp-step--active {
+      opacity: 1;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-step.active::before, .bp-cp-step--active::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      animation: bp-cp-pulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
     }
     .bp-cp-step.done {
       color: var(--theme-accent);
+      opacity: 1;
+    }
+    .bp-cp-step.done::before {
+      content: '✓';
+      color: var(--theme-accent);
+      font-weight: 700;
+      width: 6px; height: 6px; line-height: 6px;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+    @keyframes bp-cp-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.85); }
+      50%      { opacity: 1;   transform: scale(1.1);  }
     }
 
     /* ── RESULTS state ───────────────────────────────────────────────── */
@@ -552,14 +647,70 @@ interface PendingCategory {
       color: var(--color-text-primary);
     }
     .bp-cp-hero-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+    /* v1.65p — chip now renders as "Label value" (no emoji). The label
+       sits left, semi-bold + uppercase eyebrow style; the value sits
+       right in the secondary text colour. */
     .bp-cp-chip {
+      display: inline-flex; align-items: center; gap: 6px;
       font-size: 11px;
       padding: 3px 10px;
       border-radius: 999px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
-      color: var(--color-text-secondary);
+      color: var(--color-text-primary);
     }
+    .bp-cp-chip-l {
+      font-size: 9.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+    }
+
+    /* v1.65p — at-a-glance stats line on the results screen. */
+    .bp-cp-stats {
+      display: flex; align-items: center; gap: 18px;
+      padding: 8px 0;
+    }
+    .bp-cp-stat {
+      display: flex; flex-direction: column; align-items: flex-start;
+      line-height: 1.1;
+    }
+    .bp-cp-stat-v {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 500;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cp-stat-l {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    /* v1.65p — confirm-recommend state: centred prompt with sparkles
+       icon, title, and a paragraph of context. */
+    .bp-cp-confirm {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 14px;
+      padding: 28px 24px;
+    }
+    .bp-cp-confirm-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bp-cp-confirm-title {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 500;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-confirm-sub {
+      font-size: 13px; line-height: 1.55;
+      color: var(--color-text-secondary);
+      max-width: 420px;
+    }
+    .bp-cp-confirm-sub strong { color: var(--theme-accent); font-weight: 600; }
     .bp-cp-hero-ref {
       font-size: 11px;
       color: var(--color-text-secondary);
@@ -712,6 +863,11 @@ export class CreateProjectModalComponent implements OnInit {
   aiResult: ParsedBrief | null = null;
   pendingCategories: PendingCategory[] = [];
   creating = false;
+  /** v1.65p — set by createProject(withRecommend). Read by finish() to
+      decide whether to add ?recommend=1 to the marketplace landing URL,
+      which makes the marketplace tab fire the AI matcher across every
+      briefed project_category on mount. */
+  private pendingRecommend = false;
 
   private categories: Category[] = [];
   private orgId = '';
@@ -1001,6 +1157,14 @@ export class CreateProjectModalComponent implements OnInit {
   get activeCategoryCount(): number {
     return this.pendingCategories.filter(p => !p.removed).length;
   }
+  /** v1.65p — sum of midOfBand parsed budget estimates across the
+      active (non-removed) categories. Drives the "estimate" stat
+      shown next to category + question counts on the results screen. */
+  get totalEstimate(): number {
+    return this.pendingCategories
+      .filter(p => !p.removed)
+      .reduce((sum, p) => sum + (this.midOfBand(p.ai.budgetEstimate) || 0), 0);
+  }
   toggleRemove(i: number) {
     const p = this.pendingCategories[i];
     if (!p) return;
@@ -1013,8 +1177,23 @@ export class CreateProjectModalComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  createProject() {
+  /** v1.65p — Continue → confirm-recommend prompt. */
+  goToConfirm() {
+    this.errorMsg = '';
+    this.state = 'confirm';
+    this.cdr.markForCheck();
+  }
+  /** v1.65p — back from confirm → results (keep parsed data). */
+  backToResults() {
+    if (this.creating) return;
+    this.errorMsg = '';
+    this.state = 'results';
+    this.cdr.markForCheck();
+  }
+
+  createProject(withRecommend: boolean = false) {
     if (this.creating || !this.aiResult) return;
+    this.pendingRecommend = withRecommend;
     this.creating = true;
     this.errorMsg = '';
     this.cdr.markForCheck();
@@ -1122,10 +1301,19 @@ export class CreateProjectModalComponent implements OnInit {
     this.creating = false;
     this.projSvc.triggerRefresh();
     this.cpSvc.close();
-    // v1.49e — land on the Brief tab. Tabs are route segments
-    // (/projects/:id/brief), not a ?tab= query param, so navigate to the
-    // child route directly — otherwise this redirects to Overview.
-    this.router.navigate(['/projects', project.id, 'brief']);
+    // v1.65p — land on the Marketplace tab so the user sees their new
+    // project's catalogue. If they asked for AI Recommend on the confirm
+    // step, pass ?recommend=1 — the Marketplace reads it on mount and
+    // fires the matcher across every briefed project_category. The Plan
+    // tab is still a click away; we used to land there but Marketplace
+    // is a better starting point now that the All view shows a Project
+    // Summary panel.
+    const queryParams = this.pendingRecommend ? { recommend: 1 } : {};
+    this.router.navigate(
+      ['/projects', project.id, 'marketplace'],
+      { queryParams }
+    );
+    this.pendingRecommend = false;
     this.msg.add({
       severity: 'success',
       summary: n > 0
