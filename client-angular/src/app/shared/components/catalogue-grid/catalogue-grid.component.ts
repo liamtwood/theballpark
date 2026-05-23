@@ -300,6 +300,26 @@ export type DetailMode = 'inline' | 'drawer';
           </ng-template>
         </nav>
 
+        <!-- v1.65i — Selected + Wishlist sections (project context only).
+             Render as card grids using the same card markup as the
+             main RESULTS grid, just sourced from the project_items. -->
+        <ng-container *ngIf="projectContext">
+          <ng-container *ngIf="selectedEntities.length">
+            <div class="bp-cat-section-header bp-cat-section-header--sub">
+              <span class="bp-cat-section-title">SELECTED ITEMS</span>
+              <span class="bp-cat-section-count">{{ selectedEntities.length }} item{{ selectedEntities.length === 1 ? '' : 's' }}</span>
+            </div>
+            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: selectedEntities }"></ng-container>
+          </ng-container>
+          <ng-container *ngIf="wishlistEntities.length">
+            <div class="bp-cat-section-header bp-cat-section-header--sub">
+              <span class="bp-cat-section-title">WISHLIST ITEMS</span>
+              <span class="bp-cat-section-count">{{ wishlistEntities.length }} item{{ wishlistEntities.length === 1 ? '' : 's' }}</span>
+            </div>
+            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: wishlistEntities }"></ng-container>
+          </ng-container>
+        </ng-container>
+
         <div class="bp-cat-section-header">
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
@@ -379,10 +399,15 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
         </ng-container>
 
-        <!-- CARD GRID -->
+        <!-- CARD GRID — uses the reusable cardGridTpl so the Selected
+             and Wishlist sections above can render the same cards. -->
         <ng-container *ngIf="layout === 'card' && filteredEntities.length">
+          <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: filteredEntities }"></ng-container>
+        </ng-container>
+
+        <ng-template #cardGridTpl let-entities>
           <div class="bp-item-grid">
-            <div *ngFor="let e of filteredEntities"
+            <div *ngFor="let e of entities"
               class="bp-item-card"
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
@@ -394,10 +419,6 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
-                  <!-- v1.20: + / ♡ project-cart on the card image
-                       (agency + item + projectId). Active state fills
-                       amber for selected, red for liked — same
-                       semantics as the Estimate-tab count chips. -->
                   <button *ngIf="showCartActions" type="button"
                           class="bp-grid-action-btn"
                           [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
@@ -440,7 +461,7 @@ export type DetailMode = 'inline' | 'drawer';
               </div>
             </div>
           </div>
-        </ng-container>
+        </ng-template>
 
         <!-- TABLE VIEW — projected when useCustomMain, otherwise a basic
              auto-table generated from entities[]. -->
@@ -2238,6 +2259,30 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get ctxStatusCode(): string | null {
     if (this.panelContext !== 'project') return null;
     return (this.currentProjectCategory as any)?.status_code || null;
+  }
+
+  /** v1.65i — entities matching project_items selection_type. Used to
+      render Selected + Wishlist sections above the main results grid
+      (project context only). Filters by activeCategory like the main
+      grid so a category-scoped view only shows that category's
+      selections. */
+  get selectedEntities(): CatalogueEntity[] {
+    if (!this.projectContext) return [];
+    const ids = new Set(
+      (this.projectItems || [])
+        .filter(pi => pi.selection_type === 'selected')
+        .map(pi => pi.item_id)
+    );
+    return this.filteredEntities.filter(e => ids.has(e.id));
+  }
+  get wishlistEntities(): CatalogueEntity[] {
+    if (!this.projectContext) return [];
+    const ids = new Set(
+      (this.projectItems || [])
+        .filter(pi => pi.selection_type === 'liked')
+        .map(pi => pi.item_id)
+    );
+    return this.filteredEntities.filter(e => ids.has(e.id));
   }
 
   /** v1.65g — All-view totals (project Marketplace summary panel). */

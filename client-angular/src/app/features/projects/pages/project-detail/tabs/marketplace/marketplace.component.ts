@@ -63,7 +63,7 @@ import {
       [categories]="categories"
       entityType="item"
       entityLabel="item"
-      sectionTitle="CATALOGUE"
+      sectionTitle="RESULTS"
       actionLabel="View item"
       detailSize="lg"
       [showAdd]="true"
