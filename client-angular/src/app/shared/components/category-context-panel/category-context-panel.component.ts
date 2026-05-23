@@ -87,53 +87,54 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </span>
         </div>
 
-        <!-- v1.65z — Budget / Estimate / Status rendered as stats (label
-             above value), not pills. Same typography as the Overview
-             event strip (REF / WA-016 style): theme-accent eyebrow above
-             primary-text value. Click the value to edit; the value swaps
-             to an input / dropdown in place, no shape change. -->
-        <div class="bp-ctx-stats" *ngIf="context === 'project'">
-          <div class="bp-ctx-stat">
-            <span class="bp-ctx-stat-l">BUDGET</span>
-            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
-                  *ngIf="!editingBudget"
-                  (click)="startEditBudget()"
-                  title="Click to edit">{{ (budgetPrice || 0) | gbp }}</span>
-            <span class="bp-ctx-stat-v" *ngIf="editingBudget">
-              <span class="bp-ctx-stat-prefix">£</span><input
-                type="number" min="0" step="100"
-                class="bp-ctx-stat-input"
-                [(ngModel)]="budgetDraft"
-                (blur)="commitBudget()"
-                (keyup.enter)="commitBudget()"
-                (keyup.escape)="cancelBudget()"/>
-            </span>
+        <!-- v1.65aa — Budget / Estimate / Status rendered with the same
+             form-field treatment used in the Event drawer (.bp-field-label
+             + .bp-field-readonly / .bp-input-edit). Three-column grid;
+             view mode is a readonly input, click to swap to the
+             edit-mode input or dropdown — no shape change. -->
+        <div class="bp-ctx-fields" *ngIf="context === 'project'">
+          <div class="bp-evd-field">
+            <label class="bp-field-label">Budget</label>
+            <input pInputText *ngIf="!editingBudget"
+                   readonly
+                   class="w-full bp-field-readonly bp-ctx-field-clickable"
+                   [value]="(budgetPrice || 0) | gbp"
+                   (click)="startEditBudget()"
+                   title="Click to edit"/>
+            <input pInputText *ngIf="editingBudget"
+                   type="number" min="0" step="100"
+                   class="w-full bp-input-edit"
+                   [(ngModel)]="budgetDraft"
+                   (blur)="commitBudget()"
+                   (keyup.enter)="commitBudget()"
+                   (keyup.escape)="cancelBudget()"/>
           </div>
 
-          <div class="bp-ctx-stat">
-            <span class="bp-ctx-stat-l">ESTIMATE</span>
-            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
-                  *ngIf="!editingEstimate"
-                  (click)="startEditEstimate()"
-                  title="Click to edit">{{ (estimatePrice || 0) | gbp }}</span>
-            <span class="bp-ctx-stat-v" *ngIf="editingEstimate">
-              <span class="bp-ctx-stat-prefix">£</span><input
-                type="number" min="0" step="100"
-                class="bp-ctx-stat-input"
-                [(ngModel)]="estimateDraft"
-                (blur)="commitEstimate()"
-                (keyup.enter)="commitEstimate()"
-                (keyup.escape)="cancelEstimate()"/>
-            </span>
+          <div class="bp-evd-field">
+            <label class="bp-field-label">Estimate</label>
+            <input pInputText *ngIf="!editingEstimate"
+                   readonly
+                   class="w-full bp-field-readonly bp-ctx-field-clickable"
+                   [value]="(estimatePrice || 0) | gbp"
+                   (click)="startEditEstimate()"
+                   title="Click to edit"/>
+            <input pInputText *ngIf="editingEstimate"
+                   type="number" min="0" step="100"
+                   class="w-full bp-input-edit"
+                   [(ngModel)]="estimateDraft"
+                   (blur)="commitEstimate()"
+                   (keyup.enter)="commitEstimate()"
+                   (keyup.escape)="cancelEstimate()"/>
           </div>
 
-          <div class="bp-ctx-stat bp-ctx-stat--right"
-               *ngIf="categoryStatuses.length">
-            <span class="bp-ctx-stat-l">STATUS</span>
-            <span class="bp-ctx-stat-v bp-ctx-stat-v--editable"
-                  *ngIf="!editingStatus"
-                  (click)="startEditStatus()"
-                  title="Click to change status">{{ statusLabel() }}</span>
+          <div class="bp-evd-field" *ngIf="categoryStatuses.length">
+            <label class="bp-field-label">Status</label>
+            <input pInputText *ngIf="!editingStatus"
+                   readonly
+                   class="w-full bp-field-readonly bp-ctx-field-clickable"
+                   [value]="statusLabel()"
+                   (click)="startEditStatus()"
+                   title="Click to change status"/>
             <p-dropdown *ngIf="editingStatus"
                         [options]="categoryStatuses"
                         [ngModel]="statusCode"
@@ -141,7 +142,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
                         (onHide)="editingStatus = false"
                         optionLabel="label" optionValue="code"
                         appendTo="body"
-                        styleClass="bp-ctx-status-dd-plain"
+                        styleClass="w-full bp-evd-dropdown"
                         [autoDisplayFirst]="false"
                         placeholder="—"></p-dropdown>
           </div>
@@ -337,86 +338,24 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       background: #fff;
     }
 
-    /* v1.65z — Budget / Estimate / Status as STATS (not pills). Same
-       eyebrow + value typography as the Overview event strip
-       (REF / WA-016) — theme-accent uppercase eyebrow above primary-
-       text value. No chip chrome, no background. Status sits to the
-       right of the row (margin-left: auto on the third stat). */
-    .bp-ctx-stats {
-      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px;
+    /* v1.65aa — Budget / Estimate / Status row uses the Event drawer's
+       form-field treatment (bp-field-label above bp-field-readonly).
+       3-column grid keeps Status on the right naturally. Readonly view
+       gets a click hint so the user knows it's editable. */
+    .bp-ctx-fields {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
       padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
     }
-    .bp-ctx-stat {
-      display: flex; flex-direction: column; gap: 2px;
-      min-width: 0;
+    /* Click affordance on the readonly view-mode inputs. The global
+       bp-field-readonly rule sets cursor: default — override here to
+       make these specific instances feel actionable. */
+    :host ::ng-deep .bp-ctx-field-clickable.p-inputtext {
+      cursor: pointer !important;
     }
-    .bp-ctx-stat--right { margin-left: auto; align-items: flex-end; }
-    .bp-ctx-stat-l {
-      font-family: var(--font-body);
-      font-size: 10px; font-weight: 500;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      color: var(--theme-accent);
+    :host ::ng-deep .bp-ctx-field-clickable.p-inputtext:hover {
+      border-color: var(--theme-accent) !important;
+      background: var(--theme-bg) !important;
     }
-    .bp-ctx-stat-v {
-      font-family: var(--font-body);
-      font-size: 14px; font-weight: 500; line-height: 1.3;
-      color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-      display: inline-flex; align-items: baseline;
-    }
-    .bp-ctx-stat-v--editable {
-      cursor: pointer;
-      border-radius: 3px;
-      padding: 0 2px; margin: 0 -2px;
-      transition: background 0.15s;
-    }
-    .bp-ctx-stat-v--editable:hover {
-      background: var(--theme-bg);
-    }
-    .bp-ctx-stat-prefix {
-      font-size: 14px; font-weight: 500;
-      color: var(--color-text-primary);
-      margin-right: 1px;
-    }
-    .bp-ctx-stat-input {
-      width: 64px;
-      border: none; outline: none; background: transparent;
-      font-family: var(--font-body); font-size: 14px;
-      font-weight: 500; color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
-      padding: 0; margin: 0;
-      line-height: inherit;
-      border-bottom: 1px solid var(--theme-accent);
-    }
-    .bp-ctx-stat-input::-webkit-outer-spin-button,
-    .bp-ctx-stat-input::-webkit-inner-spin-button {
-      -webkit-appearance: none; margin: 0;
-    }
-    .bp-ctx-stat-input { -moz-appearance: textfield; }
-
-    /* Borderless dropdown — looks like text + chevron so the status
-       editor matches the eyebrow/value typography. */
-    :host ::ng-deep .bp-ctx-status-dd-plain.p-dropdown {
-      background: transparent !important;
-      border: none !important;
-      border-bottom: 1px solid var(--theme-accent) !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      min-width: 100px; height: 22px;
-    }
-    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-label {
-      padding: 0 4px 0 0;
-      font-family: var(--font-body);
-      font-size: 14px; font-weight: 500;
-      color: var(--color-text-primary);
-      line-height: 22px;
-    }
-    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-trigger {
-      width: 18px;
-      color: var(--theme-accent);
-    }
-    :host ::ng-deep .bp-ctx-status-dd-plain .p-dropdown-trigger-icon { font-size: 10px; }
 
     /* v1.65x — cart icon + count badge on the pink header. Replaces
        nothing visually (the status pill moved to the badge row in

@@ -730,22 +730,28 @@ export type DetailMode = 'inline' | 'drawer';
                       *ngIf="allSelectedCount">{{ allSelectedCount }}</span>
               </span>
             </div>
-            <!-- v1.65z — Budget / Estimate / Status as stats (REF /
-                 WA-016 style), not pills. Aggregates across categories;
-                 status is project-level. Display-only for now. -->
-            <div class="bp-allctx-stats">
-              <div class="bp-allctx-stat">
-                <span class="bp-allctx-stat-l">BUDGET</span>
-                <span class="bp-allctx-stat-v">{{ allBudgetTotal | gbp }}</span>
+            <!-- v1.65aa — Budget / Estimate / Status using the Event
+                 drawer's form-field treatment (bp-field-label above
+                 bp-field-readonly). 3-column grid; display-only for
+                 the All view. -->
+            <div class="bp-allctx-fields">
+              <div class="bp-evd-field">
+                <label class="bp-field-label">Budget</label>
+                <input pInputText readonly
+                       class="w-full bp-field-readonly"
+                       [value]="allBudgetTotal | gbp"/>
               </div>
-              <div class="bp-allctx-stat">
-                <span class="bp-allctx-stat-l">ESTIMATE</span>
-                <span class="bp-allctx-stat-v">{{ allEstimateTotal | gbp }}</span>
+              <div class="bp-evd-field">
+                <label class="bp-field-label">Estimate</label>
+                <input pInputText readonly
+                       class="w-full bp-field-readonly"
+                       [value]="allEstimateTotal | gbp"/>
               </div>
-              <div class="bp-allctx-stat bp-allctx-stat--right"
-                   *ngIf="projectStatusLabel">
-                <span class="bp-allctx-stat-l">STATUS</span>
-                <span class="bp-allctx-stat-v">{{ projectStatusLabel }}</span>
+              <div class="bp-evd-field" *ngIf="projectStatusLabel">
+                <label class="bp-field-label">Status</label>
+                <input pInputText readonly
+                       class="w-full bp-field-readonly"
+                       [value]="projectStatusLabel"/>
               </div>
             </div>
             <!-- v1.65o — project details strip. Same fields as the
@@ -1333,31 +1339,12 @@ export type DetailMode = 'inline' | 'drawer';
       font-variant-numeric: tabular-nums;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    /* v1.65z — Budget / Estimate / Status row as stats (no pill chrome).
-       Same eyebrow + value typography as the project details strip
-       below (REF / WA-016 style). Status uses --right to push it to the
-       far end of the row, value right-aligned to match. */
-    .bp-allctx-stats {
-      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px;
+    /* v1.65aa — Budget / Estimate / Status using the Event drawer's
+       form-field treatment (.bp-field-label + .bp-field-readonly).
+       Three-column grid; matches the per-cat panel. */
+    .bp-allctx-fields {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
       padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-allctx-stat {
-      display: flex; flex-direction: column; gap: 2px;
-      min-width: 0;
-    }
-    .bp-allctx-stat--right { margin-left: auto; align-items: flex-end; }
-    .bp-allctx-stat-l {
-      font-family: var(--font-body);
-      font-size: 10px; font-weight: 500;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      color: var(--theme-accent);
-    }
-    .bp-allctx-stat-v {
-      font-family: var(--font-body);
-      font-size: 14px; font-weight: 500; line-height: 1.3;
-      color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
     }
     .bp-allctx-brief { padding: 14px 16px; }
     .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }
