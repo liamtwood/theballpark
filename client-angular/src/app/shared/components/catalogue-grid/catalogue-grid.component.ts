@@ -112,6 +112,17 @@ export type DetailMode = 'inline' | 'drawer';
           <lucide-icon name="search" [size]="15"></lucide-icon>
         </button>
       </div>
+      <!-- v1.65k — AI Recommend: runs the Plan-tab matcher against the
+           active category's brief and surfaces an AI RECOMMENDATIONS
+           section in the centre column. Project context only. -->
+      <button *ngIf="canRecommend" type="button"
+              class="bp-strip-recommend"
+              [disabled]="recommending"
+              [title]="'Recommend items from the catalogue based on this category\\'s brief'"
+              (click)="recommendItems()">
+        <lucide-icon name="sparkles" [size]="14"></lucide-icon>
+        {{ recommending ? 'Recommending…' : 'Recommend' }}
+      </button>
     </div>
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
@@ -306,6 +317,21 @@ export type DetailMode = 'inline' | 'drawer';
              v1.65j — always shown; empty state "no items yet" when the
              section has nothing. -->
         <ng-container *ngIf="projectContext">
+          <!-- v1.65k — AI RECOMMENDATIONS. Surfaced only when the user has
+               clicked Recommend (recommendedEntities is non-empty); we
+               don't render an empty heading because it's a discretionary,
+               on-demand action rather than a default section. -->
+          <ng-container *ngIf="recommendedEntities.length">
+            <div class="bp-cat-section-header bp-cat-section-header--sub bp-cat-section-header--ai">
+              <span class="bp-cat-section-title">
+                <lucide-icon name="sparkles" [size]="14"></lucide-icon>
+                AI RECOMMENDATIONS
+              </span>
+              <span class="bp-cat-section-count">{{ recommendedEntities.length }} item{{ recommendedEntities.length === 1 ? '' : 's' }}</span>
+            </div>
+            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: recommendedEntities }"></ng-container>
+          </ng-container>
+
           <div class="bp-cat-section-header bp-cat-section-header--sub">
             <span class="bp-cat-section-title">SELECTED ITEMS</span>
             <span class="bp-cat-section-count">{{ selectedEntities.length }} item{{ selectedEntities.length === 1 ? '' : 's' }}</span>
@@ -771,7 +797,8 @@ export type DetailMode = 'inline' | 'drawer';
        v1.65e — tightened padding + font, longer bar, no pink focus
        ring or rounded inner segments. */
     .bp-strip-bar {
-      display: flex; justify-content: center;
+      display: flex; justify-content: center; align-items: center;
+      gap: 12px;
       padding: 10px 28px; border-bottom: 0.5px solid var(--color-border);
     }
     .bp-strip-search {
@@ -820,6 +847,38 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-strip-search-btn:hover { filter: brightness(0.92); }
     .bp-strip-search-btn lucide-icon { display: inline-flex; }
+
+    /* v1.65k — AI Recommend pill in the strip bar. Outlined accent
+       button (matches the AI/match aesthetic on the Plan tab) that
+       fires the same /taxonomy/match-items matcher and pops an
+       AI RECOMMENDATIONS section above SELECTED ITEMS. */
+    .bp-strip-recommend {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border: 0.5px solid var(--theme-accent);
+      border-radius: var(--radius-input);
+      background: var(--color-surface);
+      color: var(--theme-accent);
+      font-family: var(--font-body); font-size: var(--text-xs);
+      font-weight: 500;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, color 0.15s, filter 0.15s;
+    }
+    .bp-strip-recommend:hover:not(:disabled) {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-strip-recommend:disabled { opacity: 0.6; cursor: progress; }
+    .bp-strip-recommend lucide-icon { display: inline-flex; }
+
+    /* v1.65k — AI RECOMMENDATIONS section heading (sparkles + accent). */
+    .bp-cat-section-header--ai .bp-cat-section-title {
+      color: var(--theme-accent);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .bp-cat-section-header--ai .bp-cat-section-title lucide-icon {
+      display: inline-flex;
+    }
 
     /* v1.41 — subcategory chip pill (kept; used in the strip bar). */
     .bp-subcat-chip {
@@ -2292,6 +2351,56 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         .map(pi => pi.item_id)
     );
     return this.filteredEntities.filter(e => ids.has(e.id));
+  }
+
+  /** v1.65k — AI Recommend. Re-uses the Plan-tab matcher
+      (POST /taxonomy/match-items) which scores existing catalogue items
+      against the project_category's requirement_brief. Returned item_ids
+      are stashed in recommendedIds and surfaced as an "AI RECOMMENDATIONS"
+      section in the centre column. Project context + a non-"all"
+      category + a non-empty brief are all required. */
+  recommending = false;
+  recommendedIds = new Set<string>();
+
+  get canRecommend(): boolean {
+    if (!this.projectContext) return false;
+    if (this.activeCategory === 'all') return false;
+    const brief = (this.currentProjectCategory?.requirement_brief || '').trim();
+    return !!brief;
+  }
+
+  get recommendedEntities(): CatalogueEntity[] {
+    if (!this.recommendedIds.size) return [];
+    return this.filteredEntities.filter(e => this.recommendedIds.has(e.id));
+  }
+
+  recommendItems(): void {
+    if (this.recommending) return;
+    const pc = this.currentProjectCategory;
+    if (!pc) return;
+    const brief = (pc.requirement_brief || '').trim();
+    if (!brief) return;
+    this.recommending = true;
+    this.cdr.detectChanges();
+    this.api.post<any>('/taxonomy/match-items', {
+      brief,
+      categoryId: pc.category_id,
+      projectId: this.projectContext?.projectId,
+      budgetEstimate: pc.ballpark_budget != null ? Number(pc.ballpark_budget) : undefined
+    }).subscribe({
+      next: r => {
+        const ids = new Set<string>();
+        (r?.matched_items || []).forEach((m: any) => { if (m?.item_id) ids.add(m.item_id); });
+        if (r?.closest_item?.item_id) ids.add(r.closest_item.item_id);
+        this.recommendedIds = ids;
+        this.recommending = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.recommending = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   /** v1.65g — All-view totals (project Marketplace summary panel). */
