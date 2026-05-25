@@ -18,16 +18,13 @@ import { MessagesInboxComponent } from '../../../../../../shared/components/mess
   standalone: true,
   imports: [CommonModule, MessagesInboxComponent],
   template: `
-    <h2 class="bp-page-title">Messages</h2>
-    <div class="bp-page-divider"></div>
     <app-messages-inbox [boundProjectId]="pid"></app-messages-inbox>
   `,
   styles: [`
     :host { display: block; }
-    /* v1.26c: breathing room between the tab bar and the page title —
-       Messages has no outer padded wrapper because messages-inbox is
-       full-bleed, so the title needs its own top margin. */
-    :host .bp-page-title { margin-top: var(--section-pad); }
+    /* v1.65al — "Messages" page title removed. Tab label "Inbox" +
+       project hero already communicate context; the column head's
+       inbox icon + thread count handles the page-level eyebrow. */
   `]
 })
 export class MessagesComponent implements OnInit {
