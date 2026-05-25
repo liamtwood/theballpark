@@ -27,6 +27,9 @@ import {
 import {
   EventDrawerComponent
 } from '../event-drawer/event-drawer.component';
+import {
+  CartDrawerComponent
+} from '../cart-drawer/cart-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -34,7 +37,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -188,6 +191,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          summary panel, and any future surface via
          EventDrawerService.open(projectId, section?). -->
     <app-event-drawer></app-event-drawer>
+
+    <!-- v1.65ab: single shared "Project Items" cart drawer. Opened from
+         the project Marketplace cart icon via
+         CartDrawerService.open(projectId). Shows selected + wishlist
+         project_items with a description tooltip on hover. -->
+    <app-cart-drawer></app-cart-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

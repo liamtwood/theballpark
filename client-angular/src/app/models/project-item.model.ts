@@ -31,4 +31,11 @@ export interface ProjectItem {
       render an icon next to the project_item's category without a
       separate categories lookup. */
   category_icon_name?: string;
+  /** v1.65ab: joined fields powering the Project Items cart drawer.
+      description → hover tooltip in the SELECTED rows.
+      supplier_cover_url → second fallback for the image thumbnail.
+      category_icon_color → third fallback (solid colour swatch). */
+  description?: string;
+  supplier_cover_url?: string;
+  category_icon_color?: string;
 }

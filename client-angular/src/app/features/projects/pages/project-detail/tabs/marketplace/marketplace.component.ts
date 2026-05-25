@@ -16,6 +16,7 @@ import { OrgService } from '../../../../../../core/services/org.service';
 import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
 import { EventDrawerService } from '../../../../../../core/services/event-drawer.service';
 import { AddCategoryService } from '../../../../../../core/services/add-category.service';
+import { CartDrawerService } from '../../../../../../core/services/cart-drawer.service';
 import {
   Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
   Item, ProjectItem
@@ -168,6 +169,7 @@ export class MarketplaceComponent implements OnInit {
     private estimateDrawer: EstimateDrawerService,
     private eventDrawer: EventDrawerService,
     private addCategorySvc: AddCategoryService,
+    private cartDrawerSvc: CartDrawerService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -204,6 +206,13 @@ export class MarketplaceComponent implements OnInit {
         this.rebuildContext();
         this.cdr.detectChanges();
       }
+    });
+
+    // v1.65ab — when the cart drawer mutates project_items (remove or
+    // promote), refresh the local cart cache so cards + cart badge stay
+    // in sync.
+    this.cartDrawerSvc.changed$.subscribe(({ projectId }) => {
+      if (projectId === this.projectId) this.refreshCart();
     });
 
     forkJoin({

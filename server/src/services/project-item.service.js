@@ -19,9 +19,14 @@ async function getByProject(projectId) {
   // v1.23: also return c.icon_name AS category_icon_name so the
   // shared category-card-header can render an icon when the project_item
   // is grouped without re-joining categories on the client.
+  // v1.65ab — also return i.description and the supplier/category cover
+  // assets so the Project Items cart drawer can show the hover-description
+  // tooltip and walk the image fallback chain
+  // (item.image_url → supplier cover → category icon colour).
   const result = await pool.query(
     `SELECT pi.*,
             i.name,
+            i.description,
             i.base_price,
             i.unit,
             i.time_unit,
@@ -31,7 +36,9 @@ async function getByProject(projectId) {
             i.category_id     AS item_category_id,
             c.name            AS category_name,
             c.icon_name       AS category_icon_name,
-            o.name            AS supplier_name
+            c.icon_color      AS category_icon_color,
+            o.name            AS supplier_name,
+            o.cover_image_url AS supplier_cover_url
        FROM project_items pi
        LEFT JOIN items      i ON pi.item_id     = i.id
        LEFT JOIN categories c ON i.category_id  = c.id

@@ -25,6 +25,7 @@ import { CodelistService } from '../../../core/services/codelist.service';
 import { ApiService } from '../../../core/services/api.service';
 import { OutreachService } from '../../../core/services/outreach.service';
 import { EventDrawerService } from '../../../core/services/event-drawer.service';
+import { CartDrawerService } from '../../../core/services/cart-drawer.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -341,27 +342,10 @@ export type DetailMode = 'inline' | 'drawer';
             <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: recommendedEntities }"></ng-container>
           </ng-container>
 
-          <div class="bp-cat-section-header bp-cat-section-header--sub">
-            <span class="bp-cat-section-title">SELECTED ITEMS</span>
-            <span class="bp-cat-section-count">{{ selectedEntities.length }} item{{ selectedEntities.length === 1 ? '' : 's' }}</span>
-          </div>
-          <ng-container *ngIf="selectedEntities.length; else noSelected">
-            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: selectedEntities }"></ng-container>
-          </ng-container>
-          <ng-template #noSelected>
-            <div class="bp-cat-section-empty">No items yet — add items from the catalogue below.</div>
-          </ng-template>
-
-          <div class="bp-cat-section-header bp-cat-section-header--sub">
-            <span class="bp-cat-section-title">WISHLIST ITEMS</span>
-            <span class="bp-cat-section-count">{{ wishlistEntities.length }} item{{ wishlistEntities.length === 1 ? '' : 's' }}</span>
-          </div>
-          <ng-container *ngIf="wishlistEntities.length; else noWishlist">
-            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: wishlistEntities }"></ng-container>
-          </ng-container>
-          <ng-template #noWishlist>
-            <div class="bp-cat-section-empty">No items yet — heart an item to save it here.</div>
-          </ng-template>
+          <!-- v1.65ab — SELECTED ITEMS + WISHLIST ITEMS sections moved
+               into the shared Project Items cart drawer (CartDrawerService).
+               Opened from the cart icon in the All-view header. Centre
+               column now shows only Proposed (AI) + Catalogue items. -->
         </ng-container>
 
         <div class="bp-cat-section-header">
@@ -722,13 +706,18 @@ export type DetailMode = 'inline' | 'drawer';
               <div class="bp-allctx-head-name">Project Summary</div>
               <!-- v1.65y — edit pencil removed (deferred). Cart icon +
                    count badge in its spot, matching the per-cat panel.
-                   Count is total selected items across every category. -->
-              <span class="bp-allctx-cart"
-                    [attr.title]="allSelectedCount + ' item' + (allSelectedCount === 1 ? '' : 's') + ' in cart'">
+                   Count is total selected items across every category.
+                   v1.65ab — click opens the shared Project Items drawer
+                   (CartDrawerService). Badge counts ALL project_items
+                   (selected + wishlist) so the user sees a full inbox. -->
+              <button type="button"
+                      class="bp-allctx-cart"
+                      [attr.title]="allCartCount + ' item' + (allCartCount === 1 ? '' : 's') + ' in cart'"
+                      (click)="openCartDrawer()">
                 <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
                 <span class="bp-allctx-cart-badge"
-                      *ngIf="allSelectedCount">{{ allSelectedCount }}</span>
-              </span>
+                      *ngIf="allCartCount">{{ allCartCount }}</span>
+              </button>
             </div>
             <!-- v1.65aa — Budget / Estimate / Status using the Event
                  drawer's form-field treatment (bp-field-label above
@@ -1300,7 +1289,13 @@ export type DetailMode = 'inline' | 'drawer';
       flex-shrink: 0;
       color: #fff;
       padding: 2px;
+      /* v1.65ab — promoted from <span> to <button>; reset native chrome. */
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.12s;
     }
+    .bp-allctx-cart:hover { opacity: 0.78; }
     .bp-allctx-cart lucide-icon { display: inline-flex; }
     .bp-allctx-cart-badge {
       position: absolute;
@@ -2006,8 +2001,16 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     private codelistSvc: CodelistService,
     private api: ApiService,
     private outreach: OutreachService,
-    private eventDrawerSvc: EventDrawerService
+    private eventDrawerSvc: EventDrawerService,
+    private cartDrawerSvc: CartDrawerService
   ) {}
+
+  /** v1.65ab — open the shared Project Items cart drawer. Wired to the
+      shopping-cart icon in the All-view header (and any future trigger). */
+  openCartDrawer(): void {
+    const pid = this.projectContext?.projectId;
+    if (pid) this.cartDrawerSvc.open(pid);
+  }
 
   /** v1.65o — opens the shared Event drawer in 'details' edit mode so
       the user can edit project details / brief from the catalogue's
@@ -2609,6 +2612,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
   get allLikedCount(): number {
     return (this.projectItems || []).filter(pi => pi.selection_type === 'liked').length;
+  }
+  /** v1.65ab — total project_items (selected + wishlist) for the cart
+      icon badge. Drives the "Your selections" drawer trigger. */
+  get allCartCount(): number {
+    return (this.projectItems || []).length;
   }
   /** v1.65w — project_status label for the All-view status pill.
       Project pushes status_name or status_code on its model; we accept
