@@ -44,6 +44,7 @@ import {
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
+          [showConfigStrip]="true"
           [circleSize]="circleSize"
           [detailSize]="detailSize"
           [detailMode]="detailMode"

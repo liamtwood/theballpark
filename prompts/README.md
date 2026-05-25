@@ -19,12 +19,15 @@ When picking up a task, read the `-prompt.md` and open the matching `-mockup.htm
 - Prompts are styling/layout scoped unless they say otherwise — don't change data flow or business logic.
 - Theme colours (`--theme-*`) recolour with the admin preset; semantic colours (`--color-action/waiting/quoted/booked`, success/danger) do not.
 - Icons are Lucide only, via `lucide-angular` — never Tabler or any other set.
+- **Never edit a prompt once written.** To change or fix something, create a new numbered prompt that supersedes it. A prompt always means one fixed thing.
+- A prompt usually pairs with its own `-mockup.html`, but a follow-up/fix prompt may instead reference an earlier mockup as its target (note that in the prompt and the Index row).
 
 ## Index
 
 | ID | Status | Work |
 |----|--------|------|
 | p0001 | Done | Search-panel standardisation across Marketplace + Messages, and the Messages styling pass (panel containment, sticky headers, shared list-row card, elevation-token migration). |
+| p0002 | Done | Styling fixes after p0001's first pass — white search panel, stray container removed, panel-header divider alignment, header icons de-circled, active category circle. Prompt only; uses the p0001 mockup as its target. |
 
 Statuses: **Draft** (still being written) · **Ready** (ready to implement) · **Done** (implemented).
 

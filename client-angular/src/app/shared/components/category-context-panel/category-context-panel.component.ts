@@ -65,14 +65,13 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
              the subtotal block; counts are surfaced on the tab
              chips). Matches approved mockup. -->
         <div class="bp-ctx-head">
-          <div class="bp-ctx-head-icon">
-            <lucide-icon *ngIf="category?.icon_name"
-                         [name]="category.icon_name"
-                         [size]="18"></lucide-icon>
-            <span *ngIf="!category?.icon_name" class="bp-ctx-head-letter">
-              {{ (category?.name || '?').charAt(0) }}
-            </span>
-          </div>
+          <lucide-icon *ngIf="category?.icon_name"
+                       [name]="category.icon_name"
+                       [size]="13"
+                       class="bp-ctx-head-icon"></lucide-icon>
+          <span *ngIf="!category?.icon_name" class="bp-ctx-head-letter">
+            {{ (category?.name || '?').charAt(0) }}
+          </span>
           <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
           <!-- v1.65x — cart icon + count of selected items for this
                category. v1.65ac — click opens the shared Project Items
@@ -307,30 +306,33 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
        block below (border-top there) so the row sits clean. */
     /* v1.65ag — saturated theme-accent header replaced by a calm
        eyebrow strip matching the Project Summary panel: surface bg,
-       --theme-text label, hairline divider below. */
+       --theme-text label, hairline divider below.
+       v1.65am (p0002 #3) — fixed 44px height to align dividers across
+       the row. */
     .bp-ctx-head {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
+      gap: 7px;
+      height: 44px;
+      padding: 0 14px;
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
-    }
-    .bp-ctx-head-icon {
-      width: 28px;
-      height: 28px;
       flex-shrink: 0;
-      border-radius: 50%;
-      background: var(--theme-soft);
+    }
+    /* v1.65am (p0002 #4) — circle stripped from the per-category
+       panel-head icon: plain inline Lucide icon next to the category
+       name. Letter variant retained for categories with no icon — it
+       sits inline at small font size. */
+    .bp-ctx-head-icon {
       color: var(--theme-accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-shrink: 0;
+      display: inline-flex;
     }
     .bp-ctx-head-letter {
       font-family: var(--font-display);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
+      color: var(--theme-accent);
     }
     .bp-ctx-head-name {
       flex: 1;

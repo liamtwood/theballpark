@@ -704,7 +704,22 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circle-icon       { color: var(--theme-accent); }
 .bp-cat-circle-lucide     { color: var(--color-text-muted); }
 .bp-cat-circle-logo-img   { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
-.bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent), var(--shadow-sm); }
+/* v1.65am (p0002 #8) — active category circle: SOLID --theme-accent
+   fill with white-rendered contents. Unmistakable active state. The
+   "+ Add category" circle stays distinct via its plus icon and end-
+   of-row position. */
+.bp-cat-circle-btn.active .bp-cat-circle {
+  background-color: var(--theme-accent) !important;
+  background-image: none !important;
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 0.5px var(--theme-accent), var(--shadow-sm);
+  color: var(--color-surface);
+}
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-icon,
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-lucide,
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-initials {
+  color: var(--color-surface);
+}
 .bp-cat-circle-label      { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
 .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
 /* v1.28a: edit-pencil overlay — hidden until the circle is hovered.
@@ -750,8 +765,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
   grid-template-columns: 260px 1fr;
   height: calc(100vh - var(--nav-height) - 160px);
   background: var(--theme-bg);
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
@@ -778,9 +793,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow: hidden;
   min-height: 0;
 }
+/* v1.65am (p0002 #3) — panel heads share one fixed height so their
+   hairline dividers line up across FILTER / RESULTS / PROJECT SUMMARY. */
 .bp-cat-sidebar-head {
   flex-shrink: 0;
-  padding: 14px 16px 10px;
+  height: 44px;
+  padding: 0 14px;
   border-bottom: var(--border-hairline);
   display: flex;
   align-items: center;
@@ -811,10 +829,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
   min-width: 0;
   min-height: 0;
 }
+/* v1.65am (p0002 #3) — same fixed 44px head height as the sidebar
+   for divider alignment. */
 .bp-cat-main-head {
   flex-shrink: 0;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 16px 24px 12px;
+  height: 44px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
   border-bottom: var(--border-hairline);
 }
 .bp-cat-main-body {
@@ -878,27 +899,36 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* ── v1.65aj (p0001) — SHARED BROWSE + SEARCH PANELS ────────────────
    Standalone contained panels used by catalogue-grid AND messages-inbox.
    Lived component-scoped in catalogue-grid; promoted here so the
-   Messages tab inherits the identical chrome. */
+   Messages tab inherits the identical chrome.
+   v1.65am (p0002 #9) — side margins reduced (16 → 12) and vertical
+   padding tightened so the circles row reads as a band, not a tall
+   panel with wide gutters. */
 .bp-browse-panel {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  margin: 16px 16px 0;
-  padding: 16px 0 0;
+  margin: 12px 12px 0;
+  padding: 12px 0 4px;
   overflow: hidden;
 }
+/* v1.65am (p0002 #1, #6) — search panel is a plain white surface
+   panel matching the others (no theme tint). Vertical padding tightened
+   to match the panel-head rhythm — the input is 12px text. */
 .bp-search-panel {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  margin: 12px 16px 0;
-  padding: 10px 14px;
+  margin: 12px 12px 0;
+  padding: 6px 10px;
 }
+/* v1.65am (p0002 #5) — the search row becomes the input field container
+   inside the (white) panel: --theme-soft fill + hairline. Reads as an
+   input rather than floating placeholder text. */
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
-  background: var(--theme-bg);
+  background: var(--theme-soft);
   border: var(--border-hairline);
   border-radius: var(--radius-button);
   padding: 8px 12px;
@@ -944,6 +974,17 @@ input.bp-cfg-page-label.p-inputtext:focus {
 
 /* ── View toggle (list / card / table) ── */
 .bp-view-toggle { display: flex; gap: 4px; }
+/* v1.65am (p0002 #7) — hairline divider used between distinct control
+   clusters in a panel head (e.g. Recommend ▏view toggle). Inline,
+   half-height of the head. */
+.bp-head-sep {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
 .bp-view-btn {
   width: 30px; height: 30px; border-radius: 6px;
   border: 0.5px solid var(--color-border);

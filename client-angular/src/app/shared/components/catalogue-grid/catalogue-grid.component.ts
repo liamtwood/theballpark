@@ -43,8 +43,11 @@ export type DetailMode = 'inline' | 'drawer';
   ],
   template: `
     <!-- CONFIG STRIP — toggled from cog in top-nav. Page projects its own
-         control widgets via [config-content]. -->
-    <app-config-strip>
+         control widgets via [config-content]. v1.65am (p0002 #2) —
+         opt-in via [showConfigStrip]="true" so consumers that don't
+         project anything (Marketplace, Messages) don't render an empty
+         host element above the category-circles panel. -->
+    <app-config-strip *ngIf="showConfigStrip">
       <ng-content select="[config-content]"></ng-content>
     </app-config-strip>
 
@@ -325,6 +328,9 @@ export type DetailMode = 'inline' | 'drawer';
             <lucide-icon name="sparkles" [size]="13"></lucide-icon>
             {{ recommending ? 'Recommending…' : 'Recommend' }}
           </button>
+          <!-- v1.65am (p0002 #7) — hairline divider visually separates
+               the AI action (Recommend) from the display-mode controls. -->
+          <span *ngIf="canRecommend && showLayoutToggle" class="bp-head-sep"></span>
           <div class="bp-view-toggle" *ngIf="showLayoutToggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
@@ -724,9 +730,7 @@ export type DetailMode = 'inline' | 'drawer';
                style. Pink header · totals badge row · read-only brief. -->
           <div *ngIf="activeCategory === 'all'" class="bp-allctx">
             <div class="bp-allctx-head">
-              <div class="bp-allctx-head-icon">
-                <lucide-icon name="clipboard-list" [size]="18"></lucide-icon>
-              </div>
+              <lucide-icon name="clipboard-list" [size]="13" class="bp-allctx-head-icon"></lucide-icon>
               <div class="bp-allctx-head-name">Project Summary</div>
               <!-- v1.65y — edit pencil removed (deferred). Cart icon +
                    count badge in its spot, matching the per-cat panel.
@@ -1410,9 +1414,12 @@ export type DetailMode = 'inline' | 'drawer';
     /* v1.65ag — saturated theme-accent header replaced by a calm
        eyebrow strip. v1.65ai — head is outside the scroll container so
        the scrollbar belongs to .bp-allctx-body only. */
+    /* v1.65am (p0002 #3) — fixed 44px head matches the other panels'
+       dividers across the row. */
     .bp-allctx-head {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px;
+      display: flex; align-items: center; gap: 7px;
+      height: 44px;
+      padding: 0 14px;
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
       flex-shrink: 0;
@@ -1424,10 +1431,13 @@ export type DetailMode = 'inline' | 'drawer';
       min-height: 0;
       overflow-y: auto;
     }
+    /* v1.65am (p0002 #4) — circle removed; plain inline Lucide icon
+       beside the eyebrow. Circles are reserved for category icons and
+       avatars, never panel-header eyebrows. */
     .bp-allctx-head-icon {
-      width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
-      background: var(--theme-soft); color: var(--theme-accent);
-      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      display: inline-flex;
     }
     .bp-allctx-head-name {
       flex: 1; min-width: 0;
@@ -1709,6 +1719,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() showBack = false;
   @Input() backLabel = 'Back';
   @Input() totalCount = 0;
+
+  /** v1.65am (p0002 #2) — render the inline <app-config-strip> wrapper
+      only when a consumer actually projects [config-content] into it.
+      supplier-list and ballpark-settings/feedback set this true; the
+      Marketplace + Messages tabs leave it false so no empty host
+      element renders above their category-circles panel. */
+  @Input() showConfigStrip = false;
 
   /** v1.65aj (p0001) — placeholder for the new dedicated search panel.
       Computed from totalCount + entityLabel so the marketplace reads

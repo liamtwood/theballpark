@@ -72,6 +72,7 @@ type ViewMode = 'card' | 'list' | 'table';
         [showEdit]="false"
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
+        [showConfigStrip]="true"
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
         (categoryChanged)="onTypeFilterChanged($event)"
