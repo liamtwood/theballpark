@@ -149,6 +149,17 @@ export type DetailMode = 'inline' | 'drawer';
       <div class="bp-cat-sidebar">
         <!-- v1.65c — search moved out to the strip-bar above. -->
 
+        <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
+             head so the scrollbar starts BELOW the header rather than
+             running alongside it. Only shown when there are filters to
+             render (canFilter); other consumers without filters get no
+             panel head and the body fills the whole sidebar. -->
+        <div class="bp-cat-sidebar-head" *ngIf="canFilter">
+          <div class="bp-filter-title">FILTER</div>
+        </div>
+
+        <div class="bp-cat-sidebar-body">
+
         <!-- v1.45b — the sidebar category list is only a fallback for
              grids without the category-circle strip; when the circles
              are shown they own category navigation, so the list is
@@ -176,12 +187,8 @@ export type DetailMode = 'inline' | 'drawer';
              common groups keep a fixed position so the user always
              knows where they are. Shown only when a category is active. -->
         <ng-container *ngIf="canFilter">
-
-          <!-- v1.65u — top-level FILTER heading sits above the price /
-               dimension / supplier / event groups so the sidebar names
-               what it is. The per-group sublabels (Price / Event etc.)
-               stay below as subheadings. -->
-          <div class="bp-filter-title">FILTER</div>
+          <!-- v1.65ai — FILTER eyebrow lifted to .bp-cat-sidebar-head;
+               removed from here. -->
 
           <!-- ── GROUP 1 · PRICE ─────────────────────────────────── -->
           <div class="bp-filter-grouphdr">
@@ -303,10 +310,33 @@ export type DetailMode = 'inline' | 'drawer';
             </div>
           </div>
         </ng-container>
+        </div><!-- /.bp-cat-sidebar-body -->
       </div>
 
       <!-- ── MAIN ── -->
       <div class="bp-cat-main">
+
+        <!-- v1.65ai — RESULTS panel head. Sits outside the scrolling
+             body so the scrollbar starts BELOW the header. View toggle
+             stays anchored to the right of the RESULTS title. -->
+        <div class="bp-cat-main-head">
+          <span class="bp-cat-section-title">{{ sectionTitle }}</span>
+          <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
+          <ng-content select="[catalogue-toggles]"></ng-content>
+          <div class="bp-view-toggle" *ngIf="showLayoutToggle">
+            <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
+              <lucide-icon name="list" [size]="14"></lucide-icon>
+            </button>
+            <button class="bp-view-btn" [class.active]="layout === 'card'" (click)="layout = 'card'">
+              <lucide-icon name="layers" [size]="14"></lucide-icon>
+            </button>
+            <button class="bp-view-btn" [class.active]="layout === 'table'" (click)="layout = 'table'">
+              <lucide-icon name="table" [size]="14"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="bp-cat-main-body">
 
         <!-- BREADCRUMB — always visible. Parent segments are clickable
              when drilled and reset to top via onBreadcrumbBack(). -->
@@ -351,25 +381,10 @@ export type DetailMode = 'inline' | 'drawer';
           <!-- v1.65ab — SELECTED ITEMS + WISHLIST ITEMS sections moved
                into the shared Project Items cart drawer (CartDrawerService).
                Opened from the cart icon in the All-view header. Centre
-               column now shows only Proposed (AI) + Catalogue items. -->
+               column now shows only Proposed (AI) + Catalogue items.
+               v1.65ai — RESULTS section header lifted to .bp-cat-main-head
+               above; this is where it used to live. -->
         </ng-container>
-
-        <div class="bp-cat-section-header">
-          <span class="bp-cat-section-title">{{ sectionTitle }}</span>
-          <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
-          <ng-content select="[catalogue-toggles]"></ng-content>
-          <div class="bp-view-toggle" *ngIf="showLayoutToggle">
-            <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
-              <lucide-icon name="list" [size]="14"></lucide-icon>
-            </button>
-            <button class="bp-view-btn" [class.active]="layout === 'card'" (click)="layout = 'card'">
-              <lucide-icon name="layers" [size]="14"></lucide-icon>
-            </button>
-            <button class="bp-view-btn" [class.active]="layout === 'table'" (click)="layout = 'table'">
-              <lucide-icon name="table" [size]="14"></lucide-icon>
-            </button>
-          </div>
-        </div>
 
         <div *ngIf="!filteredEntities.length" class="bp-cat-empty">No {{ entityLabel }}s found.</div>
 
@@ -530,6 +545,7 @@ export type DetailMode = 'inline' | 'drawer';
             </table>
           </div>
         </ng-container>
+        </div><!-- /.bp-cat-main-body -->
       </div>
 
       <!-- ── RIGHT DETAIL PANEL ── -->
@@ -725,6 +741,10 @@ export type DetailMode = 'inline' | 'drawer';
                       *ngIf="allCartCount">{{ allCartCount }}</span>
               </button>
             </div>
+            <!-- v1.65ai — body wraps everything below the head so the
+                 scrollbar lives only on the body, not alongside the
+                 sticky PROJECT SUMMARY header. -->
+            <div class="bp-allctx-body">
             <!-- v1.65aa — Budget / Estimate / Status using the Event
                  drawer's form-field treatment (bp-field-label above
                  bp-field-readonly). 3-column grid; display-only for
@@ -803,6 +823,7 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
               </button>
             </div>
+            </div><!-- /.bp-allctx-body -->
           </div>
 
           <!-- v1.19: per-category branch handed off to
@@ -1011,22 +1032,14 @@ export type DetailMode = 'inline' | 'drawer';
        Same eyebrow-style typography as the .bp-cat-section-header
        title in the centre column, plus a hairline rule underneath to
        anchor it as a column header. */
-    /* v1.65ah — FILTER eyebrow pins to the top of .bp-cat-sidebar while
-       the filter groups scroll past underneath. Negative margins extend
-       the bg + hairline across the sidebar's 16px horizontal padding so
-       the strip spans the full panel width. */
+    /* v1.65ai — FILTER eyebrow moved into .bp-cat-sidebar-head; sticky
+       no longer needed (the head is structurally outside the scrolling
+       body). Just typography here. */
     .bp-filter-title {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: var(--color-surface);
       font-family: var(--font-body);
       font-size: 11px; font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--theme-accent);
-      margin: 0 -16px 10px;
-      padding: 12px 16px 8px;
-      border-bottom: var(--border-hairline);
     }
     .bp-filter-grouphdr {
       display: flex; align-items: center; justify-content: space-between;
@@ -1323,28 +1336,36 @@ export type DetailMode = 'inline' | 'drawer';
        context panel: pink header · badge row · plain brief. */
     /* v1.65ag — Project Summary panel adopts the v1.22 panel chrome:
        white surface, hairline border, --radius-card, --shadow-xs.
-       v1.65ah — scroll the panel body so the head can pin via sticky. */
+       v1.65ai — flex column with non-scrolling head + scrolling body so
+       the scrollbar starts BELOW the PROJECT SUMMARY header rather than
+       running alongside it. */
     .bp-allctx {
       font-family: var(--font-body);
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       max-height: 100%;
     }
     /* v1.65ag — saturated theme-accent header replaced by a calm
-       eyebrow strip: surface bg, --theme-text label, hairline divider.
-       v1.65ah — header sticks to the top of .bp-allctx while the body
-       (fields / details / brief / footer) scrolls underneath. */
+       eyebrow strip. v1.65ai — head is outside the scroll container so
+       the scrollbar belongs to .bp-allctx-body only. */
     .bp-allctx-head {
       display: flex; align-items: center; gap: 10px;
       padding: 14px 16px;
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
-      position: sticky;
-      top: 0;
-      z-index: 2;
+      flex-shrink: 0;
+    }
+    /* v1.65ai — scrolling body wrapper. Owns the panel's only
+       scrollbar; head sits above untouched. */
+    .bp-allctx-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
     }
     .bp-allctx-head-icon {
       width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;

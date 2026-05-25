@@ -756,22 +756,53 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
   grid-template-columns: 260px 1fr;
 }
+/* v1.65ai — sidebar + main become flex columns. Each has a fixed,
+   non-scrolling head and a flex:1 body wrapper that owns the scrollbar
+   so the scrollbar starts BELOW the sticky-equivalent header rather
+   than running alongside it. */
 .bp-cat-sidebar {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.bp-cat-sidebar-head {
+  flex-shrink: 0;
+  padding: 14px 16px 10px;
+  border-bottom: var(--border-hairline);
+}
+.bp-cat-sidebar-body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 16px;
 }
 .bp-cat-main {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  padding: 20px 24px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   min-width: 0;
+  min-height: 0;
+}
+.bp-cat-main-head {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 16px 24px 12px;
+  border-bottom: var(--border-hairline);
+}
+.bp-cat-main-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
 }
 .bp-cat-detail  { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
 
@@ -812,20 +843,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-section-header {
   display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
 }
-/* v1.65ah — main RESULTS header sticks to the top of .bp-cat-main while
-   the cards scroll past underneath. Sub-section headers (AI
-   RECOMMENDATIONS etc.) keep their normal flow so they scroll away
-   before RESULTS pins. Negative margins extend the bg + hairline across
-   .bp-cat-main's 24px horizontal padding. */
-.bp-cat-section-header:not(.bp-cat-section-header--sub) {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--color-surface);
-  margin: 0 -24px 16px;
-  padding: 16px 24px 12px;
-  border-bottom: var(--border-hairline);
-}
+/* v1.65ai — main RESULTS header lifted to .bp-cat-main-head (outside the
+   scrolling body), so the sticky rule that used to live here is gone.
+   Sub-section headers (AI RECOMMENDATIONS etc.) stay inside .bp-cat-main-body
+   and just keep their normal flow. */
 .bp-cat-section-header--sub { margin-top: 8px; }
 .bp-cat-section-header--sub + .bp-item-grid { margin-bottom: 24px; }
 .bp-cat-section-empty {
