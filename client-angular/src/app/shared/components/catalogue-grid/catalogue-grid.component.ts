@@ -74,12 +74,17 @@ export type DetailMode = 'inline' | 'drawer';
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
     </div>
 
+    <!-- v1.65ag — BROWSE CONTROLS PANEL. Wraps the category circles and
+         the strip-bar (search + Recommend) into one contained panel that
+         sits above the 3-col body. Same panel chrome as the three zones
+         below. -->
+    <div class="bp-browse-panel"
+         *ngIf="categories.length && showCategoryCircles">
     <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
          Catalogue-grid owns the data + drill/scope state; the sub-
          component owns the markup, scroll-arrow state and event wiring.
          Messages tab mounts the SAME component so the two stay aligned. -->
     <app-category-circles
-      *ngIf="categories.length && showCategoryCircles"
       [categories]="displayedCircles"
       [activeId]="circleActiveId"
       [size]="circleSize"
@@ -96,7 +101,7 @@ export type DetailMode = 'inline' | 'drawer';
          each subcat); the middle is a free-text input; the right is
          the search button. Spans the full width below the category
          circles. -->
-    <div *ngIf="categories.length && showCategoryCircles" class="bp-strip-bar">
+    <div class="bp-strip-bar">
       <div class="bp-strip-search">
         <p-dropdown *ngIf="stripDropdownOptions.length > 1"
                     [options]="stripDropdownOptions"
@@ -128,6 +133,7 @@ export type DetailMode = 'inline' | 'drawer';
         {{ recommending ? 'Recommending…' : 'Recommend' }}
       </button>
     </div>
+    </div><!-- /.bp-browse-panel -->
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
@@ -851,7 +857,21 @@ export type DetailMode = 'inline' | 'drawer';
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    /* v1.65ag — parchment page ground behind the browse panel + 3-col
+       body so each panel reads as a contained object. */
+    :host { display: block; background: var(--theme-bg); }
+
+    /* v1.65ag — BROWSE CONTROLS panel. Same chrome as the three columns
+       below (--color-surface + hairline + --radius-card + --shadow-xs). */
+    .bp-browse-panel {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      margin: 16px 16px 0;
+      padding: 16px 0 0;
+      overflow: hidden;
+    }
 
     /* v1.65d — centred segmented search bar below the category circles.
        Left: subcategory dropdown. Middle: text input. Right: search btn.
@@ -870,7 +890,9 @@ export type DetailMode = 'inline' | 'drawer';
       align-items: center;
       gap: 12px;
       padding: 10px 28px;
-      background: var(--theme-bg);
+      /* v1.65ag — strip-bar now sits inside the browse-panel so it
+         inherits --color-surface; parchment band removed. */
+      background: var(--color-surface);
     }
     .bp-strip-search {
       grid-column: 2;
@@ -1148,9 +1170,27 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
-    .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
-    .bp-item-card:hover { border-color: var(--theme-accent); }
-    .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
+    /* v1.65ag — result cards adopt the v1.22 elevation system:
+       --shadow-xs at rest, --shadow-sm + translateY(-1px) on hover.
+       Lift uses transform so there's no layout shift. */
+    .bp-item-card {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+    }
+    .bp-item-card:hover {
+      border-color: var(--theme-accent);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    .bp-item-card-selected {
+      border-color: var(--theme-accent) !important;
+      box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-accent) !important;
+    }
     /* v1.22: defensive overflow:hidden so a logo image with extreme
        aspect (e.g. the DAR Hire wide-script logo) can't escape the
        card's rounded edge. Inner img already has max-width via
@@ -1274,20 +1314,37 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* v1.65g — "All" view summary panel. Mirrors the per-category
        context panel: pink header · badge row · plain brief. */
-    .bp-allctx { font-family: var(--font-body); }
+    /* v1.65ag — Project Summary panel adopts the v1.22 panel chrome:
+       white surface, hairline border, --radius-card, --shadow-xs. */
+    .bp-allctx {
+      font-family: var(--font-body);
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+    }
+    /* v1.65ag — saturated theme-accent header replaced by a calm
+       eyebrow strip: surface bg, --theme-text label, hairline divider. */
     .bp-allctx-head {
       display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px; background: var(--theme-accent);
+      padding: 14px 16px;
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
     }
     .bp-allctx-head-icon {
-      width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
-      background: #fff; color: var(--theme-accent);
+      width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
+      background: var(--theme-soft); color: var(--theme-accent);
       display: flex; align-items: center; justify-content: center;
     }
     .bp-allctx-head-name {
       flex: 1; min-width: 0;
-      font-family: var(--font-display); font-size: 17px; font-weight: 400;
-      color: #fff; line-height: 1.2;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-text);
+      line-height: 1.2;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     /* v1.65y — cart icon + count badge on the pink header. Same
@@ -1298,7 +1355,8 @@ export type DetailMode = 'inline' | 'drawer';
       position: relative;
       display: inline-flex; align-items: center;
       flex-shrink: 0;
-      color: #fff;
+      /* v1.65ag — calm header → icon takes --theme-accent on white. */
+      color: var(--theme-accent);
       padding: 2px;
       /* v1.65ab — promoted from <span> to <button>; reset native chrome. */
       background: none;
@@ -1313,14 +1371,16 @@ export type DetailMode = 'inline' | 'drawer';
       top: -4px; right: -8px;
       min-width: 16px; height: 16px;
       padding: 0 4px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: var(--theme-accent);
-      color: #fff;
+      color: var(--color-surface);
       font-family: var(--font-body);
       font-size: 10px; font-weight: 700;
       line-height: 16px;
       text-align: center;
-      box-shadow: 0 0 0 1.5px #fff;
+      /* v1.65ag — ring now sits on white-surface so the surface tone
+         is the ring colour. */
+      box-shadow: 0 0 0 1.5px var(--color-surface);
       font-variant-numeric: tabular-nums;
     }
 
@@ -1330,7 +1390,7 @@ export type DetailMode = 'inline' | 'drawer';
        narrow. */
     .bp-allctx-details {
       padding: 12px 16px;
-      border-bottom: 0.5px solid var(--color-border);
+      border-bottom: var(--border-hairline);
       display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 16px;
     }
     .bp-allctx-d-row { display: flex; flex-direction: column; min-width: 0; }
@@ -1347,10 +1407,18 @@ export type DetailMode = 'inline' | 'drawer';
     }
     /* v1.65aa — Budget / Estimate / Status using the Event drawer's
        form-field treatment (.bp-field-label + .bp-field-readonly).
-       Three-column grid; matches the per-cat panel. */
+       Three-column grid; matches the per-cat panel.
+       v1.65ag — Budget + Estimate readonly inputs become tint-fill
+       blocks (--theme-soft, no border, --radius-button) per the v1.22
+       elevation pass. */
     .bp-allctx-fields {
       display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-      padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
+      padding: 12px 16px; border-bottom: var(--border-hairline);
+    }
+    :host ::ng-deep .bp-allctx-fields .bp-field-readonly.p-inputtext {
+      background: var(--theme-soft) !important;
+      border: none !important;
+      border-radius: var(--radius-button) !important;
     }
     .bp-allctx-brief { padding: 14px 16px; }
     .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }

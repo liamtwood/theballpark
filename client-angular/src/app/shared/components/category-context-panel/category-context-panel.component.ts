@@ -284,12 +284,18 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       color: var(--color-text-primary);
     }
 
+    /* v1.65ag — adopt v1.22 panel chrome: white surface, hairline
+       border, --radius-card, --shadow-xs. Same as the Filter / Results
+       / All-view zones so the right column reads as a contained panel. */
     .bp-ctx-panel {
       height: 100%;
       display: flex;
       flex-direction: column;
       font-family: var(--font-body);
       background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
       overflow: hidden;
     }
 
@@ -299,21 +305,23 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     /* v1.25: simplified header — 36px themed icon circle + Playfair
        category name. Hairline separator handled by the subtotal
        block below (border-top there) so the row sits clean. */
-    /* v1.49 — themed header: fills with the standard theme accent
-       (same colour a selected subcategory chip uses). */
+    /* v1.65ag — saturated theme-accent header replaced by a calm
+       eyebrow strip matching the Project Summary panel: surface bg,
+       --theme-text label, hairline divider below. */
     .bp-ctx-head {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 14px 16px;
-      background: var(--theme-accent);
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
     }
     .bp-ctx-head-icon {
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       flex-shrink: 0;
       border-radius: 50%;
-      background: #fff;
+      background: var(--theme-soft);
       color: var(--theme-accent);
       display: flex;
       align-items: center;
@@ -321,16 +329,17 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     }
     .bp-ctx-head-letter {
       font-family: var(--font-display);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 500;
     }
     .bp-ctx-head-name {
       flex: 1;
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 400;
-      letter-spacing: 0.015em;
-      color: #fff;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-text);
       line-height: 1.2;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -377,7 +386,8 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       position: relative;
       display: inline-flex; align-items: center;
       flex-shrink: 0;
-      color: #fff;
+      /* v1.65ag — calm header → icon takes --theme-accent on white. */
+      color: var(--theme-accent);
       padding: 2px;
       /* v1.65ac — promoted from <span> to <button>; reset chrome. */
       background: none;
@@ -392,14 +402,14 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       top: -4px; right: -8px;
       min-width: 16px; height: 16px;
       padding: 0 4px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: var(--theme-accent);
-      color: #fff;
+      color: var(--color-surface);
       font-family: var(--font-body);
       font-size: 10px; font-weight: 700;
       line-height: 16px;
       text-align: center;
-      box-shadow: 0 0 0 1.5px #fff;
+      box-shadow: 0 0 0 1.5px var(--color-surface);
       font-variant-numeric: tabular-nums;
     }
 
