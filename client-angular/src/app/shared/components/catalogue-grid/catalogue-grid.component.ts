@@ -903,35 +903,11 @@ export type DetailMode = 'inline' | 'drawer';
       overflow: hidden;
     }
 
-    /* v1.65aj (p0001) — SEARCH PANEL. Standalone search row sitting
-       between browse-panel and the 3-col body. Same panel chrome as
-       siblings. */
-    .bp-search-panel {
-      background: var(--color-surface);
-      border: var(--border-hairline);
-      border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs);
-      margin: 12px 16px 0;
-      padding: 10px 14px;
-    }
-    .bp-search-row {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--theme-bg);
-      border: var(--border-hairline);
-      border-radius: var(--radius-button);
-      padding: 8px 12px;
-    }
-    .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
-    .bp-search-input.p-inputtext {
-      flex: 1;
-      border: none !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      font-size: 12px !important;
-      height: auto !important;
-      min-height: 0 !important;
-    }
+    /* v1.65ar — .bp-search-panel + .bp-search-row + .bp-search-icon +
+       .bp-search-input rules promoted to styles.css (shared with the
+       Messages tab). The component-scoped copies that lived here were
+       still using the old tinted-row design and overriding the
+       cleaned-up globals — removed so both surfaces read the same. */
     /* v1.65ap — "All" subcategory dropdown inside the search panel
        reads as the bold selector colour: solid --theme-accent fill +
        white label + white chevron. Same convention as active category
