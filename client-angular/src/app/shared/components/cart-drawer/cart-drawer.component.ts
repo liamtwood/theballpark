@@ -6,7 +6,7 @@ import { SidebarModule } from 'primeng/sidebar';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subscription } from 'rxjs';
 
-import { CartDrawerService } from '../../../core/services/cart-drawer.service';
+import { CartDrawerService, CartDrawerOptions } from '../../../core/services/cart-drawer.service';
 import { ProjectItemService } from '../../../core/services/project-item.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
@@ -40,8 +40,8 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
           <div class="bp-drawer-header">
-            <span class="bp-drawer-label">PROJECT ITEMS</span>
-            <div class="bp-drawer-title">Your selections</div>
+            <span class="bp-drawer-label">{{ contextLabel }}</span>
+            <div class="bp-drawer-title">{{ contextTitle }}</div>
           </div>
           <div class="bp-cd-head-right">
             <span class="bp-cd-count">{{ totalCount }} item{{ totalCount === 1 ? '' : 's' }}</span>
@@ -294,6 +294,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   selected: ProjectItem[] = [];
   wishlist: ProjectItem[] = [];
 
+  /** v1.65ae — defaults are the All-view labels; openers that scope to
+      a single category override via CartDrawerOptions. */
+  contextLabel = 'PROJECT ITEMS';
+  contextTitle = 'Your selections';
+  private itemFilter: Set<string> | null = null;
+
   private sub?: Subscription;
 
   constructor(
@@ -303,10 +309,14 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.sub = this.svc.projectId$.subscribe(id => {
-      this.projectId = id || '';
-      this.visible = !!id;
-      if (id) this.load();
+    this.sub = this.svc.request$.subscribe(req => {
+      this.projectId = req?.projectId || '';
+      this.visible = !!req;
+      const opts: CartDrawerOptions = req?.options || {};
+      this.contextLabel = opts.contextLabel || 'PROJECT ITEMS';
+      this.contextTitle = opts.contextTitle || 'Your selections';
+      this.itemFilter = opts.itemIds ? new Set(opts.itemIds) : null;
+      if (req) this.load();
       this.cdr.markForCheck();
     });
   }
@@ -347,7 +357,9 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   private load(): void {
     if (!this.projectId) return;
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
-      const list = rows || [];
+      const list = (rows || []).filter(r =>
+        this.itemFilter ? this.itemFilter.has(r.item_id) : true
+      );
       this.selected = list.filter(r => r.selection_type === 'selected');
       this.wishlist = list.filter(r => r.selection_type === 'liked');
       this.cdr.markForCheck();

@@ -827,7 +827,7 @@ export type DetailMode = 'inline' | 'drawer';
             (estimateUpdated)="onContextEstimateUpdated($event)"
             (statusUpdated)="onContextStatusUpdated($event)"
             (openEstimate)="onContextOpenEstimate()"
-            (openCart)="openCartDrawer()">
+            (openCart)="openCategoryCart()">
           </app-category-context-panel>
         </ng-container>
 
@@ -2006,11 +2006,31 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     private cartDrawerSvc: CartDrawerService
   ) {}
 
-  /** v1.65ab — open the shared Project Items cart drawer. Wired to the
-      shopping-cart icon in the All-view header (and any future trigger). */
+  /** v1.65ab — open the shared Project Items cart drawer.
+      Wired to the All-view header cart icon (no args → unscoped).
+      v1.65ae — also wired to per-category-panel cart icon; we pre-filter
+      to the category's project_items by matching against the same tree
+      walk used to render the panel itself (getCategorySelectedItems +
+      getCategoryLikedItems), then pass the resulting item_ids through
+      the service so the drawer stays category-agnostic. */
   openCartDrawer(): void {
     const pid = this.projectContext?.projectId;
-    if (pid) this.cartDrawerSvc.open(pid);
+    if (!pid) return;
+    this.cartDrawerSvc.open(pid);
+  }
+  openCategoryCart(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid) return;
+    const catName = this.currentCategoryInfo?.name || 'Category';
+    const scopedIds = [
+      ...this.getCategorySelectedItems(),
+      ...this.getCategoryLikedItems()
+    ].map(pi => pi.item_id);
+    this.cartDrawerSvc.open(pid, {
+      contextLabel: catName.toUpperCase(),
+      contextTitle: 'Selections in ' + catName,
+      itemIds: scopedIds
+    });
   }
 
   /** v1.65o — opens the shared Event drawer in 'details' edit mode so
