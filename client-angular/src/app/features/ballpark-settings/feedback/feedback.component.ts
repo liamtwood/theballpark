@@ -304,7 +304,7 @@ type ViewMode = 'card' | 'list' | 'table';
       border-bottom: 0.5px solid var(--color-border); flex-wrap: wrap;
     }
     :host ::ng-deep .bp-fb-filter { min-width: 130px; }
-    :host ::ng-deep .bp-fb-filter .p-dropdown { font-size: 12px !important; }
+    /* v1.65ab — dropdown font inherits unified 13px from styles.css */
 
     /* Section-header actions: Add button + view toggle */
     .bp-fb-header-actions {

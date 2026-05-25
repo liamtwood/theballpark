@@ -68,3 +68,4 @@ shipped,technical,"seed-preview safety","Refusal guard prevents accidental wipes
 shipped,technical,"log-commit script","Pipes commits into internal.project_log",low,done
 shipped,technical,"Image processing service","Server-side processing with content-bounds detection for logo trimming",medium,done
 shipped,technical,"Service-layer backend","13 service files in server/src/services, thin controllers, centralised error handler, env-driven CORS, conditional SSL",high,done
+shipped,design-system,"Unified dropdown styling (v1.65ab)","All p-dropdown triggers + panels app-wide match the dashboard kebab menu: hairline border, 8px radius, soft shadow-md, 13px/400 font, no focus accent flash. Replaces 5 prior namespaces (bp-input-edit, bp-fbd-dd, bp-evd-dropdown, bp-fb-filter, bp-brief-dropdown).",medium,done

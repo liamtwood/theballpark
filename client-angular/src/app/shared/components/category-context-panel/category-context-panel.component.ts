@@ -143,6 +143,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
                         optionLabel="label" optionValue="code"
                         appendTo="body"
                         styleClass="w-full bp-evd-dropdown"
+                        panelStyleClass="bp-dd-panel"
                         [autoDisplayFirst]="false"
                         placeholder="—"></p-dropdown>
           </div>

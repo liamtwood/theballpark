@@ -293,8 +293,66 @@ lucide-icon svg {
   font-size: var(--text-md) !important;
   font-family: var(--font-body) !important;
 }
-/* Dropdown focus */
-.p-dropdown:not(.p-disabled).p-focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
+/* v1.65ab — unified dropdown trigger + panel (matches dashboard kebab menu).
+   Applies to EVERY p-dropdown app-wide. Hand-rolled menus like .bp-card-menu
+   are unaffected because they don't use the .p-dropdown selector. */
+.p-dropdown {
+  border: var(--border-hairline-strong) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--color-surface) !important;
+  box-shadow: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  align-items: center !important;
+}
+/* Lock trigger appearance — no border / shadow / outline change in any state */
+.p-dropdown,
+.p-dropdown:hover,
+.p-dropdown:focus,
+.p-dropdown:focus-within,
+.p-dropdown.p-focus,
+.p-dropdown.p-inputwrapper-focus,
+.p-dropdown.p-dropdown-open {
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.p-dropdown *:focus,
+.p-dropdown *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.p-dropdown .p-dropdown-label {
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  font-family: var(--font-body) !important;
+  line-height: 1.4 !important;
+  color: rgb(75, 85, 99) !important;
+}
+.p-dropdown .p-dropdown-trigger { width: 28px !important; }
+
+.p-dropdown-panel {
+  border: var(--border-hairline) !important;
+  border-radius: var(--radius-button) !important;
+  box-shadow: var(--shadow-md) !important;
+  background: var(--color-surface) !important;
+  margin-top: 4px;
+}
+.p-dropdown-panel .p-dropdown-items { padding: 4px 0 !important; }
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  font-family: var(--font-body) !important;
+  color: rgb(75, 85, 99) !important;
+  line-height: 1.4 !important;
+  border-radius: 0 !important;
+}
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+  background: var(--theme-bg) !important;
+  color: var(--color-text-primary) !important;
+}
 /* InputSwitch — on state uses theme */
 .p-inputswitch.p-inputswitch-checked .p-inputswitch-slider {
   background: var(--theme-accent) !important;
@@ -1129,14 +1187,9 @@ textarea.bp-input-edit:focus {
   cursor: default !important;
 }
 
-/* Edit mode — dropdown */
-.bp-input-edit.p-dropdown {
-  background: var(--theme-bg) !important;
-  border-color: var(--theme-accent) !important;
-}
-.bp-input-edit.p-dropdown:not(.p-disabled).p-focus {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
-}
+/* v1.65ab — bp-input-edit dropdowns inherit the unified calm style.
+   (The accent border / theme-bg are now handled by .p-dropdown globally;
+    keeping this empty stub so dropping the class later is harmless.) */
 
 /* Edit mode — chips */
 .bp-input-edit.p-chips .p-inputtext {

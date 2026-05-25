@@ -224,6 +224,8 @@ type DetailView =
                                   (onChange)="saveStatus(ac)"
                                   placeholder="Draft"
                                   appendTo="body"
+                                  styleClass="bp-dd-trigger"
+                                  panelStyleClass="bp-dd-panel"
                                   [style]="{ width: '100%' }"></p-dropdown>
                     </div>
                     <div class="bp-plan-r-field">

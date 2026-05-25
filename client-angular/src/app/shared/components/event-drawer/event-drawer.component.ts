@@ -541,28 +541,9 @@ type SectionKey = EventDrawerSection;
     }
     :host ::ng-deep input[type="number"].p-inputtext { -moz-appearance: textfield; }
 
-    /* p-dropdown alignment — match text-input height/radius so dropdowns
-       line up with plain inputs in the same grid row. */
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown {
-      width: 100% !important;
-      height: 34px !important;
-      min-height: 34px !important;
-      border-radius: 6px !important;
-      border: 0.5px solid rgba(0,0,0,0.12) !important;
-      font-size: 13px !important;
-      align-items: center !important;
-    }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-label {
-      padding: 6px 11px !important;
-      font-size: 13px !important;
-      font-family: var(--font-body) !important;
-      line-height: 1.4 !important;
-    }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-trigger { width: 28px !important; }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown.p-focus {
-      border-color: var(--theme-accent) !important;
-      box-shadow: none !important;
-    }
+    /* v1.65ab — dropdowns inherit the unified calm style from styles.css
+       (.p-dropdown rules). Width 100% kept so they fill the field column. */
+    :host ::ng-deep .bp-evd-dropdown.p-dropdown { width: 100% !important; }
 
     /* Project brief — view mode prose + edit-mode textarea + parse pill. */
     .bp-evd-brief-view {
