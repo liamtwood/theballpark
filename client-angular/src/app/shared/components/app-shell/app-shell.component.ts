@@ -350,6 +350,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
     .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
+    /* v1.65an — when the shell hosts a catalogue-grid surface, paint the
+       scroll viewport with the parchment ground so the empty area below
+       the 3-col body picks up --theme-bg instead of revealing white.
+       Scoped via :has() so other pages (dashboard, settings, etc.) are
+       unaffected. */
+    .bp-shell-content:has(app-catalogue-grid),
+    .bp-shell-content:has(app-messages-inbox) {
+      background: var(--theme-bg);
+    }
 
     /* ── SIDE NAV ── */
     .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }

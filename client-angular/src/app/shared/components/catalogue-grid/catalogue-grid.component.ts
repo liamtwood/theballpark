@@ -886,7 +886,10 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     /* v1.65ag — parchment page ground behind the browse panel + 3-col
        body so each panel reads as a contained object. */
-    :host { display: block; background: var(--theme-bg); }
+    :host {
+      display: block;
+      background: var(--theme-bg);
+    }
 
     /* v1.65ag — BROWSE CONTROLS panel. Same chrome as the three columns
        below (--color-surface + hairline + --radius-card + --shadow-xs). */
@@ -1078,10 +1081,11 @@ export type DetailMode = 'inline' | 'drawer';
       border-color: var(--theme-accent);
       color: var(--theme-accent);
     }
+    /* v1.65an — already solid; token-migrate the foreground colour. */
     .bp-subcat-chip.active {
       background: var(--theme-accent);
       border-color: var(--theme-accent);
-      color: #fff;
+      color: var(--color-surface);
     }
 
     /* ── v1.45c — SIDEBAR DIMENSION FILTERS ───────────────────────────

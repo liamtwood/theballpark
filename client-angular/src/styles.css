@@ -863,20 +863,25 @@ input.bp-cfg-page-label.p-inputtext:focus {
   text-align: left;
 }
 .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
-.bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; }
+/* v1.65an — selector active states unified on SOLID --theme-accent
+   fill + --color-surface text (matches the active category circle).
+   Applies to all filter/selector controls: sidebar items, view-toggle
+   buttons, segmented toggles, subcategory chips. Page-nav tabs keep
+   their underline pattern (different convention). */
+.bp-sidebar-item.active { background: var(--theme-accent); color: var(--color-surface); font-weight: 500; }
 .bp-sidebar-count {
   font-size: 11px;
   color: var(--color-text-secondary);
   background: var(--color-background-secondary, var(--color-surface));
   border: 0.5px solid var(--color-border);
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   padding: 1px 7px;
   flex-shrink: 0;
 }
 .bp-sidebar-item.active .bp-sidebar-count {
-  background: var(--theme-bg);
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: transparent;
+  color: var(--color-surface);
 }
 
 /* ── Main-column header ── */
@@ -995,7 +1000,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
   transition: all 0.15s;
 }
 .bp-view-btn:hover { color: var(--theme-accent); }
-.bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+/* v1.65an — solid --theme-accent active state (matches sidebar items + circles). */
+.bp-view-btn.active { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
 
 /* ============================================
    STATUS PILLS — app-status-badge

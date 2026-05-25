@@ -143,7 +143,9 @@ import {
   styles: [`
     .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
-    .bp-toggle-btn.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
+    /* v1.65an — solid --theme-accent active state (matches the unified
+       selector pattern across the app). */
+    .bp-toggle-btn.active { background: var(--theme-accent); color: var(--color-surface); font-weight: 600; }
   `]
 })
 export class SupplierListComponent implements OnInit, OnDestroy {
