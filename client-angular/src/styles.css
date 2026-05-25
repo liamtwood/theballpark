@@ -1304,6 +1304,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
 
 /* ── INPUT STATES — PrimeNG overrides (must be global) ── */
 
+/* v1.65ao — STANDARD FIELD SIZE. View mode (.bp-field-readonly) and
+   edit mode (.bp-input-edit) share the SAME 34px height, padding,
+   font, and border-radius as the unified .p-dropdown. Switching
+   between view and edit produces ZERO size shift. This is the
+   canonical form-field metric used across the app (event drawer,
+   plan/brief/marketplace tabs, project summary). */
+
 /* View mode — readonly inputs */
 .bp-field-readonly.p-inputtext,
 .bp-field-readonly.p-inputtext.p-filled,
@@ -1312,9 +1319,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-field-readonly.p-inputtext:hover,
 .bp-field-readonly.p-inputtext:enabled:hover,
 .bp-field-readonly.p-inputtext:enabled:focus {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-border) !important;
+  border-radius: var(--radius-button) !important;
   box-shadow: none !important;
   cursor: default !important;
   background: transparent !important;
@@ -1335,14 +1348,32 @@ input.bp-cfg-page-label.p-inputtext:focus {
   background: transparent !important;
 }
 
-/* Edit mode — parchment bg + accent border */
+/* Edit mode — parchment bg + accent border. Same 34px height and
+   metrics as .bp-field-readonly so view→edit produces no size shift. */
 .bp-input-edit.p-inputtext,
-input.bp-input-edit,
-textarea.bp-input-edit {
+input.bp-input-edit {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: var(--theme-bg) !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
+  border-radius: var(--radius-button) !important;
+}
+/* Textareas grow vertically — keep the same border/font, just no
+   fixed height. */
+textarea.bp-input-edit {
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  background: var(--theme-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-accent) !important;
+  border-radius: var(--radius-button) !important;
 }
 .bp-input-edit.p-inputtext:focus,
 input.bp-input-edit:focus,
@@ -1356,32 +1387,44 @@ textarea.bp-input-edit:focus {
   border-color: var(--theme-accent) !important;
 }
 
-/* Edit mode — pInputNumber wrapper */
+/* Edit mode — pInputNumber wrapper. Matches the 34px input metric. */
 .bp-input-edit.p-inputnumber,
 .bp-input-edit.p-inputnumber:hover {
+  height: 34px !important;
+  min-height: 34px !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
   background: var(--theme-bg) !important;
-  border-radius: 6px;
+  border-radius: var(--radius-button) !important;
 }
 .bp-input-edit.p-inputnumber .p-inputtext {
+  height: 100% !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
-/* Readonly mode — pInputNumber wrapper */
+/* Readonly mode — pInputNumber wrapper. Same 34px metric. */
 .bp-field-readonly.p-inputnumber,
 .bp-field-readonly.p-inputnumber:hover {
+  height: 34px !important;
+  min-height: 34px !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-border) !important;
   background: transparent !important;
-  border-radius: 6px;
+  border-radius: var(--radius-button) !important;
   cursor: default !important;
 }
 .bp-field-readonly.p-inputnumber .p-inputtext {
+  height: 100% !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
