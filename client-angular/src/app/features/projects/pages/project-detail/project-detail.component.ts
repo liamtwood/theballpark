@@ -110,7 +110,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       { label: 'Plan',        path: `/projects/${this.pid}/plan` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
       {
-        label: 'Messages',
+        label: 'Inbox',
         path: `/projects/${this.pid}/messages`,
         // v1.24: render the red notification chip next to the tab
         // label when there are unread inbound messages.

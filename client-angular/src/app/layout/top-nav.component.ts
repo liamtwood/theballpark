@@ -77,12 +77,12 @@ import { environment } from '../../environments/environment';
           <span>Favourites</span>
         </a>
         <a routerLink="/messages" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="message-circle" [size]="20"></lucide-icon>
-          <span>Messages</span>
+          <lucide-icon name="inbox" [size]="20"></lucide-icon>
+          <span>Inbox</span>
         </a>
       </ng-container>
 
-      <!-- PROJECT NAV — Home, Project, Suppliers, Messages -->
+      <!-- PROJECT NAV — Home, Project, Suppliers, Inbox -->
       <ng-container *ngIf="inProject">
         <a routerLink="/" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
@@ -97,8 +97,8 @@ import { environment } from '../../environments/environment';
           <span>{{ catalogueLabel }}</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="message-circle" [size]="20"></lucide-icon>
-          <span>Messages</span>
+          <lucide-icon name="inbox" [size]="20"></lucide-icon>
+          <span>Inbox</span>
         </a>
       </ng-container>
 

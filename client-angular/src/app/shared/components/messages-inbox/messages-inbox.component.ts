@@ -173,12 +173,12 @@ interface VendorThread {
         <!-- ── MAIN: panel head (icon + MESSAGES + count + view toggle)
              + scrolling body ── -->
         <section class="bp-cat-main">
-          <!-- v1.65aj (p0001) — Lucide inbox icon + MESSAGES eyebrow +
-               count + view toggle, outside the scrolling body so the
-               scrollbar starts BELOW the head. -->
+          <!-- v1.65aj (p0001) — Lucide inbox icon + count + view toggle,
+               outside the scrolling body so the scrollbar starts BELOW
+               the head. v1.65ak — eyebrow text dropped; the project tab
+               label "Inbox" + page heroSub already communicate context. -->
           <div class="bp-cat-main-head">
             <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
-            <span class="bp-cat-section-title">MESSAGES</span>
             <span class="bp-cat-section-count">
               {{ filteredThreads().length }}
               {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}

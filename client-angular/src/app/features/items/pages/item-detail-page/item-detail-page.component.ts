@@ -738,7 +738,7 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
           { label: 'Brief',       path: `/projects/${this.projectId}/brief` },
           { label: 'Marketplace', path: `/projects/${this.projectId}/marketplace` },
           { label: 'Estimate',    path: `/projects/${this.projectId}/estimate` },
-          { label: 'Messages',    path: `/projects/${this.projectId}/messages` }
+          { label: 'Inbox',       path: `/projects/${this.projectId}/messages` }
         ]
       });
     } else if (this.context === 'supplier' && this.contextSupplier) {
