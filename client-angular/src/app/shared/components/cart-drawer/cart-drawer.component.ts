@@ -56,7 +56,7 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
         <!-- SELECTED ----------------------------------------------- -->
         <div class="bp-field-label bp-cd-eyebrow">SELECTED</div>
         <ng-container *ngIf="selected.length; else noSel">
-          <div *ngFor="let pi of selected" class="bp-cd-row bp-cd-row--selected">
+          <div *ngFor="let pi of selected" class="bp-list-row bp-cd-row bp-cd-row--selected">
             <div class="bp-cd-img"
                  [style.background-image]="imageStyle(pi)"
                  [style.background-color]="imageBgColor(pi)">
@@ -85,7 +85,7 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
         <!-- WISHLIST ----------------------------------------------- -->
         <div class="bp-field-label bp-cd-eyebrow">WISHLIST</div>
         <ng-container *ngIf="wishlist.length; else noWl">
-          <div *ngFor="let pi of wishlist" class="bp-cd-row bp-cd-row--wishlist">
+          <div *ngFor="let pi of wishlist" class="bp-list-row bp-cd-row bp-cd-row--wishlist">
             <div class="bp-cd-img"
                  [style.background-image]="imageStyle(pi)"
                  [style.background-color]="imageBgColor(pi)">
@@ -158,27 +158,16 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
       padding: 8px 2px 12px;
     }
 
-    /* Row container — relative so the hover tooltip can absolute-position. */
-    .bp-cd-row {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      margin-bottom: 6px;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
-      background: var(--color-surface);
-      transition: background 0.12s;
-    }
-    .bp-cd-row:hover {
-      background: var(--color-background-secondary, var(--theme-bg));
-    }
+    /* v1.65aj (p0001) — row chrome (border / radius / padding / hover)
+       now comes from the shared .bp-list-row primitive in styles.css.
+       Only cart-specific additions live here: vertical rhythm between
+       rows + the absolute-positioned hover tooltip. */
+    .bp-cd-row { margin-bottom: 6px; }
 
     .bp-cd-img {
       flex-shrink: 0;
       width: 44px; height: 44px;
-      border-radius: 6px;
+      border-radius: var(--radius-button);
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -246,8 +235,8 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
       top: calc(100% + 4px);
       left: 0; right: 0;
       padding: 8px 10px;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
       background: var(--color-surface);
       box-shadow: var(--shadow-md);
       font-size: 12px;

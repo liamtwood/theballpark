@@ -94,20 +94,34 @@ interface VendorThread {
         </p-dropdown>
       </div>
 
-      <!-- ═══════════════ CATEGORY CIRCLES ═══════════════
-           Same component the Marketplace tab mounts — single source of
-           truth for the circle row (markup, scroll, hover, active,
-           sizing). Inputs: in-scope project categories, current
-           activeFolder, unread badges, "no-threads = greyed". -->
-      <app-category-circles
-        *ngIf="categoryFolders.length > 0"
-        [categories]="categoryFolders"
-        [activeId]="activeFolder"
-        size="lg"
-        [unscopedIds]="emptyCategoryIds"
-        [badgeCounts]="unreadBadgeCounts"
-        (select)="onCircleSelect($event)">
-      </app-category-circles>
+      <!-- ═══════════════ CATEGORY CIRCLES (p0001 — browse panel) ═══════════════
+           Wrapped in a contained panel so it sits as one of the three
+           stacked surfaces above the body, matching the Marketplace. -->
+      <div class="bp-browse-panel" *ngIf="categoryFolders.length > 0">
+        <app-category-circles
+          [categories]="categoryFolders"
+          [activeId]="activeFolder"
+          size="lg"
+          [unscopedIds]="emptyCategoryIds"
+          [badgeCounts]="unreadBadgeCounts"
+          (select)="onCircleSelect($event)">
+        </app-category-circles>
+      </div>
+
+      <!-- v1.65aj (p0001) — SEARCH PANEL. Standalone search row sitting
+           between the browse panel and the 3-col body. Pulled out of
+           the sidebar so Messages and Marketplace share the same
+           layout. -->
+      <div class="bp-search-panel">
+        <div class="bp-search-row">
+          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+          <input pInputText type="text"
+                 [(ngModel)]="searchTerm"
+                 (ngModelChange)="onSearchChange()"
+                 placeholder="Search threads, suppliers, messages…"
+                 class="bp-search-input"/>
+        </div>
+      </div>
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
            Reuses the marketplace bp-cat-body--detail grid: sidebar
@@ -115,17 +129,15 @@ interface VendorThread {
            column is message-specific; the shell is shared. -->
       <div class="bp-cat-body bp-cat-body--detail" data-detail-size="md">
 
-        <!-- ── LEFT SIDEBAR: search + status + suppliers ── -->
+        <!-- ── LEFT SIDEBAR: FILTER head + status + suppliers ── -->
         <aside class="bp-cat-sidebar">
-          <div class="bp-sidebar-search">
-            <lucide-icon name="search" [size]="14" class="bp-sidebar-search-icon"></lucide-icon>
-            <input pInputText type="text"
-                   [(ngModel)]="searchTerm"
-                   (ngModelChange)="onSearchChange()"
-                   placeholder="Search..."
-                   class="bp-sidebar-search-input"/>
+          <!-- v1.65aj (p0001) — Lucide leading icon + FILTER eyebrow. -->
+          <div class="bp-cat-sidebar-head">
+            <lucide-icon name="list-filter" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
+            <div class="bp-filter-title">FILTER</div>
           </div>
 
+          <div class="bp-cat-sidebar-body">
           <!-- v1.28: STATUS moved here from the centre column so all the
                filters share one rail. Uses the shared bp-sidebar-item /
                -count primitives — identical look to the suppliers list. -->
@@ -155,11 +167,17 @@ interface VendorThread {
             <span class="bp-msg-supp-name">{{ s.name }}</span>
             <span class="bp-sidebar-count">{{ s.count }}</span>
           </button>
+          </div><!-- /.bp-cat-sidebar-body -->
         </aside>
 
-        <!-- ── MAIN: section header + filter + list/card/table ── -->
+        <!-- ── MAIN: panel head (icon + MESSAGES + count + view toggle)
+             + scrolling body ── -->
         <section class="bp-cat-main">
-          <div class="bp-cat-section-header">
+          <!-- v1.65aj (p0001) — Lucide inbox icon + MESSAGES eyebrow +
+               count + view toggle, outside the scrolling body so the
+               scrollbar starts BELOW the head. -->
+          <div class="bp-cat-main-head">
+            <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
             <span class="bp-cat-section-title">MESSAGES</span>
             <span class="bp-cat-section-count">
               {{ filteredThreads().length }}
@@ -187,6 +205,7 @@ interface VendorThread {
             </div>
           </div>
 
+          <div class="bp-cat-main-body">
           <!-- v1.28: Status pills moved to the left sidebar — only ONE
                filter rail across the page now. -->
 
@@ -204,13 +223,13 @@ interface VendorThread {
             </p>
           </div>
 
-          <!-- ── LIST VIEW ── -->
+          <!-- ── LIST VIEW (p0001 — shared bp-list-row primitive) ── -->
           <div *ngIf="activeView === 'list' && filteredThreads().length > 0"
                class="bp-msg-list">
             <div *ngFor="let t of filteredThreads()"
-                 class="bp-msg-row"
-                 [class.active]="activeThread?.key === t.key"
-                 [class.unread]="t.unread"
+                 class="bp-list-row bp-msg-row"
+                 [class.bp-list-row--active]="activeThread?.key === t.key"
+                 [class.bp-list-row--unread]="t.unread"
                  (click)="openThread(t)">
               <div class="bp-msg-avatar">{{ initialsFor(t.supplierName) }}</div>
               <div class="bp-msg-tbody">
@@ -292,6 +311,7 @@ interface VendorThread {
               </tbody>
             </table>
           </div>
+          </div><!-- /.bp-cat-main-body -->
         </section>
 
         <!-- ── RIGHT: conversation panel (detail column) ── -->
@@ -417,31 +437,24 @@ interface VendorThread {
     .bp-msg-empty lucide-icon { color: var(--color-text-muted); opacity: 0.6; }
     .bp-msg-empty p { margin: 0; }
 
-    /* ── LIST VIEW ── */
-    .bp-msg-list { display: flex; flex-direction: column; }
+    /* ── LIST VIEW (p0001) ──
+       Row chrome (border, radius, padding, hover, --active / --unread)
+       comes from the shared .bp-list-row primitive in styles.css. The
+       rules below are message-specific: vertical gap between rows,
+       rounded-square avatar, internal text layout. */
+    .bp-msg-list {
+      display: flex; flex-direction: column; gap: 6px;
+    }
     .bp-msg-row {
-      display: flex; gap: 10px; align-items: flex-start;
-      padding: 10px 14px;
-      border-bottom: 0.5px solid var(--color-border);
-      cursor: pointer;
-      transition: background 0.1s;
-      position: relative;
+      align-items: center;
     }
-    .bp-msg-row:hover { background: var(--theme-bg); }
-    .bp-msg-row.active {
-      background: var(--theme-bg);
-      border-left: 3px solid var(--theme-accent);
-      padding-left: 11px;
-    }
-    .bp-msg-row.unread { background: var(--color-unread-row-bg, var(--theme-bg)); }
     .bp-msg-avatar {
-      width: 34px; height: 34px;
-      border-radius: 50%;
-      background: var(--theme-bg);
-      border: 0.5px solid var(--theme-border);
+      width: 42px; height: 42px;
+      border-radius: var(--radius-button);
+      background: var(--theme-accent);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11.5px; font-weight: 600;
-      color: var(--theme-accent);
+      font-size: 13px; font-weight: 500;
+      color: var(--color-surface);
       flex-shrink: 0;
     }
     .bp-msg-tbody { flex: 1; min-width: 0; }
@@ -477,7 +490,7 @@ interface VendorThread {
     .bp-msg-tbadge {
       font-size: 9px; font-weight: 600;
       padding: 1px 7px;
-      border-radius: 20px;
+      border-radius: var(--radius-pill);
       letter-spacing: 0.02em;
     }
     .bp-badge-action  { background: var(--color-action-bg);  color: var(--color-action-text); }
@@ -503,16 +516,19 @@ interface VendorThread {
     @media (max-width: 1100px) {
       .bp-msg-cards { grid-template-columns: 1fr; }
     }
+    /* v1.65aj (p0001) — card-view tiles ARE elevated per the two-tier
+       rule (gallery surface). Token-migrated shadow + radii. */
     .bp-msg-card-tile {
-      border: 0.5px solid var(--color-border);
-      border-radius: 10px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
       padding: 12px;
       background: var(--color-surface);
+      box-shadow: var(--shadow-xs);
       cursor: pointer;
       transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
     }
     .bp-msg-card-tile:hover {
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-sm);
       transform: translateY(-1px);
     }
     .bp-msg-card-tile.active {
@@ -595,10 +611,16 @@ interface VendorThread {
     }
     .bp-msg-table-time { color: var(--color-text-muted); white-space: nowrap; }
 
-    /* ── RIGHT: CONVERSATION ── */
+    /* ── RIGHT: CONVERSATION (p0001) ──
+       Panel chrome matches the other Marketplace panels. Header is
+       calm (no saturated theme bar). Stream area keeps the nested
+       --color-thread-bg tint — the one intentional nested tint. */
     .bp-msg-conv {
       display: flex; flex-direction: column;
-      background: var(--theme-bg);
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
       overflow: hidden;
     }
     .bp-msg-conv-empty {
@@ -613,11 +635,11 @@ interface VendorThread {
     .bp-msg-conv-empty lucide-icon { opacity: 0.5; }
     .bp-msg-conv-empty p { margin: 0; }
 
-    .bp-thread-header { background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); padding: 12px 14px; flex-shrink: 0; }
+    .bp-thread-header { background: var(--color-surface); border-bottom: var(--border-hairline); padding: 12px 14px; flex-shrink: 0; }
     .bp-thread-top    { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .bp-back-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); background: none; border: 0.5px solid var(--color-border); border-radius: 6px; cursor: pointer; font-family: var(--font-body); flex-shrink: 0; padding: 4px 6px; transition: color 0.15s, border-color 0.15s; }
+    .bp-back-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); background: none; border: var(--border-hairline-strong); border-radius: var(--radius-button); cursor: pointer; font-family: var(--font-body); flex-shrink: 0; padding: 4px 6px; transition: color 0.15s, border-color 0.15s; }
     .bp-back-btn:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
-    .bp-thread-cat-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 0.5px solid; }
+    .bp-thread-cat-icon { width: 28px; height: 28px; border-radius: var(--radius-button); flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: var(--border-hairline-strong); }
     .bp-cat-action  { background: var(--color-action-bg); border-color: var(--color-action-border); color: var(--color-action-text); }
     .bp-cat-waiting { background: var(--color-waiting-bg); border-color: var(--color-waiting-border); color: var(--color-waiting-text); }
     .bp-cat-quoted  { background: var(--color-quoted-bg); border-color: var(--color-quoted-border); color: var(--color-quoted-text); }
@@ -627,13 +649,14 @@ interface VendorThread {
     .bp-thread-name { font-family: var(--font-display); font-size: 16px; font-weight: 400; color: var(--color-text-primary); }
     .bp-thread-sub  { font-size: 11px; color: var(--color-text-muted); }
     .bp-thread-status-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-    .bp-status-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--tag-color); color: var(--tag-color); background: var(--color-surface); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+    .bp-status-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: var(--radius-pill); border: 0.5px solid var(--tag-color); color: var(--tag-color); background: var(--color-surface); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
     .bp-status-tag.active { background: var(--tag-color); color: #fff; }
     .bp-thread-msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--color-thread-bg, var(--theme-bg)); min-height: 200px; }
     .bp-date-sep { text-align: center; font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0; }
-    .bp-msg-card { border-radius: 10px; padding: 10px 12px; border: 0.5px solid; }
+    /* v1.65aj (p0001) — bubble radii token-migrated. */
+    .bp-msg-card { border-radius: var(--radius-button); padding: 10px 12px; border: var(--border-hairline-strong); }
     .bp-msg-read   { background: var(--color-msg-read-bg); border-color: var(--color-msg-read-border); }
-    .bp-msg-unread { background: var(--color-surface); border-color: var(--color-msg-read-border); border-left: 3px solid var(--theme-accent); border-radius: 0 10px 10px 0; }
+    .bp-msg-unread { background: var(--color-surface); border-color: var(--color-msg-read-border); border-left: 3px solid var(--theme-accent); border-radius: 0 var(--radius-button) var(--radius-button) 0; }
     .bp-msg-out    { background: var(--color-msg-out-bg); border-color: var(--color-msg-out-border); }
     .bp-msg-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .bp-msg-card-sender { font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
@@ -641,18 +664,18 @@ interface VendorThread {
       white-space: pre-wrap; }
     .bp-quoted-items { margin-top: 10px; border-top: 0.5px solid var(--color-border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .bp-quoted-items-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
-    .bp-quoted-item { display: flex; align-items: center; gap: 10px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 8px; padding: 9px 11px; }
+    .bp-quoted-item { display: flex; align-items: center; gap: 10px; background: var(--color-surface); border: var(--border-hairline); border-radius: var(--radius-button); padding: 9px 11px; }
     .bp-quoted-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--theme-bg); border: 0.5px solid var(--theme-border); display: flex; align-items: center; justify-content: center; color: var(--theme-accent); flex-shrink: 0; }
     .bp-quoted-item-body { flex: 1; min-width: 0; }
     .bp-quoted-item-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
     .bp-quoted-item-desc { font-size: 11px; color: var(--color-text-muted); }
     .bp-quoted-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
     .bp-quoted-item-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
-    .bp-accept-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; background: var(--theme-accent); color: #fff; border: none; cursor: pointer; font-family: var(--font-body); }
-    .bp-accepted-tag { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; background: var(--color-booked-bg); color: var(--color-booked-text); border: 0.5px solid var(--color-booked-border); }
+    .bp-accept-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-button); background: var(--theme-accent); color: var(--color-surface); border: none; cursor: pointer; font-family: var(--font-body); }
+    .bp-accepted-tag { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-button); background: var(--color-booked-bg); color: var(--color-booked-text); border: 0.5px solid var(--color-booked-border); }
     .bp-compose { display: flex; gap: 8px; padding: 12px 14px; border-top: 0.5px solid var(--color-border); background: var(--color-surface); flex-shrink: 0; align-items: center; }
     .bp-compose-input { flex: 1; }
-    .bp-send-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--theme-accent); border: none; color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bp-send-btn { width: 36px; height: 36px; border-radius: var(--radius-button); background: var(--theme-accent); border: none; color: var(--color-surface); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .bp-send-btn:disabled { opacity: 0.4; cursor: default; }
   `]
 })

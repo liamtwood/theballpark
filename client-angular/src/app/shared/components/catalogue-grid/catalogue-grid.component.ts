@@ -74,10 +74,11 @@ export type DetailMode = 'inline' | 'drawer';
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
     </div>
 
-    <!-- v1.65ag — BROWSE CONTROLS PANEL. Wraps the category circles and
-         the strip-bar (search + Recommend) into one contained panel that
-         sits above the 3-col body. Same panel chrome as the three zones
-         below. -->
+    <!-- v1.65ag — BROWSE CONTROLS PANEL. Wraps the category circles
+         in one contained panel that sits above the search panel and
+         3-col body. v1.65aj (p0001) — search lifted out into its own
+         dedicated panel below; Recommend moved into the Results column
+         header alongside the view toggle. -->
     <div class="bp-browse-panel"
          *ngIf="categories.length && showCategoryCircles">
     <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
@@ -95,14 +96,15 @@ export type DetailMode = 'inline' | 'drawer';
       (edit)="onCategoryEdit($event)"
       (addClicked)="addClicked.emit()">
     </app-category-circles>
+    </div><!-- /.bp-browse-panel -->
 
-    <!-- v1.65d — STRIP BAR: centred segmented search bar. The left
-         dropdown shows the active category's subcategories ("All" +
-         each subcat); the middle is a free-text input; the right is
-         the search button. Spans the full width below the category
-         circles. -->
-    <div class="bp-strip-bar">
-      <div class="bp-strip-search">
+    <!-- v1.65aj (p0001) — SEARCH PANEL. Standalone contained panel
+         holding just the search input (full width). Sits between the
+         browse panel and the 3-col body. Recommend lives in the Results
+         column header now. -->
+    <div class="bp-search-panel"
+         *ngIf="categories.length && showCategoryCircles">
+      <div class="bp-search-row">
         <p-dropdown *ngIf="stripDropdownOptions.length > 1"
                     [options]="stripDropdownOptions"
                     [ngModel]="stripDropdownValue"
@@ -111,29 +113,13 @@ export type DetailMode = 'inline' | 'drawer';
                     styleClass="bp-strip-search-dd"
                     appendTo="body"
                     placeholder="All"></p-dropdown>
+        <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
         <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-               placeholder="Search..." class="bp-strip-search-input"
+               [placeholder]="searchPlaceholder"
+               class="bp-search-input"
                (keyup.enter)="applySearch()"/>
-        <button type="button" class="bp-strip-search-btn"
-                title="Search" (click)="applySearch()">
-          <lucide-icon name="search" [size]="15"></lucide-icon>
-        </button>
       </div>
-      <!-- v1.65k — AI Recommend: runs the Plan-tab matcher against the
-           active category's brief and surfaces an AI RECOMMENDATIONS
-           section in the centre column. Project context only. -->
-      <button *ngIf="canRecommend" type="button"
-              class="bp-strip-recommend"
-              [disabled]="recommending"
-              [title]="activeCategory === 'all'
-                ? 'Recommend items across every category that has a brief'
-                : 'Recommend items based on this category\\'s brief'"
-              (click)="recommendItems()">
-        <lucide-icon name="sparkles" [size]="14"></lucide-icon>
-        {{ recommending ? 'Recommending…' : 'Recommend' }}
-      </button>
     </div>
-    </div><!-- /.bp-browse-panel -->
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
@@ -153,8 +139,11 @@ export type DetailMode = 'inline' | 'drawer';
              head so the scrollbar starts BELOW the header rather than
              running alongside it. Only shown when there are filters to
              render (canFilter); other consumers without filters get no
-             panel head and the body fills the whole sidebar. -->
+             panel head and the body fills the whole sidebar.
+             v1.65aj (p0001) — Lucide leading icon per the panel-header
+             convention. -->
         <div class="bp-cat-sidebar-head" *ngIf="canFilter">
+          <lucide-icon name="list-filter" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
           <div class="bp-filter-title">FILTER</div>
         </div>
 
@@ -318,11 +307,24 @@ export type DetailMode = 'inline' | 'drawer';
 
         <!-- v1.65ai — RESULTS panel head. Sits outside the scrolling
              body so the scrollbar starts BELOW the header. View toggle
-             stays anchored to the right of the RESULTS title. -->
+             stays anchored to the right of the RESULTS title.
+             v1.65aj (p0001) — Lucide leading icon + Recommend button
+             pulled in from the (now-removed) strip-bar. -->
         <div class="bp-cat-main-head">
+          <lucide-icon name="package" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
+          <button *ngIf="canRecommend" type="button"
+                  class="bp-strip-recommend"
+                  [disabled]="recommending"
+                  [title]="activeCategory === 'all'
+                    ? 'Recommend items across every category that has a brief'
+                    : 'Recommend items based on this category\\'s brief'"
+                  (click)="recommendItems()">
+            <lucide-icon name="sparkles" [size]="13"></lucide-icon>
+            {{ recommending ? 'Recommending…' : 'Recommend' }}
+          </button>
           <div class="bp-view-toggle" *ngIf="showLayoutToggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
@@ -894,6 +896,59 @@ export type DetailMode = 'inline' | 'drawer';
       overflow: hidden;
     }
 
+    /* v1.65aj (p0001) — SEARCH PANEL. Standalone search row sitting
+       between browse-panel and the 3-col body. Same panel chrome as
+       siblings. */
+    .bp-search-panel {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      margin: 12px 16px 0;
+      padding: 10px 14px;
+    }
+    .bp-search-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--theme-bg);
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      padding: 8px 12px;
+    }
+    .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+    .bp-search-input.p-inputtext {
+      flex: 1;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      font-size: 12px !important;
+      height: auto !important;
+      min-height: 0 !important;
+    }
+    :host ::ng-deep .bp-search-panel .bp-strip-search-dd.p-dropdown {
+      background: transparent !important;
+      border: none !important;
+      border-right: var(--border-hairline) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      min-width: 92px;
+      height: auto;
+    }
+
+    /* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
+       tint, fixed size, matches the eyebrow vertical centre. */
+    .bp-cat-sidebar-head-icon,
+    .bp-cat-main-head-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      display: inline-flex;
+    }
+    .bp-cat-sidebar-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
     /* v1.65d — centred segmented search bar below the category circles.
        Left: subcategory dropdown. Middle: text input. Right: search btn.
        v1.65e — tightened padding + font, longer bar, no pink focus
@@ -970,13 +1025,15 @@ export type DetailMode = 'inline' | 'drawer';
        AI RECOMMENDATIONS section above SELECTED ITEMS.
        v1.65m — pinned to the right flank of the 3-col grid, height
        matched to the segmented search (32px) so they sit flush. */
+    /* v1.65aj (p0001) — Recommend button moved to the Results column
+       head; the old strip-bar 3-col-grid position rules no longer apply.
+       Token-migrated radius/border. */
     .bp-strip-recommend {
-      grid-column: 3;
-      justify-self: end;
       display: inline-flex; align-items: center; gap: 6px;
-      height: 32px; padding: 0 12px;
-      border: 0.5px solid var(--theme-accent);
-      border-radius: var(--radius-input);
+      height: 28px; padding: 0 10px;
+      border: var(--border-hairline-strong);
+      border-color: var(--theme-accent);
+      border-radius: var(--radius-button);
       background: var(--color-surface);
       color: var(--theme-accent);
       font-family: var(--font-body); font-size: var(--text-xs);
@@ -1652,6 +1709,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() showBack = false;
   @Input() backLabel = 'Back';
   @Input() totalCount = 0;
+
+  /** v1.65aj (p0001) — placeholder for the new dedicated search panel.
+      Computed from totalCount + entityLabel so the marketplace reads
+      "Search 138 items…" without the caller having to pass anything. */
+  get searchPlaceholder(): string {
+    return `Search ${this.totalCount} ${this.entityLabel}s…`;
+  }
 
   /** Build tab — when set, the inline detail panel shows the project / per-
       category brief in place of the empty state, the circle strip greys

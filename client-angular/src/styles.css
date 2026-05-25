@@ -81,6 +81,14 @@
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+  /* v1.65aj (p0001) — TWO-TIER CARD RULE.
+     Grids / galleries (Marketplace result cards, category circles) are
+     ELEVATED: --shadow-xs at rest, --shadow-sm on hover (lift via
+     transform, no layout shift).
+     List rows (cart drawer rows, Messages thread rows) are FLAT: border
+     only, hover background-shift, NO shadow. Use the shared
+     `.bp-list-row` primitive defined further down so all list surfaces
+     stay aligned. */
 
   /* Hairline borders — slightly softer than the neutral
      --color-border, designed to pair with shadows. */
@@ -774,6 +782,17 @@ input.bp-cfg-page-label.p-inputtext:focus {
   flex-shrink: 0;
   padding: 14px 16px 10px;
   border-bottom: var(--border-hairline);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
+   tint, fixed size, sits at the eyebrow's vertical centre. */
+.bp-cat-sidebar-head-icon,
+.bp-cat-main-head-icon {
+  color: var(--theme-accent);
+  flex-shrink: 0;
+  display: inline-flex;
 }
 .bp-cat-sidebar-body {
   flex: 1;
@@ -855,6 +874,73 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-cat-section-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
 .bp-cat-section-count  { font-size: 12px; color: var(--color-text-muted); flex: 1; }
+
+/* ── v1.65aj (p0001) — SHARED BROWSE + SEARCH PANELS ────────────────
+   Standalone contained panels used by catalogue-grid AND messages-inbox.
+   Lived component-scoped in catalogue-grid; promoted here so the
+   Messages tab inherits the identical chrome. */
+.bp-browse-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  margin: 16px 16px 0;
+  padding: 16px 0 0;
+  overflow: hidden;
+}
+.bp-search-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+}
+.bp-search-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--theme-bg);
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  padding: 8px 12px;
+}
+.bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.bp-search-input.p-inputtext {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* ── v1.65aj (p0001) — SHARED LIST ROW PRIMITIVE ───────────────────
+   Canonical row card used by the cart drawer and the Messages tab's
+   thread rows. Flat per the two-tier card rule — border only, hover
+   background-shift, no shadow. Consumers compose their own internal
+   markup (visual / text / trailing / hover actions) inside.
+   The --active and --unread modifiers tint the row with --theme-soft. */
+.bp-list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.bp-list-row:hover {
+  background: var(--color-background-secondary, var(--theme-bg));
+}
+.bp-list-row--active,
+.bp-list-row--unread {
+  background: var(--theme-soft);
+}
+.bp-list-row--active { border-color: var(--theme-accent); }
 
 /* ── View toggle (list / card / table) ── */
 .bp-view-toggle { display: flex; gap: 4px; }
