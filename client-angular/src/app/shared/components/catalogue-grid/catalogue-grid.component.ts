@@ -1599,7 +1599,16 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-primary);
       text-align: center;
     }
-    .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; position: relative; }
+    /* v1.65aq — top corners rounded to match the panel's --radius-card
+       so the hero image doesn't square off the panel's rounded top. */
+    .bp-detail-hero {
+      width: 100%; height: 160px;
+      background-size: cover; background-position: center;
+      position: relative;
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
+      overflow: hidden;
+    }
     .bp-detail-edit-btn {
       position: absolute; top: 10px; right: 10px;
       width: 30px; height: 30px;

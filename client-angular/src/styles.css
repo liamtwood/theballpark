@@ -844,7 +844,16 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow-y: auto;
   padding: 20px 24px;
 }
-.bp-cat-detail  { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
+/* v1.65aq — inline item detail panel adopts the same panel chrome as
+   the Filter / Results / Project Summary columns. Was just a left
+   hairline divider on the grid. */
+.bp-cat-detail {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  overflow-y: auto;
+}
 
 /* ── Sidebar primitives ── */
 .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }
