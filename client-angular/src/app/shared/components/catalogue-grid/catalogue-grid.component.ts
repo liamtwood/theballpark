@@ -826,7 +826,8 @@ export type DetailMode = 'inline' | 'drawer';
             (budgetUpdated)="onContextBudgetUpdated($event)"
             (estimateUpdated)="onContextEstimateUpdated($event)"
             (statusUpdated)="onContextStatusUpdated($event)"
-            (openEstimate)="onContextOpenEstimate()">
+            (openEstimate)="onContextOpenEstimate()"
+            (openCart)="openCartDrawer()">
           </app-category-context-panel>
         </ng-container>
 

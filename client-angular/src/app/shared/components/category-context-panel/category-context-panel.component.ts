@@ -75,16 +75,18 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
           </div>
           <div class="bp-ctx-head-name">{{ category?.name || '—' }}</div>
           <!-- v1.65x — cart icon + count of selected items for this
-               category. Same affordance Amazon / Best Buy use to signal
-               cart-state. Display only; clicking does nothing here
-               because the selected items render in the centre column
-               on the All view (no separate cart page). -->
-          <span class="bp-ctx-cart" *ngIf="context === 'project'"
-                [attr.title]="selectedItems.length + ' item' + (selectedItems.length === 1 ? '' : 's') + ' in cart'">
+               category. v1.65ac — click opens the shared Project Items
+               drawer (CartDrawerService) via the parent. Badge counts
+               all project_items for this category (selected + liked)
+               so it matches the All-view cart badge convention. -->
+          <button type="button"
+                  class="bp-ctx-cart" *ngIf="context === 'project'"
+                  [attr.title]="cartCount + ' item' + (cartCount === 1 ? '' : 's') + ' in cart'"
+                  (click)="openCart.emit()">
             <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
             <span class="bp-ctx-cart-badge"
-                  *ngIf="selectedItems.length">{{ selectedItems.length }}</span>
-          </span>
+                  *ngIf="cartCount">{{ cartCount }}</span>
+          </button>
         </div>
 
         <!-- v1.65aa — Budget / Estimate / Status rendered with the same
@@ -369,7 +371,13 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       flex-shrink: 0;
       color: #fff;
       padding: 2px;
+      /* v1.65ac — promoted from <span> to <button>; reset chrome. */
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.12s;
     }
+    .bp-ctx-cart:hover { opacity: 0.78; }
     .bp-ctx-cart lucide-icon { display: inline-flex; }
     .bp-ctx-cart-badge {
       position: absolute;
@@ -659,6 +667,15 @@ export class CategoryContextPanelComponent implements OnChanges {
   @Output() estimateUpdated = new EventEmitter<number | null>();
   @Output() statusUpdated = new EventEmitter<string>();
   @Output() openEstimate = new EventEmitter<void>();
+  /** v1.65ac — header cart icon → opens shared Project Items drawer. */
+  @Output() openCart = new EventEmitter<void>();
+
+  /** v1.65ac — full cart count (selected + liked) for the header badge,
+      mirroring the All-view convention. selectedItems + likedItems are
+      already filtered to this category by the parent. */
+  get cartCount(): number {
+    return (this.selectedItems?.length || 0) + (this.likedItems?.length || 0);
+  }
 
   /** v1.65w — local edit flags. Click a badge / brief → flip true,
       input renders, blur/Enter commits, Escape cancels. */
