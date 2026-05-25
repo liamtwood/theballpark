@@ -787,6 +787,16 @@ export type DetailMode = 'inline' | 'drawer';
                 </div>
               </ng-template>
             </div>
+            <!-- v1.65af — restored "Open estimate →" link on the All
+                 view. Mirrors the per-category panel footer. -->
+            <div class="bp-allctx-footer">
+              <button type="button"
+                      class="bp-allctx-foot-link"
+                      (click)="onContextOpenEstimate()">
+                Open estimate
+                <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
+              </button>
+            </div>
           </div>
 
           <!-- v1.19: per-category branch handed off to
@@ -1353,6 +1363,22 @@ export type DetailMode = 'inline' | 'drawer';
       font-size: var(--text-sm); color: var(--color-text-muted);
       line-height: 1.55; font-style: italic;
     }
+    /* v1.65af — All-view footer with restored "Open estimate →" link. */
+    .bp-allctx-footer {
+      padding: 10px 16px 14px;
+      border-top: 0.5px solid var(--color-border);
+      display: flex; justify-content: flex-end;
+    }
+    .bp-allctx-foot-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: none; padding: 4px 0;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 500;
+      color: var(--theme-accent);
+      transition: opacity 0.12s;
+    }
+    .bp-allctx-foot-link:hover { opacity: 0.75; }
 
     /* Build mode — category header above the requirement_brief.
        Mirrors the strip's circle visual (image / icon / initial) so

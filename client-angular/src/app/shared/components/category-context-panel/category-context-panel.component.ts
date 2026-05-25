@@ -250,10 +250,18 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       <!-- ── Pinned footer (v1.25): Contact supplier CTA. Only
            shown when there's at least one selected item — empty
            and wishlist-only states hide the footer entirely. -->
-      <div class="bp-ctx-footer"
-           *ngIf="context === 'project' && selectedItems.length > 0">
+      <div class="bp-ctx-footer" *ngIf="context === 'project'">
+        <!-- v1.65af — restore the "Open estimate →" link that previously
+             lived here. Opens the shared Estimate drawer. -->
+        <button type="button"
+                class="bp-ctx-foot-link"
+                (click)="openEstimate.emit()">
+          Open estimate
+          <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
+        </button>
         <button type="button"
                 class="bp-ctx-contact"
+                *ngIf="selectedItems.length > 0"
                 (click)="onContactSupplier($event)">
           <lucide-icon name="mail" [size]="14"></lucide-icon>
           Contact supplier →
@@ -570,7 +578,28 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       padding: 12px 16px;
       border-top: 0.5px solid var(--color-border);
       background: var(--color-surface);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
+    /* v1.65af — restored "Open estimate →" link. Aligns right, accent
+       colour, subtle hover. */
+    .bp-ctx-foot-link {
+      align-self: flex-end;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      padding: 4px 0;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      transition: opacity 0.12s;
+    }
+    .bp-ctx-foot-link:hover { opacity: 0.75; }
     .bp-ctx-contact {
       width: 100%;
       padding: 10px;
