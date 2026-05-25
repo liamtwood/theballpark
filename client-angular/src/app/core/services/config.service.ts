@@ -2,12 +2,19 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ThemePreset, PlatformConfig } from '../../models';
 
+/* p0003 — three-stop contrast set per preset.
+   Soft = active-tab light fill; mid = bold-mode hero orbs; strong = active-tab text. */
 const THEME_PRESETS: Record<string, ThemePreset> = {
-  amber:   { name: 'amber',   accent: '#D97706', bg: '#F5F0E8', empty: '#EDD9A3', text: '#92400E', border: '#E8D9C0' },
-  emerald: { name: 'emerald', accent: '#00B84A', bg: '#EDF7F1', empty: '#A7F3D0', text: '#065F46', border: '#B8E8CC' },
-  pink:    { name: 'pink',    accent: '#FF0066', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4' },
-  ocean:   { name: 'ocean',   accent: '#2563EB', bg: '#EFF6FF', empty: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE' },
-  slate:   { name: 'slate',   accent: '#64748B', bg: '#F8F9FA', empty: '#E8EDF2', text: '#334155', border: '#E2E8F0' },
+  amber:   { name: 'amber',   accent: '#D97706', bg: '#F5F0E8', empty: '#EDD9A3', text: '#92400E', border: '#E8D9C0',
+             contrastSoft: '#DDEEF2', contrast: '#3FA8C4', contrastStrong: '#0C447C' },
+  emerald: { name: 'emerald', accent: '#00B84A', bg: '#EDF7F1', empty: '#A7F3D0', text: '#065F46', border: '#B8E8CC',
+             contrastSoft: '#FBE4EC', contrast: '#F06F9C', contrastStrong: '#993556' },
+  pink:    { name: 'pink',    accent: '#FF0066', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4',
+             contrastSoft: '#DFF0E4', contrast: '#3DBE73', contrastStrong: '#0F6E56' },
+  ocean:   { name: 'ocean',   accent: '#2563EB', bg: '#EFF6FF', empty: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE',
+             contrastSoft: '#FBECD3', contrast: '#F0A93E', contrastStrong: '#854F0B' },
+  slate:   { name: 'slate',   accent: '#64748B', bg: '#F8F9FA', empty: '#E8EDF2', text: '#334155', border: '#E2E8F0',
+             contrastSoft: '#F6E6E1', contrast: '#D88A6E', contrastStrong: '#7A3A26' },
 };
 
 const STORAGE_KEY = 'ballpark_config';
@@ -64,6 +71,10 @@ export class ConfigService {
     }
     return this.config.mode === 'dark';
   }
+
+  /** p0003 — bold mode shares panel + content surfaces with light mode;
+      only the hero is decorated differently. Used by applyMode below. */
+  get isBoldMode(): boolean { return this.config.mode === 'bold'; }
 
   static daysUntilReset(): number {
     const now = new Date();
@@ -134,6 +145,11 @@ export class ConfigService {
     root.style.setProperty('--theme-empty', t.empty);
     root.style.setProperty('--theme-text', t.text);
     root.style.setProperty('--theme-border', t.border);
+    /* p0003 — contrast set drives the real-tabs active state + Bold-mode
+       hero orbs. Each preset carries its own three-stop. */
+    root.style.setProperty('--theme-contrast-soft', t.contrastSoft);
+    root.style.setProperty('--theme-contrast', t.contrast);
+    root.style.setProperty('--theme-contrast-strong', t.contrastStrong);
 
     if (this.isDarkMode) {
       root.style.setProperty('--theme-bg', this.darkenForDark(t.accent));
@@ -142,8 +158,12 @@ export class ConfigService {
   }
 
   applyMode(): void {
-    const dark = this.isDarkMode;
-    document.documentElement.setAttribute('data-mode', dark ? 'dark' : 'light');
+    /* p0003 — three-way data-mode: light / dark / bold. Bold paints
+       only the hero; panels and content reuse light-mode tokens. */
+    let mode: 'light' | 'dark' | 'bold' = 'light';
+    if (this.isDarkMode) mode = 'dark';
+    else if (this.isBoldMode) mode = 'bold';
+    document.documentElement.setAttribute('data-mode', mode);
   }
 
   private darkenForDark(accent: string): string {

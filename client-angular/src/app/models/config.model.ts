@@ -5,6 +5,13 @@ export interface ThemePreset {
   empty: string;
   text: string;
   border: string;
+  /** p0003 — three-stop contrast set per preset.
+      contrastSoft   → tab fill (light surface for active tab)
+      contrast       → bold-mode hero orbs (mid-saturation accent)
+      contrastStrong → active-tab text (dark variant for legibility) */
+  contrastSoft: string;
+  contrast: string;
+  contrastStrong: string;
 }
 
 export interface PlatformConfig {
@@ -13,7 +20,10 @@ export interface PlatformConfig {
   projectLabel: string;
   creditLabel: string;
   themeName: string;
-  mode: 'light' | 'dark' | 'system';
+  /** p0003 — 'bold' is a third display mode alongside light/dark.
+      Themed accent hero with orb + grain decoration. Panels and work
+      surfaces use light-mode treatment. */
+  mode: 'light' | 'dark' | 'bold' | 'system';
   heroAlign?: string;
   showUserName?: boolean;
   showLocation?: boolean;

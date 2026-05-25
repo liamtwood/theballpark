@@ -115,6 +115,13 @@
   --color-success:      #10B981;
   --color-success-dark: #065F46;
   --theme-soft: var(--theme-bg);
+
+  /* p0003 — three-stop contrast set per preset. Overridden by
+     ConfigService.applyTheme() when the preset changes. Defaults
+     below are the amber-preset values. */
+  --theme-contrast-soft:   #DDEEF2;
+  --theme-contrast:        #3FA8C4;
+  --theme-contrast-strong: #0C447C;
 }
 
 /* --- Dark mode overrides --- */
@@ -1195,20 +1202,98 @@ input.bp-cfg-page-label.p-inputtext:focus {
   background: var(--theme-bg);
   padding: 0 var(--section-pad);
 }
+/* p0003 — REAL FOLDER TABS. Sentence case, --text-base, readable
+   inactive colour. Active tab = --theme-contrast-soft fill +
+   --theme-contrast-strong text with folder-tab top corners. Same
+   in light / dark / bold modes (per-mode rules below override the
+   inactive colour where the hero background changes). */
 .bp-hero-tab {
-  padding: 10px 20px;
-  font-size: var(--text-sm);
+  padding: 10px 18px;
+  font-size: var(--text-base);
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   background: none;
   border: none;
-  border-bottom: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
   font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  border-radius: 9px 9px 0 0;
 }
 .bp-hero-tab:hover { color: var(--color-text-primary); }
-.bp-hero-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+.bp-hero-tab.active {
+  background: var(--theme-contrast-soft);
+  color: var(--theme-contrast-strong);
+}
+[data-mode="dark"] .bp-hero-tab,
+[data-mode="bold"] .bp-hero-tab {
+  color: rgba(255, 255, 255, 0.82);
+}
+[data-mode="dark"] .bp-hero-tab:hover,
+[data-mode="bold"] .bp-hero-tab:hover {
+  color: #fff;
+}
+[data-mode="dark"] .bp-hero-tab.active,
+[data-mode="bold"] .bp-hero-tab.active {
+  background: var(--theme-contrast-soft);
+  color: var(--theme-contrast-strong);
+}
+
+/* ─── p0003 — BOLD MODE HERO ──────────────────────────────────────
+   Third display mode alongside light and dark. Only the hero changes;
+   panels and content reuse light-mode treatment. data-mode is set on
+   document.documentElement by ConfigService.applyMode().
+   The .bp-hero-orbs / .bp-hero-grain elements always live in the
+   hero template; they're display:none outside [data-mode="bold"]
+   (see app-shell scoped styles). */
+[data-mode="bold"] .bp-hero-orbs {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+[data-mode="bold"] .bp-hero-grain {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-mode="bold"] .bp-hero,
+[data-mode="bold"] .bp-hero-tab-band {
+  background: var(--theme-accent) !important;
+}
+[data-mode="bold"] .bp-hero {
+  border-bottom: none !important;
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+  overflow: hidden;
+}
+[data-mode="bold"] .bp-hero-org-name,
+[data-mode="bold"] .bp-hero-page-label,
+[data-mode="bold"] .bp-hero-back {
+  color: var(--color-surface) !important;
+}
+/* Pills on Bold hero — white-fill + theme-text for legibility. */
+[data-mode="bold"] .bp-hero-tag.p-tag,
+[data-mode="bold"] .bp-hero-tag-span {
+  background: #fff !important;
+  color: var(--theme-text) !important;
+  border-color: #fff !important;
+}
+/* Tab badge in Bold — danger-red on accent is muddy; flip to white-fill
+   + accent-text. */
+[data-mode="bold"] .bp-hero-tab-badge {
+  background: #fff !important;
+  color: var(--theme-accent) !important;
+}
 
 /* ── PAGE LAYOUT ── */
 .bp-settings-body  { max-width: 640px; margin: 0 auto; padding: var(--section-pad); }
@@ -1654,20 +1739,24 @@ app-top-nav { flex-shrink: 0; }
    active   = theme-accent colour only — no underline, no extra space
    ============================================================= */
 
+/* p0003 — restated here with !important to outweigh the earlier
+   uppercase rule that lived in this block. See line ~1205 for the
+   canonical .bp-hero-tab definition. */
 .bp-hero-tab {
-  color: var(--color-text-muted) !important;
-  border-bottom: none !important;
+  color: var(--color-text-secondary) !important;
   font-weight: 500 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  font-size: 11px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: var(--text-base) !important;
+  border-radius: 9px 9px 0 0 !important;
 }
 .bp-hero-tab:hover {
-  color: var(--color-text-secondary) !important;
+  color: var(--color-text-primary) !important;
 }
 .bp-hero-tab.active {
-  color: var(--theme-accent) !important;
-  font-weight: 600 !important;
+  background: var(--theme-contrast-soft) !important;
+  color: var(--theme-contrast-strong) !important;
+  font-weight: 500 !important;
 }
 
 /* ── FILLED HEART when active ── */

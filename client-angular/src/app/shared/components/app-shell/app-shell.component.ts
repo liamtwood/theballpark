@@ -43,6 +43,25 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- HERO -->
     <div class="bp-hero" *ngIf="!hideHero">
 
+      <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
+           grain overlay sit behind hero content. Always present in the
+           DOM; styles.css hides them outside [data-mode="bold"] so
+           light + dark heroes are untouched. Same recipe as
+           welcome.component.ts. -->
+      <svg class="bp-hero-orbs" viewBox="0 0 800 300"
+           preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <filter id="bp-hero-orb-blur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="55"/>
+          </filter>
+        </defs>
+        <g filter="url(#bp-hero-orb-blur)">
+          <circle cx="75" cy="40" r="165" fill="var(--theme-contrast)"/>
+          <circle cx="755" cy="290" r="190" fill="var(--theme-contrast)"/>
+        </g>
+      </svg>
+      <div class="bp-hero-grain" aria-hidden="true"></div>
+
       <!-- Optional left-aligned back link, vertically centred in the hero.
            Pages opt-in via shellCtx.set({ back: { label, onBack } }).
            Wrapped in an *ngIf="as" pattern because this.ctx is nullable
@@ -306,7 +325,22 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
     /* v1.22: hero band gets a hairline separator to mark the
        boundary between header and KPI strip / body. */
-    .bp-hero { border-bottom: var(--border-hairline); }
+    .bp-hero {
+      border-bottom: var(--border-hairline);
+      position: relative;
+    }
+
+    /* p0003 — Bold-mode hero rules live in global styles.css (the
+       [data-mode="bold"] attribute is set on document.documentElement,
+       which is outside this component's scope). Hero stays
+       position:relative here so the global rules' absolute-positioned
+       orb / grain elements anchor correctly in light + dark modes too. */
+    .bp-hero-orbs,
+    .bp-hero-grain { display: none; }
+    .bp-hero > *:not(.bp-hero-orbs):not(.bp-hero-grain) {
+      position: relative;
+      z-index: 3;
+    }
 
     /* v1.24: notification badge on tabs. Red circle, white text,
        positioned inline after the tab label. Used by the project

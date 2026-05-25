@@ -29,8 +29,8 @@ import { environment } from '../../environments/environment';
         <span class="bp-nav-tagline">{{ tagline }}</span>
       </div>
       <button class="bp-mode-btn bp-mode-btn-mobile" (click)="toggleMode()"
-        [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-        <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
+        [title]="modeTitle">
+        <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
         <!-- v1.35: nav simplified to Home + Admin only. Marketplace moved
@@ -58,8 +58,8 @@ import { environment } from '../../environments/environment';
         <!-- v1.35: Settings cog removed per user request — Settings is
              reachable via the dashboard Quick Actions / Invite Member
              quick action; the cog was redundant in the nav cluster. -->
-        <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-          <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
+        <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
+          <lucide-icon [name]="modeIcon" [size]="14"></lucide-icon>
         </button>
         <app-avatar [name]="userName || orgName" [size]="32"></app-avatar>
       </div>
@@ -238,6 +238,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
       never render an empty circle. */
   userName     = '';
   isDark       = false;
+  /** p0003 — current display mode. Source of truth for modeIcon /
+      modeTitle / the three-way toggle. */
+  mode: 'light' | 'dark' | 'bold' = 'light';
   isAdmin      = false;
   version      = environment.version;
   inProject    = false;
@@ -342,9 +345,11 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (match) { this.projectId = match[1]; this.inProject = true; }
     else if (qpMatch) { this.projectId = qpMatch[1]; this.inProject = true; }
 
-    const saved = localStorage.getItem('bp-mode');
-    this.isDark = saved === 'dark';
-    this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
+    /* p0003 — three-way mode preference (light / dark / bold). */
+    const saved = localStorage.getItem('bp-mode') as 'light' | 'dark' | 'bold' | null;
+    this.mode = (saved === 'dark' || saved === 'bold') ? saved : 'light';
+    this.isDark = this.mode === 'dark';
+    this.configService.update({ mode: this.mode });
 
     this.cfgStripSub = this.configStrip.hasConfig$.subscribe(has => {
       this.hasConfig = has;
@@ -352,11 +357,25 @@ export class TopNavComponent implements OnInit, OnDestroy {
     });
   }
 
+  /* p0003 — three-way cycle: light → dark → bold → light. */
   toggleMode() {
-    this.isDark = !this.isDark;
-    const mode = this.isDark ? 'dark' : 'light';
-    localStorage.setItem('bp-mode', mode);
-    this.configService.update({ mode });
+    const order: Array<'light' | 'dark' | 'bold'> = ['light', 'dark', 'bold'];
+    const next = order[(order.indexOf(this.mode) + 1) % order.length];
+    this.mode = next;
+    this.isDark = next === 'dark';
+    localStorage.setItem('bp-mode', next);
+    this.configService.update({ mode: next });
+  }
+
+  get modeIcon(): string {
+    if (this.mode === 'dark') return 'moon';
+    if (this.mode === 'bold') return 'sparkles';
+    return 'sun';
+  }
+  get modeTitle(): string {
+    if (this.mode === 'light') return 'Switch to dark mode';
+    if (this.mode === 'dark')  return 'Switch to bold mode';
+    return 'Switch to light mode';
   }
 
   ngOnDestroy() {

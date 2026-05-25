@@ -28,6 +28,7 @@ When picking up a task, read the `-prompt.md` and open the matching `-mockup.htm
 |----|--------|------|
 | p0001 | Done | Search-panel standardisation across Marketplace + Messages, and the Messages styling pass (panel containment, sticky headers, shared list-row card, elevation-token migration). |
 | p0002 | Done | Styling fixes after p0001's first pass — white search panel, stray container removed, panel-header divider alignment, header icons de-circled, active category circle. Prompt only; uses the p0001 mockup as its target. |
+| p0003 | Done | Bold hero mode + real tabs — new `[data-mode="bold"]` (themed accent hero with code-generated orbs + grain), project tabs restyled as real folder tabs with a light contrast-colour active tab, new `--theme-contrast` token per preset. |
 
 Statuses: **Draft** (still being written) · **Ready** (ready to implement) · **Done** (implemented).
 
