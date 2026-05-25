@@ -927,25 +927,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow: hidden;
 }
 /* v1.65am (p0002 #1, #6) — search panel is a plain white surface
-   panel matching the others (no theme tint). Vertical padding tightened
-   to match the panel-head rhythm — the input is 12px text. */
+   panel matching the others (no theme tint).
+   v1.65ar — inner field container removed; panel itself is now the
+   input frame. Padding restored so the chip + input have breathing
+   room without the inner box. */
 .bp-search-panel {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
   margin: 12px 12px 0;
-  padding: 6px 10px;
+  padding: 8px 12px;
 }
-/* v1.65am (p0002 #5) — the search row becomes the input field container
-   inside the (white) panel: --theme-soft fill + hairline. Reads as an
-   input rather than floating placeholder text. */
+/* v1.65ar — inner light-tint field container dropped. The white search
+   panel itself provides the input frame; the "All" chip + search input
+   sit directly in it. One panel, one fill — cleaner. */
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
-  background: var(--theme-soft);
-  border: var(--border-hairline);
-  border-radius: var(--radius-button);
-  padding: 8px 12px;
 }
 .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
 .bp-search-input.p-inputtext {
