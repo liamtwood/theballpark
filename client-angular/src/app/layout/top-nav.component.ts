@@ -44,6 +44,13 @@ import { environment } from '../../environments/environment';
            class="bp-nav-link bp-nav-link-admin">
           <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
         </a>
+        <!-- v1.65at — Welcome link restored. Opens the public /welcome
+             deck in a new tab — testing aid for the marketing surface. -->
+        <a href="/welcome" target="_blank" rel="noopener"
+           class="bp-nav-link bp-nav-link-welcome"
+           title="Open the public Welcome page in a new tab">
+          <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
+        </a>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
