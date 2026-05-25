@@ -932,14 +932,24 @@ export type DetailMode = 'inline' | 'drawer';
       height: auto !important;
       min-height: 0 !important;
     }
+    /* v1.65ap — "All" subcategory dropdown inside the search panel
+       reads as the bold selector colour: solid --theme-accent fill +
+       white label + white chevron. Same convention as active category
+       circle / sidebar item active state. */
     :host ::ng-deep .bp-search-panel .bp-strip-search-dd.p-dropdown {
-      background: transparent !important;
+      background: var(--theme-accent) !important;
       border: none !important;
-      border-right: var(--border-hairline) !important;
-      border-radius: 0 !important;
+      border-radius: var(--radius-button) 0 0 var(--radius-button) !important;
       box-shadow: none !important;
       min-width: 92px;
       height: auto;
+    }
+    :host ::ng-deep .bp-search-panel .bp-strip-search-dd .p-dropdown-label {
+      color: var(--color-surface) !important;
+      font-weight: 500 !important;
+    }
+    :host ::ng-deep .bp-search-panel .bp-strip-search-dd .p-dropdown-trigger {
+      color: var(--color-surface) !important;
     }
 
     /* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
@@ -1516,9 +1526,11 @@ export type DetailMode = 'inline' | 'drawer';
        Three-column grid; matches the per-cat panel.
        v1.65ag — Budget + Estimate readonly inputs become tint-fill
        blocks (--theme-soft, no border, --radius-button) per the v1.22
-       elevation pass. */
+       elevation pass.
+       v1.65ap — Budget + Estimate narrower so Status gets the breathing
+       room it needs for longer labels ("Need Supplier", "Client Managed"). */
     .bp-allctx-fields {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+      display: grid; grid-template-columns: 0.9fr 0.9fr 1.3fr; gap: 12px;
       padding: 12px 16px; border-bottom: var(--border-hairline);
     }
     :host ::ng-deep .bp-allctx-fields .bp-field-readonly.p-inputtext {

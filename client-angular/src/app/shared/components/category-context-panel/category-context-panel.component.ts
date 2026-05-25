@@ -364,9 +364,12 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
        form-field treatment (bp-field-label above bp-field-readonly).
        3-column grid keeps Status on the right naturally. Readonly view
        gets a click hint so the user knows it's editable. */
+    /* v1.65ap — Budget + Estimate narrower so Status gets room for
+       longer labels ("Need Supplier", "Client Managed"). Matches the
+       All-view's bp-allctx-fields. */
     .bp-ctx-fields {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-      padding: 12px 16px; border-bottom: 0.5px solid var(--color-border);
+      display: grid; grid-template-columns: 0.9fr 0.9fr 1.3fr; gap: 12px;
+      padding: 12px 16px; border-bottom: var(--border-hairline);
     }
     /* Click affordance on the readonly view-mode inputs. The global
        bp-field-readonly rule sets cursor: default — override here to
