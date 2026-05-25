@@ -809,7 +809,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 
 /* ── Main-column header ── */
-.bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.bp-cat-section-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+}
+/* v1.65ah — main RESULTS header sticks to the top of .bp-cat-main while
+   the cards scroll past underneath. Sub-section headers (AI
+   RECOMMENDATIONS etc.) keep their normal flow so they scroll away
+   before RESULTS pins. Negative margins extend the bg + hairline across
+   .bp-cat-main's 24px horizontal padding. */
+.bp-cat-section-header:not(.bp-cat-section-header--sub) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-surface);
+  margin: 0 -24px 16px;
+  padding: 16px 24px 12px;
+  border-bottom: var(--border-hairline);
+}
 .bp-cat-section-header--sub { margin-top: 8px; }
 .bp-cat-section-header--sub + .bp-item-grid { margin-bottom: 24px; }
 .bp-cat-section-empty {

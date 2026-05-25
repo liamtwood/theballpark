@@ -1011,15 +1011,22 @@ export type DetailMode = 'inline' | 'drawer';
        Same eyebrow-style typography as the .bp-cat-section-header
        title in the centre column, plus a hairline rule underneath to
        anchor it as a column header. */
+    /* v1.65ah — FILTER eyebrow pins to the top of .bp-cat-sidebar while
+       the filter groups scroll past underneath. Negative margins extend
+       the bg + hairline across the sidebar's 16px horizontal padding so
+       the strip spans the full panel width. */
     .bp-filter-title {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--color-surface);
       font-family: var(--font-body);
       font-size: 11px; font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--theme-accent);
-      padding: 4px 2px 8px;
-      margin-top: 4px;
-      border-bottom: 0.5px solid var(--color-border);
-      margin-bottom: 10px;
+      margin: 0 -16px 10px;
+      padding: 12px 16px 8px;
+      border-bottom: var(--border-hairline);
     }
     .bp-filter-grouphdr {
       display: flex; align-items: center; justify-content: space-between;
@@ -1315,22 +1322,29 @@ export type DetailMode = 'inline' | 'drawer';
     /* v1.65g — "All" view summary panel. Mirrors the per-category
        context panel: pink header · badge row · plain brief. */
     /* v1.65ag — Project Summary panel adopts the v1.22 panel chrome:
-       white surface, hairline border, --radius-card, --shadow-xs. */
+       white surface, hairline border, --radius-card, --shadow-xs.
+       v1.65ah — scroll the panel body so the head can pin via sticky. */
     .bp-allctx {
       font-family: var(--font-body);
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
-      overflow: hidden;
+      overflow-y: auto;
+      max-height: 100%;
     }
     /* v1.65ag — saturated theme-accent header replaced by a calm
-       eyebrow strip: surface bg, --theme-text label, hairline divider. */
+       eyebrow strip: surface bg, --theme-text label, hairline divider.
+       v1.65ah — header sticks to the top of .bp-allctx while the body
+       (fields / details / brief / footer) scrolls underneath. */
     .bp-allctx-head {
       display: flex; align-items: center; gap: 10px;
       padding: 14px 16px;
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
     .bp-allctx-head-icon {
       width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
