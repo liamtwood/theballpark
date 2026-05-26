@@ -32,12 +32,14 @@ import { EstimateComponent } from '../../../features/projects/pages/project-deta
                [style]="{ width: '480px' }"
                styleClass="bp-est-drawer"
                [showCloseIcon]="false">
-      <div class="bp-est-d-head">
-        <div>
-          <div class="bp-drawer-label">Project</div>
-          <div class="bp-est-d-title">Estimate</div>
-        </div>
-        <button type="button" class="bp-icon-btn" title="Close" (click)="close()">
+      <!-- v1.65co — header swapped to the .bp-ov-head + .bp-ov-label
+           treatment used by EVENT DETAILS / BRIEF / MARKETPLACE /
+           ESTIMATE / MESSAGES cards on the Overview. Solid accent
+           bar, centred white uppercase label. Close button overlays
+           the top-right corner as a white icon button. -->
+      <div class="bp-est-d-head bp-ov-head">
+        <span class="bp-ov-label">ESTIMATE</span>
+        <button type="button" class="bp-est-d-close" title="Close" (click)="close()">
           <lucide-icon name="x" [size]="16"></lucide-icon>
         </button>
       </div>
@@ -48,10 +50,34 @@ import { EstimateComponent } from '../../../features/projects/pages/project-deta
   `,
   styles: [`
     :host ::ng-deep .bp-est-drawer .p-sidebar-content { padding: 0; }
-    .bp-est-d-head { display: flex; align-items: flex-start; justify-content: space-between;
-      padding: 16px 18px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-est-d-title { font-family: var(--font-display); font-size: var(--text-xl);
-      color: var(--color-text-primary); margin-top: 2px; }
+    /* v1.65co — Header pinned at the top of the drawer; the .bp-ov-head
+       global rules paint it solid accent + centred white label. The
+       close icon overlays absolutely so the label stays optically
+       centred and the bar matches the Overview card heads. */
+    .bp-est-d-head.bp-ov-head {
+      position: relative;
+    }
+    .bp-est-d-close {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--color-surface);
+      cursor: pointer;
+      padding: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-button);
+      opacity: 0.85;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .bp-est-d-close:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.15);
+    }
     .bp-est-d-body { padding: 0 0 20px; }
     /* the embedded EstimateComponent owns its own .bp-page wrapper */
   `]
