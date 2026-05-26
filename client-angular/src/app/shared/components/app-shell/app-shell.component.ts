@@ -236,7 +236,9 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       font-size: 12px;
       font-weight: 500;
-      color: var(--theme-accent);
+      /* v1.65bs — back link on the accent-filled hero needs to be
+         white for contrast. */
+      color: var(--color-surface);
       padding: 4px 0;
       white-space: nowrap;
     }

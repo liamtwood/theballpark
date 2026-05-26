@@ -1192,8 +1192,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
    only as wide as the tab labels). .bp-hero spans the full page
    width so the line now goes edge-to-edge. The active tab's
    margin-bottom: -0.5px still covers the line at its position. */
+/* v1.65bs — hero now uses the bold theme fill (--theme-accent) in
+   light mode too; text + sub-label switch to white for legibility.
+   Was --theme-bg parchment. Bold mode kept its identical accent
+   treatment plus orbs + grain. */
 .bp-hero {
-  background: var(--theme-bg);
+  background: var(--theme-accent);
   padding: 32px var(--section-pad) 0;
   border-bottom: var(--border-hairline);
 }
@@ -1201,7 +1205,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
   font-family: var(--font-display);
   font-size: 36px;
   font-weight: 400;
-  color: var(--color-text-primary);
+  color: var(--color-surface);
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin-bottom: 6px;
@@ -1209,7 +1213,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-page-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--theme-text) !important;
+  color: var(--color-surface) !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 20px;
