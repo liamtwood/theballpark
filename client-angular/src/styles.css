@@ -933,9 +933,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
    like a pink wrapper around the cards. */
 /* v1.65bq — top padding restored (8px) to match the flex gap between
    the cat and search panels. The cat panel now has equal page-ground
-   breathing room above (to the hero) and below (to the search panel). */
+   breathing room above (to the hero) and below (to the search panel).
+   v1.65bz — top padding doubled to 16px to give the cat container
+   more breathing room below the hero (per Liam). The 8px flex gap
+   between cat + search panels stays unchanged. */
 .bp-browse-strip {
-  padding: 8px 12px 0;
+  padding: 16px 12px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
