@@ -771,7 +771,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   display: grid;
   grid-template-columns: 260px 1fr;
   height: calc(100vh - var(--nav-height) - 160px);
-  background: var(--theme-bg);
+  /* v1.65av — page ground matches the active tab's --theme-contrast-soft
+     so the active folder tab visually opens onto the page below. */
+  background: var(--theme-contrast-soft);
   gap: 12px;
   padding: 12px;
 }

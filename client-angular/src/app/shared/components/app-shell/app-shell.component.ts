@@ -385,13 +385,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
     .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
     /* v1.65an — when the shell hosts a catalogue-grid surface, paint the
-       scroll viewport with the parchment ground so the empty area below
-       the 3-col body picks up --theme-bg instead of revealing white.
-       Scoped via :has() so other pages (dashboard, settings, etc.) are
-       unaffected. */
+       scroll viewport with the page ground so the empty area below
+       the 3-col body doesn't reveal white.
+       v1.65av — page ground uses --theme-contrast-soft (same as the
+       active folder tab) so the active tab visually opens onto the
+       page. Hero + tab band keep --theme-bg parchment so the active
+       tab pops against them. */
     .bp-shell-content:has(app-catalogue-grid),
     .bp-shell-content:has(app-messages-inbox) {
-      background: var(--theme-bg);
+      background: var(--theme-contrast-soft);
     }
 
     /* ── SIDE NAV ── */
