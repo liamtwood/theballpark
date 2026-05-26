@@ -996,6 +996,32 @@ input.bp-cfg-page-label.p-inputtext:focus {
   min-height: 0 !important;
 }
 
+/* v1.65ch — "View estimate" CTA on the right end of the search row.
+   Subtle accent-tint pill (theme-soft fill, accent text + icon)
+   so it reads as an action but doesn't fight the bold "All ▾"
+   selector at the other end of the row. Only renders when the grid
+   is in project context. */
+.bp-search-view-estimate {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 6px 12px;
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.bp-search-view-estimate:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  border-color: var(--theme-accent);
+}
+
 /* v1.65cb — "All ▾" scope chip inside .bp-search-row. Promoted from
    catalogue-grid's scoped block so the messages-inbox search row can
    use the same chrome. Solid --theme-accent fill + white label +

@@ -94,6 +94,8 @@ import {
       (budgetUpdated)="onContextBudgetUpdated($event)"
       (estimateUpdated)="onContextEstimateUpdated($event)"
       (statusUpdated)="onContextStatusUpdated($event)"
+      (projectBudgetUpdated)="onProjectBudgetUpdated($event)"
+      (projectStatusUpdated)="onProjectStatusUpdated($event)"
       (openEstimate)="onOpenEstimate()"
       (addClicked)="onAddCategory()">
     </app-catalogue-grid>
@@ -427,6 +429,30 @@ export class MarketplaceComponent implements OnInit {
     this.projectSvc.upsertCategory(this.projectId, catId, patch).subscribe({
       next: () => {
         this.refreshProjectCategories();
+        this.msg.add({ severity: 'success', summary: `${label} saved`, life: 1500 });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: `${label} save failed`, life: 3000 });
+      }
+    });
+  }
+
+  /** v1.65ch — project-level inline edits from the catalogue-grid
+      "All" view (Project Summary panel). Same toast pattern as the
+      per-category edits, but PUTs the project row directly. */
+  onProjectBudgetUpdated(project_budget: number | null) {
+    this.persistProjectPatch({ project_budget }, 'Budget');
+  }
+  onProjectStatusUpdated(status_code: string) {
+    this.persistProjectPatch({ status_code }, 'Status');
+  }
+  private persistProjectPatch(patch: any, label: string) {
+    if (!this.projectId) return;
+    this.projectSvc.update(this.projectId, patch).subscribe({
+      next: (updated) => {
+        if (updated) this.project = updated;
+        this.rebuildContext();
+        this.cdr.detectChanges();
         this.msg.add({ severity: 'success', summary: `${label} saved`, life: 1500 });
       },
       error: () => {

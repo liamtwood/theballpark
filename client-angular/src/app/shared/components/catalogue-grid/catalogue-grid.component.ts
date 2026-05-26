@@ -103,7 +103,10 @@ export type DetailMode = 'inline' | 'drawer';
 
       <!-- v1.65aj (p0001) — SEARCH section. Sits inside the same
            browse strip so the two browse controls read as one block.
-           Recommend lives in the Results column header. -->
+           Recommend lives in the Results column header.
+           v1.65ch — "View estimate" button sits to the right of the
+           search input (project context only). Same intent as the
+           Open-estimate footer link, surfaced one click away. -->
       <div class="bp-search-panel">
         <div class="bp-search-row">
           <p-dropdown *ngIf="stripDropdownOptions.length > 1"
@@ -119,6 +122,14 @@ export type DetailMode = 'inline' | 'drawer';
                  [placeholder]="searchPlaceholder"
                  class="bp-search-input"
                  (keyup.enter)="applySearch()"/>
+          <button *ngIf="projectContext"
+                  type="button"
+                  class="bp-search-view-estimate"
+                  (click)="onContextOpenEstimate()"
+                  title="Open the estimate drawer">
+            View estimate
+            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+          </button>
         </div>
       </div>
     </div><!-- /.bp-browse-strip -->
@@ -752,14 +763,29 @@ export type DetailMode = 'inline' | 'drawer';
             <div class="bp-allctx-body">
             <!-- v1.65aa — Budget / Estimate / Status using the Event
                  drawer's form-field treatment (bp-field-label above
-                 bp-field-readonly). 3-column grid; display-only for
-                 the All view. -->
+                 bp-field-readonly). 3-column grid.
+                 v1.65ch — Budget + Status are now click-to-edit
+                 (project-level project_budget + status_code). Estimate
+                 stays readonly — it's a derived total from items, not
+                 user-set. Click any readonly Budget/Status to swap in
+                 the edit input/dropdown; blur/Enter commits, Escape
+                 cancels — same pattern as the per-category panel. -->
             <div class="bp-allctx-fields">
               <div class="bp-evd-field">
                 <label class="bp-field-label">Budget</label>
-                <input pInputText readonly
-                       class="w-full bp-field-readonly"
-                       [value]="allBudgetTotal | gbp"/>
+                <input pInputText *ngIf="!editingAllBudget"
+                       readonly
+                       class="w-full bp-field-readonly bp-ctx-field-clickable"
+                       [value]="allBudgetTotal | gbp"
+                       (click)="startEditAllBudget()"
+                       title="Click to edit"/>
+                <input pInputText *ngIf="editingAllBudget"
+                       type="number" min="0" step="100"
+                       class="w-full bp-input-edit"
+                       [(ngModel)]="allBudgetDraft"
+                       (blur)="commitAllBudget()"
+                       (keyup.enter)="commitAllBudget()"
+                       (keyup.escape)="cancelAllBudget()"/>
               </div>
               <div class="bp-evd-field">
                 <label class="bp-field-label">Estimate</label>
@@ -767,11 +793,25 @@ export type DetailMode = 'inline' | 'drawer';
                        class="w-full bp-field-readonly"
                        [value]="allEstimateTotal | gbp"/>
               </div>
-              <div class="bp-evd-field" *ngIf="projectStatusLabel">
+              <div class="bp-evd-field" *ngIf="projectStatuses.length">
                 <label class="bp-field-label">Status</label>
-                <input pInputText readonly
-                       class="w-full bp-field-readonly"
-                       [value]="projectStatusLabel"/>
+                <input pInputText *ngIf="!editingAllStatus"
+                       readonly
+                       class="w-full bp-field-readonly bp-ctx-field-clickable"
+                       [value]="projectStatusDisplay()"
+                       (click)="startEditAllStatus()"
+                       title="Click to change status"/>
+                <p-dropdown *ngIf="editingAllStatus"
+                            [options]="projectStatuses"
+                            [ngModel]="projectStatusCode"
+                            (onChange)="commitAllStatus($event.value)"
+                            (onHide)="editingAllStatus = false"
+                            optionLabel="label" optionValue="code"
+                            appendTo="body"
+                            styleClass="w-full bp-evd-dropdown"
+                            panelStyleClass="bp-dd-panel"
+                            [autoDisplayFirst]="false"
+                            placeholder="—"></p-dropdown>
               </div>
             </div>
             <!-- v1.65o — project details strip. Same fields as the
@@ -1814,6 +1854,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Output() budgetUpdated = new EventEmitter<{ categoryId: string; ballpark_budget: number | null }>();
   @Output() estimateUpdated = new EventEmitter<{ categoryId: string; ballpark_cost: number | null }>();
   @Output() statusUpdated = new EventEmitter<{ categoryId: string; status_code: string }>();
+  /** v1.65ch — All-view inline edits for the project-level Budget +
+      Status fields. Parent persists via projectService.update. */
+  @Output() projectBudgetUpdated = new EventEmitter<number | null>();
+  @Output() projectStatusUpdated = new EventEmitter<string>();
   @Output() openEstimate = new EventEmitter<void>();
   /** v1.65b — bubbles the trailing "+" pseudo-circle click up to the
       parent, which opens the shared AddCategoryService drawer. */
@@ -2248,6 +2292,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       units: this.codelistSvc.getByName('item_unit'),
       timeUnits: this.codelistSvc.getByName('item_time_unit')
     }).subscribe(() => this.cdr.detectChanges());
+    // v1.65ch — project_status options for the All-view Status dropdown.
+    this.codelistSvc.getByName('project_status').subscribe({
+      next: rows => { this.projectStatuses = rows || []; this.cdr.markForCheck(); },
+      error: () => {}
+    });
     // v1.49c — populate the filter facets for the initial "All" view
     // (Price / Supplier / Event) without waiting for a category click.
     this.loadDimensions();
@@ -2820,10 +2869,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     });
   }
 
-  /** v1.65g — All-view totals (project Marketplace summary panel). */
+  /** v1.65g — All-view totals (project Marketplace summary panel).
+      v1.65ch — Budget switched from sum-of-categories to the project-
+      level project_budget field so the value is single-sourced + the
+      field can be edited inline. Falls back to the per-category sum
+      when project_budget isn't set, so older projects don't display
+      as £0. Estimate still aggregates per-category ballpark_cost. */
   get allBudgetTotal(): number {
+    const p: any = this.projectContext?.project;
+    const direct = Number(p?.project_budget) || 0;
+    if (direct > 0) return direct;
     return (this.projectContext?.projectCategories || [])
-      .reduce((s, p) => s + (Number((p as any).ballpark_budget) || 0), 0);
+      .reduce((s, c) => s + (Number((c as any).ballpark_budget) || 0), 0);
   }
   get allEstimateTotal(): number {
     return (this.projectContext?.projectCategories || [])
@@ -2970,6 +3027,53 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       handles routing (the Build/Estimate tab path can vary per page). */
   onContextOpenEstimate() {
     this.openEstimate.emit();
+  }
+
+  // ── v1.65ch — All-view inline edits (project-level Budget + Status) ──
+
+  /** Click-to-edit state for the All-view Budget + Status fields.
+      Mirrors the per-category pattern in category-context-panel. */
+  editingAllBudget = false;
+  allBudgetDraft: number | null = null;
+  editingAllStatus = false;
+
+  /** project_status codelist rows (loaded once in ngOnInit). Powers
+      the All-view Status dropdown + label resolution. */
+  projectStatuses: any[] = [];
+
+  /** Lazy code → label resolver against projectStatuses; falls back
+      to the raw code if the codelist hasn't loaded or the code is
+      unknown. */
+  projectStatusDisplay(): string {
+    const p: any = this.projectContext?.project;
+    if (!p) return '';
+    const code = p.status_code || p.status_name || 'draft';
+    const row = this.projectStatuses.find(s => s.code === code);
+    return row?.label || p.status_name || (code.charAt(0).toUpperCase() + code.slice(1).replace(/_/g, ' '));
+  }
+
+  get projectStatusCode(): string {
+    const p: any = this.projectContext?.project;
+    return p?.status_code || 'draft';
+  }
+
+  startEditAllBudget(): void {
+    this.allBudgetDraft = this.allBudgetTotal || null;
+    this.editingAllBudget = true;
+  }
+  commitAllBudget(): void {
+    if (!this.editingAllBudget) return;
+    const v = this.allBudgetDraft;
+    const next = (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+    this.editingAllBudget = false;
+    if (next !== this.allBudgetTotal) this.projectBudgetUpdated.emit(next);
+  }
+  cancelAllBudget(): void { this.editingAllBudget = false; }
+
+  startEditAllStatus(): void { this.editingAllStatus = true; }
+  commitAllStatus(code: string): void {
+    this.editingAllStatus = false;
+    if (code && code !== this.projectStatusCode) this.projectStatusUpdated.emit(code);
   }
 
   /** v1.20: convenience getter — show the in-grid + / ♡ project-cart
