@@ -324,9 +324,13 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     }
 
     /* v1.22: hero band gets a hairline separator to mark the
-       boundary between header and KPI strip / body. */
+       boundary between header and KPI strip / body.
+       v1.65bb — hairline removed. Tabs now carry their own outline so
+       a separator above them creates a double-line effect with the
+       tab's top border. Hero + tab band share parchment fill, so
+       removing the divider lets the tabs read as "stuck into" the
+       hero region. */
     .bp-hero {
-      border-bottom: var(--border-hairline);
       position: relative;
     }
 
