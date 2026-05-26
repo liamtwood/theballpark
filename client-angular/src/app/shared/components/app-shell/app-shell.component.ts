@@ -390,9 +390,13 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
        v1.65av — page ground uses --theme-contrast-soft (same as the
        active folder tab) so the active tab visually opens onto the
        page. Hero + tab band keep --theme-bg parchment so the active
-       tab pops against them. */
+       tab pops against them.
+       v1.65aw — extended to all project tabs (Overview / Plan /
+       Marketplace / Inbox) via app-project-detail so the folder-tab
+       metaphor reads on every tab, not just Marketplace + Inbox. */
     .bp-shell-content:has(app-catalogue-grid),
-    .bp-shell-content:has(app-messages-inbox) {
+    .bp-shell-content:has(app-messages-inbox),
+    .bp-shell-content:has(app-project-detail) {
       background: var(--theme-contrast-soft);
     }
 
