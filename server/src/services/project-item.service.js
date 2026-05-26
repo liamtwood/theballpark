@@ -3,6 +3,39 @@ const pool = require('../db/pool');
 // Project-scoped "cart" — selected (tick) and liked (heart) catalogue items
 // recorded on a project before any pricing exists. See v1.13 schema.
 
+/** v1.65cq — recompute project_categories.ballpark_cost for every
+    active category on a project from the current project_items + items
+    catalogue. Single SQL round-trip. Each category sums the base_price
+    of project_items whose item.category_id matches the category_id OR
+    is a child (parent_id = category_id) — mirrors the walk-up in
+    taxonomy.service.recomputeCategoryBallpark, but in bulk.
+
+    Called on every project_items add/remove so the Estimate drawer +
+    Overview Estimate card see fresh ballpark_cost. Previously this
+    only fired on the AI-matcher (addMatchToProject) write path, so
+    items added through the regular Marketplace + button left their
+    category's ballpark_cost at 0. */
+async function recomputeProjectBallparks(projectId) {
+  await pool.query(
+    `UPDATE project_categories pc
+        SET ballpark_cost = COALESCE((
+              SELECT SUM(COALESCE(i.base_price, 0))
+                FROM project_items pi
+                JOIN items i ON i.id = pi.item_id
+               WHERE pi.project_id = pc.project_id
+                 AND (
+                   i.category_id = pc.category_id
+                   OR i.category_id IN (
+                     SELECT id FROM categories WHERE parent_id = pc.category_id
+                   )
+                 )
+            ), 0),
+            updated_at = NOW()
+      WHERE pc.project_id = $1 AND pc.is_active = true`,
+    [projectId]
+  );
+}
+
 async function getByProject(projectId) {
   // v1.18: also return `i.category_id AS item_category_id` so the Build
   // tab can bucket project_items under a project_category whose category
@@ -75,6 +108,10 @@ async function add(data) {
      RETURNING *`,
     [project_id, item_id, project_category_id ?? null, type]
   );
+  // v1.65cq — keep project_categories.ballpark_cost in sync after every
+  // regular-Marketplace add so the Estimate drawer + Overview cards
+  // reflect the new cart. Previously only the AI-matcher path did this.
+  await recomputeProjectBallparks(project_id);
   return result.rows[0];
 }
 
@@ -85,7 +122,10 @@ async function remove(projectId, itemId) {
       RETURNING *`,
     [projectId, itemId]
   );
+  // v1.65cq — recompute on remove too so deleting an item from the cart
+  // drops the corresponding cost from the category's ballpark.
+  await recomputeProjectBallparks(projectId);
   return result.rows[0] || null;
 }
 
-module.exports = { getByProject, add, remove };
+module.exports = { getByProject, add, remove, recomputeProjectBallparks };

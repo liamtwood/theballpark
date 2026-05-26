@@ -2,7 +2,10 @@ import { Component, OnInit, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../../../../../core/services/project.service';
+import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../../../shared/components/loading-spinner/loading-spinner.component';
 
@@ -191,6 +194,9 @@ export class EstimateComponent implements OnInit {
 
   loading = true;
   categories: any[] = [];
+  /** v1.65cq — project_items loaded so we can heal a stale
+      ballpark_cost in costOf() by summing the cart directly. */
+  projectItems: any[] = [];
   subtotal = 0;
   contingency = 0;
   ourCost = 0;
@@ -208,6 +214,7 @@ export class EstimateComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private projectSvc: ProjectService,
+    private projectItemSvc: ProjectItemService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -221,43 +228,60 @@ export class EstimateComponent implements OnInit {
     }
 
     if (this.pid) {
-      this.projectSvc.getById(this.pid).subscribe({
-        next: (p: any) => {
-          this.budget         = +p?.project_budget          || 0;
-          this.marginPct      = +p?.default_margin_pct      || 20;
-          this.contingencyPct = +p?.default_contingency_pct || 10;
-          // v1.65co — VAT % from project, defaults to UK standard 20.
-          this.vatPct         = +p?.default_vat_pct         || 20;
-          this.recalc();
-          this.cdr.detectChanges();
-        }
-      });
-
-      // v1.65co — switched from projectCategorySvc.getByProject() (which
-      // hits the bare /project-categories endpoint with no JOIN) to
-      // projectSvc.getCategories() (joined endpoint with category_name,
-      // category_icon_name, etc.) so the rows actually render names.
-      this.projectSvc.getCategories(this.pid).subscribe({
-        next: cats => {
-          this.categories = (cats || []).filter((c: any) => c.is_active !== false);
-          this.recalc();
-          this.loading = false;
-          this.cdr.detectChanges();
-        },
-        error: () => { this.loading = false; this.cdr.detectChanges(); }
+      // v1.65cq — load project + categories + project_items together so
+      // costOf() can fall back to summing the cart when both
+      // ballpark_cost and base_cost are stale (which is most legacy
+      // projects, since the server-side recompute only ran on the
+      // AI-matcher path before v1.65cq).
+      forkJoin({
+        project: this.projectSvc.getById(this.pid).pipe(catchError(() => of(null as any))),
+        cats:    this.projectSvc.getCategories(this.pid).pipe(catchError(() => of([] as any[]))),
+        items:   this.projectItemSvc.getByProject(this.pid).pipe(catchError(() => of([] as any[]))),
+      }).subscribe(({ project, cats, items }) => {
+        const p: any = project;
+        this.budget         = +p?.project_budget          || 0;
+        this.marginPct      = +p?.default_margin_pct      || 20;
+        this.contingencyPct = +p?.default_contingency_pct || 10;
+        this.vatPct         = +p?.default_vat_pct         || 20;
+        this.categories     = (cats || []).filter((c: any) => c.is_active !== false);
+        this.projectItems   = items || [];
+        this.recalc();
+        this.loading = false;
+        this.cdr.detectChanges();
       });
     } else {
       this.loading = false;
     }
   }
 
-  /** v1.65co — cost-per-category fallback: prefer the manually-set
-      ballpark_cost; fall back to the derived base_cost (server-computed
-      from selected/quoted items); 0 if neither. */
+  /** v1.65co — cost-per-category fallback chain:
+        1. ballpark_cost (manually set or server-recomputed)
+        2. base_cost (legacy derived field)
+        3. v1.65cq — sum of project_items.base_price for this category
+           (heals projects whose ballpark_cost wasn't refreshed before
+           the v1.65cq server-side recompute landed). Matches by either
+           project_category_id (preferred) or item_category_id when the
+           project_items row predates v1.18's bucket assignment. */
   costOf(cat: any): number {
     const bp = +cat?.ballpark_cost || 0;
     if (bp > 0) return bp;
-    return +cat?.base_cost || 0;
+    const base = +cat?.base_cost || 0;
+    if (base > 0) return base;
+    return this.cartCostFor(cat);
+  }
+
+  /** Sum project_items.base_price for one project_category. Used only
+      as a last-ditch fallback when the stored ballpark_cost / base_cost
+      haven't been recomputed yet. */
+  private cartCostFor(cat: any): number {
+    if (!this.projectItems.length) return 0;
+    const pcId  = cat?.id;
+    const catId = cat?.category_id;
+    return this.projectItems
+      .filter(pi =>
+        (pcId && pi.project_category_id === pcId) ||
+        (catId && pi.item_category_id    === catId))
+      .reduce((s, pi) => s + (+pi.base_price || 0), 0);
   }
 
   /** v1.65co — icon picked straight from the joined category row when
