@@ -101,13 +101,14 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
 
   private pushContext(p: Project) {
     // v1.29 tab bar — Event removed. v1.64 Estimate removed too — it
-    // now opens as a shared drawer from the Overview card, Brief col-1
-    // Estimate card, Marketplace footer link, and dashboard menu.
-    //   Overview · Brief · Marketplace · Messages
-    // /event and /estimate still route — they redirect or back-compat.
+    // now opens as a shared drawer from the Overview card, Marketplace
+    // footer link, and dashboard menu.
+    // v1.65cg (p0005) — Plan tab removed; AI matching + per-category
+    // brief editing both moved into the Marketplace. /plan and /brief
+    // still route — they redirect to /marketplace.
+    //   Overview · Marketplace · Inbox
     const tabs = [
       { label: 'Overview',    path: `/projects/${this.pid}/overview` },
-      { label: 'Plan',        path: `/projects/${this.pid}/plan` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
       {
         label: 'Inbox',
@@ -146,11 +147,11 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   /** Map the current URL segment to the hero's eyebrow label.
-      Returns '' for tabs that prefer their own page-level title. */
+      Returns '' for tabs that prefer their own page-level title.
+      v1.65cg (p0005) — /plan + /brief entries removed; both now
+      redirect to /marketplace so they're never the resolved URL. */
   private eyebrowForUrl(url: string): string {
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
-    if (url.includes('/plan'))         return 'PLAN';
-    if (url.includes('/brief'))        return 'PLAN';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
     if (url.includes('/estimate'))     return 'ESTIMATE';
     if (url.includes('/messages'))     return 'MESSAGES';

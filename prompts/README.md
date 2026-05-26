@@ -30,6 +30,7 @@ When picking up a task, read the `-prompt.md` and open the matching `-mockup.htm
 | p0002 | Done | Styling fixes after p0001's first pass — white search panel, stray container removed, panel-header divider alignment, header icons de-circled, active category circle. Prompt only; uses the p0001 mockup as its target. |
 | p0003 | Done | Bold hero mode + real tabs — new `[data-mode="bold"]` (themed accent hero with code-generated orbs + grain), project tabs restyled as real folder tabs with a light contrast-colour active tab, new `--theme-contrast` token per preset. |
 | p0004 | Done | Marketplace round-3 fixes — kill the apparent pink wrapper around the cat + search panels (browse-strip horizontal inset / gutter issue), and remove the ghost hairline at the bottom of the category-circles panel. Prompt only; uses the p0001 mockup as its target. |
+| p0005 | Done | Remove the Plan tab without regression — AI matching and per-category brief editing are already wired through the Marketplace, so this is navigation cleanup only: remove the tabs entry, redirect `/plan` + `/brief` to `/marketplace`, repoint the Overview BRIEF card, delete `tabs/brief/`. Prompt only. |
 
 Statuses: **Draft** (still being written) · **Ready** (ready to implement) · **Done** (implemented).
 

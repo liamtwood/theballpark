@@ -733,11 +733,12 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
         heroTitle: (p as any).event_name || p.name || 'Untitled',
         heroSub: 'MARKETPLACE',
         pills,
+        // v1.65cg (p0005) — Brief tab removed (Plan/Brief deleted, AI
+        // matching + per-category brief editing both live on the
+        // Marketplace now). Tab set mirrors project-detail's three.
         tabs: [
           { label: 'Overview',    path: `/projects/${this.projectId}/overview` },
-          { label: 'Brief',       path: `/projects/${this.projectId}/brief` },
           { label: 'Marketplace', path: `/projects/${this.projectId}/marketplace` },
-          { label: 'Estimate',    path: `/projects/${this.projectId}/estimate` },
           { label: 'Inbox',       path: `/projects/${this.projectId}/messages` }
         ]
       });

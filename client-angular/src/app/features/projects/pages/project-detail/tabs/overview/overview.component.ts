@@ -179,7 +179,10 @@ interface MessagesSummary {
         <div class="bp-overview-grid">
 
           <!-- BRIEF CARD -->
-          <div class="bp-ov-card" (click)="goTo('plan')">
+          <!-- v1.65cg (p0005) — Plan tab removed; the BRIEF card now
+               opens directly on the Marketplace where per-category
+               briefs are edited. -->
+          <div class="bp-ov-card" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">BRIEF</span>
               <span class="bp-ov-status" *ngIf="brief.total > 0">{{ briefPct }}%</span>
@@ -1057,10 +1060,11 @@ export class OverviewComponent implements OnInit {
 
   // v1.29: 'event' is no longer a routable tab — the event strip
   // opens the drawer instead. Other tabs still route normally.
-  goTo(tab: 'plan' | 'brief' | 'marketplace' | 'estimate' | 'messages') {
-    // v1.65: "brief" tab renamed to "plan"; accept legacy callers too.
-    const slug = tab === 'brief' ? 'plan' : tab;
-    this.router.navigate([`/projects/${this.pid}/${slug}`]);
+  // v1.65cg (p0005) — 'plan' and 'brief' removed from the type; both
+  // slugs still redirect to /marketplace at the route level, so any
+  // stragglers wouldn't break anyway.
+  goTo(tab: 'marketplace' | 'estimate' | 'messages') {
+    this.router.navigate([`/projects/${this.pid}/${tab}`]);
   }
 
   /** v1.64 — Estimate is no longer a tab; click opens the shared drawer. */

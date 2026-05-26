@@ -916,9 +916,11 @@ export class EventDrawerComponent implements OnInit, OnDestroy {
   }
 
   /** AI categoryId → DB catalogue category name. Mirrored exactly
-      from BriefComponent + CreateProjectModalComponent so all three
-      parse-brief paths upsert against the same catalogue rows.
-      v1.39f: added venues + photography rows. */
+      from CreateProjectModalComponent so both parse-brief paths
+      upsert against the same catalogue rows.
+      v1.39f: added venues + photography rows.
+      v1.65cg (p0005): BriefComponent removed from the mirror list —
+      the Plan/Brief tab was deleted along with this prompt. */
   private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
     'set-build':     'Stand Structure',
     'print':         'Graphics & Signage',

@@ -1530,7 +1530,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
    font, and border-radius as the unified .p-dropdown. Switching
    between view and edit produces ZERO size shift. This is the
    canonical form-field metric used across the app (event drawer,
-   plan/brief/marketplace tabs, project summary). */
+   marketplace tab, project summary). */
 
 /* View mode — readonly inputs */
 .bp-field-readonly.p-inputtext,
