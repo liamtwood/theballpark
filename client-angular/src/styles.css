@@ -1195,7 +1195,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
   margin-bottom: 20px;
   display: block;
 }
-.bp-hero-tabs { display: flex; }
+/* v1.65bd — hairline along the bottom of the tab row. Inactive tabs
+   sit on it (their bottom edge appears bordered because the band's
+   hairline shows below them). The active tab "punches through" via
+   a negative bottom margin + z-index, so its fill covers the
+   hairline at its position — classic folder-tab effect. */
+.bp-hero-tabs {
+  display: flex;
+  border-bottom: var(--border-hairline);
+}
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
    than a row at the bottom of it. On the project Marketplace the
@@ -1239,9 +1247,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
 .bp-hero-tab:hover { color: var(--color-text-primary); }
+/* v1.65bd — active tab sits visually on top of .bp-hero-tabs's
+   border-bottom hairline; its fill hides the line at its position. */
 .bp-hero-tab.active {
   background: var(--theme-contrast-soft);
   color: var(--theme-contrast-strong);
+  position: relative;
+  z-index: 1;
+  margin-bottom: -0.5px;
 }
 [data-mode="dark"] .bp-hero-tab,
 [data-mode="bold"] .bp-hero-tab {
@@ -1778,6 +1791,9 @@ app-top-nav { flex-shrink: 0; }
   background: var(--theme-contrast-soft) !important;
   color: var(--theme-contrast-strong) !important;
   font-weight: 500 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin-bottom: -0.5px !important;
 }
 
 /* ── FILLED HEART when active ── */
