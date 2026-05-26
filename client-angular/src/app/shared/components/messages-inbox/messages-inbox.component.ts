@@ -137,9 +137,12 @@ interface VendorThread {
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
            Reuses the marketplace bp-cat-body--detail grid: sidebar
-           (260) | main (1fr) | detail (md=320). Content inside each
-           column is message-specific; the shell is shared. -->
-      <div class="bp-cat-body bp-cat-body--detail" data-detail-size="md">
+           (260) | main (1fr) | detail.
+           v1.65ce — switched from data-detail-size="md" (320px) to
+           "lg" (420px) PLUS a scoped override below pushing the
+           conversation preview to 520px. Email-style inboxes need
+           a wider read column than item-detail panels do. -->
+      <div class="bp-cat-body bp-cat-body--detail bp-msg-body" data-detail-size="lg">
 
         <!-- ── LEFT SIDEBAR: FILTER head + status + suppliers ── -->
         <aside class="bp-cat-sidebar">
@@ -423,6 +426,13 @@ interface VendorThread {
   `,
   styles: [`
     :host { display: block; }
+
+    /* v1.65ce — inbox conversation preview wider than the standard
+       lg item-detail panel. .bp-msg-body is the inbox-specific marker
+       class so this override only applies to the messages surface. */
+    :host ::ng-deep .bp-cat-body--detail.bp-msg-body {
+      grid-template-columns: 240px 1fr 520px;
+    }
 
     /* Project selector (global mode) */
     .bp-msg-project-bar {
