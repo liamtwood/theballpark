@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, Input, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
@@ -137,12 +137,14 @@ interface VendorThread {
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
            Reuses the marketplace bp-cat-body--detail grid: sidebar
-           (260) | main (1fr) | detail.
-           v1.65ce — switched from data-detail-size="md" (320px) to
-           "lg" (420px) PLUS a scoped override below pushing the
-           conversation preview to 520px. Email-style inboxes need
-           a wider read column than item-detail panels do. -->
-      <div class="bp-cat-body bp-cat-body--detail bp-msg-body" data-detail-size="lg">
+           (240) | main (1fr) | detail.
+           v1.65ce — switched from data-detail-size="md" to a scoped
+           bp-msg-body override (240 / 1fr / preview-w).
+           v1.65cf — preview width is now resizable via a drag handle
+           on its left edge. Default 640px (was 520). User-chosen
+           width persists in localStorage('bp-msg-preview-w'). -->
+      <div class="bp-cat-body bp-cat-body--detail bp-msg-body" data-detail-size="lg"
+           [style.--bp-msg-preview-w.px]="previewWidth">
 
         <!-- ── LEFT SIDEBAR: FILTER head + status + suppliers ── -->
         <aside class="bp-cat-sidebar">
@@ -334,6 +336,13 @@ interface VendorThread {
 
         <!-- ── RIGHT: conversation panel (detail column) ── -->
         <section class="bp-cat-detail bp-msg-conv">
+          <!-- v1.65cf — drag handle on the left edge of the preview
+               panel. pointer events bubble through HostListeners on
+               document so the drag survives the cursor leaving the
+               narrow handle width. -->
+          <div class="bp-msg-preview-resizer"
+               (pointerdown)="onResizeStart($event)"
+               title="Drag to resize"></div>
           <ng-container *ngIf="!activeThread">
             <div class="bp-msg-conv-empty">
               <lucide-icon name="inbox" [size]="28"></lucide-icon>
@@ -428,10 +437,39 @@ interface VendorThread {
     :host { display: block; }
 
     /* v1.65ce — inbox conversation preview wider than the standard
-       lg item-detail panel. .bp-msg-body is the inbox-specific marker
-       class so this override only applies to the messages surface. */
+       lg item-detail panel.
+       v1.65cf — third column is now driven by the --bp-msg-preview-w
+       CSS variable (default 640px) so the drag handle can update it
+       in real time. .bp-cat-detail goes position:relative so the
+       absolutely-positioned handle pins to its left edge. */
     :host ::ng-deep .bp-cat-body--detail.bp-msg-body {
-      grid-template-columns: 240px 1fr 520px;
+      grid-template-columns: 240px 1fr var(--bp-msg-preview-w, 640px);
+    }
+    :host ::ng-deep .bp-msg-body .bp-cat-detail {
+      position: relative;
+    }
+    /* Drag handle — sits absolutely on the left edge of the preview
+       panel. 6px wide so it's easy to grab but doesn't draw chrome
+       at rest. Tints to theme-accent on hover / during drag. */
+    .bp-msg-preview-resizer {
+      position: absolute;
+      left: -3px;
+      top: 0;
+      width: 6px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 5;
+      background: transparent;
+      transition: background 0.15s;
+      touch-action: none;
+    }
+    .bp-msg-preview-resizer:hover {
+      background: var(--theme-accent);
+      opacity: 0.35;
+    }
+    .bp-msg-preview-resizer.bp-resizing {
+      background: var(--theme-accent);
+      opacity: 0.5;
     }
 
     /* Project selector (global mode) */
@@ -710,6 +748,18 @@ export class MessagesInboxComponent implements OnInit {
   // When used as global inbox, shows project selector
   @Input() showProjectSelector = false;
 
+  /** v1.65cf — user-resizable conversation preview column width.
+      Bound to a CSS variable on the body container; defaults to 640
+      and clamps between 360 and 1100. Persisted to localStorage so
+      the user's chosen width survives reloads + route changes. */
+  previewWidth = 640;
+  private static readonly PREVIEW_W_KEY = 'bp-msg-preview-w';
+  private static readonly PREVIEW_W_MIN = 360;
+  private static readonly PREVIEW_W_MAX = 1100;
+  private resizing = false;
+  private resizeStartX = 0;
+  private resizeStartW = 0;
+
   loading = true;
   msgs: ThreadMessage[] = [];
   threads: VendorThread[] = [];
@@ -758,6 +808,15 @@ export class MessagesInboxComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    // v1.65cf — restore the user's chosen preview width if present.
+    try {
+      const saved = localStorage.getItem(MessagesInboxComponent.PREVIEW_W_KEY);
+      if (saved) {
+        const n = parseInt(saved, 10);
+        if (Number.isFinite(n)) this.previewWidth = this.clampPreviewWidth(n);
+      }
+    } catch { /* localStorage may be unavailable in some sandboxes */ }
+
     // Resolve project ID — from @Input or from parent route
     if (!this.boundProjectId) {
       let r = this.route;
@@ -964,6 +1023,52 @@ export class MessagesInboxComponent implements OnInit {
   onCircleSelect(id: string) {
     this.activeFolder = id;
     this.cdr.detectChanges();
+  }
+
+  // ── v1.65cf — preview column resize ───────────────────────────────
+
+  private clampPreviewWidth(n: number): number {
+    return Math.max(
+      MessagesInboxComponent.PREVIEW_W_MIN,
+      Math.min(MessagesInboxComponent.PREVIEW_W_MAX, Math.round(n))
+    );
+  }
+
+  /** Start a drag on the conversation-preview resize handle. We bind
+      pointermove/pointerup on the document via HostListener so the
+      drag survives the cursor leaving the 6px handle. */
+  onResizeStart(ev: PointerEvent) {
+    ev.preventDefault();
+    this.resizing = true;
+    this.resizeStartX = ev.clientX;
+    this.resizeStartW = this.previewWidth;
+    const el = ev.target as HTMLElement;
+    el.classList.add('bp-resizing');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  @HostListener('document:pointermove', ['$event'])
+  onResizeMove(ev: PointerEvent) {
+    if (!this.resizing) return;
+    // Handle sits on the LEFT edge of the right column — dragging
+    // left (clientX < startX) widens the column.
+    const delta = this.resizeStartX - ev.clientX;
+    this.previewWidth = this.clampPreviewWidth(this.resizeStartW + delta);
+    this.cdr.detectChanges();
+  }
+
+  @HostListener('document:pointerup')
+  onResizeEnd() {
+    if (!this.resizing) return;
+    this.resizing = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    document.querySelectorAll('.bp-msg-preview-resizer.bp-resizing')
+      .forEach(el => el.classList.remove('bp-resizing'));
+    try {
+      localStorage.setItem(MessagesInboxComponent.PREVIEW_W_KEY, String(this.previewWidth));
+    } catch { /* ignore */ }
   }
 
   /** v1.65cb — options for the "All ▾" category-scope dropdown in the
