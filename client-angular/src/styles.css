@@ -1173,9 +1173,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* ── HERO BANNER ──
    Single standard across the whole app. Pills > title > subtitle > tabs.
    Border-bottom lives on .bp-hero-tabs only — never on the hero container. */
+/* v1.65bi — hairline moved here (was on .bp-hero-tabs which was
+   only as wide as the tab labels). .bp-hero spans the full page
+   width so the line now goes edge-to-edge. The active tab's
+   margin-bottom: -0.5px still covers the line at its position. */
 .bp-hero {
   background: var(--theme-bg);
   padding: 32px var(--section-pad) 0;
+  border-bottom: var(--border-hairline);
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
@@ -1199,10 +1204,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
    sit on it (their bottom edge appears bordered because the band's
    hairline shows below them). The active tab "punches through" via
    a negative bottom margin + z-index, so its fill covers the
-   hairline at its position — classic folder-tab effect. */
+   hairline at its position — classic folder-tab effect.
+   v1.65bi — hairline moved to .bp-hero so it spans full page width.
+   Tabs flex row no longer carries it. */
 .bp-hero-tabs {
   display: flex;
-  border-bottom: var(--border-hairline);
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
@@ -1277,8 +1283,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
 [data-mode="bold"] .bp-hero-tab:hover {
   color: #fff !important;
 }
-[data-mode="dark"] .bp-hero-tabs,
-[data-mode="bold"] .bp-hero-tabs {
+[data-mode="dark"] .bp-hero,
+[data-mode="bold"] .bp-hero {
   border-bottom: none;
 }
 [data-mode="dark"] .bp-hero-tab.active,
@@ -1769,8 +1775,10 @@ app-top-nav { flex-shrink: 0; }
   /* Remove bottom margin from org name — tabs sit right below */
   .bp-hero-org-name    { margin-bottom: 0 !important; }
 
-  /* Tight hero padding on mobile — breathing room top and bottom */
-  .bp-hero             { padding: 16px 16px 16px !important; margin-top: 0 !important; }
+  /* Tight hero padding on mobile — breathing room top, tabs flush at bottom.
+     v1.65bi — padding-bottom dropped to 0 so the tabs sit flush against
+     the hero's hairline border-bottom. */
+  .bp-hero             { padding: 16px 16px 0 !important; margin-top: 0 !important; }
 
   /* Ensure nav maintains exact height when nav-right is hidden */
   .bp-nav              { height: var(--nav-height) !important; min-height: var(--nav-height) !important; max-height: var(--nav-height) !important; }
