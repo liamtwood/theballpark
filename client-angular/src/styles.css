@@ -921,16 +921,19 @@ input.bp-cfg-page-label.p-inputtext:focus {
 
 /* ── v1.65ax — BROWSE STRIP ─────────────────────────────────────────
    Wraps the category-circles row + the search row into one contained
-   panel. Replaces the previous pair of stacked panels whose
-   between-gaps read as accidental page-ground bleed-through.
-   The wrapper carries the v1.22 panel chrome; the two inner sections
-   are layout-only (no border, no shadow). */
+   panel.
+   v1.65ay — extended edge-to-edge (no side margins) so the page-ground
+   colour no longer shows on the left/right of the strip and read as
+   "another container" wrapping the cat + search containers. Top hairline
+   replaces the rounded card chrome — the strip now reads as a band that
+   ends the hero region and starts the content region, instead of a
+   nested card.
+   The wrapper provides the white fill; the two inner sections are
+   layout-only (no border, no shadow). */
 .bp-browse-strip {
   background: var(--color-surface);
-  border: var(--border-hairline);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-xs);
-  margin: 12px 12px 0;
+  border-bottom: var(--border-hairline);
+  margin: 0;
   overflow: hidden;
 }
 /* v1.65ax — browse + search panels now sit inside .bp-browse-strip
