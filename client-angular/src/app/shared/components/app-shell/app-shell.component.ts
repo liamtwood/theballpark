@@ -124,24 +124,23 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 
       <!-- SUB -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
-    </div>
 
-    <!-- v1.65n — TAB BAND. Moved out of .bp-hero into its own sibling
-         parchment strip so on the project Marketplace the tabs read as
-         one continuous tinted band with the strip-bar's search/recommend
-         row below. Tabs are centred to match the strip-bar's centred
-         search. -->
-    <div class="bp-hero-tab-band"
-         *ngIf="navMode === 'tabs' && activeTabs.length > 0">
-      <div class="bp-hero-tabs">
-        <button *ngFor="let tab of activeTabs"
-          class="bp-hero-tab"
-          [class.active]="isTabActive(tab)"
-          (click)="onTabClick(tab)">
-          {{ tab.label }}
-          <!-- v1.24: notification badge — only when tab.badge > 0. -->
-          <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
-        </button>
+      <!-- v1.65bh — TAB BAND moved BACK inside .bp-hero so it
+           shares the hero's parchment (or accent in bold) fill. The
+           band itself has no background — it inherits visually from
+           its hero parent. Tabs are centred. -->
+      <div class="bp-hero-tab-band"
+           *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+        <div class="bp-hero-tabs">
+          <button *ngFor="let tab of activeTabs"
+            class="bp-hero-tab"
+            [class.active]="isTabActive(tab)"
+            (click)="onTabClick(tab)">
+            {{ tab.label }}
+            <!-- v1.24: notification badge — only when tab.badge > 0. -->
+            <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
