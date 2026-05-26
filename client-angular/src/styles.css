@@ -1256,18 +1256,33 @@ input.bp-cfg-page-label.p-inputtext:focus {
   z-index: 1;
   margin-bottom: -0.5px;
 }
+/* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
+   surface, so inactive tabs drop their hairline outline (which
+   reads as faint frame on coloured bg) and the band's bottom
+   hairline is suppressed. Inactive = bare white-ish text on the
+   bold bg. Active tab keeps its --theme-contrast-soft fill — the
+   only filled chip in the row. `!important` is necessary because
+   the duplicate .bp-hero-tab rule lower in styles.css carries
+   its own !important. */
 [data-mode="dark"] .bp-hero-tab,
 [data-mode="bold"] .bp-hero-tab {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.82) !important;
+  border: none !important;
 }
 [data-mode="dark"] .bp-hero-tab:hover,
 [data-mode="bold"] .bp-hero-tab:hover {
-  color: #fff;
+  color: #fff !important;
+}
+[data-mode="dark"] .bp-hero-tabs,
+[data-mode="bold"] .bp-hero-tabs {
+  border-bottom: none;
 }
 [data-mode="dark"] .bp-hero-tab.active,
 [data-mode="bold"] .bp-hero-tab.active {
-  background: var(--theme-contrast-soft);
-  color: var(--theme-contrast-strong);
+  background: var(--theme-contrast-soft) !important;
+  color: var(--theme-contrast-strong) !important;
+  border: none !important;
+  margin-bottom: 0 !important;
 }
 
 /* ─── p0003 — BOLD MODE HERO ──────────────────────────────────────
