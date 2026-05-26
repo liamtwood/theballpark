@@ -1386,10 +1386,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 [data-mode="bold"] .bp-hero {
   background: var(--theme-accent) !important;
 }
+/* v1.65cc — Bold hero top corners are now square (was rounded with
+   --radius-card). The accent fill should bleed edge-to-edge so the
+   hero reads as the page top, not a floating card. overflow:hidden
+   stays so the bold orbs + grain don't paint outside the hero. */
 [data-mode="bold"] .bp-hero {
   border-bottom: none !important;
-  border-top-left-radius: var(--radius-card);
-  border-top-right-radius: var(--radius-card);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
   overflow: hidden;
 }
 [data-mode="bold"] .bp-hero-org-name,
