@@ -122,6 +122,17 @@ export type DetailMode = 'inline' | 'drawer';
                  [placeholder]="searchPlaceholder"
                  class="bp-search-input"
                  (keyup.enter)="applySearch()"/>
+          <!-- v1.65ci — Event Detail CTA sits BEFORE View Estimate so
+               event facts come before money in the action order. Both
+               buttons render only in project context. -->
+          <button *ngIf="projectContext"
+                  type="button"
+                  class="bp-search-view-estimate"
+                  (click)="openProjectEdit()"
+                  title="Open the event drawer">
+            Event detail
+            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+          </button>
           <button *ngIf="projectContext"
                   type="button"
                   class="bp-search-view-estimate"
@@ -1545,7 +1556,14 @@ export type DetailMode = 'inline' | 'drawer';
       border-radius: var(--radius-button) !important;
     }
     .bp-allctx-brief { padding: 14px 16px; }
-    .bp-allctx-brief .bp-drawer-label { margin-bottom: 6px; }
+    /* v1.65ci — Project brief eyebrow takes the bold theme accent so
+       it matches the PROJECT SUMMARY + EVENT DETAILS eyebrows above.
+       Scoped to the brief block so the global .bp-drawer-label colour
+       (drawer headers across the app) stays untouched. */
+    .bp-allctx-brief .bp-drawer-label {
+      margin-bottom: 6px;
+      color: var(--theme-accent);
+    }
     .bp-allctx-brief-text {
       font-family: var(--font-body); font-size: var(--text-base);
       line-height: 1.55; color: var(--color-text-primary);
