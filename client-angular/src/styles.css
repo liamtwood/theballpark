@@ -1218,6 +1218,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
    bottom so individual tabs don't need a border-bottom. */
 .bp-hero-tab {
   padding: 10px 18px;
+  /* v1.65bc — even visual width across tabs regardless of label
+     length. "Marketplace" is the widest natural label (~95px); 130px
+     gives a small breathing margin and lets "Overview" / "Plan" /
+     "Inbox" share the same footprint. */
+  min-width: 130px;
+  text-align: center;
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-text-secondary);
