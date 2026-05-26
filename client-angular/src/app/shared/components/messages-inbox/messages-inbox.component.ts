@@ -110,9 +110,21 @@ interface VendorThread {
 
         <!-- v1.65aj (p0001) — SEARCH section inside the strip. Pulled
              out of the sidebar so Messages and Marketplace share the
-             same layout. -->
+             same layout.
+             v1.65cb — accent-coloured category-scope dropdown added
+             on the left of the search row, mirroring the Marketplace
+             "All ▾" chip. Bound to activeFolder so it stays in sync
+             with the category circles. -->
         <div class="bp-search-panel">
           <div class="bp-search-row">
+            <p-dropdown *ngIf="folderDropdownOptions.length > 1"
+                        [options]="folderDropdownOptions"
+                        [ngModel]="activeFolder"
+                        (onChange)="onFolderDropdownChange($event.value)"
+                        optionLabel="name" optionValue="id"
+                        styleClass="bp-strip-search-dd"
+                        appendTo="body"
+                        placeholder="All"></p-dropdown>
             <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
             <input pInputText type="text"
                    [(ngModel)]="searchTerm"
@@ -938,6 +950,23 @@ export class MessagesInboxComponent implements OnInit {
       string id from the shared component, mapped onto activeFolder. */
   onCircleSelect(id: string) {
     this.activeFolder = id;
+    this.cdr.detectChanges();
+  }
+
+  /** v1.65cb — options for the "All ▾" category-scope dropdown in the
+      search row (mirrors catalogue-grid.stripDropdownOptions). Always
+      leads with "All" and then maps the loaded categoryFolders. */
+  get folderDropdownOptions(): Array<{ id: string; name: string }> {
+    const opts: Array<{ id: string; name: string }> = [{ id: 'all', name: 'All' }];
+    for (const f of this.categoryFolders) {
+      opts.push({ id: f.id, name: f.name });
+    }
+    return opts;
+  }
+
+  /** Dropdown change handler — keeps activeFolder + circle strip in sync. */
+  onFolderDropdownChange(id: string) {
+    this.activeFolder = id || 'all';
     this.cdr.detectChanges();
   }
 

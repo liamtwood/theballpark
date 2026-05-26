@@ -987,6 +987,26 @@ input.bp-cfg-page-label.p-inputtext:focus {
   min-height: 0 !important;
 }
 
+/* v1.65cb — "All ▾" scope chip inside .bp-search-row. Promoted from
+   catalogue-grid's scoped block so the messages-inbox search row can
+   use the same chrome. Solid --theme-accent fill + white label +
+   white chevron — same convention as the active category circle. */
+.bp-search-panel .bp-strip-search-dd.p-dropdown {
+  background: var(--theme-accent) !important;
+  border: none !important;
+  border-radius: var(--radius-button) 0 0 var(--radius-button) !important;
+  box-shadow: none !important;
+  min-width: 92px;
+  height: auto;
+}
+.bp-search-panel .bp-strip-search-dd .p-dropdown-label {
+  color: var(--color-surface) !important;
+  font-weight: 500 !important;
+}
+.bp-search-panel .bp-strip-search-dd .p-dropdown-trigger {
+  color: var(--color-surface) !important;
+}
+
 /* ── v1.65aj (p0001) — SHARED LIST ROW PRIMITIVE ───────────────────
    Canonical row card used by the cart drawer and the Messages tab's
    thread rows. Flat per the two-tier card rule — border only, hover

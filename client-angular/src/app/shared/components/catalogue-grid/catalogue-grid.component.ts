@@ -905,25 +905,9 @@ export type DetailMode = 'inline' | 'drawer';
        Messages tab). The component-scoped copies that lived here were
        still using the old tinted-row design and overriding the
        cleaned-up globals — removed so both surfaces read the same. */
-    /* v1.65ap — "All" subcategory dropdown inside the search panel
-       reads as the bold selector colour: solid --theme-accent fill +
-       white label + white chevron. Same convention as active category
-       circle / sidebar item active state. */
-    :host ::ng-deep .bp-search-panel .bp-strip-search-dd.p-dropdown {
-      background: var(--theme-accent) !important;
-      border: none !important;
-      border-radius: var(--radius-button) 0 0 var(--radius-button) !important;
-      box-shadow: none !important;
-      min-width: 92px;
-      height: auto;
-    }
-    :host ::ng-deep .bp-search-panel .bp-strip-search-dd .p-dropdown-label {
-      color: var(--color-surface) !important;
-      font-weight: 500 !important;
-    }
-    :host ::ng-deep .bp-search-panel .bp-strip-search-dd .p-dropdown-trigger {
-      color: var(--color-surface) !important;
-    }
+    /* v1.65cb — .bp-strip-search-dd styling promoted to global
+       styles.css so the messages-inbox search row uses the same
+       chrome. Removed the ::ng-deep scoped copies that lived here. */
 
     /* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
        tint, fixed size, matches the eyebrow vertical centre. */
