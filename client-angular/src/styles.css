@@ -956,8 +956,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* v1.65ar — inner light-tint field container dropped. The white search
    panel itself provides the input frame; the "All" chip + search input
    sit directly in it. One panel, one fill — cleaner. */
+/* v1.65bo — search row gets its own white fill + hairline so the
+   input reads as a defined field while the surrounding browse + search
+   panels stay chrome-less. */
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  overflow: hidden;
 }
 .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
 .bp-search-input.p-inputtext {
