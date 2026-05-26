@@ -930,8 +930,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
    tint behind the strip now reads as one continuous band with the
    3-col body below; the previous side-margin gutter no longer looks
    like a pink wrapper around the cards. */
+/* v1.65bj — top padding dropped so the cat panel sits flush against
+   the hero's bottom hairline instead of showing 12px of page ground
+   above it. Side and bottom (gap) spacing kept. */
 .bp-browse-strip {
-  padding: 12px 12px 0;
+  padding: 0 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
