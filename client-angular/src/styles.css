@@ -1260,7 +1260,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-text-secondary);
-  background: none;
+  /* v1.65br — inactive tabs now carry a white fill so they read as
+     defined card chips on the parchment hero. */
+  background: var(--color-surface);
   border: var(--border-hairline);
   border-bottom: none;
   cursor: pointer;
@@ -1272,11 +1274,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
 .bp-hero-tab:hover { color: var(--color-text-primary); }
-/* v1.65bd — active tab sits visually on top of .bp-hero-tabs's
-   border-bottom hairline; its fill hides the line at its position. */
+/* v1.65br — active tab is now light-theme parchment (--theme-bg) with
+   --theme-text text, so it visually opens onto the hero and the
+   parchment page-ground below. Inactive tabs are the white chips;
+   active reads as the "this is the surface" tab. */
 .bp-hero-tab.active {
-  background: var(--theme-contrast-soft);
-  color: var(--theme-contrast-strong);
+  background: var(--theme-bg);
+  color: var(--theme-text);
   position: relative;
   z-index: 1;
   margin-bottom: -0.5px;
@@ -1289,9 +1293,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
    only filled chip in the row. `!important` is necessary because
    the duplicate .bp-hero-tab rule lower in styles.css carries
    its own !important. */
+/* v1.65br — inactive tabs drop their light-mode white fill + hairline
+   on dark/bold heroes; they'd read as bright chips against the bold
+   bg. Active tab uses --theme-bg parchment so it stands out as the
+   only filled chip in the row, matching the light-mode pattern. */
 [data-mode="dark"] .bp-hero-tab,
 [data-mode="bold"] .bp-hero-tab {
   color: rgba(255, 255, 255, 0.82) !important;
+  background: transparent !important;
   border: none !important;
 }
 [data-mode="dark"] .bp-hero-tab:hover,
@@ -1304,8 +1313,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 [data-mode="dark"] .bp-hero-tab.active,
 [data-mode="bold"] .bp-hero-tab.active {
-  background: var(--theme-contrast-soft) !important;
-  color: var(--theme-contrast-strong) !important;
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
   border: none !important;
   margin-bottom: 0 !important;
 }
@@ -1817,10 +1826,11 @@ app-top-nav { flex-shrink: 0; }
 /* p0003 — restated here with !important to outweigh the earlier
    uppercase rule that lived in this block. See line ~1205 for the
    canonical .bp-hero-tab definition.
-   v1.65ba — hairline outline on every tab so inactive tabs read as
-   folder shapes too. */
+   v1.65br — inactive tabs white-filled, active tabs --theme-bg
+   parchment. */
 .bp-hero-tab {
   color: var(--color-text-secondary) !important;
+  background: var(--color-surface) !important;
   font-weight: 500 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
@@ -1833,8 +1843,8 @@ app-top-nav { flex-shrink: 0; }
   color: var(--color-text-primary) !important;
 }
 .bp-hero-tab.active {
-  background: var(--theme-contrast-soft) !important;
-  color: var(--theme-contrast-strong) !important;
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
   font-weight: 500 !important;
   position: relative !important;
   z-index: 1 !important;
