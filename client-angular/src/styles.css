@@ -1274,11 +1274,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
   border: var(--border-hairline);
   border-bottom: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
   font-family: var(--font-body);
   text-transform: none;
   letter-spacing: 0;
   border-radius: 9px 9px 0 0;
+  /* v1.65ca — soft drop shadow on the tabs (top + sides) so the
+     folder chips lift off the hero band. Negative-y + side spreads
+     keep the shadow above the bottom hairline of the active tab. */
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03);
 }
 .bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
 .bp-hero-tab:hover { color: var(--color-text-primary); }
@@ -1296,24 +1300,29 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
    surface, so inactive tabs drop their hairline outline (which
    reads as faint frame on coloured bg) and the band's bottom
-   hairline is suppressed. Inactive = bare white-ish text on the
-   bold bg. Active tab keeps its --theme-contrast-soft fill — the
-   only filled chip in the row. `!important` is necessary because
+   hairline is suppressed. `!important` is necessary because
    the duplicate .bp-hero-tab rule lower in styles.css carries
-   its own !important. */
-/* v1.65br — inactive tabs drop their light-mode white fill + hairline
-   on dark/bold heroes; they'd read as bright chips against the bold
-   bg. Active tab uses --theme-bg parchment so it stands out as the
-   only filled chip in the row, matching the light-mode pattern. */
-[data-mode="dark"] .bp-hero-tab,
-[data-mode="bold"] .bp-hero-tab {
+   its own !important.
+   v1.65ca — Dark stays bare white-ish text on transparent.
+   Bold now gets white-filled inactive tabs (matching light mode)
+   so they read as defined folder chips on the accent hero. */
+[data-mode="dark"] .bp-hero-tab {
   color: rgba(255, 255, 255, 0.82) !important;
   background: transparent !important;
   border: none !important;
+  box-shadow: none !important;
 }
-[data-mode="dark"] .bp-hero-tab:hover,
-[data-mode="bold"] .bp-hero-tab:hover {
+[data-mode="dark"] .bp-hero-tab:hover {
   color: #fff !important;
+}
+[data-mode="bold"] .bp-hero-tab {
+  color: var(--color-text-secondary) !important;
+  background: var(--color-surface) !important;
+  border: var(--border-hairline) !important;
+  border-bottom: none !important;
+}
+[data-mode="bold"] .bp-hero-tab:hover {
+  color: var(--color-text-primary) !important;
 }
 [data-mode="dark"] .bp-hero,
 [data-mode="bold"] .bp-hero {
@@ -1835,11 +1844,14 @@ app-top-nav { flex-shrink: 0; }
    uppercase rule that lived in this block. See line ~1205 for the
    canonical .bp-hero-tab definition.
    v1.65br — inactive tabs white-filled, active tabs --theme-bg
-   parchment. */
+   parchment.
+   v1.65ca — soft folder-tab drop shadow added (top + sides only,
+   bottom flush against the band hairline). */
 .bp-hero-tab {
   color: var(--color-text-secondary) !important;
   background: var(--color-surface) !important;
   font-weight: 500 !important;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03) !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
   font-size: var(--text-base) !important;
