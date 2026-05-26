@@ -659,8 +659,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
    ============================================ */
 
 /* ── Circles strip ── */
+/* v1.65ba (p0004 #2) — removed border-bottom; the bp-browse-panel
+   already provides the outer card border, so this inner hairline read
+   as a ghost divider near the bottom of the circles panel. */
 .bp-cat-circles-wrap {
-  padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border);
+  padding: 20px 28px 0;
   position: relative; display: flex; align-items: flex-start;
   min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible;
   --bp-circle-w: 96px;
@@ -920,13 +923,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-section-count  { font-size: 12px; color: var(--color-text-muted); flex: 1; }
 
 /* ── v1.65az — BROWSE + SEARCH (back to two separate cards) ────────
-   Reverts the v1.65ax wrapper. Both panels are independent contained
-   cards each with their own panel chrome — left/right borders intact —
-   and a small page-ground gap between them. The .bp-browse-strip
-   wrapper that briefly sat around them in v1.65ax/ay is now a
-   transparent layout-only container (no fill, no border). */
+   Two independent contained cards each with their own panel chrome.
+   The .bp-browse-strip is a transparent layout-only container.
+   v1.65ba (p0004 #1) — switched from `margin: 12px 12px 0` to padding
+   so the strip extends the full width of the shell. The page-ground
+   tint behind the strip now reads as one continuous band with the
+   3-col body below; the previous side-margin gutter no longer looks
+   like a pink wrapper around the cards. */
 .bp-browse-strip {
-  margin: 12px 12px 0;
+  padding: 12px 12px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1206,21 +1211,27 @@ input.bp-cfg-page-label.p-inputtext:focus {
    inactive colour. Active tab = --theme-contrast-soft fill +
    --theme-contrast-strong text with folder-tab top corners. Same
    in light / dark / bold modes (per-mode rules below override the
-   inactive colour where the hero background changes). */
+   inactive colour where the hero background changes).
+   v1.65ba — hairline outline on every tab (top + sides) so the
+   inactive tabs also read as folder-tab shapes, matching the Adobe
+   reference. The tab band's own bottom hairline handles the row
+   bottom so individual tabs don't need a border-bottom. */
 .bp-hero-tab {
   padding: 10px 18px;
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-text-secondary);
   background: none;
-  border: none;
+  border: var(--border-hairline);
+  border-bottom: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   font-family: var(--font-body);
   text-transform: none;
   letter-spacing: 0;
   border-radius: 9px 9px 0 0;
 }
+.bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
 .bp-hero-tab:hover { color: var(--color-text-primary); }
 .bp-hero-tab.active {
   background: var(--theme-contrast-soft);
@@ -1741,13 +1752,17 @@ app-top-nav { flex-shrink: 0; }
 
 /* p0003 — restated here with !important to outweigh the earlier
    uppercase rule that lived in this block. See line ~1205 for the
-   canonical .bp-hero-tab definition. */
+   canonical .bp-hero-tab definition.
+   v1.65ba — hairline outline on every tab so inactive tabs read as
+   folder shapes too. */
 .bp-hero-tab {
   color: var(--color-text-secondary) !important;
   font-weight: 500 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
   font-size: var(--text-base) !important;
+  border: var(--border-hairline) !important;
+  border-bottom: none !important;
   border-radius: 9px 9px 0 0 !important;
 }
 .bp-hero-tab:hover {
