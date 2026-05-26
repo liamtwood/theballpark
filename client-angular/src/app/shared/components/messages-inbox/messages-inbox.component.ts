@@ -187,10 +187,13 @@ interface VendorThread {
         <section class="bp-cat-main">
           <!-- v1.65aj (p0001) — Lucide inbox icon + count + view toggle,
                outside the scrolling body so the scrollbar starts BELOW
-               the head. v1.65ak — eyebrow text dropped; the project tab
-               label "Inbox" + page heroSub already communicate context. -->
+               the head.
+               v1.65cd — THREADS section-title eyebrow restored so the
+               panel head matches the Marketplace's "RESULTS" pattern
+               (icon → eyebrow → count → view toggle). -->
           <div class="bp-cat-main-head">
             <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
+            <span class="bp-cat-section-title">THREADS</span>
             <span class="bp-cat-section-count">
               {{ filteredThreads().length }}
               {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}

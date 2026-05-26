@@ -1059,20 +1059,10 @@ export type DetailMode = 'inline' | 'drawer';
        Three fixed groups (Price · Category · Event), each a labelled
        header over a set of collapsible dimension rows. */
     .bp-filter-caret { font-size: 9px; opacity: 0.6; }
-    /* v1.65u — sidebar's top-level FILTER heading. Sits above the
-       Price / Event / dimension groups so the column names what it is.
-       Same eyebrow-style typography as the .bp-cat-section-header
-       title in the centre column, plus a hairline rule underneath to
-       anchor it as a column header. */
-    /* v1.65ai — FILTER eyebrow moved into .bp-cat-sidebar-head; sticky
-       no longer needed (the head is structurally outside the scrolling
-       body). Just typography here. */
-    .bp-filter-title {
-      font-family: var(--font-body);
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--theme-accent);
-    }
+    /* v1.65cd — .bp-filter-title typography promoted to global
+       styles.css so the messages-inbox FILTER eyebrow picks up the
+       same theme-accent treatment (previously scoped here, so the
+       inbox rendered the FILTER text unstyled). */
     .bp-filter-grouphdr {
       display: flex; align-items: center; justify-content: space-between;
       padding: 2px 2px 2px;
