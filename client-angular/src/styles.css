@@ -1752,15 +1752,18 @@ app-top-nav { flex-shrink: 0; }
    HERO SPACING FIX — append to styles.css
    ============================================================= */
 
-/* Equal padding above and below org name in hero */
+/* Equal padding above and below org name in hero.
+   v1.65bl — padding-bottom now 0 because the tabs nest inside .bp-hero
+   (v1.65bh) and any padding-bottom shoves the tabs up, leaving a
+   parchment gap between the tabs and the page below. */
 .bp-hero {
-  padding: 24px var(--section-pad) 24px !important;
+  padding: 24px var(--section-pad) 0 !important;
 }
 
-/* Mobile — tighter but still equal */
+/* Mobile — tighter, tabs still flush at bottom */
 @media (max-width: 768px) {
   .bp-hero {
-    padding: 16px 16px 16px !important;
+    padding: 16px 16px 0 !important;
   }
 
   /* Remove any top gap caused by bottom-nav padding bleeding up */
