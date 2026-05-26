@@ -939,12 +939,16 @@ input.bp-cfg-page-label.p-inputtext:focus {
   flex-direction: column;
   gap: 8px;
 }
+/* v1.65bk — internal top padding dropped so the circles start right
+   at the top of the white card. Previous 12px created vertical space
+   between the tabs and the circles that the user reported as "still a
+   row below the tabs". Bottom padding kept so labels don't crowd. */
 .bp-browse-panel {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  padding: 12px 0 4px;
+  padding: 0 0 4px;
   overflow: hidden;
 }
 .bp-search-panel {
