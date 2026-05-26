@@ -111,57 +111,66 @@ interface MessagesSummary {
                Row 2: GUESTS | DATE | VENUE
              All values render at the same font size — the
              value--num variant was retired so the user's eye doesn't
-             jump between numeric + label values. -->
+             jump between numeric + label values.
+             v1.65ck — EVENT DETAILS header bar added on top, reusing
+             the .bp-ov-head + .bp-ov-label primitives from the
+             BRIEF / MARKETPLACE / ESTIMATE / MESSAGES cards below
+             so the four containers read as one family. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
-          <div class="bp-event-cols">
-            <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
-            <div class="bp-event-col bp-event-col--narrow">
-              <span class="bp-event-eyebrow">REF</span>
-              <span class="bp-event-value">{{ project.ref || '—' }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">CLIENT</span>
-              <span class="bp-event-value">{{ project.client_name || '—' }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">EVENT NAME</span>
-              <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
-            </div>
-
-            <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
-            <div class="bp-event-col bp-event-col--narrow">
-              <span class="bp-event-eyebrow">GUESTS</span>
-              <span class="bp-event-value">{{ guestCount || '—' }}</span>
-              <span class="bp-event-sub">{{ guestSub }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">DATE</span>
-              <span class="bp-event-value">{{ datePrimary || '—' }}</span>
-              <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
-              <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">VENUE</span>
-              <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
-              <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
-            </div>
+          <div class="bp-ov-head">
+            <span class="bp-ov-label">EVENT DETAILS</span>
           </div>
-          <div class="bp-event-actions">
-            <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
-            <!-- "⋯" kebab — same UI as the dashboard project card menu.
-                 stopPropagation on the button + the menu so clicks inside
-                 don't bubble to the strip's open handler. -->
-            <button type="button"
-                    class="bp-event-menu-btn"
-                    (click)="toggleEventMenu($event)"
-                    title="More actions">⋯</button>
-            <div *ngIf="eventMenuOpen"
-                 class="bp-event-menu"
-                 (click)="$event.stopPropagation()">
-              <button type="button" class="bp-event-menu-item"
-                      (click)="onEventMenu('edit', $event)">Edit event</button>
-              <button type="button" class="bp-event-menu-item"
-                      (click)="onEventMenu('brief', $event)">Project brief</button>
+          <div class="bp-event-strip-body">
+            <div class="bp-event-cols">
+              <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">REF</span>
+                <span class="bp-event-value">{{ project.ref || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">CLIENT</span>
+                <span class="bp-event-value">{{ project.client_name || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">EVENT NAME</span>
+                <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
+              </div>
+
+              <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">GUESTS</span>
+                <span class="bp-event-value">{{ guestCount || '—' }}</span>
+                <span class="bp-event-sub">{{ guestSub }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">DATE</span>
+                <span class="bp-event-value">{{ datePrimary || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
+                <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">VENUE</span>
+                <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
+              </div>
+            </div>
+            <div class="bp-event-actions">
+              <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
+              <!-- "⋯" kebab — same UI as the dashboard project card menu.
+                   stopPropagation on the button + the menu so clicks inside
+                   don't bubble to the strip's open handler. -->
+              <button type="button"
+                      class="bp-event-menu-btn"
+                      (click)="toggleEventMenu($event)"
+                      title="More actions">⋯</button>
+              <div *ngIf="eventMenuOpen"
+                   class="bp-event-menu"
+                   (click)="$event.stopPropagation()">
+                <button type="button" class="bp-event-menu-item"
+                        (click)="onEventMenu('edit', $event)">Edit event</button>
+                <button type="button" class="bp-event-menu-item"
+                        (click)="onEventMenu('brief', $event)">Project brief</button>
+              </div>
             </div>
           </div>
         </div>
@@ -449,18 +458,34 @@ interface MessagesSummary {
     }
 
     /* ── EVENT STRIP ─────────────────────────────────────────── */
+    /* v1.65ck — strip is now a vertical card: EVENT DETAILS header
+       on top + .bp-event-strip-body underneath (was a single
+       horizontal flex). The body keeps the original 6-col grid +
+       actions layout. */
     .bp-event-strip {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      padding: 16px 20px;
+      flex-direction: column;
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
       cursor: pointer;
       transition: box-shadow 150ms ease;
+    }
+    .bp-event-strip-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px 20px;
+    }
+    /* v1.65ck — header bar reuses .bp-ov-head from the KPI cards.
+       Round its top corners to match the card so the accent fill
+       doesn't bleed past the radius (no overflow:hidden needed on
+       the parent — would clip the kebab dropdown). */
+    .bp-event-strip .bp-ov-head {
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
     }
     /* v1.29c: dropped the translateY on hover — the transform property
        creates a stacking context which trapped the kebab dropdown
