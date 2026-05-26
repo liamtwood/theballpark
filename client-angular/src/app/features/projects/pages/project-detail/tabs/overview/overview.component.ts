@@ -101,8 +101,9 @@ interface MessagesSummary {
     <ng-container *ngIf="!loading && project">
       <div class="bp-overview">
 
-        <h2 class="bp-page-title">Project Overview</h2>
-        <div class="bp-page-divider"></div>
+        <!-- v1.65bx — page title removed; the hero already carries the
+             event identity, so a second "Project Overview" h2 was
+             redundant chrome. -->
 
         <!-- ── EVENT STRIP ──────────────────────────────────────
              v1.39j: now a 2-row × 3-col grid.
@@ -165,25 +166,9 @@ interface MessagesSummary {
           </div>
         </div>
 
-        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
-             v1.39j: moved BELOW the event strip per Liam — reads more
-             naturally as "here are the facts, here are the open
-             questions". Same data (parsed_brief_json.topQuestions).
-             Hidden entirely when there are no questions. -->
-        <div *ngIf="questions.length" class="bp-questions-panel">
-          <button type="button" class="bp-questions-toggle"
-                  (click)="questionsOpen = !questionsOpen">
-            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
-            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
-            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
-          </button>
-          <ul class="bp-questions-list" *ngIf="questionsOpen">
-            <li *ngFor="let q of questions" class="bp-question">
-              <span class="bp-q-marker">?</span>
-              <span class="bp-q-text">{{ q }}</span>
-            </li>
-          </ul>
-        </div>
+        <!-- v1.65bx — Questions panel relocated to BELOW the 2×2 card
+             grid (the grid leads with BRIEF). The order now reads:
+             event facts → KPI cards → open questions. -->
 
         <!-- v1.65o — Event drawer is now mounted globally in app-shell
              and opened via EventDrawerService.open(projectId, section?).
@@ -422,6 +407,25 @@ interface MessagesSummary {
           </div>
 
         </div>
+
+        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
+             v1.65bx: now sits BELOW the 2×2 card grid (was above the
+             grid). White fill so it reads as a discrete section
+             rather than a parchment band. Same data + interaction. -->
+        <div *ngIf="questions.length" class="bp-questions-panel">
+          <button type="button" class="bp-questions-toggle"
+                  (click)="questionsOpen = !questionsOpen">
+            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+          </button>
+          <ul class="bp-questions-list" *ngIf="questionsOpen">
+            <li *ngFor="let q of questions" class="bp-question">
+              <span class="bp-q-marker">?</span>
+              <span class="bp-q-text">{{ q }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </ng-container>
   `,
@@ -483,15 +487,18 @@ interface MessagesSummary {
        grid track, so this is mostly a hint for future use (e.g. nested
        grids) — kept as a marker class. */
     .bp-event-col--narrow { max-width: 140px; }
-    /* v1.39j — Questions panel below the event strip. Parchment
-       container, theme-accent eyebrow + chevron. */
+    /* v1.65bx — Questions panel now sits below the 2×2 card grid.
+       White surface (was parchment --theme-bg) so the panel reads
+       as a discrete section like the cards above it. Theme-accent
+       eyebrow + chevron unchanged. */
     .bp-questions-panel {
       margin-top: 16px;
       margin-bottom: 16px;
       padding: 10px 14px;
-      background: var(--theme-bg);
-      border: 0.5px solid var(--color-border);
-      border-radius: 8px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
     }
     .bp-questions-toggle {
       display: inline-flex; align-items: center; gap: 8px;
