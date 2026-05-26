@@ -885,14 +885,10 @@ export type DetailMode = 'inline' | 'drawer';
   styles: [`
     /* v1.65ag — page ground behind the browse panel + 3-col body so
        each panel reads as a contained object.
-       v1.65be — switched from --theme-bg (parchment) to
-       --theme-contrast-soft so the catalogue-grid host matches the
-       page ground painted by bp-shell-content (and the active folder
-       tab). Was painting pink over the contrast-soft on Marketplace
-       while Inbox showed contrast-soft correctly. */
+       v1.65bp — reverted to --theme-bg parchment. */
     :host {
       display: block;
-      background: var(--theme-contrast-soft);
+      background: var(--theme-bg);
     }
 
     /* v1.65ax — .bp-browse-panel chrome moved to .bp-browse-strip in

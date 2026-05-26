@@ -387,20 +387,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
     .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
-    /* v1.65an — when the shell hosts a catalogue-grid surface, paint the
-       scroll viewport with the page ground so the empty area below
-       the 3-col body doesn't reveal white.
-       v1.65av — page ground uses --theme-contrast-soft (same as the
-       active folder tab) so the active tab visually opens onto the
-       page. Hero + tab band keep --theme-bg parchment so the active
-       tab pops against them.
-       v1.65aw — extended to all project tabs (Overview / Plan /
-       Marketplace / Inbox) via app-project-detail so the folder-tab
-       metaphor reads on every tab, not just Marketplace + Inbox. */
+    /* v1.65an — paint the scroll viewport with the page ground so the
+       empty area below the 3-col body doesn't reveal white.
+       v1.65bp — reverted to --theme-bg parchment (was --theme-contrast-soft
+       green). Cat + search panels are contained white cards on the
+       parchment ground. */
     .bp-shell-content:has(app-catalogue-grid),
     .bp-shell-content:has(app-messages-inbox),
     .bp-shell-content:has(app-project-detail) {
-      background: var(--theme-contrast-soft);
+      background: var(--theme-bg);
     }
 
     /* ── SIDE NAV ── */

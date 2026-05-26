@@ -774,9 +774,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
   display: grid;
   grid-template-columns: 260px 1fr;
   height: calc(100vh - var(--nav-height) - 160px);
-  /* v1.65av — page ground matches the active tab's --theme-contrast-soft
-     so the active folder tab visually opens onto the page below. */
-  background: var(--theme-contrast-soft);
+  /* v1.65bp — page ground reverted to --theme-bg parchment (was
+     --theme-contrast-soft green). Cat + search panels back to
+     contained cards on the parchment ground. */
+  background: var(--theme-bg);
   gap: 12px;
   padding: 12px;
 }
@@ -939,18 +940,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
   flex-direction: column;
   gap: 8px;
 }
-/* v1.65bm — cat panel chrome removed (fill, border, radius, shadow).
-   Circles now float directly on the page ground (--theme-contrast-soft)
-   without a containing card. Layout-only padding kept. */
+/* v1.65bp — cat + search panels back to contained cards with their
+   own white fill + hairline + radius + soft shadow. The page ground
+   reverts to parchment (--theme-bg) below, so each card reads as a
+   distinct object sitting on the hero's parchment continuation. */
 .bp-browse-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
   padding: 0 0 4px;
+  overflow: hidden;
 }
-/* v1.65bn — search panel chrome removed (fill, border, radius,
-   shadow). Search row sits directly on the page ground. The "All"
-   chip is theme-accent and the input shows its placeholder; both
-   read clearly on the contrast-soft tint without a containing
-   card. */
 .bp-search-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
   padding: 8px 12px;
 }
 /* v1.65ar — inner light-tint field container dropped. The white search
