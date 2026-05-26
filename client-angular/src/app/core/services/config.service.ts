@@ -9,7 +9,7 @@ const THEME_PRESETS: Record<string, ThemePreset> = {
              contrastSoft: '#DDEEF2', contrast: '#3FA8C4', contrastStrong: '#0C447C' },
   emerald: { name: 'emerald', accent: '#00B84A', bg: '#EDF7F1', empty: '#A7F3D0', text: '#065F46', border: '#B8E8CC',
              contrastSoft: '#FBE4EC', contrast: '#F06F9C', contrastStrong: '#993556' },
-  pink:    { name: 'pink',    accent: '#E8285D', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4',
+  pink:    { name: 'pink',    accent: '#FF0066', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4',
              contrastSoft: '#DFF0E4', contrast: '#3DBE73', contrastStrong: '#0F6E56' },
   ocean:   { name: 'ocean',   accent: '#2563EB', bg: '#EFF6FF', empty: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE',
              contrastSoft: '#FBECD3', contrast: '#F0A93E', contrastStrong: '#854F0B' },
