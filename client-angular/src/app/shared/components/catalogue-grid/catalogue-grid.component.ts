@@ -777,34 +777,39 @@ export type DetailMode = 'inline' | 'drawer';
             <!-- v1.65o — project details strip. Same fields as the
                  Overview event strip (REF / CLIENT / EVENT NAME / GUESTS
                  / DATE / VENUE) rendered as compact label/value pairs so
-                 it doesn't overshadow the brief below. Click the pencil
-                 in the header to edit. -->
-            <div *ngIf="projectContext?.project as proj" class="bp-allctx-details">
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">REF</span>
-                <span class="bp-allctx-d-v">{{ proj.ref || '—' }}</span>
-              </div>
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">CLIENT</span>
-                <span class="bp-allctx-d-v">{{ proj.client_name || '—' }}</span>
-              </div>
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">EVENT</span>
-                <span class="bp-allctx-d-v">{{ proj.event_name || proj.name || '—' }}</span>
-              </div>
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">DATE</span>
-                <span class="bp-allctx-d-v">{{ proj.event_date ? (proj.event_date | date:'d MMM y') : '—' }}</span>
-              </div>
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">GUESTS</span>
-                <span class="bp-allctx-d-v">{{ proj.guest_count || '—' }}</span>
-              </div>
-              <div class="bp-allctx-d-row">
-                <span class="bp-allctx-d-l">VENUE</span>
-                <span class="bp-allctx-d-v">
-                  {{ proj.venue_name || '—' }}<span *ngIf="proj.venue_city">, {{ proj.venue_city }}</span>
-                </span>
+                 it doesn't overshadow the brief below.
+                 v1.65by — wrapped with an EVENT DETAILS section eyebrow
+                 (bold-theme accent) so the section reads as a labelled
+                 block of the current event's data. -->
+            <div *ngIf="projectContext?.project as proj" class="bp-allctx-section">
+              <div class="bp-allctx-section-label">EVENT DETAILS</div>
+              <div class="bp-allctx-details">
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">REF</span>
+                  <span class="bp-allctx-d-v">{{ proj.ref || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">CLIENT</span>
+                  <span class="bp-allctx-d-v">{{ proj.client_name || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">EVENT</span>
+                  <span class="bp-allctx-d-v">{{ proj.event_name || proj.name || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">DATE</span>
+                  <span class="bp-allctx-d-v">{{ proj.event_date ? (proj.event_date | date:'d MMM y') : '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">GUESTS</span>
+                  <span class="bp-allctx-d-v">{{ proj.guest_count || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">VENUE</span>
+                  <span class="bp-allctx-d-v">
+                    {{ proj.venue_name || '—' }}<span *ngIf="proj.venue_city">, {{ proj.venue_city }}</span>
+                  </span>
+                </div>
               </div>
             </div>
             <div class="bp-allctx-brief">
@@ -1421,13 +1426,16 @@ export type DetailMode = 'inline' | 'drawer';
       flex-shrink: 0;
       display: inline-flex;
     }
+    /* v1.65by — header text uses --theme-accent (bold theme color),
+       same as the icon, so PROJECT SUMMARY reads as a brand-keyed
+       section eyebrow instead of dark body text. */
     .bp-allctx-head-name {
       flex: 1; min-width: 0;
       font-family: var(--font-body);
       font-size: 11px; font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--theme-text);
+      color: var(--theme-accent);
       line-height: 1.2;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
@@ -1468,13 +1476,29 @@ export type DetailMode = 'inline' | 'drawer';
       font-variant-numeric: tabular-nums;
     }
 
+    /* v1.65by — EVENT DETAILS section wrapper. The eyebrow label
+       uses --theme-accent (bold theme color) to match the calm
+       PROJECT SUMMARY header. The hairline still lives on the
+       inner .bp-allctx-details so panels below stay separated. */
+    .bp-allctx-section {
+      border-bottom: var(--border-hairline);
+    }
+    .bp-allctx-section-label {
+      padding: 10px 16px 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
     /* v1.65o — project details strip. Compact label/value rows between
        the badges row and the read-only project brief. Same fields the
        Overview event strip shows, but stacked here so the panel stays
-       narrow. */
+       narrow.
+       v1.65by — border-bottom moved up to .bp-allctx-section so the
+       grid sits flush under the EVENT DETAILS eyebrow. */
     .bp-allctx-details {
-      padding: 12px 16px;
-      border-bottom: var(--border-hairline);
+      padding: 8px 16px 12px;
       display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 16px;
     }
     .bp-allctx-d-row { display: flex; flex-direction: column; min-width: 0; }
