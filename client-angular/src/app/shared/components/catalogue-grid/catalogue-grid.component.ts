@@ -424,7 +424,19 @@ export type DetailMode = 'inline' | 'drawer';
                Opened from the cart icon in the All-view header. Centre
                column now shows only Proposed (AI) + Catalogue items.
                v1.65ai — RESULTS section header lifted to .bp-cat-main-head
-               above; this is where it used to live. -->
+               above; this is where it used to live.
+               v1.65cn — RESULTS sub-header restored INSIDE the scroll body
+               when recommendations are showing, so the user can clearly
+               read "here are the AI picks · here's everything else".
+               Only renders when both sections coexist. -->
+          <div *ngIf="recommendedEntities.length && filteredEntities.length"
+               class="bp-cat-section-header bp-cat-section-header--sub bp-cat-section-header--results">
+            <span class="bp-cat-section-title">
+              <lucide-icon name="package" [size]="14"></lucide-icon>
+              {{ sectionTitle }}
+            </span>
+            <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
+          </div>
         </ng-container>
 
         <div *ngIf="!filteredEntities.length" class="bp-cat-empty">No {{ entityLabel }}s found.</div>
@@ -1085,13 +1097,22 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-strip-recommend:disabled { opacity: 0.6; cursor: progress; }
     .bp-strip-recommend lucide-icon { display: inline-flex; }
 
-    /* v1.65k — AI RECOMMENDATIONS section heading (sparkles + accent). */
-    .bp-cat-section-header--ai .bp-cat-section-title {
+    /* v1.65k — AI RECOMMENDATIONS section heading (sparkles + accent).
+       v1.65cn — RESULTS sub-header mirrors the same icon + accent
+       treatment so the two in-scroll headings read as a matched pair. */
+    .bp-cat-section-header--ai .bp-cat-section-title,
+    .bp-cat-section-header--results .bp-cat-section-title {
       color: var(--theme-accent);
       display: inline-flex; align-items: center; gap: 6px;
     }
-    .bp-cat-section-header--ai .bp-cat-section-title lucide-icon {
+    .bp-cat-section-header--ai .bp-cat-section-title lucide-icon,
+    .bp-cat-section-header--results .bp-cat-section-title lucide-icon {
       display: inline-flex;
+    }
+    /* v1.65cn — give the RESULTS sub-header extra top breathing room
+       so it reads as a clear section break after the AI cards above. */
+    .bp-cat-section-header--results {
+      margin-top: 20px;
     }
 
     /* v1.41 — subcategory chip pill (kept; used in the strip bar). */
@@ -2347,6 +2368,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       this.checkedTags = new Set(this.tags || []);
       this.applyFilter();
     }
+    // v1.65cn — restore persisted recommendations when projectContext
+    // first lands. Runs at most once per projectId.
+    if (changes['projectContext'] && this.projectContext) {
+      this.restoreRecommended();
+    }
     // v1.65q — autoRecommend fires once after projectContext lands.
     // We listen on both inputs because either may arrive first (the
     // marketplace sets autoRecommend up front and projectContext after
@@ -2829,9 +2855,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       are stashed in recommendedIds and surfaced as an "AI RECOMMENDATIONS"
       section in the centre column.
       v1.65l — "all" view also supported: fans out one matcher request per
-      project_category that has a brief and merges all results. */
+      project_category that has a brief and merges all results.
+      v1.65cn — recommendedIds are persisted to localStorage keyed by
+      projectId so the AI RECOMMENDATIONS section survives a page reload
+      / route change. Cleared on a fresh Recommend run (the new result
+      replaces the old). */
   recommending = false;
   recommendedIds = new Set<string>();
+  private static readonly RECOMMENDED_STORAGE_PREFIX = 'bp-recommended-';
+  /** Tracks the projectId we've already attempted to restore from
+      storage for so we don't reapply the saved ids on every change-
+      detection cycle. */
+  private restoredRecommendedFor: string | null = null;
 
   /** Project_categories that have a non-empty brief — eligible inputs for
       the matcher when running across the whole project. */
@@ -2890,6 +2925,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         results.forEach(r => this.collectMatchIds(r, ids));
         this.recommendedIds = ids;
         this.recommending = false;
+        // v1.65cn — persist the recommendation set so it survives a
+        // reload. Keyed by projectId — saved per-project, not per
+        // category, since the matcher returns project-scoped ids.
+        this.persistRecommended();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -2897,6 +2936,38 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         this.cdr.detectChanges();
       }
     });
+  }
+
+  /** v1.65cn — write the current recommendedIds to localStorage. */
+  private persistRecommended(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid) return;
+    try {
+      const key = CatalogueGridComponent.RECOMMENDED_STORAGE_PREFIX + pid;
+      if (this.recommendedIds.size) {
+        localStorage.setItem(key, JSON.stringify([...this.recommendedIds]));
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch { /* localStorage may be unavailable */ }
+  }
+
+  /** v1.65cn — restore the saved recommendation set when projectContext
+      lands. Runs once per projectId so it doesn't override a fresh
+      recommendItems() result. */
+  private restoreRecommended(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid || this.restoredRecommendedFor === pid) return;
+    this.restoredRecommendedFor = pid;
+    try {
+      const key = CatalogueGridComponent.RECOMMENDED_STORAGE_PREFIX + pid;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) {
+        this.recommendedIds = new Set(arr.filter((s: any) => typeof s === 'string'));
+      }
+    } catch { /* ignore parse / storage errors */ }
   }
 
   /** v1.65g — All-view totals (project Marketplace summary panel).
