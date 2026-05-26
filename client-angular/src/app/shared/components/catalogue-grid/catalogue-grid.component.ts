@@ -129,16 +129,13 @@ export type DetailMode = 'inline' | 'drawer';
                    [placeholder]="searchPlaceholder"
                    class="bp-search-input"
                    (keyup.enter)="applySearch()"/>
-          </div>
-        </div>
-        <div class="bp-quick-actions-panel" *ngIf="projectContext">
-          <div class="bp-search-section-label">QUICK ACTIONS</div>
-          <div class="bp-search-actions">
-            <!-- v1.65cj — Recommend lives here (moved from Results header).
+            <!-- v1.65cm — Recommend lives in the SEARCH row (was in
+                 QUICK ACTIONS). It's an AI-driven search/match action
+                 — belongs alongside the text search + scope dropdown.
                  canRecommend still gates it (project + briefed cat). -->
             <button *ngIf="canRecommend"
                     type="button"
-                    class="bp-search-view-estimate"
+                    class="bp-search-view-estimate bp-search-recommend"
                     [disabled]="recommending"
                     [title]="activeCategory === 'all'
                       ? 'Recommend items across every category that has a brief'
@@ -147,6 +144,11 @@ export type DetailMode = 'inline' | 'drawer';
               <lucide-icon name="sparkles" [size]="13"></lucide-icon>
               {{ recommending ? 'Recommending…' : 'Recommend' }}
             </button>
+          </div>
+        </div>
+        <div class="bp-quick-actions-panel" *ngIf="projectContext">
+          <div class="bp-search-section-label">QUICK ACTIONS</div>
+          <div class="bp-search-actions">
             <button type="button"
                     class="bp-search-view-estimate"
                     (click)="openProjectEdit()"

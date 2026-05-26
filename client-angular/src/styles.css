@@ -1041,11 +1041,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
   min-height: 0 !important;
 }
 
-/* v1.65ch — "View estimate" CTA on the right end of the search row.
+/* v1.65ch — Quick-actions CTA pills (Event detail / View estimate).
    Subtle accent-tint pill (theme-soft fill, accent text + icon)
-   so it reads as an action but doesn't fight the bold "All ▾"
-   selector at the other end of the row. Only renders when the grid
-   is in project context. */
+   so they read as actions but don't fight the bold "All ▾"
+   selector inside the search row. Only render in project context. */
 .bp-search-view-estimate {
   display: inline-flex; align-items: center; gap: 6px;
   flex-shrink: 0;
@@ -1065,6 +1064,42 @@ input.bp-cfg-page-label.p-inputtext:focus {
   background: var(--theme-accent);
   color: var(--color-surface);
   border-color: var(--theme-accent);
+}
+.bp-search-view-estimate:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bp-search-view-estimate:disabled:hover {
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  border-color: var(--color-border);
+}
+
+/* v1.65cm — Recommend chip integrates INTO the search row, mirroring
+   the "All ▾" treatment on the opposite end: solid theme-accent fill +
+   white label + right-rounded so the row reads as a search pill with
+   a scope chip on the left and an AI-action chip on the right. */
+.bp-search-row .bp-search-recommend.bp-search-view-estimate {
+  margin-left: auto;
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  border: none;
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+  padding: 8px 14px;
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  filter: brightness(0.93);
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:disabled {
+  opacity: 0.6;
+  filter: none;
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:disabled:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  filter: none;
 }
 
 /* v1.65cb — "All ▾" scope chip inside .bp-search-row. Promoted from
