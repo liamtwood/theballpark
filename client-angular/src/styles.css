@@ -1211,8 +1211,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
    one continuous tinted region for hero → tabs → search. The tonal
    step into white content below handles the boundary, so no
    hairline rule. */
+/* v1.65bg — tab band has NO fill in any mode. Was --theme-bg in
+   light/dark and --theme-accent in bold; now transparent so the
+   band only carries layout (padding) and the tabs are the only
+   visible chrome in the row. */
 .bp-hero-tab-band {
-  background: var(--theme-bg);
+  background: transparent;
   padding: 0 var(--section-pad);
 }
 /* p0003 — REAL FOLDER TABS. Sentence case, --text-base, readable
@@ -1311,8 +1315,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-[data-mode="bold"] .bp-hero,
-[data-mode="bold"] .bp-hero-tab-band {
+/* v1.65bg — tab band stays transparent in Bold mode too (was accent). */
+[data-mode="bold"] .bp-hero {
   background: var(--theme-accent) !important;
 }
 [data-mode="bold"] .bp-hero {
