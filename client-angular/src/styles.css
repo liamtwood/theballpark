@@ -1194,12 +1194,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
    margin-bottom: -0.5px still covers the line at its position. */
 /* v1.65bs — hero now uses the bold theme fill (--theme-accent) in
    light mode too; text + sub-label switch to white for legibility.
-   Was --theme-bg parchment. Bold mode kept its identical accent
-   treatment plus orbs + grain. */
+   v1.65bw — hairline under the tabs uses --theme-bg (light theme
+   parchment) instead of the neutral rgba black hairline so it's
+   actually visible on the accent-filled hero. */
 .bp-hero {
   background: var(--theme-accent);
   padding: 32px var(--section-pad) 0;
-  border-bottom: var(--border-hairline);
+  border-bottom: 0.5px solid var(--theme-bg);
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
