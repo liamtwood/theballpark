@@ -77,52 +77,51 @@ export type DetailMode = 'inline' | 'drawer';
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
     </div>
 
-    <!-- v1.65ag — BROWSE CONTROLS PANEL. Wraps the category circles
-         in one contained panel that sits above the search panel and
-         3-col body. v1.65aj (p0001) — search lifted out into its own
-         dedicated panel below; Recommend moved into the Results column
-         header alongside the view toggle. -->
-    <div class="bp-browse-panel"
+    <!-- v1.65ax — BROWSE STRIP. One contained panel holding both the
+         category circles section and the search section. Previously
+         the two were sibling panels and the page-ground colour
+         between them read as accidental bleed-through. -->
+    <div class="bp-browse-strip"
          *ngIf="categories.length && showCategoryCircles">
-    <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
-         Catalogue-grid owns the data + drill/scope state; the sub-
-         component owns the markup, scroll-arrow state and event wiring.
-         Messages tab mounts the SAME component so the two stay aligned. -->
-    <app-category-circles
-      [categories]="displayedCircles"
-      [activeId]="circleActiveId"
-      [size]="circleSize"
-      [showEdit]="showEdit && !projectContext"
-      [unscopedIds]="circleUnscopedIds"
-      [showAdd]="showAdd"
-      (select)="onCircleSelect($event)"
-      (edit)="onCategoryEdit($event)"
-      (addClicked)="addClicked.emit()">
-    </app-category-circles>
-    </div><!-- /.bp-browse-panel -->
-
-    <!-- v1.65aj (p0001) — SEARCH PANEL. Standalone contained panel
-         holding just the search input (full width). Sits between the
-         browse panel and the 3-col body. Recommend lives in the Results
-         column header now. -->
-    <div class="bp-search-panel"
-         *ngIf="categories.length && showCategoryCircles">
-      <div class="bp-search-row">
-        <p-dropdown *ngIf="stripDropdownOptions.length > 1"
-                    [options]="stripDropdownOptions"
-                    [ngModel]="stripDropdownValue"
-                    (onChange)="onStripDropdownChange($event.value)"
-                    optionLabel="name" optionValue="id"
-                    styleClass="bp-strip-search-dd"
-                    appendTo="body"
-                    placeholder="All"></p-dropdown>
-        <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-        <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-               [placeholder]="searchPlaceholder"
-               class="bp-search-input"
-               (keyup.enter)="applySearch()"/>
+      <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
+           Catalogue-grid owns the data + drill/scope state; the sub-
+           component owns the markup, scroll-arrow state and event wiring.
+           Messages tab mounts the SAME component so the two stay aligned. -->
+      <div class="bp-browse-panel">
+        <app-category-circles
+          [categories]="displayedCircles"
+          [activeId]="circleActiveId"
+          [size]="circleSize"
+          [showEdit]="showEdit && !projectContext"
+          [unscopedIds]="circleUnscopedIds"
+          [showAdd]="showAdd"
+          (select)="onCircleSelect($event)"
+          (edit)="onCategoryEdit($event)"
+          (addClicked)="addClicked.emit()">
+        </app-category-circles>
       </div>
-    </div>
+
+      <!-- v1.65aj (p0001) — SEARCH section. Sits inside the same
+           browse strip so the two browse controls read as one block.
+           Recommend lives in the Results column header. -->
+      <div class="bp-search-panel">
+        <div class="bp-search-row">
+          <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+                      [options]="stripDropdownOptions"
+                      [ngModel]="stripDropdownValue"
+                      (onChange)="onStripDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      styleClass="bp-strip-search-dd"
+                      appendTo="body"
+                      placeholder="All"></p-dropdown>
+          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+          <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
+                 [placeholder]="searchPlaceholder"
+                 class="bp-search-input"
+                 (keyup.enter)="applySearch()"/>
+        </div>
+      </div>
+    </div><!-- /.bp-browse-strip -->
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
@@ -891,17 +890,9 @@ export type DetailMode = 'inline' | 'drawer';
       background: var(--theme-bg);
     }
 
-    /* v1.65ag — BROWSE CONTROLS panel. Same chrome as the three columns
-       below (--color-surface + hairline + --radius-card + --shadow-xs). */
-    .bp-browse-panel {
-      background: var(--color-surface);
-      border: var(--border-hairline);
-      border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs);
-      margin: 16px 16px 0;
-      padding: 16px 0 0;
-      overflow: hidden;
-    }
+    /* v1.65ax — .bp-browse-panel chrome moved to .bp-browse-strip in
+       styles.css (the wrapper now carries the panel chrome; browse +
+       search inside are layout-only sections). */
 
     /* v1.65ar — .bp-search-panel + .bp-search-row + .bp-search-icon +
        .bp-search-input rules promoted to styles.css (shared with the

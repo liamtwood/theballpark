@@ -94,34 +94,34 @@ interface VendorThread {
         </p-dropdown>
       </div>
 
-      <!-- ═══════════════ CATEGORY CIRCLES (p0001 — browse panel) ═══════════════
-           Wrapped in a contained panel so it sits as one of the three
-           stacked surfaces above the body, matching the Marketplace. -->
-      <div class="bp-browse-panel" *ngIf="categoryFolders.length > 0">
-        <app-category-circles
-          [categories]="categoryFolders"
-          [activeId]="activeFolder"
-          size="lg"
-          [unscopedIds]="emptyCategoryIds"
-          [badgeCounts]="unreadBadgeCounts"
-          (select)="onCircleSelect($event)">
-        </app-category-circles>
-      </div>
-
-      <!-- v1.65aj (p0001) — SEARCH PANEL. Standalone search row sitting
-           between the browse panel and the 3-col body. Pulled out of
-           the sidebar so Messages and Marketplace share the same
-           layout. -->
-      <div class="bp-search-panel">
-        <div class="bp-search-row">
-          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-          <input pInputText type="text"
-                 [(ngModel)]="searchTerm"
-                 (ngModelChange)="onSearchChange()"
-                 placeholder="Search threads, suppliers, messages…"
-                 class="bp-search-input"/>
+      <!-- v1.65ax — BROWSE STRIP wraps circles + search into one
+           panel block matching the Marketplace. -->
+      <div class="bp-browse-strip" *ngIf="categoryFolders.length > 0">
+        <div class="bp-browse-panel">
+          <app-category-circles
+            [categories]="categoryFolders"
+            [activeId]="activeFolder"
+            size="lg"
+            [unscopedIds]="emptyCategoryIds"
+            [badgeCounts]="unreadBadgeCounts"
+            (select)="onCircleSelect($event)">
+          </app-category-circles>
         </div>
-      </div>
+
+        <!-- v1.65aj (p0001) — SEARCH section inside the strip. Pulled
+             out of the sidebar so Messages and Marketplace share the
+             same layout. -->
+        <div class="bp-search-panel">
+          <div class="bp-search-row">
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText type="text"
+                   [(ngModel)]="searchTerm"
+                   (ngModelChange)="onSearchChange()"
+                   placeholder="Search threads, suppliers, messages…"
+                   class="bp-search-input"/>
+          </div>
+        </div>
+      </div><!-- /.bp-browse-strip -->
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
            Reuses the marketplace bp-cat-body--detail grid: sidebar

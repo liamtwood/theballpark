@@ -919,34 +919,30 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-section-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
 .bp-cat-section-count  { font-size: 12px; color: var(--color-text-muted); flex: 1; }
 
-/* ── v1.65aj (p0001) — SHARED BROWSE + SEARCH PANELS ────────────────
-   Standalone contained panels used by catalogue-grid AND messages-inbox.
-   Lived component-scoped in catalogue-grid; promoted here so the
-   Messages tab inherits the identical chrome.
-   v1.65am (p0002 #9) — side margins reduced (16 → 12) and vertical
-   padding tightened so the circles row reads as a band, not a tall
-   panel with wide gutters. */
-.bp-browse-panel {
+/* ── v1.65ax — BROWSE STRIP ─────────────────────────────────────────
+   Wraps the category-circles row + the search row into one contained
+   panel. Replaces the previous pair of stacked panels whose
+   between-gaps read as accidental page-ground bleed-through.
+   The wrapper carries the v1.22 panel chrome; the two inner sections
+   are layout-only (no border, no shadow). */
+.bp-browse-strip {
   background: var(--color-surface);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
   margin: 12px 12px 0;
-  padding: 12px 0 4px;
   overflow: hidden;
 }
-/* v1.65am (p0002 #1, #6) — search panel is a plain white surface
-   panel matching the others (no theme tint).
-   v1.65ar — inner field container removed; panel itself is now the
-   input frame. Padding restored so the chip + input have breathing
-   room without the inner box. */
+/* v1.65ax — browse + search panels now sit inside .bp-browse-strip
+   so they no longer carry their own chrome. They're just layout
+   sections inside one card. A hairline between them is the only
+   internal divider. */
+.bp-browse-panel {
+  padding: 12px 0 4px;
+}
 .bp-search-panel {
-  background: var(--color-surface);
-  border: var(--border-hairline);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-xs);
-  margin: 12px 12px 0;
   padding: 8px 12px;
+  border-top: var(--border-hairline);
 }
 /* v1.65ar — inner light-tint field container dropped. The white search
    panel itself provides the input frame; the "All" chip + search input
