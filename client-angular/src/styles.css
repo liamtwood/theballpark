@@ -945,11 +945,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-browse-panel {
   padding: 0 0 4px;
 }
+/* v1.65bn — search panel chrome removed (fill, border, radius,
+   shadow). Search row sits directly on the page ground. The "All"
+   chip is theme-accent and the input shows its placeholder; both
+   read clearly on the contrast-soft tint without a containing
+   card. */
 .bp-search-panel {
-  background: var(--color-surface);
-  border: var(--border-hairline);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-xs);
   padding: 8px 12px;
 }
 /* v1.65ar — inner light-tint field container dropped. The white search
