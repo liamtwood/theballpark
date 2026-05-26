@@ -971,6 +971,37 @@ input.bp-cfg-page-label.p-inputtext:focus {
   box-shadow: var(--shadow-xs);
   padding: 8px 12px;
 }
+/* v1.65cj — split-mode search panel (project context only). Two
+   labelled sub-sections side-by-side: SEARCH on the left, QUICK
+   ACTIONS on the right, divided by a vertical hairline. Outside
+   project context the panel keeps its single-section layout. */
+.bp-search-panel--split {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 10px 14px;
+}
+.bp-search-panel .bp-search-section { min-width: 0; }
+.bp-search-panel--split .bp-search-section { flex: 1; }
+.bp-search-panel--split .bp-search-section--actions {
+  flex: 0 0 auto;
+  border-left: var(--border-hairline);
+  padding-left: 16px;
+}
+.bp-search-section-label {
+  font-family: var(--font-body);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+  margin-bottom: 6px;
+}
+.bp-search-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
 /* v1.65ar — inner light-tint field container dropped. The white search
    panel itself provides the input frame; the "All" chip + search input
    sit directly in it. One panel, one fill — cleaner. */

@@ -103,44 +103,62 @@ export type DetailMode = 'inline' | 'drawer';
 
       <!-- v1.65aj (p0001) — SEARCH section. Sits inside the same
            browse strip so the two browse controls read as one block.
-           Recommend lives in the Results column header.
-           v1.65ch — "View estimate" button sits to the right of the
-           search input (project context only). Same intent as the
-           Open-estimate footer link, surfaced one click away. -->
-      <div class="bp-search-panel">
-        <div class="bp-search-row">
-          <p-dropdown *ngIf="stripDropdownOptions.length > 1"
-                      [options]="stripDropdownOptions"
-                      [ngModel]="stripDropdownValue"
-                      (onChange)="onStripDropdownChange($event.value)"
-                      optionLabel="name" optionValue="id"
-                      styleClass="bp-strip-search-dd"
-                      appendTo="body"
-                      placeholder="All"></p-dropdown>
-          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-          <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-                 [placeholder]="searchPlaceholder"
-                 class="bp-search-input"
-                 (keyup.enter)="applySearch()"/>
-          <!-- v1.65ci — Event Detail CTA sits BEFORE View Estimate so
-               event facts come before money in the action order. Both
-               buttons render only in project context. -->
-          <button *ngIf="projectContext"
-                  type="button"
-                  class="bp-search-view-estimate"
-                  (click)="openProjectEdit()"
-                  title="Open the event drawer">
-            Event detail
-            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
-          </button>
-          <button *ngIf="projectContext"
-                  type="button"
-                  class="bp-search-view-estimate"
-                  (click)="onContextOpenEstimate()"
-                  title="Open the estimate drawer">
-            View estimate
-            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
-          </button>
+           v1.65cj — split into two labelled sub-sections when in
+           project context: SEARCH (left, input row) and QUICK ACTIONS
+           (right, Recommend + Event detail + View estimate). Vertical
+           hairline divides them. Recommend was MOVED here from the
+           Results column header so all project-context actions live
+           together in the QUICK ACTIONS column. -->
+      <div class="bp-search-panel" [class.bp-search-panel--split]="!!projectContext">
+        <div class="bp-search-section">
+          <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
+          <div class="bp-search-row">
+            <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+                        [options]="stripDropdownOptions"
+                        [ngModel]="stripDropdownValue"
+                        (onChange)="onStripDropdownChange($event.value)"
+                        optionLabel="name" optionValue="id"
+                        styleClass="bp-strip-search-dd"
+                        appendTo="body"
+                        placeholder="All"></p-dropdown>
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
+                   [placeholder]="searchPlaceholder"
+                   class="bp-search-input"
+                   (keyup.enter)="applySearch()"/>
+          </div>
+        </div>
+        <div class="bp-search-section bp-search-section--actions" *ngIf="projectContext">
+          <div class="bp-search-section-label">QUICK ACTIONS</div>
+          <div class="bp-search-actions">
+            <!-- v1.65cj — Recommend moved here from the Results header.
+                 canRecommend still gates it (project + briefed cat). -->
+            <button *ngIf="canRecommend"
+                    type="button"
+                    class="bp-search-view-estimate"
+                    [disabled]="recommending"
+                    [title]="activeCategory === 'all'
+                      ? 'Recommend items across every category that has a brief'
+                      : 'Recommend items based on this category\\'s brief'"
+                    (click)="recommendItems()">
+              <lucide-icon name="sparkles" [size]="13"></lucide-icon>
+              {{ recommending ? 'Recommending…' : 'Recommend' }}
+            </button>
+            <button type="button"
+                    class="bp-search-view-estimate"
+                    (click)="openProjectEdit()"
+                    title="Open the event drawer">
+              Event detail
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+            <button type="button"
+                    class="bp-search-view-estimate"
+                    (click)="onContextOpenEstimate()"
+                    title="Open the estimate drawer">
+              View estimate
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+          </div>
         </div>
       </div>
     </div><!-- /.bp-browse-strip -->
@@ -332,26 +350,15 @@ export type DetailMode = 'inline' | 'drawer';
         <!-- v1.65ai — RESULTS panel head. Sits outside the scrolling
              body so the scrollbar starts BELOW the header. View toggle
              stays anchored to the right of the RESULTS title.
-             v1.65aj (p0001) — Lucide leading icon + Recommend button
-             pulled in from the (now-removed) strip-bar. -->
+             v1.65cj — Recommend button MOVED to the Quick Actions
+             column in the search panel so all project-context CTAs
+             live in one place. Main head is now just title + count +
+             projected toggles + view toggle. -->
         <div class="bp-cat-main-head">
           <lucide-icon name="package" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
           <span class="bp-cat-section-title">{{ sectionTitle }}</span>
           <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           <ng-content select="[catalogue-toggles]"></ng-content>
-          <button *ngIf="canRecommend" type="button"
-                  class="bp-strip-recommend"
-                  [disabled]="recommending"
-                  [title]="activeCategory === 'all'
-                    ? 'Recommend items across every category that has a brief'
-                    : 'Recommend items based on this category\\'s brief'"
-                  (click)="recommendItems()">
-            <lucide-icon name="sparkles" [size]="13"></lucide-icon>
-            {{ recommending ? 'Recommending…' : 'Recommend' }}
-          </button>
-          <!-- v1.65am (p0002 #7) — hairline divider visually separates
-               the AI action (Recommend) from the display-mode controls. -->
-          <span *ngIf="canRecommend && showLayoutToggle" class="bp-head-sep"></span>
           <div class="bp-view-toggle" *ngIf="showLayoutToggle">
             <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
               <lucide-icon name="list" [size]="14"></lucide-icon>
