@@ -1628,6 +1628,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-drawer-title      { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
 .bp-drawer-body       { padding: 24px; }
 .bp-drawer-ops-footer { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+/* v1.65cp — auto-ref chip in the drawer header, next to the
+   "PROJECT" eyebrow. Promoted from event-drawer scoped styles so
+   the estimate drawer (and any future drawer with a project ref)
+   can reuse the same compact monospace-leaning chip. */
+.bp-drawer-ref-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  vertical-align: middle;
+}
 
 /* ── INPUT STATES — PrimeNG overrides (must be global) ── */
 
