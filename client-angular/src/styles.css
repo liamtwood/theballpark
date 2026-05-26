@@ -971,23 +971,37 @@ input.bp-cfg-page-label.p-inputtext:focus {
   box-shadow: var(--shadow-xs);
   padding: 8px 12px;
 }
-/* v1.65cj — split-mode search panel (project context only). Two
-   labelled sub-sections side-by-side: SEARCH on the left, QUICK
-   ACTIONS on the right, divided by a vertical hairline. Outside
-   project context the panel keeps its single-section layout. */
-.bp-search-panel--split {
-  display: flex;
-  align-items: stretch;
-  gap: 16px;
-  padding: 10px 14px;
+/* v1.65cl — search + quick-actions row wrapper. In project context
+   it lays the SEARCH panel + the QUICK ACTIONS panel side-by-side
+   on a grid that mirrors the 3-col body grid below (col 1+2 → search,
+   col 3 → actions). Outside project context the wrapper is a no-op
+   block and the search panel renders full-width as before. */
+.bp-search-row-wrap { display: block; }
+.bp-search-row-wrap--split {
+  display: grid;
+  gap: 12px;
 }
-.bp-search-panel .bp-search-section { min-width: 0; }
-.bp-search-panel--split .bp-search-section { flex: 1; }
-.bp-search-panel--split .bp-search-section--actions {
-  flex: 0 0 auto;
-  border-left: var(--border-hairline);
-  padding-left: 16px;
+/* Column widths mirror .bp-cat-body--detail's grid-template-columns
+   exactly so the search container's right edge meets the column
+   gap between the main column and the detail panel below. */
+.bp-search-row-wrap--split[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
+.bp-search-row-wrap--split[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
+.bp-search-row-wrap--split[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
+.bp-search-row-wrap--split .bp-search-panel       { grid-column: 1 / 3; }
+.bp-search-row-wrap--split .bp-quick-actions-panel { grid-column: 3; }
+
+/* Quick actions panel — same card chrome as the search panel so
+   the two read as a matched pair sitting above their respective
+   body columns. */
+.bp-quick-actions-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 8px 12px;
+  min-width: 0;
 }
+
 .bp-search-section-label {
   font-family: var(--font-body);
   font-size: 10px; font-weight: 600;

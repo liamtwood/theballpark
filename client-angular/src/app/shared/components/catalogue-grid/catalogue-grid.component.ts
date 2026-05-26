@@ -103,14 +103,17 @@ export type DetailMode = 'inline' | 'drawer';
 
       <!-- v1.65aj (p0001) — SEARCH section. Sits inside the same
            browse strip so the two browse controls read as one block.
-           v1.65cj — split into two labelled sub-sections when in
-           project context: SEARCH (left, input row) and QUICK ACTIONS
-           (right, Recommend + Event detail + View estimate). Vertical
-           hairline divides them. Recommend was MOVED here from the
-           Results column header so all project-context actions live
-           together in the QUICK ACTIONS column. -->
-      <div class="bp-search-panel" [class.bp-search-panel--split]="!!projectContext">
-        <div class="bp-search-section">
+           v1.65cl — SEARCH + QUICK ACTIONS are now TWO separate
+           contained panels in project context, laid out on a grid
+           that mirrors the 3-col body below:
+             search-panel       spans col 1 (sidebar) + col 2 (main)
+             quick-actions-panel  spans col 3 (detail panel)
+           Outside project context the search panel still renders
+           single-width via .bp-search-row-wrap (non-split). -->
+      <div class="bp-search-row-wrap"
+           [class.bp-search-row-wrap--split]="!!projectContext"
+           [attr.data-detail-size]="detailSize">
+        <div class="bp-search-panel">
           <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
           <div class="bp-search-row">
             <p-dropdown *ngIf="stripDropdownOptions.length > 1"
@@ -128,10 +131,10 @@ export type DetailMode = 'inline' | 'drawer';
                    (keyup.enter)="applySearch()"/>
           </div>
         </div>
-        <div class="bp-search-section bp-search-section--actions" *ngIf="projectContext">
+        <div class="bp-quick-actions-panel" *ngIf="projectContext">
           <div class="bp-search-section-label">QUICK ACTIONS</div>
           <div class="bp-search-actions">
-            <!-- v1.65cj — Recommend moved here from the Results header.
+            <!-- v1.65cj — Recommend lives here (moved from Results header).
                  canRecommend still gates it (project + briefed cat). -->
             <button *ngIf="canRecommend"
                     type="button"
