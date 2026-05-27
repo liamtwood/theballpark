@@ -1,7 +1,25 @@
 const pool = require('../db/pool');
 
+// v1.65cs (p0006 follow-up) — JOIN on orgs so the Inbox can render a
+// supplier logo on each thread card. The supplier identity comes from
+// messages.supplier_org_id; when that's NULL the thread falls back to
+// the sender's user name (legacy rows). Columns:
+//   supplier_name           — orgs.name when supplier_org_id is set
+//   supplier_logo_url       — orgs.logo_url (square brand mark)
+//   supplier_cover_url      — orgs.cover_image_url (banner fallback)
+//   sender_name             — users.name (kept for legacy compat)
 async function getAll(projectId) {
-  let query = `SELECT m.*, u.name as sender_name FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE 1=1`;
+  let query = `
+    SELECT m.*,
+           u.name             AS sender_name,
+           so.name             AS supplier_name,
+           so.logo_url         AS supplier_logo_url,
+           so.cover_image_url  AS supplier_cover_url
+      FROM messages m
+      LEFT JOIN users u   ON m.user_id          = u.id
+      LEFT JOIN orgs  so  ON m.supplier_org_id  = so.id
+     WHERE 1=1
+  `;
   const params = [];
   if (projectId) { params.push(projectId); query += ` AND m.project_id = $${params.length}`; }
   query += ' ORDER BY m.created_at ASC';
@@ -44,13 +62,21 @@ async function hardDelete(id) {
 }
 
 async function getAllByOrg(orgId) {
+  // v1.65cs — supplier JOIN added so the global Inbox card renders
+  // logos the same way as the project-scoped inbox.
   const result = await pool.query(
-    `SELECT m.*, u.name as sender_name, p.name as project_name
-     FROM messages m
-     LEFT JOIN users u ON m.user_id = u.id
-     LEFT JOIN projects p ON m.project_id = p.id
-     WHERE p.org_id = $1
-     ORDER BY m.created_at ASC`,
+    `SELECT m.*,
+            u.name             AS sender_name,
+            p.name             AS project_name,
+            so.name            AS supplier_name,
+            so.logo_url        AS supplier_logo_url,
+            so.cover_image_url AS supplier_cover_url
+       FROM messages m
+       LEFT JOIN users    u  ON m.user_id          = u.id
+       LEFT JOIN projects p  ON m.project_id       = p.id
+       LEFT JOIN orgs     so ON m.supplier_org_id  = so.id
+      WHERE p.org_id = $1
+      ORDER BY m.created_at ASC`,
     [orgId]
   );
   return result.rows;

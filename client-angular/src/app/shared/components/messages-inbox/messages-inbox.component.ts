@@ -46,6 +46,12 @@ interface QuotedItem {
 interface ThreadMessage extends Message {
   supplier_org_id?: string;
   supplier_name?: string;
+  /** v1.65cs (p0006) — supplier brand assets joined server-side so
+      the Inbox thread cards can render a real logo instead of just
+      initials. logo_url is the square brand mark; cover_image_url
+      is the banner fallback. */
+  supplier_logo_url?: string | null;
+  supplier_cover_url?: string | null;
   category_id?: string;
   category_name?: string;
   msg_status?: string;
@@ -58,6 +64,10 @@ interface VendorThread {
   key: string;
   supplierId: string;
   supplierName: string;
+  /** v1.65cs — supplier logo carried at the thread level. Picked
+      from the first message that has a non-null asset; falls back
+      to '' so the template can render initials when empty. */
+  supplierLogoUrl: string;
   categoryId: string;
   categoryName: string;
   projectId: string;
@@ -278,7 +288,13 @@ interface VendorThread {
                  [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
                  [class.bp-msg-thread-card--unread]="t.unread"
                  (click)="openThread(t)">
-              <div class="bp-msg-thread-logo">{{ initialsFor(t.supplierName) }}</div>
+              <!-- v1.65cs — render the supplier logo when present;
+                   fall back to initials in a themed-tint square. -->
+              <div class="bp-msg-thread-logo"
+                   [class.bp-msg-thread-logo--img]="!!t.supplierLogoUrl">
+                <img *ngIf="t.supplierLogoUrl" [src]="t.supplierLogoUrl" [alt]="t.supplierName"/>
+                <span *ngIf="!t.supplierLogoUrl">{{ initialsFor(t.supplierName) }}</span>
+              </div>
               <div class="bp-msg-thread-body">
                 <div class="bp-msg-thread-top">
                   <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
@@ -311,7 +327,11 @@ interface VendorThread {
                  [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
                  [class.bp-msg-thread-card--unread]="t.unread"
                  (click)="openThread(t)">
-              <div class="bp-msg-thread-logo bp-msg-thread-logo--lg">{{ initialsFor(t.supplierName) }}</div>
+              <div class="bp-msg-thread-logo bp-msg-thread-logo--lg"
+                   [class.bp-msg-thread-logo--img]="!!t.supplierLogoUrl">
+                <img *ngIf="t.supplierLogoUrl" [src]="t.supplierLogoUrl" [alt]="t.supplierName"/>
+                <span *ngIf="!t.supplierLogoUrl">{{ initialsFor(t.supplierName) }}</span>
+              </div>
               <div class="bp-msg-thread-body">
                 <div class="bp-msg-thread-top">
                   <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
@@ -623,9 +643,11 @@ interface VendorThread {
       background: var(--theme-soft);
       border-color: var(--theme-accent);
     }
-    /* Logo — themed-tint rounded square with initials. Falls back to
-       initials only since we don't carry supplier logo assets through
-       the messages payload yet. */
+    /* Logo — themed-tint rounded square with initials by default.
+       v1.65cs — when a supplier has uploaded a logo asset, the
+       --img modifier swaps the tinted fill for a white background
+       so coloured marks stay legible. The <img> stretches to fit
+       the square via object-fit: contain so the brand isn't cropped. */
     .bp-msg-thread-logo {
       width: 40px; height: 40px;
       border-radius: var(--radius-button);
@@ -635,8 +657,18 @@ interface VendorThread {
       font-family: var(--font-body);
       font-size: 13px; font-weight: 600;
       flex-shrink: 0;
+      overflow: hidden;
     }
     .bp-msg-thread-logo--lg { width: 48px; height: 48px; font-size: 15px; }
+    .bp-msg-thread-logo--img {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+    }
+    .bp-msg-thread-logo img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      display: block;
+    }
     .bp-msg-thread-body { flex: 1; min-width: 0; }
     .bp-msg-thread-top {
       display: flex; align-items: baseline; justify-content: space-between;
@@ -1004,10 +1036,20 @@ export class MessagesInboxComponent implements OnInit {
         map[key] = {
           key, supplierId: sid,
           supplierName: m.supplier_name || 'Unknown Supplier',
+          // v1.65cs (p0006) — supplier logo lifted from the first
+          // message that carries one. Falls back to cover_image_url
+          // (banner) when no square logo is uploaded, then to ''
+          // so the template renders initials.
+          supplierLogoUrl: (m.supplier_logo_url || m.supplier_cover_url || ''),
           categoryId: cid, categoryName: m.category_name || '',
           projectId: pid, projectName: m.project_name || '',
           latestMsg: m, status: '', count: 0, unread: false, messages: []
         };
+      } else if (!map[key].supplierLogoUrl) {
+        // Subsequent messages may carry an asset where the first
+        // one didn't — pick it up the moment it shows up.
+        const u = (m.supplier_logo_url || m.supplier_cover_url || '');
+        if (u) map[key].supplierLogoUrl = u;
       }
       map[key].messages.push(m);
       map[key].count++;
