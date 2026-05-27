@@ -452,34 +452,47 @@ interface VendorThread {
           </ng-container>
 
           <ng-container *ngIf="activeThread">
+            <!-- v1.65cx (p0011 §3) — conversation header rebuilt around
+                 the supplier list-mode card pattern (clone of the
+                 catalogue's .bp-list-row shape). The four-pill manual
+                 status setter (Action / Waiting / Quoted / Booked) is
+                 dropped — per-item status is driven by the symmetric
+                 action table, and the thread-level pill below is the
+                 computed aggregate. TODO(p0011-§3-extract): factor the
+                 supplier row card into a shared component so this and
+                 the catalogue list mode point at one template. -->
             <div class="bp-thread-header">
-              <div class="bp-thread-top">
-                <button class="bp-back-btn" (click)="closeThread()" title="Back to inbox">
-                  <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
-                </button>
-                <div class="bp-thread-cat-icon" [ngClass]="'bp-cat-' + statusClass(activeThread.status)">
-                  <lucide-icon [name]="getCatIcon(activeThread.categoryName)" [size]="16"></lucide-icon>
+              <button class="bp-back-btn" (click)="closeThread()" title="Back to inbox">
+                <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+              </button>
+              <div class="bp-thread-supplier-card">
+                <div class="bp-thread-supplier-logo"
+                     [class.bp-thread-supplier-logo--img]="!!activeThread.supplierLogoUrl">
+                  <img *ngIf="activeThread.supplierLogoUrl"
+                       [src]="activeThread.supplierLogoUrl"
+                       [alt]="activeThread.supplierName"/>
+                  <span *ngIf="!activeThread.supplierLogoUrl">{{ initialsFor(activeThread.supplierName) }}</span>
                 </div>
-                <div class="bp-thread-info">
-                  <div class="bp-thread-name">{{ activeThread.supplierName }}</div>
-                  <div class="bp-thread-sub">
-                    {{ activeThread.categoryName }}
-                    <span *ngIf="!boundProjectId && activeThread.projectName"> · {{ activeThread.projectName }}</span>
+                <div class="bp-thread-supplier-body">
+                  <div class="bp-thread-supplier-name">{{ activeThread.supplierName }}</div>
+                  <div class="bp-thread-supplier-eyebrow">
+                    <span *ngIf="activeThread.contactName">{{ activeThread.contactName }} · </span>{{ activeThread.categoryName }}<span *ngIf="!boundProjectId && activeThread.projectName"> · {{ activeThread.projectName }}</span>
                   </div>
                 </div>
                 <span *ngIf="activeThread.status && activeThread.status !== 'all'"
-                      class="bp-msg-tbadge"
+                      class="bp-msg-tbadge bp-thread-supplier-pill"
                       [ngClass]="'bp-badge-' + statusClass(activeThread.status)">
                   {{ statusLabel(activeThread.status) }}
                 </span>
-              </div>
-              <div class="bp-thread-status-tags">
-                <button *ngFor="let s of statuses.slice(1)"
-                  class="bp-status-tag"
-                  [class.active]="activeThread.status === s.id"
-                  [style.--tag-color]="s.color"
-                  (click)="setThreadStatus(activeThread, s.id)">
-                  {{ s.label }}
+                <span *ngIf="activeThread.nextActionBy"
+                      class="bp-thread-clock-chip"
+                      [class.bp-thread-clock-chip--overdue]="isOverdue(activeThread.nextActionBy)"
+                      [title]="preciseDate(activeThread.nextActionBy)">
+                  <lucide-icon name="clock" [size]="12"></lucide-icon>
+                  {{ shortClock(activeThread.nextActionBy) }}
+                </span>
+                <button type="button" class="bp-thread-menu-btn" title="More">
+                  <lucide-icon name="more-horizontal" [size]="16"></lucide-icon>
                 </button>
               </div>
             </div>
@@ -892,7 +905,84 @@ interface VendorThread {
     .bp-msg-conv-empty lucide-icon { opacity: 0.5; }
     .bp-msg-conv-empty p { margin: 0; }
 
-    .bp-thread-header { background: var(--color-surface); border-bottom: var(--border-hairline); padding: 12px 14px; flex-shrink: 0; }
+    /* v1.65cx (p0011 §3) — header now a single horizontal strip:
+       [<]  [supplier row card]  [pill]  [clock chip]  [⋯]
+       Drops the legacy .bp-thread-top container + bp-thread-status-tags
+       pill row in favour of a clone of the marketplace's supplier
+       list-mode card. */
+    .bp-thread-header {
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+      padding: 10px 12px;
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .bp-thread-supplier-card {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 10px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+    }
+    .bp-thread-supplier-logo {
+      width: 44px; height: 44px;
+      border-radius: var(--radius-button);
+      background: var(--theme-soft);
+      color: var(--theme-text);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px; font-weight: 500;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .bp-thread-supplier-logo--img {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+    }
+    .bp-thread-supplier-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .bp-thread-supplier-body { flex: 1; min-width: 0; }
+    .bp-thread-supplier-name {
+      font-size: 14px; font-weight: 500;
+      color: var(--color-text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-supplier-eyebrow {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-supplier-pill { flex-shrink: 0; }
+    .bp-thread-clock-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-soft);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 500;
+    }
+    .bp-thread-clock-chip lucide-icon { color: var(--theme-accent); }
+    .bp-thread-clock-chip--overdue {
+      background: var(--color-action-bg);
+      color: var(--color-action-text);
+    }
+    .bp-thread-clock-chip--overdue lucide-icon { color: var(--color-action-text); }
+    .bp-thread-menu-btn {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: none; background: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bp-thread-menu-btn:hover { background: var(--theme-soft); color: var(--theme-accent); }
+    /* Legacy classes — kept defined as no-ops so dormant references
+       elsewhere don't break before they're swept. */
     .bp-thread-top    { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     .bp-back-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); background: none; border: var(--border-hairline-strong); border-radius: var(--radius-button); cursor: pointer; font-family: var(--font-body); flex-shrink: 0; padding: 4px 6px; transition: color 0.15s, border-color 0.15s; }
     .bp-back-btn:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
@@ -1405,6 +1495,20 @@ export class MessagesInboxComponent implements OnInit {
     const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
     const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     return `${day} · ${time}`;
+  }
+
+  /** v1.65cx (p0011 §3) — short relative form for the header clock
+      chip ("Next: Fri 29 May"). Hover surfaces the precise stamp. */
+  shortClock(ts: string | null | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (!Number.isFinite(d.getTime())) return '';
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    if (sameDay) {
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
   /** v1.65cr (p0006) — "Go to cart" CTA on the empty state. In project

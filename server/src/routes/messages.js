@@ -121,6 +121,9 @@ router.post('/:id/reply', async (req, res, next) => {
         case 'adjust':  toStatus = 'adjusted_by_agent';
                         extra = { name, description, price, unit }; break;
         case 'pay':     toStatus = 'booked'; break;
+        // v1.65cx (p0011 §2) — Think is the friendlier label for
+        // Holding. Same status code; carries a next_action_by.
+        case 'think':   toStatus = 'holding'; break;
         default:        continue;
       }
 

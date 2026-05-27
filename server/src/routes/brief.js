@@ -170,6 +170,10 @@ router.post('/:token/reply', async (req, res, next) => {
                           extra = { name, description, price, unit }; break;
           case 'quote':   toStatus = 'quoted';
                           extra = { name, description, price, unit }; break;
+          // v1.65cx (p0011 §2) — Think + Holding both land on
+          // status='holding'; the friendlier label is client-side
+          // only. Both carry an optional next_action_by.
+          case 'think':   toStatus = 'holding'; break;
           case 'holding': toStatus = 'holding'; break;
           default:        continue;
         }

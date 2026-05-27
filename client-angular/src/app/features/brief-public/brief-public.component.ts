@@ -40,24 +40,34 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
   template: `
     <div class="bp-brief-shell">
       <ng-container *ngIf="!loading && data">
+        <!-- v1.65cx (p0011 §3) — same supplier-row-card pattern as the
+             inbox header, but rendered with the agency's identity. -->
         <header class="bp-brief-head">
-          <div class="bp-brief-agency">
-            <div class="bp-brief-agency-logo" [class.bp-brief-agency-logo--img]="!!data.thread?.agency_logo_url">
+          <div class="bp-thread-supplier-card">
+            <div class="bp-thread-supplier-logo"
+                 [class.bp-thread-supplier-logo--img]="!!data.thread?.agency_logo_url">
               <img *ngIf="data.thread?.agency_logo_url" [src]="data.thread?.agency_logo_url" [alt]="data.thread?.agency_name"/>
               <span *ngIf="!data.thread?.agency_logo_url">{{ initialsFor(data.thread?.agency_name) }}</span>
             </div>
-            <div class="bp-brief-agency-text">
-              <div class="bp-brief-eyebrow">BRIEF FROM {{ data.thread?.agency_name }}</div>
-              <div class="bp-brief-title">
+            <div class="bp-thread-supplier-body">
+              <div class="bp-thread-supplier-name">{{ data.thread?.agency_name }}</div>
+              <div class="bp-thread-supplier-eyebrow">
                 <span *ngIf="data.message?.ref_code" class="bp-brief-ref">{{ data.message?.ref_code }}</span>
-                {{ data.thread?.category_name || data.message?.subject || 'Brief' }}
+                Brief from {{ data.thread?.agency_name }} · {{ data.thread?.category_name || 'Brief' }}
               </div>
             </div>
-          </div>
-          <div *ngIf="data.message?.next_action_by" class="bp-brief-clock"
-               [class.bp-brief-clock--overdue]="isOverdue(data.message?.next_action_by)">
-            <lucide-icon name="clock" [size]="14"></lucide-icon>
-            {{ formatClock(data.message?.next_action_by) }}
+            <span *ngIf="data.thread?.status"
+                  class="bp-msg-tbadge bp-thread-supplier-pill"
+                  [ngClass]="'bp-badge-' + (data.thread?.status || 'default')">
+              {{ data.thread?.status }}
+            </span>
+            <span *ngIf="data.message?.next_action_by"
+                  class="bp-thread-clock-chip"
+                  [class.bp-thread-clock-chip--overdue]="isOverdue(data.message?.next_action_by)"
+                  [title]="formatClock(data.message?.next_action_by)">
+              <lucide-icon name="clock" [size]="12"></lucide-icon>
+              {{ shortClock(data.message?.next_action_by) }}
+            </span>
           </div>
         </header>
 
@@ -141,60 +151,85 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
       font-family: var(--font-body);
       color: var(--color-text-primary);
     }
+    /* v1.65cx (p0011 §3) — same supplier-row-card chrome as the
+       inbox conversation header. TODO(p0011-§3-extract): single
+       SCSS partial when the catalogue's row card is factored out. */
     .bp-brief-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px;
+      padding: 6px;
       background: var(--color-surface);
       border-radius: var(--radius-card);
       border: var(--border-hairline);
       box-shadow: var(--shadow-xs);
     }
-    .bp-brief-agency { display: flex; align-items: center; gap: 12px; }
-    .bp-brief-agency-logo {
+    .bp-thread-supplier-card {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 10px;
+    }
+    .bp-thread-supplier-logo {
       width: 44px; height: 44px;
       border-radius: var(--radius-button);
-      background: var(--theme-soft); color: var(--theme-text);
+      background: var(--theme-soft);
+      color: var(--theme-text);
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 600;
-      overflow: hidden; flex-shrink: 0;
-    }
-    .bp-brief-agency-logo--img {
-      background: var(--color-surface);
-      border: var(--border-hairline);
-    }
-    .bp-brief-agency-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .bp-brief-eyebrow {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--theme-accent);
-    }
-    .bp-brief-title {
       font-family: var(--font-display);
-      font-size: 20px; font-weight: 400;
+      font-size: 18px; font-weight: 500;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .bp-thread-supplier-logo--img { background: var(--color-surface); border: var(--border-hairline); }
+    .bp-thread-supplier-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .bp-thread-supplier-body { flex: 1; min-width: 0; }
+    .bp-thread-supplier-name {
+      font-size: 14px; font-weight: 500;
       color: var(--color-text-primary);
-      line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-supplier-eyebrow {
+      font-size: 11px;
+      color: var(--color-text-muted);
       margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .bp-brief-ref {
       font-family: var(--font-body);
-      font-size: 11px;
+      font-size: 10px;
       color: var(--theme-accent);
       background: var(--theme-soft);
-      padding: 2px 8px;
+      padding: 1px 7px;
       border-radius: var(--radius-pill);
       margin-right: 6px;
       vertical-align: middle;
     }
-    .bp-brief-clock {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-      background: var(--theme-soft);
-      padding: 6px 12px;
+    .bp-msg-tbadge {
+      font-size: 9px; font-weight: 600;
+      padding: 1px 7px;
       border-radius: var(--radius-pill);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
     }
-    .bp-brief-clock--overdue { background: var(--color-action-bg); color: var(--color-action-text); }
-    .bp-brief-clock--overdue lucide-icon { color: var(--color-action-text); }
+    .bp-thread-supplier-pill { flex-shrink: 0; }
+    .bp-thread-clock-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-soft);
+      color: var(--color-text-secondary);
+      font-size: 11px; font-weight: 500;
+    }
+    .bp-thread-clock-chip lucide-icon { color: var(--theme-accent); }
+    .bp-thread-clock-chip--overdue {
+      background: var(--color-action-bg);
+      color: var(--color-action-text);
+    }
+    .bp-thread-clock-chip--overdue lucide-icon { color: var(--color-action-text); }
+    /* Semantic status badges so .bp-msg-tbadge renders correctly. */
+    .bp-badge-action  { background: var(--color-action-bg);  color: var(--color-action-text); }
+    .bp-badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
+    .bp-badge-quoted  { background: var(--color-quoted-bg);  color: var(--color-quoted-text); }
+    .bp-badge-booked  { background: var(--color-booked-bg);  color: var(--color-booked-text); }
+    .bp-badge-default { background: var(--theme-bg);         color: var(--theme-accent); }
 
     .bp-brief-main {
       display: flex; flex-direction: column; gap: 16px;
@@ -410,6 +445,19 @@ export class BriefPublicComponent implements OnInit {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
            ' · ' +
            d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  /** v1.65cx (p0011 §3) — short relative format for the header clock
+      chip. Same logic as the inbox version. */
+  shortClock(ts: string | null | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (!Number.isFinite(d.getTime())) return '';
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) {
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
   initialsFor(name?: string | null): string {
