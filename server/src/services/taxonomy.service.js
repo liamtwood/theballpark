@@ -1026,17 +1026,20 @@ async function requestQuotes(body) {
   const categoryName = proj.rows[0].category_name || 'this category';
   const briefExcerpt = (proj.rows[0].requirement_brief || '').trim().slice(0, 280);
 
-  // v1.65cu (p0008) — pull the agency's logo + event date for the
-  // outreach email shell.
+  // v1.65cu (p0008) — pull the agency's logo + the project's event
+  // date + currency for the outreach email shell.
+  // v1.65cw — currency lives only on projects (added v1.29b), not on
+  // orgs; the original query referenced orgs.currency which doesn't
+  // exist and crashed the send.
   const agencyMeta = await pool.query(
-    `SELECT logo_url, currency FROM orgs WHERE id = $1`, [agencyOrgId]
+    `SELECT logo_url FROM orgs WHERE id = $1`, [agencyOrgId]
   );
   const agencyLogoUrl = agencyMeta.rows[0]?.logo_url || null;
   const projDateRow = await pool.query(
     `SELECT event_date, currency FROM projects WHERE id = $1`, [project_id]
   );
   const projectDate = projDateRow.rows[0]?.event_date || null;
-  const projectCurrency = projDateRow.rows[0]?.currency || agencyMeta.rows[0]?.currency || 'GBP';
+  const projectCurrency = projDateRow.rows[0]?.currency || 'GBP';
 
   // One Ball per outreach — verify the agency can afford it.
   const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
