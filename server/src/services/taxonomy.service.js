@@ -35,6 +35,34 @@
  */
 const pool = require('../db/pool');
 const { sendEmail } = require('./email.service');
+const { outreachEmail } = require('./notification.service');
+
+/** v1.65cu (p0008) — short ref prefix derived from a category name.
+    "Walk-Around" → "WA"; falls back to "REQ" for empty input. */
+function categoryRefPrefix(name) {
+  const parts = (name || '').trim().split(/[\s\-_/&]+/).filter(Boolean);
+  if (!parts.length) return 'REQ';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+/** Next per-project sequence for a ref prefix. Looks at existing
+    messages.ref_code values on the project that share the prefix and
+    returns prefix-NNN with the next zero-padded integer. */
+async function nextRefCode(executor, projectId, categoryName) {
+  const prefix = categoryRefPrefix(categoryName);
+  const r = await executor.query(
+    `SELECT ref_code FROM messages
+       WHERE project_id = $1 AND ref_code LIKE $2 || '-%'`,
+    [projectId, prefix]
+  );
+  let max = 0;
+  for (const row of r.rows) {
+    const m = String(row.ref_code || '').match(/-(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+  }
+  return `${prefix}-${String(max + 1).padStart(3, '0')}`;
+}
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 15;
@@ -998,6 +1026,18 @@ async function requestQuotes(body) {
   const categoryName = proj.rows[0].category_name || 'this category';
   const briefExcerpt = (proj.rows[0].requirement_brief || '').trim().slice(0, 280);
 
+  // v1.65cu (p0008) — pull the agency's logo + event date for the
+  // outreach email shell.
+  const agencyMeta = await pool.query(
+    `SELECT logo_url, currency FROM orgs WHERE id = $1`, [agencyOrgId]
+  );
+  const agencyLogoUrl = agencyMeta.rows[0]?.logo_url || null;
+  const projDateRow = await pool.query(
+    `SELECT event_date, currency FROM projects WHERE id = $1`, [project_id]
+  );
+  const projectDate = projDateRow.rows[0]?.event_date || null;
+  const projectCurrency = projDateRow.rows[0]?.currency || agencyMeta.rows[0]?.currency || 'GBP';
+
   // One Ball per outreach — verify the agency can afford it.
   const bal = await pool.query('SELECT balls_balance FROM orgs WHERE id = $1', [agencyOrgId]);
   const balance = bal.rows.length ? Number(bal.rows[0].balls_balance) || 0 : 0;
@@ -1077,33 +1117,67 @@ async function requestQuotes(body) {
 
     // Per supplier: one outbound message (the conversation anchor), its
     // line items, and a quote_requests row per requirement.
+    //
+    // v1.65cu (p0008) — every message now carries a token (used by the
+    // public /brief/:token route) and a ref_code (e.g. "WA-001"); every
+    // message_items row is initialised with status='brief_sent' and gets
+    // a matching message_item_events audit row.
+    const refCode = await nextRefCode(client, project_id, categoryName);
     const createdIds = [];
+    const createdMessages = [];
     for (const sid of supplierIds) {
       // NB: messages.category_id is a FK to project_categories(id) — the
       // project's scoped category row, NOT the catalogue category.
       const msg = await client.query(
         `INSERT INTO messages
            (project_id, user_id, supplier_org_id, category_id, category_name,
-            supplier_name, subject, body, direction, msg_status, read)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'outbound', 'sent', false)
-         RETURNING id`,
+            supplier_name, subject, body, direction, msg_status, read,
+            token, ref_code, contact_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'outbound', 'sent', false,
+                 replace(gen_random_uuid()::text, '-', ''), $9, $10)
+         RETURNING id, token`,
         [project_id, user_id || null, sid, project_category_id || null, categoryName,
          supName.get(sid) || null,
          // The agency edits the email before sending — store it verbatim.
          (composedSubject && composedSubject.trim())
-           || `Quote request — ${projectName}`,
+           || `[${refCode}] ${categoryName} — brief from ${agencyName}`,
          (composedBody && composedBody.trim())
            || (`We'd like a quote for the following on "${projectName}" (${categoryName}). ` +
-               `Please review the item(s) below and reply with your price and lead time.`)]
+               `Please review the item(s) below and reply with your price and lead time.`),
+         refCode,
+         // contact_name is set to the supplier's primary contact when
+         // we have one — falls back to NULL and the inbox shows nothing.
+         null]
       );
-      const msgId = msg.rows[0].id;
+      const msgId    = msg.rows[0].id;
+      const msgToken = msg.rows[0].token;
+      createdMessages.push({ id: msgId, supplier_id: sid, token: msgToken });
 
+      const supplierItems = [];
       for (const rq of resolved) {
-        await client.query(
-          `INSERT INTO message_items (message_id, name, description, price, item_id)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [msgId, rq.name, rq.description || '', rq.price, rq.item_id]
+        // v1.65cu (p0008) — rich message_items schema: price_ref +
+        // price_current both seed from the reference price; status
+        // starts at brief_sent.
+        const mi = await client.query(
+          `INSERT INTO message_items
+             (message_id, name, description, item_id,
+              price, price_ref, price_current, status)
+           VALUES ($1, $2, $3, $4, $5, $5, $5, 'brief_sent')
+           RETURNING id`,
+          [msgId, rq.name, rq.description || '', rq.item_id, rq.price]
         );
+        const miId = mi.rows[0].id;
+        await client.query(
+          `INSERT INTO message_item_events
+             (message_item_id, from_status, to_status, actor_type, actor_id, price_after)
+           VALUES ($1, NULL, 'brief_sent', 'agent', $2, $3)`,
+          [miId, user_id || null, rq.price]
+        );
+        supplierItems.push({
+          name: rq.name, description: rq.description,
+          price_ref: rq.price, unit: null
+        });
+
         const qr = await client.query(
           `INSERT INTO quote_requests
              (project_id, project_category_id, category_id, item_id,
@@ -1115,6 +1189,10 @@ async function requestQuotes(body) {
         );
         createdIds.push(qr.rows[0].id);
       }
+
+      // Stash items on the created entry so the post-commit email send
+      // doesn't need to re-query.
+      createdMessages[createdMessages.length - 1].items = supplierItems;
     }
 
     // v1.53 — sending a category out for competitive quotes moves it to
@@ -1134,18 +1212,38 @@ async function requestQuotes(body) {
 
     await client.query('COMMIT');
 
-    // Best-effort email nudge — fire-and-forget so it never delays or
-    // breaks the outreach response. OFF by default (see the flag above).
-    notifyQuoteRequestSuppliers({
-      agencyName, projectName, categoryName, briefExcerpt,
-      suppliers: supplierIds.map(sid => ({
-        id: sid, name: supName.get(sid), email: supEmail.get(sid)
-      }))
-    }).catch(e => console.error('[quote-email] batch failed:', e.message));
+    // v1.65cu (p0008) — HTML outreach email per supplier with their
+    // unique /brief/:token URL. Fire-and-forget; a failed or disabled
+    // send never affects the outreach itself.
+    if (QUOTE_REQUEST_EMAILS_ENABLED) {
+      for (const m of createdMessages) {
+        const email = supEmail.get(m.supplier_id);
+        if (!email) {
+          console.warn(`[outreach] supplier ${m.supplier_id} has no email — skipped`);
+          continue;
+        }
+        outreachEmail({
+          to: email,
+          refCode,
+          categoryName,
+          agencyName,
+          agencyLogoUrl,
+          projectName,
+          projectDate,
+          items: m.items,
+          currency: projectCurrency,
+          token: m.token,
+        }).catch(e => console.error(`[outreach] send failed for ${email}:`, e.message));
+      }
+    } else {
+      console.log(`[outreach] QUOTE_REQUEST_EMAILS_ENABLED=false — ${createdMessages.length} email(s) suppressed`);
+    }
 
     return {
       ok: true,
       quote_request_ids: createdIds,
+      messages: createdMessages.map(m => ({ id: m.id, token: m.token, supplier_id: m.supplier_id })),
+      ref_code: refCode,
       suppliers: supplierIds.length,
       requirements: resolved.length,
       ball_transaction_id: ballTxId,

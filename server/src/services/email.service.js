@@ -14,18 +14,18 @@ const apiKey  = process.env.RESEND_API_KEY;
 const from    = process.env.EMAIL_FROM || 'Ballpark <onboarding@resend.dev>';
 const resend  = apiKey ? new Resend(apiKey) : null;
 
-async function sendEmail({ to, subject, text }) {
+// v1.65cu (p0008) — accepts an optional `html` payload alongside the
+// plain-text body. Resend can send both in a single call — clients that
+// render HTML use it, the rest fall back to `text`.
+async function sendEmail({ to, subject, text, html }) {
   if (!apiKey) {
     console.warn('[email] RESEND_API_KEY not set — email NOT sent. To:', to, 'Subject:', subject);
     return { skipped: true };
   }
   const recipients = Array.isArray(to) ? to : [to];
-  const { data, error } = await resend.emails.send({
-    from,
-    to: recipients,
-    subject,
-    text
-  });
+  const payload = { from, to: recipients, subject, text };
+  if (html) payload.html = html;
+  const { data, error } = await resend.emails.send(payload);
   if (error) {
     console.error('[email] Resend error:', error);
     throw new Error(error.message || 'Email send failed');

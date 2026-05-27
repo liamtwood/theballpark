@@ -173,6 +173,11 @@ app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/codelists', require('./routes/codelists'));
 app.use('/api/project-items', require('./routes/projectItems'));
 
+// v1.65cu (p0008) — Public supplier brief surface. No auth on this
+// prefix — access is gated by the unguessable per-message token in
+// the URL. Mounted ahead of any auth-checking middleware blocks.
+app.use('/api/brief', require('./routes/brief'));
+
 // Marketing — public welcome page + guestlist signups
 app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup
 app.use('/api/admin', require('./routes/adminMarketing')); // admin-guarded
