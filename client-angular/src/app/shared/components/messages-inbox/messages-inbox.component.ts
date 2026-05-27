@@ -20,12 +20,19 @@ import { ProjectService } from '../../../core/services/project.service';
 import { OrgService } from '../../../core/services/org.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
+import { CodelistService } from '../../../core/services/codelist.service';
+import {
+  MessageItemService, MessageItemRow, MessageItemAction
+} from '../../../core/services/message-item.service';
 import { Project, Message } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 import {
   CategoryCirclesComponent, CategoryCircle
 } from '../category-circles/category-circles.component';
+import {
+  MessageItemCardComponent, MessageItem
+} from '../message-item-card/message-item-card.component';
 
 const STATUSES = [
   { id: 'all',           label: 'All',     color: '' },
@@ -58,6 +65,12 @@ interface ThreadMessage extends Message {
   read?: boolean;
   quoted_items?: QuotedItem[];
   project_name?: string;
+  /** v1.65cv (p0008 §8) — ref-prefixed subject + supplier contact +
+      thread-level clock. All optional; the inbox renders empty when
+      a row predates p0008. */
+  ref_code?: string | null;
+  contact_name?: string | null;
+  next_action_by?: string | null;
 }
 
 interface VendorThread {
@@ -68,6 +81,12 @@ interface VendorThread {
       from the first message that has a non-null asset; falls back
       to '' so the template can render initials when empty. */
   supplierLogoUrl: string;
+  /** v1.65cv (p0008 §8) — short ref ("WA-001") + supplier contact
+      pulled from the lead outbound message; thread-level overdue
+      clock from the latest message that carries a next_action_by. */
+  refCode: string;
+  contactName: string;
+  nextActionBy: string | null;
   categoryId: string;
   categoryName: string;
   projectId: string;
@@ -86,7 +105,8 @@ interface VendorThread {
     CommonModule, FormsModule, RouterModule,
     ButtonModule, InputTextModule, DropdownModule, ToastModule,
     LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent, CategoryCirclesComponent
+    GbpPipe, LoadingSpinnerComponent, CategoryCirclesComponent,
+    MessageItemCardComponent
   ],
   providers: [MessageService, DatePipe],
   template: `
@@ -287,6 +307,7 @@ interface VendorThread {
                  class="bp-msg-thread-card"
                  [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
                  [class.bp-msg-thread-card--unread]="t.unread"
+                 [class.bp-msg-thread-card--overdue]="isOverdue(t.nextActionBy)"
                  (click)="openThread(t)">
               <!-- v1.65cs — render the supplier logo when present;
                    fall back to initials in a themed-tint square. -->
@@ -298,18 +319,40 @@ interface VendorThread {
               <div class="bp-msg-thread-body">
                 <div class="bp-msg-thread-top">
                   <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
-                  <span class="bp-msg-thread-time">{{ fmtTime(t.latestMsg.created_at) }}</span>
+                  <span class="bp-msg-thread-time"
+                        [attr.title]="preciseDate(t.latestMsg.created_at)">
+                    {{ fmtTime(t.latestMsg.created_at) }}
+                  </span>
                 </div>
-                <div class="bp-msg-thread-subject">{{ subjectFor(t) }}</div>
+                <!-- v1.65cv (p0008 §8) — contact line under supplier
+                     name. Lucide user icon + muted contact name. Only
+                     renders when contact_name is set. -->
+                <div *ngIf="t.contactName" class="bp-msg-thread-contact">
+                  <lucide-icon name="user" [size]="11"></lucide-icon>
+                  <span>{{ t.contactName }}</span>
+                </div>
+                <!-- v1.65cv — Ref-prefixed subject. "Ref WA-001 …"
+                     when a ref_code is present; bold-when-unread per
+                     p0006 stays untouched. -->
+                <div class="bp-msg-thread-subject">
+                  <span *ngIf="t.refCode" class="bp-msg-thread-ref">Ref {{ t.refCode }}</span>
+                  {{ subjectFor(t) }}
+                </div>
                 <div class="bp-msg-thread-meta">
                   <span *ngIf="t.status && t.status !== 'all'"
                         class="bp-msg-tbadge"
                         [ngClass]="'bp-badge-' + statusClass(t.status)">
                     {{ statusLabel(t.status) }}
+                    <span *ngIf="isOverdue(t.nextActionBy)" class="bp-msg-overdue-dot"></span>
                   </span>
                   <span class="bp-msg-thread-cat">{{ t.categoryName }}</span>
                   <span *ngIf="!boundProjectId && t.projectName"
                         class="bp-msg-thread-proj"> · {{ t.projectName }}</span>
+                  <!-- Precise date stamp — small caption under the
+                       relative time, only on hover via the title attr
+                       on time-ago; here we render it inline for the
+                       list view so it's always visible. -->
+                  <span class="bp-msg-thread-stamp">{{ preciseDate(t.latestMsg.created_at) }}</span>
                 </div>
               </div>
               <span *ngIf="t.unread" class="bp-msg-thread-dot"></span>
@@ -438,6 +481,29 @@ interface VendorThread {
                   (click)="setThreadStatus(activeThread, s.id)">
                   {{ s.label }}
                 </button>
+              </div>
+            </div>
+
+            <!-- v1.65cv (p0008 §4.1) — Summary header (collapsible).
+                 Items live as state-aware cards; click an action →
+                 onItemAction emits to /api/messages/:id/reply. Marked
+                 TODO(p0008-§4.1-collapse) for the chevron-toggle UI;
+                 currently always-expanded. -->
+            <div *ngIf="threadItems.length" class="bp-thread-items">
+              <div class="bp-thread-items-head">
+                <lucide-icon name="package" [size]="12"></lucide-icon>
+                <span>{{ threadItems.length }} item{{ threadItems.length === 1 ? '' : 's' }}</span>
+                <span *ngIf="itemActionCount() > 0" class="bp-thread-items-action-count">
+                  · {{ itemActionCount() }} need action
+                </span>
+              </div>
+              <div class="bp-thread-items-list">
+                <app-message-item-card *ngFor="let it of threadItems"
+                  [item]="toMessageItem(it)"
+                  [viewer]="'agent'"
+                  [declineReasons]="declineReasonsFor(it)"
+                  (action)="onItemAction(it, $event)">
+                </app-message-item-card>
               </div>
             </div>
 
@@ -694,6 +760,36 @@ interface VendorThread {
     .bp-msg-thread-card--unread .bp-msg-thread-subject {
       font-weight: 600;
     }
+    /* v1.65cv (p0008 §8) — contact line + ref chip + precise stamp. */
+    .bp-msg-thread-contact {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 1px;
+    }
+    .bp-msg-thread-contact lucide-icon { color: var(--color-text-muted); }
+    .bp-msg-thread-ref {
+      font-size: 10px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.04em;
+      margin-right: 4px;
+    }
+    .bp-msg-thread-stamp {
+      font-size: 9.5px;
+      color: var(--color-text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    /* v1.65cv (p0008 §9) — overdue red dot on the status pill. */
+    .bp-msg-overdue-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--color-danger);
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .bp-msg-thread-card--overdue { /* hook for future card-level treatment */ }
     .bp-msg-thread-meta {
       display: flex; align-items: center; gap: 6px;
       margin-top: 5px;
@@ -812,6 +908,31 @@ interface VendorThread {
     .bp-thread-status-tags { display: flex; gap: 6px; flex-wrap: wrap; }
     .bp-status-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: var(--radius-pill); border: 0.5px solid var(--tag-color); color: var(--tag-color); background: var(--color-surface); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
     .bp-status-tag.active { background: var(--tag-color); color: #fff; }
+    /* v1.65cv (p0008 §4.1) — items section above the chat stream.
+       Acts as a summary header + the actionable surface. */
+    .bp-thread-items {
+      flex-shrink: 0;
+      border-bottom: var(--border-hairline);
+      background: var(--color-surface);
+    }
+    .bp-thread-items-head {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px;
+      font-size: 11px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .bp-thread-items-head lucide-icon { color: var(--theme-accent); }
+    .bp-thread-items-action-count {
+      color: var(--color-text-muted);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .bp-thread-items-list {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 0 14px 12px;
+    }
     .bp-thread-msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--color-thread-bg, var(--theme-bg)); min-height: 200px; }
     .bp-date-sep { text-align: center; font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0; }
     /* v1.65aj (p0001) — bubble radii token-migrated. */
@@ -893,6 +1014,12 @@ export class MessagesInboxComponent implements OnInit {
 
   @ViewChild('messageList') messageList?: ElementRef;
 
+  /** v1.65cv (p0008 §4) — message_items + reason codelist for the
+      active thread. Loaded on openThread; emptied on closeThread. */
+  threadItems: MessageItemRow[] = [];
+  declineReasonsPre: Array<{ code: string; label: string }> = [];
+  declineReasonsPost: Array<{ code: string; label: string }> = [];
+
   constructor(
     private route: ActivatedRoute,
     private msgSvc: MsgSvc,
@@ -901,6 +1028,8 @@ export class MessagesInboxComponent implements OnInit {
     private orgSvc: OrgService,
     private shellCtx: ShellContextService,
     private cartDrawerSvc: CartDrawerService,
+    private codelistSvc: CodelistService,
+    private messageItemSvc: MessageItemService,
     private router: Router,
     private toast: MessageService,
     private datePipe: DatePipe,
@@ -1041,15 +1170,26 @@ export class MessagesInboxComponent implements OnInit {
           // (banner) when no square logo is uploaded, then to ''
           // so the template renders initials.
           supplierLogoUrl: (m.supplier_logo_url || m.supplier_cover_url || ''),
+          // v1.65cv (p0008 §8) — ref + contact + clock from the
+          // first message that carries each; upgraded below as more
+          // messages stream in.
+          refCode:      m.ref_code || '',
+          contactName:  m.contact_name || '',
+          nextActionBy: m.next_action_by || null,
           categoryId: cid, categoryName: m.category_name || '',
           projectId: pid, projectName: m.project_name || '',
           latestMsg: m, status: '', count: 0, unread: false, messages: []
         };
-      } else if (!map[key].supplierLogoUrl) {
-        // Subsequent messages may carry an asset where the first
-        // one didn't — pick it up the moment it shows up.
-        const u = (m.supplier_logo_url || m.supplier_cover_url || '');
-        if (u) map[key].supplierLogoUrl = u;
+      } else {
+        if (!map[key].supplierLogoUrl) {
+          const u = (m.supplier_logo_url || m.supplier_cover_url || '');
+          if (u) map[key].supplierLogoUrl = u;
+        }
+        if (!map[key].refCode     && m.ref_code)     map[key].refCode     = m.ref_code;
+        if (!map[key].contactName && m.contact_name) map[key].contactName = m.contact_name;
+        // Latest message's next_action_by wins — it represents the
+        // most-recent commitment.
+        if (m.next_action_by) map[key].nextActionBy = m.next_action_by;
       }
       map[key].messages.push(m);
       map[key].count++;
@@ -1223,8 +1363,18 @@ export class MessagesInboxComponent implements OnInit {
       has replied (an inbound message exists), use the latest inbound
       body as a short subject; otherwise fall back to the outbound
       request topic "{Category} brief". Truncated so the row stays
-      one line. When proper subject columns land, swap this. */
+      one line. When proper subject columns land, swap this.
+      v1.65cv (p0008) — when messages.subject is set (most outbound
+      rows after the requestQuotes rewrite), prefer that. */
   subjectFor(t: VendorThread): string {
+    const lead = (t.messages || []).find((m: any) => m.direction === 'outbound');
+    const subj = (lead && (lead as any).subject) ? String((lead as any).subject).trim() : '';
+    if (subj) {
+      // Strip "[REF] " prefix when present — the ref renders as its own
+      // chip on the thread card.
+      const cleaned = subj.replace(/^\[[A-Z]{2,4}-\d+\]\s*/i, '').trim();
+      if (cleaned) return cleaned.length > 80 ? cleaned.slice(0, 77) + '…' : cleaned;
+    }
     const inbound = [...(t.messages || [])]
       .reverse()
       .find((m: any) => m.direction === 'inbound');
@@ -1235,6 +1385,26 @@ export class MessagesInboxComponent implements OnInit {
     }
     const cat = (t.categoryName || 'Request').trim();
     return cat ? `${cat} brief` : 'New request';
+  }
+
+  /** v1.65cv (p0008 §9) — Clock primitive. The thread/item is overdue
+      when next_action_by has passed AND we're not in a terminal state.
+      Cheap render-time check, no scheduled job. */
+  isOverdue(ts: string | null | undefined): boolean {
+    if (!ts) return false;
+    const t = Date.parse(ts);
+    return Number.isFinite(t) && t < Date.now();
+  }
+
+  /** v1.65cv (p0008 §8) — Precise date stamp like "Mon 26 May · 14:32".
+      Used as a small caption + hover tooltip on the relative time. */
+  preciseDate(ts: string | null | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (!Number.isFinite(d.getTime())) return '';
+    const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} · ${time}`;
   }
 
   /** v1.65cr (p0006) — "Go to cart" CTA on the empty state. In project
@@ -1257,7 +1427,104 @@ export class MessagesInboxComponent implements OnInit {
     this.activeThread = t;
     this.lastDate = '';
     t.unread = false;
+    this.threadItems = [];
+    // v1.65cv (p0008) — load message_items for the lead outbound row
+    // in this thread (the one that minted the conversation). Replies
+    // share the same items via the message_id linkage.
+    const lead = (t.messages || []).find((m: any) => m.direction === 'outbound');
+    if (lead?.id) {
+      this.messageItemSvc.getByMessage(lead.id).subscribe({
+        next: rows => {
+          this.threadItems = rows || [];
+          this.cdr.detectChanges();
+        },
+        error: () => { this.threadItems = []; }
+      });
+    }
+    // Warm the decline-reason codelists once per session. Cache-aware.
+    if (!this.declineReasonsPre.length) {
+      this.codelistSvc.getByName('decline_reason_pre_agreement').subscribe(rows => {
+        this.declineReasonsPre = (rows || []).map((r: any) => ({ code: r.code, label: r.label }));
+        this.cdr.markForCheck();
+      });
+    }
+    if (!this.declineReasonsPost.length) {
+      this.codelistSvc.getByName('decline_reason_post_agreement').subscribe(rows => {
+        this.declineReasonsPost = (rows || []).map((r: any) => ({ code: r.code, label: r.label }));
+        this.cdr.markForCheck();
+      });
+    }
     setTimeout(() => this.scrollBottom(), 50);
+  }
+
+  /** v1.65cv (p0008) — pre- vs post-agreement reason list, picked
+      from the item's current status. Passed to the item card. */
+  declineReasonsFor(item: MessageItemRow): Array<{ code: string; label: string }> {
+    return item?.status === 'accepted' || item?.status === 'booked'
+      ? this.declineReasonsPost
+      : this.declineReasonsPre;
+  }
+
+  /** v1.65cv (p0008) — adapt a server message_items row into the
+      MessageItem shape the card component expects. price_current
+      falls back to the legacy `price` column so pre-p0008 rows still
+      render with a number. */
+  toMessageItem(r: MessageItemRow): MessageItem {
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description || '',
+      price_ref:     r.price_ref ?? (r as any).price ?? null,
+      price_current: r.price_current ?? (r as any).price ?? null,
+      unit: r.unit || null,
+      status: r.status,
+      next_action_by: r.next_action_by || null,
+      decline_reason: r.decline_reason || null,
+      decline_note: r.decline_note || null,
+    };
+  }
+
+  /** Count of items needing the agent's action right now. Drives the
+      summary header's "N need action" hint. */
+  itemActionCount(): number {
+    return (this.threadItems || []).filter(i =>
+      i.status === 'quoted' ||
+      i.status === 'adjusted_by_supplier' ||
+      i.status === 'accepted'
+    ).length;
+  }
+
+  /** v1.65cv (p0008) — agent acts on a message_item from the inbox
+      conversation panel. Forwards to the agent reply endpoint with a
+      single item_action; refreshes the thread items on success. */
+  onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string }) {
+    if (!this.activeThread) return;
+    const lead = (this.activeThread.messages || []).find((m: any) => m.direction === 'outbound');
+    if (!lead?.id) return;
+    this.messageItemSvc.agentReply(lead.id, {
+      item_actions: [{
+        message_item_id: item.id,
+        action: evt.action as any,
+        reason_code: evt.reason_code,
+        note: evt.note,
+        name: evt.name,
+        description: evt.description,
+        price: evt.price,
+        unit: evt.unit,
+      }],
+    }).subscribe({
+      next: () => {
+        this.toast.add({ severity: 'success', summary: `${evt.action} saved`, life: 1500 });
+        // Refresh the items + the thread messages so the new reply shows.
+        this.messageItemSvc.getByMessage(lead.id).subscribe(rows => {
+          this.threadItems = rows || [];
+          this.cdr.detectChanges();
+        });
+      },
+      error: () => {
+        this.toast.add({ severity: 'error', summary: 'Update failed', life: 3000 });
+      }
+    });
   }
 
   closeThread() {

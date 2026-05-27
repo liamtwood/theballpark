@@ -8,6 +8,12 @@ export const routes: Routes = [
     path: 'welcome',
     loadComponent: () => import('./public/welcome/welcome.component').then(m => m.WelcomeComponent)
   },
+  // v1.65cv (p0008 §5) — supplier brief surface. No auth — the token
+  // in the URL is the credential. Lives outside the agency app shell.
+  {
+    path: 'brief/:token',
+    loadComponent: () => import('./features/brief-public/brief-public.component').then(m => m.BriefPublicComponent)
+  },
 
   // ── AUTHENTICATED APP ──
   {
