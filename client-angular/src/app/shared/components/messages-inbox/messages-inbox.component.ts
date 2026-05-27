@@ -479,10 +479,12 @@ interface VendorThread {
                     <span *ngIf="activeThread.contactName">{{ activeThread.contactName }} · </span>{{ activeThread.categoryName }}<span *ngIf="!boundProjectId && activeThread.projectName"> · {{ activeThread.projectName }}</span>
                   </div>
                 </div>
-                <span *ngIf="activeThread.status && activeThread.status !== 'all'"
+                <!-- v1.65cy (p0011 §3 fix) — aggregate pill computed
+                     from the items, not the per-msg msg_status. -->
+                <span *ngIf="aggregateStatus()"
                       class="bp-msg-tbadge bp-thread-supplier-pill"
-                      [ngClass]="'bp-badge-' + statusClass(activeThread.status)">
-                  {{ statusLabel(activeThread.status) }}
+                      [ngClass]="'bp-badge-' + aggregateStatus()">
+                  {{ aggregateStatusLabel() }}
                 </span>
                 <span *ngIf="activeThread.nextActionBy"
                       class="bp-thread-clock-chip"
@@ -497,11 +499,12 @@ interface VendorThread {
               </div>
             </div>
 
-            <!-- v1.65cv (p0008 §4.1) — Summary header (collapsible).
-                 Items live as state-aware cards; click an action →
-                 onItemAction emits to /api/messages/:id/reply. Marked
-                 TODO(p0008-§4.1-collapse) for the chevron-toggle UI;
-                 currently always-expanded. -->
+            <!-- v1.65cv (p0008 §4.1) — Summary header (item nav).
+                 v1.65cy (p0011 fix) — these cards are NAVIGATION ONLY:
+                 [compact]="true" hides the action slot. Click → emit
+                 (rowClick) → scrollToItem() finds the inline copy in
+                 the chat stream and pulses it. Actions live on the
+                 inline cards in the stream. -->
             <div *ngIf="threadItems.length" class="bp-thread-items">
               <div class="bp-thread-items-head">
                 <lucide-icon name="package" [size]="12"></lucide-icon>
@@ -514,45 +517,50 @@ interface VendorThread {
                 <app-message-item-card *ngFor="let it of threadItems"
                   [item]="toMessageItem(it)"
                   [viewer]="'agent'"
-                  [declineReasons]="declineReasonsFor(it)"
-                  (action)="onItemAction(it, $event)">
+                  [compact]="true"
+                  (rowClick)="scrollToItem(it.id)">
                 </app-message-item-card>
               </div>
             </div>
 
+            <!-- v1.65cy (p0011 §1 fix) — Interleaved timeline: messages
+                 and item cards in chronological order. Each item card
+                 anchors at its most recent updated_at, so when the
+                 supplier sends a message + adjusts an item, the
+                 message bubble lands first, then the item card with
+                 the new state lands right after. Actions live on
+                 these inline cards (NOT on the summary above). -->
             <div class="bp-thread-msgs" #messageList>
-              <ng-container *ngFor="let m of activeThread.messages">
-                <div class="bp-date-sep" *ngIf="shouldShowDate(m)">{{ m.created_at | date:'d MMMM yyyy' }}</div>
+              <ng-container *ngFor="let entry of streamTimeline()">
+                <div class="bp-date-sep" *ngIf="entry.showDate">{{ entry.timestamp | date:'d MMMM yyyy' }}</div>
 
-                <div class="bp-msg-card"
-                  [class.bp-msg-read]="m.direction === 'inbound' && m.read"
-                  [class.bp-msg-unread]="m.direction === 'inbound' && !m.read"
-                  [class.bp-msg-out]="m.direction === 'outbound'">
-                  <div class="bp-msg-card-header">
-                    <span class="bp-msg-card-sender">{{ m.direction === 'outbound' ? 'You' : activeThread.supplierName }}</span>
-                    <span class="bp-msg-card-time">{{ m.created_at | date:'HH:mm' }}</span>
-                  </div>
-                  <div class="bp-msg-card-body">{{ m.body }}</div>
-
-                  <div *ngIf="m.quoted_items && m.quoted_items.length > 0" class="bp-quoted-items">
-                    <div class="bp-quoted-items-label">Quoted items</div>
-                    <div *ngFor="let item of m.quoted_items" class="bp-quoted-item">
-                      <div class="bp-quoted-item-icon">
-                        <lucide-icon [name]="getCatIcon(activeThread.categoryName)" [size]="14"></lucide-icon>
-                      </div>
-                      <div class="bp-quoted-item-body">
-                        <div class="bp-quoted-item-name">{{ item.name }}</div>
-                        <div class="bp-quoted-item-desc" *ngIf="item.description">{{ item.description }}</div>
-                      </div>
-                      <div class="bp-quoted-item-right">
-                        <div class="bp-quoted-item-price">{{ item.price | gbp }}</div>
-                        <button *ngIf="!item.accepted" class="bp-accept-btn" (click)="acceptItem(activeThread, m, item)">Accept</button>
-                        <span *ngIf="item.accepted" class="bp-accepted-tag">✓ Accepted</span>
-                      </div>
+                <ng-container *ngIf="entry.type === 'message' && entry.message as m">
+                  <div class="bp-msg-card"
+                    [class.bp-msg-read]="m.direction === 'inbound' && m.read"
+                    [class.bp-msg-unread]="m.direction === 'inbound' && !m.read"
+                    [class.bp-msg-out]="m.direction === 'outbound'">
+                    <div class="bp-msg-card-header">
+                      <span class="bp-msg-card-sender">{{ m.direction === 'outbound' ? 'You' : activeThread.supplierName }}</span>
+                      <span class="bp-msg-card-time">{{ m.created_at | date:'HH:mm' }}</span>
                     </div>
+                    <div class="bp-msg-card-body" *ngIf="m.body">{{ m.body }}</div>
                   </div>
-                </div>
+                </ng-container>
+
+                <ng-container *ngIf="entry.type === 'item' && entry.item as it">
+                  <div class="bp-msg-stream-item" [attr.data-item-id]="it.id">
+                    <app-message-item-card
+                      [item]="toMessageItem(it)"
+                      [viewer]="'agent'"
+                      [declineReasons]="declineReasonsFor(it)"
+                      (action)="onItemAction(it, $event)">
+                    </app-message-item-card>
+                  </div>
+                </ng-container>
               </ng-container>
+              <div *ngIf="streamTimeline().length === 0" class="bp-msg-stream-empty">
+                No conversation yet.
+              </div>
             </div>
 
             <div class="bp-compose">
@@ -1024,6 +1032,28 @@ interface VendorThread {
       padding: 0 14px 12px;
     }
     .bp-thread-msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--color-thread-bg, var(--theme-bg)); min-height: 200px; }
+    /* v1.65cy (p0011 fix) — inline item card wrapper in the stream.
+       Tiny wrapper so the pulse target is the card row, not the
+       message bubble next to it. */
+    .bp-msg-stream-item {
+      border-radius: var(--radius-button);
+      transition: box-shadow 0.3s;
+    }
+    .bp-msg-stream-item--pulse {
+      animation: bp-stream-item-pulse 1.2s ease-out 1;
+    }
+    @keyframes bp-stream-item-pulse {
+      0%   { box-shadow: 0 0 0 0 var(--theme-accent); }
+      40%  { box-shadow: 0 0 0 4px var(--theme-soft); }
+      100% { box-shadow: none; }
+    }
+    .bp-msg-stream-empty {
+      text-align: center;
+      padding: 32px 12px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      font-style: italic;
+    }
     .bp-date-sep { text-align: center; font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0; }
     /* v1.65aj (p0001) — bubble radii token-migrated. */
     .bp-msg-card { border-radius: var(--radius-button); padding: 10px 12px; border: var(--border-hairline-strong); }
@@ -1596,6 +1626,96 @@ export class MessagesInboxComponent implements OnInit {
       i.status === 'adjusted_by_supplier' ||
       i.status === 'accepted'
     ).length;
+  }
+
+  /** v1.65cy (p0011 §1 fix) — build the interleaved chat-stream
+      timeline. Messages + item cards in chronological order. Each
+      item card lands at its most recent updated_at (created_at as
+      fallback). Cached per thread+items signature to avoid rebuild
+      on every change detection cycle. */
+  private _timelineCacheKey = '';
+  private _timelineCache: Array<{
+    type: 'message' | 'item';
+    timestamp: string;
+    showDate: boolean;
+    message?: any;
+    item?: MessageItemRow;
+  }> = [];
+  streamTimeline(): typeof this._timelineCache {
+    if (!this.activeThread) return [];
+    const msgs = this.activeThread.messages || [];
+    const items = this.threadItems || [];
+    const key = `${msgs.length}|${msgs.map(m => m.id + ':' + m.created_at).join(',')}|`
+              + `${items.length}|${items.map(i => i.id + ':' + (i.updated_at || i.created_at) + ':' + i.status).join(',')}`;
+    if (key === this._timelineCacheKey) return this._timelineCache;
+
+    const entries: Array<any> = [];
+    for (const m of msgs) {
+      entries.push({ type: 'message', timestamp: m.created_at, message: m });
+    }
+    for (const it of items) {
+      const ts = (it as any).updated_at || it.created_at;
+      entries.push({ type: 'item', timestamp: ts, item: it });
+    }
+    entries.sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    // Insert date dividers when the day changes.
+    let lastDay = '';
+    for (const e of entries) {
+      const d = new Date(e.timestamp).toDateString();
+      e.showDate = d !== lastDay;
+      lastDay = d;
+    }
+
+    this._timelineCacheKey = key;
+    this._timelineCache = entries;
+    return entries;
+  }
+
+  /** v1.65cy (p0011 fix) — scroll-to-item from the summary header.
+      Finds the inline copy in the stream by data-item-id and pulses
+      it briefly. */
+  scrollToItem(itemId: string): void {
+    setTimeout(() => {
+      const host = this.messageList?.nativeElement as HTMLElement | undefined;
+      if (!host) return;
+      const target = host.querySelector(`[data-item-id="${itemId}"]`) as HTMLElement | null;
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('bp-msg-stream-item--pulse');
+      setTimeout(() => target.classList.remove('bp-msg-stream-item--pulse'), 1300);
+    }, 30);
+  }
+
+  /** v1.65cy (p0011 §3) — Computed aggregate thread status for the
+      header pill (replaces the per-msg msg_status that used to drive
+      it). Maps the same priority table as the server-side
+      aggregateStatus(). Returns a semantic key — 'action' / 'waiting'
+      / 'quoted' / 'booked' / 'closed' / '' — used to pick the
+      bp-badge-* class + label. */
+  aggregateStatus(): string {
+    const items = this.threadItems || [];
+    if (!items.length) return '';
+    const has = (code: string) => items.some(i => i.status === code);
+    const allTerminal = items.every(i =>
+      ['booked', 'declined_by_supplier', 'declined_by_agent'].includes(i.status)
+    );
+    if (allTerminal) return has('booked') ? 'booked' : 'closed';
+    // Agent view priority (the inbox is the agent surface).
+    if (has('quoted') || has('adjusted_by_supplier') || has('accepted')) return 'action';
+    if (has('brief_sent') || has('holding') || has('adjusted_by_agent')) return 'waiting';
+    if (has('quoted')) return 'quoted';
+    return 'waiting';
+  }
+  aggregateStatusLabel(): string {
+    const k = this.aggregateStatus();
+    const map: Record<string, string> = {
+      action: 'Action', waiting: 'Waiting', quoted: 'Quoted',
+      booked: 'Booked', closed: 'Closed',
+    };
+    return map[k] || '';
   }
 
   /** v1.65cv (p0008) — agent acts on a message_item from the inbox
