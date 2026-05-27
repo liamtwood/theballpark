@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
@@ -19,6 +19,7 @@ import { ProjectCategoryService } from '../../../core/services/project-category.
 import { ProjectService } from '../../../core/services/project.service';
 import { OrgService } from '../../../core/services/org.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
+import { CartDrawerService } from '../../../core/services/cart-drawer.service';
 import { Project, Message } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
@@ -229,85 +230,122 @@ interface VendorThread {
           <!-- v1.28: Status pills moved to the left sidebar — only ONE
                filter rail across the page now. -->
 
-          <!-- Empty state -->
+          <!-- Empty state — v1.65cr (p0006).
+               Three branches:
+                 (a) no project bound + no project selected: prompt to
+                     pick a project. Global-inbox mode only.
+                 (b) project context but no threads: "No replies yet"
+                     with a "Go to cart" CTA pointing back to the
+                     Marketplace cart (email-launch lives there now).
+                 (c) search active with no hits: the existing "No
+                     threads match …" copy stays as-is. -->
           <div *ngIf="filteredThreads().length === 0" class="bp-msg-empty">
-            <lucide-icon name="inbox" [size]="32"></lucide-icon>
-            <p *ngIf="!selectedProjectId && !boundProjectId">
-              Select a project or send a quote request to see messages here.
-            </p>
-            <p *ngIf="(selectedProjectId || boundProjectId) && !searchTerm">
-              No messages yet. Request quotes from the Marketplace tab.
-            </p>
-            <p *ngIf="(selectedProjectId || boundProjectId) && searchTerm">
-              No threads match "{{ searchTerm }}".
-            </p>
+            <ng-container *ngIf="!selectedProjectId && !boundProjectId; else projectEmpty">
+              <lucide-icon name="inbox" [size]="32"></lucide-icon>
+              <p>Select a project or open one from the dashboard.</p>
+            </ng-container>
+            <ng-template #projectEmpty>
+              <ng-container *ngIf="searchTerm; else noReplies">
+                <lucide-icon name="search-x" [size]="32"></lucide-icon>
+                <p>No threads match "{{ searchTerm }}".</p>
+              </ng-container>
+              <ng-template #noReplies>
+                <div class="bp-msg-empty-icon">
+                  <lucide-icon name="inbox" [size]="28"></lucide-icon>
+                </div>
+                <div class="bp-msg-empty-title">No replies yet</div>
+                <div class="bp-msg-empty-sub">
+                  Emails you send from your cart will land here as supplier replies arrive.
+                </div>
+                <button type="button" class="bp-msg-empty-cta" (click)="openCart()">
+                  <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
+                  Go to cart
+                </button>
+              </ng-template>
+            </ng-template>
           </div>
 
-          <!-- ── LIST VIEW (p0001 — shared bp-list-row primitive) ── -->
+          <!-- ── LIST VIEW — v1.65cr (p0006).
+               New thread-card shape: 40px rounded-square logo, supplier
+               name + time on top, subject (bold when unread) on the
+               second row, status badge + category on the meta row, and
+               an unread dot trailing. No preview snippet, no duplicate
+               supplier in the meta row. -->
           <div *ngIf="activeView === 'list' && filteredThreads().length > 0"
                class="bp-msg-list">
             <div *ngFor="let t of filteredThreads()"
-                 class="bp-list-row bp-msg-row"
-                 [class.bp-list-row--active]="activeThread?.key === t.key"
-                 [class.bp-list-row--unread]="t.unread"
+                 class="bp-msg-thread-card"
+                 [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
+                 [class.bp-msg-thread-card--unread]="t.unread"
                  (click)="openThread(t)">
-              <div class="bp-msg-avatar">{{ initialsFor(t.supplierName) }}</div>
-              <div class="bp-msg-tbody">
-                <div class="bp-msg-ttop">
-                  <span class="bp-msg-tname">{{ t.supplierName }}</span>
-                  <span class="bp-msg-ttime">{{ fmtTime(t.latestMsg.created_at) }}</span>
+              <div class="bp-msg-thread-logo">{{ initialsFor(t.supplierName) }}</div>
+              <div class="bp-msg-thread-body">
+                <div class="bp-msg-thread-top">
+                  <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
+                  <span class="bp-msg-thread-time">{{ fmtTime(t.latestMsg.created_at) }}</span>
                 </div>
-                <div class="bp-msg-tprev">{{ t.latestMsg.body }}</div>
-                <div class="bp-msg-tmeta">
+                <div class="bp-msg-thread-subject">{{ subjectFor(t) }}</div>
+                <div class="bp-msg-thread-meta">
                   <span *ngIf="t.status && t.status !== 'all'"
                         class="bp-msg-tbadge"
                         [ngClass]="'bp-badge-' + statusClass(t.status)">
                     {{ statusLabel(t.status) }}
                   </span>
-                  <span class="bp-msg-tcat">{{ t.categoryName }}</span>
+                  <span class="bp-msg-thread-cat">{{ t.categoryName }}</span>
                   <span *ngIf="!boundProjectId && t.projectName"
-                        class="bp-msg-tproj"> · {{ t.projectName }}</span>
+                        class="bp-msg-thread-proj"> · {{ t.projectName }}</span>
                 </div>
               </div>
-              <span *ngIf="t.unread" class="bp-msg-udot"></span>
+              <span *ngIf="t.unread" class="bp-msg-thread-dot"></span>
             </div>
           </div>
 
-          <!-- ── CARD VIEW ── -->
+          <!-- ── CARD VIEW — v1.65cr (p0006).
+               Larger variant of the thread card: 48px logo, same
+               supplier + time + subject + meta structure, subject
+               bold on unread. -->
           <div *ngIf="activeView === 'card' && filteredThreads().length > 0"
                class="bp-msg-cards">
             <div *ngFor="let t of filteredThreads()"
-                 class="bp-msg-card-tile"
-                 [class.active]="activeThread?.key === t.key"
-                 [class.unread]="t.unread"
+                 class="bp-msg-thread-card bp-msg-thread-card--tile"
+                 [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
+                 [class.bp-msg-thread-card--unread]="t.unread"
                  (click)="openThread(t)">
-              <div class="bp-msg-card-top">
-                <div class="bp-msg-card-av">{{ initialsFor(t.supplierName) }}</div>
-                <div class="bp-msg-card-name">{{ t.supplierName }}</div>
-                <div class="bp-msg-card-time">{{ fmtTime(t.latestMsg.created_at) }}</div>
+              <div class="bp-msg-thread-logo bp-msg-thread-logo--lg">{{ initialsFor(t.supplierName) }}</div>
+              <div class="bp-msg-thread-body">
+                <div class="bp-msg-thread-top">
+                  <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
+                  <span class="bp-msg-thread-time">{{ fmtTime(t.latestMsg.created_at) }}</span>
+                </div>
+                <div class="bp-msg-thread-subject">{{ subjectFor(t) }}</div>
+                <div class="bp-msg-thread-meta">
+                  <span *ngIf="t.status && t.status !== 'all'"
+                        class="bp-msg-tbadge"
+                        [ngClass]="'bp-badge-' + statusClass(t.status)">
+                    {{ statusLabel(t.status) }}
+                  </span>
+                  <span class="bp-msg-thread-cat">{{ t.categoryName }}</span>
+                </div>
               </div>
-              <div class="bp-msg-card-prev">{{ t.latestMsg.body }}</div>
-              <div class="bp-msg-card-foot">
-                <span *ngIf="t.status && t.status !== 'all'"
-                      class="bp-msg-tbadge"
-                      [ngClass]="'bp-badge-' + statusClass(t.status)">
-                  {{ statusLabel(t.status) }}
-                </span>
-                <span class="bp-msg-tcat">{{ t.categoryName }}</span>
-              </div>
+              <span *ngIf="t.unread" class="bp-msg-thread-dot"></span>
             </div>
           </div>
 
-          <!-- ── TABLE VIEW ── -->
+          <!-- ── TABLE VIEW — v1.65cr (p0006).
+               Columns: Supplier · Subject · Status · Category · Time.
+               Subject cell uses subjectFor(t) and bolds when unread —
+               same read-state cue as the list/card views. The previous
+               "Last message" preview column was dropped per the new
+               subject-led card design. -->
           <div *ngIf="activeView === 'table' && filteredThreads().length > 0"
                class="bp-msg-table-wrap">
             <table class="bp-msg-table">
               <thead>
                 <tr>
                   <th>Supplier</th>
-                  <th>Category</th>
+                  <th>Subject</th>
                   <th>Status</th>
-                  <th>Last message</th>
+                  <th>Category</th>
                   <th>Time</th>
                 </tr>
               </thead>
@@ -317,7 +355,7 @@ interface VendorThread {
                     [class.unread]="t.unread"
                     (click)="openThread(t)">
                   <td><strong>{{ t.supplierName }}</strong></td>
-                  <td>{{ t.categoryName }}</td>
+                  <td class="bp-msg-table-subject">{{ subjectFor(t) }}</td>
                   <td>
                     <span *ngIf="t.status && t.status !== 'all'"
                           class="bp-msg-tbadge"
@@ -325,7 +363,7 @@ interface VendorThread {
                       {{ statusLabel(t.status) }}
                     </span>
                   </td>
-                  <td class="bp-msg-table-prev">{{ t.latestMsg.body }}</td>
+                  <td>{{ t.categoryName }}</td>
                   <td class="bp-msg-table-time">{{ fmtTime(t.latestMsg.created_at) }}</td>
                 </tr>
               </tbody>
@@ -488,68 +526,164 @@ interface VendorThread {
     /* v1.28: .bp-msg-filter / -btn / -n removed — status filter now
        lives in the left sidebar using shared bp-sidebar-item/-count. */
 
-    /* Empty state */
+    /* Empty state — v1.65cr (p0006).
+       Two flavours: the original quiet text-only fallback (used for
+       global-mode "pick a project" + the search-no-hits case), and
+       the richer "No replies yet" card with a circled icon + Go to
+       cart CTA when there are no replies in a project. */
     .bp-msg-empty {
-      padding: 60px 24px;
+      padding: 56px 24px;
       text-align: center;
       color: var(--color-text-muted);
       display: flex; flex-direction: column; align-items: center; gap: 10px;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.55;
+      min-height: 320px;
+      justify-content: center;
     }
-    .bp-msg-empty lucide-icon { color: var(--color-text-muted); opacity: 0.6; }
+    .bp-msg-empty > lucide-icon { color: var(--color-text-muted); opacity: 0.6; }
     .bp-msg-empty p { margin: 0; }
 
-    /* ── LIST VIEW (p0001) ──
-       Row chrome (border, radius, padding, hover, --active / --unread)
-       comes from the shared .bp-list-row primitive in styles.css. The
-       rules below are message-specific: vertical gap between rows,
-       rounded-square avatar, internal text layout. */
+    /* Circled accent icon — only on the "No replies yet" branch. */
+    .bp-msg-empty-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--theme-soft);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      margin-bottom: 6px;
+    }
+    .bp-msg-empty-icon lucide-icon { color: var(--theme-accent); opacity: 1; }
+    .bp-msg-empty-title {
+      font-family: var(--font-display);
+      font-size: 18px; font-weight: 400;
+      color: var(--color-text-primary);
+      margin-bottom: 4px;
+    }
+    .bp-msg-empty-sub {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      max-width: 320px;
+      margin-bottom: 14px;
+    }
+    .bp-msg-empty-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius-button);
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    .bp-msg-empty-cta:hover { filter: brightness(0.92); }
+
+    /* ── LIST + CARD VIEWS — v1.65cr (p0006).
+       New thread-card primitive. Flat 0.5px border at rest, lifts to
+       --shadow-xs on hover. Selected = --theme-soft fill + accent
+       border. Unread keeps a calm --theme-soft tint AND bolds the
+       subject line; the two cues together make read-state unmissable
+       without adding extra labels. */
     .bp-msg-list {
       display: flex; flex-direction: column; gap: 6px;
     }
-    .bp-msg-row {
-      align-items: center;
+    .bp-msg-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px 14px;
     }
-    .bp-msg-avatar {
-      width: 42px; height: 42px;
+    @media (max-width: 1100px) {
+      .bp-msg-cards { grid-template-columns: 1fr; }
+    }
+    .bp-msg-thread-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 12px;
+      border: var(--border-hairline);
       border-radius: var(--radius-button);
-      background: var(--theme-accent);
+      background: var(--color-surface);
+      cursor: pointer;
+      transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+    }
+    .bp-msg-thread-card:hover {
+      box-shadow: var(--shadow-xs);
+      border-color: var(--color-border);
+    }
+    .bp-msg-thread-card--unread {
+      background: var(--theme-soft);
+    }
+    .bp-msg-thread-card--selected,
+    .bp-msg-thread-card--selected.bp-msg-thread-card--unread {
+      background: var(--theme-soft);
+      border-color: var(--theme-accent);
+    }
+    /* Logo — themed-tint rounded square with initials. Falls back to
+       initials only since we don't carry supplier logo assets through
+       the messages payload yet. */
+    .bp-msg-thread-logo {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-button);
+      background: var(--theme-soft);
+      color: var(--theme-text);
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 500;
-      color: var(--color-surface);
+      font-family: var(--font-body);
+      font-size: 13px; font-weight: 600;
       flex-shrink: 0;
     }
-    .bp-msg-tbody { flex: 1; min-width: 0; }
-    .bp-msg-ttop {
+    .bp-msg-thread-logo--lg { width: 48px; height: 48px; font-size: 15px; }
+    .bp-msg-thread-body { flex: 1; min-width: 0; }
+    .bp-msg-thread-top {
       display: flex; align-items: baseline; justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 1px;
+      gap: 8px;
     }
-    .bp-msg-tname {
-      font-size: 12px; font-weight: 600;
+    .bp-msg-thread-supplier {
+      font-size: 13px; font-weight: 500;
       color: var(--color-text-primary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .bp-msg-ttime {
-      font-size: 10px;
-      color: var(--color-text-muted);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .bp-msg-tprev {
+    .bp-msg-thread-time {
       font-size: 11px;
       color: var(--color-text-muted);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .bp-msg-thread-subject {
+      font-size: 12px;
+      color: var(--color-text-primary);
+      margin-top: 2px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      margin-bottom: 4px;
     }
-    .bp-msg-tmeta {
+    .bp-msg-thread-card--unread .bp-msg-thread-subject {
+      font-weight: 600;
+    }
+    .bp-msg-thread-meta {
       display: flex; align-items: center; gap: 6px;
-      font-size: 9.5px;
-      color: var(--color-text-muted);
+      margin-top: 5px;
     }
-    .bp-msg-tcat { font-size: 9.5px; color: var(--color-text-muted); }
-    .bp-msg-tproj { color: var(--theme-accent); }
+    .bp-msg-thread-cat {
+      font-size: 11px; color: var(--color-text-muted);
+    }
+    .bp-msg-thread-proj { color: var(--theme-accent); font-size: 11px; }
+    .bp-msg-thread-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      flex-shrink: 0;
+    }
+    /* Card-tile variant — stacks the body content with a touch more
+       padding for the grid layout. */
+    .bp-msg-thread-card--tile {
+      padding: 12px;
+      gap: 12px;
+    }
+
+    /* Status badges — shared by list/card/table views. */
     .bp-msg-tbadge {
       font-size: 9px; font-weight: 600;
       padding: 1px 7px;
@@ -561,85 +695,14 @@ interface VendorThread {
     .bp-badge-quoted  { background: var(--color-quoted-bg);  color: var(--color-quoted-text); }
     .bp-badge-booked  { background: var(--color-booked-bg);  color: var(--color-booked-text); }
     .bp-badge-default { background: var(--theme-bg);          color: var(--theme-accent); }
-    .bp-msg-udot {
-      position: absolute;
-      top: 14px; right: 14px;
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--theme-accent);
-    }
 
-    /* ── CARD VIEW ── */
-    .bp-msg-cards {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      padding: 12px 14px;
-    }
-    @media (max-width: 1100px) {
-      .bp-msg-cards { grid-template-columns: 1fr; }
-    }
-    /* v1.65aj (p0001) — card-view tiles ARE elevated per the two-tier
-       rule (gallery surface). Token-migrated shadow + radii. */
-    .bp-msg-card-tile {
-      border: var(--border-hairline);
-      border-radius: var(--radius-card);
-      padding: 12px;
-      background: var(--color-surface);
-      box-shadow: var(--shadow-xs);
-      cursor: pointer;
-      transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-    }
-    .bp-msg-card-tile:hover {
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
-    .bp-msg-card-tile.active {
-      border-color: var(--theme-accent);
-      background: var(--theme-bg);
-    }
-    .bp-msg-card-tile.unread { background: var(--color-unread-row-bg, var(--theme-bg)); }
-    .bp-msg-card-top {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 8px;
-    }
-    .bp-msg-card-av {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: var(--theme-bg);
-      border: 0.5px solid var(--theme-border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600;
-      color: var(--theme-accent);
-      flex-shrink: 0;
-    }
-    .bp-msg-card-name {
-      font-size: 12px; font-weight: 600;
-      color: var(--color-text-primary);
-      flex: 1; min-width: 0;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .bp-msg-card-time {
-      font-size: 10px;
-      color: var(--color-text-muted);
-      flex-shrink: 0;
-    }
-    .bp-msg-card-prev {
-      font-size: 11px;
-      color: var(--color-text-muted);
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      line-height: 1.4;
-      margin-bottom: 8px;
-    }
-    .bp-msg-card-foot {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 6px;
-    }
+    /* v1.65cr (p0006) — old .bp-msg-card-tile / -top / -av / -name /
+       -time / -prev / -foot rules removed; the card view now uses the
+       same .bp-msg-thread-card primitive as the list view with the
+       --tile modifier. The duplicate .bp-msg-cards rule from this
+       block was also retired (the new copy upstream owns it). */
 
-    /* ── TABLE VIEW ── */
+    /* ── TABLE VIEW — v1.65cr (p0006) tightened. */
     .bp-msg-table-wrap { overflow-x: auto; }
     .bp-msg-table {
       width: 100%;
@@ -664,12 +727,15 @@ interface VendorThread {
       color: var(--color-text-primary);
       vertical-align: middle;
     }
-    .bp-msg-table tr:hover td { background: var(--theme-bg); }
-    .bp-msg-table tr.active td { background: var(--theme-bg); }
-    .bp-msg-table tr.unread td { font-weight: 500; }
-    .bp-msg-table-prev {
-      color: var(--color-text-muted);
-      max-width: 260px;
+    .bp-msg-table tr:hover td { background: var(--theme-soft); }
+    .bp-msg-table tr.active td { background: var(--theme-soft); }
+    /* v1.65cr (p0006) — bold the subject cell on unread rows (same
+       read-state cue as the list/card views). Other cells stay normal
+       weight to keep scan-load light. */
+    .bp-msg-table tr.unread .bp-msg-table-subject { font-weight: 600; }
+    .bp-msg-table-subject {
+      color: var(--color-text-primary);
+      max-width: 320px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .bp-msg-table-time { color: var(--color-text-muted); white-space: nowrap; }
@@ -802,6 +868,8 @@ export class MessagesInboxComponent implements OnInit {
     private projectSvc: ProjectService,
     private orgSvc: OrgService,
     private shellCtx: ShellContextService,
+    private cartDrawerSvc: CartDrawerService,
+    private router: Router,
     private toast: MessageService,
     private datePipe: DatePipe,
     public cdr: ChangeDetectorRef
@@ -1106,6 +1174,41 @@ export class MessagesInboxComponent implements OnInit {
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  /** v1.65cr (p0006) — thread subject line. The schema doesn't carry
+      a dedicated subject column yet, so we synthesise: if the supplier
+      has replied (an inbound message exists), use the latest inbound
+      body as a short subject; otherwise fall back to the outbound
+      request topic "{Category} brief". Truncated so the row stays
+      one line. When proper subject columns land, swap this. */
+  subjectFor(t: VendorThread): string {
+    const inbound = [...(t.messages || [])]
+      .reverse()
+      .find((m: any) => m.direction === 'inbound');
+    const raw = (inbound?.body || t.latestMsg?.body || '').trim();
+    if (raw) {
+      const first = raw.split(/\r?\n/)[0].trim();
+      return first.length > 80 ? first.slice(0, 77) + '…' : first;
+    }
+    const cat = (t.categoryName || 'Request').trim();
+    return cat ? `${cat} brief` : 'New request';
+  }
+
+  /** v1.65cr (p0006) — "Go to cart" CTA on the empty state. In project
+      mode (boundProjectId set), open the shared Project Items cart
+      drawer directly. In global mode (no project bound), route to
+      the dashboard so the user can pick a project. */
+  openCart(): void {
+    if (this.boundProjectId) {
+      this.cartDrawerSvc.open(this.boundProjectId);
+      return;
+    }
+    if (this.selectedProjectId) {
+      this.cartDrawerSvc.open(this.selectedProjectId);
+      return;
+    }
+    this.router.navigate(['/projects']);
   }
 
   openThread(t: VendorThread) {
