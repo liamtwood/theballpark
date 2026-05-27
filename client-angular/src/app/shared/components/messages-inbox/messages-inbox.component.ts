@@ -452,68 +452,118 @@ interface VendorThread {
           </ng-container>
 
           <ng-container *ngIf="activeThread">
-            <!-- v1.65cx (p0011 §3) — conversation header rebuilt around
-                 the supplier list-mode card pattern (clone of the
-                 catalogue's .bp-list-row shape). The four-pill manual
-                 status setter (Action / Waiting / Quoted / Booked) is
-                 dropped — per-item status is driven by the symmetric
-                 action table, and the thread-level pill below is the
-                 computed aggregate. TODO(p0011-§3-extract): factor the
-                 supplier row card into a shared component so this and
-                 the catalogue list mode point at one template. -->
-            <div class="bp-thread-header">
-              <button class="bp-back-btn" (click)="closeThread()" title="Back to inbox">
-                <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+            <!-- v1.65cz (p0013 §0) — email-style flat header, supersedes
+                 p0011 §3's supplier-card-in-card pattern. No card chrome,
+                 no shadow, no hover lift. Just identity + status + clock
+                 + menu on one strip with a hairline divider below. The
+                 supplier card belongs in the catalogue; here it would be
+                 repeating itself. -->
+            <div class="bp-thread-email-head">
+              <button class="bp-thread-email-back" (click)="closeThread()" title="Back to inbox">
+                <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
               </button>
-              <div class="bp-thread-supplier-card">
-                <div class="bp-thread-supplier-logo"
-                     [class.bp-thread-supplier-logo--img]="!!activeThread.supplierLogoUrl">
-                  <img *ngIf="activeThread.supplierLogoUrl"
-                       [src]="activeThread.supplierLogoUrl"
-                       [alt]="activeThread.supplierName"/>
-                  <span *ngIf="!activeThread.supplierLogoUrl">{{ initialsFor(activeThread.supplierName) }}</span>
+              <div class="bp-thread-email-logo"
+                   [class.bp-thread-email-logo--img]="!!activeThread.supplierLogoUrl">
+                <img *ngIf="activeThread.supplierLogoUrl"
+                     [src]="activeThread.supplierLogoUrl"
+                     [alt]="activeThread.supplierName"/>
+                <span *ngIf="!activeThread.supplierLogoUrl">{{ initialsFor(activeThread.supplierName) }}</span>
+              </div>
+              <div class="bp-thread-email-id">
+                <div class="bp-thread-email-name">{{ activeThread.supplierName }}</div>
+                <div class="bp-thread-email-sub">
+                  <ng-container *ngIf="activeThread.contactName">{{ activeThread.contactName }}</ng-container>
+                  <ng-container *ngIf="activeThread.contactName && activeThread.refCode"> · </ng-container>
+                  <ng-container *ngIf="activeThread.refCode">Ref {{ activeThread.refCode }}</ng-container>
+                  <ng-container *ngIf="(activeThread.contactName || activeThread.refCode) && activeThread.categoryName"> · </ng-container>
+                  <ng-container *ngIf="activeThread.categoryName">{{ activeThread.categoryName }}</ng-container>
                 </div>
-                <div class="bp-thread-supplier-body">
-                  <div class="bp-thread-supplier-name">{{ activeThread.supplierName }}</div>
-                  <div class="bp-thread-supplier-eyebrow">
-                    <span *ngIf="activeThread.contactName">{{ activeThread.contactName }} · </span>{{ activeThread.categoryName }}<span *ngIf="!boundProjectId && activeThread.projectName"> · {{ activeThread.projectName }}</span>
+              </div>
+              <span *ngIf="aggregateStatus()"
+                    class="bp-msg-tbadge bp-thread-email-pill"
+                    [ngClass]="'bp-badge-' + aggregateStatus()">
+                {{ aggregateStatusLabel() }}
+              </span>
+              <span *ngIf="activeThread.nextActionBy"
+                    class="bp-thread-email-clock"
+                    [class.bp-thread-email-clock--overdue]="isOverdue(activeThread.nextActionBy)"
+                    [title]="preciseDate(activeThread.nextActionBy)">
+                <lucide-icon name="clock" [size]="12"></lucide-icon>
+                Next: {{ shortClock(activeThread.nextActionBy) }}
+              </span>
+              <button type="button" class="bp-thread-email-menu" title="More">
+                <lucide-icon name="more-horizontal" [size]="18"></lucide-icon>
+              </button>
+            </div>
+
+            <!-- v1.65cz (p0013 §1) — three collapsible sections:
+                 Event details / Items / Conversation. Each header is
+                 clickable; chevron reflects state. Default: Event
+                 collapsed, Items expanded, Conversation always-on. -->
+
+            <!-- ── EVENT DETAILS section (p0013 §2) ───────────────── -->
+            <div class="bp-thread-sec" [class.bp-thread-sec--open]="secEventOpen">
+              <button type="button" class="bp-thread-sec-head" (click)="secEventOpen = !secEventOpen">
+                <lucide-icon name="calendar-days" [size]="13"></lucide-icon>
+                <span class="bp-thread-sec-label">Event details</span>
+                <span class="bp-thread-sec-badge" *ngIf="activeProject?.ref">REF {{ activeProject?.ref }}</span>
+                <lucide-icon class="bp-thread-sec-chev"
+                             [name]="secEventOpen ? 'chevron-up' : 'chevron-down'"
+                             [size]="14"></lucide-icon>
+              </button>
+              <div *ngIf="secEventOpen" class="bp-thread-sec-body">
+                <div class="bp-event-card">
+                  <div class="bp-event-card-grid">
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">REF</div>
+                      <div class="bp-event-cell-value">{{ activeProject?.ref || '—' }}</div>
+                    </div>
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">CLIENT</div>
+                      <div class="bp-event-cell-value">{{ activeProject?.client_name || '—' }}</div>
+                    </div>
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">EVENT NAME</div>
+                      <div class="bp-event-cell-value">{{ activeProject?.event_name || activeProject?.name || '—' }}</div>
+                    </div>
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">GUESTS</div>
+                      <div class="bp-event-cell-value">{{ activeProject?.guest_count || '—' }}</div>
+                      <div class="bp-event-cell-sub" *ngIf="activeProject?.guest_count">guests expected</div>
+                    </div>
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">DATE</div>
+                      <div class="bp-event-cell-value">{{ eventDateRange() || '—' }}</div>
+                      <div class="bp-event-cell-sub" *ngIf="eventDurationLabel()">{{ eventDurationLabel() }}</div>
+                    </div>
+                    <div class="bp-event-cell">
+                      <div class="bp-event-cell-label">VENUE</div>
+                      <div class="bp-event-cell-value">{{ activeProject?.venue_name || '—' }}</div>
+                      <div class="bp-event-cell-sub" *ngIf="activeProject?.venue_city">{{ activeProject?.venue_city }}</div>
+                    </div>
                   </div>
                 </div>
-                <!-- v1.65cy (p0011 §3 fix) — aggregate pill computed
-                     from the items, not the per-msg msg_status. -->
-                <span *ngIf="aggregateStatus()"
-                      class="bp-msg-tbadge bp-thread-supplier-pill"
-                      [ngClass]="'bp-badge-' + aggregateStatus()">
-                  {{ aggregateStatusLabel() }}
-                </span>
-                <span *ngIf="activeThread.nextActionBy"
-                      class="bp-thread-clock-chip"
-                      [class.bp-thread-clock-chip--overdue]="isOverdue(activeThread.nextActionBy)"
-                      [title]="preciseDate(activeThread.nextActionBy)">
-                  <lucide-icon name="clock" [size]="12"></lucide-icon>
-                  {{ shortClock(activeThread.nextActionBy) }}
-                </span>
-                <button type="button" class="bp-thread-menu-btn" title="More">
-                  <lucide-icon name="more-horizontal" [size]="16"></lucide-icon>
-                </button>
               </div>
             </div>
 
+            <!-- ── ITEMS section (p0013 §3 wraps p0011 §1 cards) ──── -->
             <!-- v1.65cv (p0008 §4.1) — Summary header (item nav).
-                 v1.65cy (p0011 fix) — these cards are NAVIGATION ONLY:
-                 [compact]="true" hides the action slot. Click → emit
-                 (rowClick) → scrollToItem() finds the inline copy in
-                 the chat stream and pulses it. Actions live on the
-                 inline cards in the stream. -->
-            <div *ngIf="threadItems.length" class="bp-thread-items">
-              <div class="bp-thread-items-head">
-                <lucide-icon name="package" [size]="12"></lucide-icon>
-                <span>{{ threadItems.length }} item{{ threadItems.length === 1 ? '' : 's' }}</span>
-                <span *ngIf="itemActionCount() > 0" class="bp-thread-items-action-count">
+                 v1.65cy (p0011 fix) — [compact]="true" hides actions;
+                 click emits (rowClick) → scrollToItem() pulses the
+                 inline copy in the stream. -->
+            <div *ngIf="threadItems.length" class="bp-thread-sec" [class.bp-thread-sec--open]="secItemsOpen">
+              <button type="button" class="bp-thread-sec-head" (click)="secItemsOpen = !secItemsOpen">
+                <lucide-icon name="package" [size]="13"></lucide-icon>
+                <span class="bp-thread-sec-label">Items</span>
+                <span class="bp-thread-sec-badge">{{ activeItemsCount() }} ITEM{{ activeItemsCount() === 1 ? '' : 'S' }}</span>
+                <span *ngIf="itemActionCount() > 0" class="bp-thread-sec-action-hint">
                   · {{ itemActionCount() }} need action
                 </span>
-              </div>
-              <div class="bp-thread-items-list">
+                <lucide-icon class="bp-thread-sec-chev"
+                             [name]="secItemsOpen ? 'chevron-up' : 'chevron-down'"
+                             [size]="14"></lucide-icon>
+              </button>
+              <div *ngIf="secItemsOpen" class="bp-thread-sec-body bp-thread-sec-body--items">
                 <app-message-item-card *ngFor="let it of threadItems"
                   [item]="toMessageItem(it)"
                   [viewer]="'agent'"
@@ -522,6 +572,20 @@ interface VendorThread {
                 </app-message-item-card>
               </div>
             </div>
+
+            <!-- ── CONVERSATION section (p0013 §1 + §4) ───────────── -->
+            <!-- v1.65cz: Conversation section header. The stream
+                 itself always renders (per p0013 §1.3 — Conversation
+                 can't collapse to zero); the header chevron just
+                 changes the icon, the body never hides. -->
+            <div class="bp-thread-sec bp-thread-sec--conv bp-thread-sec--open">
+              <button type="button" class="bp-thread-sec-head"
+                      (click)="secConvOpen = !secConvOpen">
+                <lucide-icon name="message-circle" [size]="13"></lucide-icon>
+                <span class="bp-thread-sec-label">Conversation</span>
+                <span class="bp-thread-sec-badge">{{ conversationCount() }} {{ conversationCount() === 1 ? 'message' : 'messages' }}</span>
+                <lucide-icon class="bp-thread-sec-chev" name="chevron-up" [size]="14"></lucide-icon>
+              </button>
 
             <!-- v1.65cy (p0011 §1 fix) — Interleaved timeline: messages
                  and item cards in chronological order. Each item card
@@ -562,6 +626,7 @@ interface VendorThread {
                 No conversation yet.
               </div>
             </div>
+            </div><!-- /.bp-thread-sec.bp-thread-sec--conv -->
 
             <div class="bp-compose">
               <input pInputText [(ngModel)]="newMsg"
@@ -913,11 +978,95 @@ interface VendorThread {
     .bp-msg-conv-empty lucide-icon { opacity: 0.5; }
     .bp-msg-conv-empty p { margin: 0; }
 
+    /* v1.65cz (p0013 §0) — email-style flat conversation header.
+       No card-in-card chrome (p0011 §3 superseded); just text +
+       actions on a strip with a hairline divider below. ~56px tall
+       to match the email-client convention. */
+    .bp-thread-email-head {
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+      padding: 0 14px;
+      min-height: 56px;
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .bp-thread-email-back {
+      width: 28px; height: 28px;
+      border: none; background: none;
+      border-radius: 50%;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bp-thread-email-back:hover { background: var(--theme-soft); color: var(--theme-accent); }
+    .bp-thread-email-logo {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-button);
+      background: var(--theme-soft);
+      color: var(--theme-text);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-body);
+      font-size: 13px; font-weight: 600;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .bp-thread-email-logo--img {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+    }
+    .bp-thread-email-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .bp-thread-email-id { flex: 1; min-width: 0; }
+    .bp-thread-email-name {
+      font-size: 15px; font-weight: 600;
+      color: var(--color-text-primary);
+      line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-email-sub {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      line-height: 1.2;
+      margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-email-pill { flex-shrink: 0; }
+    .bp-thread-email-clock {
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-soft);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 500;
+    }
+    .bp-thread-email-clock lucide-icon { color: var(--theme-accent); }
+    .bp-thread-email-clock--overdue {
+      background: var(--color-action-bg);
+      color: var(--color-action-text);
+    }
+    .bp-thread-email-clock--overdue lucide-icon { color: var(--color-action-text); }
+    .bp-thread-email-menu {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none; background: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bp-thread-email-menu:hover { background: var(--theme-soft); color: var(--theme-accent); }
+
     /* v1.65cx (p0011 §3) — header now a single horizontal strip:
        [<]  [supplier row card]  [pill]  [clock chip]  [⋯]
        Drops the legacy .bp-thread-top container + bp-thread-status-tags
        pill row in favour of a clone of the marketplace's supplier
-       list-mode card. */
+       list-mode card.
+       v1.65cz (p0013 §0) — superseded by .bp-thread-email-head above;
+       kept defined as a no-op for any stale references. */
     .bp-thread-header {
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
@@ -1006,6 +1155,87 @@ interface VendorThread {
     .bp-thread-status-tags { display: flex; gap: 6px; flex-wrap: wrap; }
     .bp-status-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: var(--radius-pill); border: 0.5px solid var(--tag-color); color: var(--tag-color); background: var(--color-surface); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
     .bp-status-tag.active { background: var(--tag-color); color: #fff; }
+    /* v1.65cz (p0013 §1) — collapsible section frame used by Event /
+       Items / Conversation. Section header is clickable; chevron
+       reflects open/closed; body renders when open. */
+    .bp-thread-sec {
+      flex-shrink: 0;
+      border-bottom: var(--border-hairline);
+      background: var(--color-surface);
+    }
+    .bp-thread-sec--conv { flex: 1; display: flex; flex-direction: column; min-height: 0; border-bottom: none; }
+    .bp-thread-sec-head {
+      width: 100%;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px;
+      background: var(--theme-soft);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      transition: background 0.12s;
+    }
+    .bp-thread-sec-head:hover { background: var(--theme-bg); }
+    .bp-thread-sec-head lucide-icon { color: var(--theme-accent); flex-shrink: 0; }
+    .bp-thread-sec-label { flex-grow: 0; }
+    .bp-thread-sec-badge {
+      font-size: 10px; font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--color-surface);
+      color: var(--theme-accent);
+      letter-spacing: 0.04em;
+      margin-left: 4px;
+    }
+    .bp-thread-sec-action-hint {
+      font-size: 10px; font-weight: 500;
+      color: var(--color-text-muted);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .bp-thread-sec-chev { margin-left: auto; }
+    .bp-thread-sec-body { padding: 12px 14px; }
+    .bp-thread-sec-body--items {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    /* v1.65cz (p0013 §2) — Event details card: 3×2 grid, calm. */
+    .bp-event-card {
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      background: var(--color-surface);
+      overflow: hidden;
+    }
+    .bp-event-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 18px;
+      padding: 14px 16px;
+    }
+    @media (max-width: 720px) {
+      .bp-event-card-grid { grid-template-columns: 1fr; }
+    }
+    .bp-event-cell { min-width: 0; }
+    .bp-event-cell-label {
+      font-size: 9.5px; font-weight: 600;
+      color: var(--color-text-muted);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .bp-event-cell-value {
+      font-size: 14px; font-weight: 500;
+      color: var(--color-text-primary);
+      line-height: 1.3;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-event-cell-sub {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
     /* v1.65cv (p0008 §4.1) — items section above the chat stream.
        Acts as a summary header + the actionable surface. */
     .bp-thread-items {
@@ -1139,6 +1369,16 @@ export class MessagesInboxComponent implements OnInit {
   threadItems: MessageItemRow[] = [];
   declineReasonsPre: Array<{ code: string; label: string }> = [];
   declineReasonsPost: Array<{ code: string; label: string }> = [];
+
+  /** v1.65cz (p0013 §2) — project payload for the Event details card.
+      Loaded on openThread (skipped when already loaded for this pid). */
+  activeProject: any | null = null;
+  /** v1.65cz (p0013 §1) — collapsible section state. Defaults per
+      p0013 §1: Event collapsed, Items expanded, Conversation always
+      visible (can't fully collapse). Resets on thread switch. */
+  secEventOpen = false;
+  secItemsOpen = true;
+  secConvOpen  = true;
 
   constructor(
     private route: ActivatedRoute,
@@ -1562,6 +1802,22 @@ export class MessagesInboxComponent implements OnInit {
     this.lastDate = '';
     t.unread = false;
     this.threadItems = [];
+    // v1.65cz (p0013 §1) — reset section accordion state per thread.
+    this.secEventOpen = false;
+    this.secItemsOpen = true;
+    this.secConvOpen  = true;
+
+    // v1.65cz (p0013 §2) — load the project for the Event card. Skip
+    // when we already have the right project loaded.
+    const pid = t.projectId;
+    if (pid && (!this.activeProject || this.activeProject.id !== pid)) {
+      this.activeProject = null;
+      this.projectSvc.getById(pid).subscribe({
+        next: p => { this.activeProject = p; this.cdr.detectChanges(); },
+        error: () => { /* leave null; card renders em-dashes */ }
+      });
+    }
+
     // v1.65cv (p0008) — load message_items for the lead outbound row
     // in this thread (the one that minted the conversation). Replies
     // share the same items via the message_id linkage.
@@ -1716,6 +1972,47 @@ export class MessagesInboxComponent implements OnInit {
       booked: 'Booked', closed: 'Closed',
     };
     return map[k] || '';
+  }
+
+  /** v1.65cz (p0013 §2) — Event card date display. Single-day shows
+      just the date; multi-day with duration_days shows a tight range. */
+  eventDateRange(): string {
+    const p = this.activeProject;
+    if (!p?.event_date) return '';
+    const start = new Date(p.event_date);
+    if (!Number.isFinite(start.getTime())) return '';
+    const days = +p?.duration_days || 1;
+    if (days <= 1) {
+      return start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    const end = new Date(start);
+    end.setDate(end.getDate() + (days - 1));
+    const sameMonth  = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+    const sameYear   = start.getFullYear() === end.getFullYear();
+    if (sameMonth) {
+      return `${start.getDate()}–${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+    if (sameYear) {
+      return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+    return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }
+  eventDurationLabel(): string {
+    const d = +this.activeProject?.duration_days || 0;
+    if (d <= 1) return '';
+    return `${d} days`;
+  }
+
+  /** v1.65cz (p0013 §3) — active items only (declined / cancelled
+      stripped) for the Items section header count. */
+  activeItemsCount(): number {
+    return (this.threadItems || []).filter(i =>
+      i.status !== 'declined_by_supplier' && i.status !== 'declined_by_agent'
+    ).length;
+  }
+  /** Message count badge for the Conversation section header. */
+  conversationCount(): number {
+    return (this.activeThread?.messages || []).length;
   }
 
   /** v1.65cv (p0008) — agent acts on a message_item from the inbox
