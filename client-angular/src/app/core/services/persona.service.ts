@@ -29,7 +29,9 @@ export interface Persona {
   /** Human display name (e.g. "Sarah Mitchell"). */
   name: string;
   /** Org / role line — long form used in the persona dropdown body.
-      e.g. "Woodland Agency · Admin". */
+      e.g. "Woodland Agency · Admin". Computed from orgName + role
+      via the subtitleFor() helper below, but kept on the record as
+      a static field so the dropdown template stays declarative. */
   subtitle: string;
   /** v1.65e2 — short role label rendered in the shell hero pill as
       "{name} · {role}". Independent from subtitle so the pill stays
@@ -40,6 +42,13 @@ export interface Persona {
   initials: string;
   /** Hex used to colour the avatar in the persona dropdown. */
   avatarColor: string;
+  /** v1.65e6 — the person's org. Each persona belongs to a distinct
+      org: Sarah → Woodland Agency, Beth → Ballpark, Ryan → Rocket
+      Food. orgType mirrors `kind` for the foreseeable future but is
+      kept separate so future "agency Admin who's also a sub-org
+      member" cases don't require a kind change. */
+  orgName: string;
+  orgType: PersonaKind;
   /** For supplier personas — the supplier org id, used to build
       /suppliers/:id routes (Front + Store tabs target this). */
   supplierOrgId?: string;
@@ -57,6 +66,8 @@ const PERSONAS: Persona[] = [
     id: 'sarah-mitchell',
     kind: 'agency',
     name: 'Sarah Mitchell',
+    orgName: 'Woodland Agency',
+    orgType: 'agency',
     subtitle: 'Woodland Agency · Admin',
     role: 'Admin',
     initials: 'SM',
@@ -67,6 +78,8 @@ const PERSONAS: Persona[] = [
     id: 'beth-pizey',
     kind: 'admin',
     name: 'Beth Pizey',
+    orgName: 'Ballpark',
+    orgType: 'admin',
     subtitle: 'Ballpark · Admin',
     role: 'Admin',
     initials: 'BP',
@@ -80,6 +93,8 @@ const PERSONAS: Persona[] = [
     id: 'rocket-food',
     kind: 'supplier',
     name: 'Ryan Foster',
+    orgName: 'Rocket Food',
+    orgType: 'supplier',
     subtitle: 'Rocket Food · Admin',
     role: 'Admin',
     initials: 'RF',

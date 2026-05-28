@@ -56,7 +56,13 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        data: { pageLabel: '', tabs: HOME_SETTINGS_TABS }
+        // v1.65e6 — dashboard tab band reduced to a single "Home" tab.
+        // Top-nav already carries Home + Settings as text links per
+        // persona; the old HOME_SETTINGS_TABS pair was duplicative.
+        data: {
+          pageLabel: '',
+          tabs: [{ label: 'Home', path: '/' }]
+        }
       },
 
       // ── PROJECTS ──
