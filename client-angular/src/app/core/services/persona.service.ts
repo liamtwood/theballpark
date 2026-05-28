@@ -28,8 +28,14 @@ export interface Persona {
   kind: PersonaKind;
   /** Human display name (e.g. "Sarah Mitchell"). */
   name: string;
-  /** Org / role line (e.g. "Woodland Agency · Admin"). */
+  /** Org / role line — long form used in the persona dropdown body.
+      e.g. "Woodland Agency · Admin". */
   subtitle: string;
+  /** v1.65e2 — short role label rendered in the shell hero pill as
+      "{name} · {role}". Independent from subtitle so the pill stays
+      compact (subtitle includes the org name which would dwarf the
+      pill). e.g. "Admin", "Supplier". */
+  role: string;
   /** 2-letter avatar initials. */
   initials: string;
   /** Hex used to colour the avatar in the persona dropdown. */
@@ -37,6 +43,10 @@ export interface Persona {
   /** For supplier personas — the supplier org id, used to build
       /suppliers/:id routes (Front + Store tabs target this). */
   supplierOrgId?: string;
+  /** v1.65e2 — secondary location pill in the hero (e.g. "London").
+      Supplier personas surface their city; agency / admin personas
+      can leave it undefined. */
+  location?: string;
 }
 
 /** v1.65dz — seeded persona list mirroring the p0015 mockup. The
@@ -48,14 +58,17 @@ const PERSONAS: Persona[] = [
     kind: 'agency',
     name: 'Sarah Mitchell',
     subtitle: 'Woodland Agency · Admin',
+    role: 'Admin',
     initials: 'SM',
     avatarColor: '#ec1f6d',
+    location: 'London',
   },
   {
     id: 'beth-pizey',
     kind: 'admin',
     name: 'Beth Pizey',
     subtitle: 'Ballpark · Admin',
+    role: 'Admin',
     initials: 'BP',
     avatarColor: '#4f46e5',
   },
@@ -64,8 +77,10 @@ const PERSONAS: Persona[] = [
     kind: 'supplier',
     name: 'Rocket Food',
     subtitle: 'Supplier · London',
+    role: 'Supplier',
     initials: 'RF',
     avatarColor: '#0f766e',
+    location: 'London',
     // v1.65e1 — Rocket Food's seeded supplier org id (matches the
     // /suppliers/:id URL Liam shared). If your local seed re-rolls
     // org ids, update this value and re-run the dev server.

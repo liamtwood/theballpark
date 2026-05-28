@@ -139,7 +139,10 @@ export class PersonaDropdownComponent {
     if (p.kind === 'agency') {
       this.router.navigateByUrl('/');
     } else if (p.kind === 'admin') {
-      this.router.navigateByUrl('/ballpark-settings');
+      // v1.65e2 — Beth lands on /admin-home (was /ballpark-settings).
+      // The admin tools panel is now reached via a Quick Action link
+      // on the new home page; gives Beth a calmer landing surface.
+      this.router.navigateByUrl('/admin-home');
     } else if (p.kind === 'supplier') {
       const sid = p.supplierOrgId;
       if (sid) {

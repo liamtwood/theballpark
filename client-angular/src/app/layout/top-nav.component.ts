@@ -88,9 +88,16 @@ import { environment } from '../../environments/environment';
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
-        <!-- v1.35: Settings cog removed per user request — Settings is
-             reachable via the dashboard Quick Actions / Invite Member
-             quick action; the cog was redundant in the nav cluster. -->
+        <!-- v1.65e2 (p0015) — Settings cog restored. Routes to
+             /settings (org / users / subscription sub-tabs). Visible
+             for every persona — each persona manages their OWN org's
+             settings on the same surface. -->
+        <a routerLink="/settings"
+           routerLinkActive="active"
+           class="bp-mode-btn"
+           title="Settings">
+          <lucide-icon name="settings" [size]="14"></lucide-icon>
+        </a>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
           <lucide-icon [name]="modeIcon" [size]="14"></lucide-icon>
         </button>

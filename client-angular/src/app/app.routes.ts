@@ -104,6 +104,16 @@ export const routes: Routes = [
         data: { pageLabel: 'INBOX', tabs: [] }
       },
 
+      // ── ADMIN PERSONA HOME ──
+      // v1.65e2 (p0015) — Beth Pizey's landing surface. Parchment +
+      // .bp-dash-card welcome card + quick links into the existing
+      // /ballpark-settings sub-pages.
+      {
+        path: 'admin-home',
+        loadComponent: () => import('./features/admin-home/admin-home.component').then(m => m.AdminHomeComponent),
+        data: { pageLabel: 'ADMIN', tabs: [] }
+      },
+
       // ── CLIENTS ──
       {
         path: 'clients',

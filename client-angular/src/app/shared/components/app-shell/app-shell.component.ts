@@ -10,6 +10,7 @@ import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { PersonaService } from '../../../core/services/persona.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 import { TemplateRef } from '@angular/core';
 import {
@@ -453,16 +454,31 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
-    // v1.23c: title-case the role so "admin" renders as "Admin" in
-    // the pill. The DB column stores it lowercase ('owner' / 'admin'
-    // / 'member') — only the display is capitalised.
-    if (this.showUserName && this.userName) {
-      const role = this.userRole
-        ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
-        : '';
-      pills.push(role ? `${this.userName} · ${role}` : this.userName);
+    // v1.65e2 (p0015) — prefer the active persona's name + role over
+    // the legacy users[0] lookup. Persona is the source of truth for
+    // who is "viewing" — in dev/admin sessions it swaps via the
+    // switcher dropdown; in production it reflects the real user.
+    // The legacy userName / userRole pathway stays as a fallback for
+    // any code path that runs before PersonaService initialises.
+    if (this.showUserName) {
+      const p = this.personaSvc.active;
+      if (p) {
+        pills.push(p.role ? `${p.name} · ${p.role}` : p.name);
+      } else if (this.userName) {
+        const role = this.userRole
+          ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
+          : '';
+        pills.push(role ? `${this.userName} · ${role}` : this.userName);
+      }
     }
-    if (this.showLocation && this.orgCity)  pills.push(this.orgCity);
+    // v1.65e2 — location pill prefers persona.location (lets each
+    // persona carry its own city; Beth admin has no city, so the
+    // pill simply hides for her). Falls back to orgCity for legacy.
+    if (this.showLocation) {
+      const personaLoc = this.personaSvc.active?.location;
+      const loc = personaLoc || this.orgCity;
+      if (loc) pills.push(loc);
+    }
     return pills;
   }
   get activeTabs(): ShellTab[] { return this.ctx?.tabs?.length ? this.ctx.tabs : this.routeTabs; }
@@ -563,6 +579,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private shellCtx: ShellContextService,
     private configStripSvc: ConfigStripService,
     private msg: MessageService,
+    public  personaSvc: PersonaService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -643,6 +660,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // need a Back button (e.g. /settings via data.back) don't have to
       // also push a heroTitle. Title/sub still fall back to route data.
       this.ctx = (ctx.heroTitle || ctx.back) ? ctx : null;
+      this.cdr.detectChanges();
+    });
+
+    // v1.65e2 (p0015) — re-render the hero pills whenever the active
+    // persona flips. heroPills getter reads PersonaService.active, so
+    // the change detection cycle picks up the new name/role/location
+    // without any direct binding.
+    this.personaSvc.active$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.cdr.detectChanges();
     });
 
