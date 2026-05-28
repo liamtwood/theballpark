@@ -453,11 +453,12 @@ interface VendorThread {
           </ng-container>
 
           <ng-container *ngIf="activeThread">
-            <!-- v1.65db (p0013 header refit) — envelope-style header.
-                 v1.65dc — Subject promoted to its own full-width row;
-                 a new 4th row carries Next + Status on the same line
-                 so the next_action_by clock the old strip carried
-                 isn't lost. -->
+            <!-- v1.65dd (p0013 header refit) — envelope layout:
+                   col 1: From / To / CC
+                   col 2: First / Last / Status
+                 Subject promoted to a full-width row UNDER both
+                 columns. CC = other suppliers on the same outreach
+                 batch (same ref_code, different supplier). -->
             <div class="bp-thread-mail-head">
               <div class="bp-thread-mail-row">
                 <span class="bp-thread-mail-label">From</span>
@@ -471,19 +472,9 @@ interface VendorThread {
                 <span class="bp-thread-mail-label">Last</span>
                 <span class="bp-thread-mail-value">{{ lastMessageAt() ? preciseDate(lastMessageAt()) : '—' }}</span>
               </div>
-              <div class="bp-thread-mail-row bp-thread-mail-row--subject">
-                <span class="bp-thread-mail-label">Subject</span>
-                <span class="bp-thread-mail-value bp-thread-mail-subject">{{ threadSubject() }}</span>
-              </div>
               <div class="bp-thread-mail-row">
-                <span class="bp-thread-mail-label">Next</span>
-                <span class="bp-thread-mail-value">
-                  <span *ngIf="activeThread.nextActionBy"
-                        [class.bp-thread-mail-next--overdue]="isOverdue(activeThread.nextActionBy)">
-                    {{ preciseDate(activeThread.nextActionBy) }}
-                  </span>
-                  <span *ngIf="!activeThread.nextActionBy">—</span>
-                </span>
+                <span class="bp-thread-mail-label">CC</span>
+                <span class="bp-thread-mail-value">{{ ccSuppliers() || '—' }}</span>
                 <span class="bp-thread-mail-label">Status</span>
                 <span class="bp-thread-mail-value">
                   <span *ngIf="aggregateStatus()"
@@ -493,6 +484,10 @@ interface VendorThread {
                   </span>
                   <span *ngIf="!aggregateStatus()">—</span>
                 </span>
+              </div>
+              <div class="bp-thread-mail-row bp-thread-mail-row--subject">
+                <span class="bp-thread-mail-label">Subject</span>
+                <span class="bp-thread-mail-value bp-thread-mail-subject">{{ threadSubject() }}</span>
               </div>
             </div>
 
@@ -2142,6 +2137,33 @@ export class MessagesInboxComponent implements OnInit {
     if (!msgs.length) return null;
     return msgs.reduce((acc: string, m: any) =>
       !acc || m.created_at > acc ? m.created_at : acc, '');
+  }
+
+  /** v1.65dd (p0013 header refit) — CC line: the other suppliers in
+      the same outreach batch (same project + ref_code, different
+      supplier). Returns a comma-separated list of supplier names; ''
+      when there are none. requestQuotes sends one message per
+      supplier in the batch, all sharing the ref_code, so the other
+      threads in this.threads with the same ref are the CC. */
+  ccSuppliers(): string {
+    const t = this.activeThread;
+    if (!t || !t.refCode) return '';
+    const others = (this.threads || []).filter(other =>
+      other !== t &&
+      other.refCode === t.refCode &&
+      other.projectId === t.projectId &&
+      other.supplierId !== t.supplierId &&
+      other.supplierName
+    );
+    if (!others.length) return '';
+    // De-dupe in case the same supplier shows up across multiple
+    // threads (different category outreach within the same ref).
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const o of others) {
+      if (!seen.has(o.supplierName)) { seen.add(o.supplierName); names.push(o.supplierName); }
+    }
+    return names.join(', ');
   }
 
   /** v1.65cv (p0008) — agent acts on a message_item from the inbox
