@@ -154,7 +154,7 @@ interface PendingCategory {
 
           <textarea pInputTextarea
                     [(ngModel)]="form.brief"
-                    [rows]="5"
+                    [rows]="12"
                     placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
                     class="w-full bp-input-edit bp-cp-brief"></textarea>
 
@@ -230,7 +230,7 @@ interface PendingCategory {
               </div>
               <div class="bp-event-col">
                 <span class="bp-event-eyebrow">EVENT NAME</span>
-                <span class="bp-event-value">{{ aiResult.projectName || '—' }}</span>
+                <span class="bp-event-value">{{ displayEventName || '—' }}</span>
               </div>
 
               <div class="bp-event-col bp-event-col--narrow">
@@ -513,7 +513,10 @@ interface PendingCategory {
     .bp-cp-or-line { flex: 1; height: 0.5px; background: var(--color-border); }
 
     .bp-cp-brief {
-      resize: vertical; min-height: 100px;
+      /* v1.65ez — was 100px min-height + 5 rows. Bumped so a full
+         briefing email is visible without scrolling — the paste flow is
+         the primary intake path, so the textarea should breathe. */
+      resize: vertical; min-height: 240px;
       line-height: 1.6;
     }
 
@@ -1054,6 +1057,32 @@ export class CreateProjectModalComponent implements OnInit {
     return 'New project';
   }
 
+  /** v1.65ez — AI returns projectName as "Client — Event Type" (e.g.
+      "Nike — Employee Celebration Dinner") which is fine as the dialog
+      title and project name, but the EVENT NAME column displayed under
+      its own CLIENT column should drop the duplicate client prefix.
+      Strips "Client — " / "Client - " / "Client: " case-insensitively.
+      Used in the strip display + as the event_name field on create. */
+  get displayEventName(): string {
+    return this.stripClientPrefix(
+      this.aiResult?.projectName || '',
+      this.aiResult?.client || ''
+    );
+  }
+
+  private stripClientPrefix(projectName: string, client: string): string {
+    if (!projectName) return '';
+    if (!client) return projectName;
+    const c = client.trim();
+    if (!c) return projectName;
+    // Match "<client> <sep>" at the start where sep is em-dash, en-dash,
+    // hyphen-minus or colon, with optional surrounding spaces.
+    const escaped = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^\\s*${escaped}\\s*[—–\\-:]\\s*`, 'i');
+    const stripped = projectName.replace(re, '').trim();
+    return stripped || projectName;
+  }
+
   get subtitle(): string {
     if (this.state === 'input')   return 'Upload a brief or paste text — AI will do the rest';
     if (this.state === 'loading') return this.nextRef || '';
@@ -1310,7 +1339,11 @@ export class CreateProjectModalComponent implements OnInit {
       // advances orgs.ref_counter so subsequent previews stay correct.
       ref:            this.nextRef || undefined,
       name:           r.projectName || 'Untitled project',
-      event_name:     r.projectName,
+      // v1.65ez — event_name drops the duplicate client prefix
+      // ("Nike — Employee Celebration Dinner" → "Employee Celebration
+      // Dinner") because the Client field already carries it. The full
+      // joined name lives on `name` for breadcrumbs / titles.
+      event_name:     this.stripClientPrefix(r.projectName || '', r.client || ''),
       client_name:    r.client,
       venue_name:     r.location,
       venue_city:     r.city,

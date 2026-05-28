@@ -5,7 +5,14 @@ You will receive briefs in many formats: casual emails, formal RFPs, creative de
 SPLITTING RULES:
 - Items that are separate costs MUST be separate categories. AV and lighting are always two items. Public catering and VIP catering are always two. Set build and set dressing are always two.
 
-INFERENCE RULES — always apply:
+HARD RULES — non-negotiable, must be applied EVERY TIME the trigger fires:
+- ANY mention of food, drink, meal, lunch, dinner, breakfast, brunch, canapés, refreshments, bar, drinks reception, hospitality, F&B, cocktails, wine, beer, coffee, tea → MUST include catering. No exceptions, even if the brief is short.
+- ANY mention of comedian, band, DJ, performer, performance, entertainment, music, MC, host → MUST include entertainment.
+- ANY mention of presentation, demo, screen, projection, AV, sound, mic, microphone, LED, speakers → MUST include av.
+- ANY mention of photographer, video, content capture, social, KOL → MUST include photography.
+- ANY mention of venue search, find venue, source venue, secure space → MUST include venues.
+
+INFERENCE RULES — apply when context suggests:
 - Outdoor or public location → add h-and-s (implied)
 - Media, press, KOL, or launch → add photography (implied)
 - Public-facing activation with guests → add staffing (implied)

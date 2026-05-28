@@ -2340,6 +2340,66 @@ app-top-nav { flex-shrink: 0; }
 }
 .bp-md-preview tr:nth-child(even) td { background: var(--color-surface); }
 
+/* v1.65ez — PrimeNG toast theme override.
+   Lara-light-blue ships success toasts in a hard #4CAF50 green that
+   clashes with every theme preset. We re-skin all four severities so
+   the toast reads as a Ballpark surface card with a coloured rail —
+   success/info pick up --theme-accent (the user's chosen preset),
+   warn picks up the amber waiting token, error picks up
+   --color-danger. Everything else (radius, shadow, body type) lifts
+   the existing card vocabulary. */
+.p-toast .p-toast-message {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-md) !important;
+  font-family: var(--font-body);
+}
+.p-toast .p-toast-message .p-toast-message-content {
+  padding: 12px 14px;
+  border-left: 4px solid var(--theme-accent);
+  border-radius: inherit;
+}
+.p-toast .p-toast-message-success .p-toast-message-content {
+  border-left-color: var(--theme-accent);
+}
+.p-toast .p-toast-message-info .p-toast-message-content {
+  border-left-color: var(--theme-contrast);
+}
+.p-toast .p-toast-message-warn .p-toast-message-content {
+  border-left-color: var(--color-waiting, #D97706);
+}
+.p-toast .p-toast-message-error .p-toast-message-content {
+  border-left-color: var(--color-danger);
+}
+.p-toast .p-toast-summary {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.p-toast .p-toast-detail {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.p-toast .p-toast-message .p-toast-icon-close,
+.p-toast .p-toast-message .p-toast-message-icon,
+.p-toast .p-toast-message .p-icon {
+  color: var(--theme-accent) !important;
+}
+.p-toast .p-toast-message-error .p-toast-message-icon,
+.p-toast .p-toast-message-error .p-icon {
+  color: var(--color-danger) !important;
+}
+.p-toast .p-toast-message-warn .p-toast-message-icon,
+.p-toast .p-toast-message-warn .p-icon {
+  color: var(--color-waiting, #D97706) !important;
+}
+
 /* Task list checkboxes (read-only in preview) */
 .bp-md-preview input[type=checkbox] {
   margin-right: 5px;
