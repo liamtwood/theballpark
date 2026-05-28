@@ -1472,24 +1472,28 @@ interface VendorThread {
     .bp-msg-lane--in  { justify-content: flex-start; }
     .bp-msg-lane > * { max-width: 75%; min-width: 0; }
 
-    /* v1.65de — text bubble. Sender-aligned: yours right (--theme-soft
-       fill, corner-tighter), theirs left (white fill + hairline,
-       opposite corner-tighter). */
+    /* v1.65df — text bubble. WhatsApp convention: outbound = mint
+       (#dcf8c6), inbound = white. These are intentionally semantic
+       chat colours, NOT theme-driven — the green-vs-white pairing
+       is what makes "yours vs theirs" instantly readable, and a
+       theme-coloured outbound (e.g. pink) breaks that affordance.
+       Same logic as our --color-action/waiting/booked semantic
+       tokens which don't recolour with the admin preset. */
     .bp-msg-bubble {
-      padding: 8px 12px;
+      padding: 8px 12px 6px;
       border-radius: var(--radius-card);
       font-size: 13px;
       line-height: 1.45;
       color: var(--color-text-primary);
+      box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.08);
     }
     .bp-msg-bubble--out {
-      background: var(--theme-soft);
-      color: var(--theme-text);
+      background: #dcf8c6;
+      color: #1a1a1a;
       border-bottom-right-radius: 4px;
     }
     .bp-msg-bubble--in {
-      background: var(--color-surface);
-      border: var(--border-hairline);
+      background: #ffffff;
       border-bottom-left-radius: 4px;
     }
     .bp-msg-bubble--unread { border-left: 3px solid var(--theme-accent); border-radius: 0 var(--radius-card) var(--radius-card) 0; }
