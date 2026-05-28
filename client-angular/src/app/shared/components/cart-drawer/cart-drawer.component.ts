@@ -138,9 +138,35 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       </div>
 
       <ng-template pTemplate="footer">
-        <div class="bp-cd-foot">
-          <span class="bp-cd-foot-label">BALLPARK</span>
-          <span class="bp-cd-foot-total">{{ ballparkTotal | gbp }}</span>
+        <!-- v1.65eg — estimate-style summary. Matches the layout on
+             the project Estimate tab: Your cost / Margin / VAT /
+             CLIENT TOTAL (highlighted in theme-soft). Skips the
+             contingency line that the full estimate carries — the
+             cart drawer is a quick "what's this going to cost"
+             glance, not the full breakdown. -->
+        <div class="bp-cd-foot bp-cd-foot--summary" *ngIf="selected.length">
+          <div class="bp-cd-foot-row bp-cd-foot-row--cost">
+            <span class="bp-cd-foot-label">Your cost</span>
+            <span class="bp-cd-foot-value">{{ yourCost | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta">
+            <span class="bp-cd-foot-meta-label">Margin ({{ marginPct }}%)</span>
+            <span class="bp-cd-foot-meta-value">{{ marginAmount | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
+            <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
+            <span class="bp-cd-foot-meta-value">{{ vatAmount | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-client">
+            <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
+            <span class="bp-cd-foot-client-value">{{ clientTotal | gbp }}</span>
+          </div>
+        </div>
+        <!-- Empty state — keep the band so the drawer chrome stays
+             stable even when SELECTED is empty. -->
+        <div class="bp-cd-foot" *ngIf="!selected.length">
+          <span class="bp-cd-foot-label">CLIENT TOTAL</span>
+          <span class="bp-cd-foot-total">£0</span>
         </div>
       </ng-template>
     </p-sidebar>
@@ -287,7 +313,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       pointer-events: auto;
     }
 
-    /* Footer — BALLPARK label + total. */
+    /* Footer — BALLPARK label + total (legacy / empty-state shape). */
     .bp-cd-foot {
       display: flex;
       align-items: baseline;
@@ -306,6 +332,65 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-weight: 500;
       color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
+    }
+
+    /* v1.65eg — estimate-style summary footer. Stacks Your cost,
+       Margin, VAT, then CLIENT TOTAL in a theme-soft pill. Mirrors
+       the project Estimate page chrome so the two surfaces feel
+       like the same number presented at different fidelity. */
+    .bp-cd-foot--summary {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+    .bp-cd-foot-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .bp-cd-foot-row--cost {
+      padding-bottom: 10px;
+      border-bottom: 0.5px solid var(--color-border);
+      margin-bottom: 6px;
+    }
+    .bp-cd-foot-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .bp-cd-foot-meta-label,
+    .bp-cd-foot-meta-value {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-foot-client {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 12px 14px;
+      margin-top: 10px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-card);
+    }
+    .bp-cd-foot-client-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-cd-foot-client-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
     }
   `]
 })
@@ -328,6 +413,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       doesn't read as £0 for a fresh project that hasn't set guest
       count yet. */
   private guestCount = 0;
+
+  /** v1.65eg — margin + VAT come from the project row's defaults
+      (which inherit from the agency org). 20%/20% used as a sane
+      fallback if the project hasn't overridden either yet. */
+  marginPct = 20;
+  vatPct = 20;
 
   private sub?: Subscription;
 
@@ -384,6 +475,24 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     return this.selected.reduce((s, pi) => s + this.lineTotal(pi), 0);
   }
 
+  // ── v1.65eg — estimate-style breakdown for the footer ──────────────
+  // Mirrors features/projects/.../estimate.component.ts recalc():
+  //   yourCost   = sum of lineTotals (subtotal of SELECTED rows)
+  //   margin     = yourCost × marginPct/100
+  //   preVat     = yourCost + margin
+  //   vat        = preVat × vatPct/100
+  //   clientTotal= preVat + vat
+  // Contingency is omitted here (the full Estimate page includes it;
+  // the cart drawer is a quick at-a-glance summary).
+  get yourCost():    number { return this.ballparkTotal; }
+  get marginAmount(): number { return this.yourCost * (this.marginPct / 100); }
+  get vatAmount():   number {
+    return (this.yourCost + this.marginAmount) * (this.vatPct / 100);
+  }
+  get clientTotal(): number {
+    return this.yourCost + this.marginAmount + this.vatAmount;
+  }
+
   /** Build the background-image url, walking the fallback chain:
       item.image_url → supplier cover. Returns null when only the colour
       swatch (initial letter) should render. */
@@ -416,6 +525,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     this.guestCount = 0;
     this.projectSvc.getById(this.projectId).subscribe(p => {
       this.guestCount = Number((p as any)?.guest_count) || 0;
+      // v1.65eg — pull margin + VAT defaults off the project row.
+      // Falls back to 20/20 when null (matches the estimate
+      // component's same defaults).
+      this.marginPct = Number((p as any)?.default_margin_pct) || 20;
+      this.vatPct    = Number((p as any)?.default_vat_pct)    || 20;
       this.cdr.markForCheck();
     });
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
