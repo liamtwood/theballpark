@@ -64,6 +64,15 @@ export interface Persona {
       Supplier personas surface their city; agency / admin personas
       can leave it undefined. */
   location?: string;
+  /** v1.65e9 — real seeded user_id from the users table, for the
+      day server-side endpoints want to filter by "this persona's
+      user" (e.g. messages where created_by = userId). Set when the
+      persona has a matching row in users; production users would
+      derive this from session auth. */
+  userId?: string;
+  /** v1.65e9 — email of the persona's user record. Lets server
+      calls that key off user.email find the right row. */
+  email?: string;
 }
 
 /** v1.65dz — seeded persona list mirroring the p0015 mockup. The
@@ -77,6 +86,12 @@ const ORG_ID_WOODLAND   = 'b9025772-1723-4f95-a056-add54eebd100';
 const ORG_ID_BALLPARK   = 'de4258e7-6694-4c76-b548-9ab958b4dda0';
 const ORG_ID_ROCKETFOOD = '5488cde0-ba0d-48a2-a599-d00d04aa655e';
 
+// v1.65e9 — real seeded user ids from server/src/db/seed-v1.65e9-persona-users.js.
+// One user per persona, each pinned to their org.
+const USER_ID_SARAH = 'e261113d-afdd-42bc-b9eb-8076fd2f175a';
+const USER_ID_BETH  = 'a3a577d6-df12-48e8-baad-27b7fed768cb';
+const USER_ID_RYAN  = '6cfbb328-99d8-4e16-87e1-d674a8791bb8';
+
 const PERSONAS: Persona[] = [
   {
     id: 'sarah-mitchell',
@@ -85,6 +100,8 @@ const PERSONAS: Persona[] = [
     orgName: 'Woodland Agency',
     orgType: 'agency',
     orgId: ORG_ID_WOODLAND,
+    userId: USER_ID_SARAH,
+    email: 'sarah@woodland.test',
     subtitle: 'Woodland Agency · Admin',
     role: 'Admin',
     initials: 'SM',
@@ -100,6 +117,8 @@ const PERSONAS: Persona[] = [
     // v1.65e8 — Beth is now assigned to the Ballpark admin org
     // Liam created through the /ballpark-settings/orgs UI.
     orgId: ORG_ID_BALLPARK,
+    userId: USER_ID_BETH,
+    email: 'beth@ballpark.test',
     subtitle: 'Ballpark · Admin',
     role: 'Admin',
     initials: 'BP',
@@ -116,6 +135,8 @@ const PERSONAS: Persona[] = [
     orgName: 'Rocket Food',
     orgType: 'supplier',
     orgId: ORG_ID_ROCKETFOOD,
+    userId: USER_ID_RYAN,
+    email: 'ryan@rocketfood.test',
     subtitle: 'Rocket Food · Admin',
     role: 'Admin',
     initials: 'RF',
