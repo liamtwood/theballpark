@@ -21,6 +21,7 @@ import { ClientService } from '../../../core/services/client.service';
 import { OrgService } from '../../../core/services/org.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
+import { EventDrawerService } from '../../../core/services/event-drawer.service';
 import { CodelistService } from '../../../core/services/codelist.service';
 import {
   MessageItemService, MessageItemRow, MessageItemAction
@@ -358,87 +359,34 @@ interface VendorThread {
               </div>
             </div>
 
-            <!-- v1.65cz (p0013 §1) — three collapsible sections:
-                 Event details / Items / Conversation. Each header is
-                 clickable; chevron reflects state. Default: Event
-                 collapsed, Items expanded, Conversation always-on. -->
-
-            <!-- ── EVENT DETAILS section (p0013 §2) ───────────────── -->
-            <div class="bp-thread-sec" [class.bp-thread-sec--open]="secEventOpen">
-              <button type="button" class="bp-thread-sec-head" (click)="secEventOpen = !secEventOpen">
+            <!-- v1.65dw — Event Details + Items collapsible sections
+                 retired in favour of the existing shared drawers:
+                 EventDrawerService (Event drawer) and CartDrawerService
+                 (Project Items / Cart drawer). The conversation panel
+                 reads cleaner: metadata header → action bar (two
+                 drawer chips) → conversation stream. -->
+            <div class="bp-thread-drawer-bar" *ngIf="activeProject?.id">
+              <button type="button" class="bp-thread-drawer-chip"
+                      (click)="openEventDrawerForThread()">
                 <lucide-icon name="calendar-days" [size]="13"></lucide-icon>
-                <span class="bp-thread-sec-label">Event details</span>
-                <span class="bp-thread-sec-badge" *ngIf="activeProject?.ref">REF {{ activeProject?.ref }}</span>
-                <lucide-icon class="bp-thread-sec-chev"
-                             [name]="secEventOpen ? 'chevron-up' : 'chevron-down'"
-                             [size]="14"></lucide-icon>
+                <span class="bp-thread-drawer-chip-label">Event details</span>
+                <span *ngIf="activeProject?.ref" class="bp-thread-drawer-chip-badge">
+                  REF {{ activeProject?.ref }}
+                </span>
               </button>
-              <div *ngIf="secEventOpen" class="bp-thread-sec-body">
-                <div class="bp-event-card">
-                  <div class="bp-event-card-grid">
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">REF</div>
-                      <div class="bp-event-cell-value">{{ activeProject?.ref || '—' }}</div>
-                    </div>
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">CLIENT</div>
-                      <div class="bp-event-cell-value">{{ activeProject?.client_name || '—' }}</div>
-                    </div>
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">EVENT NAME</div>
-                      <div class="bp-event-cell-value">{{ activeProject?.event_name || activeProject?.name || '—' }}</div>
-                    </div>
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">GUESTS</div>
-                      <div class="bp-event-cell-value">{{ activeProject?.guest_count || '—' }}</div>
-                      <div class="bp-event-cell-sub" *ngIf="activeProject?.guest_count">guests expected</div>
-                    </div>
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">DATE</div>
-                      <div class="bp-event-cell-value">{{ eventDateRange() || '—' }}</div>
-                      <div class="bp-event-cell-sub" *ngIf="eventDurationLabel()">{{ eventDurationLabel() }}</div>
-                    </div>
-                    <div class="bp-event-cell">
-                      <div class="bp-event-cell-label">VENUE</div>
-                      <div class="bp-event-cell-value">{{ activeProject?.venue_name || '—' }}</div>
-                      <div class="bp-event-cell-sub" *ngIf="activeProject?.venue_city">{{ activeProject?.venue_city }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── ITEMS section (p0013 §3 wraps p0011 §1 cards) ──── -->
-            <!-- v1.65cv (p0008 §4.1) — Summary header (item nav).
-                 v1.65cy (p0011 fix) — [compact]="true" hides actions;
-                 click emits (rowClick) → scrollToItem() pulses the
-                 inline copy in the stream. -->
-            <div *ngIf="threadItems.length" class="bp-thread-sec" [class.bp-thread-sec--open]="secItemsOpen">
-              <button type="button" class="bp-thread-sec-head" (click)="secItemsOpen = !secItemsOpen">
+              <button type="button" class="bp-thread-drawer-chip"
+                      *ngIf="threadItems.length"
+                      (click)="openItemsDrawerForThread()">
                 <lucide-icon name="package" [size]="13"></lucide-icon>
-                <span class="bp-thread-sec-label">Items</span>
-                <span class="bp-thread-sec-badge">{{ activeItemsCount() }} ITEM{{ activeItemsCount() === 1 ? '' : 'S' }}</span>
-                <span *ngIf="itemActionCount() > 0" class="bp-thread-sec-action-hint">
+                <span class="bp-thread-drawer-chip-label">Items</span>
+                <span class="bp-thread-drawer-chip-badge">
+                  {{ activeItemsCount() }}
+                </span>
+                <span *ngIf="itemActionCount() > 0"
+                      class="bp-thread-drawer-chip-action">
                   · {{ itemActionCount() }} need action
                 </span>
-                <lucide-icon class="bp-thread-sec-chev"
-                             [name]="secItemsOpen ? 'chevron-up' : 'chevron-down'"
-                             [size]="14"></lucide-icon>
               </button>
-              <div *ngIf="secItemsOpen" class="bp-thread-sec-body bp-thread-sec-body--items">
-                <!-- v1.65dc (p0013 follow-up) — pass [imageUrl] +
-                     [eyebrowOverride] so the card renders the
-                     marketplace list-view shape (real photo + supplier
-                     name eyebrow). compact=true keeps the row as nav. -->
-                <app-message-item-card *ngFor="let it of threadItems"
-                  [item]="toMessageItem(it)"
-                  [viewer]="'agent'"
-                  [compact]="true"
-                  [imageUrl]="it.item_image_url || null"
-                  [eyebrowOverride]="it.supplier_name || it.description || null"
-                  (rowClick)="scrollToItem(it.id)">
-                </app-message-item-card>
-              </div>
             </div>
 
             <!-- ── CONVERSATION section (p0013 §1 + §4) ───────────── -->
@@ -1036,6 +984,63 @@ interface VendorThread {
       padding: 12px 16px;
       flex-shrink: 0;
       display: flex; flex-direction: column; gap: 4px;
+    }
+
+    /* v1.65dw — drawer-chip bar that sits between the metadata header
+       and the conversation stream. Replaces the Event + Items
+       collapsible sections; each chip opens the corresponding shared
+       drawer (EventDrawerService / CartDrawerService).
+       Same hairline-divider language as the mail header above so the
+       transition reads as one continuous panel chrome. */
+    .bp-thread-drawer-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+      flex-shrink: 0;
+    }
+    .bp-thread-drawer-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .bp-thread-drawer-chip:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+      background: var(--theme-soft);
+    }
+    .bp-thread-drawer-chip lucide-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+    }
+    .bp-thread-drawer-chip-label {
+      font-weight: 500;
+    }
+    .bp-thread-drawer-chip-badge {
+      padding: 2px 6px;
+      background: var(--theme-bg);
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.04em;
+    }
+    .bp-thread-drawer-chip-action {
+      font-size: 11px;
+      color: var(--color-action);
+      font-weight: 500;
     }
     .bp-thread-mail-row {
       display: grid;
@@ -1705,8 +1710,10 @@ export class MessagesInboxComponent implements OnInit {
   /** v1.65cz (p0013 §1) — collapsible section state. Defaults per
       p0013 §1: Event collapsed, Items expanded, Conversation always
       visible (can't fully collapse). Resets on thread switch. */
-  secEventOpen = false;
-  secItemsOpen = true;
+  /** v1.65dw — secEventOpen + secItemsOpen retired (Event Details +
+      Items now open in their own shared drawers via the chip bar
+      below the metadata header). secConvOpen kept for the
+      Conversation section header chevron. */
   secConvOpen  = true;
 
   constructor(
@@ -1718,6 +1725,7 @@ export class MessagesInboxComponent implements OnInit {
     private orgSvc: OrgService,
     private shellCtx: ShellContextService,
     private cartDrawerSvc: CartDrawerService,
+    private eventDrawerSvc: EventDrawerService,
     private codelistSvc: CodelistService,
     private messageItemSvc: MessageItemService,
     private router: Router,
@@ -2180,14 +2188,40 @@ export class MessagesInboxComponent implements OnInit {
     this.router.navigate(['/projects']);
   }
 
+  /** v1.65dw — open the shared EventDrawer for the active thread's
+      project. Replaces the inline "Event details" collapsible section
+      that used to live in the conversation panel.
+
+      Falls back through activeProject.id → boundProjectId →
+      selectedProjectId so the chip works whether the inbox is mounted
+      as a project tab or in global mode. */
+  openEventDrawerForThread(): void {
+    const pid = (this.activeProject as any)?.id
+              || this.boundProjectId
+              || this.selectedProjectId;
+    if (!pid) return;
+    this.eventDrawerSvc.open(pid);
+  }
+
+  /** v1.65dw — open the shared CartDrawer (Project Items) for the
+      active thread's project. Replaces the inline "Items" collapsible
+      section. Same projectId fallback chain as the event drawer. */
+  openItemsDrawerForThread(): void {
+    const pid = (this.activeProject as any)?.id
+              || this.boundProjectId
+              || this.selectedProjectId;
+    if (!pid) return;
+    this.cartDrawerSvc.open(pid);
+  }
+
   openThread(t: VendorThread) {
     this.activeThread = t;
     this.lastDate = '';
     t.unread = false;
     this.threadItems = [];
-    // v1.65cz (p0013 §1) — reset section accordion state per thread.
-    this.secEventOpen = false;
-    this.secItemsOpen = true;
+    // v1.65cz (p0013 §1) → v1.65dw — accordion state reset trimmed
+    // to just the Conversation header (Event + Items now open in
+    // their own shared drawers via the chip bar).
     this.secConvOpen  = true;
 
     // v1.65cz (p0013 §2) — load the project for the Event card. Skip
