@@ -453,11 +453,11 @@ interface VendorThread {
           </ng-container>
 
           <ng-container *ngIf="activeThread">
-            <!-- v1.65db (p0013 header refit) — 3-row × 2-col grid header:
-                   col 1: From / To / Subject
-                   col 2: First / Last / Status
-                 Back chevron dropped — closing the conversation is
-                 implicit (clicking another thread row in the list). -->
+            <!-- v1.65db (p0013 header refit) — envelope-style header.
+                 v1.65dc — Subject promoted to its own full-width row;
+                 a new 4th row carries Next + Status on the same line
+                 so the next_action_by clock the old strip carried
+                 isn't lost. -->
             <div class="bp-thread-mail-head">
               <div class="bp-thread-mail-row">
                 <span class="bp-thread-mail-label">From</span>
@@ -471,9 +471,19 @@ interface VendorThread {
                 <span class="bp-thread-mail-label">Last</span>
                 <span class="bp-thread-mail-value">{{ lastMessageAt() ? preciseDate(lastMessageAt()) : '—' }}</span>
               </div>
-              <div class="bp-thread-mail-row">
+              <div class="bp-thread-mail-row bp-thread-mail-row--subject">
                 <span class="bp-thread-mail-label">Subject</span>
                 <span class="bp-thread-mail-value bp-thread-mail-subject">{{ threadSubject() }}</span>
+              </div>
+              <div class="bp-thread-mail-row">
+                <span class="bp-thread-mail-label">Next</span>
+                <span class="bp-thread-mail-value">
+                  <span *ngIf="activeThread.nextActionBy"
+                        [class.bp-thread-mail-next--overdue]="isOverdue(activeThread.nextActionBy)">
+                    {{ preciseDate(activeThread.nextActionBy) }}
+                  </span>
+                  <span *ngIf="!activeThread.nextActionBy">—</span>
+                </span>
                 <span class="bp-thread-mail-label">Status</span>
                 <span class="bp-thread-mail-value">
                   <span *ngIf="aggregateStatus()"
@@ -554,10 +564,16 @@ interface VendorThread {
                              [size]="14"></lucide-icon>
               </button>
               <div *ngIf="secItemsOpen" class="bp-thread-sec-body bp-thread-sec-body--items">
+                <!-- v1.65dc (p0013 follow-up) — pass [imageUrl] +
+                     [eyebrowOverride] so the card renders the
+                     marketplace list-view shape (real photo + supplier
+                     name eyebrow). compact=true keeps the row as nav. -->
                 <app-message-item-card *ngFor="let it of threadItems"
                   [item]="toMessageItem(it)"
                   [viewer]="'agent'"
                   [compact]="true"
+                  [imageUrl]="it.item_image_url || null"
+                  [eyebrowOverride]="it.supplier_name || it.description || null"
                   (rowClick)="scrollToItem(it.id)">
                 </app-message-item-card>
               </div>
@@ -606,6 +622,8 @@ interface VendorThread {
                     <app-message-item-card
                       [item]="toMessageItem(it)"
                       [viewer]="'agent'"
+                      [imageUrl]="it.item_image_url || null"
+                      [eyebrowOverride]="it.supplier_name || it.description || null"
                       [declineReasons]="declineReasonsFor(it)"
                       (action)="onItemAction(it, $event)">
                     </app-message-item-card>
@@ -997,6 +1015,16 @@ interface VendorThread {
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .bp-thread-mail-subject {
+      font-weight: 600;
+    }
+    /* v1.65dc — Subject row spans full width; only label + value
+       columns exist in this variant. */
+    .bp-thread-mail-row--subject {
+      grid-template-columns: 60px minmax(0, 1fr);
+    }
+    /* Next clock overdue treatment — matches the inbox row's red dot. */
+    .bp-thread-mail-next--overdue {
+      color: var(--color-danger);
       font-weight: 600;
     }
     @media (max-width: 720px) {

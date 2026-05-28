@@ -140,11 +140,27 @@ function aggregateStatus(items, viewer) {
   return 'waiting';
 }
 
-/** Fetch all message_items for a message, ordered for display. */
+/** Fetch all message_items for a message, ordered for display.
+    v1.65dc (p0013 follow-up) — JOIN items + orgs so the conversation
+    surface can render the catalogue item's image_url + supplier_name
+    in the marketplace-card shape (mirrors project-item.service which
+    already does the same join). Columns prefixed with `item_` /
+    `supplier_` are pulled-through; the existing message_items columns
+    stay untouched. */
 async function getByMessage(messageId, { executor = null } = {}) {
   const db = executor || pool;
   const r = await db.query(
-    `SELECT * FROM message_items WHERE message_id = $1 ORDER BY created_at ASC`,
+    `SELECT mi.*,
+            i.image_url       AS item_image_url,
+            i.image_display   AS item_image_display,
+            o.id              AS supplier_org_id,
+            o.name            AS supplier_name,
+            o.logo_url        AS supplier_logo_url
+       FROM message_items mi
+       LEFT JOIN items i ON i.id = mi.item_id
+       LEFT JOIN orgs  o ON o.id = i.org_id
+      WHERE mi.message_id = $1
+      ORDER BY mi.created_at ASC`,
     [messageId]
   );
   return r.rows;

@@ -37,6 +37,13 @@ export interface MessageItemRow {
   metadata?: any;
   created_at: string;
   updated_at?: string;
+  // v1.65dc — joined columns from items + orgs, only present when the
+  // catalogue item still exists.
+  item_image_url?: string | null;
+  item_image_display?: string | null;
+  supplier_org_id?: string | null;
+  supplier_name?: string | null;
+  supplier_logo_url?: string | null;
 }
 
 export interface MessageItemAction {
