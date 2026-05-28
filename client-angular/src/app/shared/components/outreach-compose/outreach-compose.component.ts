@@ -838,21 +838,52 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     this.sending = true;
     this.cdr.markForCheck();
 
-    const requirement = (r.item.isNew || !r.item.item_id)
-      ? {
-          kind: 'new',
-          name: r.item.name,
-          description: [this.oneLiner, this.details].filter(t => t && t.trim()).join('\n\n')
-            || r.item.description || '',
-          estimated_price: r.item.price ?? 0
+    // v1.65eo — cart-launched outreaches send EACH cart row + EACH
+    // ad-hoc ask as its own requirement, so the server creates one
+    // message_item per ask. That's what the supplier needs in order
+    // to accept/decline/adjust each line independently in the
+    // conversation panel.
+    //
+    // Legacy per-item flow (Brief tab → recommend) still sends a
+    // single requirement.
+    let requirements: any[];
+    if (this.hasCartItems) {
+      const cartReqs = this.cartItems.map(it => {
+        if (it.item_id) {
+          return { kind: 'matched', item_id: it.item_id };
         }
-      : { kind: 'matched', item_id: r.item.item_id };
+        return {
+          kind: 'new',
+          name: it.name,
+          description: it.description || '',
+          estimated_price: Number(it.base_price) || 0,
+        };
+      });
+      const adhocReqs = this.adhocItems.map(a => ({
+        kind: 'new',
+        name: a.name,
+        description: '',
+        estimated_price: 0,
+      }));
+      requirements = [...cartReqs, ...adhocReqs];
+    } else {
+      const single = (r.item.isNew || !r.item.item_id)
+        ? {
+            kind: 'new',
+            name: r.item.name,
+            description: [this.oneLiner, this.details].filter(t => t && t.trim()).join('\n\n')
+              || r.item.description || '',
+            estimated_price: r.item.price ?? 0
+          }
+        : { kind: 'matched', item_id: r.item.item_id };
+      requirements = [single];
+    }
 
     this.api.post<any>('/taxonomy/request-quotes', {
       project_id: r.projectId,
       category_id: r.categoryId,
       project_category_id: r.projectCategoryId || null,
-      requirements: [requirement],
+      requirements,
       supplier_ids: [...this.selected],
       subject: this.subject,
       body: this.emailBody
