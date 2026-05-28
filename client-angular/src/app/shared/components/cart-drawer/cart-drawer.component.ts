@@ -103,6 +103,9 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         </ng-template>
 
         <!-- WISHLIST ----------------------------------------------- -->
+        <!-- v1.65es — agent-only section. Suppliers don't need the
+             wishlist concept; they're reviewing a delivered brief. -->
+        <ng-container *ngIf="!isSupplier">
         <div class="bp-field-label bp-cd-eyebrow">WISHLIST</div>
         <ng-container *ngIf="wishlist.length; else noWl">
           <div *ngFor="let pi of wishlist" class="bp-list-row bp-cd-row bp-cd-row--wishlist">
@@ -138,12 +141,16 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         <ng-template #noWl>
           <div class="bp-cd-empty">No items yet — heart an item to save it here.</div>
         </ng-template>
+        </ng-container>
 
         <!-- v1.65ep — ADDITIONAL ASKS: title-only "create" rows the
              agent adds in-cart. They aren't project_items yet — the
              outreach send promotes them into items rows (pending) +
              links them as message_items per the existing Create path
-             in taxonomy.requestQuotes. -->
+             in taxonomy.requestQuotes.
+             v1.65es — agent-only. Suppliers see ad-hoc asks already
+             materialised as SELECTED rows (one per message_item). -->
+        <ng-container *ngIf="!isSupplier">
         <div class="bp-field-label bp-cd-eyebrow">ADDITIONAL ASKS</div>
         <ng-container *ngIf="adhocAsks.length; else noAsks">
           <div *ngFor="let a of adhocAsks; let i = index"
@@ -185,16 +192,41 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             Add
           </button>
         </div>
+        </ng-container>
       </div>
 
       <ng-template pTemplate="footer">
+        <!-- v1.65es — supplier-side footer. Shows the per-head total
+             prominently (the only number that matters to the supplier
+             at this stage) and a CTA into the supplier action train
+             (Phase 2). Margin is hidden — that's agency
+             bookkeeping; the supplier sees what THEY would charge. -->
+        <div class="bp-cd-foot bp-cd-foot--supplier" *ngIf="isSupplier && selected.length">
+          <div class="bp-cd-foot-row bp-cd-foot-row--cost">
+            <span class="bp-cd-foot-label">Cost per head</span>
+            <span class="bp-cd-foot-value">{{ perHeadTotal | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="guestCountValue > 0">
+            <span class="bp-cd-foot-meta-label">× {{ guestCountValue }} guests</span>
+            <span class="bp-cd-foot-meta-value">{{ yourCost | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
+            <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
+            <span class="bp-cd-foot-meta-value">{{ vatOnCost | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-client">
+            <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
+            <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp }}</span>
+          </div>
+        </div>
+
         <!-- v1.65eg — estimate-style summary. Matches the layout on
              the project Estimate tab: Your cost / Margin / VAT /
              CLIENT TOTAL (highlighted in theme-soft). Skips the
              contingency line that the full estimate carries — the
              cart drawer is a quick "what's this going to cost"
              glance, not the full breakdown. -->
-        <div class="bp-cd-foot bp-cd-foot--summary" *ngIf="selected.length">
+        <div class="bp-cd-foot bp-cd-foot--summary" *ngIf="!isSupplier && selected.length">
           <div class="bp-cd-foot-row bp-cd-foot-row--cost">
             <span class="bp-cd-foot-label">Your cost</span>
             <span class="bp-cd-foot-value">{{ yourCost | gbp }}</span>
@@ -214,9 +246,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
 
           <!-- v1.65eh — budget headroom card. Same shape + class
                naming as the Estimate page's bp-est-budget-card.
-               Only renders when project.budget is set (>0). -->
+               Only renders when project.budget is set (>0).
+               v1.65es — agency-only; suppliers don't see the
+               agency's budget. -->
           <div class="bp-cd-budget-card"
-               *ngIf="budget > 0"
+               *ngIf="!isSupplier && budget > 0"
                [class.over]="isOverBudget">
             <div class="bp-cd-budget-header">
               <lucide-icon [name]="isOverBudget ? 'alert-triangle' : 'check-square'" [size]="16"></lucide-icon>
@@ -238,13 +272,29 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
 
           <!-- v1.65ek — Send brief CTA. Launches the 4-step outreach
                train (Suppliers → Requirements → Review → Send)
-               pre-populated from the cart's items + supplier set. -->
-          <button type="button"
+               pre-populated from the cart's items + supplier set.
+               v1.65es — agency-only. Suppliers get a "Review &
+               respond" CTA wired in Phase 2. -->
+          <button *ngIf="!isSupplier"
+                  type="button"
                   class="bp-cd-send-cta"
                   [disabled]="!canSendBrief"
                   (click)="sendBrief()">
             <lucide-icon name="send" [size]="14"></lucide-icon>
             <span>Send brief to suppliers</span>
+            <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
+          </button>
+
+          <!-- v1.65es — Supplier action train trigger (Phase 1
+               placeholder; Phase 2 wires it to a multi-step
+               accept / adjust / summary flow). -->
+          <button *ngIf="isSupplier"
+                  type="button"
+                  class="bp-cd-send-cta"
+                  disabled
+                  title="Coming in Phase 2 — accept / adjust each item, then summary">
+            <lucide-icon name="send" [size]="14"></lucide-icon>
+            <span>Review &amp; respond</span>
             <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
           </button>
         </div>
@@ -472,8 +522,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     /* v1.65eg — estimate-style summary footer. Stacks Your cost,
        Margin, VAT, then CLIENT TOTAL in a theme-soft pill. Mirrors
        the project Estimate page chrome so the two surfaces feel
-       like the same number presented at different fidelity. */
-    .bp-cd-foot--summary {
+       like the same number presented at different fidelity.
+       v1.65es — same shape for the supplier variant (--supplier).
+       Difference is the row contents, not the chrome. */
+    .bp-cd-foot--summary,
+    .bp-cd-foot--supplier {
       flex-direction: column;
       align-items: stretch;
       gap: 0;
@@ -689,6 +742,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       set, load() skips the project_items fetch and renders these
       directly. */
   private preRows: CartDrawerRow[] | null = null;
+  /** v1.65es — viewer side. 'agent' = full agency chrome; 'supplier'
+      strips WISHLIST + ADDITIONAL ASKS, hides margin in the summary,
+      swaps the Send Brief CTA for the supplier action train trigger. */
+  viewer: 'agent' | 'supplier' = 'agent';
+  get isSupplier(): boolean { return this.viewer === 'supplier'; }
 
   /** v1.65eh — project.budget drives the headroom indicator below
       the CLIENT TOTAL. 0 means "no budget set" and the card hides
@@ -726,6 +784,9 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // intersection. When set, load() short-circuits the
       // project_items fetch.
       this.preRows = opts.rows || null;
+      // v1.65es — viewer side. Defaults to 'agent' so any existing
+      // caller that doesn't set it keeps the full agency chrome.
+      this.viewer = opts.viewer || 'agent';
       if (req) this.load();
       this.cdr.markForCheck();
     });
@@ -795,6 +856,23 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   }
   get clientTotal(): number {
     return this.yourCost + this.marginAmount + this.vatAmount;
+  }
+
+  // ── v1.65es — supplier-side derived totals ────────────────────────
+  // Margin is excluded from the supplier view (it's agency
+  // bookkeeping). The supplier sees their own cost, multiplied by
+  // guests for per-attendee units, then VAT, then client total.
+  /** Sum of base_prices across all rows — the per-head rate, NOT
+      multiplied by guest count. For the demo: £28 + £85 + £0 + £0
+      = £113. */
+  get perHeadTotal(): number {
+    return this.selected.reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+  }
+  get vatOnCost(): number {
+    return this.yourCost * (this.vatPct / 100);
+  }
+  get supplierClientTotal(): number {
+    return this.yourCost + this.vatOnCost;
   }
 
   // ── v1.65eh — budget headroom (mirrors estimate.component recalc) ─

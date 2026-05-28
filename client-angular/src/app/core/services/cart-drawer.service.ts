@@ -38,6 +38,13 @@ export interface CartDrawerOptions {
       happens to live in the agency's project cart. Each row is a
       simplified shape carrying enough to render + show the price. */
   rows?: CartDrawerRow[];
+  /** v1.65es — viewer side. 'agent' (default) shows the full
+      agency-facing chrome: WISHLIST, ADDITIONAL ASKS, margin in
+      the summary footer, Send Brief CTA. 'supplier' tightens the
+      view down to what Ryan needs: just the cart rows, cost per
+      head, VAT (no margin — that's the agency's bookkeeping), and
+      a forward CTA into the supplier action train. */
+  viewer?: 'agent' | 'supplier';
 }
 
 /** v1.65er — simplified row shape for the inbox "Cart" view. Mirrors

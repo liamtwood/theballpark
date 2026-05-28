@@ -2322,6 +2322,12 @@ export class MessagesInboxComponent implements OnInit {
       contextLabel: 'CART',
       contextTitle: 'Cart in this conversation',
       rows,
+      // v1.65es — the inbox Cart chip is the supplier's view of the
+      // brief. Hides agent-only chrome (WISHLIST, ADDITIONAL ASKS,
+      // margin) and surfaces the per-head total + supplier-side CTA.
+      // Map inbox viewer ('agency'|'supplier') to cart-drawer viewer
+      // ('agent'|'supplier').
+      viewer: this.viewer === 'supplier' ? 'supplier' : 'agent',
     });
   }
 
