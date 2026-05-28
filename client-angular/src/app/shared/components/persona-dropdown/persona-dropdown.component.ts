@@ -139,10 +139,11 @@ export class PersonaDropdownComponent {
     if (p.kind === 'agency') {
       this.router.navigateByUrl('/');
     } else if (p.kind === 'admin') {
-      // v1.65e2 — Beth lands on /admin-home (was /ballpark-settings).
-      // The admin tools panel is now reached via a Quick Action link
-      // on the new home page; gives Beth a calmer landing surface.
-      this.router.navigateByUrl('/admin-home');
+      // v1.65e2 → v1.65e4 — Beth lands on /ballpark-settings (which
+      // already has the 5 sub-tabs she needs: Categories / Marketplace
+      // / Orgs / Early Access / Feedback). The /admin-home placeholder
+      // that briefly lived between is retired.
+      this.router.navigateByUrl('/ballpark-settings');
     } else if (p.kind === 'supplier') {
       const sid = p.supplierOrgId;
       if (sid) {

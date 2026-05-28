@@ -37,67 +37,33 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
-        <!-- v1.65dz (p0015) — agency + admin persona link set. -->
-        <ng-container *ngIf="personaSvc.isAgency() || personaSvc.isAdmin()">
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
-            <lucide-icon name="house" [size]="14"></lucide-icon> Home
-          </a>
-          <a *ngIf="isAdmin"
-             routerLink="/ballpark-settings" routerLinkActive="active"
-             class="bp-nav-link bp-nav-link-admin">
-            <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
-          </a>
-          <!-- v1.65at — Welcome link restored. Opens the public /welcome
-               deck in a new tab — testing aid for the marketing surface. -->
-          <a href="/welcome" target="_blank" rel="noopener"
-             class="bp-nav-link bp-nav-link-welcome"
-             title="Open the public Welcome page in a new tab">
-            <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
-          </a>
-        </ng-container>
+        <!-- v1.65e4 (p0015) — top-nav unified across personas: just
+             Home + Settings as text links. The supplier's Front /
+             Store / Inbox tabs live INSIDE the home page (hero tab
+             band on /suppliers/:id); Beth's Categories / Marketplace
+             / Orgs / Early Access / Feedback tabs live inside her
+             home (/ballpark-settings hero tab band).
+             Home routes per persona:
+               agency   → /
+               admin    → /ballpark-settings
+               supplier → /suppliers/{supplierOrgId}?tab=home -->
+        <a [routerLink]="personaHomeRoute"
+           [queryParams]="personaHomeQueryParams"
+           routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact:true}"
+           class="bp-nav-link">
+          <lucide-icon name="house" [size]="14"></lucide-icon> Home
+        </a>
+        <a routerLink="/settings"
+           routerLinkActive="active"
+           class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+        </a>
 
-        <!-- v1.65dz → v1.65e1 (p0015) — supplier persona link set.
-             All four tabs route to the SAME /suppliers/:id page with
-             different ?tab= query params; supplier-detail reads the
-             param on init and renders the matching tab content.
-             Tracking active state via queryParamsHandling so the
-             nav link reflects the live tab. -->
-        <ng-container *ngIf="personaSvc.isSupplier() && supplierPersonaOrgId">
-          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
-             [queryParams]="{ tab: 'home' }"
-             class="bp-nav-link">
-            <lucide-icon name="house" [size]="14"></lucide-icon> Home
-          </a>
-          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
-             [queryParams]="{ tab: 'front' }"
-             class="bp-nav-link">
-            <lucide-icon name="store" [size]="14"></lucide-icon> Front
-          </a>
-          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
-             [queryParams]="{ tab: 'store' }"
-             class="bp-nav-link">
-            <lucide-icon name="package" [size]="14"></lucide-icon> Store
-          </a>
-          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
-             [queryParams]="{ tab: 'inbox' }"
-             class="bp-nav-link">
-            <lucide-icon name="inbox" [size]="14"></lucide-icon> Inbox
-          </a>
-        </ng-container>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
-        <!-- v1.65e2 (p0015) — Settings cog restored. Routes to
-             /settings (org / users / subscription sub-tabs). Visible
-             for every persona — each persona manages their OWN org's
-             settings on the same surface. -->
-        <a routerLink="/settings"
-           routerLinkActive="active"
-           class="bp-mode-btn"
-           title="Settings">
-          <lucide-icon name="settings" [size]="14"></lucide-icon>
-        </a>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
           <lucide-icon [name]="modeIcon" [size]="14"></lucide-icon>
         </button>
@@ -365,6 +331,25 @@ export class TopNavComponent implements OnInit, OnDestroy {
   get supplierPersonaOrgId(): string {
     const p = this.personaSvc.active;
     return p.kind === 'supplier' ? (p.supplierOrgId || '') : '';
+  }
+
+  /** v1.65e4 (p0015) — persona-aware Home link. The top-nav has one
+      "Home" item that routes to the active persona's landing surface;
+      each persona's sub-navigation (supplier tabs, admin tabs) lives
+      INSIDE that landing page, not as separate top-nav items. */
+  get personaHomeRoute(): any[] {
+    const p = this.personaSvc.active;
+    if (p.kind === 'supplier' && p.supplierOrgId) {
+      return ['/suppliers', p.supplierOrgId];
+    }
+    if (p.kind === 'admin') return ['/ballpark-settings'];
+    return ['/'];
+  }
+
+  /** Companion query-params for the persona Home link — only the
+      supplier persona needs a tab= param to land on the Home tab. */
+  get personaHomeQueryParams(): any {
+    return this.personaSvc.isSupplier() ? { tab: 'home' } : {};
   }
 
   toggleConfigStrip() { this.configStrip.toggle(); }
