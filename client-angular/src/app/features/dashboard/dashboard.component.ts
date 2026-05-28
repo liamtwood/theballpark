@@ -833,14 +833,24 @@ type DashTab = 'projects';
     /* v1.65dj — section header: left-justified flow (icon → title →
        trailing actions) with a hairline divider underneath that spans
        the card's full width. Negative side margins pull the divider
-       edge-to-edge inside the card's --18px padding. */
+       edge-to-edge inside the card's --18px padding.
+       v1.65dk — !important justify-content:flex-start to override the
+       legacy global rule (was space-between, which pushed the title
+       away from the icon on sections without a trailing element).
+       Trailing buttons / count badges get margin-left:auto to flow
+       to the right. */
     .bp-section-header {
       display: flex; align-items: center; gap: 8px;
+      justify-content: flex-start !important;
       padding-bottom: 10px;
       margin: 0 -18px 14px;
       padding-left: 18px;
       padding-right: 18px;
       border-bottom: var(--border-hairline);
+    }
+    .bp-section-header > .bp-section-new-btn,
+    .bp-section-header > .bp-section-chev {
+      margin-left: auto;
     }
     /* Collapsible variant — header IS the card content when closed,
        so the divider becomes the card's bottom edge naturally. Same
