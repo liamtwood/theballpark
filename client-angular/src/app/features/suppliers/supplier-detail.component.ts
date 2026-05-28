@@ -983,6 +983,15 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     // (rare — most items have a leaf). The previous version only looked
     // at category_id which is why a supplier with five Catering subcats
     // surfaced as a single "Catering" card.
+    //
+    // v1.65do — subcategory card image now uses the first item's
+    // image_url (from THIS supplier's catalogue), not the category's
+    // own cover. Reasoning: catalogue covers are generic stock; an
+    // item photo shows the supplier's actual work in that subcat.
+    // Order matters — catalogueItems is the API's natural sort, so
+    // the "first item" is whichever the supplier service surfaced
+    // first. Fallback chain: item.image_url → category.cover_image_url
+    // → initial-letter tile (handled in the template).
     const subMap: Record<string, CategoryInfo> = {};
     for (const item of this.catalogueItems) {
       const id = item.subcategory_id || item.category_id;
@@ -992,7 +1001,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         subMap[id] = {
           id,
           name: cat?.name || item.category_name || 'Other',
-          cover_image_url: cat?.cover_image_url,
+          // Prefer the first item's image; fall back to the category cover.
+          cover_image_url: item.image_url || cat?.cover_image_url,
           icon_name: cat?.icon_name,
           icon_color: cat?.icon_color,
           tagline: cat?.tagline,
@@ -1000,6 +1010,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
           parent_id: cat?.parent_id,
           count: 0
         };
+      } else if (!subMap[id].cover_image_url && item.image_url) {
+        // First item didn't have an image but a later item does —
+        // adopt it so the card isn't stuck on the initial-letter
+        // fallback when an image exists somewhere in the subcat.
+        subMap[id].cover_image_url = item.image_url;
       }
       subMap[id].count = (subMap[id].count || 0) + 1;
     }
