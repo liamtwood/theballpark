@@ -140,31 +140,10 @@ interface VendorThread {
           </app-category-circles>
         </div>
 
-        <!-- v1.65aj (p0001) — SEARCH section inside the strip. Pulled
-             out of the sidebar so Messages and Marketplace share the
-             same layout.
-             v1.65cb — accent-coloured category-scope dropdown added
-             on the left of the search row, mirroring the Marketplace
-             "All ▾" chip. Bound to activeFolder so it stays in sync
-             with the category circles. -->
-        <div class="bp-search-panel">
-          <div class="bp-search-row">
-            <p-dropdown *ngIf="folderDropdownOptions.length > 1"
-                        [options]="folderDropdownOptions"
-                        [ngModel]="activeFolder"
-                        (onChange)="onFolderDropdownChange($event.value)"
-                        optionLabel="name" optionValue="id"
-                        styleClass="bp-strip-search-dd"
-                        appendTo="body"
-                        placeholder="All"></p-dropdown>
-            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-            <input pInputText type="text"
-                   [(ngModel)]="searchTerm"
-                   (ngModelChange)="onSearchChange()"
-                   placeholder="Search threads, suppliers, messages…"
-                   class="bp-search-input"/>
-          </div>
-        </div>
+        <!-- v1.65dt (p0015) — search bar dropped. The thread list is
+             short enough to scan; supplier filter + status filter in
+             the left rail are enough to narrow. Folder dropdown went
+             with it (it duplicated the category circles above). -->
       </div><!-- /.bp-browse-strip -->
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
@@ -235,26 +214,9 @@ interface VendorThread {
               {{ filteredThreads().length }}
               {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
             </span>
-            <div class="bp-view-toggle">
-              <button type="button" class="bp-view-btn"
-                      [class.active]="activeView === 'list'"
-                      title="List"
-                      (click)="activeView = 'list'; cdr.detectChanges()">
-                <lucide-icon name="list" [size]="14"></lucide-icon>
-              </button>
-              <button type="button" class="bp-view-btn"
-                      [class.active]="activeView === 'card'"
-                      title="Cards"
-                      (click)="activeView = 'card'; cdr.detectChanges()">
-                <lucide-icon name="layout-grid" [size]="14"></lucide-icon>
-              </button>
-              <button type="button" class="bp-view-btn"
-                      [class.active]="activeView === 'table'"
-                      title="Table"
-                      (click)="activeView = 'table'; cdr.detectChanges()">
-                <lucide-icon name="table" [size]="14"></lucide-icon>
-              </button>
-            </div>
+            <!-- v1.65dt (p0015) — list / card / table view toggle
+                 dropped. The card and table variants weren't pulling
+                 weight (same data, just rearranged); list is canonical. -->
           </div>
 
           <div class="bp-cat-main-body">
@@ -262,47 +224,40 @@ interface VendorThread {
                filter rail across the page now. -->
 
           <!-- Empty state — v1.65cr (p0006).
-               Three branches:
+               v1.65dt (p0015) — search-active branch dropped (search
+               bar is gone). Two branches now:
                  (a) no project bound + no project selected: prompt to
                      pick a project. Global-inbox mode only.
                  (b) project context but no threads: "No replies yet"
                      with a "Go to cart" CTA pointing back to the
-                     Marketplace cart (email-launch lives there now).
-                 (c) search active with no hits: the existing "No
-                     threads match …" copy stays as-is. -->
+                     Marketplace cart (email-launch lives there now). -->
           <div *ngIf="filteredThreads().length === 0" class="bp-msg-empty">
-            <ng-container *ngIf="!selectedProjectId && !boundProjectId; else projectEmpty">
+            <ng-container *ngIf="!selectedProjectId && !boundProjectId; else noReplies">
               <lucide-icon name="inbox" [size]="32"></lucide-icon>
               <p>Select a project or open one from the dashboard.</p>
             </ng-container>
-            <ng-template #projectEmpty>
-              <ng-container *ngIf="searchTerm; else noReplies">
-                <lucide-icon name="search-x" [size]="32"></lucide-icon>
-                <p>No threads match "{{ searchTerm }}".</p>
-              </ng-container>
-              <ng-template #noReplies>
-                <div class="bp-msg-empty-icon">
-                  <lucide-icon name="inbox" [size]="28"></lucide-icon>
-                </div>
-                <div class="bp-msg-empty-title">No replies yet</div>
-                <div class="bp-msg-empty-sub">
-                  Emails you send from your cart will land here as supplier replies arrive.
-                </div>
-                <button type="button" class="bp-msg-empty-cta" (click)="openCart()">
-                  <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
-                  Go to cart
-                </button>
-              </ng-template>
+            <ng-template #noReplies>
+              <div class="bp-msg-empty-icon">
+                <lucide-icon name="inbox" [size]="28"></lucide-icon>
+              </div>
+              <div class="bp-msg-empty-title">No replies yet</div>
+              <div class="bp-msg-empty-sub">
+                Emails you send from your cart will land here as supplier replies arrive.
+              </div>
+              <button type="button" class="bp-msg-empty-cta" (click)="openCart()">
+                <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
+                Go to cart
+              </button>
             </ng-template>
           </div>
 
-          <!-- ── LIST VIEW — v1.65cr (p0006).
-               New thread-card shape: 40px rounded-square logo, supplier
+          <!-- ── THREAD LIST — v1.65cr (p0006). v1.65dt (p0015) — view
+               toggle dropped; list is the only render path now.
+               Thread-card shape: 40px rounded-square logo, supplier
                name + time on top, subject (bold when unread) on the
                second row, status badge + category on the meta row, and
-               an unread dot trailing. No preview snippet, no duplicate
-               supplier in the meta row. -->
-          <div *ngIf="activeView === 'list' && filteredThreads().length > 0"
+               an unread dot trailing. -->
+          <div *ngIf="filteredThreads().length > 0"
                class="bp-msg-list">
             <div *ngFor="let t of filteredThreads()"
                  class="bp-msg-thread-card"
@@ -360,79 +315,8 @@ interface VendorThread {
             </div>
           </div>
 
-          <!-- ── CARD VIEW — v1.65cr (p0006).
-               Larger variant of the thread card: 48px logo, same
-               supplier + time + subject + meta structure, subject
-               bold on unread. -->
-          <div *ngIf="activeView === 'card' && filteredThreads().length > 0"
-               class="bp-msg-cards">
-            <div *ngFor="let t of filteredThreads()"
-                 class="bp-msg-thread-card bp-msg-thread-card--tile"
-                 [class.bp-msg-thread-card--selected]="activeThread?.key === t.key"
-                 [class.bp-msg-thread-card--unread]="t.unread"
-                 (click)="openThread(t)">
-              <div class="bp-msg-thread-logo bp-msg-thread-logo--lg"
-                   [class.bp-msg-thread-logo--img]="!!t.supplierLogoUrl">
-                <img *ngIf="t.supplierLogoUrl" [src]="t.supplierLogoUrl" [alt]="t.supplierName"/>
-                <span *ngIf="!t.supplierLogoUrl">{{ initialsFor(t.supplierName) }}</span>
-              </div>
-              <div class="bp-msg-thread-body">
-                <div class="bp-msg-thread-top">
-                  <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
-                  <span class="bp-msg-thread-time">{{ fmtTime(t.latestMsg.created_at) }}</span>
-                </div>
-                <div class="bp-msg-thread-subject">{{ subjectFor(t) }}</div>
-                <div class="bp-msg-thread-meta">
-                  <span *ngIf="t.status && t.status !== 'all'"
-                        class="bp-msg-tbadge"
-                        [ngClass]="'bp-badge-' + statusClass(t.status)">
-                    {{ statusLabel(t.status) }}
-                  </span>
-                  <span class="bp-msg-thread-cat">{{ t.categoryName }}</span>
-                </div>
-              </div>
-              <span *ngIf="t.unread" class="bp-msg-thread-dot"></span>
-            </div>
-          </div>
-
-          <!-- ── TABLE VIEW — v1.65cr (p0006).
-               Columns: Supplier · Subject · Status · Category · Time.
-               Subject cell uses subjectFor(t) and bolds when unread —
-               same read-state cue as the list/card views. The previous
-               "Last message" preview column was dropped per the new
-               subject-led card design. -->
-          <div *ngIf="activeView === 'table' && filteredThreads().length > 0"
-               class="bp-msg-table-wrap">
-            <table class="bp-msg-table">
-              <thead>
-                <tr>
-                  <th>Supplier</th>
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Category</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let t of filteredThreads()"
-                    [class.active]="activeThread?.key === t.key"
-                    [class.unread]="t.unread"
-                    (click)="openThread(t)">
-                  <td><strong>{{ t.supplierName }}</strong></td>
-                  <td class="bp-msg-table-subject">{{ subjectFor(t) }}</td>
-                  <td>
-                    <span *ngIf="t.status && t.status !== 'all'"
-                          class="bp-msg-tbadge"
-                          [ngClass]="'bp-badge-' + statusClass(t.status)">
-                      {{ statusLabel(t.status) }}
-                    </span>
-                  </td>
-                  <td>{{ t.categoryName }}</td>
-                  <td class="bp-msg-table-time">{{ fmtTime(t.latestMsg.created_at) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <!-- v1.65dt (p0015) — card-view and table-view template blocks
+               retired alongside the view toggle. List is canonical. -->
           </div><!-- /.bp-cat-main-body -->
         </section>
 
@@ -1691,6 +1575,19 @@ export class MessagesInboxComponent implements OnInit {
   @Input() boundProjectId = '';
   // When used as global inbox, shows project selector
   @Input() showProjectSelector = false;
+  /** v1.65dt (p0015) — drives the viewer-side branching for this
+      shared inbox. 'agency' (default) keeps every existing surface
+      working without change. 'supplier' will be passed by the new
+      /inbox route once the supplier persona shell lands (Phase 2).
+      Divergence points the component should branch on:
+        - thread row's "From" label (supplier_name vs agency_name)
+        - thread row's logo (supplier vs agency)
+        - conversation lane side (agent right / supplier left vs flip)
+        - action sets on item cards (agency vs supplier table)
+        - compose chip seed list
+      Phase 1 wires the input only; Phase 2 implements the
+      divergent rendering as the supplier surface comes online. */
+  @Input() viewer: 'agency' | 'supplier' = 'agency';
 
   /** v1.65cf — user-resizable conversation preview column width.
       Bound to a CSS variable on the body container; defaults to 640
@@ -1724,10 +1621,14 @@ export class MessagesInboxComponent implements OnInit {
   activeFolder = 'all';
   /** v1.27: supplier filter (left sidebar). 'all' = no filter. */
   activeSupplier: string = 'all';
-  /** v1.27: list / card / table view toggle (centre column). */
-  activeView: 'list' | 'card' | 'table' = 'list';
-  /** v1.27: free-text search across supplier name + latest body +
-      quoted item names. Debounced 300ms via onSearchChange. */
+  /** v1.27 → v1.65dt (p0015) — list / card / table view toggle
+      dropped. List view is the only render path now. activeView
+      field retired. */
+  /** v1.27 → v1.65dt (p0015) — search bar retired. searchTerm field
+      kept (defaulted to '') so filteredThreads() continues to no-op
+      its q-filter branch without code change; the underlying
+      onSearchChange handler is dead but left in case search comes
+      back in a future iteration. */
   searchTerm = '';
   private searchDebounce: any = null;
   activeThread: VendorThread | null = null;
