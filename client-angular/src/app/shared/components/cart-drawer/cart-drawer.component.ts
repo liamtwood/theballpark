@@ -89,19 +89,20 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 {{ rowStatusLabel(pi) }}
               </div>
             </div>
-            <!-- v1.65ef — extended line price. For per-cover/per-head
-                 items: shows the multiplied total (£X) with a small
-                 sub-line "£base × N guests". Otherwise just the flat
-                 base_price.
-                 v1.65eu — when set, the unit is shown as a suffix
-                 (" / cover", " / each", etc.) so the supplier
-                 always sees the rate basis. -->
+            <!-- v1.65ew — row price = the supplier's RATE, with
+                 unit on its own line below. The aggregated line
+                 total + × guests math lives in the footer
+                 (Cost per head / × N guests / VAT / Client total)
+                 so the row doesn't need to repeat it. Reads:
+                   £25
+                   per head
+                 instead of the confusing "£6,250 / head" from v1.65eu. -->
             <div class="bp-cd-price">
-              <span>
-                {{ lineTotal(pi) | gbp }}<span *ngIf="pi.unit" class="bp-cd-price-unit">/ {{ unitShort(pi.unit) }}</span>
-              </span>
-              <div *ngIf="isPerAttendee(pi)" class="bp-cd-price-sub">
-                {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
+              <div class="bp-cd-price-rate">
+                {{ (pi.base_price || 0) | gbp }}
+              </div>
+              <div *ngIf="pi.unit" class="bp-cd-price-unit-line">
+                per {{ unitShort(pi.unit) }}
               </div>
             </div>
             <!-- v1.65et → v1.65eu — supplier mode action cluster.
@@ -217,9 +218,17 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                into adjustForm.imageUrl and the row's image_url is
                optimistically updated; the supplier still needs to
                press Adjust → Save to commit the catalogue write. -->
+          <!-- v1.65ew — entityId is the catalogue items row id (not
+               the message_items row), so the storage upload targets
+               a real items record. For Unsplash search the entityId
+               is just used for the storage path; for File Upload the
+               server keys the file by entityId so it has to exist.
+               Falls back to message_items.id when item_id is null
+               (rare — happens only if the row hasn't been forked
+               yet). -->
           <app-image-upload-panel
             *ngIf="isSupplier && imageOpenId === pi.id"
-            [entityId]="pi.id"
+            [entityId]="pi.item_id || pi.id"
             type="item"
             [existingCoverUrl]="adjustForm.imageUrl || pi.image_url || ''"
             [existingImageDisplay]="'cover'"
@@ -327,28 +336,55 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       </div>
 
       <ng-template pTemplate="footer">
-        <!-- v1.65es — supplier-side footer. Shows the per-head total
-             prominently (the only number that matters to the supplier
-             at this stage) and a CTA into the supplier action train
-             (Phase 2). Margin is hidden — that's agency
-             bookkeeping; the supplier sees what THEY would charge. -->
-        <div class="bp-cd-foot bp-cd-foot--supplier" *ngIf="isSupplier && selected.length">
-          <div class="bp-cd-foot-row bp-cd-foot-row--cost">
-            <span class="bp-cd-foot-label">Cost per head</span>
-            <span class="bp-cd-foot-value">{{ perHeadTotal | gbp }}</span>
+        <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
+             then auto-summary chip, then wrap-up textarea, then the
+             Send reply CTA. The whole block lives in one *ngIf so
+             the supplier always sees the action affordances even
+             before they queue anything (sending just a message is
+             also valid). -->
+        <div class="bp-cd-foot bp-cd-foot--supplier" *ngIf="isSupplier">
+          <ng-container *ngIf="selected.length">
+            <div class="bp-cd-foot-row bp-cd-foot-row--cost">
+              <span class="bp-cd-foot-label">Cost per head</span>
+              <span class="bp-cd-foot-value">{{ perHeadTotal | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="guestCountValue > 0">
+              <span class="bp-cd-foot-meta-label">× {{ guestCountValue }} guests</span>
+              <span class="bp-cd-foot-meta-value">{{ yourCost | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
+              <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
+              <span class="bp-cd-foot-meta-value">{{ vatOnCost | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-client">
+              <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
+              <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp }}</span>
+            </div>
+          </ng-container>
+
+          <!-- Auto-summary chip + wrap-up textarea + Send CTA. Lives
+               INSIDE the supplier footer so it actually renders
+               (the agent footer was *ngIf=!isSupplier and the
+               textarea was nested inside it by mistake). -->
+          <div *ngIf="pendingSummary" class="bp-cd-send-summary">
+            <lucide-icon name="sparkles" [size]="12"></lucide-icon>
+            <span>{{ pendingSummary }}</span>
           </div>
-          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="guestCountValue > 0">
-            <span class="bp-cd-foot-meta-label">× {{ guestCountValue }} guests</span>
-            <span class="bp-cd-foot-meta-value">{{ yourCost | gbp }}</span>
-          </div>
-          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
-            <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
-            <span class="bp-cd-foot-meta-value">{{ vatOnCost | gbp }}</span>
-          </div>
-          <div class="bp-cd-foot-client">
-            <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
-            <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp }}</span>
-          </div>
+          <textarea class="bp-cd-send-textarea"
+                    [(ngModel)]="supplierMessage"
+                    rows="3"
+                    [disabled]="sending"
+                    placeholder="Add a message (optional) — anything the agent should know about your quote."></textarea>
+          <button type="button"
+                  class="bp-cd-send-cta"
+                  [disabled]="!canSend"
+                  (click)="onSend()">
+            <lucide-icon name="send" [size]="14"></lucide-icon>
+            <span>{{ sending ? 'Sending…' : 'Send reply' }}</span>
+            <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
+              {{ pendingCount }}
+            </span>
+          </button>
         </div>
 
         <!-- v1.65eg — estimate-style summary. Matches the layout on
@@ -416,32 +452,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
           </button>
 
-          <!-- v1.65es → v1.65ev — supplier wrap-up block. Per-row
-               actions queue locally; this block lets the supplier
-               type a message and Send everything in one consolidated
-               reply. The "I've accepted N, updated M…" auto-summary
-               renders above the textarea as a live preview. -->
-          <ng-container *ngIf="isSupplier">
-            <div *ngIf="pendingSummary" class="bp-cd-send-summary">
-              <lucide-icon name="sparkles" [size]="12"></lucide-icon>
-              <span>{{ pendingSummary }}</span>
-            </div>
-            <textarea class="bp-cd-send-textarea"
-                      [(ngModel)]="supplierMessage"
-                      rows="3"
-                      [disabled]="sending"
-                      placeholder="Add a message (optional) — anything the agent should know about your quote."></textarea>
-            <button type="button"
-                    class="bp-cd-send-cta"
-                    [disabled]="!canSend"
-                    (click)="onSend()">
-              <lucide-icon name="send" [size]="14"></lucide-icon>
-              <span>{{ sending ? 'Sending…' : 'Send reply' }}</span>
-              <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
-                {{ pendingCount }}
-              </span>
-            </button>
-          </ng-container>
+          <!-- v1.65ev → v1.65ew — supplier wrap-up moved up into the
+               supplier footer block (above). This was misnested
+               inside the agency *ngIf="!isSupplier" gate so it
+               never rendered. -->
+
         </div>
         <!-- Empty state — keep the band so the drawer chrome stays
              stable even when SELECTED is empty. -->
@@ -591,6 +606,71 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     }
     .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
+
+    /* v1.65ew — supplier-mode row layout: 2-row grid so the name
+       spans the full card width instead of being squeezed by the
+       price + actions on the same row. Layout:
+         ┌──────┬──────────────────────────────┐
+         │  IMG │ Name (full width across)     │
+         │      │ Supplier · Status            │
+         │      ├──────────┬───────────────────┤
+         │      │ Price+unit │ Actions         │
+         └──────┴──────────────────────────────┘
+       Agency-mode rows keep the existing single-row flex. */
+    .bp-cd-row--selected {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      column-gap: 12px;
+      row-gap: 6px;
+      align-items: start;
+      padding: 12px 14px;
+    }
+    .bp-cd-row--selected .bp-cd-img { grid-row: 1 / span 2; align-self: start; }
+    .bp-cd-row--selected .bp-cd-text {
+      grid-column: 2; grid-row: 1;
+      min-width: 0;
+      display: flex; flex-direction: column;
+      gap: 2px;
+    }
+    .bp-cd-row--selected .bp-cd-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      line-height: 1.3;
+    }
+    /* Row-2 strip: price-left + actions-right under the identity. */
+    .bp-cd-row--selected .bp-cd-price {
+      grid-column: 2; grid-row: 2;
+      justify-self: start;
+      text-align: left;
+      align-self: end;
+    }
+    .bp-cd-row--selected .bp-cd-row-actions,
+    .bp-cd-row--selected .bp-cd-action--remove {
+      grid-column: 2; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+    }
+    /* Price rate (big number) + unit line (small, muted, below). */
+    .bp-cd-price-rate {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    .bp-cd-price-unit-line {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
+      margin-top: 1px;
+    }
 
     /* v1.65et → v1.65eu — supplier-side row action cluster. Four
        CIRCULAR icon buttons (Accept / Adjust / Image / Decline)
