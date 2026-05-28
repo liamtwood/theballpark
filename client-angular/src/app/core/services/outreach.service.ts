@@ -40,6 +40,32 @@ export interface OutreachRequest {
   projectCategoryId?: string | null;
   /** AI-ranked suppliers to pre-select + sort to the top. */
   suppliers?: OutreachRankedSupplier[];
+  /** v1.65em — when the outreach is for a multi-item cart, pass the
+      cart rows here. Step 2 renders them as a row list (image +
+      name + line total) and lets the agent add ad-hoc items by
+      title. The email body in step 3 builds from this list. */
+  cartItems?: OutreachCartItem[];
+  /** Project-wide context for the per-item line math. Used to label
+      per-cover/per-head items in step 2. */
+  guestCount?: number;
+}
+
+/** v1.65em — a cart-derived line item for the outreach drawer. Carries
+    enough display fields to render as a row in step 2 (same shape
+    the cart drawer uses), plus optional supplier scoping. */
+export interface OutreachCartItem {
+  item_id?: string | null;
+  name: string;
+  description?: string;
+  image_url?: string | null;
+  base_price?: number | null;
+  unit?: string | null;
+  /** Pre-computed line total (per-cover × guests when applicable). */
+  line_total?: number | null;
+  supplier_org_id?: string | null;
+  supplier_name?: string | null;
+  /** True for ad-hoc items added by the agent in step 2. */
+  isAdhoc?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

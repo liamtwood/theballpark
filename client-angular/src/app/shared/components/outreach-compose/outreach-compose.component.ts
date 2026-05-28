@@ -4,6 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarModule } from 'primeng/sidebar';
+import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -39,7 +40,7 @@ interface SupplierRow {
   selector: 'app-outreach-compose',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, SidebarModule, GbpPipe],
+  imports: [CommonModule, FormsModule, SidebarModule, LucideAngularModule, GbpPipe],
   template: `
     <p-sidebar [visible]="!!req" (visibleChange)="onVisibleChange($event)"
                position="right" [style]="{ width: '600px', maxWidth: '96vw' }"
@@ -136,13 +137,75 @@ interface SupplierRow {
               <div class="bp-oc-substep-s">These go straight into the email to suppliers</div>
             </div>
             <div class="bp-oc-body">
-              <div class="bp-oc-flabel">One-line requirement</div>
-              <textarea class="bp-oc-input bp-oc-textarea" rows="2" [(ngModel)]="oneLiner"
-                        placeholder="e.g. Indoor LED wall &amp; PA for a 250-guest launch"></textarea>
+              <!-- v1.65em (cart path) — items list + ad-hoc input.
+                   Renders cart rows like the cart drawer (image, name,
+                   line total) plus an "Add additional ask" input the
+                   agent can use to append title-only requirements
+                   (e.g. "open bar for cocktails"). -->
+              <ng-container *ngIf="hasCartItems">
+                <div class="bp-oc-flabel">Items in this brief</div>
+                <div class="bp-oc-itemlist">
+                  <div *ngFor="let it of cartItems" class="bp-oc-itemrow">
+                    <div class="bp-oc-itemimg"
+                         [style.background-image]="it.image_url ? 'url(' + it.image_url + ')' : null">
+                      <span *ngIf="!it.image_url">{{ catLetter(it.name) }}</span>
+                    </div>
+                    <div class="bp-oc-itembody">
+                      <div class="bp-oc-itemname">{{ it.name }}</div>
+                      <div class="bp-oc-itemsupp" *ngIf="it.supplier_name">{{ it.supplier_name }}</div>
+                    </div>
+                    <div class="bp-oc-itemprice" *ngIf="it.line_total != null">
+                      £{{ (it.line_total || 0) | number:'1.0-0' }}
+                    </div>
+                  </div>
 
-              <div class="bp-oc-flabel">Additional details</div>
-              <textarea class="bp-oc-input bp-oc-textarea" rows="4" [(ngModel)]="details"
-                        placeholder="Specs, quantities, brand requirements — anything the supplier needs to quote accurately."></textarea>
+                  <!-- Ad-hoc rows the agent added in this session. -->
+                  <div *ngFor="let a of adhocItems; let i = index"
+                       class="bp-oc-itemrow bp-oc-itemrow--adhoc">
+                    <div class="bp-oc-itemimg bp-oc-itemimg--adhoc">
+                      <lucide-icon name="sparkles" [size]="14"></lucide-icon>
+                    </div>
+                    <div class="bp-oc-itembody">
+                      <div class="bp-oc-itemname">{{ a.name }}</div>
+                      <div class="bp-oc-itemsupp">Additional ask</div>
+                    </div>
+                    <button type="button" class="bp-oc-itemrm" (click)="removeAdhoc(i)" title="Remove">
+                      <lucide-icon name="x" [size]="13"></lucide-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Add-item input — title-only. Press Enter or click + to commit. -->
+                <div class="bp-oc-addrow">
+                  <input class="bp-oc-input bp-oc-addinput"
+                         type="text"
+                         [(ngModel)]="newAdhocName"
+                         (keyup.enter)="addAdhoc()"
+                         placeholder="Add another ask (e.g. open bar for cocktails)"/>
+                  <button type="button"
+                          class="bp-oc-addbtn"
+                          [disabled]="!newAdhocName.trim()"
+                          (click)="addAdhoc()">
+                    <lucide-icon name="plus" [size]="14"></lucide-icon>
+                    Add
+                  </button>
+                </div>
+
+                <div class="bp-oc-flabel" style="margin-top:18px">Notes (optional)</div>
+                <textarea class="bp-oc-input bp-oc-textarea" rows="3" [(ngModel)]="details"
+                          placeholder="Anything else the supplier needs to know — preferences, constraints, brand notes."></textarea>
+              </ng-container>
+
+              <!-- Legacy free-text path (per-item / per-category outreach). -->
+              <ng-container *ngIf="!hasCartItems">
+                <div class="bp-oc-flabel">One-line requirement</div>
+                <textarea class="bp-oc-input bp-oc-textarea" rows="2" [(ngModel)]="oneLiner"
+                          placeholder="e.g. Indoor LED wall &amp; PA for a 250-guest launch"></textarea>
+
+                <div class="bp-oc-flabel">Additional details</div>
+                <textarea class="bp-oc-input bp-oc-textarea" rows="4" [(ngModel)]="details"
+                          placeholder="Specs, quantities, brand requirements — anything the supplier needs to quote accurately."></textarea>
+              </ng-container>
 
               <div class="bp-oc-evbox">
                 <div class="bp-oc-evhd">Event context</div>
@@ -373,6 +436,85 @@ interface SupplierRow {
       border: 0.5px solid var(--color-border); border-radius: 7px; padding: 9px 11px; outline: none; }
     .bp-oc-input:focus { border-color: var(--theme-accent); background: var(--color-surface); }
     .bp-oc-textarea { resize: vertical; line-height: 1.55; }
+
+    /* v1.65em — cart-mode item list (step 2). Same visual language
+       as the cart drawer's bp-cd-row so the agent recognises what
+       they're sending. */
+    .bp-oc-itemlist {
+      display: flex; flex-direction: column;
+      border: 0.5px solid var(--color-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .bp-oc-itemrow {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      border-bottom: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .bp-oc-itemrow:last-child { border-bottom: none; }
+    .bp-oc-itemrow--adhoc { background: var(--theme-soft); }
+    .bp-oc-itemimg {
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      background-color: var(--theme-bg);
+      background-size: cover;
+      background-position: center;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent);
+      font-weight: 600;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .bp-oc-itemimg--adhoc {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-oc-itembody {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .bp-oc-itemname {
+      font-size: 13px; font-weight: 500;
+      color: var(--color-text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bp-oc-itemsupp {
+      font-size: 10.5px; color: var(--color-text-muted);
+    }
+    .bp-oc-itemprice {
+      font-size: 13px; font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .bp-oc-itemrm {
+      width: 24px; height: 24px;
+      background: transparent; border: none; cursor: pointer;
+      color: var(--color-text-muted);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px;
+    }
+    .bp-oc-itemrm:hover { color: var(--theme-accent); background: var(--theme-bg); }
+
+    /* Add-item input row */
+    .bp-oc-addrow {
+      display: flex; gap: 8px;
+      margin-top: 10px;
+    }
+    .bp-oc-addinput { flex: 1; }
+    .bp-oc-addbtn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 8px 14px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none; border-radius: 7px;
+      font-family: var(--font-body); font-size: 12.5px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-oc-addbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-oc-addbtn:hover:not(:disabled) { opacity: 0.85; }
     .bp-oc-evbox { border: 0.5px solid var(--color-border); border-radius: 8px;
       overflow: hidden; margin-top: 16px; }
     .bp-oc-evhd { padding: 7px 13px; background: var(--theme-bg);
@@ -452,6 +594,19 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
   subject = '';
   emailBody = '';
 
+  /** v1.65em — when the outreach is opened from the cart (req.cartItems
+      is set), step 2 renders these rows + an "Add additional ask"
+      input. adhocItems collects what the agent types in that input.
+      cartItems are read-only references to the project's cart. */
+  cartItems: import('../../../core/services/outreach.service').OutreachCartItem[] = [];
+  adhocItems: { name: string }[] = [];
+  newAdhocName = '';
+  guestCountHint = 0;
+
+  /** Drives step 2's items panel — true when the outreach was opened
+      from a cart (vs the legacy single-item per-category flow). */
+  get hasCartItems(): boolean { return this.cartItems.length > 0; }
+
   private agencyName = '';
   private agencyEmail = '';
   private projectRef = '';
@@ -496,6 +651,18 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     this.subject = this.emailBody = '';
     this.agencyName = '';
     this.agencyEmail = '';
+    // v1.65em — cart-mode wiring. cartItems are read-only mirrors of
+    // the project's cart selection at open time; adhocItems is a
+    // fresh array the agent fills via the "Add additional ask"
+    // input in step 2.
+    this.cartItems = (req.cartItems || []).map(it => ({ ...it }));
+    this.adhocItems = [];
+    this.newAdhocName = '';
+    this.guestCountHint = req.guestCount || 0;
+    // When opened with cartItems, the per-item bullet description
+    // synthesised by the legacy single-item path is redundant — the
+    // structured list renders it visually instead.
+    if (this.cartItems.length) this.oneLiner = '';
 
     forkJoin({
       project: this.projSvc.getById(req.projectId).pipe(catchError(() => of(null as any))),
@@ -557,6 +724,34 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  // v1.65em — ad-hoc item handlers for step 2's "Add additional ask"
+  // input. Title-only entries; suppliers see them as bullet items
+  // alongside the cart rows in the email body.
+  addAdhoc(): void {
+    const name = (this.newAdhocName || '').trim();
+    if (!name) return;
+    this.adhocItems.push({ name });
+    this.newAdhocName = '';
+    this.cdr.markForCheck();
+  }
+  removeAdhoc(idx: number): void {
+    this.adhocItems.splice(idx, 1);
+    this.cdr.markForCheck();
+  }
+
+  /** v1.65em — formatted bullet line for a cart row in the email
+      body. Per-cover/per-head items get the "£rate × N covers"
+      breakdown so the supplier can sanity-check the math. */
+  private cartItemLine(it: import('../../../core/services/outreach.service').OutreachCartItem): string {
+    const lt = Number(it.line_total) || 0;
+    const unit = (it.unit || '').toLowerCase();
+    const perAttendee = unit === 'cover' || unit === 'head';
+    const qty = perAttendee && this.guestCountHint > 0
+      ? ` (${it.base_price} × ${this.guestCountHint} ${unit}s)`
+      : '';
+    return `• ${it.name} — £${lt.toLocaleString()}${qty}`;
+  }
+
   private buildEmail(): void {
     const r = this.req!;
     // Project ref leads the subject so suppliers can file the quote
@@ -567,8 +762,20 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     // separated by a single blank line; no monospace-only column padding
     // (it rendered ragged in a proportional font), no fragile inline
     // conditionals. Empty sections are simply dropped.
-    const requirement = [this.oneLiner, this.details]
-      .map(t => (t || '').trim()).filter(Boolean).join('\n');
+    // v1.65em — when cartItems is set, render the structured list
+    // FIRST, then the agent's ad-hoc items, then any free-text
+    // oneLiner / details. Pure free-text outreaches (legacy path)
+    // keep the old behaviour.
+    const requirementParts: string[] = [];
+    if (this.cartItems.length) {
+      requirementParts.push(this.cartItems.map(it => this.cartItemLine(it)).join('\n'));
+    }
+    if (this.adhocItems.length) {
+      requirementParts.push(this.adhocItems.map(a => `• ${a.name}`).join('\n'));
+    }
+    if (this.oneLiner && this.oneLiner.trim()) requirementParts.push(this.oneLiner.trim());
+    if (this.details && this.details.trim()) requirementParts.push(this.details.trim());
+    const requirement = requirementParts.join('\n');
     const eventDetails = [
       this.evDate   ? `Date: ${this.evDate}`     : '',
       this.evVenue  ? `Venue: ${this.evVenue}`   : '',

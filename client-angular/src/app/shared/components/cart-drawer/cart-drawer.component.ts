@@ -712,29 +712,42 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     const first: any = this.selected[0];
     const categoryId = first?.item_category_id || first?.project_category_id || '';
 
-    // Build a readable item list for the requirements field — line
-    // items with quantity-aware line total. Goes into the
-    // description, which surfaces in the email body in step 3.
-    const itemList = this.selected.map(pi => {
-      const lt = this.lineTotal(pi);
-      const qtyHint = this.isPerAttendee(pi)
-        ? ` (${pi.base_price} × ${this.guestCount} ${pi.unit || 'cover'}s)`
-        : '';
-      return `• ${pi.name} — £${lt.toLocaleString()}${qtyHint}`;
-    }).join('\n');
+    // v1.65em — pass structured cart rows so the outreach drawer's
+    // step 2 can render them as a row list (image + name + line
+    // total) instead of a flat bullet string buried in the
+    // "additional details" textarea. The drawer adds an "Add
+    // additional ask" input on top so the agent can append ad-hoc
+    // items (e.g. "open bar for cocktails") that don't have
+    // catalogue rows.
+    const cartItems = this.selected.map(pi => ({
+      item_id: pi.item_id,
+      name: pi.name || 'Item',
+      description: pi.description || '',
+      image_url: pi.image_url || pi.supplier_cover_url || null,
+      base_price: Number(pi.base_price) || 0,
+      unit: pi.unit || null,
+      line_total: this.lineTotal(pi),
+      supplier_org_id: (pi as any).supplier_org_id || null,
+      supplier_name: pi.supplier_name || null,
+    }));
 
     this.outreach.open({
+      // Synthesised single-item kept for back-compat with the
+      // existing per-item outreach callers; the drawer prefers
+      // cartItems when set.
       item: {
         name: this.selected.length === 1
           ? (this.selected[0].name || 'Cart item')
           : `${this.selected.length}-item brief`,
-        description: itemList,
+        description: '',
         price: this.yourCost,
         isNew: true,
       },
       categoryId,
       projectId: this.projectId,
       suppliers,
+      cartItems,
+      guestCount: this.guestCount,
     });
 
     // Close the cart drawer so the outreach drawer is the only
