@@ -232,6 +232,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       left: var(--section-pad, 28px);
       top: 50%;
       transform: translateY(-50%);
+      /* v1.65ds — z-index: 3 explicitly so the back link still sits
+         above the orbs/grain. The .bp-hero direct-child layering
+         rule below excludes .bp-hero-back (because that rule forces
+         position:relative which clobbers our absolute positioning),
+         so the back link needs to lift itself manually. */
+      z-index: 3;
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -343,10 +349,16 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
        [data-mode="bold"] attribute is set on document.documentElement,
        which is outside this component's scope). Hero stays
        position:relative here so the global rules' absolute-positioned
-       orb / grain elements anchor correctly in light + dark modes too. */
+       orb / grain elements anchor correctly in light + dark modes too.
+
+       v1.65ds — exclude .bp-hero-back from the layering rule. It needs
+       to stay position:absolute (pinned to the left edge); the rule was
+       force-overriding it to relative, dropping it into the centred
+       flow of the hero. Z-index is set manually on .bp-hero-back so it
+       still sits above orbs/grain. */
     .bp-hero-orbs,
     .bp-hero-grain { display: none; }
-    .bp-hero > *:not(.bp-hero-orbs):not(.bp-hero-grain) {
+    .bp-hero > *:not(.bp-hero-orbs):not(.bp-hero-grain):not(.bp-hero-back) {
       position: relative;
       z-index: 3;
     }
