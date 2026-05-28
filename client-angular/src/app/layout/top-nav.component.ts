@@ -10,12 +10,16 @@ import { ShellContextService } from '../core/services/shell-context.service';
 import { ConfigStripService } from '../core/services/config-strip.service';
 import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
+import {
+  PersonaDropdownComponent
+} from '../shared/components/persona-dropdown/persona-dropdown.component';
+import { PersonaService } from '../core/services/persona.service';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent, PersonaDropdownComponent],
   template: `
     <!-- DESKTOP TOP NAV -->
     <nav class="bp-nav">
@@ -61,7 +65,24 @@ import { environment } from '../../environments/environment';
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
           <lucide-icon [name]="modeIcon" [size]="14"></lucide-icon>
         </button>
-        <app-avatar [name]="userName || orgName" [size]="32"></app-avatar>
+        <!-- v1.65dz (p0015) — avatar opens persona dropdown when
+             PersonaService.canSwitch is true (dev / admin). Wrapper is
+             position:relative so the dropdown anchors below the avatar. -->
+        <div class="bp-nav-avatar-wrap">
+          <button type="button"
+                  class="bp-nav-avatar-btn"
+                  (click)="onAvatarClick($event)"
+                  [title]="personaSvc.canSwitch ? 'Switch persona' : ''">
+            <app-avatar
+              [name]="personaSvc.active.name"
+              [size]="32">
+            </app-avatar>
+          </button>
+          <app-persona-dropdown
+            *ngIf="personaSvc.canSwitch"
+            [(open)]="personaDropdownOpen">
+          </app-persona-dropdown>
+        </div>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -143,6 +164,18 @@ import { environment } from '../../environments/environment';
       text-transform: uppercase; letter-spacing: 0.07em;
     }
     .bp-nav-right { display: flex; align-items: center; gap: 24px; }
+
+    /* v1.65dz (p0015) — avatar wrapper hosts the persona dropdown.
+       Position relative so the dropdown's top: 100% anchors here. */
+    .bp-nav-avatar-wrap { position: relative; }
+    .bp-nav-avatar-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
     .bp-nav-link {
       font-size: var(--text-base); color: #9CA3AF;
       cursor: pointer; text-decoration: none; transition: color 0.15s;
@@ -261,15 +294,32 @@ export class TopNavComponent implements OnInit, OnDestroy {
   private routerSub?: Subscription;
   private ctxSub?: Subscription;
   private cfgStripSub?: Subscription;
+  private personaSub?: Subscription;
+
+  /** v1.65dz (p0015) — persona dropdown open state, toggled by the
+      avatar button. Closed by default; the dropdown itself self-
+      closes on outside click. */
+  personaDropdownOpen = false;
 
   constructor(
     private configService: ConfigService,
     private orgService: OrgService,
     private shellCtx: ShellContextService,
     private configStrip: ConfigStripService,
+    public  personaSvc: PersonaService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  /** v1.65dz — clicking the avatar toggles the persona dropdown when
+      the user is allowed to switch personas. Stops propagation so
+      the dropdown's outside-click handler doesn't immediately close
+      it. No-op for real production users (single persona). */
+  onAvatarClick(ev: MouseEvent) {
+    if (!this.personaSvc.canSwitch) return;
+    ev.stopPropagation();
+    this.personaDropdownOpen = !this.personaDropdownOpen;
+  }
 
   toggleConfigStrip() { this.configStrip.toggle(); }
 
@@ -357,6 +407,12 @@ export class TopNavComponent implements OnInit, OnDestroy {
       this.hasConfig = has;
       this.cdr.detectChanges();
     });
+
+    /* v1.65dz (p0015) — re-render the avatar + nav whenever the active
+       persona flips so the initials reflect the current persona. */
+    this.personaSub = this.personaSvc.active$.subscribe(() => {
+      this.cdr.detectChanges();
+    });
   }
 
   /* p0003 — three-way cycle: light → dark → bold → light. */
@@ -385,5 +441,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.routerSub?.unsubscribe();
     this.ctxSub?.unsubscribe();
     this.cfgStripSub?.unsubscribe();
+    this.personaSub?.unsubscribe();
   }
 }
