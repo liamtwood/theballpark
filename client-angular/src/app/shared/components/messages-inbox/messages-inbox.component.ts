@@ -365,14 +365,15 @@ interface VendorThread {
                  (Project Items / Cart drawer). The conversation panel
                  reads cleaner: metadata header → action bar (two
                  drawer chips) → conversation stream. -->
+            <!-- v1.65dx — REF badge removed from Event chip (the ref
+                 already shows in the metadata header / drawer body, no
+                 need to repeat). Icons are Lucide (calendar-days +
+                 package) via <lucide-icon>. -->
             <div class="bp-thread-drawer-bar" *ngIf="activeProject?.id">
               <button type="button" class="bp-thread-drawer-chip"
                       (click)="openEventDrawerForThread()">
                 <lucide-icon name="calendar-days" [size]="13"></lucide-icon>
                 <span class="bp-thread-drawer-chip-label">Event details</span>
-                <span *ngIf="activeProject?.ref" class="bp-thread-drawer-chip-badge">
-                  REF {{ activeProject?.ref }}
-                </span>
               </button>
               <button type="button" class="bp-thread-drawer-chip"
                       *ngIf="threadItems.length"
