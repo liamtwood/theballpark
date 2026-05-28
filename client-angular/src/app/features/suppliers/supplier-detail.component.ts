@@ -42,18 +42,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- ═══ HOME / STORE TAB BAR ═══════════════════════════════════
-           Reuses the global .bp-hero-tabs / .bp-hero-tab styles from
-           styles.css (the same look the project detail tabs use).
-           Tabs are page-local state, not routed. -->
-      <div class="bp-hero-tabs bp-supplier-tabs">
-        <button class="bp-hero-tab"
-                [class.active]="activeTab === 'home'"
-                (click)="activeTab = 'home'">Home</button>
-        <button class="bp-hero-tab"
-                [class.active]="activeTab === 'store'"
-                (click)="activeTab = 'store'">Store</button>
-      </div>
+      <!-- v1.65dm — Home/Store tabs moved INTO the shell hero. The local
+           tab bar that used to sit below the hero was duplicating the
+           hero-tabs band and breaking the back-button rail. Now we push
+           the tabs through ShellContextService with an onTabClick
+           callback + activeTabPath, matching the dashboard's
+           page-local-state pattern. -->
 
       <!-- ═══ HOME TAB ════════════════════════════════════════════════
            Layout (top → bottom):
@@ -376,14 +370,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     }
     .bp-store-scope-toggle:hover { opacity: 0.75; }
 
-    /* ── Home/Store tab bar ───────────────────────────────────────────
-       Reuses .bp-hero-tabs / .bp-hero-tab from styles.css. We just
-       center the bar within the page and put a little vertical padding
-       so the tabs sit naturally below the shell hero. */
-    .bp-supplier-tabs {
-      justify-content: center;
-      padding: 0 28px;
-    }
+    /* v1.65dm — local .bp-supplier-tabs block retired; Home/Store
+       tabs now live in the shell hero via ShellContextService. */
 
     /* ── HOME TAB ───────────────────────────────────────────────────── */
 
@@ -758,15 +746,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.supplierSvc.getAll().subscribe({
       next: (suppliers: any[]) => {
         this.supplier = suppliers.find(s => s.id === this.sid) || null;
-        if (this.supplier) {
-          this.shellCtx.set({
-            heroTitle: this.supplier.name,
-            heroSub: this.supplier.city || 'London',
-            pills: [],
-            tabs: [],
-            back: { label: 'Back', onBack: () => this.goBack() }
-          });
-        }
+        if (this.supplier) this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -946,11 +926,16 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // First: per item.category_id → enriched subcategory CategoryInfo
-    // (with the full record's cover/description and a rolled-up count).
+    // v1.65dm — items carry BOTH category_id (top-level parent) and
+    // subcategory_id (leaf). The Home tab wants leaf cards grouped under
+    // their parent, so prefer subcategory_id and fall back to category_id
+    // only when the item is pinned directly to a top-level parent
+    // (rare — most items have a leaf). The previous version only looked
+    // at category_id which is why a supplier with five Catering subcats
+    // surfaced as a single "Catering" card.
     const subMap: Record<string, CategoryInfo> = {};
     for (const item of this.catalogueItems) {
-      const id = item.category_id;
+      const id = item.subcategory_id || item.category_id;
       if (!id) continue;
       if (!subMap[id]) {
         const cat = this.allCatalogueCategories.find(c => c.id === id);
@@ -996,6 +981,36 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
 
   // ── Event handlers ────────────────────────────────────────────────────
+
+  /** v1.65dm — single source of truth for the shell hero state on this
+      page. Pushes Home/Store tabs into the hero (was a local band below
+      the hero, which duplicated chrome and collided with the back rail)
+      and re-binds the back link on every call so subsequent updates
+      (e.g. after a supplier edit) don't drop it. */
+  private applyShellHero() {
+    if (!this.supplier) return;
+    this.shellCtx.set({
+      heroTitle: this.supplier.name,
+      heroSub: this.supplier.city || 'London',
+      pills: [],
+      tabs: [
+        { label: 'Home',  path: 'home' },
+        { label: 'Store', path: 'store' }
+      ],
+      activeTabPath: this.activeTab,
+      onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'store'),
+      back: { label: 'Back', onBack: () => this.goBack() }
+    });
+  }
+
+  /** v1.65dm — flip the page-local tab AND re-push the shell context so
+      the active state on the hero tab band stays in sync. */
+  setActiveTab(tab: 'home' | 'store') {
+    if (this.activeTab === tab) return;
+    this.activeTab = tab;
+    this.applyShellHero();
+    this.cdr.detectChanges();
+  }
 
   goBack() {
     // v1.32: history.back() so the user lands wherever they came
@@ -1212,13 +1227,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.supplier = { ...this.supplier, ...updated };
     this.showSupplierDrawer = false;
     // Update the shell hero label so the page header reflects any name change.
-    this.shellCtx.set({
-      heroTitle: this.supplier.name,
-      heroSub: this.supplier.city || 'London',
-      pills: [],
-      tabs: [],
-      back: { label: 'Back', onBack: () => this.goBack() }
-    });
+    this.applyShellHero();
     this.cdr.detectChanges();
   }
 
