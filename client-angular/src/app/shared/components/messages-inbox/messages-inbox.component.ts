@@ -17,6 +17,7 @@ import {
 import { MessageService as MsgSvc } from '../../../core/services/message.service';
 import { ProjectCategoryService } from '../../../core/services/project-category.service';
 import { ProjectService } from '../../../core/services/project.service';
+import { ClientService } from '../../../core/services/client.service';
 import { OrgService } from '../../../core/services/org.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
@@ -1385,6 +1386,7 @@ export class MessagesInboxComponent implements OnInit {
     private msgSvc: MsgSvc,
     private projectCategorySvc: ProjectCategoryService,
     private projectSvc: ProjectService,
+    private clientSvc: ClientService,
     private orgSvc: OrgService,
     private shellCtx: ShellContextService,
     private cartDrawerSvc: CartDrawerService,
@@ -1809,11 +1811,32 @@ export class MessagesInboxComponent implements OnInit {
 
     // v1.65cz (p0013 §2) — load the project for the Event card. Skip
     // when we already have the right project loaded.
+    // v1.65da (p0013 §2 fix) — client_name isn't on the project row;
+    // it lives in the clients table behind project.client_id, mirror
+    // the Overview's pattern of loading them separately and patching
+    // client_name onto activeProject for the binding.
     const pid = t.projectId;
     if (pid && (!this.activeProject || this.activeProject.id !== pid)) {
       this.activeProject = null;
       this.projectSvc.getById(pid).subscribe({
-        next: p => { this.activeProject = p; this.cdr.detectChanges(); },
+        next: p => {
+          this.activeProject = p as any;
+          this.cdr.detectChanges();
+          if ((p as any)?.client_id) {
+            this.clientSvc.getById((p as any).client_id).subscribe({
+              next: c => {
+                if (this.activeProject) {
+                  this.activeProject = {
+                    ...this.activeProject,
+                    client_name: (c as any)?.name || (c as any)?.contact_name || null
+                  };
+                  this.cdr.detectChanges();
+                }
+              },
+              error: () => { /* leave client_name unset; cell shows em-dash */ }
+            });
+          }
+        },
         error: () => { /* leave null; card renders em-dashes */ }
       });
     }
@@ -1974,13 +1997,22 @@ export class MessagesInboxComponent implements OnInit {
     return map[k] || '';
   }
 
-  /** v1.65cz (p0013 §2) — Event card date display. Single-day shows
-      just the date; multi-day with duration_days shows a tight range. */
+  /** v1.65cz (p0013 §2) — Event card date display.
+      v1.65da fix: projects.event_date is stored as a free-text string
+      (AI-parsed values like "25–30 May 2026" or "May Half Term —
+      Thursday–Saturday"), NOT an ISO timestamp. So we render the
+      raw string verbatim when Date.parse() can't make sense of it.
+      When it IS parseable, format with duration_days as a tight range. */
   eventDateRange(): string {
     const p = this.activeProject;
-    if (!p?.event_date) return '';
-    const start = new Date(p.event_date);
-    if (!Number.isFinite(start.getTime())) return '';
+    const raw = (p?.event_date || '').toString().trim();
+    if (!raw) return '';
+    const start = new Date(raw);
+    if (!Number.isFinite(start.getTime())) {
+      // Free-text / range — show as-is. The Event drawer renders it
+      // the same way.
+      return raw;
+    }
     const days = +p?.duration_days || 1;
     if (days <= 1) {
       return start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
