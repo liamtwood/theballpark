@@ -140,10 +140,35 @@ interface VendorThread {
           </app-category-circles>
         </div>
 
-        <!-- v1.65dt (p0015) — search bar dropped. The thread list is
-             short enough to scan; supplier filter + status filter in
-             the left rail are enough to narrow. Folder dropdown went
-             with it (it duplicated the category circles above). -->
+        <!-- v1.65aj (p0001) — SEARCH section inside the strip. Pulled
+             out of the sidebar so Messages and Marketplace share the
+             same layout.
+             v1.65cb — accent-coloured category-scope dropdown added
+             on the left of the search row, mirroring the Marketplace
+             "All ▾" chip. Bound to activeFolder so it stays in sync
+             with the category circles.
+             v1.65du — search restored (Liam uses it from the project
+             messages tab). p0015's "drop the search bar" instruction
+             overridden per user feedback. The view-mode toggles +
+             card/table view stripping from p0015 stays. -->
+        <div class="bp-search-panel">
+          <div class="bp-search-row">
+            <p-dropdown *ngIf="folderDropdownOptions.length > 1"
+                        [options]="folderDropdownOptions"
+                        [ngModel]="activeFolder"
+                        (onChange)="onFolderDropdownChange($event.value)"
+                        optionLabel="name" optionValue="id"
+                        styleClass="bp-strip-search-dd"
+                        appendTo="body"
+                        placeholder="All"></p-dropdown>
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText type="text"
+                   [(ngModel)]="searchTerm"
+                   (ngModelChange)="onSearchChange()"
+                   placeholder="Search threads, suppliers, messages…"
+                   class="bp-search-input"/>
+          </div>
+        </div>
       </div><!-- /.bp-browse-strip -->
 
       <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
@@ -223,31 +248,37 @@ interface VendorThread {
           <!-- v1.28: Status pills moved to the left sidebar — only ONE
                filter rail across the page now. -->
 
-          <!-- Empty state — v1.65cr (p0006).
-               v1.65dt (p0015) — search-active branch dropped (search
-               bar is gone). Two branches now:
+          <!-- Empty state — v1.65cr (p0006). v1.65du — restored to the
+               three-branch shape now that search is back:
                  (a) no project bound + no project selected: prompt to
                      pick a project. Global-inbox mode only.
                  (b) project context but no threads: "No replies yet"
                      with a "Go to cart" CTA pointing back to the
-                     Marketplace cart (email-launch lives there now). -->
+                     Marketplace cart (email-launch lives there now).
+                 (c) search active with no hits: "No threads match …" -->
           <div *ngIf="filteredThreads().length === 0" class="bp-msg-empty">
-            <ng-container *ngIf="!selectedProjectId && !boundProjectId; else noReplies">
+            <ng-container *ngIf="!selectedProjectId && !boundProjectId; else projectEmpty">
               <lucide-icon name="inbox" [size]="32"></lucide-icon>
               <p>Select a project or open one from the dashboard.</p>
             </ng-container>
-            <ng-template #noReplies>
-              <div class="bp-msg-empty-icon">
-                <lucide-icon name="inbox" [size]="28"></lucide-icon>
-              </div>
-              <div class="bp-msg-empty-title">No replies yet</div>
-              <div class="bp-msg-empty-sub">
-                Emails you send from your cart will land here as supplier replies arrive.
-              </div>
-              <button type="button" class="bp-msg-empty-cta" (click)="openCart()">
-                <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
-                Go to cart
-              </button>
+            <ng-template #projectEmpty>
+              <ng-container *ngIf="searchTerm; else noReplies">
+                <lucide-icon name="search-x" [size]="32"></lucide-icon>
+                <p>No threads match "{{ searchTerm }}".</p>
+              </ng-container>
+              <ng-template #noReplies>
+                <div class="bp-msg-empty-icon">
+                  <lucide-icon name="inbox" [size]="28"></lucide-icon>
+                </div>
+                <div class="bp-msg-empty-title">No replies yet</div>
+                <div class="bp-msg-empty-sub">
+                  Emails you send from your cart will land here as supplier replies arrive.
+                </div>
+                <button type="button" class="bp-msg-empty-cta" (click)="openCart()">
+                  <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
+                  Go to cart
+                </button>
+              </ng-template>
             </ng-template>
           </div>
 
@@ -1624,11 +1655,10 @@ export class MessagesInboxComponent implements OnInit {
   /** v1.27 → v1.65dt (p0015) — list / card / table view toggle
       dropped. List view is the only render path now. activeView
       field retired. */
-  /** v1.27 → v1.65dt (p0015) — search bar retired. searchTerm field
-      kept (defaulted to '') so filteredThreads() continues to no-op
-      its q-filter branch without code change; the underlying
-      onSearchChange handler is dead but left in case search comes
-      back in a future iteration. */
+  /** v1.27: free-text search across supplier name + latest body +
+      quoted item names. Debounced 300ms via onSearchChange.
+      v1.65du — restored after p0015's drop was overridden per user
+      feedback. */
   searchTerm = '';
   private searchDebounce: any = null;
   activeThread: VendorThread | null = null;
