@@ -126,41 +126,13 @@ interface VendorThread {
         </p-dropdown>
       </div>
 
-      <!-- v1.65ax — BROWSE STRIP wraps circles + search into one
-           panel block matching the Marketplace. -->
-      <div class="bp-browse-strip" *ngIf="categoryFolders.length > 0">
-        <div class="bp-browse-panel">
-          <app-category-circles
-            [categories]="categoryFolders"
-            [activeId]="activeFolder"
-            size="lg"
-            [unscopedIds]="emptyCategoryIds"
-            [badgeCounts]="unreadBadgeCounts"
-            (select)="onCircleSelect($event)">
-          </app-category-circles>
-        </div>
-
-        <!-- v1.65aj (p0001) — SEARCH section inside the strip. Pulled
-             out of the sidebar so Messages and Marketplace share the
-             same layout.
-             v1.65cb — accent-coloured category-scope dropdown added
-             on the left of the search row, mirroring the Marketplace
-             "All ▾" chip. Bound to activeFolder so it stays in sync
-             with the category circles.
-             v1.65du — search restored (Liam uses it from the project
-             messages tab). p0015's "drop the search bar" instruction
-             overridden per user feedback. The view-mode toggles +
-             card/table view stripping from p0015 stays. -->
+      <!-- v1.65dv (p0015 follow-up) — browse strip slimmed to just the
+           search row. Category circles retired (Category dropdown in
+           the INBOX header replaces them); filter sidebar gone entirely
+           so the body becomes 2-column. -->
+      <div class="bp-browse-strip">
         <div class="bp-search-panel">
           <div class="bp-search-row">
-            <p-dropdown *ngIf="folderDropdownOptions.length > 1"
-                        [options]="folderDropdownOptions"
-                        [ngModel]="activeFolder"
-                        (onChange)="onFolderDropdownChange($event.value)"
-                        optionLabel="name" optionValue="id"
-                        styleClass="bp-strip-search-dd"
-                        appendTo="body"
-                        placeholder="All"></p-dropdown>
             <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
             <input pInputText type="text"
                    [(ngModel)]="searchTerm"
@@ -171,77 +143,57 @@ interface VendorThread {
         </div>
       </div><!-- /.bp-browse-strip -->
 
-      <!-- ═══════════════ THREE-COLUMN BODY ═══════════════
-           Reuses the marketplace bp-cat-body--detail grid: sidebar
-           (240) | main (1fr) | detail.
-           v1.65ce — switched from data-detail-size="md" to a scoped
-           bp-msg-body override (240 / 1fr / preview-w).
-           v1.65cf — preview width is now resizable via a drag handle
-           on its left edge. Default 640px (was 520). User-chosen
-           width persists in localStorage('bp-msg-preview-w'). -->
-      <div class="bp-cat-body bp-cat-body--detail bp-msg-body" data-detail-size="lg"
+      <!-- ═══════════════ TWO-COLUMN BODY ═══════════════
+           v1.65dv (p0015 follow-up) — filter sidebar retired. Three
+           dropdowns in the INBOX header (Category / Contact / Status)
+           replace the rail. Body grid is now main (1fr) | detail
+           (resizable preview). -->
+      <div class="bp-cat-body bp-msg-body bp-msg-body--2col"
            [style.--bp-msg-preview-w.px]="previewWidth">
 
-        <!-- ── LEFT SIDEBAR: FILTER head + status + suppliers ── -->
-        <aside class="bp-cat-sidebar">
-          <!-- v1.65aj (p0001) — Lucide leading icon + FILTER eyebrow. -->
-          <div class="bp-cat-sidebar-head">
-            <lucide-icon name="list-filter" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
-            <div class="bp-filter-title">FILTER</div>
-          </div>
-
-          <div class="bp-cat-sidebar-body">
-          <!-- v1.28: STATUS moved here from the centre column so all the
-               filters share one rail. Uses the shared bp-sidebar-item /
-               -count primitives — identical look to the suppliers list. -->
-          <div class="bp-sidebar-sublabel">Status</div>
-          <button *ngFor="let s of statuses"
-                  type="button"
-                  class="bp-sidebar-item"
-                  [class.active]="activeStatus === s.id"
-                  (click)="activeStatus = s.id; cdr.detectChanges()">
-            <span>{{ s.label }}</span>
-            <span class="bp-sidebar-count">{{ s.id === 'all' ? threads.length : countByStatus(s.id) }}</span>
-          </button>
-
-          <div class="bp-sidebar-sublabel" style="margin-top:16px">Suppliers</div>
-          <button type="button"
-                  class="bp-sidebar-item"
-                  [class.active]="activeSupplier === 'all'"
-                  (click)="activeSupplier = 'all'; cdr.detectChanges()">
-            <span>All threads</span>
-            <span class="bp-sidebar-count">{{ threads.length }}</span>
-          </button>
-          <button *ngFor="let s of supplierList"
-                  type="button"
-                  class="bp-sidebar-item"
-                  [class.active]="activeSupplier === s.id"
-                  (click)="activeSupplier = s.id; cdr.detectChanges()">
-            <span class="bp-msg-supp-name">{{ s.name }}</span>
-            <span class="bp-sidebar-count">{{ s.count }}</span>
-          </button>
-          </div><!-- /.bp-cat-sidebar-body -->
-        </aside>
-
-        <!-- ── MAIN: panel head (icon + MESSAGES + count + view toggle)
-             + scrolling body ── -->
+        <!-- ── MAIN: panel head (icon + INBOX + count + 3 filter
+             dropdowns) + scrolling body ── -->
         <section class="bp-cat-main">
-          <!-- v1.65aj (p0001) — Lucide inbox icon + count + view toggle,
-               outside the scrolling body so the scrollbar starts BELOW
-               the head.
-               v1.65cd — THREADS section-title eyebrow restored so the
-               panel head matches the Marketplace's "RESULTS" pattern
-               (icon → eyebrow → count → view toggle). -->
           <div class="bp-cat-main-head">
             <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
-            <span class="bp-cat-section-title">THREADS</span>
+            <span class="bp-cat-section-title">INBOX</span>
             <span class="bp-cat-section-count">
               {{ filteredThreads().length }}
               {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
             </span>
-            <!-- v1.65dt (p0015) — list / card / table view toggle
-                 dropped. The card and table variants weren't pulling
-                 weight (same data, just rearranged); list is canonical. -->
+
+            <!-- v1.65dv — Category / Contact / Status dropdowns. All
+                 three reuse the existing activeFolder / activeSupplier
+                 / activeStatus state, so filteredThreads() keeps
+                 working without change. The "Contact" label fits both
+                 viewers — agency sees suppliers, supplier sees
+                 agencies (when /inbox lands in Phase 2). -->
+            <div class="bp-msg-head-filters">
+              <p-dropdown *ngIf="folderDropdownOptions.length > 1"
+                          [options]="folderDropdownOptions"
+                          [ngModel]="activeFolder"
+                          (onChange)="onFolderDropdownChange($event.value)"
+                          optionLabel="name" optionValue="id"
+                          styleClass="bp-msg-head-dd"
+                          appendTo="body"
+                          placeholder="Category"></p-dropdown>
+
+              <p-dropdown [options]="contactDropdownOptions"
+                          [ngModel]="activeSupplier"
+                          (onChange)="onContactDropdownChange($event.value)"
+                          optionLabel="name" optionValue="id"
+                          styleClass="bp-msg-head-dd"
+                          appendTo="body"
+                          [placeholder]="viewer === 'supplier' ? 'Agency' : 'Contact'"></p-dropdown>
+
+              <p-dropdown [options]="statusDropdownOptions"
+                          [ngModel]="activeStatus"
+                          (onChange)="onStatusDropdownChange($event.value)"
+                          optionLabel="name" optionValue="id"
+                          styleClass="bp-msg-head-dd"
+                          appendTo="body"
+                          placeholder="Status"></p-dropdown>
+            </div>
           </div>
 
           <div class="bp-cat-main-body">
@@ -706,8 +658,53 @@ interface VendorThread {
     :host ::ng-deep .bp-cat-body--detail.bp-msg-body {
       grid-template-columns: 240px 1fr var(--bp-msg-preview-w, 640px);
     }
+    /* v1.65dv (p0015 follow-up) — 2-column body. Filter sidebar gone;
+       main column flexes against the resizable preview. The old
+       3-column grid stays defined above for callers still mounting
+       the legacy shape. */
+    :host ::ng-deep .bp-msg-body.bp-msg-body--2col {
+      display: grid;
+      grid-template-columns: 1fr var(--bp-msg-preview-w, 640px);
+      min-height: 0;
+      flex: 1;
+    }
     :host ::ng-deep .bp-msg-body .bp-cat-detail {
       position: relative;
+    }
+
+    /* v1.65dv — INBOX header dropdown cluster. Category / Contact /
+       Status sit right-aligned in the .bp-cat-main-head strip via
+       margin-left:auto on the cluster. Each dropdown is compact
+       (slim padding, theme-accent caret) so the three fit without
+       crowding the count chip. */
+    .bp-msg-head-filters {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    :host ::ng-deep .bp-msg-head-dd.p-dropdown {
+      height: 28px;
+      min-width: 120px;
+      font-size: 12px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+    }
+    :host ::ng-deep .bp-msg-head-dd.p-dropdown:not(.p-disabled):hover {
+      border-color: var(--theme-accent);
+    }
+    :host ::ng-deep .bp-msg-head-dd .p-dropdown-label {
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      line-height: 20px;
+    }
+    :host ::ng-deep .bp-msg-head-dd .p-dropdown-trigger {
+      width: 24px;
+      color: var(--color-text-muted);
     }
     /* Drag handle — sits absolutely on the left edge of the preview
        panel. 6px wide so it's easy to grab but doesn't draw chrome
@@ -2059,6 +2056,41 @@ export class MessagesInboxComponent implements OnInit {
       map[id].count++;
     }
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** v1.65dv (p0015 follow-up) — Contact dropdown options for the
+      INBOX header. Wraps supplierList with an "All" lead row and
+      renames it semantically (agency view = list of suppliers,
+      supplier view = list of agencies in Phase 2). The count chips
+      from the old sidebar are folded into the label so the dropdown
+      can stay slim. */
+  get contactDropdownOptions(): Array<{ id: string; name: string }> {
+    const allLabel = this.viewer === 'supplier' ? 'All agencies' : 'All contacts';
+    const opts: Array<{ id: string; name: string }> = [{ id: 'all', name: allLabel }];
+    for (const s of this.supplierList) {
+      opts.push({ id: s.id, name: `${s.name} (${s.count})` });
+    }
+    return opts;
+  }
+
+  onContactDropdownChange(id: string) {
+    this.activeSupplier = id || 'all';
+    this.cdr.detectChanges();
+  }
+
+  /** v1.65dv — Status dropdown options. Mirrors the old sidebar
+      status list; counts live in the label so the dropdown row reads
+      "Action (3)" / "Waiting (1)" etc. */
+  get statusDropdownOptions(): Array<{ id: string; name: string }> {
+    return (this.statuses || []).map(s => {
+      const count = s.id === 'all' ? this.threads.length : this.countByStatus(s.id);
+      return { id: s.id, name: `${s.label} (${count})` };
+    });
+  }
+
+  onStatusDropdownChange(id: string) {
+    this.activeStatus = id || 'all';
+    this.cdr.detectChanges();
   }
 
   /** v1.27: 2-letter initials for avatar bubbles (list + card views). */
