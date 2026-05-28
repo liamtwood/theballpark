@@ -2142,6 +2142,23 @@ export class MessagesInboxComponent implements OnInit {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
+  /** v1.65eq — most recent outbound brief in a thread. Threads group
+      by supplier + category, so a second brief to the same supplier
+      lands as another outbound row in the same thread. The items
+      panel + reply target should reflect the LATEST brief, not the
+      oldest. Falls back to any outbound, then any message, so callers
+      never crash on edge data. */
+  private latestOutbound(t: VendorThread): ThreadMessage | undefined {
+    const msgs = t?.messages || [];
+    const outbound = msgs.filter((m: any) => m.direction === 'outbound');
+    if (outbound.length) {
+      return outbound.reduce((latest, m) => {
+        return new Date(m.created_at) > new Date(latest.created_at) ? m : latest;
+      });
+    }
+    return msgs[0];
+  }
+
   // ── v1.65dz (p0015) — viewer-aware divergence helpers ─────────────
   // Each "from" / "lane" / "card-viewer" lookup branches on this.viewer
   // so the same Angular component renders the agency-side view at
@@ -2345,7 +2362,12 @@ export class MessagesInboxComponent implements OnInit {
     // v1.65cv (p0008) — load message_items for the lead outbound row
     // in this thread (the one that minted the conversation). Replies
     // share the same items via the message_id linkage.
-    const lead = (t.messages || []).find((m: any) => m.direction === 'outbound');
+    // v1.65eq — when a thread carries MULTIPLE outbound briefs (same
+    // supplier + same category, different ref_codes), .find() returns
+    // the oldest, so item refreshes after a re-send showed stale data.
+    // Switched to the LATEST outbound (latestOutbound() helper below)
+    // so the items panel reflects the current ask.
+    const lead = this.latestOutbound(t);
     if (lead?.id) {
       this.messageItemSvc.getByMessage(lead.id).subscribe({
         next: rows => {
@@ -2644,7 +2666,9 @@ export class MessagesInboxComponent implements OnInit {
       an inbound direction reply row. */
   onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string }) {
     if (!this.activeThread) return;
-    const lead = (this.activeThread.messages || []).find((m: any) => m.direction === 'outbound');
+    // v1.65eq — use the latest outbound brief in the thread as the
+    // reply target (matches the items panel load path).
+    const lead = this.latestOutbound(this.activeThread);
     if (!lead?.id) return;
     this.messageItemSvc.agentReply(lead.id, {
       viewer: this.viewer,
