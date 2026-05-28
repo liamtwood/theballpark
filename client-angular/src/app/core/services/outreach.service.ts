@@ -45,6 +45,11 @@ export interface OutreachRequest {
       name + line total) and lets the agent add ad-hoc items by
       title. The email body in step 3 builds from this list. */
   cartItems?: OutreachCartItem[];
+  /** v1.65ep — title-only ad-hoc asks the agent added in the cart
+      drawer's ADDITIONAL ASKS section. Pre-seed the outreach
+      drawer's adhocItems[] in step 2 so the agent doesn't re-type
+      them; they can still add more or remove these. */
+  adhocAsks?: string[];
   /** Project-wide context for the per-item line math. Used to label
       per-cover/per-head items in step 2. */
   guestCount?: number;

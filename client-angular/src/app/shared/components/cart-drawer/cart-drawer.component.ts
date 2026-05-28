@@ -2,6 +2,7 @@ import {
   Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { SidebarModule } from 'primeng/sidebar';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subscription } from 'rxjs';
@@ -39,7 +40,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
   selector: 'app-cart-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, SidebarModule, LucideAngularModule, GbpPipe],
+  imports: [CommonModule, FormsModule, SidebarModule, LucideAngularModule, GbpPipe],
   template: `
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
@@ -137,6 +138,53 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         <ng-template #noWl>
           <div class="bp-cd-empty">No items yet — heart an item to save it here.</div>
         </ng-template>
+
+        <!-- v1.65ep — ADDITIONAL ASKS: title-only "create" rows the
+             agent adds in-cart. They aren't project_items yet — the
+             outreach send promotes them into items rows (pending) +
+             links them as message_items per the existing Create path
+             in taxonomy.requestQuotes. -->
+        <div class="bp-field-label bp-cd-eyebrow">ADDITIONAL ASKS</div>
+        <ng-container *ngIf="adhocAsks.length; else noAsks">
+          <div *ngFor="let a of adhocAsks; let i = index"
+               class="bp-list-row bp-cd-row bp-cd-row--adhoc">
+            <div class="bp-cd-img bp-cd-img--adhoc">
+              <lucide-icon name="sparkles" [size]="13"></lucide-icon>
+            </div>
+            <div class="bp-cd-text">
+              <div class="bp-cd-name" [title]="a.name">{{ a.name }}</div>
+              <div class="bp-cd-sub">Additional ask</div>
+            </div>
+            <div class="bp-cd-price">—</div>
+            <button type="button"
+                    class="bp-cd-action bp-cd-action--remove"
+                    title="Remove"
+                    (click)="removeAsk(i)">
+              <lucide-icon name="x" [size]="13"></lucide-icon>
+            </button>
+          </div>
+        </ng-container>
+        <ng-template #noAsks>
+          <div class="bp-cd-empty">
+            Need something that's not in the catalogue? Add it below.
+          </div>
+        </ng-template>
+
+        <!-- Title-only add input — Enter or + commits. -->
+        <div class="bp-cd-addask">
+          <input type="text"
+                 class="bp-cd-addask-input"
+                 [(ngModel)]="newAskName"
+                 (keyup.enter)="addAsk()"
+                 placeholder="Add an ask (e.g. open bar for cocktails)"/>
+          <button type="button"
+                  class="bp-cd-addask-btn"
+                  [disabled]="!newAskName.trim()"
+                  (click)="addAsk()">
+            <lucide-icon name="plus" [size]="13"></lucide-icon>
+            Add
+          </button>
+        </div>
       </div>
 
       <ng-template pTemplate="footer">
@@ -299,6 +347,55 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       letter-spacing: 0.01em;
       margin-top: 1px;
     }
+
+    /* v1.65ep — ad-hoc ask rows + add-input. Same row primitive as
+       SELECTED / WISHLIST so the visual rhythm is unbroken; ad-hoc
+       rows get a theme-accent sparkles glyph in place of the image
+       to mark them as Create-path. */
+    .bp-cd-row--adhoc { background: var(--theme-soft); }
+    .bp-cd-img--adhoc {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bp-cd-img--adhoc lucide-icon { color: inherit; }
+    .bp-cd-addask {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .bp-cd-addask-input {
+      flex: 1;
+      padding: 8px 10px;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 7px;
+      outline: none;
+    }
+    .bp-cd-addask-input:focus {
+      border-color: var(--theme-accent);
+      background: var(--color-surface);
+    }
+    .bp-cd-addask-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 12px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: 7px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
 
     /* Hover-only action buttons. Reserve their column space so the row
        doesn't shift when they appear. */
@@ -555,6 +652,15 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   selected: ProjectItem[] = [];
   wishlist: ProjectItem[] = [];
 
+  /** v1.65ep — title-only "additional asks" the agent adds in-cart.
+      These aren't project_items yet — they live as session state on
+      the drawer until "Send brief" promotes them via the existing
+      Create path in taxonomy.requestQuotes (server creates a pending
+      items row + message_item per supplier). Ephemeral by design:
+      they're brief-shaped, not project-shaped. */
+  adhocAsks: { name: string }[] = [];
+  newAskName = '';
+
   /** v1.65ae — defaults are the All-view labels; openers that scope to
       a single category override via CartDrawerOptions. */
   contextLabel = 'PROJECT ITEMS';
@@ -604,9 +710,29 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       this.contextTitle = opts.contextTitle || 'Your selections';
       this.itemFilter = opts.itemIds ? new Set(opts.itemIds) : null;
       this.contextCategoryId = opts.contextCategoryId || null;
+      // v1.65ep — reset ad-hoc asks every open so the drawer starts
+      // fresh per project visit. (Persistence is a v2 — would need
+      // a project_asks table or similar.)
+      this.adhocAsks = [];
+      this.newAskName = '';
       if (req) this.load();
       this.cdr.markForCheck();
     });
+  }
+
+  /** v1.65ep — commit a title-only ad-hoc ask into the cart. Trims
+      and de-dupes (case-insensitive). */
+  addAsk(): void {
+    const name = (this.newAskName || '').trim();
+    if (!name) return;
+    const exists = this.adhocAsks.some(a => a.name.toLowerCase() === name.toLowerCase());
+    if (!exists) this.adhocAsks.push({ name });
+    this.newAskName = '';
+    this.cdr.markForCheck();
+  }
+  removeAsk(idx: number): void {
+    this.adhocAsks.splice(idx, 1);
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }
@@ -678,12 +804,17 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   }
 
   // ── v1.65ek — Send brief to suppliers ─────────────────────────────
-  /** True when there's at least one selected item AND we know which
-      supplier(s) to send to (each item carries supplier_org_id from
-      the projectItemSvc join). Drives the CTA's disabled state. */
+  /** True when there's at least one selected item with a supplier,
+      OR there's at least one ad-hoc ask (which always needs a
+      supplier picked in step 1 of the outreach drawer regardless).
+      Drives the CTA's disabled state.
+      v1.65ep — ad-hoc asks alone now enable the CTA; the outreach
+      drawer's step 1 lets the agent pick suppliers for ask-only
+      briefs. */
   get canSendBrief(): boolean {
-    return this.selected.length > 0
+    const hasSelectedWithSupplier = this.selected.length > 0
         && this.selected.some(pi => !!(pi as any).supplier_org_id);
+    return hasSelectedWithSupplier || this.adhocAsks.length > 0;
   }
 
   /** v1.65ek — open the existing 4-step outreach drawer (Suppliers →
@@ -731,14 +862,18 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       supplier_name: pi.supplier_name || null,
     }));
 
+    // v1.65ep — count includes ad-hoc asks. The outreach drawer's
+    // "N-item brief" title now reflects the full picture.
+    const totalAsks = this.selected.length + this.adhocAsks.length;
+
     this.outreach.open({
       // Synthesised single-item kept for back-compat with the
       // existing per-item outreach callers; the drawer prefers
       // cartItems when set.
       item: {
-        name: this.selected.length === 1
-          ? (this.selected[0].name || 'Cart item')
-          : `${this.selected.length}-item brief`,
+        name: totalAsks === 1
+          ? (this.selected[0]?.name || this.adhocAsks[0]?.name || 'Cart item')
+          : `${totalAsks}-item brief`,
         description: '',
         price: this.yourCost,
         isNew: true,
@@ -747,6 +882,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       projectId: this.projectId,
       suppliers,
       cartItems,
+      adhocAsks: this.adhocAsks.map(a => a.name),
       guestCount: this.guestCount,
     });
 

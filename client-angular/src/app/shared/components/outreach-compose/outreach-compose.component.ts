@@ -662,7 +662,11 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     // fresh array the agent fills via the "Add additional ask"
     // input in step 2.
     this.cartItems = (req.cartItems || []).map(it => ({ ...it }));
-    this.adhocItems = [];
+    // v1.65ep — pre-seed adhocItems[] from req.adhocAsks (ad-hoc
+    // asks the agent already added in the cart drawer's ADDITIONAL
+    // ASKS section). They show as the same ad-hoc rows in step 2;
+    // agent can remove or add more.
+    this.adhocItems = (req.adhocAsks || []).map(name => ({ name }));
     this.newAdhocName = '';
     this.guestCountHint = req.guestCount || 0;
     // When opened with cartItems, the per-item bullet description
