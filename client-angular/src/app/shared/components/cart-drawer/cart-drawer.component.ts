@@ -9,6 +9,7 @@ import { Subscription } from 'rxjs';
 import { CartDrawerService, CartDrawerOptions } from '../../../core/services/cart-drawer.service';
 import { ProjectItemService } from '../../../core/services/project-item.service';
 import { ProjectService } from '../../../core/services/project.service';
+import { ProjectCategoryService } from '../../../core/services/project-category.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 
@@ -503,6 +504,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   contextLabel = 'PROJECT ITEMS';
   contextTitle = 'Your selections';
   private itemFilter: Set<string> | null = null;
+  /** v1.65ej — active category id when the drawer is opened scoped
+      to one category (e.g. Catering). Drives the budget headroom
+      card to read the per-category ballpark_budget instead of the
+      project-wide project_budget. */
+  private contextCategoryId: string | null = null;
 
   /** v1.65ef — project guest_count drives per-cover / per-head line
       math. Loaded alongside the project_items on every open(). 0
@@ -528,6 +534,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     private svc: CartDrawerService,
     private projectItemSvc: ProjectItemService,
     private projectSvc: ProjectService,
+    private projectCategorySvc: ProjectCategoryService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -539,6 +546,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       this.contextLabel = opts.contextLabel || 'PROJECT ITEMS';
       this.contextTitle = opts.contextTitle || 'Your selections';
       this.itemFilter = opts.itemIds ? new Set(opts.itemIds) : null;
+      this.contextCategoryId = opts.contextCategoryId || null;
       if (req) this.load();
       this.cdr.markForCheck();
     });
@@ -653,9 +661,31 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // project summary) feeds the headroom card under CLIENT TOTAL.
       // Field name is project_budget (NOT budget); same field
       // estimate.component reads.
+      // v1.65ej — category-scoped opens override this with the
+      // per-category ballpark_budget (loaded below). The project-
+      // wide value is the fallback when no contextCategoryId is set
+      // OR when the category doesn't carry its own budget.
       this.budget    = Number((p as any)?.project_budget)     || 0;
       this.cdr.markForCheck();
     });
+
+    // v1.65ej — when scoped to a single category, look up that
+    // project_category and prefer its ballpark_budget over the
+    // project-wide project_budget. Order doesn't matter relative to
+    // the project load above — last one to land wins; with category
+    // scope, the category budget should win.
+    if (this.contextCategoryId) {
+      this.projectCategorySvc.getByProject(this.projectId).subscribe(rows => {
+        const cat = (rows || []).find(c =>
+          (c as any).category_id === this.contextCategoryId
+        );
+        const catBudget = Number((cat as any)?.ballpark_budget) || 0;
+        if (catBudget > 0) {
+          this.budget = catBudget;
+          this.cdr.markForCheck();
+        }
+      });
+    }
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
       const list = (rows || []).filter(r =>
         this.itemFilter ? this.itemFilter.has(r.item_id) : true

@@ -25,6 +25,12 @@ export interface CartDrawerOptions {
   /** Whitelist of item_ids — drawer renders only rows whose item_id is
       in this set. When omitted, all project_items render. */
   itemIds?: string[];
+  /** v1.65ej — when scoped to a category (Catering, AV, etc.), pass
+      the category_id so the drawer's budget headroom card reads the
+      project_category's ballpark_budget instead of the project-wide
+      project_budget. Omitting it (or passing null) keeps the All
+      view's project-wide budget. */
+  contextCategoryId?: string;
 }
 
 export interface CartDrawerRequest {

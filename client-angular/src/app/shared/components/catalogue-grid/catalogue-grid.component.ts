@@ -2386,7 +2386,11 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.cartDrawerSvc.open(pid, {
       contextLabel: catName.toUpperCase(),
       contextTitle: 'Selections in ' + catName,
-      itemIds: scopedIds
+      itemIds: scopedIds,
+      // v1.65ej — pass the active category id so the drawer's budget
+      // headroom reads the per-category ballpark_budget (not the
+      // project-wide project_budget).
+      contextCategoryId: this.activeCategory !== 'all' ? this.activeCategory : undefined,
     });
   }
 
