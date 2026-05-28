@@ -67,7 +67,10 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         <!-- SELECTED ----------------------------------------------- -->
         <div class="bp-field-label bp-cd-eyebrow">SELECTED</div>
         <ng-container *ngIf="selected.length; else noSel">
-          <div *ngFor="let pi of selected" class="bp-list-row bp-cd-row bp-cd-row--selected">
+          <ng-container *ngFor="let pi of selected">
+          <div class="bp-list-row bp-cd-row bp-cd-row--selected"
+               [class.bp-cd-row--accepted]="rowStatus(pi) === 'accepted'"
+               [class.bp-cd-row--declined]="isDeclined(pi)">
             <div class="bp-cd-img"
                  [style.background-image]="imageStyle(pi)"
                  [style.background-color]="imageBgColor(pi)">
@@ -76,6 +79,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <div class="bp-cd-text">
               <div class="bp-cd-name" [title]="pi.name">{{ pi.name }}</div>
               <div class="bp-cd-sub">{{ pi.supplier_name || '—' }}</div>
+              <!-- v1.65et — small status badge in supplier mode so
+                   Ryan sees what he's already actioned. -->
+              <div *ngIf="isSupplier && rowStatus(pi)"
+                   class="bp-cd-row-status"
+                   [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
+                   [class.bp-cd-row-status--bad]="isDeclined(pi)">
+                {{ rowStatusLabel(pi) }}
+              </div>
             </div>
             <!-- v1.65ef — extended line price. For per-cover/per-head
                  items: shows the multiplied total (£X) with a small
@@ -87,16 +98,96 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
               </div>
             </div>
-            <button type="button"
-                    class="bp-cd-action bp-cd-action--remove"
-                    title="Remove from project"
-                    (click)="remove(pi)">
-              <lucide-icon name="x" [size]="13"></lucide-icon>
-            </button>
+            <!-- v1.65et — supplier mode swaps the agent's "remove"
+                 button for an action cluster (Accept / Decline /
+                 Adjust). Click Adjust → inline editor opens below.
+                 Accept and Decline fire immediately. -->
+            <ng-container *ngIf="isSupplier; else agentActions">
+              <div class="bp-cd-row-actions">
+                <button type="button" class="bp-cd-row-act bp-cd-row-act--accept"
+                        title="Accept"
+                        (click)="onRowAccept(pi)">
+                  <lucide-icon name="check" [size]="13"></lucide-icon>
+                </button>
+                <button type="button" class="bp-cd-row-act bp-cd-row-act--adjust"
+                        title="Adjust — set price / photo / details"
+                        (click)="toggleAdjust(pi)">
+                  <lucide-icon name="square-pen" [size]="13"></lucide-icon>
+                </button>
+                <button type="button" class="bp-cd-row-act bp-cd-row-act--decline"
+                        title="Decline"
+                        (click)="onRowDecline(pi)">
+                  <lucide-icon name="x" [size]="13"></lucide-icon>
+                </button>
+              </div>
+            </ng-container>
+            <ng-template #agentActions>
+              <button type="button"
+                      class="bp-cd-action bp-cd-action--remove"
+                      title="Remove from project"
+                      (click)="remove(pi)">
+                <lucide-icon name="x" [size]="13"></lucide-icon>
+              </button>
+            </ng-template>
             <!-- v1.65ab — hover-only description tooltip. Truncated to
                  ~120 chars so the panel doesn't balloon. -->
             <div class="bp-cd-tip" *ngIf="pi.description">{{ truncate(pi.description) }}</div>
           </div>
+
+          <!-- v1.65et — inline Adjust editor. Renders BELOW the row
+               when the supplier clicks the pencil. Sets price per
+               head + photo URL + optional name/description override.
+               Save → emits cartDrawerSvc.rowAction$ which the inbox
+               catches and routes through onItemAction (the existing
+               reply pipeline). When the underlying item is an
+               agency-pending placeholder, the server forks a
+               supplier-owned catalogue items row in the same
+               transaction (transitionItem.maybeForkCatalogueItem). -->
+          <div *ngIf="isSupplier && adjustOpenId === pi.id"
+               class="bp-cd-adjust">
+            <div class="bp-cd-adjust-hd">Quote &amp; add to catalogue</div>
+            <div class="bp-cd-adjust-row">
+              <label class="bp-cd-adjust-lbl">Name</label>
+              <input type="text" class="bp-cd-adjust-input"
+                     [(ngModel)]="adjustForm.name"
+                     [placeholder]="pi.name"/>
+            </div>
+            <div class="bp-cd-adjust-row">
+              <label class="bp-cd-adjust-lbl">Price per head</label>
+              <input type="number" class="bp-cd-adjust-input"
+                     [(ngModel)]="adjustForm.price"
+                     min="0" step="1" placeholder="0"/>
+              <input type="text" class="bp-cd-adjust-input bp-cd-adjust-unit"
+                     [(ngModel)]="adjustForm.unit"
+                     placeholder="cover"/>
+            </div>
+            <div class="bp-cd-adjust-row">
+              <label class="bp-cd-adjust-lbl">Photo URL</label>
+              <input type="text" class="bp-cd-adjust-input"
+                     [(ngModel)]="adjustForm.imageUrl"
+                     placeholder="https://… (paste image link)"/>
+            </div>
+            <div class="bp-cd-adjust-row">
+              <label class="bp-cd-adjust-lbl">Description</label>
+              <textarea class="bp-cd-adjust-input bp-cd-adjust-textarea" rows="2"
+                        [(ngModel)]="adjustForm.description"
+                        placeholder="Short description for the catalogue"></textarea>
+            </div>
+            <div class="bp-cd-adjust-foot">
+              <span class="bp-cd-adjust-note">
+                <lucide-icon name="sparkles" [size]="11"></lucide-icon>
+                Adds to your catalogue
+              </span>
+              <button type="button" class="bp-cd-adjust-cancel"
+                      (click)="cancelAdjust()">Cancel</button>
+              <button type="button" class="bp-cd-adjust-save"
+                      [disabled]="!canSaveAdjust"
+                      (click)="onRowAdjust(pi)">
+                <lucide-icon name="check" [size]="13"></lucide-icon> Save
+              </button>
+            </div>
+          </div>
+          </ng-container>
         </ng-container>
         <ng-template #noSel>
           <div class="bp-cd-empty">No items selected yet</div>
@@ -285,16 +376,18 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
           </button>
 
-          <!-- v1.65es — Supplier action train trigger (Phase 1
-               placeholder; Phase 2 wires it to a multi-step
-               accept / adjust / summary flow). -->
+          <!-- v1.65es → v1.65et — supplier "Done" CTA. Each row
+               action (Accept / Decline / Adjust) commits immediately
+               via cartDrawerSvc.rowAction$, so this button just
+               closes the drawer to signal Ryan is finished. The
+               agent sees the action sequence in the conversation
+               panel + Cart drawer the next time they refresh. -->
           <button *ngIf="isSupplier"
                   type="button"
                   class="bp-cd-send-cta"
-                  disabled
-                  title="Coming in Phase 2 — accept / adjust each item, then summary">
-            <lucide-icon name="send" [size]="14"></lucide-icon>
-            <span>Review &amp; respond</span>
+                  (click)="close()">
+            <lucide-icon name="check" [size]="14"></lucide-icon>
+            <span>Done</span>
             <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
           </button>
         </div>
@@ -446,6 +539,127 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     }
     .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
+
+    /* v1.65et — supplier-side row action cluster. Three small icon
+       buttons (Accept / Adjust / Decline) replacing the agent's
+       single Remove button. Semantic colors so Ryan can scan the
+       row state at a glance. */
+    .bp-cd-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .bp-cd-row-act {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+      cursor: pointer;
+      color: var(--color-text-muted);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .bp-cd-row-act:hover { background: var(--theme-bg); }
+    .bp-cd-row-act--accept:hover  { border-color: var(--color-booked, #059669);
+                                    color: var(--color-booked, #059669); }
+    .bp-cd-row-act--adjust:hover  { border-color: var(--theme-accent);
+                                    color: var(--theme-accent); }
+    .bp-cd-row-act--decline:hover { border-color: var(--color-action, #DC2626);
+                                    color: var(--color-action, #DC2626); }
+    .bp-cd-row-act lucide-icon { color: inherit; }
+
+    /* Status badge under the supplier_name on a row */
+    .bp-cd-row-status {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .bp-cd-row-status--ok  { color: var(--color-booked, #059669); }
+    .bp-cd-row-status--bad { color: var(--color-action, #DC2626); }
+
+    /* Row tinting based on action state — subtle, non-destructive. */
+    .bp-cd-row--accepted { background: var(--color-booked-soft, rgba(5,150,105,0.06)); }
+    .bp-cd-row--declined { opacity: 0.55; }
+
+    /* Inline Adjust editor — expands below the row when Ryan
+       clicks the pencil. Sits inside the SELECTED list, not in a
+       modal, so the supplier can scan the cart while editing. */
+    .bp-cd-adjust {
+      padding: 14px 16px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-card);
+      margin: -2px 10px 10px 60px;
+      display: flex; flex-direction: column;
+      gap: 8px;
+    }
+    .bp-cd-adjust-hd {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-cd-adjust-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bp-cd-adjust-lbl {
+      width: 88px; flex-shrink: 0;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+    .bp-cd-adjust-input {
+      flex: 1;
+      padding: 6px 9px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-primary);
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      outline: none;
+    }
+    .bp-cd-adjust-input:focus { border-color: var(--theme-accent); }
+    .bp-cd-adjust-textarea { resize: vertical; line-height: 1.4; }
+    .bp-cd-adjust-unit { max-width: 80px; flex: 0 0 auto; }
+    .bp-cd-adjust-foot {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 4px;
+    }
+    .bp-cd-adjust-note {
+      display: inline-flex; align-items: center; gap: 4px;
+      flex: 1;
+      font-size: 10.5px;
+      color: var(--theme-accent);
+      font-weight: 500;
+    }
+    .bp-cd-adjust-note lucide-icon { color: inherit; }
+    .bp-cd-adjust-cancel,
+    .bp-cd-adjust-save {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 6px 12px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .bp-cd-adjust-cancel:hover { background: var(--theme-bg); }
+    .bp-cd-adjust-save {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border-color: var(--theme-accent);
+    }
+    .bp-cd-adjust-save:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-adjust-save:hover:not(:disabled) { opacity: 0.85; }
 
     /* Hover-only action buttons. Reserve their column space so the row
        doesn't shift when they appear. */
@@ -748,6 +962,26 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   viewer: 'agent' | 'supplier' = 'agent';
   get isSupplier(): boolean { return this.viewer === 'supplier'; }
 
+  /** v1.65et — when the supplier clicks Adjust on a row, this holds
+      the row id and the editor expands below it. One adjust open at a
+      time. */
+  adjustOpenId: string | null = null;
+  adjustForm: {
+    name: string;
+    price: number | null;
+    unit: string;
+    imageUrl: string;
+    description: string;
+  } = { name: '', price: null, unit: '', imageUrl: '', description: '' };
+  get canSaveAdjust(): boolean {
+    // At least a price OR a photo OR a name override; otherwise
+    // pressing Save would be a no-op.
+    return this.adjustForm.price != null
+        || !!this.adjustForm.imageUrl.trim()
+        || !!this.adjustForm.name.trim()
+        || !!this.adjustForm.description.trim();
+  }
+
   /** v1.65eh — project.budget drives the headroom indicator below
       the CLIENT TOTAL. 0 means "no budget set" and the card hides
       entirely (same gate as the Estimate page). */
@@ -805,6 +1039,86 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   removeAsk(idx: number): void {
     this.adhocAsks.splice(idx, 1);
     this.cdr.markForCheck();
+  }
+
+  // ── v1.65et — supplier-side row actions ────────────────────────────
+  // Each fires CartDrawerService.rowAction$ which the inbox catches
+  // and routes through its existing onItemAction reply pipeline.
+  // The inbox knows the message_id; the cart drawer just has rowId
+  // (= message_items.id), action verb, and adjust payload.
+
+  /** v1.65et — read the row's underlying status (came in via the
+      pre-supplied rows path). Drives the row's status badge + the
+      disabled/enabled state of the action buttons. */
+  rowStatus(pi: ProjectItem): string {
+    const raw = (pi as any)._raw_status as string | undefined;
+    return raw || '';
+  }
+  rowStatusLabel(pi: ProjectItem): string {
+    switch (this.rowStatus(pi)) {
+      case 'accepted':              return 'Accepted';
+      case 'declined_by_supplier':  return 'Declined';
+      case 'declined_by_agent':     return 'Declined';
+      case 'adjusted_by_supplier':  return 'Quoted';
+      case 'adjusted_by_agent':     return 'Adjusted';
+      case 'quoted':                return 'Quoted';
+      case 'holding':               return 'Holding';
+      case 'booked':                return 'Booked';
+      default:                      return '';
+    }
+  }
+  isDeclined(pi: ProjectItem): boolean {
+    const s = this.rowStatus(pi);
+    return s === 'declined_by_supplier' || s === 'declined_by_agent';
+  }
+
+  onRowAccept(pi: ProjectItem): void {
+    this.svc.emitRowAction({ rowId: pi.id, action: 'accept' });
+    (pi as any)._raw_status = 'accepted';
+    this.cdr.markForCheck();
+  }
+  onRowDecline(pi: ProjectItem): void {
+    this.svc.emitRowAction({ rowId: pi.id, action: 'decline' });
+    (pi as any)._raw_status = 'declined_by_supplier';
+    this.cdr.markForCheck();
+  }
+  toggleAdjust(pi: ProjectItem): void {
+    if (this.adjustOpenId === pi.id) { this.cancelAdjust(); return; }
+    this.adjustOpenId = pi.id;
+    this.adjustForm = {
+      name: pi.name || '',
+      price: Number(pi.base_price) || null,
+      unit: pi.unit || 'cover',
+      imageUrl: pi.image_url || '',
+      description: pi.description || '',
+    };
+    this.cdr.markForCheck();
+  }
+  cancelAdjust(): void {
+    this.adjustOpenId = null;
+    this.cdr.markForCheck();
+  }
+  onRowAdjust(pi: ProjectItem): void {
+    const f = this.adjustForm;
+    this.svc.emitRowAction({
+      rowId: pi.id,
+      action: 'adjust',
+      name: f.name.trim() || undefined,
+      description: f.description.trim() || undefined,
+      price: f.price != null ? Number(f.price) : undefined,
+      unit: f.unit.trim() || undefined,
+      image_url: f.imageUrl.trim() || undefined,
+    });
+    // Optimistic local update so the row reflects the new price /
+    // image / name immediately. Server will confirm via the inbox
+    // refresh.
+    if (f.price != null) (pi as any).base_price = Number(f.price);
+    if (f.imageUrl.trim()) (pi as any).image_url = f.imageUrl.trim();
+    if (f.name.trim()) (pi as any).name = f.name.trim();
+    if (f.description.trim()) (pi as any).description = f.description.trim();
+    if (f.unit.trim()) (pi as any).unit = f.unit.trim();
+    (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.cancelAdjust();
   }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }
@@ -1009,7 +1323,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       thumbnail via the supplier_cover_url fallback chain (handled
       by imageStyle/imageBgColor below). */
   private rowToProjectItem(r: CartDrawerRow): ProjectItem {
-    return {
+    const pi = {
       id: r.id,
       project_id: this.projectId,
       item_id: r.item_id || '',
@@ -1024,6 +1338,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       supplier_cover_url: r.supplier_cover_url || undefined,
       category_icon_color: r.category_icon_color || undefined,
     } as ProjectItem;
+    // v1.65et — stash the message_item status on the synthesised
+    // row so rowStatus() / isDeclined() can read it without
+    // touching the ProjectItem model.
+    (pi as any)._raw_status = r.status || '';
+    return pi;
   }
 
   // ── data ────────────────────────────────────────────────────────────

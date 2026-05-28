@@ -77,6 +77,22 @@ export interface CartDrawerRequest {
   options: CartDrawerOptions;
 }
 
+/** v1.65et — fired when a supplier acts on a row in the drawer
+    (Accept / Decline / Adjust). The inbox subscribes and routes
+    through its existing onItemAction reply path so the action lands
+    on the right message_item server-side. */
+export interface CartDrawerRowAction {
+  rowId: string;                     // message_items.id
+  action: 'accept' | 'decline' | 'adjust' | 'think';
+  reason_code?: string;
+  note?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  unit?: string;
+  image_url?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CartDrawerService {
   /** Active request when open, null when closed. */
@@ -88,9 +104,14 @@ export class CartDrawerService {
   private readonly _changed = new Subject<{ projectId: string }>();
   readonly changed$ = this._changed.asObservable();
 
+  /** v1.65et — emits when a supplier acts on a row from the drawer. */
+  private readonly _rowAction = new Subject<CartDrawerRowAction>();
+  readonly rowAction$ = this._rowAction.asObservable();
+
   open(projectId: string, options: CartDrawerOptions = {}): void {
     this._request.next({ projectId, options });
   }
   close(): void { this._request.next(null); }
   markChanged(projectId: string): void { this._changed.next({ projectId }); }
+  emitRowAction(a: CartDrawerRowAction): void { this._rowAction.next(a); }
 }

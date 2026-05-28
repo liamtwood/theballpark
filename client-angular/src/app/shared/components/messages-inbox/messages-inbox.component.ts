@@ -1748,6 +1748,34 @@ export class MessagesInboxComponent implements OnInit {
     // user opens their first thread.
     this.loadComposeChips();
 
+    // v1.65et (p0015 — supplier action train) — listen for action
+    // events fired from rows in the Cart drawer (supplier view).
+    // Route through the existing onItemAction reply pipeline so the
+    // action lands on the right message_item server-side; the same
+    // viewer-aware /messages/:id/reply endpoint handles the
+    // adjusted_by_supplier / declined_by_supplier / accepted
+    // transitions and forks a Rocket-Food-owned catalogue items row
+    // on adjust (server-side maybeForkCatalogueItem).
+    this.cartDrawerSvc.rowAction$.subscribe(evt => {
+      // Map the drawer's rowId (= message_items.id) to the in-memory
+      // threadItems entry so onItemAction can grab the rest of the
+      // fields it expects.
+      const it = (this.threadItems || []).find(x => x.id === evt.rowId);
+      if (!it) return;
+      this.onItemAction(it, {
+        action: evt.action,
+        reason_code: evt.reason_code,
+        note: evt.note,
+        name: evt.name,
+        description: evt.description,
+        price: evt.price,
+        unit: evt.unit,
+        // image_url passes via the catch-all 'any' cast — onItemAction
+        // hands it to the server through the agentReply payload.
+        ...(evt.image_url ? { image_url: evt.image_url } : {}),
+      } as any);
+    });
+
     // Resolve project ID — from @Input or from parent route
     if (!this.boundProjectId) {
       let r = this.route;
@@ -2678,7 +2706,7 @@ export class MessagesInboxComponent implements OnInit {
       view (Ryan) records actions as supplier-side transitions
       (declined_by_supplier, adjusted_by_supplier, etc) and writes
       an inbound direction reply row. */
-  onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string }) {
+  onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string; image_url?: string }) {
     if (!this.activeThread) return;
     // v1.65eq — use the latest outbound brief in the thread as the
     // reply target (matches the items panel load path).
@@ -2696,6 +2724,9 @@ export class MessagesInboxComponent implements OnInit {
         description: evt.description,
         price: evt.price,
         unit: evt.unit,
+        // v1.65et — image URL only meaningful on adjust/quote.
+        // Server uses it to seed the forked items.image_url.
+        image_url: evt.image_url,
       }],
     } as any).subscribe({
       next: () => {

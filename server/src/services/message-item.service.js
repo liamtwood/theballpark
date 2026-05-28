@@ -102,7 +102,74 @@ async function transitionItem({
     ]
   );
 
+  // v1.65et (p0015) — catalogue fork. When a supplier adjusts (or
+  // quotes) an ad-hoc item that the agency created as a pending
+  // placeholder, fork a NEW items row owned by the supplier seeded
+  // from their adjustment (price, name, description, unit, image).
+  // The fork links the message_item to the supplier-owned items
+  // row, simultaneously: (1) recording the supplier's quote and
+  // (2) promoting the ad-hoc ask into the supplier's catalogue.
+  //
+  // Catalogue items (already owned by the supplier) skip the fork —
+  // the adjustment is treated as a one-off override on the
+  // message_item, not a catalogue update. A separate "Sync to
+  // catalogue" action would handle that.
+  const isSupplierQuote = actor.type === 'supplier'
+    && (toStatus === 'adjusted_by_supplier' || toStatus === 'quoted');
+  if (isSupplierQuote) {
+    await maybeForkCatalogueItem(db, itemId, extra, finalPriceAfter);
+  }
+
   return { fromStatus, toStatus };
+}
+
+/** v1.65et — when a supplier adjusts an ad-hoc (agency-pending) item,
+    create a new items row owned by them seeded from their quote +
+    re-link the message_item. No-op for catalogue items (supplier
+    already owns them) or for missing/null linkage. */
+async function maybeForkCatalogueItem(db, messageItemId, extra, finalPriceAfter) {
+  const ctx = await db.query(
+    `SELECT mi.id, mi.item_id, mi.name        AS mi_name,
+            mi.description AS mi_description,
+            mi.unit        AS mi_unit,
+            mi.price_current,
+            m.supplier_org_id,
+            m.category_id  AS msg_category_id,
+            i.org_id       AS item_org_id,
+            i.is_active    AS item_is_active,
+            i.category_id  AS item_category_id,
+            i.name         AS item_name,
+            i.description  AS item_description
+       FROM message_items mi
+       JOIN messages m ON m.id = mi.message_id
+       LEFT JOIN items i ON i.id = mi.item_id
+      WHERE mi.id = $1`,
+    [messageItemId]
+  );
+  const row = ctx.rows[0];
+  if (!row || !row.supplier_org_id || !row.item_id) return;
+  // Already owned by the supplier? No fork.
+  if (row.item_org_id === row.supplier_org_id) return;
+
+  const newPrice = finalPriceAfter != null ? finalPriceAfter : row.price_current;
+  const newName  = (extra && extra.name        != null) ? extra.name        : (row.mi_name        || row.item_name);
+  const newDesc  = (extra && extra.description != null) ? extra.description : (row.mi_description || row.item_description);
+  const newUnit  = (extra && extra.unit        != null) ? extra.unit        : row.mi_unit;
+  const newImage = (extra && extra.imageUrl    != null) ? extra.imageUrl    : null;
+  const categoryId = row.item_category_id || row.msg_category_id || null;
+
+  const ins = await db.query(
+    `INSERT INTO items (org_id, category_id, name, description, unit,
+                        base_price, image_url, is_active, approval_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, true, 'approved')
+     RETURNING id`,
+    [row.supplier_org_id, categoryId, newName, newDesc, newUnit, newPrice, newImage]
+  );
+
+  await db.query(
+    'UPDATE message_items SET item_id = $1 WHERE id = $2',
+    [ins.rows[0].id, messageItemId]
+  );
 }
 
 /**

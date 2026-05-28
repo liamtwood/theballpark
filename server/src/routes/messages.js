@@ -127,19 +127,22 @@ router.post('/:id/reply', async (req, res, next) => {
     const changes = [];
     for (const a of actions) {
       const { message_item_id, action, reason_code, note,
-              name, description, price, unit } = a || {};
+              name, description, price, unit, image_url } = a || {};
       if (!message_item_id || !action) continue;
 
+      // v1.65et — image_url is supplier-side only and only meaningful
+      // for adjust/quote (sets the photo on the forked catalogue
+      // items row).
       let toStatus = null;
       let extra = null;
       switch (action) {
         case 'accept':  toStatus = 'accepted'; break;
         case 'decline': toStatus = isSupplier ? 'declined_by_supplier' : 'declined_by_agent'; break;
         case 'adjust':  toStatus = isSupplier ? 'adjusted_by_supplier' : 'adjusted_by_agent';
-                        extra = { name, description, price, unit }; break;
+                        extra = { name, description, price, unit, imageUrl: image_url }; break;
         case 'quote':   if (!isSupplier) continue;
                         toStatus = 'quoted';
-                        extra = { name, description, price, unit }; break;
+                        extra = { name, description, price, unit, imageUrl: image_url }; break;
         case 'pay':     if (isSupplier) continue;
                         toStatus = 'booked'; break;
         // v1.65cx (p0011 §2) — Think is the friendlier label for
