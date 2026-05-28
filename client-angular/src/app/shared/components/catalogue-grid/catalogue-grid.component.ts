@@ -569,12 +569,20 @@ export type DetailMode = 'inline' | 'drawer';
                   {{ e.name }}
                   <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
                 </div>
-                <div class="bp-item-card-price" *ngIf="e.price">
-                  {{ e.price | gbp }}
+                <!-- v1.65ee — card price now mirrors the list-view
+                     fallback: prefer priceRange (min – max) when set,
+                     else fall back to base_price. Was only rendering
+                     base_price, so an item with only min/max set
+                     (e.g. Rocket Food's sit-down dinner at £7k-£12k)
+                     showed as priceless on the card while the detail
+                     panel displayed the range correctly. -->
+                <div class="bp-item-card-price" *ngIf="e.priceRange || e.price">
+                  <ng-container *ngIf="e.priceRange">{{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}</ng-container>
+                  <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
                   <span class="bp-item-card-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</span>
                 </div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !e.price">{{ e.subtitle }}</div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && e.price">{{ e.subtitle }}</div>
+                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !(e.priceRange || e.price)">{{ e.subtitle }}</div>
+                <div class="bp-item-card-supplier" *ngIf="e.subtitle && (e.priceRange || e.price)">{{ e.subtitle }}</div>
               </div>
             </div>
           </div>
