@@ -546,17 +546,19 @@ type DashTab = 'projects';
     .bp-dash-card--collapsible .bp-project-grid,
     .bp-dash-card--collapsible .bp-past-carousel { padding: 0 18px 16px; margin: 0; }
 
-    /* STATS — 4 floating tiles on the parchment, no border. */
+    /* v1.65di — STATS row sits on the parchment ground (same as the
+       body below). 24px gap from the hero divider above; wider 16px
+       gap between the 4 tiles so they read as distinct cards. */
     .bp-dash-stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      padding: 16px 20px 0;
-      background: transparent;
+      gap: 16px;
+      padding: 24px 20px 0;
+      background: var(--theme-bg);
     }
     .bp-dash-stat {
       display: flex; flex-direction: column;
-      padding: 14px 18px;
+      padding: 16px 18px;
       background: var(--color-surface);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
@@ -565,11 +567,13 @@ type DashTab = 'projects';
     .bp-dash-stat-value { font-size:26px; font-weight:700; color:var(--color-text-primary); line-height:1.1; }
     .bp-dash-stat-sub   { font-size:11px; color:var(--color-text-muted); margin-top:2px; }
 
-    /* DESKTOP 3-COL — parchment ground, gap between columns. */
+    /* DESKTOP 3-COL — parchment ground, 16px gap between columns
+       and a matching 16px top padding above the row so the stats
+       and the 3-col body share the same rhythm. */
     .bp-body {
       display: grid;
       grid-template-columns: 320px minmax(400px, 1fr) 320px;
-      gap: 14px;
+      gap: 16px;
       background: var(--theme-bg);
       padding: 16px 20px 24px;
       min-height: calc(100vh - var(--nav-height) - 64px);

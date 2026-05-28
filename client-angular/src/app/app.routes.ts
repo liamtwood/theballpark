@@ -38,13 +38,14 @@ export const routes: Routes = [
       // ── DASHBOARD ──
       // v1.65dg — Home/Settings hero tabs added so the home screen
       // carries a folder-tab band like project pages do.
-      // v1.65dh — heroVariant='calm' switches the hero from the
-      // Bold-mode treatment (accent fill + orbs) to a parchment
-      // background with underline tabs.
+      // v1.65di — heroVariant='calm' reverted. The dashboard now uses
+      // the default folder-tab chip treatment, matching the project
+      // marketplace tabs exactly. The .bp-hero--calm CSS in styles.css
+      // is dormant for now (kept in case a future page wants it).
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        data: { pageLabel: '', tabs: HOME_SETTINGS_TABS, heroVariant: 'calm' }
+        data: { pageLabel: '', tabs: HOME_SETTINGS_TABS }
       },
 
       // ── PROJECTS ──
@@ -111,7 +112,8 @@ export const routes: Routes = [
       // surfaces. Organisation / Team / Subscription routes still
       // resolve by URL; a secondary in-page nav for switching between
       // them is TODO(v1.65dg-settings-subnav).
-      // v1.65dh — heroVariant='calm' (same as dashboard).
+      // v1.65di — heroVariant='calm' reverted; default folder-tab
+      // chrome (matches dashboard + project marketplace).
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
@@ -121,8 +123,7 @@ export const routes: Routes = [
           // (or the dashboard's Invite Member quick action) so there's no
           // longer a nav link to return through.
           back: '/',
-          tabs: HOME_SETTINGS_TABS,
-          heroVariant: 'calm'
+          tabs: HOME_SETTINGS_TABS
         }
       },
 
