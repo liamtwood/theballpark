@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus, Store, Package, Inbox, Sparkles } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
@@ -37,24 +37,52 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
-        <!-- v1.35: nav simplified to Home + Admin only. Marketplace moved
-             to Quick Actions on the dashboard; Settings is now the cog
-             icon on the right; Feedback (Requirements) sits under Admin. -->
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
-          <lucide-icon name="house" [size]="14"></lucide-icon> Home
-        </a>
-        <a *ngIf="isAdmin"
-           routerLink="/ballpark-settings" routerLinkActive="active"
-           class="bp-nav-link bp-nav-link-admin">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
-        </a>
-        <!-- v1.65at — Welcome link restored. Opens the public /welcome
-             deck in a new tab — testing aid for the marketing surface. -->
-        <a href="/welcome" target="_blank" rel="noopener"
-           class="bp-nav-link bp-nav-link-welcome"
-           title="Open the public Welcome page in a new tab">
-          <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
-        </a>
+        <!-- v1.65dz (p0015) — agency + admin persona link set. -->
+        <ng-container *ngIf="personaSvc.isAgency() || personaSvc.isAdmin()">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
+            <lucide-icon name="house" [size]="14"></lucide-icon> Home
+          </a>
+          <a *ngIf="isAdmin"
+             routerLink="/ballpark-settings" routerLinkActive="active"
+             class="bp-nav-link bp-nav-link-admin">
+            <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
+          </a>
+          <!-- v1.65at — Welcome link restored. Opens the public /welcome
+               deck in a new tab — testing aid for the marketing surface. -->
+          <a href="/welcome" target="_blank" rel="noopener"
+             class="bp-nav-link bp-nav-link-welcome"
+             title="Open the public Welcome page in a new tab">
+            <lucide-icon name="sparkles" [size]="14"></lucide-icon> Welcome
+          </a>
+        </ng-container>
+
+        <!-- v1.65dz (p0015) — supplier persona link set. Home / Front /
+             Store / Inbox. Front + Store both point at the supplier's
+             own /suppliers/:id page (Front = default tab, Store = ?tab=
+             store query-param read by supplier-detail). Home links to
+             /home (the supplier dashboard component lands in a later
+             commit; redirects to / for now via a route fallback). -->
+        <ng-container *ngIf="personaSvc.isSupplier()">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
+            <lucide-icon name="house" [size]="14"></lucide-icon> Home
+          </a>
+          <a *ngIf="supplierPersonaOrgId"
+             [routerLink]="['/suppliers', supplierPersonaOrgId]"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact:true}"
+             class="bp-nav-link">
+            <lucide-icon name="store" [size]="14"></lucide-icon> Front
+          </a>
+          <a *ngIf="supplierPersonaOrgId"
+             [routerLink]="['/suppliers', supplierPersonaOrgId]"
+             [queryParams]="{ tab: 'store' }"
+             class="bp-nav-link">
+            <lucide-icon name="package" [size]="14"></lucide-icon> Store
+          </a>
+          <a routerLink="/inbox" routerLinkActive="active" class="bp-nav-link">
+            <lucide-icon name="inbox" [size]="14"></lucide-icon> Inbox
+          </a>
+        </ng-container>
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
@@ -319,6 +347,16 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (!this.personaSvc.canSwitch) return;
     ev.stopPropagation();
     this.personaDropdownOpen = !this.personaDropdownOpen;
+  }
+
+  /** v1.65dz (p0015) — supplier persona's org id, used to build the
+      Front + Store nav links to /suppliers/:id. Returns empty when
+      not in supplier persona OR when no supplierOrgId is set on the
+      active persona record (defensive — keeps the link from
+      rendering /suppliers/undefined). */
+  get supplierPersonaOrgId(): string {
+    const p = this.personaSvc.active;
+    return p.kind === 'supplier' ? (p.supplierOrgId || '') : '';
   }
 
   toggleConfigStrip() { this.configStrip.toggle(); }

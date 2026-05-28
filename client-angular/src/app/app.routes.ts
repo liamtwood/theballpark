@@ -94,6 +94,16 @@ export const routes: Routes = [
         data: { pageLabel: 'MESSAGES', tabs: [] }
       },
 
+      // ── SUPPLIER PERSONA INBOX ──
+      // v1.65dz (p0015) — supplier-side mount of the shared
+      // MessagesInboxComponent with viewer='supplier'. Reached from
+      // the supplier persona's top-nav (PersonaService gating).
+      {
+        path: 'inbox',
+        loadComponent: () => import('./features/messages/supplier-inbox.component').then(m => m.SupplierInboxComponent),
+        data: { pageLabel: 'INBOX', tabs: [] }
+      },
+
       // ── CLIENTS ──
       {
         path: 'clients',

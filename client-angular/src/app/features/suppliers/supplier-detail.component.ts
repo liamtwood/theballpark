@@ -58,7 +58,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
              5. Subcategory cards grouped by parent category header
              6. Contact 2×2 icon grid + VAT footer
            TODO: gate the edit pencil on ownership once auth lands. -->
-      <ng-container *ngIf="activeTab === 'home'">
+      <ng-container *ngIf="activeTab === 'front'">
 
         <!-- v1.65dm — Home tab now mirrors the dashboard:
              parchment ground (--theme-bg) with shadow-only .bp-dash-card
@@ -741,8 +741,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       +/♡ buttons; suppliers don't. */
   currentOrgType: string | null = null;
 
-  // Home / Store tabs — default 'home'. Page-local state, not routed.
-  activeTab: 'home' | 'store' = 'home';
+  // v1.65dz (p0015) — "Home" tab renamed to "Front" (the supplier's
+  // public shopfront). The new persona-level Home page is a separate
+  // surface, so this tab no longer competes for that name. Page-local
+  // state, not routed; ?tab=store query-param overrides the default
+  // on first paint (the supplier persona's Store nav link sets it).
+  activeTab: 'front' | 'store' = 'front';
 
   // Supplier edit drawer state.
   showSupplierDrawer = false;
@@ -799,6 +803,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
     const qp = this.route.snapshot.queryParams;
     if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
+    // v1.65dz (p0015) — ?tab=store deep-links into the catalogue view
+    // (the supplier persona's Store nav link uses this). Any other
+    // value falls back to the default 'front' tab.
+    if (qp['tab'] === 'store') this.activeTab = 'store';
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
@@ -1090,18 +1098,18 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       heroSub: this.supplier.city || 'London',
       pills: [],
       tabs: [
-        { label: 'Home',  path: 'home' },
+        { label: 'Front', path: 'front' },
         { label: 'Store', path: 'store' }
       ],
       activeTabPath: this.activeTab,
-      onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'store'),
+      onTabClick: (t) => this.setActiveTab(t.path as 'front' | 'store'),
       back: { label: 'Back', onBack: () => this.goBack() }
     });
   }
 
   /** v1.65dm — flip the page-local tab AND re-push the shell context so
       the active state on the hero tab band stays in sync. */
-  setActiveTab(tab: 'home' | 'store') {
+  setActiveTab(tab: 'front' | 'store') {
     if (this.activeTab === tab) return;
     this.activeTab = tab;
     this.applyShellHero();

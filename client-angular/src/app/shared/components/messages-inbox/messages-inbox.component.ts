@@ -251,14 +251,18 @@ interface VendorThread {
                  (click)="openThread(t)">
               <!-- v1.65cs — render the supplier logo when present;
                    fall back to initials in a themed-tint square. -->
+              <!-- v1.65dz (p0015) — logo + name use fromLogoUrlFor /
+                   fromNameFor so the row shows the OTHER party from
+                   the viewer's POV (supplier in agency view, agency
+                   in supplier view). -->
               <div class="bp-msg-thread-logo"
-                   [class.bp-msg-thread-logo--img]="!!t.supplierLogoUrl">
-                <img *ngIf="t.supplierLogoUrl" [src]="t.supplierLogoUrl" [alt]="t.supplierName"/>
-                <span *ngIf="!t.supplierLogoUrl">{{ initialsFor(t.supplierName) }}</span>
+                   [class.bp-msg-thread-logo--img]="!!fromLogoUrlFor(t)">
+                <img *ngIf="fromLogoUrlFor(t)" [src]="fromLogoUrlFor(t)" [alt]="fromNameFor(t)"/>
+                <span *ngIf="!fromLogoUrlFor(t)">{{ initialsFor(fromNameFor(t)) }}</span>
               </div>
               <div class="bp-msg-thread-body">
                 <div class="bp-msg-thread-top">
-                  <span class="bp-msg-thread-supplier">{{ t.supplierName }}</span>
+                  <span class="bp-msg-thread-supplier">{{ fromNameFor(t) }}</span>
                   <span class="bp-msg-thread-time"
                         [attr.title]="preciseDate(t.latestMsg.created_at)">
                     {{ fmtTime(t.latestMsg.created_at) }}
@@ -415,18 +419,18 @@ interface VendorThread {
               <ng-container *ngFor="let entry of streamTimeline()">
                 <div class="bp-date-sep" *ngIf="entry.showDate">{{ entry.timestamp | date:'d MMMM yyyy' }}</div>
 
-                <!-- v1.65de (p0013 §4) — sender-aligned bubble/card.
-                     Outbound (agent) → right lane; inbound (supplier)
-                     → left lane. Each entry sits inside a lane row
-                     so the alignment is purely CSS. -->
+                <!-- v1.65de (p0013 §4) → v1.65dz (p0015) — sender-aligned
+                     bubble using isFromMe() so the lane flips with the
+                     viewer prop. Agency view: outbound = me = right;
+                     supplier view: inbound = me = right. -->
                 <ng-container *ngIf="entry.type === 'message' && entry.message as m">
                   <div class="bp-msg-lane"
-                       [class.bp-msg-lane--out]="m.direction === 'outbound'"
-                       [class.bp-msg-lane--in]="m.direction !== 'outbound'">
+                       [class.bp-msg-lane--out]="isFromMe(m)"
+                       [class.bp-msg-lane--in]="!isFromMe(m)">
                     <div class="bp-msg-bubble"
-                         [class.bp-msg-bubble--out]="m.direction === 'outbound'"
-                         [class.bp-msg-bubble--in]="m.direction !== 'outbound'"
-                         [class.bp-msg-bubble--unread]="m.direction === 'inbound' && !m.read">
+                         [class.bp-msg-bubble--out]="isFromMe(m)"
+                         [class.bp-msg-bubble--in]="!isFromMe(m)"
+                         [class.bp-msg-bubble--unread]="!isFromMe(m) && !m.read">
                       <!-- ↳ {item.name} breadcrumb when the bubble is
                            tagged to a specific item. -->
                       <div *ngIf="m.tagged_item_id && taggedItemName(m.tagged_item_id) as tagName"
@@ -446,7 +450,7 @@ interface VendorThread {
                     <div class="bp-msg-stream-item" [attr.data-item-id]="it.id">
                       <app-message-item-card
                         [item]="toMessageItem(it)"
-                        [viewer]="'agent'"
+                        [viewer]="itemCardViewer"
                         [layout]="'grid'"
                         [imageUrl]="it.item_image_url || null"
                         [eyebrowOverride]="null"
@@ -2108,6 +2112,48 @@ export class MessagesInboxComponent implements OnInit {
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  // ── v1.65dz (p0015) — viewer-aware divergence helpers ─────────────
+  // Each "from" / "lane" / "card-viewer" lookup branches on this.viewer
+  // so the same Angular component renders the agency-side view at
+  // /messages and the supplier-side view at /inbox without duplication.
+  // The shared data shape (VendorThread) doesn't carry an agency-side
+  // identity record yet, so the supplier view falls back to the static
+  // agencyName field (current org name) — fine for the dev/demo
+  // persona model, will need a real cross-org lookup when multi-agency
+  // supplier data lands.
+
+  /** Thread row "From" — supplier name in agency view, agency name in
+      supplier view (the other party from the viewer's POV). */
+  fromNameFor(t: VendorThread): string {
+    if (this.viewer === 'supplier') return this.agencyName || 'Agency';
+    return t.supplierName;
+  }
+
+  /** Thread row logo URL — supplier logo in agency view; no agency
+      logo data plumbed yet, so supplier view returns '' and the
+      template falls back to initials. */
+  fromLogoUrlFor(t: VendorThread): string {
+    if (this.viewer === 'supplier') return '';
+    return t.supplierLogoUrl;
+  }
+
+  /** True when a message originated from the active viewer (the "me"
+      side of the conversation). Drives the bubble-lane alignment:
+      agency outbound = agent typed it = "me" on right;
+      supplier inbound (from agency POV) = supplier replied = "me" on
+      right when viewing as supplier. */
+  isFromMe(m: ThreadMessage): boolean {
+    if (this.viewer === 'supplier') return m.direction !== 'outbound';
+    return m.direction === 'outbound';
+  }
+
+  /** MessageItemCardComponent's `viewer` input is typed as 'agent' |
+      'supplier'. Map our inbox-level 'agency' → 'agent' so the card
+      gets the right action-table variant. */
+  get itemCardViewer(): 'agent' | 'supplier' {
+    return this.viewer === 'supplier' ? 'supplier' : 'agent';
   }
 
   /** v1.65cr (p0006) — thread subject line. The schema doesn't carry
