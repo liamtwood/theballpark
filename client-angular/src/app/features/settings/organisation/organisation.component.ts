@@ -8,6 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule } from 'lucide-angular';
 import { OrgService } from '../../../core/services/org.service';
+import { PersonaService } from '../../../core/services/persona.service';
 import { Org } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
@@ -229,12 +230,22 @@ export class OrganisationComponent implements OnInit {
 
   constructor(
     private orgSvc: OrgService,
+    private personaSvc: PersonaService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.orgSvc.getCurrentOrg().subscribe({
+    // v1.65eb (p0015) — persona-aware org load. Reads the active
+    // persona's orgId and hits /orgs/:id directly. Falls back to
+    // /api/org (first agency) only when no persona orgId is set —
+    // preserves the legacy single-org behaviour for any code path
+    // not yet on the persona model.
+    const personaOrgId = this.personaSvc.active?.orgId;
+    const req$ = personaOrgId
+      ? this.orgSvc.getById(personaOrgId)
+      : this.orgSvc.getCurrentOrg();
+    req$.subscribe({
       next: (org) => {
         this.org = org || null;
         if (org) {
@@ -272,14 +283,22 @@ export class OrganisationComponent implements OnInit {
 
   save() {
     this.saving = true;
-    this.orgSvc.updateCurrentOrg({
+    // v1.65eb (p0015) — write to the persona's actual org row when a
+    // persona is active, otherwise hit the legacy /api/org PUT
+    // (first-agency convenience endpoint).
+    const personaOrgId = this.personaSvc.active?.orgId;
+    const payload: any = {
       name: this.form.name,
       address: this.form.address,
       default_vat_pct: this.form.vat,
       default_margin_pct: this.form.margin,
       default_contingency_pct: this.form.contingency,
       ref_prefix: (this.form.ref_prefix || '').trim().toUpperCase() || null
-    }).subscribe({
+    };
+    const save$ = personaOrgId
+      ? this.orgSvc.update(personaOrgId, payload)
+      : this.orgSvc.updateCurrentOrg(payload);
+    save$.subscribe({
       next: () => {
         this.saving = false;
         this.editingOrg = false;

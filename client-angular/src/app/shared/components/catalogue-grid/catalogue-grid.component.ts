@@ -379,6 +379,21 @@ export type DetailMode = 'inline' | 'drawer';
 
         <div class="bp-cat-main-body">
 
+        <!-- v1.65eb (p0015) — recommending banner. Surfaces a calm
+             "AI agent is working some magic" message at the top of
+             the results body while recommendItems() is in flight.
+             Sparkles icon spins; band uses --theme-soft so it reads
+             as a temporary affordance, not a permanent panel. -->
+        <div *ngIf="recommending" class="bp-recommending-banner">
+          <lucide-icon name="sparkles" [size]="16" class="bp-recommending-icon"></lucide-icon>
+          <div class="bp-recommending-body">
+            <div class="bp-recommending-title">AI agent is working some magic</div>
+            <div class="bp-recommending-sub">
+              Matching suppliers to your brief…
+            </div>
+          </div>
+        </div>
+
         <!-- BREADCRUMB — always visible. Parent segments are clickable
              when drilled and reset to top via onBreadcrumbBack(). -->
         <!-- Main-column breadcrumb — hidden in project mode for the same
@@ -1243,6 +1258,44 @@ export type DetailMode = 'inline' | 'drawer';
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox-label { font-size: 12px !important; font-weight: 500 !important; color: var(--color-text-secondary) !important; cursor: pointer; }
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox .p-checkbox-box { width: 16px !important; height: 16px !important; border-radius: 3px !important; }
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox.p-checkbox-checked .p-checkbox-box { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
+
+    /* v1.65eb (p0015) — "AI agent is working some magic" banner.
+       Shown at the top of the results body while recommendItems() is
+       in flight. Theme-soft fill + accent text so it reads as a
+       calm temporary state, not an alert. Sparkles icon gently
+       pulses via the @keyframes below. */
+    .bp-recommending-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: var(--theme-soft);
+      border: 0.5px solid var(--theme-accent);
+      border-radius: var(--radius-card);
+      color: var(--theme-text);
+    }
+    .bp-recommending-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      animation: bp-recommending-pulse 1.4s ease-in-out infinite;
+    }
+    .bp-recommending-body {
+      display: flex; flex-direction: column;
+      gap: 2px; min-width: 0;
+    }
+    .bp-recommending-title {
+      font-size: 13px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.01em;
+    }
+    .bp-recommending-sub {
+      font-size: 12px; color: var(--color-text-muted);
+    }
+    @keyframes bp-recommending-pulse {
+      0%, 100% { opacity: 1;   transform: scale(1);    }
+      50%      { opacity: 0.5; transform: scale(0.85); }
+    }
 
     /* Breadcrumb at the top of the main column. Always visible; parent
        segments become clickable when drilled. */
