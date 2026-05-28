@@ -440,9 +440,12 @@ type DashTab = 'projects';
             <p class="bp-credits-desc">Build and estimate for free — only spend a {{ creditLabel }} when ready to engage.</p>
           </div>
           <div class="bp-dash-card">
+          <!-- v1.65dl — use the shared .bp-section-title eyebrow so the
+               header matches every other section's typography + spacing
+               (was .bp-saved-hd which carried a stray margin-bottom). -->
           <div class="bp-section-header">
             <lucide-icon name="heart" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-saved-hd">SAVED SUPPLIERS</span>
+            <span class="bp-section-title">Saved suppliers</span>
           </div>
           <ng-container *ngIf="favSuppliers.length > 0; else noFavSuppliers">
             <!-- 2-column grid so each card sits at ~160px wide and the

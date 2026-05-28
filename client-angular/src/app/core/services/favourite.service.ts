@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
 import { OrgService } from './org.service';
-import { BehaviorSubject, Observable, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject, switchMap, tap, take } from 'rxjs';
 
 export interface Favourite {
   id: string;
@@ -25,11 +25,18 @@ export class FavouriteService {
   private itemIds$     = new BehaviorSubject<Set<string>>(new Set());
 
   private orgId = '';
+  /** v1.65dl — fires once orgId is set so callers (the dashboard's
+      loadFavourites, in particular) don't race the async
+      getCurrentOrg() subscription and ship an empty org_id=
+      query string. ReplaySubject(1) so late subscribers get the
+      last value. */
+  private orgReady$ = new ReplaySubject<string>(1);
 
   constructor(private api: ApiService, private orgSvc: OrgService) {
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
         this.orgId = org.id;
+        this.orgReady$.next(org.id);
         this.loadIds();
       }
     });
@@ -42,11 +49,20 @@ export class FavouriteService {
       .subscribe(ids => this.itemIds$.next(new Set(ids || [])));
   }
 
+  /** v1.65dl — gates the actual HTTP call on orgReady$ so a caller
+      who subscribes BEFORE getCurrentOrg() resolves still gets a
+      valid request once the org lands (was firing immediately with
+      org_id= empty, which hit the API as "no org" and returned []). */
   getAll(type?: 'supplier' | 'item'): Observable<Favourite[]> {
-    const url = type
-      ? `/favourites?org_id=${this.orgId}&type=${type}`
-      : `/favourites?org_id=${this.orgId}`;
-    return this.api.get<Favourite[]>(url);
+    return this.orgReady$.pipe(
+      take(1),
+      switchMap(orgId => {
+        const url = type
+          ? `/favourites?org_id=${orgId}&type=${type}`
+          : `/favourites?org_id=${orgId}`;
+        return this.api.get<Favourite[]>(url);
+      })
+    );
   }
 
   isSupplierFavourited(supplierId: string): boolean {
