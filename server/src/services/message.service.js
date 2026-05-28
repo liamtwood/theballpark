@@ -103,4 +103,34 @@ async function getAllByOrg(orgId) {
   return result.rows;
 }
 
-module.exports = { getAll, getById, getAllByOrg, create, update, hardDelete };
+// v1.65ea (p0015) — supplier-side inbox feed. Returns all messages
+// where this supplier_org_id is the recipient, joined with the
+// sending agency's identity (so the supplier UI can render "From:
+// Woodland Agency" in the thread row "From" slot). Mirrors
+// getAllByOrg's shape so the client-side buildThreads() pipeline
+// keeps working unchanged.
+async function getAllForSupplier(supplierOrgId) {
+  const result = await pool.query(
+    `SELECT m.*,
+            u.name             AS sender_name,
+            p.name             AS project_name,
+            so.name            AS supplier_name,
+            so.logo_url        AS supplier_logo_url,
+            so.cover_image_url AS supplier_cover_url,
+            ao.id              AS agency_org_id,
+            ao.name            AS agency_name,
+            ao.logo_url        AS agency_logo_url,
+            ao.cover_image_url AS agency_cover_url
+       FROM messages m
+       LEFT JOIN users    u  ON m.user_id          = u.id
+       LEFT JOIN projects p  ON m.project_id       = p.id
+       LEFT JOIN orgs     so ON m.supplier_org_id  = so.id
+       LEFT JOIN orgs     ao ON p.org_id           = ao.id
+      WHERE m.supplier_org_id = $1
+      ORDER BY m.created_at ASC`,
+    [supplierOrgId]
+  );
+  return result.rows;
+}
+
+module.exports = { getAll, getById, getAllByOrg, getAllForSupplier, create, update, hardDelete };

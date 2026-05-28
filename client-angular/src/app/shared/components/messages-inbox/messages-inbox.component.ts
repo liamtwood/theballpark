@@ -22,6 +22,7 @@ import { OrgService } from '../../../core/services/org.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
 import { EventDrawerService } from '../../../core/services/event-drawer.service';
+import { PersonaService } from '../../../core/services/persona.service';
 import { CodelistService } from '../../../core/services/codelist.service';
 import {
   MessageItemService, MessageItemRow, MessageItemAction
@@ -1731,6 +1732,7 @@ export class MessagesInboxComponent implements OnInit {
     private shellCtx: ShellContextService,
     private cartDrawerSvc: CartDrawerService,
     private eventDrawerSvc: EventDrawerService,
+    private personaSvc: PersonaService,
     private codelistSvc: CodelistService,
     private messageItemSvc: MessageItemService,
     private router: Router,
@@ -1776,7 +1778,12 @@ export class MessagesInboxComponent implements OnInit {
       }
     });
 
-    if (this.showProjectSelector && !this.boundProjectId) {
+    if (this.viewer === 'supplier') {
+      // v1.65ea (p0015) — supplier persona inbox. Load all messages
+      // where this supplier_org_id is the recipient. PersonaService
+      // is the source of truth for which supplier we are.
+      this.loadAllMessages();
+    } else if (this.showProjectSelector && !this.boundProjectId) {
       // Global mode — load all projects for selector
       this.projectSvc.getAll().subscribe({
         next: projects => {
@@ -1854,9 +1861,30 @@ export class MessagesInboxComponent implements OnInit {
   }
 
   loadAllMessages() {
-    if (!this.orgId) return;
+    // v1.65ea (p0015) — viewer-aware feed. Agency view pulls messages
+    // by agency org_id (the existing path); supplier view pulls by
+    // supplier_org_id from the active persona record (Ryan Foster →
+    // Rocket Food's org id). When persona-switching lands in prod
+    // auth, this branch reads from real session data instead.
     this.loading = true;
-    this.msgSvc.getAllByOrg(this.orgId).subscribe({
+    let req$;
+    if (this.viewer === 'supplier') {
+      const supId = this.personaSvc.active?.orgId;
+      if (!supId) {
+        this.loading = false;
+        this.cdr.detectChanges();
+        return;
+      }
+      req$ = this.msgSvc.getAllBySupplier(supId);
+    } else {
+      if (!this.orgId) {
+        this.loading = false;
+        this.cdr.detectChanges();
+        return;
+      }
+      req$ = this.msgSvc.getAllByOrg(this.orgId);
+    }
+    req$.subscribe({
       next: msgs => {
         this.msgs = (msgs || []) as ThreadMessage[];
         this.buildThreads();

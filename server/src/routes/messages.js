@@ -8,7 +8,12 @@ const { replyNotificationEmail } = require('../services/notification.service');
 
 router.get('/', async (req, res, next) => {
   try {
-    if (req.query.org_id) {
+    // v1.65ea (p0015) — supplier-side feed. Supplier persona's inbox
+    // queries ?supplier_org_id= to get messages WHERE this org is
+    // the recipient (joined with the sending agency's identity).
+    if (req.query.supplier_org_id) {
+      res.json(await MessageService.getAllForSupplier(req.query.supplier_org_id));
+    } else if (req.query.org_id) {
       res.json(await MessageService.getAllByOrg(req.query.org_id));
     } else {
       res.json(await MessageService.getAll(req.query.project_id));
