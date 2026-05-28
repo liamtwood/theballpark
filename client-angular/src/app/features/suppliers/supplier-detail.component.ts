@@ -72,11 +72,16 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
         <div class="bp-supplier-home-ground">
           <div class="bp-supplier-home">
 
-            <!-- ─── PROFILE CARD ──────────────────────────────────── -->
-            <div class="bp-dash-card bp-supplier-profile-card">
-              <!-- Cover banner — sits flush with the card's rounded top.
-                   Edit pencil overlays top-right (same affordance as
-                   before; ownership gating TODO). -->
+            <!-- ─── PROFILE BLOCK (open) ─────────────────────────────
+                 v1.65dq — no card chrome on this top block. Cover +
+                 identity + logo + description sit directly on the
+                 parchment ground (no fill, no border, no shadow) so
+                 the supplier's brand image is the visual anchor and
+                 the elevated cards start at Categories below. -->
+            <div class="bp-supplier-profile-card">
+              <!-- Cover banner — sits on the parchment ground with
+                   rounded corners on its own. Edit pencil overlays
+                   top-right (ownership gating TODO). -->
               <div class="bp-supplier-cover"
                    [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
                    [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
@@ -414,30 +419,34 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       gap: 16px;
     }
 
-    /* ── Profile card ────────────────────────────────────────────────
-       Cover sits flush with the card's rounded top edge; the body uses
-       its own padding (the parent .bp-dash-card padding is overridden
-       to 0 so the cover can bleed edge-to-edge). */
+    /* ── Profile block ───────────────────────────────────────────────
+       v1.65dq — no card chrome on this top block. No fill, no border,
+       no shadow — content sits directly on the parchment ground.
+       Cover keeps its own rounded corners; the body just owns its
+       vertical rhythm. */
     .bp-supplier-profile-card {
+      background: transparent;
+      box-shadow: none;
+      border: none;
       padding: 0;
-      overflow: hidden;  /* clip the cover's bottom corners */
     }
     .bp-supplier-profile-body {
-      padding: 20px 22px 22px;
+      padding: 18px 4px 4px;
     }
 
-    /* Cover banner now lives inside the profile card as the rounded-top
-       edge. background-size: contain so the image displays at its
-       natural aspect ratio. Any letterboxing shows the theme-bg behind
-       the card. Edit pencil overlays top-right. */
+    /* Cover banner — rounded on all corners now (no longer clipped by a
+       parent card). background-size: contain so the image displays at
+       its natural aspect ratio. Letterboxing shows the parchment ground
+       behind it. Edit pencil overlays top-right. */
     .bp-supplier-cover {
       position: relative;
       width: 100%;
-      height: 200px;
+      height: 220px;
+      border-radius: var(--radius-card);
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      background-color: var(--theme-bg);
+      background-color: var(--color-surface);
     }
     .bp-supplier-cover--empty {
       background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
@@ -463,12 +472,22 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
 
     /* Section-header count trail (e.g. "5 categories") — sits at the
        right end of the header strip via .bp-section-trail (the global
-       rule margin-left:auto's it). */
+       rule margin-left:auto's it). v1.65dq — 12px to track the wider
+       typography on this page. */
     .bp-section-count {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       color: var(--color-text-muted);
       letter-spacing: 0.02em;
+    }
+
+    /* v1.65dq — section title on the Home tab reads a hair larger
+       than the global .bp-section-title (11px). Card headers act as
+       row eyebrows here, so a bump to 12px keeps them legible against
+       the heavier surrounding copy without becoming chrome. Scoped to
+       .bp-supplier-home so it doesn't leak elsewhere. */
+    .bp-supplier-home .bp-section-title {
+      font-size: 12px;
     }
 
     /* Identity row: small avatar circle + name + location. First child
@@ -481,9 +500,9 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       margin-bottom: 18px;
     }
     .bp-supplier-avatar {
-      width: 40px; height: 40px;
+      width: 48px; height: 48px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-surface);
       border: 0.5px solid var(--theme-border);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
@@ -491,21 +510,23 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-avatar-initial {
       color: var(--theme-accent);
       font-family: var(--font-display);
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 400;
     }
     .bp-supplier-identity-body { min-width: 0; }
+    /* v1.65dq — bumped typography on the Home tab so it reads as a
+       proper profile page, not catalogue boilerplate. */
     .bp-supplier-name {
       font-family: var(--font-display);
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.2;
     }
     .bp-supplier-location {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--color-text-muted);
-      margin-top: 2px;
+      margin-top: 3px;
       letter-spacing: 0.02em;
     }
 
@@ -523,11 +544,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       object-fit: contain;
     }
 
-    /* Description — last child of the profile card body, so no
-       trailing margin. */
+    /* Description — last child of the profile body, so no trailing
+       margin. v1.65dq — 16px / 1.65 reads as proper body copy on the
+       parchment ground (was 14px when it lived inside a card). */
     .bp-supplier-desc {
-      font-size: 14px;
-      line-height: 1.6;
+      font-size: 16px;
+      line-height: 1.65;
       color: var(--color-text-primary);
       margin: 0;
       white-space: pre-wrap;
@@ -582,17 +604,19 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--theme-accent);
       opacity: 0.6;
     }
-    .bp-home-cat-card-body { padding: 10px 12px 12px; }
+    .bp-home-cat-card-body { padding: 12px 14px 14px; }
+    /* v1.65dq — typography bump across the Home tab. Was 14/11; now
+       16/12 so subcat cards read at body-copy scale, not metadata. */
     .bp-home-cat-card-name {
       font-family: var(--font-display);
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.25;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
     .bp-home-cat-card-count {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--color-text-muted);
     }
 
@@ -630,8 +654,9 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       flex-shrink: 0;
     }
     .bp-contact-tile-body { flex: 1; min-width: 0; }
+    /* v1.65dq — label + value bumped one step (was 10/13, now 11/15). */
     .bp-contact-tile-label {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -639,10 +664,10 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       margin-bottom: 4px;
     }
     .bp-contact-tile-value {
-      font-size: 13px;
+      font-size: 15px;
       color: var(--color-text-primary);
       word-break: break-word;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .bp-supplier-vat {
