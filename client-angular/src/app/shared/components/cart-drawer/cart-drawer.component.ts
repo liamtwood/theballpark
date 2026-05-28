@@ -8,8 +8,16 @@ import { Subscription } from 'rxjs';
 
 import { CartDrawerService, CartDrawerOptions } from '../../../core/services/cart-drawer.service';
 import { ProjectItemService } from '../../../core/services/project-item.service';
+import { ProjectService } from '../../../core/services/project.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
+
+/** v1.65ef — units that bill per-attendee. Item.base_price for these
+    is treated as a per-cover/per-head rate, so the cart-drawer total
+    multiplies by project.guest_count for the extended line price.
+    All other unit codes (each, platter, event, day, project, …) are
+    treated as flat amounts. */
+const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
 
 /**
  * v1.65ab — single shared "Project Items" cart drawer. Mounted once in
@@ -66,7 +74,16 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
               <div class="bp-cd-name" [title]="pi.name">{{ pi.name }}</div>
               <div class="bp-cd-sub">{{ pi.supplier_name || '—' }}</div>
             </div>
-            <div class="bp-cd-price">{{ (pi.base_price || 0) | gbp }}</div>
+            <!-- v1.65ef — extended line price. For per-cover/per-head
+                 items: shows the multiplied total (£X) with a small
+                 sub-line "£base × N guests". Otherwise just the flat
+                 base_price. -->
+            <div class="bp-cd-price">
+              {{ lineTotal(pi) | gbp }}
+              <div *ngIf="isPerAttendee(pi)" class="bp-cd-price-sub">
+                {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
+              </div>
+            </div>
             <button type="button"
                     class="bp-cd-action bp-cd-action--remove"
                     title="Remove from project"
@@ -95,7 +112,12 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
               <div class="bp-cd-name" [title]="pi.name">{{ pi.name }}</div>
               <div class="bp-cd-sub">{{ pi.supplier_name || '—' }}</div>
             </div>
-            <div class="bp-cd-price">{{ (pi.base_price || 0) | gbp }}</div>
+            <div class="bp-cd-price">
+              {{ lineTotal(pi) | gbp }}
+              <div *ngIf="isPerAttendee(pi)" class="bp-cd-price-sub">
+                {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
+              </div>
+            </div>
             <button type="button"
                     class="bp-cd-action bp-cd-action--promote"
                     title="Move to selected"
@@ -201,6 +223,17 @@ import { GbpPipe } from '../../pipes/gbp.pipe';
       font-weight: 500;
       color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    /* v1.65ef — small "£rate × guests" line under the extended total
+       for per-cover / per-head items. Muted so the eye lands on the
+       extended figure first. */
+    .bp-cd-price-sub {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      letter-spacing: 0.01em;
+      margin-top: 1px;
     }
 
     /* Hover-only action buttons. Reserve their column space so the row
@@ -289,11 +322,19 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   contextTitle = 'Your selections';
   private itemFilter: Set<string> | null = null;
 
+  /** v1.65ef — project guest_count drives per-cover / per-head line
+      math. Loaded alongside the project_items on every open(). 0
+      means "unknown" and falls back to flat pricing so an item
+      doesn't read as £0 for a fresh project that hasn't set guest
+      count yet. */
+  private guestCount = 0;
+
   private sub?: Subscription;
 
   constructor(
     private svc: CartDrawerService,
     private projectItemSvc: ProjectItemService,
+    private projectSvc: ProjectService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -316,8 +357,31 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   close(): void { this.svc.close(); }
 
   get totalCount(): number { return this.selected.length + this.wishlist.length; }
+
+  /** v1.65ef — extended line price. Per-cover/per-head items multiply
+      base_price by project.guest_count; everything else is flat.
+      Falls back to flat when guest_count is missing/0. */
+  lineTotal(pi: ProjectItem): number {
+    const base = Number(pi.base_price) || 0;
+    const unit = (pi.unit || '').toLowerCase();
+    if (this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit)) {
+      return base * this.guestCount;
+    }
+    return base;
+  }
+
+  /** Helper for the row template — true when this item bills per
+      attendee AND we know the guest count, so we can show the small
+      "× N" multiplier breakdown under the price. */
+  isPerAttendee(pi: ProjectItem): boolean {
+    const unit = (pi.unit || '').toLowerCase();
+    return this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit);
+  }
+
+  get guestCountValue(): number { return this.guestCount; }
+
   get ballparkTotal(): number {
-    return this.selected.reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+    return this.selected.reduce((s, pi) => s + this.lineTotal(pi), 0);
   }
 
   /** Build the background-image url, walking the fallback chain:
@@ -345,6 +409,15 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   // ── data ────────────────────────────────────────────────────────────
   private load(): void {
     if (!this.projectId) return;
+    // v1.65ef — pull the project alongside the items so the
+    // per-attendee line math (base_price × guest_count) has a number
+    // to multiply by. Reset to 0 first so a missing project doesn't
+    // surface stale guests from a prior open.
+    this.guestCount = 0;
+    this.projectSvc.getById(this.projectId).subscribe(p => {
+      this.guestCount = Number((p as any)?.guest_count) || 0;
+      this.cdr.markForCheck();
+    });
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
       const list = (rows || []).filter(r =>
         this.itemFilter ? this.itemFilter.has(r.item_id) : true
