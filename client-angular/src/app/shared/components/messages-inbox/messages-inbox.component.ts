@@ -2635,13 +2635,20 @@ export class MessagesInboxComponent implements OnInit {
   }
 
   /** v1.65cv (p0008) — agent acts on a message_item from the inbox
-      conversation panel. Forwards to the agent reply endpoint with a
-      single item_action; refreshes the thread items on success. */
+      conversation panel. Forwards to the reply endpoint with a
+      single item_action; refreshes the thread items on success.
+      v1.65ed (p0015) — viewer-aware: passes viewer in the payload
+      so the server can branch action mapping + actor.type. Supplier
+      view (Ryan) records actions as supplier-side transitions
+      (declined_by_supplier, adjusted_by_supplier, etc) and writes
+      an inbound direction reply row. */
   onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string }) {
     if (!this.activeThread) return;
     const lead = (this.activeThread.messages || []).find((m: any) => m.direction === 'outbound');
     if (!lead?.id) return;
     this.messageItemSvc.agentReply(lead.id, {
+      viewer: this.viewer,
+      user_id: this.personaSvc.active?.userId,
       item_actions: [{
         message_item_id: item.id,
         action: evt.action as any,
@@ -2652,7 +2659,7 @@ export class MessagesInboxComponent implements OnInit {
         price: evt.price,
         unit: evt.unit,
       }],
-    }).subscribe({
+    } as any).subscribe({
       next: () => {
         this.toast.add({ severity: 'success', summary: `${evt.action} saved`, life: 1500 });
         // Refresh the items + the thread messages so the new reply shows.

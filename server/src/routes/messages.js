@@ -86,7 +86,8 @@ router.post('/:id/reply', async (req, res, next) => {
     );
     if (!lead.rows.length) return res.status(404).json({ error: 'message not found' });
     const lm = lead.rows[0];
-    const { text, item_actions, next_action_by, user_id } = req.body || {};
+    const { text, item_actions, next_action_by, user_id, viewer } = req.body || {};
+    const isSupplier = viewer === 'supplier';
     const actions = Array.isArray(item_actions) ? item_actions : [];
     const hasText = !!(text && String(text).trim());
     if (!hasText && !actions.length) {
@@ -96,18 +97,29 @@ router.post('/:id/reply', async (req, res, next) => {
 
     await db.query('BEGIN');
 
+    // v1.65ed (p0015) — viewer-aware reply. Supplier-side actions
+    // come from the in-app supplier persona (Ryan / Rocket Food)
+    // pressing Accept/Decline/Adjust/Think on the Inbox tab. Mirrors
+    // the brief.js public-token route's action mapping + actor.type
+    // but reused through the in-app endpoint so the action flows
+    // through transitionItem with the right side recorded.
+    const direction  = isSupplier ? 'inbound'  : 'outbound';
+    const msgStatus  = isSupplier ? 'unread'   : 'sent';
+    const readFlag   = isSupplier ? false      : true;
+
     const ins = await db.query(
       `INSERT INTO messages
          (project_id, user_id, supplier_org_id, category_id, category_name,
           supplier_name, subject, body, direction, msg_status, read,
           next_action_by, ref_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'outbound', 'sent', true,
-               $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+               $12, $13)
        RETURNING id`,
       [lm.project_id, user_id || null, lm.supplier_org_id, lm.category_id,
        lm.category_name, lm.supplier_name,
        `Re: ${lm.subject || lm.ref_code || ''}`,
        hasText ? text : '',
+       direction, msgStatus, readFlag,
        next_action_by || null, lm.ref_code]
     );
     const replyId = ins.rows[0].id;
@@ -122,13 +134,18 @@ router.post('/:id/reply', async (req, res, next) => {
       let extra = null;
       switch (action) {
         case 'accept':  toStatus = 'accepted'; break;
-        case 'decline': toStatus = 'declined_by_agent'; break;
-        case 'adjust':  toStatus = 'adjusted_by_agent';
+        case 'decline': toStatus = isSupplier ? 'declined_by_supplier' : 'declined_by_agent'; break;
+        case 'adjust':  toStatus = isSupplier ? 'adjusted_by_supplier' : 'adjusted_by_agent';
                         extra = { name, description, price, unit }; break;
-        case 'pay':     toStatus = 'booked'; break;
+        case 'quote':   if (!isSupplier) continue;
+                        toStatus = 'quoted';
+                        extra = { name, description, price, unit }; break;
+        case 'pay':     if (isSupplier) continue;
+                        toStatus = 'booked'; break;
         // v1.65cx (p0011 §2) — Think is the friendlier label for
         // Holding. Same status code; carries a next_action_by.
         case 'think':   toStatus = 'holding'; break;
+        case 'holding': toStatus = 'holding'; break;
         default:        continue;
       }
 
@@ -142,7 +159,9 @@ router.post('/:id/reply', async (req, res, next) => {
       const result = await transitionItem({
         itemId: message_item_id,
         toStatus,
-        actor: { type: 'agent', id: user_id || null },
+        actor: isSupplier
+          ? { type: 'supplier' }
+          : { type: 'agent', id: user_id || null },
         reasonCode: reason_code || null,
         note: note || null,
         priceBefore: b.price_current,
