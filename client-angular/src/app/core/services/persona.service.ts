@@ -49,8 +49,16 @@ export interface Persona {
       member" cases don't require a kind change. */
   orgName: string;
   orgType: PersonaKind;
+  /** v1.65e8 — real seeded org id from the orgs table, used by the
+      settings page (/settings/organisation reads this to show the
+      right org's record) and any future "this persona's org" lookup.
+      Set for all three personas. */
+  orgId?: string;
   /** For supplier personas — the supplier org id, used to build
-      /suppliers/:id routes (Front + Store tabs target this). */
+      /suppliers/:id routes (Front + Store tabs target this).
+      v1.65e8 — same as orgId for supplier kind; retained as an
+      alias so existing call sites (supplier-detail routing) don't
+      need to change. */
   supplierOrgId?: string;
   /** v1.65e2 — secondary location pill in the hero (e.g. "London").
       Supplier personas surface their city; agency / admin personas
@@ -61,6 +69,14 @@ export interface Persona {
 /** v1.65dz — seeded persona list mirroring the p0015 mockup. The
     supplierOrgId on Rocket Food is the real seeded org id from
     server/src/db/seed.js so /suppliers/{id} resolves end-to-end. */
+// v1.65e8 — real seeded org ids. Update these if your local DB
+// re-rolls them. Confirmed via:
+//   SELECT id, name, type FROM orgs WHERE name IN
+//     ('Woodland Agency', 'Ballpark', 'Rocket Food');
+const ORG_ID_WOODLAND   = 'b9025772-1723-4f95-a056-add54eebd100';
+const ORG_ID_BALLPARK   = 'de4258e7-6694-4c76-b548-9ab958b4dda0';
+const ORG_ID_ROCKETFOOD = '5488cde0-ba0d-48a2-a599-d00d04aa655e';
+
 const PERSONAS: Persona[] = [
   {
     id: 'sarah-mitchell',
@@ -68,6 +84,7 @@ const PERSONAS: Persona[] = [
     name: 'Sarah Mitchell',
     orgName: 'Woodland Agency',
     orgType: 'agency',
+    orgId: ORG_ID_WOODLAND,
     subtitle: 'Woodland Agency · Admin',
     role: 'Admin',
     initials: 'SM',
@@ -80,6 +97,9 @@ const PERSONAS: Persona[] = [
     name: 'Beth Pizey',
     orgName: 'Ballpark',
     orgType: 'admin',
+    // v1.65e8 — Beth is now assigned to the Ballpark admin org
+    // Liam created through the /ballpark-settings/orgs UI.
+    orgId: ORG_ID_BALLPARK,
     subtitle: 'Ballpark · Admin',
     role: 'Admin',
     initials: 'BP',
@@ -95,15 +115,17 @@ const PERSONAS: Persona[] = [
     name: 'Ryan Foster',
     orgName: 'Rocket Food',
     orgType: 'supplier',
+    orgId: ORG_ID_ROCKETFOOD,
     subtitle: 'Rocket Food · Admin',
     role: 'Admin',
     initials: 'RF',
     avatarColor: '#0f766e',
     location: 'London',
     // v1.65e1 — Rocket Food's seeded supplier org id (matches the
-    // /suppliers/:id URL Liam shared). If your local seed re-rolls
-    // org ids, update this value and re-run the dev server.
-    supplierOrgId: '5488cde0-ba0d-48a2-a599-d00d04aa655e',
+    // /suppliers/:id URL Liam shared). v1.65e8 — same as orgId now;
+    // kept as an alias so supplier-detail routing doesn't need to
+    // change.
+    supplierOrgId: ORG_ID_ROCKETFOOD,
   },
 ];
 
