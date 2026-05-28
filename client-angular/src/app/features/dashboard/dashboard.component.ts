@@ -160,7 +160,8 @@ type DashTab = 'projects';
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- STATS BAR — always visible on desktop, Summary tab on mobile -->
+      <!-- v1.65dh — Stats bar is now 4 floating cards (shadow-only,
+           no hairline). The label/value/sub triplets are unchanged. -->
       <div class="bp-dash-stats" *ngIf="settingsDraft.showStats !== false">
         <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
@@ -177,7 +178,7 @@ type DashTab = 'projects';
           <span class="bp-dash-stat-value">{{ supplierCount }}</span>
           <span class="bp-dash-stat-sub">across categories</span>
         </div>
-        <div class="bp-dash-stat" style="border-right:none;">
+        <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">Quotes in progress</span>
           <span class="bp-dash-stat-value">0</span>
           <span class="bp-dash-stat-sub">awaiting response</span>
@@ -190,10 +191,16 @@ type DashTab = 'projects';
       ══════════════════════════════════════════════════ -->
       <div class="bp-body bp-desktop-only">
 
-        <!-- LEFT PANEL -->
+        <!-- LEFT PANEL — v1.65dh: each section is now its own
+             elevated card (shadow-only, no border) instead of all
+             three sharing one panel. Section eyebrows gain a Lucide
+             icon next to the label. -->
         <div class="bp-body-panel">
-          <div class="bp-panel-section">
-            <div class="bp-section-header"><span class="bp-section-title">Upcoming</span></div>
+          <div class="bp-panel-section bp-dash-card">
+            <div class="bp-section-header">
+              <lucide-icon name="calendar-days" [size]="13" class="bp-section-icon"></lucide-icon>
+              <span class="bp-section-title">Upcoming</span>
+            </div>
             <ng-container *ngIf="nextProject">
               <p class="bp-upcoming-name">{{ nextProject.event_name || nextProject.name }}</p>
               <p class="bp-upcoming-meta">{{ nextProject.client_name }}</p>
@@ -202,14 +209,20 @@ type DashTab = 'projects';
             </ng-container>
             <p *ngIf="!nextProject" class="bp-empty">No upcoming events.</p>
           </div>
-          <div class="bp-panel-section">
-            <div class="bp-section-header"><span class="bp-section-title">Recent Activity</span></div>
+          <div class="bp-panel-section bp-dash-card">
+            <div class="bp-section-header">
+              <lucide-icon name="clock" [size]="13" class="bp-section-icon"></lucide-icon>
+              <span class="bp-section-title">Recent Activity</span>
+            </div>
             <div class="bp-activity-item"><div class="bp-activity-dot"></div><span>Brief updated — TechVista London</span><span class="bp-activity-time">2h ago</span></div>
             <div class="bp-activity-item"><div class="bp-activity-dot"></div><span>Project created — Food &amp; Drink Expo</span><span class="bp-activity-time">1d ago</span></div>
             <div class="bp-activity-item"><div class="bp-activity-dot"></div><span>Supplier saved — Construct &amp; Co.</span><span class="bp-activity-time">2d ago</span></div>
           </div>
-          <div class="bp-panel-section">
-            <div class="bp-section-header"><span class="bp-section-title">Quick Actions</span></div>
+          <div class="bp-panel-section bp-dash-card">
+            <div class="bp-section-header">
+              <lucide-icon name="zap" [size]="13" class="bp-section-icon"></lucide-icon>
+              <span class="bp-section-title">Quick Actions</span>
+            </div>
             <!-- v1.22b: "+ New Project" removed from Quick Actions —
                  it already lives next to the Active Events header.
                  v1.22i: Browse Suppliers now lands on the Suppliers
@@ -229,19 +242,20 @@ type DashTab = 'projects';
           </div>
         </div>
 
-        <!-- CENTRE -->
+        <!-- CENTRE — v1.65dh: Active / Inactive / Past each get
+             their own elevated card. Inactive + Past start collapsed
+             so the eye lands on Active. -->
         <div class="bp-body-left">
+          <div class="bp-dash-card">
           <div class="bp-section-header">
+            <lucide-icon name="folder" [size]="13" class="bp-section-icon"></lucide-icon>
             <span class="bp-section-title">Active {{ projectLabel }}s</span>
             <!-- v1.22: in-header "+ New project" CTA. The Quick Actions
                  link stays — this position is more discoverable.
-                 v1.23d: label cascades from ConfigService.projectLabel
-                 — Title Case + plural ("Event" → "+ New Events",
-                 "Show" → "+ New Shows"). projectLabel is stored
-                 singular; we append "s" the same way "Active {label}s"
-                 does elsewhere on the dashboard. -->
+                 v1.23d: label cascades from ConfigService.projectLabel.
+                 v1.65dh: filled accent pill (was outlined chip). -->
             <button type="button" class="bp-section-new-btn" (click)="createProject()">
-              + New {{ projectLabel }}s
+              + New {{ projectLabel }}
             </button>
           </div>
           <p *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</p>
@@ -310,16 +324,26 @@ type DashTab = 'projects';
               <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
             </div>
           </div>
+          </div><!-- /Active card -->
 
           <!-- ── v1.31 INACTIVE EVENTS ─────────────────────────────────
                Mirrors the Active Events grid above — same card, same
                menu, same hover. No "+ New" button. Hidden entirely when
-               there are no completed / archived projects. -->
-          <div class="bp-section-spacer" *ngIf="completedProjects.length > 0">
-            <div class="bp-section-header">
+               there are no completed / archived projects.
+               v1.65dh: own elevated card, collapsed by default. -->
+          <div class="bp-dash-card bp-dash-card--collapsible"
+               *ngIf="completedProjects.length > 0"
+               [class.bp-dash-card--open]="inactiveOpen">
+            <button type="button" class="bp-section-header bp-section-header--toggle"
+                    (click)="inactiveOpen = !inactiveOpen">
+              <lucide-icon name="folder-minus" [size]="13" class="bp-section-icon"></lucide-icon>
               <span class="bp-section-title">Inactive {{ projectLabel }}s</span>
-            </div>
-            <div class="bp-project-grid">
+              <span class="bp-section-count">{{ completedProjects.length }}</span>
+              <lucide-icon class="bp-section-chev"
+                           [name]="inactiveOpen ? 'chevron-up' : 'chevron-down'"
+                           [size]="14"></lucide-icon>
+            </button>
+            <div *ngIf="inactiveOpen" class="bp-project-grid">
               <div *ngFor="let p of completedProjects"
                    class="bp-project-card-wrap"
                    [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
@@ -364,18 +388,24 @@ type DashTab = 'projects';
                 <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
               </div>
             </div>
-          </div>
+          </div><!-- /Inactive card -->
 
           <!-- ── v1.22 PAST EVENTS CAROUSEL ──────────────────────────
-               Horizontal scrolling list of closed projects. Replaces the
-               previous full-size "Completed Events" grid. Hidden when
-               there are no closed projects. -->
-          <div class="bp-section-spacer" *ngIf="completedProjects.length > 0">
-            <div class="bp-section-header">
+               Horizontal scrolling list of closed projects.
+               v1.65dh: own elevated card, collapsed by default. -->
+          <div class="bp-dash-card bp-dash-card--collapsible"
+               *ngIf="completedProjects.length > 0"
+               [class.bp-dash-card--open]="pastOpen">
+            <button type="button" class="bp-section-header bp-section-header--toggle"
+                    (click)="pastOpen = !pastOpen">
+              <lucide-icon name="archive" [size]="13" class="bp-section-icon"></lucide-icon>
               <span class="bp-section-title">Past {{ projectLabel }}s</span>
-            </div>
-          </div>
-          <div class="bp-past-carousel" *ngIf="completedProjects.length > 0">
+              <span class="bp-section-count">{{ completedProjects.length }}</span>
+              <lucide-icon class="bp-section-chev"
+                           [name]="pastOpen ? 'chevron-up' : 'chevron-down'"
+                           [size]="14"></lucide-icon>
+            </button>
+          <div *ngIf="pastOpen" class="bp-past-carousel">
             <a *ngFor="let p of completedProjects.slice(0, 10); let i = index"
                class="bp-past-card"
                [class.bp-past-card--fade]="i === 9 && completedProjects.length > 10"
@@ -395,11 +425,13 @@ type DashTab = 'projects';
               </div>
             </a>
           </div>
+          </div><!-- /Past card -->
         </div>
 
-        <!-- RIGHT -->
+        <!-- RIGHT — v1.65dh: each section is its own elevated card
+             (shadow-only, no border) so it floats on the parchment. -->
         <div class="bp-body-right">
-          <div class="bp-credits-card">
+          <div class="bp-credits-card bp-dash-card">
             <div class="bp-credits-number">{{ org?.balls_balance ?? 0 }}</div>
             <div class="bp-credits-label">{{ creditLabel }}s remaining this month</div>
             <div class="bp-credits-dots">
@@ -407,7 +439,11 @@ type DashTab = 'projects';
             </div>
             <p class="bp-credits-desc">Build and estimate for free — only spend a {{ creditLabel }} when ready to engage.</p>
           </div>
-          <div class="bp-saved-hd">SAVED SUPPLIERS</div>
+          <div class="bp-dash-card">
+          <div class="bp-section-header">
+            <lucide-icon name="heart" [size]="13" class="bp-section-icon"></lucide-icon>
+            <span class="bp-saved-hd">SAVED SUPPLIERS</span>
+          </div>
           <ng-container *ngIf="favSuppliers.length > 0; else noFavSuppliers">
             <!-- 2-column grid so each card sits at ~160px wide and the
                  140px cover lands ~1.15:1 (matches marketplace).
@@ -449,6 +485,7 @@ type DashTab = 'projects';
               My suppliers
             </a>
           </ng-template>
+          </div><!-- /Saved suppliers card -->
         </div>
 
       </div>
@@ -492,18 +529,58 @@ type DashTab = 'projects';
     <p-toast></p-toast>
   `,
   styles: [`
-    /* STATS */
-    .bp-dash-stats { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:0.5px solid var(--color-border); background:var(--color-surface); }
-    .bp-dash-stat  { display:flex; flex-direction:column; align-items:center; padding:14px 20px; border-right:0.5px solid var(--color-border); }
-    .bp-dash-stat:last-child { border-right:none; }
-    .bp-dash-stat-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--theme-accent); margin-bottom:2px; }
+    /* v1.65dh — Dashboard styling: panels float as elevated cards on a
+       parchment ground. Card chrome is shadow-only — no hairline border
+       on any card on this page — so they read as floating, not outlined.
+       (The mockup spec is explicit on this; see commit message.) */
+
+    /* Shared card primitive used by every floating panel on this page. */
+    .bp-dash-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      padding: 16px 18px;
+    }
+    .bp-dash-card--collapsible { padding: 0; }
+    .bp-dash-card--collapsible .bp-section-header { padding: 14px 18px; margin: 0; }
+    .bp-dash-card--collapsible .bp-project-grid,
+    .bp-dash-card--collapsible .bp-past-carousel { padding: 0 18px 16px; margin: 0; }
+
+    /* STATS — 4 floating tiles on the parchment, no border. */
+    .bp-dash-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      padding: 16px 20px 0;
+      background: transparent;
+    }
+    .bp-dash-stat {
+      display: flex; flex-direction: column;
+      padding: 14px 18px;
+      background: var(--color-surface);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+    }
+    .bp-dash-stat-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--theme-accent); margin-bottom:4px; }
     .bp-dash-stat-value { font-size:26px; font-weight:700; color:var(--color-text-primary); line-height:1.1; }
     .bp-dash-stat-sub   { font-size:11px; color:var(--color-text-muted); margin-top:2px; }
 
-    /* DESKTOP 3-COL */
-    .bp-body { display:grid; grid-template-columns:384px minmax(400px,1fr) 384px; background:var(--color-bg); min-height:calc(100vh - var(--nav-height) - 64px); }
-    .bp-body-panel { padding:24px; background:var(--color-surface); border-right:0.5px solid var(--color-border); }
-    .bp-panel-section { margin-bottom:28px; }
+    /* DESKTOP 3-COL — parchment ground, gap between columns. */
+    .bp-body {
+      display: grid;
+      grid-template-columns: 320px minmax(400px, 1fr) 320px;
+      gap: 14px;
+      background: var(--theme-bg);
+      padding: 16px 20px 24px;
+      min-height: calc(100vh - var(--nav-height) - 64px);
+    }
+    .bp-body-panel { display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-left  { display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-right { display: flex; flex-direction: column; gap: 14px; }
+    /* Make each .bp-panel-section in the left column inherit the
+       shared card chrome. (.bp-dash-card on the element does it; this
+       is just the layout/gap reset.) */
+    .bp-panel-section { margin-bottom: 0; }
     .bp-upcoming-name { font-size:13px; font-weight:500; color:var(--color-text-primary); margin-bottom:4px; }
     .bp-upcoming-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:2px; }
     .bp-upcoming-date { font-size:11px; color:var(--theme-accent); font-weight:500; margin-top:4px; }
@@ -515,22 +592,30 @@ type DashTab = 'projects';
        amber on hover) so every dashboard CTA reads as one family.
        The only filled exception is the "+ New project" primary button
        in the Active Events header. */
+    /* v1.65dh — calmer outline. Was --theme-accent border + text,
+       now a neutral hairline with secondary-text colour so the
+       buttons read as quiet utility, with the accent reserved for
+       the "+ New Event" primary CTA. */
     .bp-quick-action  {
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      width:100%; padding:8px 12px; margin-bottom:8px;
-      border:0.5px solid var(--theme-accent);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 9px 12px; margin-bottom: 8px;
+      border: 0.5px solid var(--color-border);
       border-radius: var(--radius-button);
-      background:var(--color-surface);
-      font-size:13px; font-weight:500; color:var(--theme-accent);
-      cursor:pointer; text-decoration:none;
-      transition:background 0.15s, color 0.15s;
-      font-family:var(--font-body);
+      background: var(--color-surface);
+      font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
+      cursor: pointer; text-decoration: none;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      font-family: var(--font-body);
     }
     .bp-quick-action:hover {
-      background:var(--theme-accent);
-      color:var(--color-surface);
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+      background: var(--theme-soft);
     }
-    .bp-body-left { padding:var(--section-pad); border-right:0.5px solid var(--color-border); }
+    /* v1.65dh — legacy .bp-body-left padding + border rules retired.
+       Each card now owns its own padding via .bp-dash-card. Kept here
+       defined-but-empty as a no-op for any stale references. */
+    .bp-body-left-legacy { /* no-op */ }
     .bp-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     /* v1.22: section eyebrow standardised — weight 500 (was 700) and
        letter-spacing 0.06em (was 0.1em) so the labels feel less
@@ -691,30 +776,60 @@ type DashTab = 'projects';
     .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
     .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
 
-    /* v1.22 elevation: "+ New project" is the one primary CTA in
-       the button standard — filled themed accent, white text. The
-       secondary outlined family (Quick Actions etc.) stays around it.
-         rest:   no shadow (the colour does the lifting)
-         hover:  shadow-sm
-         active: scale(0.98) — physical press feedback */
+    /* v1.65dh — "+ New Event" is the one primary CTA. Filled accent
+       PILL (was an outlined chip), white text, --radius-pill,
+       12px bold weight, subtle shadow-xs, slight lift on hover. */
     .bp-section-new-btn {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:8px 12px;
-      font-size:13px;
-      font-weight:500;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: 600;
       font-family: var(--font-body);
-      color:var(--color-surface);
-      background:var(--theme-accent);
-      border:none;
-      border-radius: var(--radius-button);
-      cursor:pointer;
+      color: var(--color-surface);
+      background: var(--theme-accent);
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      box-shadow: var(--shadow-xs);
       transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
     }
     .bp-section-new-btn:hover {
       box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
       filter: brightness(1.05);
     }
     .bp-section-new-btn:active { transform: scale(0.98); }
+
+    /* Section header icon — small, theme-accent, fixed size. */
+    .bp-section-icon { color: var(--theme-accent); flex-shrink: 0; }
+    /* Count badge after the section title (Inactive / Past). */
+    .bp-section-count {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-soft);
+      color: var(--theme-accent);
+    }
+    .bp-section-chev {
+      margin-left: auto;
+      color: var(--color-text-muted);
+    }
+    /* Collapsible section header — clickable; gives the whole strip
+       the affordance of a button. */
+    .bp-section-header--toggle {
+      width: 100%;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-align: left;
+    }
+    .bp-section-header--toggle:hover .bp-section-title { color: var(--color-text-primary); }
+    /* Make sure every section header lines up icon → title → trailing. */
+    .bp-section-header {
+      display: flex; align-items: center; gap: 8px;
+    }
     /* v1.22d: section-header CTA — same font / padding as
        .bp-quick-action (13px / 8px 12px). The whole CTA family now
        reads at one size whether it's stacked in the sidebar or
@@ -819,8 +934,12 @@ type DashTab = 'projects';
     }
 
     /* RIGHT PANEL */
-    .bp-body-right { padding:24px; background:var(--color-surface); }
-    .bp-credits-card   { background:var(--theme-bg); border:0.5px solid var(--theme-border); border-radius: var(--radius-card); padding:18px; margin-bottom:16px; }
+    /* v1.65dh — right-column padding now lives on each .bp-dash-card;
+       the column itself is just a flex column with gap. Legacy
+       padding+surface rule retired. */
+    .bp-body-right-legacy { /* no-op */ }
+    /* Credits card — shadow-only chrome (was a tinted border tile). */
+    .bp-credits-card   { background: var(--color-surface); border-radius: var(--radius-card); box-shadow: var(--shadow-xs); padding: 18px; text-align: center; }
     .bp-credits-number { font-size:40px; font-weight:700; color:var(--color-text-primary); line-height:1; margin-bottom:4px; }
     .bp-credits-label  { font-size:var(--text-sm); font-weight:600; color:var(--theme-accent); margin-bottom:12px; }
     .bp-credits-dots   { display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap; }
@@ -996,6 +1115,11 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v1.22: id of the project whose "..." dropdown is open. Empty
       string = no menu open. Click-outside closes via HostListener. */
   openMenuProjectId = '';
+  /** v1.65dh — collapse state for the Inactive + Past project cards.
+      Active stays expanded; the other two start collapsed so the eye
+      lands on the live work first. Chevron in each header toggles. */
+  inactiveOpen = false;
+  pastOpen = false;
 
   // ── v1.23 admin settings strip ────────────────────────────────────
   /** Draft copy of the configurable fields; bound to the inputs +

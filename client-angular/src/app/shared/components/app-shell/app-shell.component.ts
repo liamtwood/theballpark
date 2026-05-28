@@ -41,7 +41,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
   providers: [MessageService],
   template: `
     <!-- HERO -->
-    <div class="bp-hero" *ngIf="!hideHero">
+    <!-- v1.65dh — heroVariant='calm' switches to the dashboard/settings
+         treatment: parchment fill, no orbs/grain (even in Bold mode),
+         calm underline tabs. -->
+    <div class="bp-hero" *ngIf="!hideHero"
+         [class.bp-hero--calm]="heroVariant === 'calm'">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
@@ -421,6 +425,11 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   pageLabel    = '';
   hideHero     = false;
+  /** v1.65dh — route-data flag for a calm, non-Bold hero treatment
+      (used by the dashboard + settings surfaces per p0013-followup).
+      'calm' = light parchment fill, no orbs/grain even in Bold mode,
+      calm-underline tabs. Default = the existing Bold-aware hero. */
+  heroVariant: 'default' | 'calm' = 'default';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -691,6 +700,8 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.pageLabel  = data['pageLabel'];
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
+        // v1.65dh — heroVariant flag plumbed through route data.
+        this.heroVariant = (data['heroVariant'] === 'calm') ? 'calm' : 'default';
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero

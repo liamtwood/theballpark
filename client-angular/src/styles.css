@@ -1530,6 +1530,86 @@ input.bp-cfg-page-label.p-inputtext:focus {
   color: var(--theme-accent) !important;
 }
 
+/* ─── v1.65dh — CALM HERO VARIANT ─────────────────────────────────
+   Used by the dashboard + settings surfaces (route data
+   heroVariant: 'calm'). Overrides the Bold-aware default hero with
+   a parchment fill, no orbs/grain regardless of [data-mode], and
+   calm underline tabs (text-muted by default, accent + bottom-
+   underline on active). Selectors win on specificity (.bp-hero--calm
+   + .bp-hero-tab), so the existing !important rules from p0003 +
+   v1.65ca are kept intact for the default hero.
+
+   Notes from the spec:
+   - Card chrome on this page is shadow-only (no hairline border).
+   - Tabs are calm underline, not folder-tab.
+   - No Bold-mode hero on this page even when data-mode='bold'. */
+.bp-hero.bp-hero--calm {
+  background: var(--theme-bg) !important;
+  border-bottom: var(--border-hairline) !important;
+  padding-top: 24px !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-orbs,
+.bp-hero.bp-hero--calm .bp-hero-grain { display: none !important; }
+.bp-hero.bp-hero--calm .bp-hero-org-name {
+  color: var(--color-text-primary) !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-page-label {
+  color: var(--color-text-muted) !important;
+}
+/* Tab band — strip-style flat bar with a hairline divider. */
+.bp-hero.bp-hero--calm .bp-hero-tab-band {
+  background: transparent !important;
+  padding-bottom: 0 !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tabs {
+  border-bottom: var(--border-hairline) !important;
+  gap: 4px;
+}
+/* Calm underline tab — bare text, no fill, no border-radius. */
+.bp-hero.bp-hero--calm .bp-hero-tab {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  padding: 10px 16px !important;
+  color: var(--color-text-muted) !important;
+  font-weight: 500 !important;
+  margin-bottom: 0 !important;
+  transition: color 0.15s, border-color 0.15s !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tab:hover {
+  color: var(--color-text-primary) !important;
+  background: transparent !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tab.active {
+  background: transparent !important;
+  color: var(--theme-accent) !important;
+  border-bottom-color: var(--theme-accent) !important;
+  font-weight: 600 !important;
+}
+/* Override Bold-mode rules so this variant looks identical regardless
+   of the global data-mode setting. */
+[data-mode="dark"] .bp-hero.bp-hero--calm,
+[data-mode="bold"] .bp-hero.bp-hero--calm {
+  background: var(--theme-bg) !important;
+}
+[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab,
+[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab {
+  background: transparent !important;
+  color: var(--color-text-muted) !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  box-shadow: none !important;
+}
+[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab.active,
+[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab.active {
+  background: transparent !important;
+  color: var(--theme-accent) !important;
+  border-bottom-color: var(--theme-accent) !important;
+}
+
 /* ── PAGE LAYOUT ── */
 .bp-settings-body  { max-width: 640px; margin: 0 auto; padding: var(--section-pad); }
 .bp-content-pad    { padding: var(--section-pad); max-width: 820px; margin: 0 auto; }
