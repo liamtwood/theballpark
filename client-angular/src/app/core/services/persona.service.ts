@@ -73,11 +73,15 @@ const PERSONAS: Persona[] = [
     avatarColor: '#4f46e5',
   },
   {
+    // v1.65e3 — Ryan Foster is the Admin at Rocket Food (the
+    // supplier org). Persona kind stays 'supplier' because that
+    // drives routing + UI (4-tab supplier-detail surface) — Ryan is
+    // the person, Rocket Food is his org.
     id: 'rocket-food',
     kind: 'supplier',
-    name: 'Rocket Food',
-    subtitle: 'Supplier · London',
-    role: 'Supplier',
+    name: 'Ryan Foster',
+    subtitle: 'Rocket Food · Admin',
+    role: 'Admin',
     initials: 'RF',
     avatarColor: '#0f766e',
     location: 'London',
