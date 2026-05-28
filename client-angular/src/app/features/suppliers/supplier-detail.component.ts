@@ -324,7 +324,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [item]="drawerItem"
           [prefill]="addPrefill"
           (saved)="onItemSaved($event)"
-          (cancelled)="onItemDrawerCancelled()">
+          (cancelled)="onItemDrawerCancelled()"
+          (deleted)="onItemDeleted($event)">
         </app-item-drawer>
 
         <app-image-upload-panel
@@ -1292,6 +1293,23 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   onItemSaved(_item: Item) {
     // Refresh the catalogue so the grid AND the Home subcategory cards
     // reflect the new/updated row.
+    this.supplierSvc.getCatalogue(this.sid).subscribe({
+      next: (items: any[]) => {
+        this.catalogueItems = items || [];
+        this.mapItems();
+        this.buildCategories();
+        this.buildHomeCategoryGroups();
+        this.cdr.detectChanges();
+      }
+    });
+    this.drawerItem = null;
+  }
+
+  /** v1.65ey — drawer fires `deleted` after a successful soft-delete.
+      Same refresh path as save: re-pull the supplier's catalogue so
+      the deleted row drops out of the grid + the Home subcategory
+      counts update. */
+  onItemDeleted(_e: { id: string }) {
     this.supplierSvc.getCatalogue(this.sid).subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];

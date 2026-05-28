@@ -21,6 +21,7 @@ import { CodelistService } from '../../../core/services/codelist.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { ItemService } from '../../../core/services/item.service';
 import { OrgService } from '../../../core/services/org.service';
+import { PersonaService } from '../../../core/services/persona.service';
 import { ApiService } from '../../../core/services/api.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
@@ -678,13 +679,28 @@ interface DimensionGroup {
           </ng-container>
 
           <ng-container *ngIf="!classifyActive && !isView">
+            <!-- v1.65ey — Delete is a destructive action and lives on
+                 the LEFT of the row so it's visually separated from
+                 the Save / Cancel cluster on the right. Only shows
+                 in edit mode AND when the active persona owns the
+                 item (canDelete getter). -->
+            <p-button *ngIf="canDelete"
+                      label="Delete"
+                      icon="pi pi-trash"
+                      styleClass="bp-btn-delete"
+                      [disabled]="saving || deleting"
+                      [loading]="deleting"
+                      (onClick)="onDelete()">
+            </p-button>
+            <span class="bp-drawer-footer-spacer"></span>
             <p-button label="Cancel"
                       styleClass="bp-btn-cancel"
+                      [disabled]="saving || deleting"
                       (onClick)="onCancel()">
             </p-button>
             <p-button [label]="saveLabel"
                       styleClass="bp-btn-save"
-                      [disabled]="!isValid() || saving"
+                      [disabled]="!isValid() || saving || deleting"
                       [loading]="saving"
                       (onClick)="onSave()">
             </p-button>
@@ -1060,6 +1076,24 @@ interface DimensionGroup {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      align-items: center;
+    }
+    /* v1.65ey — pushes Cancel/Save to the right when a Delete
+       button sits on the left. */
+    .bp-drawer-footer-spacer { flex: 1; }
+    /* v1.65ey — destructive action styling. Calm at rest (no fill,
+       semantic-danger outline) so it doesn't compete with Save;
+       fills on hover so the affordance is clear once the supplier
+       reaches for it. */
+    :host ::ng-deep .bp-btn-delete.p-button {
+      background: transparent !important;
+      color: var(--color-action, #DC2626) !important;
+      border: 0.5px solid var(--color-action, #DC2626) !important;
+      box-shadow: none !important;
+    }
+    :host ::ng-deep .bp-btn-delete.p-button:hover {
+      background: var(--color-action, #DC2626) !important;
+      color: var(--color-surface) !important;
     }
 
     /* ── v1.43 — AI CLASSIFICATION ──────────────────────────────────
@@ -1243,6 +1277,9 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   @Output() saved = new EventEmitter<Item>();
   @Output() cancelled = new EventEmitter<void>();
   @Output() visibleChange = new EventEmitter<boolean>();
+  /** v1.65ey — fired after a successful soft-delete so the parent
+      (supplier-detail Store tab) can refresh its catalogue list. */
+  @Output() deleted = new EventEmitter<{ id: string }>();
 
   form: ItemForm = this.emptyForm();
   units: Codelist[] = [];
@@ -1253,6 +1290,60 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
   lineageOptions: { id: string; name: string }[] = [];
   currentOrg: Org | null = null;
   saving = false;
+  /** v1.65ey — true while DELETE is in flight. */
+  deleting = false;
+
+  /** v1.65ey — supplier-only delete affordance. Visible in edit
+      mode when the active persona (or real session org) owns the
+      item being edited. Supplier persona's orgId beats the real
+      currentOrg in the demo so Ryan can delete Rocket Food items
+      even though the dev /api/org returns Woodland. */
+  get canDelete(): boolean {
+    if (this.mode !== 'edit' || !this.item) return false;
+    const owningOrgId = (this.item as any).org_id;
+    if (!owningOrgId) return false;
+    const personaOrgId = this.personaSvc.active?.orgId;
+    if (personaOrgId) return personaOrgId === owningOrgId;
+    return this.currentOrg?.id === owningOrgId;
+  }
+
+  /** v1.65ey — soft-delete the item (server flips is_active=false).
+      Confirms via native confirm() since we don't have a shared
+      confirmation-dialog component on this surface; lightweight
+      and good enough for the supplier-side flow. */
+  onDelete(): void {
+    if (!this.canDelete || !this.item || this.deleting) return;
+    const name = this.item.name || 'this item';
+    const ok = window.confirm(`Delete "${name}" from your catalogue?\n\nIt will be hidden from new briefs. Past briefs that reference it stay intact.`);
+    if (!ok) return;
+    this.deleting = true;
+    this.cdr.markForCheck();
+    this.itemSvc.delete(this.item.id).subscribe({
+      next: () => {
+        this.deleting = false;
+        this.msg.add({
+          severity: 'success',
+          summary: 'Item deleted',
+          detail: name,
+          life: 2500,
+        });
+        this.deleted.emit({ id: this.item!.id });
+        this.visible = false;
+        this.visibleChange.emit(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.deleting = false;
+        this.msg.add({
+          severity: 'error',
+          summary: 'Could not delete',
+          detail: 'Please try again in a moment.',
+          life: 3000,
+        });
+        this.cdr.markForCheck();
+      }
+    });
+  }
   /** v1.41 — AI suggest-subcategory state. True while the
       /api/taxonomy/suggest-subcategory call is in flight. */
   suggesting = false;
@@ -1315,6 +1406,7 @@ export class ItemDrawerComponent implements OnInit, OnChanges {
     private categorySvc: CategoryService,
     private itemSvc: ItemService,
     private orgSvc: OrgService,
+    private personaSvc: PersonaService,
     private apiSvc: ApiService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
