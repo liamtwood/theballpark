@@ -797,12 +797,23 @@ Score items and propose if needed.`
 }
 
 /** Sum the catalogue value of a project's items in one category and
-    write it onto project_categories.ballpark_cost. */
+    write it onto project_categories.ballpark_cost.
+    v1.65ei — per-attendee math (mirror of project-item.service.
+    recomputeProjectBallparks): items with unit 'cover' or 'head'
+    multiply by project.guest_count. */
 async function recomputeCategoryBallpark(projectId, categoryId) {
   const r = await pool.query(
-    `SELECT COALESCE(SUM(COALESCE(i.base_price, 0)), 0)::numeric AS total
+    `SELECT COALESCE(SUM(
+              COALESCE(i.base_price, 0)
+              * CASE
+                  WHEN LOWER(COALESCE(i.unit, '')) IN ('cover', 'head')
+                    THEN COALESCE(p.guest_count, 1)
+                  ELSE 1
+                END
+            ), 0)::numeric AS total
        FROM project_items pi
        JOIN items i ON i.id = pi.item_id
+       JOIN projects p ON p.id = pi.project_id
       WHERE pi.project_id = $1
         AND (i.category_id = $2 OR i.category_id IN (SELECT id FROM categories WHERE parent_id = $2))`,
     [projectId, categoryId]

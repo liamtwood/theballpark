@@ -2869,11 +2869,29 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   /** v1.65w — manual estimate (ballpark_cost) for the active
-      project_category. Read by category-context-panel via [estimatePrice]. */
+      project_category. Read by category-context-panel via [estimatePrice].
+      v1.65ei — applies the project's margin + VAT on top of the stored
+      ballpark_cost ("your cost") so the panel field reads as the
+      client-facing total — same semantic as the Budget field above
+      it. Math matches estimate.component recalc() and cart-drawer's
+      summary footer:
+        clientTotal = cost × (1 + margin/100) × (1 + vat/100) */
   get ctxEstimate(): number | null {
     if (this.panelContext !== 'project') return null;
     const v = (this.currentProjectCategory as any)?.ballpark_cost;
-    return v != null ? Number(v) : null;
+    if (v == null) return null;
+    return this.applyMarginVat(Number(v) || 0);
+  }
+
+  /** v1.65ei — multiply a "your cost" figure by the project's margin
+      and VAT defaults to get the client-facing total. Falls back to
+      20/20 to match the same defaults estimate.component uses. */
+  private applyMarginVat(cost: number): number {
+    const p: any = this.projectContext?.project;
+    const margin = Number(p?.default_margin_pct) || 20;
+    const vat    = Number(p?.default_vat_pct)    || 20;
+    const preVat = cost * (1 + margin / 100);
+    return preVat * (1 + vat / 100);
   }
   get ctxBudget(): number | null {
     if (this.panelContext !== 'project') return null;
@@ -3045,8 +3063,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       .reduce((s, c) => s + (Number((c as any).ballpark_budget) || 0), 0);
   }
   get allEstimateTotal(): number {
-    return (this.projectContext?.projectCategories || [])
+    // v1.65ei — sum each category's ballpark_cost ("your cost"), then
+    // apply margin + VAT once at the project level so the All-view
+    // Estimate reads as a client-facing total to match per-category.
+    const yourCost = (this.projectContext?.projectCategories || [])
       .reduce((s, p) => s + (Number((p as any).ballpark_cost) || 0), 0);
+    return this.applyMarginVat(yourCost);
   }
   get allSelectedCount(): number {
     return (this.projectItems || []).filter(pi => pi.selection_type === 'selected').length;

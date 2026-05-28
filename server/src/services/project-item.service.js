@@ -14,14 +14,31 @@ const pool = require('../db/pool');
     Overview Estimate card see fresh ballpark_cost. Previously this
     only fired on the AI-matcher (addMatchToProject) write path, so
     items added through the regular Marketplace + button left their
-    category's ballpark_cost at 0. */
+    category's ballpark_cost at 0.
+
+    v1.65ei (p0015 demo) — per-attendee math. Items whose unit is
+    'cover' or 'head' bill per guest, so the line cost is
+    base_price × project.guest_count. Other units (each, platter,
+    event, day, …) stay flat. ballpark_cost still represents "your
+    cost" (no margin or VAT) so the Estimate page's recalc() can
+    layer those on top without double-counting; the catalogue-grid's
+    per-category Estimate panel applies margin + VAT at display time
+    so it reads as a client-facing figure. */
 async function recomputeProjectBallparks(projectId) {
   await pool.query(
     `UPDATE project_categories pc
         SET ballpark_cost = COALESCE((
-              SELECT SUM(COALESCE(i.base_price, 0))
+              SELECT SUM(
+                       COALESCE(i.base_price, 0)
+                       * CASE
+                           WHEN LOWER(COALESCE(i.unit, '')) IN ('cover', 'head')
+                             THEN COALESCE(p.guest_count, 1)
+                           ELSE 1
+                         END
+                     )
                 FROM project_items pi
                 JOIN items i ON i.id = pi.item_id
+                JOIN projects p ON p.id = pi.project_id
                WHERE pi.project_id = pc.project_id
                  AND (
                    i.category_id = pc.category_id
