@@ -599,29 +599,51 @@ interface VendorThread {
               <ng-container *ngFor="let entry of streamTimeline()">
                 <div class="bp-date-sep" *ngIf="entry.showDate">{{ entry.timestamp | date:'d MMMM yyyy' }}</div>
 
+                <!-- v1.65de (p0013 §4) — sender-aligned bubble/card.
+                     Outbound (agent) → right lane; inbound (supplier)
+                     → left lane. Each entry sits inside a lane row
+                     so the alignment is purely CSS. -->
                 <ng-container *ngIf="entry.type === 'message' && entry.message as m">
-                  <div class="bp-msg-card"
-                    [class.bp-msg-read]="m.direction === 'inbound' && m.read"
-                    [class.bp-msg-unread]="m.direction === 'inbound' && !m.read"
-                    [class.bp-msg-out]="m.direction === 'outbound'">
-                    <div class="bp-msg-card-header">
-                      <span class="bp-msg-card-sender">{{ m.direction === 'outbound' ? 'You' : activeThread.supplierName }}</span>
-                      <span class="bp-msg-card-time">{{ m.created_at | date:'HH:mm' }}</span>
+                  <div class="bp-msg-lane"
+                       [class.bp-msg-lane--out]="m.direction === 'outbound'"
+                       [class.bp-msg-lane--in]="m.direction !== 'outbound'">
+                    <div class="bp-msg-bubble"
+                         [class.bp-msg-bubble--out]="m.direction === 'outbound'"
+                         [class.bp-msg-bubble--in]="m.direction !== 'outbound'"
+                         [class.bp-msg-bubble--unread]="m.direction === 'inbound' && !m.read">
+                      <!-- ↳ {item.name} breadcrumb when the bubble is
+                           tagged to a specific item. -->
+                      <div *ngIf="m.tagged_item_id && taggedItemName(m.tagged_item_id) as tagName"
+                           class="bp-msg-bubble-crumb">
+                        ↳ {{ tagName }}
+                      </div>
+                      <div class="bp-msg-bubble-body" *ngIf="m.body">{{ m.body }}</div>
+                      <div class="bp-msg-bubble-time">{{ m.created_at | date:'HH:mm' }}</div>
                     </div>
-                    <div class="bp-msg-card-body" *ngIf="m.body">{{ m.body }}</div>
                   </div>
                 </ng-container>
 
                 <ng-container *ngIf="entry.type === 'item' && entry.item as it">
-                  <div class="bp-msg-stream-item" [attr.data-item-id]="it.id">
-                    <app-message-item-card
-                      [item]="toMessageItem(it)"
-                      [viewer]="'agent'"
-                      [imageUrl]="it.item_image_url || null"
-                      [eyebrowOverride]="it.supplier_name || it.description || null"
-                      [declineReasons]="declineReasonsFor(it)"
-                      (action)="onItemAction(it, $event)">
-                    </app-message-item-card>
+                  <div class="bp-msg-lane"
+                       [class.bp-msg-lane--out]="itemLane(it) === 'out'"
+                       [class.bp-msg-lane--in]="itemLane(it) === 'in'">
+                    <div class="bp-msg-stream-item" [attr.data-item-id]="it.id">
+                      <app-message-item-card
+                        [item]="toMessageItem(it)"
+                        [viewer]="'agent'"
+                        [layout]="'grid'"
+                        [imageUrl]="it.item_image_url || null"
+                        [eyebrowOverride]="null"
+                        [declineReasons]="declineReasonsFor(it)"
+                        (action)="onItemAction(it, $event)">
+                      </app-message-item-card>
+                      <!-- Caption under the action card — pulled from
+                           the most recent message_item_events.note for
+                           this item, if any. -->
+                      <div *ngIf="itemCaption(it) as cap" class="bp-msg-stream-caption">
+                        "{{ cap }}"
+                      </div>
+                    </div>
                   </div>
                 </ng-container>
               </ng-container>
@@ -631,12 +653,123 @@ interface VendorThread {
             </div>
             </div><!-- /.bp-thread-sec.bp-thread-sec--conv -->
 
+            <!-- v1.65de (p0013 §5) — compose chip strip. Default state
+                 is chips + tools (no text input); Add-note expands a
+                 textarea + Send. Clicking a chip with no {placeholder}
+                 sends immediately; with one, the placeholder picker
+                 opens inline. -->
             <div class="bp-compose">
-              <input pInputText [(ngModel)]="newMsg"
-                placeholder="Reply to {{ activeThread.supplierName }}..."
-                class="bp-compose-input bp-input-edit"
-                (keyup.enter)="send()"/>
-              <button class="bp-send-btn" [disabled]="!newMsg.trim() || sending" (click)="send()">↑</button>
+              <!-- Quick-reply chips. Horizontally scrolling. -->
+              <div class="bp-compose-chips" *ngIf="!composeNoteOpen && composeChips.length">
+                <button *ngFor="let c of composeChips"
+                        type="button"
+                        class="bp-compose-chip"
+                        [title]="c.preview || c.body"
+                        (click)="onChipClick(c)">
+                  {{ c.label }}
+                </button>
+              </div>
+
+              <!-- Placeholder picker (when a chip with {x} was tapped). -->
+              <div class="bp-compose-ph" *ngIf="composePlaceholder">
+                <span class="bp-compose-ph-label">{{ composePlaceholder.label }}</span>
+                <input pInputText
+                       [(ngModel)]="composePlaceholder.value"
+                       class="bp-input-edit bp-compose-ph-input"
+                       [placeholder]="composePlaceholder.hint"
+                       (keyup.enter)="confirmPlaceholder()"
+                       (keyup.escape)="cancelPlaceholder()"/>
+                <button type="button" class="bp-mi-btn" (click)="cancelPlaceholder()">Cancel</button>
+                <button type="button" class="bp-mi-btn bp-mi-btn--primary"
+                        [disabled]="!composePlaceholder.value?.trim()"
+                        (click)="confirmPlaceholder()">Send</button>
+              </div>
+
+              <!-- Add-note expanded state. -->
+              <div class="bp-compose-note" *ngIf="composeNoteOpen">
+                <textarea pInputTextarea
+                          [(ngModel)]="newMsg"
+                          [placeholder]="composeNoteHint"
+                          class="bp-compose-note-input"
+                          rows="2"
+                          (keydown.enter)="onNoteEnter($event)"></textarea>
+                <div class="bp-compose-note-row">
+                  <button type="button" class="bp-mi-btn" (click)="closeNote()">Cancel</button>
+                  <button type="button" class="bp-mi-btn bp-mi-btn--primary"
+                          [disabled]="!newMsg.trim() || sending"
+                          (click)="send()">
+                    {{ sending ? 'Sending…' : 'Send' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tool row at the bottom of the compose strip. -->
+              <div class="bp-compose-tools" *ngIf="!composePlaceholder">
+                <button type="button" class="bp-compose-tool"
+                        [class.bp-compose-tool--active]="!!composeTaggedItemId"
+                        title="Tag this reply to an item"
+                        (click)="toggleItemTagPicker()">
+                  <lucide-icon name="paperclip" [size]="14"></lucide-icon>
+                  <span *ngIf="composeTaggedItemName()" class="bp-compose-tool-tag">{{ composeTaggedItemName() }}</span>
+                </button>
+                <button type="button" class="bp-compose-tool"
+                        [class.bp-compose-tool--active]="composeNoteOpen"
+                        [title]="composeNoteOpen ? 'Close note' : 'Add a note'"
+                        (click)="composeNoteOpen ? closeNote() : openNote()">
+                  <lucide-icon name="pencil" [size]="14"></lucide-icon>
+                </button>
+                <button type="button" class="bp-compose-tool"
+                        [class.bp-compose-tool--active]="!!composeNextActionBy"
+                        title="Set a follow-up time"
+                        (click)="toggleClockPicker()">
+                  <lucide-icon name="clock" [size]="14"></lucide-icon>
+                  <span *ngIf="composeNextActionBy" class="bp-compose-tool-tag">{{ shortClock(composeNextActionBy) }}</span>
+                </button>
+                <span class="bp-compose-tools-spacer"></span>
+                <!-- Standalone send (note-collapsed). Only fires if
+                     a clock or tagged item are set without text — for
+                     just sending a clock update / tag-only ping. Rarely
+                     used; mostly hidden. -->
+                <button *ngIf="(composeNextActionBy || composeTaggedItemId) && !composeNoteOpen"
+                        type="button" class="bp-mi-btn bp-mi-btn--primary"
+                        [disabled]="sending" (click)="send()">
+                  <lucide-icon name="send" [size]="13"></lucide-icon> Send
+                </button>
+              </div>
+
+              <!-- Item-tag picker popover. -->
+              <div *ngIf="itemTagPickerOpen" class="bp-compose-picker">
+                <div class="bp-compose-picker-label">Tag to item</div>
+                <button *ngFor="let it of threadItems"
+                        type="button"
+                        class="bp-compose-picker-item"
+                        [class.bp-compose-picker-item--active]="composeTaggedItemId === it.id"
+                        (click)="pickTaggedItem(it.id)">{{ it.name }}</button>
+                <button type="button" class="bp-compose-picker-item"
+                        *ngIf="composeTaggedItemId"
+                        (click)="pickTaggedItem(null)">Clear</button>
+              </div>
+
+              <!-- Clock picker popover. -->
+              <div *ngIf="clockPickerOpen" class="bp-compose-picker">
+                <div class="bp-compose-picker-label">Follow up by</div>
+                <div class="bp-compose-picker-row">
+                  <button type="button" class="bp-mi-btn" (click)="setClock(offsetHours(1))">In 1 hour</button>
+                  <button type="button" class="bp-mi-btn" (click)="setClock(offsetTomorrow9())">Tomorrow 9am</button>
+                  <button type="button" class="bp-mi-btn" (click)="setClock(offsetFriday())">Friday</button>
+                  <button type="button" class="bp-mi-btn" (click)="setClock(offsetWeek())">Next week</button>
+                </div>
+                <input type="datetime-local" class="bp-compose-picker-input"
+                       [(ngModel)]="clockDraft"
+                       (keyup.enter)="setClock(clockDraftIso())"/>
+                <div class="bp-compose-picker-actions">
+                  <button type="button" class="bp-mi-btn" *ngIf="composeNextActionBy" (click)="setClock(null)">Clear</button>
+                  <button type="button" class="bp-mi-btn" (click)="clockPickerOpen = false">Close</button>
+                  <button type="button" class="bp-mi-btn bp-mi-btn--primary"
+                          [disabled]="!clockDraft"
+                          (click)="setClock(clockDraftIso())">Set</button>
+                </div>
+              </div>
             </div>
           </ng-container>
         </section>
@@ -1315,7 +1448,76 @@ interface VendorThread {
       display: flex; flex-direction: column; gap: 8px;
       padding: 0 14px 12px;
     }
-    .bp-thread-msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--color-thread-bg, var(--theme-bg)); min-height: 200px; }
+    /* v1.65de (p0013 §4) — chat stream gets a subtle grain pattern
+       layered over the parchment ground, same SVG noise used by the
+       Bold hero. Opacity ~0.04 — visible only as a faint texture. */
+    .bp-thread-msgs {
+      flex: 1; overflow-y: auto;
+      padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      background-color: var(--color-thread-bg, var(--theme-bg));
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-attachment: local;
+      min-height: 200px;
+    }
+
+    /* v1.65de — sender-aligned lanes. Each stream entry sits inside
+       a .bp-msg-lane row; its modifier (--out / --in) controls the
+       lane alignment. Bubbles + item cards max out at ~75% width. */
+    .bp-msg-lane {
+      display: flex;
+      width: 100%;
+    }
+    .bp-msg-lane--out { justify-content: flex-end; }
+    .bp-msg-lane--in  { justify-content: flex-start; }
+    .bp-msg-lane > * { max-width: 75%; min-width: 0; }
+
+    /* v1.65de — text bubble. Sender-aligned: yours right (--theme-soft
+       fill, corner-tighter), theirs left (white fill + hairline,
+       opposite corner-tighter). */
+    .bp-msg-bubble {
+      padding: 8px 12px;
+      border-radius: var(--radius-card);
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--color-text-primary);
+    }
+    .bp-msg-bubble--out {
+      background: var(--theme-soft);
+      color: var(--theme-text);
+      border-bottom-right-radius: 4px;
+    }
+    .bp-msg-bubble--in {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-bottom-left-radius: 4px;
+    }
+    .bp-msg-bubble--unread { border-left: 3px solid var(--theme-accent); border-radius: 0 var(--radius-card) var(--radius-card) 0; }
+    .bp-msg-bubble-body { white-space: pre-wrap; }
+    .bp-msg-bubble-time {
+      font-size: 10px;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+      text-align: right;
+    }
+    .bp-msg-bubble-crumb {
+      font-size: 10px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+      opacity: 0.85;
+    }
+
+    /* Caption under an action card — small, muted, italic. */
+    .bp-msg-stream-caption {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--color-text-muted);
+      padding: 4px 8px 0;
+      line-height: 1.4;
+    }
+
+    .bp-thread-msgs-legacy { display: none; }
     /* v1.65cy (p0011 fix) — inline item card wrapper in the stream.
        Tiny wrapper so the pulse target is the card row, not the
        message bubble next to it. */
@@ -1359,7 +1561,122 @@ interface VendorThread {
     .bp-quoted-item-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
     .bp-accept-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-button); background: var(--theme-accent); color: var(--color-surface); border: none; cursor: pointer; font-family: var(--font-body); }
     .bp-accepted-tag { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-button); background: var(--color-booked-bg); color: var(--color-booked-text); border: 0.5px solid var(--color-booked-border); }
-    .bp-compose { display: flex; gap: 8px; padding: 12px 14px; border-top: 0.5px solid var(--color-border); background: var(--color-surface); flex-shrink: 0; align-items: center; }
+    /* v1.65de (p0013 §5) — Compose chip strip. Stacks vertically:
+       chips row + optional placeholder/note row + tool row + optional
+       picker. Default state is just chips + tools (no text input). */
+    .bp-compose {
+      display: flex; flex-direction: column;
+      gap: 8px;
+      padding: 10px 14px 12px;
+      border-top: var(--border-hairline);
+      background: var(--color-surface);
+      flex-shrink: 0;
+    }
+    .bp-compose-input, .bp-compose-note-input { flex: 1; }
+    .bp-compose-chips {
+      display: flex; gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+    .bp-compose-chips::-webkit-scrollbar { height: 4px; }
+    .bp-compose-chip {
+      flex-shrink: 0;
+      padding: 5px 12px;
+      background: var(--theme-soft);
+      color: var(--theme-text);
+      border: 0.5px solid transparent;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .bp-compose-chip:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
+    .bp-compose-ph {
+      display: flex; gap: 6px; align-items: center;
+      padding: 6px 0;
+    }
+    .bp-compose-ph-label {
+      font-size: 11px; font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: capitalize;
+      flex-shrink: 0;
+    }
+    .bp-compose-ph-input { flex: 1; }
+    .bp-compose-note {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .bp-compose-note-input {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 8px 10px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+      resize: vertical;
+      min-height: 60px;
+    }
+    .bp-compose-note-row {
+      display: flex; justify-content: flex-end; gap: 6px;
+    }
+    .bp-compose-tools {
+      display: flex; align-items: center; gap: 4px;
+    }
+    .bp-compose-tools-spacer { flex: 1; }
+    .bp-compose-tool {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px;
+      background: none; border: 0.5px solid transparent;
+      border-radius: var(--radius-pill);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 500;
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    }
+    .bp-compose-tool:hover { color: var(--theme-accent); background: var(--theme-soft); }
+    .bp-compose-tool--active { color: var(--theme-accent); background: var(--theme-soft); border-color: var(--theme-accent); }
+    .bp-compose-tool-tag { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bp-compose-picker {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 8px 10px;
+      background: var(--theme-soft);
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+    }
+    .bp-compose-picker-label {
+      width: 100%;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 2px;
+    }
+    .bp-compose-picker-item {
+      padding: 4px 10px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body); font-size: 11px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .bp-compose-picker-item:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-compose-picker-item--active { background: var(--theme-accent); color: var(--color-surface); border-color: var(--theme-accent); }
+    .bp-compose-picker-row { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+    .bp-compose-picker-input {
+      flex: 1;
+      font-family: var(--font-body); font-size: 12px;
+      padding: 6px 8px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+    }
+    .bp-compose-picker-actions { display: flex; gap: 6px; width: 100%; justify-content: flex-end; }
+
+    /* Legacy classes — kept defined for any stale references. */
     .bp-compose-input { flex: 1; }
     .bp-send-btn { width: 36px; height: 36px; border-radius: var(--radius-button); background: var(--theme-accent); border: none; color: var(--color-surface); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .bp-send-btn:disabled { opacity: 0.4; cursor: default; }
@@ -1412,6 +1729,22 @@ export class MessagesInboxComponent implements OnInit {
   activeThread: VendorThread | null = null;
   newMsg = '';
   sending = false;
+
+  /** v1.65de (p0013 §5) — Compose chip strip state. Tools are
+      sticky-per-thread until the agent sends OR explicitly clears.
+      The note input is hidden until Add note is tapped. */
+  composeChips: Array<{ code: string; label: string; body: string; preview?: string }> = [];
+  composeNoteOpen = false;
+  composeNoteHint = '';
+  composePlaceholder: { label: string; key: string; hint: string; value: string; chipBody: string } | null = null;
+  composeTaggedItemId: string | null = null;
+  composeNextActionBy: string | null = null;
+  itemTagPickerOpen = false;
+  clockPickerOpen = false;
+  clockDraft = '';
+  /** Track suppliers we've already sent to so the cold/warm template
+      picks the right opener. Populated as soon as buildThreads runs. */
+  private supplierAlreadyContacted = new Set<string>();
   statuses = STATUSES;
   private lastDate = '';
   private orgId = '';
@@ -1425,6 +1758,12 @@ export class MessagesInboxComponent implements OnInit {
   /** v1.65cv (p0008 §4) — message_items + reason codelist for the
       active thread. Loaded on openThread; emptied on closeThread. */
   threadItems: MessageItemRow[] = [];
+  /** v1.65de (p0013 §4) — most-recent event per item, keyed by
+      message_item_id. Drives the "lane" (which side this transition
+      lives in: agent / supplier) and the caption-under-action note.
+      For now we derive lane from items.adjusted_by + status; events
+      table query is a TODO follow-up. */
+  itemEventByItem: Record<string, { actorType: 'agent' | 'supplier'; note: string | null }> = {};
   declineReasonsPre: Array<{ code: string; label: string }> = [];
   declineReasonsPost: Array<{ code: string; label: string }> = [];
 
@@ -1464,6 +1803,11 @@ export class MessagesInboxComponent implements OnInit {
         if (Number.isFinite(n)) this.previewWidth = this.clampPreviewWidth(n);
       }
     } catch { /* localStorage may be unavailable in some sandboxes */ }
+
+    // v1.65de (p0013 §5) — warm the quick-reply chip codelist once
+    // on init so the compose strip is populated by the time the
+    // user opens their first thread.
+    this.loadComposeChips();
 
     // Resolve project ID — from @Input or from parent route
     if (!this.boundProjectId) {
@@ -1624,6 +1968,14 @@ export class MessagesInboxComponent implements OnInit {
     this.threads = Object.values(map).sort((a, b) =>
       new Date(b.latestMsg.created_at).getTime() - new Date(a.latestMsg.created_at).getTime()
     );
+    // v1.65de (p0013 §5) — note the suppliers we've reached before
+    // so openNote() can pick the warm vs cold opener.
+    this.supplierAlreadyContacted.clear();
+    for (const t of this.threads) {
+      if (t.supplierId && t.messages.length > 1) {
+        this.supplierAlreadyContacted.add(t.supplierId);
+      }
+    }
   }
 
   filteredThreads(): VendorThread[] {
@@ -2109,6 +2461,35 @@ export class MessagesInboxComponent implements OnInit {
     return (this.activeThread?.messages || []).length;
   }
 
+  /** v1.65de (p0013 §4) — derive the stream lane for an item card.
+      Agent acts → 'out' (right). Supplier acts → 'in' (left). Default
+      is 'out' for the agent's view (the brief was sent by the agent). */
+  itemLane(it: MessageItemRow): 'out' | 'in' {
+    const supplierStates = ['brief_sent', 'adjusted_by_agent']; // ball is in supplier's court → last meaningful actor was the agent
+    const agentStates    = ['quoted', 'holding', 'adjusted_by_supplier', 'declined_by_supplier']; // last actor = supplier
+    if (it.adjusted_by === 'supplier') return 'in';
+    if (it.adjusted_by === 'agent')    return 'out';
+    if (agentStates.includes(it.status))    return 'in';
+    if (supplierStates.includes(it.status)) return 'out';
+    return 'out';
+  }
+
+  /** v1.65de — the caption text under an inline item card (the note
+      attached to its most recent action). Stub until we wire the
+      events fetch; reads decline_note when present (the only
+      per-item note field on the message_items row today). */
+  itemCaption(it: MessageItemRow): string {
+    return it.decline_note || '';
+  }
+
+  /** v1.65de — resolve a tagged_item_id from a message row to the
+      item's name, for the ↳ breadcrumb on free-typed bubbles. */
+  taggedItemName(itemId: string | null | undefined): string {
+    if (!itemId) return '';
+    const it = (this.threadItems || []).find(i => i.id === itemId);
+    return it?.name || '';
+  }
+
   /** v1.65db (p0013 header refit) — subject from the lead outbound
       message (the brief itself). Falls back to the latest message's
       subject, then a synthesised "{REF} — Brief: {Category}". */
@@ -2222,15 +2603,28 @@ export class MessagesInboxComponent implements OnInit {
   }
 
   send() {
-    if (!this.newMsg?.trim() || !this.activeThread) return;
+    if (!this.activeThread) return;
+    const body = (this.newMsg || '').trim();
+    if (!body && !this.composeNextActionBy && !this.composeTaggedItemId) return;
     this.sending = true;
     const pid = this.boundProjectId || this.activeThread.projectId;
-    this.msgSvc.create({
-      project_id: pid, body: this.newMsg, direction: 'outbound', subject: 'Message',
-      category_id: this.activeThread.categoryId, supplier_org_id: this.activeThread.supplierId
-    }).subscribe({
+    const payload: any = {
+      project_id: pid,
+      body, direction: 'outbound', subject: 'Re: ' + (this.activeThread.refCode ? '['+this.activeThread.refCode+'] ' : '') + (this.activeThread.categoryName || ''),
+      category_id: this.activeThread.categoryId,
+      supplier_org_id: this.activeThread.supplierId,
+    };
+    // v1.65de (p0013 §5) — attach tagged_item_id + next_action_by
+    // when set, so the bubble lands with the ↳ breadcrumb + drives
+    // the clock chip.
+    if (this.composeTaggedItemId) payload.tagged_item_id = this.composeTaggedItemId;
+    if (this.composeNextActionBy) payload.next_action_by = this.composeNextActionBy;
+    this.msgSvc.create(payload).subscribe({
       next: () => {
         this.newMsg = '';
+        this.composeNoteOpen = false;
+        this.composeTaggedItemId = null;
+        this.composeNextActionBy = null;
         this.sending = false;
         const key = this.activeThread?.key;
         this.load(pid);
@@ -2245,6 +2639,153 @@ export class MessagesInboxComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  // ── v1.65de (p0013 §5) — Compose chip strip ──────────────────────
+
+  /** Loads quick_reply_templates filtered for agent → supplier
+      direction. Each row's meta has { direction, body }. */
+  private loadComposeChips(): void {
+    if (this.composeChips.length) return; // load once per session
+    this.codelistSvc.getByName('quick_reply_templates').subscribe({
+      next: rows => {
+        this.composeChips = (rows || [])
+          .filter((r: any) => (r.meta?.direction || '').startsWith('agent_to_supplier'))
+          .map((r: any) => ({
+            code: r.code, label: r.label,
+            body: r.meta?.body || r.label,
+            preview: r.meta?.body || r.label,
+          }));
+        this.cdr.markForCheck();
+      },
+      error: () => {}
+    });
+  }
+
+  /** Tap a chip. If body has no placeholders → send immediately.
+      Otherwise open the inline placeholder picker for the first one. */
+  onChipClick(chip: { code: string; label: string; body: string }): void {
+    const placeholders = [...chip.body.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    // Special-case {next_action_by} — interpolate from composeNextActionBy
+    // when set; otherwise the friendly placeholder "shortly".
+    const resolved = chip.body.replace(/\{next_action_by\}/g, () =>
+      this.composeNextActionBy ? this.shortClock(this.composeNextActionBy) : 'shortly'
+    );
+    const remaining = [...resolved.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    if (!remaining.length) {
+      this.newMsg = resolved;
+      this.send();
+      return;
+    }
+    // Open the picker on the first remaining placeholder.
+    const key = remaining[0];
+    this.composePlaceholder = {
+      key, label: key.replace(/_/g, ' '),
+      hint: `Type ${key}…`, value: '', chipBody: resolved
+    };
+    this.cdr.markForCheck();
+  }
+
+  confirmPlaceholder(): void {
+    if (!this.composePlaceholder) return;
+    const ph = this.composePlaceholder;
+    if (!ph.value?.trim()) return;
+    const re = new RegExp(`\\{${ph.key}\\}`, 'g');
+    this.newMsg = ph.chipBody.replace(re, ph.value.trim());
+    this.composePlaceholder = null;
+    this.send();
+  }
+  cancelPlaceholder(): void {
+    this.composePlaceholder = null;
+    this.cdr.markForCheck();
+  }
+
+  openNote(): void {
+    this.composeNoteOpen = true;
+    this.itemTagPickerOpen = false;
+    this.clockPickerOpen = false;
+    // Cold vs warm template prefill — only when the textarea is
+    // empty (don't stomp an in-progress draft).
+    if (!this.newMsg?.trim()) {
+      const supplierId = this.activeThread?.supplierId || '';
+      const warm = this.supplierAlreadyContacted.has(supplierId);
+      const supFirst = (this.activeThread?.supplierName || 'there').split(/\s+/)[0];
+      const me = (this.agencyName || '').split(/\s+/)[0] || 'we';
+      const proj = this.activeThread?.projectName || 'this project';
+      this.composeNoteHint = warm
+        ? `hey ${supFirst}, ${me} again, details attached, let me know`
+        : `hi ${supFirst} — ${me} putting together ${proj} and would love to include you. details attached.`;
+    } else {
+      this.composeNoteHint = 'Type a note…';
+    }
+    this.cdr.markForCheck();
+  }
+  closeNote(): void {
+    this.composeNoteOpen = false;
+    this.cdr.markForCheck();
+  }
+  onNoteEnter(ev: Event): void {
+    const ke = ev as KeyboardEvent;
+    if (!ke.shiftKey) {
+      ev.preventDefault();
+      this.send();
+    }
+  }
+
+  // Item-tag picker
+  toggleItemTagPicker(): void {
+    this.itemTagPickerOpen = !this.itemTagPickerOpen;
+    this.clockPickerOpen = false;
+    this.cdr.markForCheck();
+  }
+  pickTaggedItem(id: string | null): void {
+    this.composeTaggedItemId = id;
+    this.itemTagPickerOpen = false;
+    this.cdr.markForCheck();
+  }
+  composeTaggedItemName(): string {
+    if (!this.composeTaggedItemId) return '';
+    return this.taggedItemName(this.composeTaggedItemId);
+  }
+
+  // Clock picker
+  toggleClockPicker(): void {
+    this.clockPickerOpen = !this.clockPickerOpen;
+    this.itemTagPickerOpen = false;
+    if (this.clockPickerOpen) {
+      // Seed datetime-local with the current value or "now + 24h".
+      const d = this.composeNextActionBy ? new Date(this.composeNextActionBy)
+                                         : new Date(Date.now() + 24 * 3600 * 1000);
+      this.clockDraft = this.toLocalInputValue(d);
+    }
+    this.cdr.markForCheck();
+  }
+  setClock(iso: string | null): void {
+    this.composeNextActionBy = iso;
+    this.clockPickerOpen = false;
+    this.cdr.markForCheck();
+  }
+  clockDraftIso(): string {
+    if (!this.clockDraft) return '';
+    return new Date(this.clockDraft).toISOString();
+  }
+  offsetHours(h: number): string {
+    const d = new Date(); d.setHours(d.getHours() + h); return d.toISOString();
+  }
+  offsetTomorrow9(): string {
+    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.toISOString();
+  }
+  offsetFriday(): string {
+    const d = new Date();
+    const diff = (5 - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff); d.setHours(9, 0, 0, 0); return d.toISOString();
+  }
+  offsetWeek(): string {
+    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(9, 0, 0, 0); return d.toISOString();
+  }
+  private toLocalInputValue(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   shouldShowDate(m: ThreadMessage): boolean {

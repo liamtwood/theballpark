@@ -33,11 +33,32 @@ async function getById(id) {
 }
 
 async function create(data) {
-  const { project_id, user_id, supplier_org_id, estimate_item_id, subject, body, direction, status_id } = data;
+  // v1.65de (p0013 §5) — accept the compose-strip extensions:
+  //   tagged_item_id  — pins a bubble to a specific item (↳ crumb)
+  //   next_action_by  — sets the follow-up clock on this message
+  //   intro_note      — agent's intro on the first brief
+  //   category_id     — supports the brief outreach flow on the
+  //                      messages table directly
+  const {
+    project_id, user_id, supplier_org_id, estimate_item_id,
+    subject, body, direction, status_id,
+    tagged_item_id, next_action_by, intro_note,
+    category_id, category_name, supplier_name,
+  } = data;
   const result = await pool.query(
-    `INSERT INTO messages (project_id, user_id, supplier_org_id, estimate_item_id, subject, body, direction, status_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [project_id, user_id, supplier_org_id, estimate_item_id, subject, body, direction, status_id]
+    `INSERT INTO messages
+       (project_id, user_id, supplier_org_id, estimate_item_id,
+        subject, body, direction, status_id,
+        tagged_item_id, next_action_by, intro_note,
+        category_id, category_name, supplier_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     RETURNING *`,
+    [
+      project_id, user_id, supplier_org_id, estimate_item_id,
+      subject, body, direction, status_id,
+      tagged_item_id || null, next_action_by || null, intro_note || null,
+      category_id || null, category_name || null, supplier_name || null,
+    ]
   );
   return result.rows[0];
 }

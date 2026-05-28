@@ -72,7 +72,53 @@ export interface MessageItemAction {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule, LucideAngularModule, GbpPipe],
   template: `
-    <div class="bp-mi-row"
+    <!-- v1.65de (p0013 §4) — GRID variant: image-on-top with the
+         status pill overlaid bottom-left, name + price below, action
+         cluster in the slot where the supplier eyebrow would sit on
+         the catalogue grid card. Used in the conversation stream so
+         the inline items echo the marketplace gallery shape. -->
+    <div *ngIf="layout === 'grid'"
+         class="bp-mi-grid"
+         [class.bp-mi-grid--overdue]="isOverdue()"
+         [class.bp-mi-row--pulsing]="pulsing">
+      <div class="bp-mi-grid-img" [class.bp-mi-grid-img--placeholder]="!imageUrl">
+        <img *ngIf="imageUrl" [src]="imageUrl" [alt]="item?.name"/>
+        <span *ngIf="!imageUrl" class="bp-mi-grid-img-letter">{{ initialOf(item?.name) }}</span>
+        <span class="bp-mi-grid-pill" [ngClass]="'bp-badge-' + semanticClass()">
+          {{ statusLabel() }}
+        </span>
+      </div>
+      <div class="bp-mi-grid-body">
+        <div class="bp-mi-grid-name">{{ item?.name }}</div>
+        <div class="bp-mi-grid-price" *ngIf="hasPrice()">
+          <span *ngIf="priceChanged()" class="bp-mi-price-was">{{ item?.price_ref | gbp }}</span>
+          <span class="bp-mi-price-now">{{ currentPrice() | gbp }}</span>
+          <span *ngIf="item?.unit" class="bp-mi-grid-unit">/ {{ item?.unit }}</span>
+        </div>
+        <div *ngIf="item?.next_action_by" class="bp-mi-clock"
+             [class.bp-mi-clock--overdue]="isOverdue()" title="Next action by">
+          <lucide-icon name="clock" [size]="11"></lucide-icon>
+          {{ formatClock(item?.next_action_by) }}
+        </div>
+        <!-- Action cluster sits where the supplier eyebrow would be
+             on the catalogue card. Collapses cleanly when empty. -->
+        <div *ngIf="actionSet().length && !anyPopoverOpen()" class="bp-mi-actions bp-mi-grid-actions">
+          <button *ngFor="let a of actionSet()"
+                  type="button"
+                  class="bp-mi-btn"
+                  [class.bp-mi-btn--primary]="a.kind === 'accept' || a.kind === 'pay'"
+                  [class.bp-mi-btn--danger]="a.kind === 'decline'"
+                  [disabled]="a.disabled"
+                  [title]="a.title || ''"
+                  (click)="onAction(a.kind, $event)">
+            {{ a.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="layout !== 'grid'"
+         class="bp-mi-row"
          [class.bp-mi-row--compact]="compact"
          [class.bp-mi-row--overdue]="isOverdue()"
          [class.bp-mi-row--pulsing]="pulsing"
@@ -310,6 +356,68 @@ export interface MessageItemAction {
     .bp-mi-row--compact { cursor: pointer; }
     .bp-mi-row--compact .bp-mi-actions { display: none; }
 
+    /* v1.65de (p0013 §4) — GRID variant. Mirrors the catalogue grid
+       card (image on top + body underneath), with the +/♥/✉ cluster
+       replaced by the state-aware action slot in the eyebrow position. */
+    .bp-mi-grid {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: box-shadow 150ms ease, border-color 150ms ease;
+    }
+    .bp-mi-grid:hover { box-shadow: var(--shadow-sm); border-color: var(--theme-accent); }
+    .bp-mi-grid--overdue { border-left: 2px solid var(--color-danger); }
+    .bp-mi-grid-img {
+      width: 100%; height: 140px;
+      position: relative;
+      background: var(--theme-bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .bp-mi-grid-img img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .bp-mi-grid-img--placeholder { background: var(--theme-soft); }
+    .bp-mi-grid-img-letter {
+      font-family: var(--font-display);
+      font-size: 36px; font-weight: 600;
+      color: var(--theme-accent);
+    }
+    .bp-mi-grid-pill {
+      position: absolute;
+      left: 8px; bottom: 8px;
+      font-size: 10px; font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.02em;
+      box-shadow: var(--shadow-xs);
+    }
+    .bp-mi-grid-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .bp-mi-grid-name {
+      font-size: 13px; font-weight: 600;
+      color: var(--color-text-primary);
+      line-height: 1.3;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .bp-mi-grid-price {
+      font-size: 14px; font-weight: 700;
+      color: var(--color-text-primary);
+      display: inline-flex; align-items: baseline; gap: 6px;
+    }
+    .bp-mi-grid-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+    .bp-mi-grid-actions {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding-top: 4px;
+      /* No top border — the eyebrow slot the action cluster replaces
+         doesn't need a divider. */
+    }
+
     /* Popovers — appear immediately under the row. */
     .bp-mi-popover {
       margin-top: 6px;
@@ -346,6 +454,9 @@ export class MessageItemCardComponent {
   @Input() item: MessageItem | null = null;
   @Input() viewer: MessageItemViewer = 'agent';
   @Input() compact = false;
+  /** v1.65de (p0013 §4) — row vs grid. Stream uses 'grid'; summary
+      header + /brief items use 'row'. */
+  @Input() layout: 'row' | 'grid' = 'row';
   /** Optional image override — when set, takes precedence over the
       initials fallback. Catalogue items would route their image_url
       through here; for now most rows have no asset. */
