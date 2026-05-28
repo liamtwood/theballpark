@@ -453,48 +453,37 @@ interface VendorThread {
           </ng-container>
 
           <ng-container *ngIf="activeThread">
-            <!-- v1.65cz (p0013 §0) — email-style flat header, supersedes
-                 p0011 §3's supplier-card-in-card pattern. No card chrome,
-                 no shadow, no hover lift. Just identity + status + clock
-                 + menu on one strip with a hairline divider below. The
-                 supplier card belongs in the catalogue; here it would be
-                 repeating itself. -->
-            <div class="bp-thread-email-head">
-              <button class="bp-thread-email-back" (click)="closeThread()" title="Back to inbox">
-                <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
-              </button>
-              <div class="bp-thread-email-logo"
-                   [class.bp-thread-email-logo--img]="!!activeThread.supplierLogoUrl">
-                <img *ngIf="activeThread.supplierLogoUrl"
-                     [src]="activeThread.supplierLogoUrl"
-                     [alt]="activeThread.supplierName"/>
-                <span *ngIf="!activeThread.supplierLogoUrl">{{ initialsFor(activeThread.supplierName) }}</span>
+            <!-- v1.65db (p0013 header refit) — 3-row × 2-col grid header:
+                   col 1: From / To / Subject
+                   col 2: First / Last / Status
+                 Back chevron dropped — closing the conversation is
+                 implicit (clicking another thread row in the list). -->
+            <div class="bp-thread-mail-head">
+              <div class="bp-thread-mail-row">
+                <span class="bp-thread-mail-label">From</span>
+                <span class="bp-thread-mail-value">{{ agencyName || '—' }}</span>
+                <span class="bp-thread-mail-label">First</span>
+                <span class="bp-thread-mail-value">{{ firstMessageAt() ? preciseDate(firstMessageAt()) : '—' }}</span>
               </div>
-              <div class="bp-thread-email-id">
-                <div class="bp-thread-email-name">{{ activeThread.supplierName }}</div>
-                <div class="bp-thread-email-sub">
-                  <ng-container *ngIf="activeThread.contactName">{{ activeThread.contactName }}</ng-container>
-                  <ng-container *ngIf="activeThread.contactName && activeThread.refCode"> · </ng-container>
-                  <ng-container *ngIf="activeThread.refCode">Ref {{ activeThread.refCode }}</ng-container>
-                  <ng-container *ngIf="(activeThread.contactName || activeThread.refCode) && activeThread.categoryName"> · </ng-container>
-                  <ng-container *ngIf="activeThread.categoryName">{{ activeThread.categoryName }}</ng-container>
-                </div>
+              <div class="bp-thread-mail-row">
+                <span class="bp-thread-mail-label">To</span>
+                <span class="bp-thread-mail-value">{{ activeThread.supplierName || '—' }}</span>
+                <span class="bp-thread-mail-label">Last</span>
+                <span class="bp-thread-mail-value">{{ lastMessageAt() ? preciseDate(lastMessageAt()) : '—' }}</span>
               </div>
-              <span *ngIf="aggregateStatus()"
-                    class="bp-msg-tbadge bp-thread-email-pill"
-                    [ngClass]="'bp-badge-' + aggregateStatus()">
-                {{ aggregateStatusLabel() }}
-              </span>
-              <span *ngIf="activeThread.nextActionBy"
-                    class="bp-thread-email-clock"
-                    [class.bp-thread-email-clock--overdue]="isOverdue(activeThread.nextActionBy)"
-                    [title]="preciseDate(activeThread.nextActionBy)">
-                <lucide-icon name="clock" [size]="12"></lucide-icon>
-                Next: {{ shortClock(activeThread.nextActionBy) }}
-              </span>
-              <button type="button" class="bp-thread-email-menu" title="More">
-                <lucide-icon name="more-horizontal" [size]="18"></lucide-icon>
-              </button>
+              <div class="bp-thread-mail-row">
+                <span class="bp-thread-mail-label">Subject</span>
+                <span class="bp-thread-mail-value bp-thread-mail-subject">{{ threadSubject() }}</span>
+                <span class="bp-thread-mail-label">Status</span>
+                <span class="bp-thread-mail-value">
+                  <span *ngIf="aggregateStatus()"
+                        class="bp-msg-tbadge"
+                        [ngClass]="'bp-badge-' + aggregateStatus()">
+                    {{ aggregateStatusLabel() }}
+                  </span>
+                  <span *ngIf="!aggregateStatus()">—</span>
+                </span>
+              </div>
             </div>
 
             <!-- v1.65cz (p0013 §1) — three collapsible sections:
@@ -979,10 +968,51 @@ interface VendorThread {
     .bp-msg-conv-empty lucide-icon { opacity: 0.5; }
     .bp-msg-conv-empty p { margin: 0; }
 
+    /* v1.65db (p0013 header refit) — 3×2 grid header that reads like
+       an email envelope: From / To / Subject in col 1, First / Last /
+       Status in col 2. No back chevron, no card chrome, no logo.
+       Closing the conversation is implicit (pick another thread). */
+    .bp-thread-mail-head {
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+      padding: 12px 16px;
+      flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .bp-thread-mail-row {
+      display: grid;
+      grid-template-columns: 60px minmax(0, 1fr) 60px minmax(0, 1fr);
+      column-gap: 12px;
+      align-items: baseline;
+      font-size: 12px;
+    }
+    .bp-thread-mail-label {
+      color: var(--color-text-muted);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .bp-thread-mail-value {
+      color: var(--color-text-primary);
+      font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-thread-mail-subject {
+      font-weight: 600;
+    }
+    @media (max-width: 720px) {
+      .bp-thread-mail-row {
+        grid-template-columns: 60px 1fr;
+        row-gap: 4px;
+      }
+      .bp-thread-mail-row > :nth-child(3),
+      .bp-thread-mail-row > :nth-child(4) {
+        grid-column: 1 / -1;
+      }
+    }
+
     /* v1.65cz (p0013 §0) — email-style flat conversation header.
-       No card-in-card chrome (p0011 §3 superseded); just text +
-       actions on a strip with a hairline divider below. ~56px tall
-       to match the email-client convention. */
+       v1.65db (p0013 header refit) — superseded by .bp-thread-mail-head
+       above; legacy classes kept defined as no-ops for safety. */
     .bp-thread-email-head {
       background: var(--color-surface);
       border-bottom: var(--border-hairline);
@@ -1362,6 +1392,10 @@ export class MessagesInboxComponent implements OnInit {
   statuses = STATUSES;
   private lastDate = '';
   private orgId = '';
+  /** v1.65db (p0013 header refit) — agency name for the From/To grid
+      header. Stashed from getCurrentOrg() so we don't re-fetch per
+      thread. */
+  agencyName = '';
 
   @ViewChild('messageList') messageList?: ElementRef;
 
@@ -1422,7 +1456,12 @@ export class MessagesInboxComponent implements OnInit {
     }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (org) { this.orgId = org.id; }
+      if (org) {
+        this.orgId = org.id;
+        // v1.65db (p0013 header refit) — agency name for the new
+        // 3×2 grid header (From line).
+        this.agencyName = (org as any).name || '';
+      }
     });
 
     if (this.showProjectSelector && !this.boundProjectId) {
@@ -2045,6 +2084,36 @@ export class MessagesInboxComponent implements OnInit {
   /** Message count badge for the Conversation section header. */
   conversationCount(): number {
     return (this.activeThread?.messages || []).length;
+  }
+
+  /** v1.65db (p0013 header refit) — subject from the lead outbound
+      message (the brief itself). Falls back to the latest message's
+      subject, then a synthesised "{REF} — Brief: {Category}". */
+  threadSubject(): string {
+    const t = this.activeThread;
+    if (!t) return '';
+    const lead = (t.messages || []).find((m: any) => m.direction === 'outbound');
+    const subj = (lead && (lead as any).subject) ? String((lead as any).subject).trim()
+               : ((t.latestMsg as any)?.subject ? String((t.latestMsg as any).subject).trim() : '');
+    if (subj) return subj;
+    const ref = t.refCode ? `${t.refCode} — ` : '';
+    const cat = t.categoryName || 'Brief';
+    return `${ref}Brief: ${cat}`;
+  }
+
+  /** First message timestamp (the moment the conversation opened). */
+  firstMessageAt(): string | null {
+    const msgs = this.activeThread?.messages || [];
+    if (!msgs.length) return null;
+    return msgs.reduce((acc: string, m: any) =>
+      !acc || m.created_at < acc ? m.created_at : acc, '');
+  }
+  /** Last message timestamp. */
+  lastMessageAt(): string | null {
+    const msgs = this.activeThread?.messages || [];
+    if (!msgs.length) return null;
+    return msgs.reduce((acc: string, m: any) =>
+      !acc || m.created_at > acc ? m.created_at : acc, '');
   }
 
   /** v1.65cv (p0008) — agent acts on a message_item from the inbox
