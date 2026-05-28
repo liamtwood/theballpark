@@ -2,7 +2,10 @@ export interface Org {
   id: string;
   name: string;
   description?: string;
-  type: 'agency' | 'supplier';
+  // v1.65e7 — 'admin' added so platform-admin orgs (e.g. Ballpark)
+  // can exist alongside agencies + suppliers. DB CHECK constraint
+  // expanded to match in migrate-v1.65e7-admin-org-type.js.
+  type: 'agency' | 'supplier' | 'admin';
   address?: string;
   city?: string;
   country?: string;

@@ -33,7 +33,7 @@ const migrate = async () => {
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         name VARCHAR(255) NOT NULL,
         description TEXT,
-        type VARCHAR(20) NOT NULL CHECK (type IN ('agency', 'supplier')),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('agency', 'supplier', 'admin')),
         address TEXT,
         city VARCHAR(100),
         country VARCHAR(100),
