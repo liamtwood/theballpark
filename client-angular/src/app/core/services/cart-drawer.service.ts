@@ -31,6 +31,38 @@ export interface CartDrawerOptions {
       project_budget. Omitting it (or passing null) keeps the All
       view's project-wide budget. */
   contextCategoryId?: string;
+  /** v1.65er — when set, the drawer renders these rows directly
+      INSTEAD of fetching project_items. Used by the inbox "Cart"
+      chip so the supplier sees every message_item (catalogue
+      matches AND ad-hoc asks) — not just the intersection that
+      happens to live in the agency's project cart. Each row is a
+      simplified shape carrying enough to render + show the price. */
+  rows?: CartDrawerRow[];
+}
+
+/** v1.65er — simplified row shape for the inbox "Cart" view. Mirrors
+    the fields the cart drawer reads off project_items so the existing
+    template can render either source with no branching. */
+export interface CartDrawerRow {
+  id: string;
+  item_id?: string | null;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  base_price?: number | null;
+  unit?: string | null;
+  supplier_name?: string | null;
+  supplier_cover_url?: string | null;
+  category_icon_color?: string | null;
+  /** Pre-computed line total. When omitted the drawer falls back to
+      base_price × guest_count for per-attendee units. */
+  line_total?: number | null;
+  /** message_items.status for this row when sourced from a thread —
+      drives a small status pill ("Quoted", "Adjusted", etc). */
+  status?: string | null;
+  /** Mark adhoc rows so the template can swap the thumbnail for a
+      sparkles glyph and dim the price (pending the supplier's quote). */
+  isAdhoc?: boolean;
 }
 
 export interface CartDrawerRequest {

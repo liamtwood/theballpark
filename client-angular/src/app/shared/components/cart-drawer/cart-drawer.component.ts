@@ -7,7 +7,7 @@ import { SidebarModule } from 'primeng/sidebar';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subscription } from 'rxjs';
 
-import { CartDrawerService, CartDrawerOptions } from '../../../core/services/cart-drawer.service';
+import { CartDrawerService, CartDrawerOptions, CartDrawerRow } from '../../../core/services/cart-drawer.service';
 import { ProjectItemService } from '../../../core/services/project-item.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { ProjectCategoryService } from '../../../core/services/project-category.service';
@@ -685,6 +685,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   marginPct = 20;
   vatPct = 20;
 
+  /** v1.65er — pre-supplied rows from the inbox "Cart" chip. When
+      set, load() skips the project_items fetch and renders these
+      directly. */
+  private preRows: CartDrawerRow[] | null = null;
+
   /** v1.65eh — project.budget drives the headroom indicator below
       the CLIENT TOTAL. 0 means "no budget set" and the card hides
       entirely (same gate as the Estimate page). */
@@ -715,6 +720,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // a project_asks table or similar.)
       this.adhocAsks = [];
       this.newAskName = '';
+      // v1.65er — pre-supplied rows path. Inbox passes its
+      // threadItems directly so we render every message_item
+      // (catalogue + ad-hoc), not just the project_items
+      // intersection. When set, load() short-circuits the
+      // project_items fetch.
+      this.preRows = opts.rows || null;
       if (req) this.load();
       this.cdr.markForCheck();
     });
@@ -914,9 +925,40 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     return t.length > 120 ? t.slice(0, 117).trimEnd() + '…' : t;
   }
 
+  /** v1.65er — adapt a CartDrawerRow (from the inbox) into a
+      ProjectItem-shaped row so the existing template renders it
+      unchanged. Ad-hoc / zero-price rows surface a sparkles
+      thumbnail via the supplier_cover_url fallback chain (handled
+      by imageStyle/imageBgColor below). */
+  private rowToProjectItem(r: CartDrawerRow): ProjectItem {
+    return {
+      id: r.id,
+      project_id: this.projectId,
+      item_id: r.item_id || '',
+      selection_type: 'selected',
+      created_at: new Date().toISOString(),
+      name: r.name,
+      description: r.description || undefined,
+      base_price: Number(r.base_price) || 0,
+      unit: r.unit || undefined,
+      image_url: r.image_url || undefined,
+      supplier_name: r.supplier_name || undefined,
+      supplier_cover_url: r.supplier_cover_url || undefined,
+      category_icon_color: r.category_icon_color || undefined,
+    } as ProjectItem;
+  }
+
   // ── data ────────────────────────────────────────────────────────────
   private load(): void {
     if (!this.projectId) return;
+    // v1.65er — pre-supplied rows path (inbox "Cart" chip). Render
+    // directly without touching project_items. Still loads the
+    // project for guest_count + margin + VAT so the line math +
+    // summary footer work.
+    if (this.preRows) {
+      this.selected = this.preRows.map(r => this.rowToProjectItem(r));
+      this.wishlist = [];
+    }
     // v1.65ef — pull the project alongside the items so the
     // per-attendee line math (base_price × guest_count) has a number
     // to multiply by. Reset to 0 first so a missing project doesn't
@@ -958,6 +1000,9 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
         }
       });
     }
+    // v1.65er — skip project_items fetch when rendering pre-supplied
+    // rows (inbox "Cart" chip path).
+    if (this.preRows) return;
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
       const list = (rows || []).filter(r =>
         this.itemFilter ? this.itemFilter.has(r.item_id) : true

@@ -380,13 +380,18 @@ interface VendorThread {
                 <lucide-icon name="calendar-days" [size]="13"></lucide-icon>
                 <span class="bp-thread-drawer-chip-label">Event details</span>
               </button>
+              <!-- v1.65er — "Items" renamed to "Cart" to match the
+                   mental model: the brief IS the cart, the supplier
+                   is reviewing it. Badge shows the FULL count of
+                   message_items (catalogue + ad-hoc), not the
+                   project_items intersection. -->
               <button type="button" class="bp-thread-drawer-chip"
                       *ngIf="threadItems.length"
                       (click)="openItemsDrawerForThread()">
-                <lucide-icon name="package" [size]="13"></lucide-icon>
-                <span class="bp-thread-drawer-chip-label">Items</span>
+                <lucide-icon name="shopping-cart" [size]="13"></lucide-icon>
+                <span class="bp-thread-drawer-chip-label">Cart</span>
                 <span class="bp-thread-drawer-chip-badge">
-                  {{ activeItemsCount() }}
+                  {{ threadItems.length }}
                 </span>
                 <span *ngIf="itemActionCount() > 0"
                       class="bp-thread-drawer-chip-action">
@@ -444,29 +449,16 @@ interface VendorThread {
                   </div>
                 </ng-container>
 
-                <ng-container *ngIf="entry.type === 'item' && entry.item as it">
-                  <div class="bp-msg-lane"
-                       [class.bp-msg-lane--out]="itemLane(it) === 'out'"
-                       [class.bp-msg-lane--in]="itemLane(it) === 'in'">
-                    <div class="bp-msg-stream-item" [attr.data-item-id]="it.id">
-                      <app-message-item-card
-                        [item]="toMessageItem(it)"
-                        [viewer]="itemCardViewer"
-                        [layout]="'grid'"
-                        [imageUrl]="it.item_image_url || null"
-                        [eyebrowOverride]="null"
-                        [declineReasons]="declineReasonsFor(it)"
-                        (action)="onItemAction(it, $event)">
-                      </app-message-item-card>
-                      <!-- Caption under the action card — pulled from
-                           the most recent message_item_events.note for
-                           this item, if any. -->
-                      <div *ngIf="itemCaption(it) as cap" class="bp-msg-stream-caption">
-                        "{{ cap }}"
-                      </div>
-                    </div>
-                  </div>
-                </ng-container>
+                <!-- v1.65er — item cards no longer render inline in the
+                     conversation stream. Items live exclusively in the
+                     Cart chip drawer above; the stream is now pure
+                     bubble-by-bubble messaging. Cleaner read, faster
+                     scan, and the supplier doesn't get distracted by
+                     full action cards mid-conversation. The stream
+                     timeline still INCLUDES item events so the
+                     ordering anchors right (most-recent first) — they
+                     just aren't rendered. -->
+                <ng-container *ngIf="entry.type === 'item'"></ng-container>
               </ng-container>
               <div *ngIf="streamTimeline().length === 0" class="bp-msg-stream-empty">
                 No conversation yet.
@@ -2295,25 +2287,41 @@ export class MessagesInboxComponent implements OnInit {
     this.eventDrawerSvc.open(pid);
   }
 
-  /** v1.65dw → v1.65dy — open the shared CartDrawer scoped to JUST
-      the items referenced in this thread. CartDrawerService already
-      supports an itemIds whitelist for exactly this case (see the
-      catalogue-grid's category-scoped opens), so we extract the
-      item_ids from threadItems and hand them through. The drawer
-      then renders the project_items list filtered to those rows;
-      contextLabel/Title swap to make the thread scope obvious. */
+  /** v1.65dw → v1.65er — open the shared CartDrawer with the
+      thread's full message_items list (NOT filtered through
+      project_items). This shows every row the supplier needs to
+      action — catalogue matches + ad-hoc asks — with the per-row
+      status + price the conversation already loaded. The drawer's
+      new `rows` option short-circuits its project_items fetch when
+      set. */
   openItemsDrawerForThread(): void {
     const pid = (this.activeProject as any)?.id
               || this.boundProjectId
               || this.selectedProjectId;
     if (!pid) return;
-    const itemIds = (this.threadItems || [])
-      .map(it => it.item_id)
-      .filter((id): id is string => !!id);
+    const rows = (this.threadItems || []).map(it => {
+      const base = Number((it as any).price_current ?? it.price ?? 0) || 0;
+      const unit = (it.metadata as any)?.unit || (it as any).unit || null;
+      return {
+        id: it.id,
+        item_id: it.item_id || null,
+        name: it.name,
+        description: it.description || null,
+        image_url: (it as any).item_image_url || null,
+        base_price: base,
+        unit,
+        supplier_name: it.supplier_name || null,
+        supplier_cover_url: (it as any).supplier_cover_url || null,
+        category_icon_color: null,
+        line_total: null,            // drawer derives from base × guests
+        status: it.status || null,
+        isAdhoc: !it.item_id || base === 0,
+      };
+    });
     this.cartDrawerSvc.open(pid, {
-      contextLabel: 'THREAD ITEMS',
-      contextTitle: 'Items in this conversation',
-      itemIds,
+      contextLabel: 'CART',
+      contextTitle: 'Cart in this conversation',
+      rows,
     });
   }
 
