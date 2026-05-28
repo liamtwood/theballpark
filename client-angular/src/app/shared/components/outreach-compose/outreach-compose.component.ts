@@ -141,9 +141,16 @@ interface SupplierRow {
                    Renders cart rows like the cart drawer (image, name,
                    line total) plus an "Add additional ask" input the
                    agent can use to append title-only requirements
-                   (e.g. "open bar for cocktails"). -->
+                   (e.g. "open bar for cocktails").
+                   v1.65en — greeting moved to the TOP so the form
+                   order mirrors the email order (greeting → items
+                   → notes). -->
               <ng-container *ngIf="hasCartItems">
-                <div class="bp-oc-flabel">Items in this brief</div>
+                <div class="bp-oc-flabel">Greeting</div>
+                <textarea class="bp-oc-input bp-oc-textarea" rows="3" [(ngModel)]="details"
+                          placeholder="Ryan, event details are attached. Need this estimate fast — venue likely a museum or large indoor space."></textarea>
+
+                <div class="bp-oc-flabel" style="margin-top:18px">Items in this brief</div>
                 <div class="bp-oc-itemlist">
                   <div *ngFor="let it of cartItems" class="bp-oc-itemrow">
                     <div class="bp-oc-itemimg"
@@ -191,9 +198,8 @@ interface SupplierRow {
                   </button>
                 </div>
 
-                <div class="bp-oc-flabel" style="margin-top:18px">Notes (optional)</div>
-                <textarea class="bp-oc-input bp-oc-textarea" rows="3" [(ngModel)]="details"
-                          placeholder="Anything else the supplier needs to know — preferences, constraints, brand notes."></textarea>
+                <!-- v1.65en — Greeting moved to the top of the form (above
+                     items). The trailing duplicate has been removed. -->
               </ng-container>
 
               <!-- Legacy free-text path (per-item / per-category outreach). -->
@@ -740,16 +746,25 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
   }
 
   /** v1.65em — formatted bullet line for a cart row in the email
-      body. Per-cover/per-head items get the "£rate × N covers"
-      breakdown so the supplier can sanity-check the math. */
+      body.
+      v1.65en — tightened for the WhatsApp-style template: just the
+      item name, no price math leak. Suppliers quote against THEIR
+      catalogue, so showing the agent's expected line total feels
+      odd ("I want to pay you exactly £21,250" undercuts the
+      negotiation). Pricing comes back in their reply. */
   private cartItemLine(it: import('../../../core/services/outreach.service').OutreachCartItem): string {
-    const lt = Number(it.line_total) || 0;
-    const unit = (it.unit || '').toLowerCase();
-    const perAttendee = unit === 'cover' || unit === 'head';
-    const qty = perAttendee && this.guestCountHint > 0
-      ? ` (${it.base_price} × ${this.guestCountHint} ${unit}s)`
-      : '';
-    return `• ${it.name} — £${lt.toLocaleString()}${qty}`;
+    return `• ${it.name}`;
+  }
+
+  /** v1.65en — one-line event context for the email body, formatted
+      as a natural sentence rather than a stacked Date/Venue/Guests
+      block. Falls back gracefully when fields are missing. */
+  private eventContextLine(): string {
+    const parts: string[] = [];
+    if (this.evDate) parts.push(this.evDate);
+    if (this.evGuests) parts.push(`${this.evGuests} guests`);
+    if (this.evVenue) parts.push(this.evVenue);
+    return parts.join(' · ');
   }
 
   private buildEmail(): void {
@@ -758,41 +773,60 @@ export class OutreachComposeComponent implements OnInit, OnDestroy {
     // against the right job.
     this.subject = (this.projectRef ? this.projectRef + ' — ' : '') + `Brief: ${r.item.name}`;
 
-    // v1.51b — clean, professional plain-text template. Section blocks
-    // separated by a single blank line; no monospace-only column padding
-    // (it rendered ragged in a proportional font), no fragile inline
-    // conditionals. Empty sections are simply dropped.
-    // v1.65em — when cartItems is set, render the structured list
-    // FIRST, then the agent's ad-hoc items, then any free-text
-    // oneLiner / details. Pure free-text outreaches (legacy path)
-    // keep the old behaviour.
-    const requirementParts: string[] = [];
+    // v1.65en — WhatsApp-style template:
+    //   {greeting}
+    //
+    //   Quick brief for {date} · {N guests} · {venue}:
+    //   • item
+    //   • item
+    //
+    //   Send price + lead time?
+    //
+    //   {agencyName}
+    //   {agencyEmail}
+    //
+    // Legacy fallback (no cartItems): keeps the old prose opener so
+    // per-item recommend flows from the Brief tab stay sensible.
+    const greeting = (this.details || '').trim();
+    const itemBullets: string[] = [];
     if (this.cartItems.length) {
-      requirementParts.push(this.cartItems.map(it => this.cartItemLine(it)).join('\n'));
+      itemBullets.push(...this.cartItems.map(it => this.cartItemLine(it)));
     }
     if (this.adhocItems.length) {
-      requirementParts.push(this.adhocItems.map(a => `• ${a.name}`).join('\n'));
+      itemBullets.push(...this.adhocItems.map(a => `• ${a.name}`));
     }
-    if (this.oneLiner && this.oneLiner.trim()) requirementParts.push(this.oneLiner.trim());
-    if (this.details && this.details.trim()) requirementParts.push(this.details.trim());
-    const requirement = requirementParts.join('\n');
-    const eventDetails = [
-      this.evDate   ? `Date: ${this.evDate}`     : '',
-      this.evVenue  ? `Venue: ${this.evVenue}`   : '',
-      this.evGuests ? `Guests: ${this.evGuests}` : ''
-    ].filter(Boolean).join('\n');
+    if (!this.cartItems.length && this.oneLiner && this.oneLiner.trim()) {
+      itemBullets.push(this.oneLiner.trim());
+    }
 
-    const blocks: string[] = [
-      'Hi,',
-      `We're sourcing quotes for ${r.item.name} for an upcoming event and would like to include you.`
-    ];
-    if (requirement)  blocks.push(`What we need\n${requirement}`);
-    if (eventDetails) blocks.push(`Event details\n${eventDetails}`);
-    blocks.push('Could you send your price and lead time at your earliest convenience?');
-
-    const signoff = ['Many thanks,', this.agencyName || 'The team'];
+    const eventLine = this.eventContextLine();
+    const signoff: string[] = [this.agencyName || 'The team'];
     if (this.agencyEmail) signoff.push(this.agencyEmail);
-    blocks.push(signoff.join('\n'));
+
+    const blocks: string[] = [];
+    if (this.hasCartItems) {
+      // Cart-launched: tighter WhatsApp shape.
+      if (greeting) blocks.push(greeting);
+      const briefLead = eventLine
+        ? `Quick brief — ${eventLine}:`
+        : 'Quick brief:';
+      blocks.push(itemBullets.length ? `${briefLead}\n${itemBullets.join('\n')}` : briefLead);
+      blocks.push('Send price + lead time when you can?');
+      blocks.push(signoff.join('\n'));
+    } else {
+      // Legacy single-item recommend flow.
+      blocks.push('Hi,');
+      blocks.push(`We're sourcing quotes for ${r.item.name} for an upcoming event and would like to include you.`);
+      if (itemBullets.length) blocks.push(`What we need\n${itemBullets.join('\n')}`);
+      const eventDetails = [
+        this.evDate   ? `Date: ${this.evDate}`     : '',
+        this.evVenue  ? `Venue: ${this.evVenue}`   : '',
+        this.evGuests ? `Guests: ${this.evGuests}` : ''
+      ].filter(Boolean).join('\n');
+      if (eventDetails) blocks.push(`Event details\n${eventDetails}`);
+      blocks.push('Could you send your price and lead time at your earliest convenience?');
+      blocks.push(['Many thanks,', ...signoff].join('\n'));
+    }
 
     this.emailBody = blocks.join('\n\n');
   }
