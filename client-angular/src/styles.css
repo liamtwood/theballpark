@@ -1645,6 +1645,44 @@ input.bp-cfg-page-label.p-inputtext:focus {
   text-transform: uppercase;
 }
 
+/* ── v1.65dm — SHARED DASHBOARD CARD PRIMITIVE ────────────────────────
+   Floating elevated card on parchment ground. Shadow-only chrome (no
+   border) so cards read as floating, not outlined. First adopted by
+   the dashboard (v1.65dh); promoted here so the supplier-detail Home
+   tab — and any future "home-style" surface — can share the same
+   visual language by class alone.
+
+   Pair with a parchment ground (--theme-bg) on the surrounding
+   container so the cards have something to lift off. */
+.bp-dash-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 16px 18px;
+}
+
+/* When .bp-section-header sits inside .bp-dash-card, override the
+   global "space-between" rule so the icon → title → trailing-actions
+   flow reads left-to-right with a full-bleed hairline divider beneath
+   (matching the dashboard pattern). Trailing buttons / chevrons get
+   margin-left:auto to flow to the right. */
+.bp-dash-card .bp-section-header {
+  justify-content: flex-start;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin: 0 -18px 14px;
+  padding-left: 18px;
+  padding-right: 18px;
+  border-bottom: var(--border-hairline);
+}
+.bp-dash-card .bp-section-header > .bp-section-trail {
+  margin-left: auto;
+}
+.bp-dash-card .bp-section-icon {
+  color: var(--theme-accent);
+  flex-shrink: 0;
+}
+
 /* ── FIELD LAYOUT ── */
 .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }

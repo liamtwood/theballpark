@@ -60,56 +60,73 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
            TODO: gate the edit pencil on ownership once auth lands. -->
       <ng-container *ngIf="activeTab === 'home'">
 
-        <div class="bp-supplier-home">
+        <!-- v1.65dm — Home tab now mirrors the dashboard:
+             parchment ground (--theme-bg) with shadow-only .bp-dash-card
+             panels floating on it. Three cards in the column:
+               1. Profile — cover (rounded-top of the card) + identity
+                  row + logo + description.
+               2. Category groups — one card per parent the supplier
+                  has items under, with a left-justified section header
+                  and the subcategory grid below.
+               3. Contact — 2×2 icon-tile grid + optional VAT footer. -->
+        <div class="bp-supplier-home-ground">
+          <div class="bp-supplier-home">
 
-          <!-- Cover banner — lives in the same 720px column as the rest of
-               the Home content. background-size: contain so the image is
-               never zoomed/cropped (any aspect-ratio gap shows the theme
-               background). -->
-          <div class="bp-supplier-cover"
-               [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-               [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-            <button class="bp-supplier-cover-edit"
-                    (click)="openSupplierEditDrawer()"
-                    title="Edit supplier details">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-          </div>
+            <!-- ─── PROFILE CARD ──────────────────────────────────── -->
+            <div class="bp-dash-card bp-supplier-profile-card">
+              <!-- Cover banner — sits flush with the card's rounded top.
+                   Edit pencil overlays top-right (same affordance as
+                   before; ownership gating TODO). -->
+              <div class="bp-supplier-cover"
+                   [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
+                   [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
+                <button class="bp-supplier-cover-edit"
+                        (click)="openSupplierEditDrawer()"
+                        title="Edit supplier details">
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+                </button>
+              </div>
 
-          <!-- Identity row — small initial avatar + name + location.
-               Sits in the same centred column as the description below. -->
-          <div class="bp-supplier-identity">
-            <div class="bp-supplier-avatar">
-              <span class="bp-supplier-avatar-initial">{{ supplier.name.charAt(0) }}</span>
-            </div>
-            <div class="bp-supplier-identity-body">
-              <div class="bp-supplier-name">{{ supplier.name }}</div>
-              <div class="bp-supplier-location" *ngIf="supplierTagline()">
-                {{ supplierTagline() }}
+              <div class="bp-supplier-profile-body">
+                <!-- Identity row — small avatar + name + location. -->
+                <div class="bp-supplier-identity">
+                  <div class="bp-supplier-avatar">
+                    <span class="bp-supplier-avatar-initial">{{ supplier.name.charAt(0) }}</span>
+                  </div>
+                  <div class="bp-supplier-identity-body">
+                    <div class="bp-supplier-name">{{ supplier.name }}</div>
+                    <div class="bp-supplier-location" *ngIf="supplierTagline()">
+                      {{ supplierTagline() }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Centred logo — hidden when no logo_url is set. -->
+                <div class="bp-supplier-logo-block" *ngIf="supplier.logo_url">
+                  <img [src]="supplier.logo_url"
+                       [alt]="supplier.name + ' logo'"
+                       class="bp-supplier-logo-img"/>
+                </div>
+
+                <!-- Description -->
+                <p class="bp-supplier-desc" *ngIf="supplier.description">{{ supplier.description }}</p>
+                <p class="bp-supplier-desc bp-supplier-desc--muted" *ngIf="!supplier.description">
+                  No description yet.
+                </p>
               </div>
             </div>
-          </div>
 
-          <!-- Centred company logo — uses logo_url, displayed prominently
-               above the description. Hidden when no logo_url is set. -->
-          <div class="bp-supplier-logo-block" *ngIf="supplier.logo_url">
-            <img [src]="supplier.logo_url"
-                 [alt]="supplier.name + ' logo'"
-                 class="bp-supplier-logo-img"/>
-          </div>
-
-          <!-- Description -->
-          <p class="bp-supplier-desc" *ngIf="supplier.description">{{ supplier.description }}</p>
-          <p class="bp-supplier-desc bp-supplier-desc--muted" *ngIf="!supplier.description">
-            No description yet.
-          </p>
-
-          <!-- Subcategory card sections — one section per parent category
-               the supplier has items under. Each section: parent name
-               header + card grid of subcategories in use. -->
-          <div class="bp-home-cats" *ngIf="homeCategoryGroups.length">
-            <div class="bp-home-cat-group" *ngFor="let group of homeCategoryGroups">
-              <div class="bp-home-cat-header">{{ group.parentName | uppercase }}</div>
+            <!-- ─── CATEGORY GROUP CARDS (one per parent) ────────── -->
+            <div class="bp-dash-card"
+                 *ngFor="let group of homeCategoryGroups">
+              <div class="bp-section-header">
+                <lucide-icon name="folder" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">{{ group.parentName }}</span>
+                <span class="bp-section-trail bp-section-count">
+                  {{ group.subcategories.length }}
+                  {{ group.subcategories.length === 1 ? 'category' : 'categories' }}
+                </span>
+              </div>
               <div class="bp-home-cat-grid">
                 <button type="button" class="bp-home-cat-card"
                         *ngFor="let sub of group.subcategories">
@@ -129,72 +146,76 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
                 </button>
               </div>
             </div>
-          </div>
 
-          <!-- Contact info heading — matches the parent-category header
-               style used by the sub-catalogue sections above. -->
-          <div class="bp-home-cat-header" *ngIf="hasAnyContact()">CONTACT INFO</div>
-
-          <!-- Contact 2×2 icon grid -->
-          <div class="bp-supplier-contact-grid" *ngIf="hasAnyContact()">
-            <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="map-pin" [size]="16"></lucide-icon>
+            <!-- ─── CONTACT CARD ─────────────────────────────────── -->
+            <div class="bp-dash-card" *ngIf="hasAnyContact()">
+              <div class="bp-section-header">
+                <lucide-icon name="contact-round" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">Contact info</span>
               </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Address</div>
-                <div class="bp-contact-tile-value">
-                  <span *ngIf="supplier.address">{{ supplier.address }}</span>
-                  <span *ngIf="supplier.address && (supplier.city || supplier.country)"><br/></span>
-                  <span *ngIf="supplier.city">{{ supplier.city }}</span><span *ngIf="supplier.city && supplier.country">, </span><span *ngIf="supplier.country">{{ supplier.country }}</span>
+
+              <div class="bp-supplier-contact-grid">
+                <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="map-pin" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Address</div>
+                    <div class="bp-contact-tile-value">
+                      <span *ngIf="supplier.address">{{ supplier.address }}</span>
+                      <span *ngIf="supplier.address && (supplier.city || supplier.country)"><br/></span>
+                      <span *ngIf="supplier.city">{{ supplier.city }}</span><span *ngIf="supplier.city && supplier.country">, </span><span *ngIf="supplier.country">{{ supplier.country }}</span>
+                    </div>
+                  </div>
                 </div>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.phone"
+                   [href]="'tel:' + supplier.phone">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="phone" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Phone</div>
+                    <div class="bp-contact-tile-value">{{ supplier.phone }}</div>
+                  </div>
+                </a>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.email"
+                   [href]="'mailto:' + supplier.email">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="mail" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Email</div>
+                    <div class="bp-contact-tile-value">{{ supplier.email }}</div>
+                  </div>
+                </a>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.website"
+                   [href]="supplier.website" target="_blank" rel="noopener">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="globe" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Website</div>
+                    <div class="bp-contact-tile-value">{{ supplier.website }}</div>
+                  </div>
+                </a>
+              </div>
+
+              <div class="bp-supplier-vat"
+                   *ngIf="supplier.vat_registered || supplier.vat_number">
+                VAT
+                <ng-container *ngIf="supplier.vat_registered">
+                  Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
+                </ng-container>
+                <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
               </div>
             </div>
 
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.phone"
-               [href]="'tel:' + supplier.phone">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="phone" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Phone</div>
-                <div class="bp-contact-tile-value">{{ supplier.phone }}</div>
-              </div>
-            </a>
-
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.email"
-               [href]="'mailto:' + supplier.email">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="mail" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Email</div>
-                <div class="bp-contact-tile-value">{{ supplier.email }}</div>
-              </div>
-            </a>
-
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.website"
-               [href]="supplier.website" target="_blank" rel="noopener">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="globe" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Website</div>
-                <div class="bp-contact-tile-value">{{ supplier.website }}</div>
-              </div>
-            </a>
-          </div>
-
-          <div class="bp-supplier-vat"
-               *ngIf="supplier.vat_registered || supplier.vat_number">
-            VAT
-            <ng-container *ngIf="supplier.vat_registered">
-              Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
-            </ng-container>
-            <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
           </div>
         </div>
 
@@ -373,21 +394,50 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     /* v1.65dm — local .bp-supplier-tabs block retired; Home/Store
        tabs now live in the shell hero via ShellContextService. */
 
-    /* ── HOME TAB ───────────────────────────────────────────────────── */
+    /* ── HOME TAB ─────────────────────────────────────────────────────
+       v1.65dm — parchment ground wraps the 720px column; each section
+       lifts into its own .bp-dash-card so the layout mirrors the new
+       dashboard. The ground bleeds edge-to-edge so the cards float on
+       a continuous parchment surface. */
 
-    /* Cover banner sits inside the 720px content column. background-size
-       is contain so the image displays at its natural aspect ratio. No
-       container fill — any letterboxing shows through to the page. Edit
-       pencil overlays the top-right corner. */
+    .bp-supplier-home-ground {
+      background: var(--theme-bg);
+      padding: 24px 20px;
+      min-height: calc(100vh - var(--nav-height) - 64px);
+    }
+
+    .bp-supplier-home {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Profile card ────────────────────────────────────────────────
+       Cover sits flush with the card's rounded top edge; the body uses
+       its own padding (the parent .bp-dash-card padding is overridden
+       to 0 so the cover can bleed edge-to-edge). */
+    .bp-supplier-profile-card {
+      padding: 0;
+      overflow: hidden;  /* clip the cover's bottom corners */
+    }
+    .bp-supplier-profile-body {
+      padding: 20px 22px 22px;
+    }
+
+    /* Cover banner now lives inside the profile card as the rounded-top
+       edge. background-size: contain so the image displays at its
+       natural aspect ratio. Any letterboxing shows the theme-bg behind
+       the card. Edit pencil overlays top-right. */
     .bp-supplier-cover {
       position: relative;
       width: 100%;
       height: 200px;
-      border-radius: 12px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      margin-bottom: 20px;
+      background-color: var(--theme-bg);
     }
     .bp-supplier-cover--empty {
       background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
@@ -411,19 +461,24 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--color-surface);
     }
 
-    .bp-supplier-home {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 28px;
+    /* Section-header count trail (e.g. "5 categories") — sits at the
+       right end of the header strip via .bp-section-trail (the global
+       rule margin-left:auto's it). */
+    .bp-section-count {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
     }
 
-    /* Identity row: small avatar circle + name + location.
-       Sits at the top of the description column. */
+    /* Identity row: small avatar circle + name + location. First child
+       of the profile card body; spacing handled by sibling margins
+       below, not bottom margin here. */
     .bp-supplier-identity {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
     .bp-supplier-avatar {
       width: 40px; height: 40px;
@@ -468,30 +523,23 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       object-fit: contain;
     }
 
-    /* Description */
+    /* Description — last child of the profile card body, so no
+       trailing margin. */
     .bp-supplier-desc {
       font-size: 14px;
       line-height: 1.6;
       color: var(--color-text-primary);
-      margin: 0 0 28px;
+      margin: 0;
       white-space: pre-wrap;
       text-align: left;
     }
     .bp-supplier-desc--muted { color: var(--color-text-muted); font-style: italic; }
 
-    /* Sub-catalogue cards grouped by parent category. */
-    .bp-home-cats { margin-bottom: 28px; }
-    .bp-home-cat-group + .bp-home-cat-group { margin-top: 24px; }
-    .bp-home-cat-header {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--theme-accent);
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-      border-bottom: 0.5px solid var(--theme-border);
-      font-family: var(--font-body);
-    }
+    /* v1.65dm — category-group cards now use the shared .bp-section-header
+       pattern (Lucide icon + .bp-section-title + trailing count), so the
+       legacy .bp-home-cat-header / .bp-home-cats / .bp-home-cat-group
+       rules are retired. .bp-home-cat-grid below carries the card layout
+       inside each group card. */
     .bp-home-cat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -548,12 +596,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--color-text-muted);
     }
 
-    /* Contact 2×2 icon grid */
+    /* Contact 2×2 icon grid — sits inside the .bp-dash-card contact
+       block; the card owns the outer padding so no margin needed here. */
     .bp-supplier-contact-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 12px;
     }
     .bp-contact-tile {
       display: flex;
@@ -602,7 +650,9 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--color-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-top: 14px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: var(--border-hairline);
       text-align: center;
     }
 
