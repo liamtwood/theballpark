@@ -66,10 +66,10 @@ const PERSONAS: Persona[] = [
     subtitle: 'Supplier · London',
     initials: 'RF',
     avatarColor: '#0f766e',
-    // Populated by the seed; the supplier-detail route resolves on
-    // this id. If your local seed uses a different id, override it in
-    // localStorage:  bp-persona-supplier-id
-    supplierOrgId: 'rocket-food-london',
+    // v1.65e1 — Rocket Food's seeded supplier org id (matches the
+    // /suppliers/:id URL Liam shared). If your local seed re-rolls
+    // org ids, update this value and re-run the dev server.
+    supplierOrgId: '5488cde0-ba0d-48a2-a599-d00d04aa655e',
   },
 ];
 

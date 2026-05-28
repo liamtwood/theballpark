@@ -17,6 +17,7 @@ import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { PersonaService } from '../../core/services/persona.service';
 import { Category, ProjectItem } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -24,6 +25,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
+import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models';
 
 @Component({
@@ -34,7 +36,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, SupplierDrawerComponent
+    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent
   ],
   providers: [MessageService],
   template: `
@@ -58,6 +60,30 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
              5. Subcategory cards grouped by parent category header
              6. Contact 2×2 icon grid + VAT footer
            TODO: gate the edit pencil on ownership once auth lands. -->
+      <!-- ═══ HOME TAB (v1.65e1 / p0015) ═══════════════════════════
+           Rendered only when the supplier persona is viewing their
+           own page (ownsCatalogue). Mirrors the agency dashboard
+           pattern: parchment ground + elevated .bp-dash-card panels.
+           Placeholder welcome card for now; the real supplier
+           dashboard (recent threads, action queue, store summary)
+           lands in a follow-up. -->
+      <ng-container *ngIf="activeTab === 'home' && ownsCatalogue">
+        <div class="bp-supplier-home-ground">
+          <div class="bp-supplier-home">
+            <div class="bp-dash-card">
+              <div class="bp-section-header">
+                <lucide-icon name="house" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">Welcome back</span>
+              </div>
+              <p style="margin: 0; font-size: 16px; line-height: 1.5; color: var(--color-text-primary);">
+                {{ supplier.name }} home page. Quick stats, recent
+                replies, and pending actions will live here.
+              </p>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
       <ng-container *ngIf="activeTab === 'front'">
 
         <!-- v1.65dm — Home tab now mirrors the dashboard:
@@ -310,6 +336,15 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (imagesUpdated)="onItemImageUpdated($event)"
           (closed)="uploadEntityId = ''">
         </app-image-upload-panel>
+      </ng-container>
+
+      <!-- ═══ INBOX TAB (v1.65e1 / p0015) ════════════════════════════
+           Mounts the shared MessagesInboxComponent with viewer='supplier'
+           so the supplier-side of the conversation renders inline. Only
+           rendered when ownsCatalogue (a supplier viewing their own
+           page); agencies browsing this supplier never see this tab. -->
+      <ng-container *ngIf="activeTab === 'inbox' && ownsCatalogue">
+        <app-messages-inbox viewer="supplier"></app-messages-inbox>
       </ng-container>
 
     </ng-container>
@@ -742,11 +777,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   currentOrgType: string | null = null;
 
   // v1.65dz (p0015) — "Home" tab renamed to "Front" (the supplier's
-  // public shopfront). The new persona-level Home page is a separate
-  // surface, so this tab no longer competes for that name. Page-local
-  // state, not routed; ?tab=store query-param overrides the default
-  // on first paint (the supplier persona's Store nav link sets it).
-  activeTab: 'front' | 'store' = 'front';
+  // public shopfront).
+  // v1.65e1 — supplier-detail expanded to FOUR tabs when viewing your
+  // own org (ownsCatalogue): Home / Front / Store / Inbox. Agencies
+  // browsing a supplier see only Front + Store (the public surface).
+  // Page-local state, not routed; ?tab= query-param overrides the
+  // default on first paint.
+  activeTab: 'home' | 'front' | 'store' | 'inbox' = 'front';
 
   // Supplier edit drawer state.
   showSupplierDrawer = false;
@@ -792,6 +829,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private categorySvc: CategoryService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    public  personaSvc: PersonaService,
     private msg: MessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -803,17 +841,36 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
     const qp = this.route.snapshot.queryParams;
     if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
-    // v1.65dz (p0015) — ?tab=store deep-links into the catalogue view
-    // (the supplier persona's Store nav link uses this). Any other
-    // value falls back to the default 'front' tab.
-    if (qp['tab'] === 'store') this.activeTab = 'store';
+    // v1.65dz (p0015) → v1.65e1 — ?tab= deep-links into any of the 4
+    // supplier-detail tabs. Defaults to 'front' (the public shopfront)
+    // when no param is set OR when an agency is browsing someone
+    // else's supplier page (Home + Inbox only render when ownsCatalogue
+    // is true, so picking them on a foreign page just sticks to front).
+    const tabParam = qp['tab'];
+    if (tabParam === 'home' || tabParam === 'front' ||
+        tabParam === 'store' || tabParam === 'inbox') {
+      this.activeTab = tabParam;
+    }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
         this.ballsBalance = org.balls_balance || 0;
-        this.ownsCatalogue = org.id === this.sid;
         this.currentOrgId = org.id;
         this.currentOrgType = org.type || null;
+        // v1.65e1 (p0015) — when a supplier persona is active (dev/admin
+        // switcher), treat the persona's supplierOrgId as the "current
+        // supplier" for the owns-this-page check. Production users hit
+        // the org-based branch.
+        const personaSupplierId = this.personaSvc.isSupplier()
+          ? this.personaSvc.active.supplierOrgId
+          : null;
+        this.ownsCatalogue = personaSupplierId
+          ? personaSupplierId === this.sid
+          : org.id === this.sid;
+        // Re-push the tab set in case ownsCatalogue flipped (4-tab vs
+        // 2-tab band). Safe to call even before .supplier loads —
+        // applyShellHero short-circuits when this.supplier is null.
+        this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -1087,29 +1144,39 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // ── Event handlers ────────────────────────────────────────────────────
 
   /** v1.65dm — single source of truth for the shell hero state on this
-      page. Pushes Home/Store tabs into the hero (was a local band below
-      the hero, which duplicated chrome and collided with the back rail)
-      and re-binds the back link on every call so subsequent updates
-      (e.g. after a supplier edit) don't drop it. */
+      page.
+      v1.65e1 (p0015) — tabs are now persona-aware: when ownsCatalogue
+      is true (the supplier persona viewing their own org), all four
+      tabs render — Home / Front / Store / Inbox. Otherwise (an agency
+      browsing this supplier from the catalogue) only the public-
+      surface tabs render — Front + Store. */
   private applyShellHero() {
     if (!this.supplier) return;
+    const tabs = this.ownsCatalogue
+      ? [
+          { label: 'Home',  path: 'home'  },
+          { label: 'Front', path: 'front' },
+          { label: 'Store', path: 'store' },
+          { label: 'Inbox', path: 'inbox' },
+        ]
+      : [
+          { label: 'Front', path: 'front' },
+          { label: 'Store', path: 'store' },
+        ];
     this.shellCtx.set({
       heroTitle: this.supplier.name,
       heroSub: this.supplier.city || 'London',
       pills: [],
-      tabs: [
-        { label: 'Front', path: 'front' },
-        { label: 'Store', path: 'store' }
-      ],
+      tabs,
       activeTabPath: this.activeTab,
-      onTabClick: (t) => this.setActiveTab(t.path as 'front' | 'store'),
+      onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'front' | 'store' | 'inbox'),
       back: { label: 'Back', onBack: () => this.goBack() }
     });
   }
 
   /** v1.65dm — flip the page-local tab AND re-push the shell context so
       the active state on the hero tab band stays in sync. */
-  setActiveTab(tab: 'front' | 'store') {
+  setActiveTab(tab: 'home' | 'front' | 'store' | 'inbox') {
     if (this.activeTab === tab) return;
     this.activeTab = tab;
     this.applyShellHero();

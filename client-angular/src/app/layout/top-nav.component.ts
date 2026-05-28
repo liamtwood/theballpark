@@ -56,30 +56,31 @@ import { environment } from '../../environments/environment';
           </a>
         </ng-container>
 
-        <!-- v1.65dz (p0015) — supplier persona link set. Home / Front /
-             Store / Inbox. Front + Store both point at the supplier's
-             own /suppliers/:id page (Front = default tab, Store = ?tab=
-             store query-param read by supplier-detail). Home links to
-             /home (the supplier dashboard component lands in a later
-             commit; redirects to / for now via a route fallback). -->
-        <ng-container *ngIf="personaSvc.isSupplier()">
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
+        <!-- v1.65dz → v1.65e1 (p0015) — supplier persona link set.
+             All four tabs route to the SAME /suppliers/:id page with
+             different ?tab= query params; supplier-detail reads the
+             param on init and renders the matching tab content.
+             Tracking active state via queryParamsHandling so the
+             nav link reflects the live tab. -->
+        <ng-container *ngIf="personaSvc.isSupplier() && supplierPersonaOrgId">
+          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
+             [queryParams]="{ tab: 'home' }"
+             class="bp-nav-link">
             <lucide-icon name="house" [size]="14"></lucide-icon> Home
           </a>
-          <a *ngIf="supplierPersonaOrgId"
-             [routerLink]="['/suppliers', supplierPersonaOrgId]"
-             routerLinkActive="active"
-             [routerLinkActiveOptions]="{exact:true}"
+          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
+             [queryParams]="{ tab: 'front' }"
              class="bp-nav-link">
             <lucide-icon name="store" [size]="14"></lucide-icon> Front
           </a>
-          <a *ngIf="supplierPersonaOrgId"
-             [routerLink]="['/suppliers', supplierPersonaOrgId]"
+          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
              [queryParams]="{ tab: 'store' }"
              class="bp-nav-link">
             <lucide-icon name="package" [size]="14"></lucide-icon> Store
           </a>
-          <a routerLink="/inbox" routerLinkActive="active" class="bp-nav-link">
+          <a [routerLink]="['/suppliers', supplierPersonaOrgId]"
+             [queryParams]="{ tab: 'inbox' }"
+             class="bp-nav-link">
             <lucide-icon name="inbox" [size]="14"></lucide-icon> Inbox
           </a>
         </ng-container>

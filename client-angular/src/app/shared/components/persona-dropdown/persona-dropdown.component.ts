@@ -126,12 +126,12 @@ export class PersonaDropdownComponent {
 
   constructor(public personaSvc: PersonaService, private router: Router) {}
 
-  /** v1.65dz — flipping persona routes to that persona's home:
-        agency → / (existing dashboard)
-        admin  → /ballpark-settings
-        supplier → /home (Phase 2 lands the new supplier dashboard;
-                  until then redirects fall back to /suppliers/{id}
-                  if a supplierOrgId is present, else to the inbox). */
+  /** v1.65dz → v1.65e1 — flipping persona routes to that persona's
+      home surface:
+        agency   → /                       (existing dashboard)
+        admin    → /ballpark-settings
+        supplier → /suppliers/{id}?tab=home (supplier-detail page's
+                   Home tab, the persona's own page). */
   select(p: Persona) {
     this.personaSvc.set(p.id);
     this.open = false;
@@ -141,9 +141,15 @@ export class PersonaDropdownComponent {
     } else if (p.kind === 'admin') {
       this.router.navigateByUrl('/ballpark-settings');
     } else if (p.kind === 'supplier') {
-      // Supplier Home page lands in a later commit. For now drop into
-      // the inbox (the most useful supplier surface that exists today).
-      this.router.navigateByUrl('/inbox');
+      const sid = p.supplierOrgId;
+      if (sid) {
+        this.router.navigate(['/suppliers', sid], { queryParams: { tab: 'home' } });
+      } else {
+        // No supplierOrgId on the persona record — fall back to the
+        // standalone supplier inbox route so the user still lands
+        // somewhere usable.
+        this.router.navigateByUrl('/inbox');
+      }
     }
   }
 
