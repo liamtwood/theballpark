@@ -434,23 +434,29 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       padding: 18px 4px 4px;
     }
 
-    /* Cover banner — rounded on all corners now (no longer clipped by a
-       parent card). background-size: contain so the image displays at
-       its natural aspect ratio. Letterboxing shows the parchment ground
-       behind it. Edit pencil overlays top-right. */
+    /* Cover banner — image only, no chrome. v1.65dr drops the white
+       --color-surface fill that boxed the logo against the parchment;
+       now the image sits on the parchment directly with any letterbox
+       area showing the page ground through. No border, no fill, no
+       shadow. Edit pencil overlays top-right.
+
+       background-size: contain keeps the image at its natural aspect;
+       the container reserves vertical space (220px) but is otherwise
+       invisible when the image doesn't fill it. */
     .bp-supplier-cover {
       position: relative;
       width: 100%;
       height: 220px;
-      border-radius: var(--radius-card);
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      background-color: var(--color-surface);
+      background-color: transparent;
     }
-    .bp-supplier-cover--empty {
-      background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
-    }
+    /* v1.65dr — empty cover (no cover_image_url) used to fill with a
+       parchment→border gradient. Stripped now so the open-block rule
+       applies uniformly: the edit pencil floats in the top-right of an
+       invisible reserved area, ready to wire a cover image. */
+    .bp-supplier-cover--empty { background: transparent; }
     .bp-supplier-cover-edit {
       position: absolute; top: 14px; right: 14px;
       width: 34px; height: 34px;
