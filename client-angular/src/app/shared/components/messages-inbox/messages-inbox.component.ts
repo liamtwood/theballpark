@@ -2204,15 +2204,26 @@ export class MessagesInboxComponent implements OnInit {
     this.eventDrawerSvc.open(pid);
   }
 
-  /** v1.65dw — open the shared CartDrawer (Project Items) for the
-      active thread's project. Replaces the inline "Items" collapsible
-      section. Same projectId fallback chain as the event drawer. */
+  /** v1.65dw → v1.65dy — open the shared CartDrawer scoped to JUST
+      the items referenced in this thread. CartDrawerService already
+      supports an itemIds whitelist for exactly this case (see the
+      catalogue-grid's category-scoped opens), so we extract the
+      item_ids from threadItems and hand them through. The drawer
+      then renders the project_items list filtered to those rows;
+      contextLabel/Title swap to make the thread scope obvious. */
   openItemsDrawerForThread(): void {
     const pid = (this.activeProject as any)?.id
               || this.boundProjectId
               || this.selectedProjectId;
     if (!pid) return;
-    this.cartDrawerSvc.open(pid);
+    const itemIds = (this.threadItems || [])
+      .map(it => it.item_id)
+      .filter((id): id is string => !!id);
+    this.cartDrawerSvc.open(pid, {
+      contextLabel: 'THREAD ITEMS',
+      contextTitle: 'Items in this conversation',
+      itemIds,
+    });
   }
 
   openThread(t: VendorThread) {
