@@ -830,9 +830,29 @@ type DashTab = 'projects';
       text-align: left;
     }
     .bp-section-header--toggle:hover .bp-section-title { color: var(--color-text-primary); }
-    /* Make sure every section header lines up icon → title → trailing. */
+    /* v1.65dj — section header: left-justified flow (icon → title →
+       trailing actions) with a hairline divider underneath that spans
+       the card's full width. Negative side margins pull the divider
+       edge-to-edge inside the card's --18px padding. */
     .bp-section-header {
       display: flex; align-items: center; gap: 8px;
+      padding-bottom: 10px;
+      margin: 0 -18px 14px;
+      padding-left: 18px;
+      padding-right: 18px;
+      border-bottom: var(--border-hairline);
+    }
+    /* Collapsible variant — header IS the card content when closed,
+       so the divider becomes the card's bottom edge naturally. Same
+       hairline; the negative side margin lines up with the card's
+       zero padding. */
+    .bp-dash-card--collapsible .bp-section-header {
+      margin: 0;
+      padding: 14px 18px;
+      border-bottom: var(--border-hairline);
+    }
+    .bp-dash-card--collapsible:not(.bp-dash-card--open) .bp-section-header {
+      border-bottom: none;
     }
     /* v1.22d: section-header CTA — same font / padding as
        .bp-quick-action (13px / 8px 12px). The whole CTA family now
