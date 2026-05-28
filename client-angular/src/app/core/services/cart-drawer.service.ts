@@ -93,6 +93,17 @@ export interface CartDrawerRowAction {
   image_url?: string;
 }
 
+/** v1.65ev — fired when the supplier clicks Send after queueing
+    multiple row actions. The inbox dispatches as a single reply
+    (one inbound message + multiple item_actions in one DB
+    transaction) — far cleaner in the conversation than per-row
+    pings. The optional body is the supplier's wrap-up message
+    (free-text + auto-summary). */
+export interface CartDrawerBatchAction {
+  actions: CartDrawerRowAction[];
+  body?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CartDrawerService {
   /** Active request when open, null when closed. */
@@ -104,9 +115,17 @@ export class CartDrawerService {
   private readonly _changed = new Subject<{ projectId: string }>();
   readonly changed$ = this._changed.asObservable();
 
-  /** v1.65et — emits when a supplier acts on a row from the drawer. */
+  /** v1.65et — emits when a supplier acts on a row from the drawer.
+      Kept for the immediate-fire image-pick case where staging
+      doesn't make sense (the photo is the action). */
   private readonly _rowAction = new Subject<CartDrawerRowAction>();
   readonly rowAction$ = this._rowAction.asObservable();
+
+  /** v1.65ev — emits when the supplier hits Send after queueing
+      multiple row actions. The inbox sends a single consolidated
+      reply with all item_actions + the wrap-up body. */
+  private readonly _batchAction = new Subject<CartDrawerBatchAction>();
+  readonly batchAction$ = this._batchAction.asObservable();
 
   open(projectId: string, options: CartDrawerOptions = {}): void {
     this._request.next({ projectId, options });
@@ -114,4 +133,5 @@ export class CartDrawerService {
   close(): void { this._request.next(null); }
   markChanged(projectId: string): void { this._changed.next({ projectId }); }
   emitRowAction(a: CartDrawerRowAction): void { this._rowAction.next(a); }
+  emitBatchAction(b: CartDrawerBatchAction): void { this._batchAction.next(b); }
 }

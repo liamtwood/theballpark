@@ -1776,6 +1776,16 @@ export class MessagesInboxComponent implements OnInit {
       } as any);
     });
 
+    // v1.65ev — batched supplier reply. The supplier queues multiple
+    // row actions in the Cart drawer, types a wrap-up message, and
+    // hits Send → the drawer fires ONE event with all actions + the
+    // body. We send it as a single consolidated reply (one inbound
+    // message + N item_actions in one DB transaction) instead of N
+    // per-row replies cluttering the conversation.
+    this.cartDrawerSvc.batchAction$.subscribe(batch => {
+      this.sendBatchReply(batch.actions, batch.body || '');
+    });
+
     // Resolve project ID — from @Input or from parent route
     if (!this.boundProjectId) {
       let r = this.route;
@@ -2706,6 +2716,62 @@ export class MessagesInboxComponent implements OnInit {
       view (Ryan) records actions as supplier-side transitions
       (declined_by_supplier, adjusted_by_supplier, etc) and writes
       an inbound direction reply row. */
+  /** v1.65ev — batched supplier reply. Builds ONE /messages/:id/reply
+      payload with every queued item_action + the wrap-up body. The
+      server's existing per-item processing handles each action
+      atomically (transitionItem + maybeForkCatalogueItem on
+      adjust). One inbound message row gets created carrying the
+      summary text — much cleaner than N per-row replies. */
+  sendBatchReply(rowActions: Array<{ rowId: string; action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string; image_url?: string }>, body: string): void {
+    if (!this.activeThread) return;
+    const lead = this.latestOutbound(this.activeThread);
+    if (!lead?.id) return;
+    if (!rowActions.length && !body.trim()) return;
+
+    const item_actions = rowActions.map(a => ({
+      message_item_id: a.rowId,
+      action: a.action,
+      reason_code: a.reason_code,
+      note: a.note,
+      name: a.name,
+      description: a.description,
+      price: a.price,
+      unit: a.unit,
+      image_url: a.image_url,
+    }));
+
+    this.messageItemSvc.agentReply(lead.id, {
+      viewer: this.viewer,
+      user_id: this.personaSvc.active?.userId,
+      text: body || undefined,
+      item_actions,
+    } as any).subscribe({
+      next: () => {
+        this.toast.add({
+          severity: 'success',
+          summary: 'Reply sent',
+          detail: `${item_actions.length} ${item_actions.length === 1 ? 'item' : 'items'} updated`,
+          life: 2000
+        });
+        // Refresh the items + thread so the new state shows up.
+        this.messageItemSvc.getByMessage(lead.id).subscribe(rows => {
+          this.threadItems = rows || [];
+          this.cdr.detectChanges();
+        });
+        if (this.boundProjectId) this.load();
+        else this.loadAllMessages();
+      },
+      error: () => {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Could not send reply',
+          detail: 'Please try again in a moment.',
+          life: 3000
+        });
+      }
+    });
+  }
+
   onItemAction(item: MessageItemRow, evt: { action: string; reason_code?: string; note?: string; name?: string; description?: string; price?: number; unit?: string; image_url?: string }) {
     if (!this.activeThread) return;
     // v1.65eq — use the latest outbound brief in the thread as the

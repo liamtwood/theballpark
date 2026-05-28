@@ -7,7 +7,7 @@ import { SidebarModule } from 'primeng/sidebar';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subscription } from 'rxjs';
 
-import { CartDrawerService, CartDrawerOptions, CartDrawerRow } from '../../../core/services/cart-drawer.service';
+import { CartDrawerService, CartDrawerOptions, CartDrawerRow, CartDrawerRowAction } from '../../../core/services/cart-drawer.service';
 import { ProjectItemService } from '../../../core/services/project-item.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { ProjectCategoryService } from '../../../core/services/project-category.service';
@@ -416,20 +416,32 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
           </button>
 
-          <!-- v1.65es → v1.65et — supplier "Done" CTA. Each row
-               action (Accept / Decline / Adjust) commits immediately
-               via cartDrawerSvc.rowAction$, so this button just
-               closes the drawer to signal Ryan is finished. The
-               agent sees the action sequence in the conversation
-               panel + Cart drawer the next time they refresh. -->
-          <button *ngIf="isSupplier"
-                  type="button"
-                  class="bp-cd-send-cta"
-                  (click)="close()">
-            <lucide-icon name="check" [size]="14"></lucide-icon>
-            <span>Done</span>
-            <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
-          </button>
+          <!-- v1.65es → v1.65ev — supplier wrap-up block. Per-row
+               actions queue locally; this block lets the supplier
+               type a message and Send everything in one consolidated
+               reply. The "I've accepted N, updated M…" auto-summary
+               renders above the textarea as a live preview. -->
+          <ng-container *ngIf="isSupplier">
+            <div *ngIf="pendingSummary" class="bp-cd-send-summary">
+              <lucide-icon name="sparkles" [size]="12"></lucide-icon>
+              <span>{{ pendingSummary }}</span>
+            </div>
+            <textarea class="bp-cd-send-textarea"
+                      [(ngModel)]="supplierMessage"
+                      rows="3"
+                      [disabled]="sending"
+                      placeholder="Add a message (optional) — anything the agent should know about your quote."></textarea>
+            <button type="button"
+                    class="bp-cd-send-cta"
+                    [disabled]="!canSend"
+                    (click)="onSend()">
+              <lucide-icon name="send" [size]="14"></lucide-icon>
+              <span>{{ sending ? 'Sending…' : 'Send reply' }}</span>
+              <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
+                {{ pendingCount }}
+              </span>
+            </button>
+          </ng-container>
         </div>
         <!-- Empty state — keep the band so the drawer chrome stays
              stable even when SELECTED is empty. -->
@@ -627,6 +639,65 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-weight: 400;
       color: var(--color-text-muted);
       margin-left: 4px;
+    }
+
+    /* v1.65ev — supplier wrap-up block (auto-summary chip + textarea
+       + Send CTA count badge). Lives in the footer; the
+       .bp-cd-send-cta class above carries the button chrome already. */
+    .bp-cd-send-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-button);
+      font-size: 12px;
+      color: var(--theme-accent);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .bp-cd-send-summary lucide-icon {
+      color: inherit;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bp-cd-send-textarea {
+      width: 100%;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--color-text-primary);
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button);
+      outline: none;
+      resize: vertical;
+      line-height: 1.4;
+    }
+    .bp-cd-send-textarea:focus {
+      border-color: var(--theme-accent);
+    }
+    .bp-cd-send-textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .bp-cd-send-cta-count {
+      margin-left: 4px;
+      padding: 0 7px;
+      height: 18px;
+      min-width: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.25);
+      color: var(--color-surface);
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
     }
 
     /* Status badge under the supplier_name on a row */
@@ -1065,6 +1136,46 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     const u = this.unitOptions.find(o => o.code === (code || '').toLowerCase());
     return u ? u.label : code;
   }
+
+  /** v1.65ev — queue of supplier row actions, keyed by rowId so a
+      second click on the same row overwrites (last action wins).
+      Flushed in one batch on Send. */
+  pendingActions: Map<string, CartDrawerRowAction> = new Map();
+  /** Wrap-up message the supplier types before Send. Combined with
+      the auto-summary in the outbound reply body. */
+  supplierMessage = '';
+  /** True while the consolidated reply is in flight (Send → server
+      reply → drawer close). */
+  sending = false;
+
+  get pendingCount(): number { return this.pendingActions.size; }
+  /** v1.65ev — auto-summary of queued actions. Used as the default
+      body line when the supplier doesn't type their own message,
+      and prepended when they do. Natural English + plurals. */
+  get pendingSummary(): string {
+    if (!this.pendingActions.size) return '';
+    let accepted = 0, adjusted = 0, declined = 0, thinking = 0;
+    for (const a of this.pendingActions.values()) {
+      if (a.action === 'accept')   accepted++;
+      else if (a.action === 'adjust')   adjusted++;
+      else if (a.action === 'decline')  declined++;
+      else if (a.action === 'think')    thinking++;
+    }
+    const bits: string[] = [];
+    if (accepted) bits.push(`accepted ${accepted} ${accepted === 1 ? 'item' : 'items'}`);
+    if (adjusted) bits.push(`updated ${adjusted} ${adjusted === 1 ? 'item' : 'items'} for you to review`);
+    if (declined) bits.push(`declined ${declined} ${declined === 1 ? 'item' : 'items'}`);
+    if (thinking) bits.push(`marked ${thinking} as needing more time`);
+    if (!bits.length) return '';
+    // "accepted 2 items and updated 2 items for you to review"
+    const joined = bits.length === 1
+      ? bits[0]
+      : bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1];
+    return `I've ${joined}.`;
+  }
+  get canSend(): boolean {
+    return !this.sending && (this.pendingActions.size > 0 || !!this.supplierMessage.trim());
+  }
   get canSaveAdjust(): boolean {
     // At least a price OR a photo OR a name override; otherwise
     // pressing Save would be a no-op.
@@ -1113,6 +1224,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // v1.65es — viewer side. Defaults to 'agent' so any existing
       // caller that doesn't set it keeps the full agency chrome.
       this.viewer = opts.viewer || 'agent';
+      // v1.65ev — fresh supplier-batch state per open.
+      this.pendingActions = new Map();
+      this.supplierMessage = '';
+      this.sending = false;
+      this.adjustOpenId = null;
+      this.imageOpenId = null;
       if (req) this.load();
       this.cdr.markForCheck();
     });
@@ -1164,13 +1281,17 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     return s === 'declined_by_supplier' || s === 'declined_by_agent';
   }
 
+  // v1.65ev — row actions now QUEUE instead of firing immediately.
+  // The supplier batches their decisions, optionally types a wrap-up
+  // message, and clicks Send → one consolidated reply rather than a
+  // per-row barrage in the conversation.
   onRowAccept(pi: ProjectItem): void {
-    this.svc.emitRowAction({ rowId: pi.id, action: 'accept' });
+    this.pendingActions.set(pi.id, { rowId: pi.id, action: 'accept' });
     (pi as any)._raw_status = 'accepted';
     this.cdr.markForCheck();
   }
   onRowDecline(pi: ProjectItem): void {
-    this.svc.emitRowAction({ rowId: pi.id, action: 'decline' });
+    this.pendingActions.set(pi.id, { rowId: pi.id, action: 'decline' });
     (pi as any)._raw_status = 'declined_by_supplier';
     this.cdr.markForCheck();
   }
@@ -1226,24 +1347,68 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     if (!url) return;
     this.adjustForm.imageUrl = url;
     (pi as any).image_url = url;
-    this.svc.emitRowAction({ rowId: pi.id, action: 'adjust', image_url: url });
+    // v1.65ev — queue an adjust action carrying just the image (or
+    // merge with an existing queued adjust so we don't blow away
+    // price/name set earlier). Flushed on Send.
+    const prev = this.pendingActions.get(pi.id);
+    this.pendingActions.set(pi.id, {
+      rowId: pi.id,
+      action: 'adjust',
+      name: prev?.name,
+      description: prev?.description,
+      price: prev?.price,
+      unit: prev?.unit,
+      image_url: url,
+    });
     (pi as any)._raw_status = 'adjusted_by_supplier';
     this.closeImage();
   }
+
+  /** v1.65ev — flush all queued actions + the wrap-up message in one
+      consolidated reply. Builds the body from the supplier's typed
+      message (if any) + the auto-summary, then emits batchAction$.
+      The inbox catches and posts a single reply to the server. */
+  onSend(): void {
+    if (!this.canSend) return;
+    this.sending = true;
+    const actions = Array.from(this.pendingActions.values());
+    const typed = (this.supplierMessage || '').trim();
+    const summary = this.pendingSummary;
+    // Compose: typed message first, then summary on a new paragraph.
+    // If only one is present, use it alone.
+    let body = '';
+    if (typed && summary) body = typed + '\n\n' + summary;
+    else body = typed || summary;
+    this.svc.emitBatchAction({ actions, body });
+    // Reset local state + close the drawer. The inbox refreshes
+    // thread items after the server confirms.
+    this.pendingActions.clear();
+    this.supplierMessage = '';
+    setTimeout(() => {
+      this.sending = false;
+      this.close();
+      this.cdr.markForCheck();
+    }, 250);
+    this.cdr.markForCheck();
+  }
   onRowAdjust(pi: ProjectItem): void {
     const f = this.adjustForm;
-    this.svc.emitRowAction({
+    // v1.65ev — queue, don't fire. If an earlier Image pick already
+    // queued an adjust for this row, merge so we don't lose the
+    // image URL when the supplier fills in price/name later.
+    const prev = this.pendingActions.get(pi.id);
+    this.pendingActions.set(pi.id, {
       rowId: pi.id,
       action: 'adjust',
-      name: f.name.trim() || undefined,
-      description: f.description.trim() || undefined,
-      price: f.price != null ? Number(f.price) : undefined,
-      unit: f.unit.trim() || undefined,
-      image_url: f.imageUrl.trim() || undefined,
+      name: f.name.trim() || prev?.name,
+      description: f.description.trim() || prev?.description,
+      price: f.price != null ? Number(f.price) : prev?.price,
+      unit: f.unit.trim() || prev?.unit,
+      image_url: f.imageUrl.trim() || prev?.image_url,
     });
     // Optimistic local update so the row reflects the new price /
     // image / name immediately. Server will confirm via the inbox
-    // refresh.
+    // refresh after Send.
     if (f.price != null) (pi as any).base_price = Number(f.price);
     if (f.imageUrl.trim()) (pi as any).image_url = f.imageUrl.trim();
     if (f.name.trim()) (pi as any).name = f.name.trim();
