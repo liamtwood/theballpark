@@ -2,6 +2,20 @@ import { Routes } from '@angular/router';
 import { AppShellComponent } from './shared/components/app-shell/app-shell.component';
 import { devOnlyGuard } from './core/guards/dev-only.guard';
 
+// v1.65dg — shared Home/Settings hero-tab band. Mounted on both the
+// dashboard route (`/`) AND the settings sub-tree so the folder-tab
+// band stays visible across both surfaces, matching the project tab
+// pattern (Overview/Marketplace/Inbox is one band; Home/Settings is
+// the other).
+const HOME_SETTINGS_TABS = [
+  { label: 'Home',     path: '/' },
+  // `/settings` (not `/settings/organisation`) so the shell's
+  // startsWith isActive() match lights up on every sub-URL
+  // (`/settings/team`, `/settings/subscription`); the route itself
+  // redirects to /organisation via SETTINGS_ROUTES' default.
+  { label: 'Settings', path: '/settings' },
+];
+
 export const routes: Routes = [
   // ── PUBLIC ── (rendered standalone, outside the app shell)
   {
@@ -22,10 +36,12 @@ export const routes: Routes = [
     children: [
 
       // ── DASHBOARD ──
+      // v1.65dg — Home/Settings hero tabs added so the home screen
+      // carries the same folder-tab band the project pages do.
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        data: { pageLabel: '', tabs: [] }
+        data: { pageLabel: '', tabs: HOME_SETTINGS_TABS }
       },
 
       // ── PROJECTS ──
@@ -87,6 +103,11 @@ export const routes: Routes = [
       },
 
       // ── SETTINGS ──
+      // v1.65dg — Settings hero tabs are now Home / Settings (shared
+      // with the dashboard) so the band stays consistent across both
+      // surfaces. Organisation / Team / Subscription routes still
+      // resolve by URL; a secondary in-page nav for switching between
+      // them is TODO(v1.65dg-settings-subnav).
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
@@ -96,11 +117,7 @@ export const routes: Routes = [
           // (or the dashboard's Invite Member quick action) so there's no
           // longer a nav link to return through.
           back: '/',
-          tabs: [
-            { label: 'Organisation', path: '/settings/organisation' },
-            { label: 'Team',         path: '/settings/team' },
-            { label: 'Subscription', path: '/settings/subscription' }
-          ]
+          tabs: HOME_SETTINGS_TABS
         }
       },
 
