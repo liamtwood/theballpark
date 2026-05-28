@@ -7,13 +7,24 @@ import { devOnlyGuard } from './core/guards/dev-only.guard';
 // band stays visible across both surfaces, matching the project tab
 // pattern (Overview/Marketplace/Inbox is one band; Home/Settings is
 // the other).
+// v1.65e4 — top-nav now carries Home + Settings as text links per
+// persona, so this band on the dashboard is duplicative. Kept for
+// any consumer still referencing the constant; dashboard tabs entry
+// now empty.
 const HOME_SETTINGS_TABS = [
   { label: 'Home',     path: '/' },
-  // `/settings` (not `/settings/organisation`) so the shell's
-  // startsWith isActive() match lights up on every sub-URL
-  // (`/settings/team`, `/settings/subscription`); the route itself
-  // redirects to /organisation via SETTINGS_ROUTES' default.
   { label: 'Settings', path: '/settings' },
+];
+
+// v1.65e5 — Settings page sub-tabs (Organisation / Team / Subscription).
+// Renders in the hero tab band when on /settings/*. The Subscription
+// path is at /settings/subscription but the shell's startsWith match
+// will light it up; same for Team. Organisation is the default child
+// (SETTINGS_ROUTES redirects '' → 'organisation').
+const SETTINGS_TABS = [
+  { label: 'Organisation', path: '/settings/organisation' },
+  { label: 'Team',         path: '/settings/team' },
+  { label: 'Subscription', path: '/settings/subscription' },
 ];
 
 export const routes: Routes = [
@@ -121,13 +132,13 @@ export const routes: Routes = [
       },
 
       // ── SETTINGS ──
-      // v1.65dg — Settings hero tabs are now Home / Settings (shared
-      // with the dashboard) so the band stays consistent across both
-      // surfaces. Organisation / Team / Subscription routes still
-      // resolve by URL; a secondary in-page nav for switching between
-      // them is TODO(v1.65dg-settings-subnav).
-      // v1.65di — heroVariant='calm' reverted; default folder-tab
-      // chrome (matches dashboard + project marketplace).
+      // v1.65dg — Settings hero tabs were Home/Settings (shared with
+      // the dashboard tab band).
+      // v1.65e5 — swapped to the actual Settings sub-routes:
+      // Organisation / Team / Subscription. Top-nav already carries
+      // Home + Settings, so the hero band can finally show what was
+      // marked TODO(v1.65dg-settings-subnav) — the secondary nav
+      // between the three settings sub-pages.
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
@@ -137,7 +148,7 @@ export const routes: Routes = [
           // (or the dashboard's Invite Member quick action) so there's no
           // longer a nav link to return through.
           back: '/',
-          tabs: HOME_SETTINGS_TABS
+          tabs: SETTINGS_TABS
         }
       },
 
