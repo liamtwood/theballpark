@@ -14,6 +14,7 @@ import { ProjectCategoryService } from '../../../core/services/project-category.
 import { OutreachService } from '../../../core/services/outreach.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
+import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
 
 /** v1.65ef — units that bill per-attendee. Item.base_price for these
     is treated as a per-cover/per-head rate, so the cart-drawer total
@@ -40,7 +41,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
   selector: 'app-cart-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, SidebarModule, LucideAngularModule, GbpPipe],
+  imports: [CommonModule, FormsModule, SidebarModule, LucideAngularModule, GbpPipe, ImageUploadPanelComponent],
   template: `
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
@@ -91,30 +92,49 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <!-- v1.65ef — extended line price. For per-cover/per-head
                  items: shows the multiplied total (£X) with a small
                  sub-line "£base × N guests". Otherwise just the flat
-                 base_price. -->
+                 base_price.
+                 v1.65eu — when set, the unit is shown as a suffix
+                 (" / cover", " / each", etc.) so the supplier
+                 always sees the rate basis. -->
             <div class="bp-cd-price">
-              {{ lineTotal(pi) | gbp }}
+              <span>
+                {{ lineTotal(pi) | gbp }}<span *ngIf="pi.unit" class="bp-cd-price-unit">/ {{ unitShort(pi.unit) }}</span>
+              </span>
               <div *ngIf="isPerAttendee(pi)" class="bp-cd-price-sub">
                 {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
               </div>
             </div>
-            <!-- v1.65et — supplier mode swaps the agent's "remove"
-                 button for an action cluster (Accept / Decline /
-                 Adjust). Click Adjust → inline editor opens below.
-                 Accept and Decline fire immediately. -->
+            <!-- v1.65et → v1.65eu — supplier mode action cluster.
+                 Circular icon buttons (consistent with the rest of
+                 the app's selector pattern: outline at rest, bold
+                 theme-accent fill when active). Four actions:
+                 Accept, Adjust, Image, Decline. -->
             <ng-container *ngIf="isSupplier; else agentActions">
               <div class="bp-cd-row-actions">
-                <button type="button" class="bp-cd-row-act bp-cd-row-act--accept"
+                <button type="button"
+                        class="bp-cd-row-act bp-cd-row-act--accept"
+                        [class.bp-cd-row-act--active]="rowStatus(pi) === 'accepted'"
                         title="Accept"
                         (click)="onRowAccept(pi)">
                   <lucide-icon name="check" [size]="13"></lucide-icon>
                 </button>
-                <button type="button" class="bp-cd-row-act bp-cd-row-act--adjust"
-                        title="Adjust — set price / photo / details"
+                <button type="button"
+                        class="bp-cd-row-act bp-cd-row-act--adjust"
+                        [class.bp-cd-row-act--active]="adjustOpenId === pi.id || rowStatus(pi) === 'adjusted_by_supplier' || rowStatus(pi) === 'quoted'"
+                        title="Adjust — set price / details"
                         (click)="toggleAdjust(pi)">
                   <lucide-icon name="square-pen" [size]="13"></lucide-icon>
                 </button>
-                <button type="button" class="bp-cd-row-act bp-cd-row-act--decline"
+                <button type="button"
+                        class="bp-cd-row-act bp-cd-row-act--image"
+                        [class.bp-cd-row-act--active]="!!pi.image_url || imageOpenId === pi.id"
+                        title="Photo — upload, search, or paste"
+                        (click)="toggleImage(pi)">
+                  <lucide-icon name="image" [size]="13"></lucide-icon>
+                </button>
+                <button type="button"
+                        class="bp-cd-row-act bp-cd-row-act--decline"
+                        [class.bp-cd-row-act--active]="isDeclined(pi)"
                         title="Decline"
                         (click)="onRowDecline(pi)">
                   <lucide-icon name="x" [size]="13"></lucide-icon>
@@ -152,20 +172,22 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                      [(ngModel)]="adjustForm.name"
                      [placeholder]="pi.name"/>
             </div>
+            <!-- v1.65eu — Price + unit selector (was a text input).
+                 Supplier picks how they want to bill: per cover, per
+                 head, each, package, table, day, event. Per-cover
+                 / per-head trigger the × guest_count multiplier in
+                 the cart totals; the others stay flat. -->
             <div class="bp-cd-adjust-row">
-              <label class="bp-cd-adjust-lbl">Price per head</label>
-              <input type="number" class="bp-cd-adjust-input"
+              <label class="bp-cd-adjust-lbl">Price</label>
+              <input type="number" class="bp-cd-adjust-input bp-cd-adjust-price"
                      [(ngModel)]="adjustForm.price"
                      min="0" step="1" placeholder="0"/>
-              <input type="text" class="bp-cd-adjust-input bp-cd-adjust-unit"
-                     [(ngModel)]="adjustForm.unit"
-                     placeholder="cover"/>
-            </div>
-            <div class="bp-cd-adjust-row">
-              <label class="bp-cd-adjust-lbl">Photo URL</label>
-              <input type="text" class="bp-cd-adjust-input"
-                     [(ngModel)]="adjustForm.imageUrl"
-                     placeholder="https://… (paste image link)"/>
+              <select class="bp-cd-adjust-input bp-cd-adjust-unit-sel"
+                      [(ngModel)]="adjustForm.unit">
+                <option *ngFor="let u of unitOptions" [value]="u.code">
+                  per {{ u.label }}
+                </option>
+              </select>
             </div>
             <div class="bp-cd-adjust-row">
               <label class="bp-cd-adjust-lbl">Description</label>
@@ -187,6 +209,24 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
               </button>
             </div>
           </div>
+
+          <!-- v1.65eu — Image upload panel. Mounts inline below the
+               row when the supplier clicks the Image button. Reuses
+               the shared ImageUploadPanel (same one item-drawer +
+               supplier-detail use). On save, the cover URL flows
+               into adjustForm.imageUrl and the row's image_url is
+               optimistically updated; the supplier still needs to
+               press Adjust → Save to commit the catalogue write. -->
+          <app-image-upload-panel
+            *ngIf="isSupplier && imageOpenId === pi.id"
+            [entityId]="pi.id"
+            type="item"
+            [existingCoverUrl]="adjustForm.imageUrl || pi.image_url || ''"
+            [existingImageDisplay]="'cover'"
+            [searchTerm]="adjustForm.name || pi.name || ''"
+            (imagesUpdated)="onImagePicked(pi, $event)"
+            (closed)="closeImage()">
+          </app-image-upload-panel>
           </ng-container>
         </ng-container>
         <ng-template #noSel>
@@ -540,34 +580,54 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
 
-    /* v1.65et — supplier-side row action cluster. Three small icon
-       buttons (Accept / Adjust / Decline) replacing the agent's
-       single Remove button. Semantic colors so Ryan can scan the
-       row state at a glance. */
+    /* v1.65et → v1.65eu — supplier-side row action cluster. Four
+       CIRCULAR icon buttons (Accept / Adjust / Image / Decline)
+       matching the rest of the app's selector pattern: hairline
+       circle at rest, theme-accent SOLID fill when active. */
     .bp-cd-row-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       flex-shrink: 0;
     }
     .bp-cd-row-act {
-      width: 26px; height: 26px;
+      width: 28px; height: 28px;
       display: flex; align-items: center; justify-content: center;
       border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-button);
+      border-radius: 50%;
       background: var(--color-surface);
       cursor: pointer;
       color: var(--color-text-muted);
       transition: background 0.15s, border-color 0.15s, color 0.15s;
+      padding: 0;
     }
-    .bp-cd-row-act:hover { background: var(--theme-bg); }
-    .bp-cd-row-act--accept:hover  { border-color: var(--color-booked, #059669);
-                                    color: var(--color-booked, #059669); }
-    .bp-cd-row-act--adjust:hover  { border-color: var(--theme-accent);
-                                    color: var(--theme-accent); }
-    .bp-cd-row-act--decline:hover { border-color: var(--color-action, #DC2626);
-                                    color: var(--color-action, #DC2626); }
+    .bp-cd-row-act:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
     .bp-cd-row-act lucide-icon { color: inherit; }
+    /* Active = bold theme fill (matches the selector pattern used by
+       category circles, view toggles, status pills). */
+    .bp-cd-row-act--active {
+      background: var(--theme-accent) !important;
+      border-color: var(--theme-accent) !important;
+      color: var(--color-surface) !important;
+    }
+    .bp-cd-row-act--active:hover {
+      background: var(--theme-accent) !important;
+      border-color: var(--theme-accent) !important;
+      color: var(--color-surface) !important;
+      opacity: 0.9;
+    }
+
+    /* Per-unit suffix on the row price ("/ cover"). Muted so the
+       headline figure still owns the eye. */
+    .bp-cd-price-unit {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      margin-left: 4px;
+    }
 
     /* Status badge under the supplier_name on a row */
     .bp-cd-row-status {
@@ -626,6 +686,16 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-adjust-input:focus { border-color: var(--theme-accent); }
     .bp-cd-adjust-textarea { resize: vertical; line-height: 1.4; }
     .bp-cd-adjust-unit { max-width: 80px; flex: 0 0 auto; }
+    /* v1.65eu — price input + unit selector pair. Price input grows;
+       select chooses the rate basis. */
+    .bp-cd-adjust-price { max-width: 120px; flex: 0 0 auto; }
+    .bp-cd-adjust-unit-sel {
+      max-width: 130px;
+      flex: 0 0 auto;
+      background: var(--color-surface);
+      font-family: var(--font-body);
+      cursor: pointer;
+    }
     .bp-cd-adjust-foot {
       display: flex; align-items: center; gap: 8px;
       margin-top: 4px;
@@ -966,13 +1036,35 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       the row id and the editor expands below it. One adjust open at a
       time. */
   adjustOpenId: string | null = null;
+  /** v1.65eu — when the supplier clicks the Image button, this holds
+      the row id and the inline ImageUploadPanel renders below. */
+  imageOpenId: string | null = null;
   adjustForm: {
     name: string;
     price: number | null;
     unit: string;
     imageUrl: string;
     description: string;
-  } = { name: '', price: null, unit: '', imageUrl: '', description: '' };
+  } = { name: '', price: null, unit: 'cover', imageUrl: '', description: '' };
+
+  /** v1.65eu — unit dropdown options for the adjust form. The two
+      per-attendee units (cover, head) trigger the × guest_count
+      multiplier in the line math; others stay flat. */
+  readonly unitOptions: { code: string; label: string }[] = [
+    { code: 'cover',   label: 'cover'   },
+    { code: 'head',    label: 'head'    },
+    { code: 'each',    label: 'item'    },
+    { code: 'package', label: 'package' },
+    { code: 'table',   label: 'table'   },
+    { code: 'day',     label: 'day'     },
+    { code: 'event',   label: 'event'   },
+  ];
+
+  /** v1.65eu — short label shown as the price suffix ("/ cover"). */
+  unitShort(code: string): string {
+    const u = this.unitOptions.find(o => o.code === (code || '').toLowerCase());
+    return u ? u.label : code;
+  }
   get canSaveAdjust(): boolean {
     // At least a price OR a photo OR a name override; otherwise
     // pressing Save would be a no-op.
@@ -1097,6 +1189,46 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   cancelAdjust(): void {
     this.adjustOpenId = null;
     this.cdr.markForCheck();
+  }
+
+  /** v1.65eu — open / close the inline ImageUploadPanel for a row.
+      Mutually exclusive with the adjust editor so the drawer doesn't
+      balloon out — clicking Image while adjust is open closes adjust
+      first (the supplier can re-open it; the image they picked is
+      already remembered in adjustForm.imageUrl). */
+  toggleImage(pi: ProjectItem): void {
+    if (this.imageOpenId === pi.id) { this.closeImage(); return; }
+    // Make sure adjustForm is seeded (in case the supplier opens
+    // Image first, then Adjust).
+    if (this.adjustOpenId !== pi.id) {
+      this.adjustForm = {
+        name: pi.name || '',
+        price: Number(pi.base_price) || null,
+        unit: pi.unit || 'cover',
+        imageUrl: pi.image_url || '',
+        description: pi.description || '',
+      };
+    }
+    this.imageOpenId = pi.id;
+    this.adjustOpenId = null;
+    this.cdr.markForCheck();
+  }
+  closeImage(): void {
+    this.imageOpenId = null;
+    this.cdr.markForCheck();
+  }
+  /** v1.65eu — picked an image. Stage it on the adjustForm + the row's
+      visible image (optimistic) AND fire an immediate adjust action
+      so the catalogue fork picks it up. The supplier can still open
+      Adjust afterwards to set price/name/description. */
+  onImagePicked(pi: ProjectItem, evt: { coverUrl: string }): void {
+    const url = (evt?.coverUrl || '').trim();
+    if (!url) return;
+    this.adjustForm.imageUrl = url;
+    (pi as any).image_url = url;
+    this.svc.emitRowAction({ rowId: pi.id, action: 'adjust', image_url: url });
+    (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.closeImage();
   }
   onRowAdjust(pi: ProjectItem): void {
     const f = this.adjustForm;
