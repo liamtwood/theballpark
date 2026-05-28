@@ -10,6 +10,7 @@ import { CartDrawerService, CartDrawerOptions } from '../../../core/services/car
 import { ProjectItemService } from '../../../core/services/project-item.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { ProjectCategoryService } from '../../../core/services/project-category.service';
+import { OutreachService } from '../../../core/services/outreach.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 
@@ -186,6 +187,18 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
               {{ isOverBudget ? 'over budget' : 'under budget — you have headroom to add more' }}
             </div>
           </div>
+
+          <!-- v1.65ek — Send brief CTA. Launches the 4-step outreach
+               train (Suppliers → Requirements → Review → Send)
+               pre-populated from the cart's items + supplier set. -->
+          <button type="button"
+                  class="bp-cd-send-cta"
+                  [disabled]="!canSendBrief"
+                  (click)="sendBrief()">
+            <lucide-icon name="send" [size]="14"></lucide-icon>
+            <span>Send brief to suppliers</span>
+            <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
+          </button>
         </div>
         <!-- Empty state — keep the band so the drawer chrome stays
              stable even when SELECTED is empty. -->
@@ -490,6 +503,49 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-size: 11px;
       color: var(--color-text-muted);
     }
+
+    /* v1.65ek — Send brief CTA. Sits below the budget card; theme-
+       accent fill so it reads as the primary forward action on the
+       drawer. Disabled state mutes to neutral when there's nothing
+       to send. */
+    .bp-cd-send-cta {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: var(--radius-button);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .bp-cd-send-cta:hover:not(:disabled) {
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    .bp-cd-send-cta:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .bp-cd-send-cta:disabled {
+      background: var(--color-border);
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+    }
+    .bp-cd-send-cta lucide-icon {
+      color: inherit;
+      flex-shrink: 0;
+    }
+    .bp-cd-send-cta-chev {
+      margin-left: auto;
+    }
   `]
 })
 export class CartDrawerComponent implements OnInit, OnDestroy {
@@ -535,6 +591,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private projectSvc: ProjectService,
     private projectCategorySvc: ProjectCategoryService,
+    private outreach: OutreachService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -618,6 +675,72 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   }
   get isOverBudget(): boolean {
     return this.budget > 0 && this.clientTotal > this.budget;
+  }
+
+  // ── v1.65ek — Send brief to suppliers ─────────────────────────────
+  /** True when there's at least one selected item AND we know which
+      supplier(s) to send to (each item carries supplier_org_id from
+      the projectItemSvc join). Drives the CTA's disabled state. */
+  get canSendBrief(): boolean {
+    return this.selected.length > 0
+        && this.selected.some(pi => !!(pi as any).supplier_org_id);
+  }
+
+  /** v1.65ek — open the existing 4-step outreach drawer (Suppliers →
+      Requirements → Review → Send) pre-populated from the cart. The
+      outreach flow expects ONE OutreachItem; we synthesise a "cart
+      brief" item that bundles every selected row so the suppliers
+      see the whole ask in one email. Cart drawer closes so the
+      outreach drawer takes focus. */
+  sendBrief(): void {
+    if (!this.canSendBrief) return;
+
+    // Collect unique supplier_org_ids from the cart selection — these
+    // get pre-ticked in step 1 (Suppliers) of the outreach drawer.
+    const supplierMap = new Map<string, string>();
+    for (const pi of this.selected) {
+      const sid = (pi as any).supplier_org_id as string | undefined;
+      if (sid) supplierMap.set(sid, pi.supplier_name || '');
+    }
+    const suppliers = Array.from(supplierMap.entries())
+      .map(([id, name]) => ({ supplier_id: id, supplier_name: name }));
+
+    // Use the cart's dominant category (first item's category) as the
+    // outreach category. Multi-category carts pick the first; the
+    // user can adjust suppliers in step 1 if needed. v2 will split
+    // by category automatically.
+    const first: any = this.selected[0];
+    const categoryId = first?.item_category_id || first?.project_category_id || '';
+
+    // Build a readable item list for the requirements field — line
+    // items with quantity-aware line total. Goes into the
+    // description, which surfaces in the email body in step 3.
+    const itemList = this.selected.map(pi => {
+      const lt = this.lineTotal(pi);
+      const qtyHint = this.isPerAttendee(pi)
+        ? ` (${pi.base_price} × ${this.guestCount} ${pi.unit || 'cover'}s)`
+        : '';
+      return `• ${pi.name} — £${lt.toLocaleString()}${qtyHint}`;
+    }).join('\n');
+
+    this.outreach.open({
+      item: {
+        name: this.selected.length === 1
+          ? (this.selected[0].name || 'Cart item')
+          : `${this.selected.length}-item brief`,
+        description: itemList,
+        price: this.yourCost,
+        isNew: true,
+      },
+      categoryId,
+      projectId: this.projectId,
+      suppliers,
+    });
+
+    // Close the cart drawer so the outreach drawer is the only
+    // active overlay; user can come back to the cart afterwards
+    // via the marketplace cart icon.
+    this.close();
   }
 
   /** Build the background-image url, walking the fallback chain:
