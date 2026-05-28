@@ -161,6 +161,30 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
             <span class="bp-cd-foot-client-value">{{ clientTotal | gbp }}</span>
           </div>
+
+          <!-- v1.65eh — budget headroom card. Same shape + class
+               naming as the Estimate page's bp-est-budget-card.
+               Only renders when project.budget is set (>0). -->
+          <div class="bp-cd-budget-card"
+               *ngIf="budget > 0"
+               [class.over]="isOverBudget">
+            <div class="bp-cd-budget-header">
+              <lucide-icon [name]="isOverBudget ? 'alert-triangle' : 'check-square'" [size]="16"></lucide-icon>
+              <span class="bp-cd-budget-label">{{ isOverBudget ? 'Over budget' : 'Within budget' }}</span>
+              <span class="bp-cd-budget-diff">{{ budgetDiff | gbp }}</span>
+            </div>
+            <div class="bp-cd-budget-bar-wrap">
+              <div class="bp-cd-budget-bar" [style.width.%]="barPct"></div>
+            </div>
+            <div class="bp-cd-budget-footer">
+              <span>Client total {{ clientTotal | gbp }}</span>
+              <span>Budget {{ budget | gbp }}</span>
+            </div>
+            <div class="bp-cd-budget-sub">
+              {{ barPct | number:'1.0-0' }}%
+              {{ isOverBudget ? 'over budget' : 'under budget — you have headroom to add more' }}
+            </div>
+          </div>
         </div>
         <!-- Empty state — keep the band so the drawer chrome stays
              stable even when SELECTED is empty. -->
@@ -392,6 +416,79 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.01em;
     }
+
+    /* v1.65eh — budget headroom card. Same chrome + state colours as
+       the Estimate page's .bp-est-budget-card; class names scoped to
+       the cart drawer so the two surfaces can evolve independently. */
+    .bp-cd-budget-card {
+      margin-top: 10px;
+      padding: 12px 14px;
+      background: var(--color-booked-soft, rgba(5,150,105,0.10));
+      border: 0.5px solid var(--color-booked, #059669);
+      border-radius: var(--radius-card);
+    }
+    .bp-cd-budget-card.over {
+      background: var(--color-action-soft, rgba(236,31,109,0.10));
+      border-color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .bp-cd-budget-header lucide-icon {
+      color: var(--color-booked, #059669);
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-header lucide-icon {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-label {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-booked, #059669);
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-label {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-diff {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-booked, #059669);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-diff {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-bar-wrap {
+      height: 6px;
+      background: rgba(0,0,0,0.08);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .bp-cd-budget-bar {
+      height: 100%;
+      background: var(--color-booked, #059669);
+      border-radius: var(--radius-pill);
+      transition: width 0.4s;
+      max-width: 100%;
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-bar {
+      background: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+    .bp-cd-budget-sub {
+      font-size: 11px;
+      color: var(--color-text-muted);
+    }
   `]
 })
 export class CartDrawerComponent implements OnInit, OnDestroy {
@@ -419,6 +516,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       fallback if the project hasn't overridden either yet. */
   marginPct = 20;
   vatPct = 20;
+
+  /** v1.65eh — project.budget drives the headroom indicator below
+      the CLIENT TOTAL. 0 means "no budget set" and the card hides
+      entirely (same gate as the Estimate page). */
+  budget = 0;
 
   private sub?: Subscription;
 
@@ -493,6 +595,23 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     return this.yourCost + this.marginAmount + this.vatAmount;
   }
 
+  // ── v1.65eh — budget headroom (mirrors estimate.component recalc) ─
+  /** £ difference vs budget. Positive when over, negative when under
+      (we display the absolute via | gbp; the sign of the diff drives
+      the prefix sign in the row). */
+  get budgetDiff(): number {
+    return this.budget > 0 ? this.clientTotal - this.budget : 0;
+  }
+  /** Width-percent for the progress bar — clamped to 100% so the
+      fill never overruns its track even when way over budget. */
+  get barPct(): number {
+    if (this.budget <= 0) return 0;
+    return Math.min((this.clientTotal / this.budget) * 100, 100);
+  }
+  get isOverBudget(): boolean {
+    return this.budget > 0 && this.clientTotal > this.budget;
+  }
+
   /** Build the background-image url, walking the fallback chain:
       item.image_url → supplier cover. Returns null when only the colour
       swatch (initial letter) should render. */
@@ -530,6 +649,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // component's same defaults).
       this.marginPct = Number((p as any)?.default_margin_pct) || 20;
       this.vatPct    = Number((p as any)?.default_vat_pct)    || 20;
+      // v1.65eh — project.project_budget (set on intake / in the
+      // project summary) feeds the headroom card under CLIENT TOTAL.
+      // Field name is project_budget (NOT budget); same field
+      // estimate.component reads.
+      this.budget    = Number((p as any)?.project_budget)     || 0;
       this.cdr.markForCheck();
     });
     this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
