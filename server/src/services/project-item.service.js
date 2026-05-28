@@ -73,6 +73,11 @@ async function getByProject(projectId) {
   // assets so the Project Items cart drawer can show the hover-description
   // tooltip and walk the image fallback chain
   // (item.image_url → supplier cover → category icon colour).
+  // v1.65el — also return o.id AS supplier_org_id so the Cart drawer's
+  // "Send brief to suppliers" CTA can group the cart by supplier and
+  // pre-tick those suppliers in the outreach 4-step. Was previously
+  // only joining for supplier_name, which left the CTA gate
+  // (canSendBrief checks supplier_org_id) permanently disabled.
   const result = await pool.query(
     `SELECT pi.*,
             i.name,
@@ -87,6 +92,7 @@ async function getByProject(projectId) {
             c.name            AS category_name,
             c.icon_name       AS category_icon_name,
             c.icon_color      AS category_icon_color,
+            o.id              AS supplier_org_id,
             o.name            AS supplier_name,
             o.cover_image_url AS supplier_cover_url
        FROM project_items pi
