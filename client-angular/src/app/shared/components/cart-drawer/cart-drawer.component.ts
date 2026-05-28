@@ -89,20 +89,13 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 {{ rowStatusLabel(pi) }}
               </div>
             </div>
-            <!-- v1.65ew — row price = the supplier's RATE, with
-                 unit on its own line below. The aggregated line
-                 total + × guests math lives in the footer
-                 (Cost per head / × N guests / VAT / Client total)
-                 so the row doesn't need to repeat it. Reads:
-                   £25
-                   per head
-                 instead of the confusing "£6,250 / head" from v1.65eu. -->
+            <!-- v1.65ew → v1.65ex — row price = the supplier's RATE,
+                 no unit shown. The unit is only relevant when
+                 editing (Adjust form has the per-unit dropdown) —
+                 on the read-only row, a clean number is enough. -->
             <div class="bp-cd-price">
               <div class="bp-cd-price-rate">
                 {{ (pi.base_price || 0) | gbp }}
-              </div>
-              <div *ngIf="pi.unit" class="bp-cd-price-unit-line">
-                per {{ unitShort(pi.unit) }}
               </div>
             </div>
             <!-- v1.65et → v1.65eu — supplier mode action cluster.
@@ -362,19 +355,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             </div>
           </ng-container>
 
-          <!-- Auto-summary chip + wrap-up textarea + Send CTA. Lives
-               INSIDE the supplier footer so it actually renders
-               (the agent footer was *ngIf=!isSupplier and the
-               textarea was nested inside it by mistake). -->
-          <div *ngIf="pendingSummary" class="bp-cd-send-summary">
-            <lucide-icon name="sparkles" [size]="12"></lucide-icon>
-            <span>{{ pendingSummary }}</span>
-          </div>
+          <!-- v1.65ex — textarea now carries the auto-summary directly
+               (pre-filled, kept in sync as Ryan queues actions, until
+               he edits it manually). No separate chip needed. -->
           <textarea class="bp-cd-send-textarea"
                     [(ngModel)]="supplierMessage"
                     rows="3"
                     [disabled]="sending"
-                    placeholder="Add a message (optional) — anything the agent should know about your quote."></textarea>
+                    placeholder="Add a message — anything the agent should know about your quote."></textarea>
           <button type="button"
                   class="bp-cd-send-cta"
                   [disabled]="!canSend"
@@ -1221,12 +1209,28 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       second click on the same row overwrites (last action wins).
       Flushed in one batch on Send. */
   pendingActions: Map<string, CartDrawerRowAction> = new Map();
-  /** Wrap-up message the supplier types before Send. Combined with
-      the auto-summary in the outbound reply body. */
+  /** v1.65ex — wrap-up message. Auto-syncs to the current
+      pendingSummary as Ryan queues actions, UNTIL he edits the
+      textarea manually. Once edited, his text wins and the auto-
+      sync stops. */
   supplierMessage = '';
+  /** Last value the auto-sync wrote — used to detect whether the
+      textarea is still pristine (Ryan hasn't typed) or custom. */
+  private lastAutoMessage = '';
   /** True while the consolidated reply is in flight (Send → server
       reply → drawer close). */
   sending = false;
+
+  /** v1.65ex — push the live summary into the textarea if Ryan hasn't
+      manually edited it. Called after every queue mutation. */
+  private syncAutoMessage(): void {
+    const cur = (this.supplierMessage || '').trim();
+    const isPristine = !cur || cur === this.lastAutoMessage.trim();
+    if (!isPristine) return;
+    const next = this.pendingSummary;
+    this.supplierMessage = next;
+    this.lastAutoMessage = next;
+  }
 
   get pendingCount(): number { return this.pendingActions.size; }
   /** v1.65ev — auto-summary of queued actions. Used as the default
@@ -1243,11 +1247,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     }
     const bits: string[] = [];
     if (accepted) bits.push(`accepted ${accepted} ${accepted === 1 ? 'item' : 'items'}`);
-    if (adjusted) bits.push(`updated ${adjusted} ${adjusted === 1 ? 'item' : 'items'} for you to review`);
+    if (adjusted) bits.push(`edited ${adjusted} ${adjusted === 1 ? 'item' : 'items'} please review`);
     if (declined) bits.push(`declined ${declined} ${declined === 1 ? 'item' : 'items'}`);
     if (thinking) bits.push(`marked ${thinking} as needing more time`);
     if (!bits.length) return '';
-    // "accepted 2 items and updated 2 items for you to review"
+    // "accepted 2 items and edited 2 items please review"
     const joined = bits.length === 1
       ? bits[0]
       : bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1];
@@ -1307,6 +1311,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // v1.65ev — fresh supplier-batch state per open.
       this.pendingActions = new Map();
       this.supplierMessage = '';
+      this.lastAutoMessage = '';
       this.sending = false;
       this.adjustOpenId = null;
       this.imageOpenId = null;
@@ -1368,11 +1373,13 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   onRowAccept(pi: ProjectItem): void {
     this.pendingActions.set(pi.id, { rowId: pi.id, action: 'accept' });
     (pi as any)._raw_status = 'accepted';
+    this.syncAutoMessage();
     this.cdr.markForCheck();
   }
   onRowDecline(pi: ProjectItem): void {
     this.pendingActions.set(pi.id, { rowId: pi.id, action: 'decline' });
     (pi as any)._raw_status = 'declined_by_supplier';
+    this.syncAutoMessage();
     this.cdr.markForCheck();
   }
   toggleAdjust(pi: ProjectItem): void {
@@ -1441,6 +1448,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       image_url: url,
     });
     (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.syncAutoMessage();
     this.closeImage();
   }
 
@@ -1495,6 +1503,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     if (f.description.trim()) (pi as any).description = f.description.trim();
     if (f.unit.trim()) (pi as any).unit = f.unit.trim();
     (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.syncAutoMessage();
     this.cancelAdjust();
   }
 
