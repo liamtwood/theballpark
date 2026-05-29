@@ -595,7 +595,8 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 <div *ngFor="let c of changesList" class="bp-cd-change-row">
                   <span class="bp-cd-change-name">{{ c.name }}</span>
                   <span class="bp-cd-change-status"
-                        [class.bp-cd-change-status--ok]="c.status === 'Accepted' || c.status === 'Quoted'"
+                        [class.bp-cd-change-status--ok]="c.status === 'Accepted'"
+                        [class.bp-cd-change-status--info]="c.status === 'Review'"
                         [class.bp-cd-change-status--bad]="c.status === 'Declined'">
                     {{ c.status }}
                   </span>
@@ -920,6 +921,13 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-change-status--ok {
       background: var(--color-booked-soft, rgba(5, 150, 105, 0.10));
       color: var(--color-booked, #059669);
+    }
+    /* v1.65fT — Review pill uses theme-accent so it pops as "needs
+       attention" without competing with Accepted (green) or
+       Declined (red). */
+    .bp-cd-change-status--info {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
     }
     .bp-cd-change-status--bad {
       background: rgba(220, 38, 38, 0.10);
@@ -2032,8 +2040,8 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       details string for adjust actions ("£9 → £10 · description
       updated"). Lifted from the same data pendingSummary uses, but
       kept as objects so the template can style each piece. */
-  get changesList(): { name: string; status: 'Accepted'|'Declined'|'Quoted'|'Updated'; details?: string }[] {
-    const out: { name: string; status: 'Accepted'|'Declined'|'Quoted'|'Updated'; details?: string }[] = [];
+  get changesList(): { name: string; status: 'Accepted'|'Declined'|'Review'; details?: string }[] {
+    const out: { name: string; status: 'Accepted'|'Declined'|'Review'; details?: string }[] = [];
     for (const a of this.pendingActions.values()) {
       const fallbackName = this.selected.find(p => p.id === a.rowId)?.name;
       const itemName = a.name || this.actionBefores.get(a.rowId)?.name || fallbackName || 'item';
@@ -2047,7 +2055,9 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
         }
         if (before && a.description && a.description !== before.description) bits.push('description updated');
         if (a.image_url && a.image_url !== (before as any)?.image_url) bits.push('photo added');
-        out.push({ name: itemName, status: 'Quoted', details: bits.join(' · ') });
+        // v1.65fT — adjust = Review (agent needs to review the
+        // supplier's edit), not Quoted.
+        out.push({ name: itemName, status: 'Review', details: bits.join(' · ') });
       }
     }
     return out;
@@ -2448,8 +2458,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       case 'accepted':              return 'Accepted';
       case 'declined_by_supplier':  return 'Declined';
       case 'declined_by_agent':     return 'Declined';
-      case 'adjusted_by_supplier':  return 'Quoted';
-      case 'adjusted_by_agent':     return 'Adjusted';
+      // v1.65fT — supplier edits = "Review" (the agent's next move
+      // is to review the change). Was "Quoted" but that conflated
+      // with the formal quoted state below.
+      case 'adjusted_by_supplier':  return 'Review';
+      case 'adjusted_by_agent':     return 'Review';
       case 'quoted':                return 'Quoted';
       case 'holding':               return 'Holding';
       case 'booked':                return 'Booked';
