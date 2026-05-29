@@ -89,18 +89,23 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 {{ rowStatusLabel(pi) }}
               </div>
             </div>
-            <!-- v1.65ew → v1.65ex — row price = the supplier's RATE,
-                 no unit shown. The unit is only relevant when
-                 editing (Adjust form has the per-unit dropdown) —
-                 on the read-only row, a clean number is enough.
-                 v1.65f2 — agent-mode rows get a small buy-quantity
-                 stepper directly under the rate so the user can dial
-                 in "how many platters / hours / nights" without
-                 leaving the cart. Cart totals reflect qty in real
-                 time (lineTotal × qty × guest_count if per-head). -->
+            <!-- v1.65f3 — row layout for agent mode now shows three
+                 distinct pieces of math on every row:
+                   • a small "£rate / unit × multiplier" breakdown
+                     (left, under the supplier line)
+                   • the qty stepper (inline next to the breakdown)
+                   • the LINE TOTAL (right column, large, prominent)
+                 So a Catering per-head row reads as
+                   £85 / head × 250 guests   [− 1 +]
+                 with £21,250 sitting on the right. Supplier mode
+                 keeps the old read-only "rate only" cell since the
+                 supplier is pricing the unit, not buying. -->
             <div class="bp-cd-price">
-              <div class="bp-cd-price-rate">
+              <div class="bp-cd-price-rate" *ngIf="isSupplier">
                 {{ (pi.base_price || 0) | gbp }}
+              </div>
+              <div class="bp-cd-price-line" *ngIf="!isSupplier">
+                {{ rateLine(pi) }}
               </div>
               <div class="bp-cd-qty" *ngIf="!isSupplier && pi.item_id"
                    (click)="$event.stopPropagation()">
@@ -114,6 +119,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                         (click)="onQtyPlus(pi)"
                         title="Increase quantity">+</button>
               </div>
+            </div>
+            <!-- v1.65f3 — agent-mode line total, lives in its own
+                 grid column on the right. Big serif number — visually
+                 outranks the rate breakdown so the user reads "this
+                 line costs £21,250" at a glance, then drills into the
+                 multiplier text below if they want to verify. -->
+            <div class="bp-cd-row-total" *ngIf="!isSupplier">
+              {{ lineTotal(pi) | gbp }}
             </div>
             <!-- v1.65et → v1.65eu — supplier mode action cluster.
                  Circular icon buttons (consistent with the rest of
@@ -612,19 +625,18 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
 
-    /* v1.65ew — supplier-mode row layout: 2-row grid so the name
-       spans the full card width instead of being squeezed by the
-       price + actions on the same row. Layout:
-         ┌──────┬──────────────────────────────┐
-         │  IMG │ Name (full width across)     │
-         │      │ Supplier · Status            │
-         │      ├──────────┬───────────────────┤
-         │      │ Price+unit │ Actions         │
-         └──────┴──────────────────────────────┘
-       Agency-mode rows keep the existing single-row flex. */
+    /* v1.65ew → v1.65f3 — row layout. Three-column grid in agent mode
+       so the line total lives on the right of every row; supplier
+       mode keeps two columns (no total — supplier prices the unit,
+       doesn't buy quantities). Layout (agent):
+         ┌──────┬──────────────────────────┬──────────┐
+         │  IMG │ Name                     │  TOTAL   │
+         │      │ Supplier                 │   ×      │
+         │      │ £rate / unit × N  [−1+]  │          │
+         └──────┴──────────────────────────┴──────────┘ */
     .bp-cd-row--selected {
       display: grid;
-      grid-template-columns: 44px minmax(0, 1fr);
+      grid-template-columns: 44px minmax(0, 1fr) auto;
       grid-template-rows: auto auto;
       column-gap: 12px;
       row-gap: 6px;
@@ -647,20 +659,51 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       text-overflow: clip;
       line-height: 1.3;
     }
-    /* Row-2 strip: price-left + actions-right under the identity. */
+    /* Row-2 strip: price breakdown + stepper (col 2), remove × (col 3
+       under the line total). Vertical centering under the total
+       keeps the eye on the big number. */
     .bp-cd-row--selected .bp-cd-price {
       grid-column: 2; grid-row: 2;
       justify-self: start;
       text-align: left;
       align-self: end;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      column-gap: 10px;
+      row-gap: 6px;
     }
-    .bp-cd-row--selected .bp-cd-row-actions,
-    .bp-cd-row--selected .bp-cd-action--remove {
+    /* v1.65f3 — line total lives in its own grid column on the right.
+       Sits in row 1 next to the name + supplier text; the remove ×
+       drops into row 2 directly below it. Big serif number, same
+       vocabulary as the category Estimate panel total. */
+    .bp-cd-row--selected .bp-cd-row-total {
+      grid-column: 3; grid-row: 1;
+      align-self: start;
+      justify-self: end;
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      padding-left: 8px;
+    }
+    /* Supplier mode (no line-total cell) — remove × sits in col 2 row 2. */
+    .bp-cd-row--selected .bp-cd-row-actions {
       grid-column: 2; grid-row: 2;
       justify-self: end;
       align-self: end;
     }
-    /* Price rate (big number) + unit line (small, muted, below). */
+    /* Agent mode remove × sits under the line total in col 3. */
+    .bp-cd-row--selected .bp-cd-action--remove {
+      grid-column: 3; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+    }
+    /* Price rate — supplier mode only (read-only big number, no
+       multiplier breakdown). */
     .bp-cd-price-rate {
       font-size: 17px;
       font-weight: 600;
@@ -669,6 +712,21 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       letter-spacing: -0.01em;
       line-height: 1.1;
     }
+    /* v1.65f3 — agent-mode breakdown line. Calm secondary text since
+       the eye-catcher is the line total over on the right; this is
+       the "show your working" for the user
+         (£85 / head × 250 guests × 2). */
+    .bp-cd-price-line {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
 
     /* v1.65f2 — buy-quantity stepper under the row price (agent mode).
        Compact pill: − N + with hairline border, theme-bg fill. Sits
@@ -676,8 +734,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
        Disabled state on the − button when qty=1 prevents going below
        the floor; deletion is the × button's job. */
     .bp-cd-qty {
+      /* v1.65f3 — was margin-top:6px (stepper stacked under the rate);
+         now sits inline next to the breakdown text via the parent
+         flex layout. No top margin needed; the parent row-gap handles
+         spacing on wrap. */
       display: inline-flex; align-items: center;
-      margin-top: 6px;
       height: 22px;
       padding: 0 2px;
       background: var(--color-surface);
@@ -1595,6 +1656,32 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   qtyOf(pi: ProjectItem): number {
     const q = Number((pi as any).quantity);
     return Number.isFinite(q) && q > 0 ? q : 1;
+  }
+
+  /** v1.65f3 — formatted multiplier breakdown shown under the row name.
+      Three shapes, depending on the item's unit + qty:
+        per-head, qty=1   →  "£85 / head × 250 guests"
+        per-head, qty=3   →  "£85 / head × 250 guests × 3"
+        flat,     qty=1   →  "£95 / platter"
+        flat,     qty=3   →  "£95 / platter × 3"
+      The line total (right column) is the result of the math; this
+      string is the show-your-working for the user. */
+  rateLine(pi: ProjectItem): string {
+    const rate = Number(pi.base_price) || 0;
+    const unitCode = (pi.unit || '').toLowerCase();
+    const unitLabel = this.unitShort(unitCode) || 'item';
+    const qty = this.qtyOf(pi);
+    const perHead = PER_ATTENDEE_UNITS.has(unitCode) && this.guestCount > 0;
+
+    const rateStr = `£${rate.toLocaleString('en-GB')}`;
+    let line = `${rateStr} / ${unitLabel}`;
+    if (perHead) {
+      line += ` × ${this.guestCount.toLocaleString('en-GB')} guests`;
+      if (qty > 1) line += ` × ${qty}`;
+    } else if (qty > 1) {
+      line += ` × ${qty}`;
+    }
+    return line;
   }
 
   /** v1.65f2 — per-row in-flight flag so the +/− buttons disable while
