@@ -143,7 +143,15 @@ async function getByProject(projectId) {
     Send. Returns the project_items row in the same shape
     getByProject would. */
 async function addAdhoc(data) {
-  const { project_id, project_category_id, name, base_price, unit, description } = data || {};
+  // v1.65fI fix — callers may pass either:
+  //   project_category_id (the project_categories.id, used by the
+  //                        catalogue-grid's Build flow)
+  //   category_id         (the catalogue categories.id, used by the
+  //                        cart drawer's contextCategoryId)
+  // We accept both shapes — resolve to BOTH a project_categories.id
+  // (FK on project_items) AND a categories.id (FK on items) before
+  // INSERT, so neither FK fails.
+  const { project_id, project_category_id, category_id, name, base_price, unit, description } = data || {};
   if (!project_id) {
     const err = new Error('project_id is required'); err.status = 400; throw err;
   }
@@ -164,15 +172,26 @@ async function addAdhoc(data) {
       const err = new Error('project not found'); err.status = 404; throw err;
     }
     const agencyOrgId = proj.rows[0].org_id;
-    // Resolve the items.category_id: prefer the project_category's
-    // category if we have one, else null.
+    // 2. Resolve project_categories.id + categories.id, accepting
+    //    either input. project_category_id wins when present.
+    let pcId = null;
     let categoryId = null;
     if (project_category_id) {
       const pc = await client.query(
-        'SELECT category_id FROM project_categories WHERE id = $1',
-        [project_category_id]
+        'SELECT id, category_id FROM project_categories WHERE id = $1 AND project_id = $2',
+        [project_category_id, project_id]
       );
+      pcId = pc.rows[0]?.id || null;
       categoryId = pc.rows[0]?.category_id || null;
+    } else if (category_id) {
+      const pc = await client.query(
+        `SELECT id FROM project_categories
+          WHERE project_id = $1 AND category_id = $2
+          LIMIT 1`,
+        [project_id, category_id]
+      );
+      pcId = pc.rows[0]?.id || null;
+      categoryId = category_id;
     }
     // 2. Create the items row. UNIQUE(org_id, name) means re-adding
     //    the same ask name re-uses the existing items row — keeps
@@ -192,6 +211,8 @@ async function addAdhoc(data) {
     );
     const newItemId = it.rows[0].id;
     // 3. Create the project_items row, snapshot fields copied.
+    //    Use the resolved pcId (a real project_categories.id) so the
+    //    FK never fires on a raw catalogue category id.
     const pi = await client.query(
       `INSERT INTO project_items
          (project_id, item_id, project_category_id, selection_type,
@@ -205,7 +226,7 @@ async function addAdhoc(data) {
          unit                = COALESCE(EXCLUDED.unit,        project_items.unit),
          description         = COALESCE(EXCLUDED.description, project_items.description)
        RETURNING *`,
-      [project_id, newItemId, project_category_id || null,
+      [project_id, newItemId, pcId,
        String(name).trim(), base_price || null, unit || null, description || null]
     );
     await client.query('COMMIT');

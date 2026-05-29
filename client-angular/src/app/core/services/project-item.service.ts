@@ -41,15 +41,19 @@ export class ProjectItemService {
   /** v1.65fI — promote an ad-hoc ask into a real cart line. Server
       creates the items row (agency-owned, pending) + project_items
       row atomically so the new ask renders in the SELECTED list
-      and can be edited like a catalogue line. */
+      and can be edited like a catalogue line.
+
+      categoryId is the CATALOGUE categories.id (e.g. Catering's id)
+      from cart-drawer.contextCategoryId. Server resolves it to a
+      project_categories.id for the FK. */
   addAdhoc(
     projectId: string,
     name: string,
-    projectCategoryId?: string
+    categoryId?: string
   ): Observable<ProjectItem> {
     return this.api.post<ProjectItem>('/project-items/adhoc', {
       project_id: projectId,
-      project_category_id: projectCategoryId ?? null,
+      category_id: categoryId ?? null,
       name,
     }).pipe(
       tap(row => this.upsertCache(projectId, row))
