@@ -389,6 +389,25 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 (click)="checkoutMode = false">
           <lucide-icon name="chevron-left" [size]="13"></lucide-icon> Back
         </button>
+
+        <!-- v1.65fF — CHECKOUT header + per-item invoice table.
+             Reads like a standard invoice line list:
+               Working Lunch Platters · £85 / head · 250 · £21,250
+             The totals breakdown below adds margin / VAT / budget /
+             textarea / Send. -->
+        <div class="bp-cd-checkout-hd">CHECKOUT</div>
+        <table class="bp-cd-invoice">
+          <tbody>
+            <tr *ngFor="let pi of selected">
+              <td class="bp-cd-invoice-name">{{ pi.name }}</td>
+              <td class="bp-cd-invoice-rate">
+                {{ (pi.base_price || 0) | gbp }}<span class="bp-cd-invoice-unit" *ngIf="pi.unit"> / {{ unitShort(pi.unit) }}</span>
+              </td>
+              <td class="bp-cd-invoice-count">{{ stepperValue(pi) | number }}</td>
+              <td class="bp-cd-invoice-total">{{ lineTotal(pi) | gbp }}</td>
+            </tr>
+          </tbody>
+        </table>
         <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
              then auto-summary chip, then wrap-up textarea, then the
              Send reply CTA. The whole block lives in one *ngIf so
@@ -580,6 +599,61 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-size: 11px; font-weight: 700;
       line-height: 18px;
     }
+    /* v1.65fF — CHECKOUT eyebrow + invoice table. Table reads like
+       a standard invoice line list: name (1fr) · rate (auto) ·
+       count (auto, tabular) · total (auto, tabular, right). */
+    .bp-cd-checkout-hd {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-top: 4px;
+    }
+    .bp-cd-invoice {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-body);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .bp-cd-invoice tr { border-bottom: 0.5px solid var(--color-border); }
+    .bp-cd-invoice tr:last-child { border-bottom: none; }
+    .bp-cd-invoice td {
+      padding: 8px 0;
+      vertical-align: top;
+    }
+    .bp-cd-invoice-name {
+      color: var(--color-text-primary);
+      font-weight: 500;
+      padding-right: 10px;
+    }
+    .bp-cd-invoice-rate {
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding: 8px 10px 8px 0;
+    }
+    .bp-cd-invoice-unit {
+      color: var(--color-text-muted);
+      font-size: 11px;
+    }
+    .bp-cd-invoice-count {
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      padding: 8px 10px 8px 0;
+      white-space: nowrap;
+    }
+    .bp-cd-invoice-total {
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     /* Back link inside the checkout summary. */
     .bp-cd-checkout-back {
       align-self: flex-start;
