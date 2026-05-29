@@ -101,16 +101,40 @@ interface PendingCategory {
       <ng-container *ngIf="state === 'input'">
         <div class="bp-cp-body">
 
-          <div class="bp-cp-ref" *ngIf="nextRef">
-            <span>Ref</span>
-            <span class="bp-cp-ref-code">{{ nextRef }}</span>
-            <span class="bp-cp-ref-auto">auto-generated</span>
+          <div class="bp-cp-top">
+            <div class="bp-cp-ref" *ngIf="nextRef">
+              <span>Ref</span>
+              <span class="bp-cp-ref-code">{{ nextRef }}</span>
+              <span class="bp-cp-ref-auto">auto-generated</span>
+            </div>
+
+            <!-- v1.65f0 — segmented toggle. Upload and Write are now
+                 mutually exclusive surfaces, instead of stacked with an
+                 "or paste text" divider. Auto-flips to 'write' after a
+                 successful extract so the user can review / edit. -->
+            <div class="bp-cp-mode" role="tablist" aria-label="Brief input mode">
+              <button type="button" role="tab"
+                      class="bp-cp-mode-btn"
+                      [class.active]="inputMode === 'upload'"
+                      [attr.aria-selected]="inputMode === 'upload'"
+                      (click)="setMode('upload')">
+                <lucide-icon name="upload" [size]="13"></lucide-icon>
+                Upload
+              </button>
+              <button type="button" role="tab"
+                      class="bp-cp-mode-btn"
+                      [class.active]="inputMode === 'write'"
+                      [attr.aria-selected]="inputMode === 'write'"
+                      (click)="setMode('write')">
+                <lucide-icon name="pencil" [size]="13"></lucide-icon>
+                Write
+              </button>
+            </div>
           </div>
 
-          <!-- File upload zone. Stays compact once a file is selected
-               so the textarea below is always available for paste /
-               edit, even after upload. -->
-          <label class="bp-cp-upload"
+          <!-- ─────────────────────────────────────────── UPLOAD MODE ─── -->
+          <label *ngIf="inputMode === 'upload'"
+                 class="bp-cp-upload"
                  [class.has-file]="uploadedFile"
                  [class.extracting]="extracting"
                  (dragover)="$event.preventDefault()"
@@ -119,9 +143,9 @@ interface PendingCategory {
                    accept=".pdf,.docx,.eml,.txt,.png,.jpg,.jpeg"
                    (change)="onFilePicked($event)"/>
             <ng-container *ngIf="!uploadedFile">
-              <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+              <lucide-icon name="upload" [size]="28"></lucide-icon>
               <div class="bp-cp-upload-text">
-                <div class="bp-cp-upload-title">Upload brief</div>
+                <div class="bp-cp-upload-title">Upload a brief</div>
                 <div class="bp-cp-upload-sub">Drag &amp; drop or click to browse</div>
               </div>
               <div class="bp-cp-upload-formats">
@@ -132,13 +156,17 @@ interface PendingCategory {
               </div>
             </ng-container>
             <ng-container *ngIf="uploadedFile">
-              <lucide-icon name="paperclip" [size]="14"></lucide-icon>
-              <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
-              <span *ngIf="extracting"   class="bp-cp-upload-status">extracting…</span>
-              <span *ngIf="!extracting && extractedChars > 0"
-                    class="bp-cp-upload-status bp-cp-upload-status-ok">
-                ✓ {{ extractedChars | number }} chars
-              </span>
+              <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+              <div class="bp-cp-upload-text">
+                <div class="bp-cp-upload-title">{{ uploadedFile.name }}</div>
+                <div class="bp-cp-upload-sub">
+                  <span *ngIf="extracting">extracting…</span>
+                  <span *ngIf="!extracting && extractedChars > 0"
+                        class="bp-cp-upload-status-ok">
+                    ✓ {{ extractedChars | number }} characters extracted
+                  </span>
+                </div>
+              </div>
               <button type="button" class="bp-cp-upload-x"
                       (click)="$event.preventDefault(); $event.stopPropagation(); removeFile()">
                 <i class="pi pi-times"></i>
@@ -146,17 +174,21 @@ interface PendingCategory {
             </ng-container>
           </label>
 
-          <div class="bp-cp-or">
-            <span class="bp-cp-or-line"></span>
-            <span class="bp-cp-or-text">{{ uploadedFile ? 'review or edit text' : 'or paste text' }}</span>
-            <span class="bp-cp-or-line"></span>
+          <!-- ─────────────────────────────────────────── WRITE MODE ──── -->
+          <div *ngIf="inputMode === 'write'" class="bp-cp-write">
+            <div class="bp-cp-write-pill" *ngIf="uploadedFile && extractedChars > 0">
+              <lucide-icon name="paperclip" [size]="12"></lucide-icon>
+              From {{ uploadedFile.name }} · ✓ {{ extractedChars | number }} chars
+              <button type="button" class="bp-cp-write-pill-x"
+                      (click)="removeFile()" title="Clear">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <textarea pInputTextarea
+                      [(ngModel)]="form.brief"
+                      placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
+                      class="w-full bp-input-edit bp-cp-brief"></textarea>
           </div>
-
-          <textarea pInputTextarea
-                    [(ngModel)]="form.brief"
-                    [rows]="12"
-                    placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
-                    class="w-full bp-input-edit bp-cp-brief"></textarea>
 
           <div class="bp-cp-examples">
             <span class="bp-cp-examples-label">Try:</span>
@@ -435,31 +467,81 @@ interface PendingCategory {
       color: var(--color-text-muted);
     }
 
+    /* ── Top row: ref chip + mode toggle ─────────────────────────────── */
+    .bp-cp-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+
+    /* v1.65f0 — segmented Upload / Write toggle. Same pill grammar as
+       the marketplace view-toggle (track + sliding active pill). The
+       active button picks up --theme-accent solid fill matching the
+       unified active-state rule across the app. */
+    .bp-cp-mode {
+      display: inline-flex;
+      padding: 3px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      gap: 2px;
+    }
+    .bp-cp-mode-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 12px;
+      border: none; background: transparent;
+      font-family: var(--font-body);
+      font-size: 11.5px; font-weight: 500;
+      color: var(--color-text-muted);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-cp-mode-btn:hover { color: var(--color-text-primary); }
+    .bp-cp-mode-btn.active {
+      background: var(--theme-accent);
+      color: var(--theme-contrast-soft, #fff);
+    }
+    .bp-cp-mode-btn.active:hover { color: var(--theme-contrast-soft, #fff); }
+
     /* ── Upload zone ─────────────────────────────────────────────────── */
+    /* v1.65f0 — upload card now occupies the same vertical real-estate
+       as the textarea below (240px min) so toggling between Upload and
+       Write doesn't reflow the dialog. Centred content; "has-file"
+       variant keeps the same height but switches to a row layout with
+       the filename + status pill. */
     .bp-cp-upload {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      padding: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+      padding: 24px;
+      min-height: 240px;
       border: 2px dashed var(--color-border);
       border-radius: 10px;
       background: var(--color-surface);
       color: var(--color-text-muted);
       cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
       text-align: center;
     }
     .bp-cp-upload:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
+      background: var(--theme-bg);
     }
     .bp-cp-upload.has-file {
-      padding: 10px 14px;
-      flex-direction: row;
-      justify-content: flex-start;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
     }
-    .bp-cp-upload-text { display: flex; flex-direction: column; gap: 1px; }
-    .bp-cp-upload-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-cp-upload-sub   { font-size: 11px; color: var(--color-text-muted); }
-    .bp-cp-upload-formats { display: flex; gap: 6px; margin-top: 4px; }
+    .bp-cp-upload-text { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+    .bp-cp-upload-title {
+      font-size: 15px; font-weight: 500;
+      color: var(--color-text-primary);
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-cp-upload-sub   { font-size: 11.5px; color: var(--color-text-muted); }
+    .bp-cp-upload-formats { display: flex; gap: 6px; margin-top: 6px; }
     .bp-cp-upload-fmt {
       font-size: 9px;
       padding: 2px 8px;
@@ -512,11 +594,48 @@ interface PendingCategory {
     }
     .bp-cp-or-line { flex: 1; height: 0.5px; background: var(--color-border); }
 
+    /* v1.65f0 — write-mode wrapper sits inside the same 240px envelope
+       as the upload card; the optional "from <file>" pill stacks above
+       the textarea and the textarea fills the rest of the space. */
+    .bp-cp-write {
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 240px;
+    }
+    .bp-cp-write-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      align-self: flex-start;
+      padding: 4px 10px 4px 8px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+    .bp-cp-write-pill lucide-icon { color: var(--theme-accent); }
+    .bp-cp-write-pill-x {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 8px;
+      margin-left: 2px;
+    }
+    .bp-cp-write-pill-x:hover {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
     .bp-cp-brief {
-      /* v1.65ez — was 100px min-height + 5 rows. Bumped so a full
-         briefing email is visible without scrolling — the paste flow is
-         the primary intake path, so the textarea should breathe. */
-      resize: vertical; min-height: 240px;
+      /* v1.65f0 — matches the Upload card height so toggling between
+         the two modes never reflows the dialog. flex:1 lets the
+         textarea consume the remaining space when the from-file pill
+         is present. Still vertically resizable past the floor. */
+      resize: vertical;
+      min-height: 240px;
+      flex: 1;
       line-height: 1.6;
     }
 
@@ -922,6 +1041,10 @@ export class CreateProjectModalComponent implements OnInit {
   state: ModalState = 'input';
 
   // INPUT
+  /** v1.65f0 — segmented toggle: 'upload' shows the drag/drop box,
+      'write' shows the textarea. After a successful upload we auto-flip
+      to 'write' so the user lands on the extracted text ready to edit. */
+  inputMode: 'upload' | 'write' = 'upload';
   form = { brief: '' };
   uploadedFile: File | null = null;
   /** True while POST /ai/extract-text is in flight. */
@@ -1019,6 +1142,7 @@ export class CreateProjectModalComponent implements OnInit {
   }
   reset() {
     this.state = 'input';
+    this.inputMode = 'upload';
     this.form = { brief: '' };
     this.uploadedFile = null;
     this.extracting = false;
@@ -1099,11 +1223,22 @@ export class CreateProjectModalComponent implements OnInit {
   }
 
   // ── INPUT actions ─────────────────────────────────────────────────────
+  /** v1.65f0 — segmented toggle handler. Swaps between the upload card
+      and the textarea. Triggered by user click and auto-fired after
+      a successful file extract (so they see the parsed text). */
+  setMode(m: 'upload' | 'write') {
+    this.inputMode = m;
+    this.cdr.markForCheck();
+  }
+
   loadExample(key: string) {
     const ex = this.examples.find(e => e.key === key);
     if (!ex) return;
     this.form.brief = ex.text;
     this.uploadedFile = null;
+    // Example pills populate the textarea — flip to write mode so the
+    // user sees what got loaded rather than staring at the upload box.
+    this.inputMode = 'write';
     this.cdr.markForCheck();
   }
 
@@ -1141,10 +1276,13 @@ export class CreateProjectModalComponent implements OnInit {
         this.extracting = false;
         this.form.brief = out.text || '';
         this.extractedChars = (out.text || '').length;
+        // v1.65f0 — flip to write so the user lands on the extracted
+        // text ready to clean up before Parse with AI.
+        this.inputMode = 'write';
         this.msg.add({
           severity: 'success',
           summary: `✓ Extracted ${this.extractedChars.toLocaleString()} characters from ${f.name}`,
-          detail: 'Review the text below, then Parse with AI.',
+          detail: 'Review the text, then Parse with AI.',
           life: 3500
         });
         this.cdr.markForCheck();
