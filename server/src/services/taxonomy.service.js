@@ -1122,9 +1122,15 @@ async function requestQuotes(body) {
         );
         if (!got.rows.length) throw httpErr(`item ${itemId} not found`, 404);
         const it = got.rows[0];
+        // v1.65fP — coalesce price to 0. Ad-hoc cart adds land with
+        // base_price=null until the agent fills it in; message_items.
+        // price has a NOT NULL constraint so a null here used to
+        // explode the whole send. 0 == "TBC / quote me" which is the
+        // right semantic for an unpriced ad-hoc ask.
         resolved.push({
           item_id: it.id, name: it.name,
-          description: it.description, price: it.base_price
+          description: it.description,
+          price: Number(it.base_price) || 0
         });
       }
     }

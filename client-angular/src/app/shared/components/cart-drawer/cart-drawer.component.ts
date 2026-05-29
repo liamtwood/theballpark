@@ -1961,8 +1961,21 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.briefSending = false;
+        // v1.65fP — mark each cart line "Sent" so the agent sees
+        // visual confirmation before the drawer closes. Flip back
+        // to the invoice stage so the SELECTED rows are visible
+        // with their new badges, then close shortly.
+        for (const pi of this.selected) {
+          (pi as any)._raw_status = 'sent';
+        }
+        this.checkoutStage = 'invoice';
+        this.checkoutMode = false;
         this.svc.markChanged(this.projectId);
-        this.close();
+        this.cdr.markForCheck();
+        // Brief pause so the Sent badges land before the drawer
+        // animates out — feels like an acknowledgement rather than
+        // a no-op.
+        setTimeout(() => this.close(), 900);
       },
       error: () => {
         this.briefSending = false;
@@ -2305,6 +2318,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       case 'quoted':                return 'Quoted';
       case 'holding':               return 'Holding';
       case 'booked':                return 'Booked';
+      case 'sent':                  return 'Sent';
       default:                      return '';
     }
   }
