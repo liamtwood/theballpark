@@ -12,6 +12,7 @@ import { ProjectItemService } from '../../../core/services/project-item.service'
 import { ProjectService } from '../../../core/services/project.service';
 import { ProjectCategoryService } from '../../../core/services/project-category.service';
 import { OutreachService } from '../../../core/services/outreach.service';
+import { ApiService } from '../../../core/services/api.service';
 import { ProjectItem } from '../../../models';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
@@ -400,6 +401,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              flips to the quote summary on demand. The "← Back" link
              at the top returns to the detail view. -->
         <div class="bp-cd-totals-stack" *ngIf="checkoutMode">
+        <ng-container *ngIf="checkoutStage === 'invoice'">
         <!-- v1.65fM — ESTIMATE header with project name + dates,
              item list reading as a standard estimate (name + total
              on one line, count × rate underneath in muted text),
@@ -533,28 +535,86 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           <span class="bp-cd-foot-label">CLIENT TOTAL</span>
           <span class="bp-cd-foot-total">£0</span>
         </div>
+        </ng-container><!-- /checkoutStage === 'invoice' -->
+
+        <!-- v1.65fO — review stage. Greeting + per-category brief
+             + event details + ball-spend note. Mirrors the
+             outreach-compose drawer's step 3 layout so the agent
+             gets one final confirm screen before the brief fires. -->
+        <ng-container *ngIf="checkoutStage === 'review'">
+          <div class="bp-cd-est-hd">
+            <span class="bp-cd-est-hd-label">REVIEW</span>
+            <span class="bp-cd-est-hd-sep" *ngIf="projectName">·</span>
+            <span class="bp-cd-est-hd-meta" *ngIf="projectName">{{ projectName }}</span>
+          </div>
+
+          <div class="bp-cd-est-section-label">GREETING</div>
+          <textarea class="bp-cd-greeting-input"
+                    [(ngModel)]="greeting"
+                    rows="3"
+                    placeholder="Hi — event details are attached. Need this estimate fast, please. Thanks."></textarea>
+
+          <div class="bp-cd-est-section-label" *ngIf="projectBrief">BRIEF</div>
+          <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
+
+          <div class="bp-cd-event-box">
+            <div class="bp-cd-event-hd">EVENT DETAILS</div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Date</span>
+              <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Venue</span>
+              <span class="bp-cd-event-v">{{ projectVenue }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Guests</span>
+              <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="bp-cd-ballnote">
+            🎱 This will use <b>1 ball</b> — sent to {{ briefSupplierCount }} supplier{{ briefSupplierCount === 1 ? '' : 's' }}.
+          </div>
+        </ng-container>
         </div><!-- /.bp-cd-totals-stack -->
         <!-- v1.65fL — checkout footer pinned to the bottom of the
              right column. Uses the app's standard outlined pill
              (.bp-search-view-estimate) — same shape as the
              marketplace's "Event detail" + "View estimate" CTAs. -->
         <div class="bp-cd-aside-foot" *ngIf="checkoutMode">
-          <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
-                  (click)="checkoutMode = false">Cancel</button>
-          <button *ngIf="isSupplier"
-                  type="button" class="bp-search-view-estimate"
-                  [disabled]="!canSend"
-                  (click)="onSend()">
-            {{ sending ? 'Sending…' : 'Next' }}
-            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
-          </button>
-          <button *ngIf="!isSupplier"
-                  type="button" class="bp-search-view-estimate"
-                  [disabled]="!canSendBrief"
-                  (click)="sendBrief()">
-            Next
-            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
-          </button>
+          <!-- v1.65fO — stage-aware footer. Invoice stage:
+               Cancel + Next (→ review). Review stage: Back +
+               Send (fires /taxonomy/request-quotes). Supplier
+               flow stays as a single-Next that triggers onSend(). -->
+          <ng-container *ngIf="checkoutStage === 'invoice'">
+            <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
+                    (click)="checkoutMode = false">Cancel</button>
+            <button *ngIf="isSupplier"
+                    type="button" class="bp-search-view-estimate"
+                    [disabled]="!canSend"
+                    (click)="onSend()">
+              {{ sending ? 'Sending…' : 'Next' }}
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+            <button *ngIf="!isSupplier"
+                    type="button" class="bp-search-view-estimate"
+                    [disabled]="!canSendBrief"
+                    (click)="checkoutStage = 'review'">
+              Next
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+          </ng-container>
+          <ng-container *ngIf="checkoutStage === 'review'">
+            <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
+                    (click)="checkoutStage = 'invoice'">Back</button>
+            <button type="button" class="bp-search-view-estimate"
+                    [disabled]="briefSending || !briefSupplierCount"
+                    (click)="onBriefSend()">
+              {{ briefSending ? 'Sending…' : 'Send' }}
+              <lucide-icon name="send" [size]="13"></lucide-icon>
+            </button>
+          </ng-container>
         </div>
       </aside><!-- /.bp-cd-grid-summary -->
       </div><!-- /.bp-cd-grid -->
@@ -702,6 +762,76 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       color: var(--color-text-muted);
       font-variant-numeric: tabular-nums;
     }
+
+    /* v1.65fO — review stage primitives. Greeting textarea matches
+       the rest of the app's bp-input styling without depending on
+       primeng. Brief renders read-only italic. Event-details box
+       borrows from the catalogue grid's project summary strip
+       look. Ball-note is a calm theme-bg panel. */
+    .bp-cd-greeting-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      background: var(--color-surface);
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--color-text-primary);
+      resize: vertical;
+      min-height: 60px;
+    }
+    .bp-cd-greeting-input:focus { outline: none; border-color: var(--theme-accent); }
+    .bp-cd-brief-text {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+      padding: 8px 10px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      font-style: italic;
+    }
+    .bp-cd-event-box {
+      display: flex; flex-direction: column;
+      padding: 10px 12px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      background: var(--color-surface);
+      gap: 4px;
+    }
+    .bp-cd-event-hd {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-cd-event-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 12.5px;
+      gap: 12px;
+    }
+    .bp-cd-event-k {
+      color: var(--color-text-muted);
+      font-size: 11px;
+    }
+    .bp-cd-event-v {
+      color: var(--color-text-primary);
+      font-weight: 500;
+      text-align: right;
+    }
+    .bp-cd-ballnote {
+      padding: 10px 12px;
+      border: 0.5px solid var(--theme-border);
+      border-radius: var(--radius-card);
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .bp-cd-ballnote b { color: var(--theme-accent); font-weight: 700; }
     /* v1.65fL — aside footer pinned to the bottom of the right
        column. margin-top: auto pushes it down when there's slack;
        a hairline top border + small padding visually separates it
@@ -1788,6 +1918,59 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   projectName = '';
   projectDates = '';
 
+  /** v1.65fO — distinct supplier count across every cart row's
+      asked_supplier_ids. Drives the "sent to N suppliers" copy on
+      the review stage. */
+  get briefSupplierCount(): number {
+    const set = new Set<string>();
+    for (const pi of this.selected) {
+      for (const id of (pi.asked_supplier_ids || [])) {
+        if (id) set.add(id);
+      }
+    }
+    return set.size;
+  }
+
+  /** v1.65fO — Send button on the review stage. Posts to the same
+      /taxonomy/request-quotes endpoint the outreach drawer uses,
+      with the cart's items as requirements + the union of every
+      row's asked_supplier_ids as the supplier set. Closes the
+      drawer on success. */
+  onBriefSend(): void {
+    if (this.briefSending || !this.selected.length) return;
+    const supplierIds = Array.from(new Set(
+      this.selected.flatMap(pi => pi.asked_supplier_ids || [])
+    )).filter(Boolean);
+    if (!supplierIds.length) return;
+    const requirements = this.selected.map(pi => pi.item_id
+      ? { kind: 'matched', item_id: pi.item_id }
+      : { kind: 'new', name: pi.name || '', description: pi.description || '', estimated_price: Number(pi.base_price) || 0 }
+    );
+    const first: any = this.selected[0];
+    const categoryId = first?.item_category_id || first?.project_category_id || '';
+    if (!categoryId) return;
+    this.briefSending = true;
+    this.cdr.markForCheck();
+    this.api.post('/taxonomy/request-quotes', {
+      project_id: this.projectId,
+      category_id: categoryId,
+      project_category_id: first?.project_category_id || null,
+      requirements,
+      supplier_ids: supplierIds,
+      body: this.greeting || '',
+    }).subscribe({
+      next: () => {
+        this.briefSending = false;
+        this.svc.markChanged(this.projectId);
+        this.close();
+      },
+      error: () => {
+        this.briefSending = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   /** v1.65fM — display helper. Renders "Included" when the line
       total is zero (a £0 line in the brief usually means "throw it
       in for free"); otherwise the formatted gbp amount. */
@@ -1828,6 +2011,25 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       "Checkout" button at the bottom of the left column and the
       "← Back" link at the top of the summary. */
   checkoutMode = false;
+
+  /** v1.65fO — within checkoutMode, two stages:
+        'invoice' — the estimate (default after clicking Checkout)
+        'review'  — greeting + brief + event details + ball note,
+                    just before the brief is actually sent.
+      Next on invoice → review; Back on review → invoice; Send on
+      review fires /taxonomy/request-quotes. */
+  checkoutStage: 'invoice' | 'review' = 'invoice';
+
+  /** v1.65fO — greeting line typed in the review stage; becomes the
+      message body alongside the auto-summary. */
+  greeting = '';
+  /** v1.65fO — captured in load() from project_categories so the
+      review shows the agent's per-category requirement_brief as
+      read-only context. */
+  projectBrief = '';
+  projectVenue = '';
+  /** v1.65fO — true while the Send POST is in flight. */
+  briefSending = false;
 
   /** v1.65fE — before-snapshots captured at the moment toggleAdjust
       opens, used by pendingSummary to build a per-item diff
@@ -1990,6 +2192,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     private projectSvc: ProjectService,
     private projectCategorySvc: ProjectCategoryService,
     private outreach: OutreachService,
+    private api: ApiService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -2030,6 +2233,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // v1.65fE — fresh state for the checkout / diff machinery on
       // every open so a previous session's befores don't leak in.
       this.checkoutMode = false;
+      this.checkoutStage = 'invoice';
+      this.greeting = '';
+      this.projectBrief = '';
+      this.projectVenue = '';
+      this.briefSending = false;
       this.actionBefores = new Map();
       if (req) this.load();
       this.cdr.markForCheck();
@@ -2747,6 +2955,10 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // header can read "ESTIMATE · <event name> · <date>".
       this.projectName  = (p as any)?.event_name || (p as any)?.name || '';
       this.projectDates = (p as any)?.event_date || '';
+      // v1.65fO — venue label for the review's event-details box.
+      const city = (p as any)?.venue_city;
+      const venue = (p as any)?.venue_name;
+      this.projectVenue = [venue, city].filter(x => x && String(x).trim()).join(', ') || 'TBC';
       // v1.65eg — pull margin + VAT defaults off the project row.
       // Falls back to 20/20 when null (matches the estimate
       // component's same defaults).
@@ -2779,6 +2991,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
           this.budget = catBudget;
           this.cdr.markForCheck();
         }
+        // v1.65fO — capture the per-category requirement_brief so
+        // the review stage can show it as read-only context for
+        // the agent.
+        this.projectBrief = (cat as any)?.requirement_brief || '';
+        this.cdr.markForCheck();
       });
     }
     // v1.65er — skip project_items fetch when rendering pre-supplied
