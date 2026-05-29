@@ -174,11 +174,12 @@ router.post('/:id/reply', async (req, res, next) => {
         executor: db,
       });
 
-      // v1.65fW — accept / decline also writes a row to the
-      // message_item_decisions satellite so we have a clean per-side
-      // record (with user + timestamp) that survives status changes.
-      // 'adjust' / 'quote' / 'pay' / 'think' don't write a decision —
-      // those are state transitions, not accept/decline acts.
+      // v1.65fW — accept / decline writes a row to the
+      // message_item_decisions satellite.
+      // v1.65fY — adjust / quote (a material edit) ALSO writes a
+      // 'cleared' decision for the OTHER side, so an accept that
+      // came in before the edit gets invalidated and the recipient
+      // has to re-accept. Same for quote → cleared for buyer side.
       if (action === 'accept' || action === 'decline') {
         const side = isSupplier ? 'seller' : 'buyer';
         await db.query(
@@ -187,6 +188,15 @@ router.post('/:id/reply', async (req, res, next) => {
            VALUES ($1, $2, $3, $4, $5)`,
           [message_item_id, side, action === 'accept' ? 'accepted' : 'declined',
            user_id || null, note || null]
+        );
+      } else if (action === 'adjust' || action === 'quote') {
+        const otherSide = isSupplier ? 'buyer' : 'seller';
+        await db.query(
+          `INSERT INTO message_item_decisions
+             (message_item_id, side, decision, user_id, note)
+           VALUES ($1, $2, 'cleared', $3, $4)`,
+          [message_item_id, otherSide, user_id || null,
+           `auto-cleared — ${isSupplier ? 'supplier' : 'agent'} edited`]
         );
       }
 
@@ -224,8 +234,9 @@ router.post('/:id/reply', async (req, res, next) => {
 // route above already writes a decision on accept/decline (via
 // /api/messages/:id/reply), but the agent can also Accept a row
 // from inside the cart drawer without going through a full reply
-// flow — that path uses this endpoint.
-router.post('/:messageId/items/:itemId/decisions', async (req, res, next) => {
+// flow — that path uses these endpoints. message_item.id alone is
+// enough since the row's FK to messages identifies the thread.
+router.post('/items/:itemId/decisions', async (req, res, next) => {
   try {
     const row = await recordDecision({
       messageItemId: req.params.itemId,
@@ -237,7 +248,7 @@ router.post('/:messageId/items/:itemId/decisions', async (req, res, next) => {
     res.status(201).json(row);
   } catch (err) { next(err); }
 });
-router.get('/:messageId/items/:itemId/decisions', async (req, res, next) => {
+router.get('/items/:itemId/decisions', async (req, res, next) => {
   try {
     res.json(await listDecisions(req.params.itemId));
   } catch (err) { next(err); }

@@ -2491,10 +2491,11 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     this.syncAutoMessage();
     this.cdr.markForCheck();
   }
-  /** v1.65fQ — Accept handler with a confirm prompt. Supplier flow
-      reuses onRowAccept (queues a batch action); agent flow flips
-      the local row status — server persistence for the agent-side
-      acceptance comes with the double-accept handshake later. */
+  /** v1.65fQ → v1.65fY — Accept handler with a confirm prompt.
+      Supplier flow reuses onRowAccept (queues a batch action);
+      agent flow flips the local row status AND persists a buyer
+      decision to the satellite when we're in a thread context
+      (preRows set → pi.id is the message_items.id). */
   onAcceptClick(pi: ProjectItem): void {
     const ok = window.confirm(`Accept "${pi.name || 'this item'}"?`);
     if (!ok) return;
@@ -2503,13 +2504,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       return;
     }
     (pi as any)._raw_status = 'accepted';
+    this.recordBuyerDecision(pi, 'accepted');
     this.cdr.markForCheck();
   }
-  /** v1.65fQ — × button branches by context: post-send (rowStatus
-      already set) → Decline with confirm; pre-send → Remove (no
-      confirm, easily reversible). Agent decline only flips the
-      local status for now; supplier decline queues the existing
-      batch action. */
+  /** v1.65fQ → v1.65fY — × button branches by context: post-send
+      (rowStatus already set) → Decline with confirm + buyer
+      decision persisted; pre-send → Remove (no confirm). */
   onDeclineOrRemove(pi: ProjectItem): void {
     if (this.rowStatus(pi)) {
       const ok = window.confirm(`Decline "${pi.name || 'this item'}"?`);
@@ -2518,6 +2518,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
         this.onRowDecline(pi);
       } else {
         (pi as any)._raw_status = 'declined_by_agent';
+        this.recordBuyerDecision(pi, 'declined');
         this.cdr.markForCheck();
       }
       return;
@@ -2525,6 +2526,24 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     // No status → behave as Remove (existing path).
     if (this.isSupplier) this.onRowDecline(pi);
     else this.remove(pi);
+  }
+
+  /** v1.65fY — POST to the decisions satellite when the agent
+      clicks Accept/Decline inside a thread cart. Skipped silently
+      for pre-send (marketplace) carts since pi.id there is a
+      project_items.id, not a message_items.id — and there's no
+      thread to record against yet. */
+  private recordBuyerDecision(pi: ProjectItem, decision: 'accepted' | 'declined'): void {
+    if (!this.preRows) return;
+    const id = (pi as any).id;
+    if (!id) return;
+    this.api.post(`/messages/items/${id}/decisions`, {
+      side: 'buyer',
+      decision,
+    }).subscribe({
+      next: () => { /* server-stamped; UI already updated */ },
+      error: () => { /* surface in console; local state still reflects intent */ }
+    });
   }
   toggleAdjust(pi: ProjectItem): void {
     if (this.adjustOpenId === pi.id) { this.cancelAdjust(); return; }

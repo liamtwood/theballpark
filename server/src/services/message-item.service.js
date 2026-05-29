@@ -271,8 +271,11 @@ async function recordDecision({ messageItemId, side, decision, userId, note, exe
   if (side !== 'buyer' && side !== 'seller') {
     const err = new Error('side must be buyer or seller'); err.status = 400; throw err;
   }
-  if (decision !== 'accepted' && decision !== 'declined') {
-    const err = new Error('decision must be accepted or declined'); err.status = 400; throw err;
+  // v1.65fY — 'cleared' is an auto-inserted decision that wipes the
+  // OTHER side's accept after a material edit. UI treats latest-
+  // decision='cleared' as "no current decision".
+  if (decision !== 'accepted' && decision !== 'declined' && decision !== 'cleared') {
+    const err = new Error('decision must be accepted, declined, or cleared'); err.status = 400; throw err;
   }
   const r = await db.query(
     `INSERT INTO message_item_decisions
