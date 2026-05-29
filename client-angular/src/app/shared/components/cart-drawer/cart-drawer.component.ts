@@ -461,14 +461,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             </div>
           </ng-container>
 
-          <!-- v1.65ex — textarea now carries the auto-summary directly
-               (pre-filled, kept in sync as Ryan queues actions, until
-               he edits it manually). No separate chip needed. -->
-          <textarea class="bp-cd-send-textarea"
-                    [(ngModel)]="supplierMessage"
-                    rows="3"
-                    [disabled]="sending"
-                    placeholder="Add a message — anything the agent should know about your quote."></textarea>
+          <!-- v1.65fR — textarea moved to the review stage so the
+               supplier sees it AFTER clicking Next. Auto-summary
+               still syncs into supplierMessage as actions are
+               queued; it just lands on the review page rather than
+               inline on the invoice page. -->
         </div>
 
         <!-- v1.65eg — estimate-style summary. Matches the layout on
@@ -544,10 +541,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         </div>
         </ng-container><!-- /checkoutStage === 'invoice' -->
 
-        <!-- v1.65fO — review stage. Greeting + per-category brief
-             + event details + ball-spend note. Mirrors the
-             outreach-compose drawer's step 3 layout so the agent
-             gets one final confirm screen before the brief fires. -->
+        <!-- v1.65fO → v1.65fR — review stage. Two role-specific
+             layouts under the same shell:
+               agent    — greeting + brief + event details + ball note
+               supplier — textarea (with auto-summary) + ball note
+             Both share the header, section labels, and footer style. -->
         <ng-container *ngIf="checkoutStage === 'review'">
           <div class="bp-cd-est-hd">
             <span class="bp-cd-est-hd-label">REVIEW</span>
@@ -555,34 +553,52 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <span class="bp-cd-est-hd-meta" *ngIf="projectName">{{ projectName }}</span>
           </div>
 
-          <div class="bp-cd-est-section-label">GREETING</div>
-          <textarea class="bp-cd-greeting-input"
-                    [(ngModel)]="greeting"
-                    rows="3"
-                    placeholder="Hi — event details are attached. Need this estimate fast, please. Thanks."></textarea>
+          <ng-container *ngIf="!isSupplier">
+            <div class="bp-cd-est-section-label">GREETING</div>
+            <textarea class="bp-cd-greeting-input"
+                      [(ngModel)]="greeting"
+                      rows="3"
+                      placeholder="Hi — event details are attached. Need this estimate fast, please. Thanks."></textarea>
 
-          <div class="bp-cd-est-section-label" *ngIf="projectBrief">BRIEF</div>
-          <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
+            <div class="bp-cd-est-section-label" *ngIf="projectBrief">BRIEF</div>
+            <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
 
-          <div class="bp-cd-event-box">
-            <div class="bp-cd-event-hd">EVENT DETAILS</div>
-            <div class="bp-cd-event-row">
-              <span class="bp-cd-event-k">Date</span>
-              <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+            <div class="bp-cd-event-box">
+              <div class="bp-cd-event-hd">EVENT DETAILS</div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Date</span>
+                <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+              </div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Venue</span>
+                <span class="bp-cd-event-v">{{ projectVenue }}</span>
+              </div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Guests</span>
+                <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
+              </div>
             </div>
-            <div class="bp-cd-event-row">
-              <span class="bp-cd-event-k">Venue</span>
-              <span class="bp-cd-event-v">{{ projectVenue }}</span>
-            </div>
-            <div class="bp-cd-event-row">
-              <span class="bp-cd-event-k">Guests</span>
-              <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
-            </div>
-          </div>
 
-          <div class="bp-cd-ballnote">
-            🎱 This will use <b>1 ball</b> — sent to {{ briefSupplierCount }} supplier{{ briefSupplierCount === 1 ? '' : 's' }}.
-          </div>
+            <div class="bp-cd-ballnote">
+              🎱 This will use <b>1 ball</b> — sent to {{ briefSupplierCount }} supplier{{ briefSupplierCount === 1 ? '' : 's' }}.
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="isSupplier">
+            <div class="bp-cd-est-section-label">MESSAGE TO AGENT</div>
+            <textarea class="bp-cd-greeting-input"
+                      [(ngModel)]="supplierMessage"
+                      rows="4"
+                      [disabled]="sending"
+                      placeholder="Anything the agent should know about your quote — lead time, prep notes, alternates."></textarea>
+            <div class="bp-cd-ballnote">
+              ⏱ Reply lands in the agent's inbox immediately.
+              <span *ngIf="pendingCount > 0">
+                <b>{{ pendingCount }}</b>
+                {{ pendingCount === 1 ? 'item' : 'items' }} updated.
+              </span>
+            </div>
+          </ng-container>
         </ng-container>
         </div><!-- /.bp-cd-totals-stack -->
         <!-- v1.65fL — checkout footer pinned to the bottom of the
@@ -594,19 +610,19 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                Cancel + Next (→ review). Review stage: Back +
                Send (fires /taxonomy/request-quotes). Supplier
                flow stays as a single-Next that triggers onSend(). -->
+          <!-- v1.65fR — both roles now have the same two-stage flow:
+               invoice → Next → review → Send. The review stage shows
+               different content per role (agent: greeting + brief +
+               event details + ball note; supplier: the existing
+               textarea + auto-summary), but the footer pattern is
+               identical. Supplier Send fires onSend() (queued batch
+               action via the inbox listener); agent fires
+               onBriefSend() (direct POST to request-quotes). -->
           <ng-container *ngIf="checkoutStage === 'invoice'">
             <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
                     (click)="checkoutMode = false">Cancel</button>
-            <button *ngIf="isSupplier"
-                    type="button" class="bp-search-view-estimate"
-                    [disabled]="!canSend"
-                    (click)="onSend()">
-              {{ sending ? 'Sending…' : 'Next' }}
-              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
-            </button>
-            <button *ngIf="!isSupplier"
-                    type="button" class="bp-search-view-estimate"
-                    [disabled]="!canSendBrief"
+            <button type="button" class="bp-search-view-estimate"
+                    [disabled]="!selected.length"
                     (click)="checkoutStage = 'review'">
               Next
               <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
@@ -615,7 +631,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           <ng-container *ngIf="checkoutStage === 'review'">
             <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
                     (click)="checkoutStage = 'invoice'">Back</button>
-            <button type="button" class="bp-search-view-estimate"
+            <button *ngIf="isSupplier"
+                    type="button" class="bp-search-view-estimate"
+                    [disabled]="sending"
+                    (click)="onSend()">
+              {{ sending ? 'Sending…' : 'Send' }}
+              <lucide-icon name="send" [size]="13"></lucide-icon>
+            </button>
+            <button *ngIf="!isSupplier"
+                    type="button" class="bp-search-view-estimate"
                     [disabled]="briefSending || !briefSupplierCount"
                     (click)="onBriefSend()">
               {{ briefSending ? 'Sending…' : 'Send' }}
@@ -2622,7 +2646,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     const base = Number(pi.base_price) || 0;
     const qty = this.qtyOf(pi);
     const unit = (pi.unit || '').toLowerCase();
-    if (this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit)) {
+    // v1.65fR — match stepperValue: supplier rows without an explicit
+    // unit fall through to per-head math so the line total reflects
+    // the head count automatically.
+    const perAttendee = PER_ATTENDEE_UNITS.has(unit)
+      || (this.isSupplier && !unit);
+    if (this.guestCount > 0 && perAttendee) {
       return base * qty * this.guestCount;
     }
     return base * qty;
@@ -2677,7 +2706,14 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   stepperValue(pi: ProjectItem): number {
     const qty = this.qtyOf(pi);
     const unit = (pi.unit || '').toLowerCase();
-    if (this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit)) {
+    // v1.65fR — supplier rows from message_items don't carry a unit
+    // (it's not on the message_items table). Default to per-head for
+    // the supplier view so the invoice shows the head count rather
+    // than 1 — that's the only context where the unit can be unknown
+    // here AND treating it as flat would mis-quote a catering brief.
+    const perAttendee = PER_ATTENDEE_UNITS.has(unit)
+      || (this.isSupplier && !unit);
+    if (this.guestCount > 0 && perAttendee) {
       return qty * this.guestCount;
     }
     return qty;
