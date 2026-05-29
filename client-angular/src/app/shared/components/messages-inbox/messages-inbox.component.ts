@@ -2786,6 +2786,13 @@ export class MessagesInboxComponent implements OnInit {
       image_url: a.image_url,
     }));
 
+    // v1.65fU — capture the active thread key BEFORE the load() call
+    // refetches threads. After load lands the threads list rebuilds
+    // and activeThread becomes stale (its .messages array is the old
+    // one — missing the just-sent reply). Re-find by key on the
+    // refreshed list so the conversation stream picks up the new
+    // bubble without a manual refresh.
+    const activeKey = this.activeThread?.key;
     this.messageItemSvc.agentReply(lead.id, {
       viewer: this.viewer,
       user_id: this.personaSvc.active?.userId,
@@ -2806,6 +2813,14 @@ export class MessagesInboxComponent implements OnInit {
         });
         if (this.boundProjectId) this.load();
         else this.loadAllMessages();
+        // v1.65fU — rebind the active thread to the refreshed
+        // threads list so the new bubble shows without F5.
+        if (activeKey) {
+          setTimeout(() => {
+            this.activeThread = this.threads.find(t => t.key === activeKey) || null;
+            this.cdr.detectChanges();
+          }, 300);
+        }
       },
       error: () => {
         this.toast.add({
