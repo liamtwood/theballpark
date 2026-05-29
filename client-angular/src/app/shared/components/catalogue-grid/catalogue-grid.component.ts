@@ -1392,7 +1392,10 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+    /* v1.65f1 — explicit gap so "£140Platter" reads "£140 Platter".
+       padding-left rather than a literal space in the template so the
+       space survives whitespace collapsing across the *ngIf branches. */
+    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); padding-left: 6px; }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
     .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
@@ -1785,7 +1788,7 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-detail-price-row { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 0.5px solid var(--color-border); }
     .bp-detail-price { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
     .bp-detail-price-sep { font-size: 16px; color: var(--color-text-muted); }
-    .bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 4px; }
+    .bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 6px; }
     .bp-detail-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 14px; }
     .bp-detail-specs { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
     .bp-detail-spec { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
