@@ -448,7 +448,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             </div>
             <div class="bp-cd-foot-client">
               <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
-              <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp }}</span>
+              <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp:2 }}</span>
             </div>
           </ng-container>
 
@@ -486,7 +486,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           </div>
           <div class="bp-cd-foot-client">
             <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
-            <span class="bp-cd-foot-client-value">{{ clientTotal | gbp }}</span>
+            <span class="bp-cd-foot-client-value">{{ clientTotal | gbp:2 }}</span>
           </div>
 
           <!-- v1.65eh — budget headroom card. Same shape + class
