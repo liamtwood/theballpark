@@ -135,6 +135,90 @@ async function getByProject(projectId) {
   return result.rows;
 }
 
+/** v1.65fI — promote an ad-hoc ask into a real cart line. Creates
+    an `items` row (agency-owned, is_active=false, approval_status=
+    'pending') so the new ask can be edited like a catalogue item,
+    plus the corresponding `project_items` snapshot row. One
+    transaction. No supplier roster — the agent has to pick before
+    Send. Returns the project_items row in the same shape
+    getByProject would. */
+async function addAdhoc(data) {
+  const { project_id, project_category_id, name, base_price, unit, description } = data || {};
+  if (!project_id) {
+    const err = new Error('project_id is required'); err.status = 400; throw err;
+  }
+  if (!name || !String(name).trim()) {
+    const err = new Error('name is required'); err.status = 400; throw err;
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // 1. Look up the project's owning org (agency) — the items row
+    //    is owned by them by convention; the supplier slot stays
+    //    empty until the brief fans out at Send time.
+    const proj = await client.query(
+      'SELECT org_id, category_id FROM projects WHERE id = $1',
+      [project_id]
+    );
+    if (!proj.rows[0]) {
+      const err = new Error('project not found'); err.status = 404; throw err;
+    }
+    const agencyOrgId = proj.rows[0].org_id;
+    // Resolve the items.category_id: prefer the project_category's
+    // category if we have one, else null.
+    let categoryId = null;
+    if (project_category_id) {
+      const pc = await client.query(
+        'SELECT category_id FROM project_categories WHERE id = $1',
+        [project_category_id]
+      );
+      categoryId = pc.rows[0]?.category_id || null;
+    }
+    // 2. Create the items row. UNIQUE(org_id, name) means re-adding
+    //    the same ask name re-uses the existing items row — keeps
+    //    things idempotent.
+    const it = await client.query(
+      `INSERT INTO items (org_id, category_id, name, description, unit, base_price,
+                          is_active, approval_status)
+       VALUES ($1, $2, $3, $4, $5, $6, false, 'pending')
+       ON CONFLICT (org_id, name) DO UPDATE SET
+         category_id = COALESCE(EXCLUDED.category_id, items.category_id),
+         description = COALESCE(EXCLUDED.description, items.description),
+         unit        = COALESCE(EXCLUDED.unit,        items.unit),
+         base_price  = COALESCE(EXCLUDED.base_price,  items.base_price),
+         updated_at  = NOW()
+       RETURNING id`,
+      [agencyOrgId, categoryId, String(name).trim(), description || null, unit || null, base_price || null]
+    );
+    const newItemId = it.rows[0].id;
+    // 3. Create the project_items row, snapshot fields copied.
+    const pi = await client.query(
+      `INSERT INTO project_items
+         (project_id, item_id, project_category_id, selection_type,
+          name, base_price, unit, description)
+       VALUES ($1, $2, $3, 'selected', $4, $5, $6, $7)
+       ON CONFLICT (project_id, item_id) DO UPDATE SET
+         selection_type      = 'selected',
+         project_category_id = COALESCE(EXCLUDED.project_category_id, project_items.project_category_id),
+         name                = COALESCE(EXCLUDED.name,        project_items.name),
+         base_price          = COALESCE(EXCLUDED.base_price,  project_items.base_price),
+         unit                = COALESCE(EXCLUDED.unit,        project_items.unit),
+         description         = COALESCE(EXCLUDED.description, project_items.description)
+       RETURNING *`,
+      [project_id, newItemId, project_category_id || null,
+       String(name).trim(), base_price || null, unit || null, description || null]
+    );
+    await client.query('COMMIT');
+    await recomputeProjectBallparks(project_id);
+    return pi.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /** v1.65fH — list suppliers ticked on a single cart row. */
 async function listItemSuppliers(projectId, itemId) {
   const r = await pool.query(
@@ -327,7 +411,7 @@ async function remove(projectId, itemId) {
 }
 
 module.exports = {
-  getByProject, add, update, setQuantity, remove,
+  getByProject, add, addAdhoc, update, setQuantity, remove,
   listItemSuppliers, addItemSupplier, removeItemSupplier,
   recomputeProjectBallparks,
 };

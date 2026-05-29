@@ -38,6 +38,24 @@ export class ProjectItemService {
     );
   }
 
+  /** v1.65fI — promote an ad-hoc ask into a real cart line. Server
+      creates the items row (agency-owned, pending) + project_items
+      row atomically so the new ask renders in the SELECTED list
+      and can be edited like a catalogue line. */
+  addAdhoc(
+    projectId: string,
+    name: string,
+    projectCategoryId?: string
+  ): Observable<ProjectItem> {
+    return this.api.post<ProjectItem>('/project-items/adhoc', {
+      project_id: projectId,
+      project_category_id: projectCategoryId ?? null,
+      name,
+    }).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
   /** v1.65f2 — update buy quantity on a cart row. Server clamps to a
       minimum of 1; pass an integer >= 1 here. Triggers a ballpark
       recompute server-side, so the Estimate / Overview panels see

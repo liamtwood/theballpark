@@ -17,6 +17,16 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.65fI — POST /api/project-items/adhoc
+// body: { project_id, project_category_id?, name, base_price?, unit?, description? }
+// Creates an items row + project_items row in one transaction so an
+// ad-hoc ask appears in the cart as a first-class editable line.
+router.post('/adhoc', async (req, res, next) => {
+  try {
+    res.status(201).json(await ProjectItemService.addAdhoc(req.body));
+  } catch (err) { next(err); }
+});
+
 // v1.65f2 → v1.65fA — PATCH /api/project-items/:projectId/:itemId
 // Body may include any subset of:
 //   { name, base_price, unit, description, quantity }
