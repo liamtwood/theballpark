@@ -11,6 +11,11 @@ export interface ProjectItem {
       multiplier (so a per-cover platter at qty 10, 250 guests, £6.25
       computes to £15,625). */
   quantity?: number;
+  /** v1.65fH — the set of suppliers ticked to receive a quote
+      request on this cart line when the brief is sent. Pre-filled
+      with the source supplier on cart-add for catalogue items;
+      empty for ad-hoc asks (agent must pick before Send). */
+  asked_supplier_ids?: string[];
   created_at: string;
 
   // Joined fields populated by ProjectItemService.getByProject() — present

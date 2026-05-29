@@ -53,4 +53,24 @@ router.delete('/:projectId/:itemId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.65fH — per-cart-item supplier roster.
+// POST   /api/project-items/:projectId/:itemId/suppliers     body { supplier_org_id }
+// DELETE /api/project-items/:projectId/:itemId/suppliers/:supplierId
+router.post('/:projectId/:itemId/suppliers', async (req, res, next) => {
+  try {
+    const list = await ProjectItemService.addItemSupplier(
+      req.params.projectId, req.params.itemId, req.body.supplier_org_id
+    );
+    res.status(201).json({ supplier_org_ids: list });
+  } catch (err) { next(err); }
+});
+router.delete('/:projectId/:itemId/suppliers/:supplierId', async (req, res, next) => {
+  try {
+    const list = await ProjectItemService.removeItemSupplier(
+      req.params.projectId, req.params.itemId, req.params.supplierId
+    );
+    res.json({ supplier_org_ids: list });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

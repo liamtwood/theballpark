@@ -323,6 +323,34 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                        min="1" step="1"
                        [disabled]="qtySaving[pi.id]"/>
               </div>
+
+              <!-- v1.65fH — per-item supplier roster (agent only).
+                   Lists every supplier already represented in the
+                   cart, with the source supplier (catalogue owner)
+                   pre-ticked and tagged. Agent can untick the
+                   source or tick alternates to fan the brief out to
+                   more than one supplier on this line. Ad-hoc items
+                   start empty and must have ≥1 tick before Send. -->
+              <div class="bp-cd-suppliers" *ngIf="!isSupplier && inCartSuppliers.length">
+                <div class="bp-cd-suppliers-hd">
+                  Suppliers
+                  <span class="bp-cd-suppliers-warn"
+                        *ngIf="!(pi.asked_supplier_ids?.length)">
+                    required
+                  </span>
+                </div>
+                <label *ngFor="let s of inCartSuppliers"
+                       class="bp-cd-supplier-row">
+                  <input type="checkbox"
+                         [checked]="(pi.asked_supplier_ids || []).includes(s.id)"
+                         (change)="onSupplierToggle(pi, s.id, $event)"/>
+                  <span class="bp-cd-supplier-name">{{ s.name }}</span>
+                  <span class="bp-cd-supplier-source"
+                        *ngIf="s.id === pi.supplier_org_id">
+                    source
+                  </span>
+                </label>
+              </div>
             </ng-container>
 
             <!-- EDIT MODE — same body slots, but inputs in place. -->
@@ -802,6 +830,54 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-qty-input:hover { border-color: var(--theme-accent); }
     .bp-cd-qty-input:focus { outline: none; border-color: var(--theme-accent); }
     .bp-cd-qty-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* v1.65fH — per-item supplier roster in the detail card. */
+    .bp-cd-suppliers {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 0.5px solid var(--color-border);
+      display: flex; flex-direction: column;
+      gap: 4px;
+    }
+    .bp-cd-suppliers-hd {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .bp-cd-suppliers-warn {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-danger);
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(225, 29, 72, 0.08);
+    }
+    .bp-cd-supplier-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 0;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+    }
+    .bp-cd-supplier-row input[type="checkbox"] {
+      width: 14px; height: 14px;
+      accent-color: var(--theme-accent);
+      cursor: pointer;
+    }
+    .bp-cd-supplier-name { flex: 1; min-width: 0; }
+    .bp-cd-supplier-source {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
     .bp-cd-detail-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 8px;
@@ -2253,6 +2329,49 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     if (next === this.qtyOf(pi)) return;
     this.changeQty(pi, next);
   }
+  /** v1.65fH — union of every supplier represented in this cart
+      (any selected row whose source supplier is set). Drives the
+      checkbox list in the detail card's SUPPLIERS section. */
+  get inCartSuppliers(): { id: string; name: string }[] {
+    const map = new Map<string, string>();
+    for (const pi of this.selected) {
+      const id = (pi as any).supplier_org_id as string | undefined;
+      const name = pi.supplier_name || '';
+      if (id) map.set(id, name);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }
+
+  /** v1.65fH — tick/untick handler for the per-item supplier
+      roster. Optimistic local update + persist. Rolls back on
+      error. */
+  onSupplierToggle(pi: ProjectItem, supplierId: string, ev: Event): void {
+    if (!pi.project_id || !pi.item_id || !supplierId) return;
+    const isChecked = (ev.target as HTMLInputElement).checked;
+    const cur = pi.asked_supplier_ids || [];
+    const before = [...cur];
+    // Optimistic local update.
+    if (isChecked && !cur.includes(supplierId)) {
+      (pi as any).asked_supplier_ids = [...cur, supplierId];
+    } else if (!isChecked && cur.includes(supplierId)) {
+      (pi as any).asked_supplier_ids = cur.filter(x => x !== supplierId);
+    }
+    this.cdr.markForCheck();
+    const obs = isChecked
+      ? this.projectItemSvc.addItemSupplier(pi.project_id, pi.item_id, supplierId)
+      : this.projectItemSvc.removeItemSupplier(pi.project_id, pi.item_id, supplierId);
+    obs.subscribe({
+      next: res => {
+        (pi as any).asked_supplier_ids = res.supplier_org_ids || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        (pi as any).asked_supplier_ids = before;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   /** v1.65fG — direct number input handler. Parses the input value,
       clamps to >= 1, and short-circuits when the value didn't move.
       Fired on change (blur or Enter) so we don't PATCH per

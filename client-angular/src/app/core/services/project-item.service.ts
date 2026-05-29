@@ -74,6 +74,31 @@ export class ProjectItemService {
     return Number.isFinite(q) && q > 0 ? q : 1;
   }
 
+  /** v1.65fH — tick a supplier for a cart line. Returns the new
+      roster. Cache is updated in place. */
+  addItemSupplier(projectId: string, itemId: string, supplierOrgId: string): Observable<{ supplier_org_ids: string[] }> {
+    return this.api.post<{ supplier_org_ids: string[] }>(
+      `/project-items/${projectId}/${itemId}/suppliers`,
+      { supplier_org_id: supplierOrgId }
+    ).pipe(
+      tap(res => this.patchCacheRoster(projectId, itemId, res.supplier_org_ids))
+    );
+  }
+  /** v1.65fH — untick a supplier. */
+  removeItemSupplier(projectId: string, itemId: string, supplierOrgId: string): Observable<{ supplier_org_ids: string[] }> {
+    return this.api.delete<{ supplier_org_ids: string[] }>(
+      `/project-items/${projectId}/${itemId}/suppliers/${supplierOrgId}`
+    ).pipe(
+      tap(res => this.patchCacheRoster(projectId, itemId, res.supplier_org_ids))
+    );
+  }
+  private patchCacheRoster(projectId: string, itemId: string, list: string[]): void {
+    const arr = this.cache.get(projectId);
+    if (!arr) return;
+    const row = arr.find(p => p.item_id === itemId);
+    if (row) (row as any).asked_supplier_ids = list || [];
+  }
+
   remove(projectId: string, itemId: string): Observable<ProjectItem> {
     return this.api.delete<ProjectItem>(`/project-items/${projectId}/${itemId}`).pipe(
       tap(() => this.removeFromCache(projectId, itemId))

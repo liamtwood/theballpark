@@ -349,6 +349,21 @@ const migrate = async () => {
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS description TEXT;
 
+      -- v1.65fH: per-cart-item supplier roster. Records WHICH
+      -- suppliers will receive a quote request on this cart line
+      -- when the brief is sent. Defaults to {source supplier} on
+      -- cart-add (the catalogue item's org); the agent can untick
+      -- the source or tick alternates from elsewhere in the cart.
+      -- Ad-hoc items start empty and require ≥1 pick before Send.
+      CREATE TABLE IF NOT EXISTS project_item_suppliers (
+        project_item_id UUID NOT NULL REFERENCES project_items(id) ON DELETE CASCADE,
+        supplier_org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (project_item_id, supplier_org_id)
+      );
+      CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
+        ON project_item_suppliers(project_item_id);
+
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);

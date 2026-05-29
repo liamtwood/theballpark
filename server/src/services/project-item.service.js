@@ -99,6 +99,11 @@ async function getByProject(projectId) {
   // legacy rows that never had a snapshot back-filled or for the
   // image/time_unit/tier/lead_time fields we haven't snapshotted
   // (yet — those still come from the catalogue).
+  // v1.65fH — also aggregate the per-item supplier roster (the set
+  // of suppliers ticked to receive a quote request on this line)
+  // via array_agg from project_item_suppliers. ARRAY_REMOVE strips
+  // the NULL the LEFT JOIN injects when the row has no rosters
+  // (ad-hoc items pre-tick).
   const result = await pool.query(
     `SELECT pi.*,
             COALESCE(pi.name,        i.name)        AS name,
@@ -115,16 +120,70 @@ async function getByProject(projectId) {
             c.icon_color      AS category_icon_color,
             o.id              AS supplier_org_id,
             o.name            AS supplier_name,
-            o.cover_image_url AS supplier_cover_url
+            o.cover_image_url AS supplier_cover_url,
+            ARRAY_REMOVE(ARRAY_AGG(pis.supplier_org_id), NULL) AS asked_supplier_ids
        FROM project_items pi
-       LEFT JOIN items      i ON pi.item_id     = i.id
-       LEFT JOIN categories c ON i.category_id  = c.id
-       LEFT JOIN orgs       o ON i.org_id       = o.id
+       LEFT JOIN items                  i   ON pi.item_id = i.id
+       LEFT JOIN categories             c   ON i.category_id = c.id
+       LEFT JOIN orgs                   o   ON i.org_id = o.id
+       LEFT JOIN project_item_suppliers pis ON pis.project_item_id = pi.id
       WHERE pi.project_id = $1
+      GROUP BY pi.id, i.id, c.id, o.id
       ORDER BY pi.created_at ASC`,
     [projectId]
   );
   return result.rows;
+}
+
+/** v1.65fH — list suppliers ticked on a single cart row. */
+async function listItemSuppliers(projectId, itemId) {
+  const r = await pool.query(
+    `SELECT pis.supplier_org_id
+       FROM project_item_suppliers pis
+       JOIN project_items pi ON pi.id = pis.project_item_id
+      WHERE pi.project_id = $1 AND pi.item_id = $2`,
+    [projectId, itemId]
+  );
+  return r.rows.map(x => x.supplier_org_id);
+}
+
+/** v1.65fH — tick a supplier for a cart row. Idempotent via the
+    UNIQUE primary key on (project_item_id, supplier_org_id). */
+async function addItemSupplier(projectId, itemId, supplierOrgId) {
+  if (!supplierOrgId) {
+    const err = new Error('supplier_org_id is required');
+    err.status = 400;
+    throw err;
+  }
+  const pi = await pool.query(
+    `SELECT id FROM project_items WHERE project_id = $1 AND item_id = $2`,
+    [projectId, itemId]
+  );
+  if (!pi.rows[0]) {
+    const err = new Error('project_item not found');
+    err.status = 404;
+    throw err;
+  }
+  await pool.query(
+    `INSERT INTO project_item_suppliers (project_item_id, supplier_org_id)
+     VALUES ($1, $2)
+     ON CONFLICT (project_item_id, supplier_org_id) DO NOTHING`,
+    [pi.rows[0].id, supplierOrgId]
+  );
+  return await listItemSuppliers(projectId, itemId);
+}
+
+/** v1.65fH — untick a supplier. No-op when not currently ticked. */
+async function removeItemSupplier(projectId, itemId, supplierOrgId) {
+  await pool.query(
+    `DELETE FROM project_item_suppliers pis
+       USING project_items pi
+      WHERE pis.project_item_id = pi.id
+        AND pi.project_id = $1 AND pi.item_id = $2
+        AND pis.supplier_org_id = $3`,
+    [projectId, itemId, supplierOrgId]
+  );
+  return await listItemSuppliers(projectId, itemId);
 }
 
 async function add(data) {
@@ -164,6 +223,19 @@ async function add(data) {
        project_category_id = COALESCE(EXCLUDED.project_category_id, project_items.project_category_id)
      RETURNING *`,
     [project_id, item_id, project_category_id ?? null, type]
+  );
+  // v1.65fH — tick the source supplier on cart-add so the new line
+  // defaults to "ask the supplier who listed it". Skipped silently
+  // for agency-owned items (ad-hoc placeholders) — those start with
+  // an empty supplier set and require an explicit pick before Send.
+  await pool.query(
+    `INSERT INTO project_item_suppliers (project_item_id, supplier_org_id)
+     SELECT $1, i.org_id
+       FROM items i
+       JOIN orgs  o ON o.id = i.org_id AND o.type = 'supplier'
+      WHERE i.id = $2
+     ON CONFLICT (project_item_id, supplier_org_id) DO NOTHING`,
+    [result.rows[0].id, item_id]
   );
   // v1.65cq — keep project_categories.ballpark_cost in sync after every
   // regular-Marketplace add so the Estimate drawer + Overview cards
@@ -254,4 +326,8 @@ async function remove(projectId, itemId) {
   return result.rows[0] || null;
 }
 
-module.exports = { getByProject, add, update, setQuantity, remove, recomputeProjectBallparks };
+module.exports = {
+  getByProject, add, update, setQuantity, remove,
+  listItemSuppliers, addItemSupplier, removeItemSupplier,
+  recomputeProjectBallparks,
+};
