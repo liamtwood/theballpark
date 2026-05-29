@@ -38,6 +38,25 @@ export class ProjectItemService {
     );
   }
 
+  /** v1.65f2 — update buy quantity on a cart row. Server clamps to a
+      minimum of 1; pass an integer >= 1 here. Triggers a ballpark
+      recompute server-side, so the Estimate / Overview panels see
+      fresh numbers on next read. */
+  setQuantity(projectId: string, itemId: string, quantity: number): Observable<ProjectItem> {
+    return this.api.patch<ProjectItem>(`/project-items/${projectId}/${itemId}`, { quantity }).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
+  /** v1.65f2 — synchronous quantity read against the cache.
+      Defaults to 1 if the row hasn't been fetched yet or no quantity
+      was set, mirroring the DB DEFAULT. */
+  getQuantity(projectId: string, itemId: string): number {
+    const row = this.cache.get(projectId)?.find(p => p.item_id === itemId);
+    const q = Number(row?.quantity);
+    return Number.isFinite(q) && q > 0 ? q : 1;
+  }
+
   remove(projectId: string, itemId: string): Observable<ProjectItem> {
     return this.api.delete<ProjectItem>(`/project-items/${projectId}/${itemId}`).pipe(
       tap(() => this.removeFromCache(projectId, itemId))

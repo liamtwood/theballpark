@@ -92,10 +92,27 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <!-- v1.65ew → v1.65ex — row price = the supplier's RATE,
                  no unit shown. The unit is only relevant when
                  editing (Adjust form has the per-unit dropdown) —
-                 on the read-only row, a clean number is enough. -->
+                 on the read-only row, a clean number is enough.
+                 v1.65f2 — agent-mode rows get a small buy-quantity
+                 stepper directly under the rate so the user can dial
+                 in "how many platters / hours / nights" without
+                 leaving the cart. Cart totals reflect qty in real
+                 time (lineTotal × qty × guest_count if per-head). -->
             <div class="bp-cd-price">
               <div class="bp-cd-price-rate">
                 {{ (pi.base_price || 0) | gbp }}
+              </div>
+              <div class="bp-cd-qty" *ngIf="!isSupplier && pi.item_id"
+                   (click)="$event.stopPropagation()">
+                <button type="button" class="bp-cd-qty-btn"
+                        [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
+                        (click)="onQtyMinus(pi)"
+                        title="Decrease quantity">−</button>
+                <span class="bp-cd-qty-n">{{ qtyOf(pi) }}</span>
+                <button type="button" class="bp-cd-qty-btn"
+                        [disabled]="qtySaving[pi.id]"
+                        (click)="onQtyPlus(pi)"
+                        title="Increase quantity">+</button>
               </div>
             </div>
             <!-- v1.65et → v1.65eu — supplier mode action cluster.
@@ -651,6 +668,50 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.01em;
       line-height: 1.1;
+    }
+
+    /* v1.65f2 — buy-quantity stepper under the row price (agent mode).
+       Compact pill: − N + with hairline border, theme-bg fill. Sits
+       directly under the rate so the user reads "£140 × 3" naturally.
+       Disabled state on the − button when qty=1 prevents going below
+       the floor; deletion is the × button's job. */
+    .bp-cd-qty {
+      display: inline-flex; align-items: center;
+      margin-top: 6px;
+      height: 22px;
+      padding: 0 2px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-family: var(--font-body);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-qty-btn {
+      width: 20px; height: 20px;
+      border: none; background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bp-cd-qty-btn:hover:not(:disabled) {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-cd-qty-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .bp-cd-qty-n {
+      min-width: 18px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      padding: 0 4px;
     }
     .bp-cd-price-unit-line {
       font-size: 10.5px;
@@ -1516,14 +1577,63 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
 
   /** v1.65ef — extended line price. Per-cover/per-head items multiply
       base_price by project.guest_count; everything else is flat.
-      Falls back to flat when guest_count is missing/0. */
+      Falls back to flat when guest_count is missing/0.
+      v1.65f2 — also multiplies by the row's buy quantity (default 1).
+      So a per-head platter at £6.25, qty 10, 250 guests → £15,625. */
   lineTotal(pi: ProjectItem): number {
     const base = Number(pi.base_price) || 0;
+    const qty = this.qtyOf(pi);
     const unit = (pi.unit || '').toLowerCase();
     if (this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit)) {
-      return base * this.guestCount;
+      return base * qty * this.guestCount;
     }
-    return base;
+    return base * qty;
+  }
+
+  /** v1.65f2 — current buy quantity for a row. Defaults to 1 when the
+      row was created before the column existed or was never set. */
+  qtyOf(pi: ProjectItem): number {
+    const q = Number((pi as any).quantity);
+    return Number.isFinite(q) && q > 0 ? q : 1;
+  }
+
+  /** v1.65f2 — per-row in-flight flag so the +/− buttons disable while
+      a PATCH is in transit. Keyed by project_items.id rather than
+      item_id so multiple rows can be edited concurrently. */
+  qtySaving: { [piId: string]: boolean } = {};
+
+  /** v1.65f2 — bump the row's quantity by +1. Optimistic-update: we
+      mutate the local row immediately so the UI feels instant, then
+      PATCH and reconcile on success. Rolls back on error. */
+  onQtyPlus(pi: ProjectItem): void {
+    this.changeQty(pi, this.qtyOf(pi) + 1);
+  }
+  /** v1.65f2 — drop by 1, floored at 1. Removing the row is a separate
+      affordance (the × button) so we don't conflate "decrement to 0"
+      with "delete from cart". */
+  onQtyMinus(pi: ProjectItem): void {
+    const next = Math.max(1, this.qtyOf(pi) - 1);
+    if (next === this.qtyOf(pi)) return;
+    this.changeQty(pi, next);
+  }
+  private changeQty(pi: ProjectItem, next: number): void {
+    if (!pi.project_id || !pi.item_id) return;
+    const prev = this.qtyOf(pi);
+    (pi as any).quantity = next;          // optimistic
+    this.qtySaving[pi.id] = true;
+    this.cdr.markForCheck();
+    this.projectItemSvc.setQuantity(pi.project_id, pi.item_id, next).subscribe({
+      next: row => {
+        (pi as any).quantity = Number((row as any).quantity) || next;
+        this.qtySaving[pi.id] = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        (pi as any).quantity = prev;       // rollback
+        this.qtySaving[pi.id] = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   /** Helper for the row template — true when this item bills per

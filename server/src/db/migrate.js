@@ -327,6 +327,15 @@ const migrate = async () => {
       -- from images[0].url for backward compat on existing display surfaces.
       ALTER TABLE items ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]';
 
+      -- v1.65f2: project_items.quantity — buy count per cart row. Default
+      -- 1 so existing rows behave the same. Marketplace card + cart
+      -- drawer expose a stepper; ballpark recompute multiplies by it
+      -- IN ADDITION TO the per-head guest_count multiplier (so
+      --   10 platters × 250 guests × £6.25 → £15,625 reads correctly
+      --   for "qty × heads" billing, and a flat-unit item like
+      --   "AV crew per day" with qty=3 → 3 × £800 = £2,400).
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS quantity NUMERIC(10,2) DEFAULT 1;
+
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);

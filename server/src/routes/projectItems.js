@@ -17,6 +17,24 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.65f2 — PATCH /api/project-items/:projectId/:itemId  body: { quantity }
+// Updates the buy-quantity on a single cart row. Body keys other than
+// `quantity` are ignored for now — selection_type / project_category_id
+// are still upserted through POST. Recomputes category ballpark cost
+// so the Estimate panel + Overview cards reflect the new total.
+router.patch('/:projectId/:itemId', async (req, res, next) => {
+  try {
+    if (req.body.quantity === undefined) {
+      return res.status(400).json({ error: 'quantity is required' });
+    }
+    const updated = await ProjectItemService.setQuantity(
+      req.params.projectId, req.params.itemId, req.body.quantity
+    );
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+    res.json(updated);
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/project-items/:projectId/:itemId
 router.delete('/:projectId/:itemId', async (req, res, next) => {
   try {

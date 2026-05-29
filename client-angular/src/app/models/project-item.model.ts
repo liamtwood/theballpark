@@ -6,6 +6,11 @@ export interface ProjectItem {
   item_id: string;
   project_category_id?: string;
   selection_type: SelectionType;
+  /** v1.65f2 — buy quantity per cart row. Default 1. Ballpark cost
+      multiplies by this in addition to the per-head guest_count
+      multiplier (so a per-cover platter at qty 10, 250 guests, £6.25
+      computes to £15,625). */
+  quantity?: number;
   created_at: string;
 
   // Joined fields populated by ProjectItemService.getByProject() — present

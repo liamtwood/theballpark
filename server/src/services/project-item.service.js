@@ -23,13 +23,22 @@ const pool = require('../db/pool');
     cost" (no margin or VAT) so the Estimate page's recalc() can
     layer those on top without double-counting; the catalogue-grid's
     per-category Estimate panel applies margin + VAT at display time
-    so it reads as a client-facing figure. */
+    so it reads as a client-facing figure.
+
+    v1.65f2 — buy quantity. Each project_items row now carries a
+    NUMERIC `quantity` (default 1). The line cost multiplies by
+    pi.quantity IN ADDITION to the per-head guest_count multiplier:
+      line = base_price × quantity × (guest_count when per-head else 1)
+    So "10 platters × 250 guests × £6.25" reads as £15,625 (qty 10,
+    unit 'cover' → both multipliers apply); "3 days AV crew × £800"
+    reads as £2,400 (qty 3, unit 'day' → only qty applies). */
 async function recomputeProjectBallparks(projectId) {
   await pool.query(
     `UPDATE project_categories pc
         SET ballpark_cost = COALESCE((
               SELECT SUM(
                        COALESCE(i.base_price, 0)
+                       * COALESCE(pi.quantity, 1)
                        * CASE
                            WHEN LOWER(COALESCE(i.unit, '')) IN ('cover', 'head')
                              THEN COALESCE(p.guest_count, 1)
@@ -138,6 +147,26 @@ async function add(data) {
   return result.rows[0];
 }
 
+/** v1.65f2 — update the buy-quantity on a project_items row. Clamps to
+    a minimum of 1 (zero / negative are nonsense for a cart line; use
+    DELETE to remove a row instead). Caller passes the canonical
+    projectId + itemId pair that uniquely identifies the row. Returns
+    the updated row, or null if the row doesn't exist. Recomputes
+    category ballpark on success so the Estimate stays live. */
+async function setQuantity(projectId, itemId, quantity) {
+  const qty = Math.max(1, Number(quantity) || 1);
+  const result = await pool.query(
+    `UPDATE project_items
+        SET quantity = $3
+      WHERE project_id = $1 AND item_id = $2
+      RETURNING *`,
+    [projectId, itemId, qty]
+  );
+  if (!result.rows[0]) return null;
+  await recomputeProjectBallparks(projectId);
+  return result.rows[0];
+}
+
 async function remove(projectId, itemId) {
   const result = await pool.query(
     `DELETE FROM project_items
@@ -151,4 +180,4 @@ async function remove(projectId, itemId) {
   return result.rows[0] || null;
 }
 
-module.exports = { getByProject, add, remove, recomputeProjectBallparks };
+module.exports = { getByProject, add, setQuantity, remove, recomputeProjectBallparks };
