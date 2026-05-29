@@ -450,23 +450,6 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                     rows="3"
                     [disabled]="sending"
                     placeholder="Add a message — anything the agent should know about your quote."></textarea>
-          <!-- v1.65fK — Cancel returns to the detail view; primary
-               CTA renamed to "Next" (advances to the next stage of
-               the brief flow). -->
-          <div class="bp-cd-checkout-foot">
-            <button type="button" class="bp-cd-checkout-cancel"
-                    (click)="checkoutMode = false">Cancel</button>
-            <button type="button"
-                    class="bp-cd-send-cta"
-                    [disabled]="!canSend"
-                    (click)="onSend()">
-              <span>{{ sending ? 'Sending…' : 'Next' }}</span>
-              <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
-              <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
-                {{ pendingCount }}
-              </span>
-            </button>
-          </div>
         </div>
 
         <!-- v1.65eg — estimate-style summary. Matches the layout on
@@ -524,20 +507,6 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                pre-populated from the cart's items + supplier set.
                v1.65es — agency-only. Suppliers get a "Review &
                respond" CTA wired in Phase 2. -->
-          <!-- v1.65fK — Cancel + Next footer for the agent checkout
-               view too. Cancel returns to the detail card; Next
-               advances to the outreach train. -->
-          <div class="bp-cd-checkout-foot">
-            <button type="button" class="bp-cd-checkout-cancel"
-                    (click)="checkoutMode = false">Cancel</button>
-            <button type="button"
-                    class="bp-cd-send-cta"
-                    [disabled]="!canSendBrief"
-                    (click)="sendBrief()">
-              <span>Next</span>
-              <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
-            </button>
-          </div>
 
           <!-- v1.65ev → v1.65ew — supplier wrap-up moved up into the
                supplier footer block (above). This was misnested
@@ -552,6 +521,28 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           <span class="bp-cd-foot-total">£0</span>
         </div>
         </div><!-- /.bp-cd-totals-stack -->
+        <!-- v1.65fL — checkout footer pinned to the bottom of the
+             right column. Uses the app's standard outlined pill
+             (.bp-search-view-estimate) — same shape as the
+             marketplace's "Event detail" + "View estimate" CTAs. -->
+        <div class="bp-cd-aside-foot" *ngIf="checkoutMode">
+          <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
+                  (click)="checkoutMode = false">Cancel</button>
+          <button *ngIf="isSupplier"
+                  type="button" class="bp-search-view-estimate"
+                  [disabled]="!canSend"
+                  (click)="onSend()">
+            {{ sending ? 'Sending…' : 'Next' }}
+            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+          </button>
+          <button *ngIf="!isSupplier"
+                  type="button" class="bp-search-view-estimate"
+                  [disabled]="!canSendBrief"
+                  (click)="sendBrief()">
+            Next
+            <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+          </button>
+        </div>
       </aside><!-- /.bp-cd-grid-summary -->
       </div><!-- /.bp-cd-grid -->
     </p-sidebar>
@@ -669,30 +660,32 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       color: var(--color-text-primary);
       font-weight: 600;
     }
-    /* v1.65fK — checkout footer: Cancel + Next. */
-    .bp-cd-checkout-foot {
-      display: flex; gap: 8px;
-      margin-top: 8px;
-    }
-    .bp-cd-checkout-foot .bp-cd-send-cta {
-      flex: 1;
-    }
-    .bp-cd-checkout-cancel {
+    /* v1.65fL — aside footer pinned to the bottom of the right
+       column. margin-top: auto pushes it down when there's slack;
+       a hairline top border + small padding visually separates it
+       from the scrolling content above. Buttons inside use the
+       app's standard .bp-search-view-estimate outlined pill. */
+    .bp-cd-aside-foot {
+      margin-top: auto;
       flex-shrink: 0;
-      padding: 10px 16px;
-      border: 0.5px solid var(--color-border);
-      background: var(--color-surface);
-      color: var(--color-text-secondary);
-      font-family: var(--font-body);
-      font-size: 13px; font-weight: 500;
-      border-radius: var(--radius-button);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      display: flex; gap: 8px;
+      padding-top: 12px;
+      border-top: 0.5px solid var(--color-border);
     }
-    .bp-cd-checkout-cancel:hover {
-      background: var(--theme-bg);
-      color: var(--color-text-primary);
-      border-color: var(--theme-accent);
+    .bp-cd-aside-foot .bp-search-view-estimate {
+      flex: 1;
+      justify-content: center;
+    }
+    /* Cancel variant: muted text + border, no theme-accent fill on
+       hover so the primary "Next" pill is visually dominant. */
+    .bp-cd-aside-foot-cancel {
+      background: var(--color-surface) !important;
+      color: var(--color-text-muted) !important;
+    }
+    .bp-cd-aside-foot-cancel:hover {
+      background: var(--theme-bg) !important;
+      color: var(--color-text-primary) !important;
+      border-color: var(--color-border) !important;
     }
 
     /* Back link inside the checkout summary. */
