@@ -336,6 +336,19 @@ const migrate = async () => {
       --   "AV crew per day" with qty=3 → 3 × £800 = £2,400).
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS quantity NUMERIC(10,2) DEFAULT 1;
 
+      -- v1.65fA: project_items is now the per-brief snapshot of the
+      -- catalogue item. Adding these columns means the agent can
+      -- tweak name / price / unit / description for THIS brief
+      -- without mutating the supplier's catalogue master row, and
+      -- ballpark recompute reads from the snapshot first.
+      -- items.id stays as the lineage pointer (where this snapshot
+      -- came from). Reads COALESCE(pi.<col>, i.<col>) so legacy rows
+      -- with NULL snapshot values still render the catalogue value.
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS name        VARCHAR(255);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS description TEXT;
+
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);

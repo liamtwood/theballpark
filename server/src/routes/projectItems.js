@@ -17,18 +17,27 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// v1.65f2 — PATCH /api/project-items/:projectId/:itemId  body: { quantity }
-// Updates the buy-quantity on a single cart row. Body keys other than
-// `quantity` are ignored for now — selection_type / project_category_id
-// are still upserted through POST. Recomputes category ballpark cost
-// so the Estimate panel + Overview cards reflect the new total.
+// v1.65f2 → v1.65fA — PATCH /api/project-items/:projectId/:itemId
+// Body may include any subset of:
+//   { name, base_price, unit, description, quantity }
+// Patches the project_items snapshot row. Provided fields overwrite,
+// undefined fields stay as they were. Money-relevant changes
+// (base_price / unit / quantity) trigger a ballpark recompute server-
+// side so the Estimate panel + Overview cards stay current.
 router.patch('/:projectId/:itemId', async (req, res, next) => {
   try {
-    if (req.body.quantity === undefined) {
-      return res.status(400).json({ error: 'quantity is required' });
+    const allowed = ['name', 'base_price', 'unit', 'description', 'quantity'];
+    const patch = {};
+    for (const k of allowed) {
+      if (req.body[k] !== undefined) patch[k] = req.body[k];
     }
-    const updated = await ProjectItemService.setQuantity(
-      req.params.projectId, req.params.itemId, req.body.quantity
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({
+        error: 'At least one of name/base_price/unit/description/quantity is required'
+      });
+    }
+    const updated = await ProjectItemService.update(
+      req.params.projectId, req.params.itemId, patch
     );
     if (!updated) return res.status(404).json({ error: 'Not found' });
     res.json(updated);

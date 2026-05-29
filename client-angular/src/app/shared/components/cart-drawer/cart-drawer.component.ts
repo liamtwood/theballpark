@@ -175,12 +175,26 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
               </div>
             </ng-container>
             <ng-template #agentActions>
-              <button type="button"
-                      class="bp-cd-action bp-cd-action--remove"
-                      title="Remove from project"
-                      (click)="remove(pi)">
-                <lucide-icon name="x" [size]="13"></lucide-icon>
-              </button>
+              <!-- v1.65fA — agent gets Edit (snapshot tweak) + Remove.
+                   Edit opens the same inline form the supplier uses
+                   for Adjust, but the Save handler patches the
+                   project_items snapshot instead of forking the
+                   catalogue. -->
+              <div class="bp-cd-agent-actions">
+                <button type="button"
+                        class="bp-cd-action bp-cd-action--edit"
+                        [class.bp-cd-action--active]="adjustOpenId === pi.id"
+                        title="Edit — name / price / unit / description"
+                        (click)="toggleAdjust(pi)">
+                  <lucide-icon name="square-pen" [size]="13"></lucide-icon>
+                </button>
+                <button type="button"
+                        class="bp-cd-action bp-cd-action--remove"
+                        title="Remove from project"
+                        (click)="remove(pi)">
+                  <lucide-icon name="x" [size]="13"></lucide-icon>
+                </button>
+              </div>
             </ng-template>
             <!-- v1.65ab — hover-only description tooltip. Truncated to
                  ~120 chars so the panel doesn't balloon. -->
@@ -196,9 +210,16 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                agency-pending placeholder, the server forks a
                supplier-owned catalogue items row in the same
                transaction (transitionItem.maybeForkCatalogueItem). -->
-          <div *ngIf="isSupplier && adjustOpenId === pi.id"
+          <!-- v1.65fA — adjust form now serves BOTH modes. Agent
+               saves to the project_items snapshot (this brief only,
+               no catalogue side-effects); supplier still routes
+               through onRowAdjust which queues a batch action +
+               forks the catalogue on Send. -->
+          <div *ngIf="adjustOpenId === pi.id"
                class="bp-cd-adjust">
-            <div class="bp-cd-adjust-hd">Quote &amp; add to catalogue</div>
+            <div class="bp-cd-adjust-hd">
+              {{ isSupplier ? 'Quote & add to catalogue' : 'Edit for this brief' }}
+            </div>
             <div class="bp-cd-adjust-row">
               <label class="bp-cd-adjust-lbl">Name</label>
               <input type="text" class="bp-cd-adjust-input"
@@ -231,13 +252,13 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <div class="bp-cd-adjust-foot">
               <span class="bp-cd-adjust-note">
                 <lucide-icon name="sparkles" [size]="11"></lucide-icon>
-                Adds to your catalogue
+                {{ isSupplier ? 'Adds to your catalogue' : 'Saves to this brief only' }}
               </span>
               <button type="button" class="bp-cd-adjust-cancel"
                       (click)="cancelAdjust()">Cancel</button>
               <button type="button" class="bp-cd-adjust-save"
                       [disabled]="!canSaveAdjust"
-                      (click)="onRowAdjust(pi)">
+                      (click)="onSaveAdjust(pi)">
                 <lucide-icon name="check" [size]="13"></lucide-icon> Save
               </button>
             </div>
@@ -789,6 +810,24 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       grid-column: 3; grid-row: 2;
       justify-self: end;
       align-self: end;
+    }
+    /* v1.65fA — agent action cluster (Edit + Remove). Lives in col
+       3 row 2 alongside the line total above. Two compact 22px
+       buttons in a flex row so they hug the right edge. */
+    .bp-cd-row--selected .bp-cd-agent-actions {
+      grid-column: 3; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+      display: flex;
+      gap: 4px;
+    }
+    .bp-cd-action--edit {
+      color: var(--color-text-muted);
+    }
+    .bp-cd-action--edit:hover,
+    .bp-cd-action--active.bp-cd-action--edit {
+      color: var(--theme-accent);
+      background: var(--theme-bg);
     }
     /* Price rate — supplier mode only (read-only big number, no
        multiplier breakdown). */
@@ -1704,6 +1743,61 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     }, 250);
     this.cdr.markForCheck();
   }
+  /** v1.65fA — single Save handler the template calls. Branches by
+      viewer: supplier → queue a batch row-action (existing flow that
+      forks the catalogue on Send); agent → PATCH the project_items
+      snapshot directly (no catalogue side-effects). */
+  onSaveAdjust(pi: ProjectItem): void {
+    if (this.isSupplier) this.onRowAdjust(pi);
+    else this.onAgentSnapshotSave(pi);
+  }
+
+  /** v1.65fA — agent-side snapshot edit. Patches project_items.name/
+      base_price/unit/description for THIS project only. Optimistic
+      local update so the cart row repaints immediately; server PATCH
+      then confirms + recomputes category ballpark. */
+  onAgentSnapshotSave(pi: ProjectItem): void {
+    if (!this.canSaveAdjust || !pi.project_id || !pi.item_id) {
+      this.cancelAdjust();
+      return;
+    }
+    const f = this.adjustForm;
+    const patch: any = {};
+    if (f.name.trim())                  patch.name = f.name.trim();
+    if (f.description.trim())           patch.description = f.description.trim();
+    if (f.price != null && !isNaN(Number(f.price))) patch.base_price = Number(f.price);
+    if (f.unit.trim())                  patch.unit = f.unit.trim();
+
+    // Optimistic local update — match the patch we just sent.
+    if (patch.name)              (pi as any).name = patch.name;
+    if (patch.description)       (pi as any).description = patch.description;
+    if (patch.base_price != null) (pi as any).base_price = patch.base_price;
+    if (patch.unit)              (pi as any).unit = patch.unit;
+    this.cancelAdjust();
+
+    this.projectItemSvc.update(pi.project_id, pi.item_id, patch).subscribe({
+      next: row => {
+        // Server-normalised values win (handles trimming, numeric
+        // coercion); preserve the joined display fields we don't
+        // round-trip (supplier_name, category_icon_*, image_url).
+        Object.assign(pi as any, {
+          name:        row.name,
+          description: row.description,
+          base_price:  row.base_price,
+          unit:        row.unit,
+          quantity:    row.quantity,
+        });
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        // Rollback path is messy because we threw away the prev
+        // values; rely on the next getByProject() to re-sync. The
+        // user can re-edit if the PATCH actually failed.
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   onRowAdjust(pi: ProjectItem): void {
     const f = this.adjustForm;
     // v1.65ev — queue, don't fire. If an earlier Image pick already

@@ -33,14 +33,20 @@ const pool = require('../db/pool');
     unit 'cover' → both multipliers apply); "3 days AV crew × £800"
     reads as £2,400 (qty 3, unit 'day' → only qty applies). */
 async function recomputeProjectBallparks(projectId) {
+  // v1.65fA — recompute now reads from the project_items SNAPSHOT
+  // first (pi.base_price + pi.unit), falling back to the catalogue
+  // (i.base_price + i.unit) only when the snapshot column is NULL.
+  // This means an agent's per-brief tweak to price (e.g. £85 → £80)
+  // flows through to the project's ballpark_cost immediately, with
+  // zero impact on the catalogue master other projects reference.
   await pool.query(
     `UPDATE project_categories pc
         SET ballpark_cost = COALESCE((
               SELECT SUM(
-                       COALESCE(i.base_price, 0)
+                       COALESCE(pi.base_price, i.base_price, 0)
                        * COALESCE(pi.quantity, 1)
                        * CASE
-                           WHEN LOWER(COALESCE(i.unit, '')) IN ('cover', 'head')
+                           WHEN LOWER(COALESCE(pi.unit, i.unit, '')) IN ('cover', 'head')
                              THEN COALESCE(p.guest_count, 1)
                            ELSE 1
                          END
@@ -87,12 +93,18 @@ async function getByProject(projectId) {
   // pre-tick those suppliers in the outreach 4-step. Was previously
   // only joining for supplier_name, which left the CTA gate
   // (canSendBrief checks supplier_org_id) permanently disabled.
+  // v1.65fA — project_items now carries its own snapshot of
+  // name / base_price / unit / description. Prefer pi.<col> (the
+  // snapshot) and fall back to i.<col> (the catalogue master) for
+  // legacy rows that never had a snapshot back-filled or for the
+  // image/time_unit/tier/lead_time fields we haven't snapshotted
+  // (yet — those still come from the catalogue).
   const result = await pool.query(
     `SELECT pi.*,
-            i.name,
-            i.description,
-            i.base_price,
-            i.unit,
+            COALESCE(pi.name,        i.name)        AS name,
+            COALESCE(pi.description, i.description) AS description,
+            COALESCE(pi.base_price,  i.base_price)  AS base_price,
+            COALESCE(pi.unit,        i.unit)        AS unit,
             i.time_unit,
             i.image_url,
             i.tier,
@@ -131,9 +143,22 @@ async function add(data) {
 
   // Upsert: tick overwrites heart and vice versa. project_category_id is
   // preserved if the existing row had one and the new payload doesn't.
+  //
+  // v1.65fA — on INSERT, copy name/base_price/unit/description from
+  // the catalogue items row so the project_items row IS the snapshot
+  // from the moment it lands in the cart. On UPDATE (re-tick of an
+  // existing row) we don't re-copy: the user may have already
+  // tweaked the snapshot and we'd be clobbering their edits. The
+  // catalogue copy lives in a subquery on the same statement so we
+  // make one round-trip instead of two.
   const result = await pool.query(
-    `INSERT INTO project_items (project_id, item_id, project_category_id, selection_type)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO project_items
+       (project_id, item_id, project_category_id, selection_type,
+        name, base_price, unit, description)
+     SELECT $1, $2, $3, $4,
+            i.name, i.base_price, i.unit, i.description
+       FROM items i
+      WHERE i.id = $2
      ON CONFLICT (project_id, item_id) DO UPDATE SET
        selection_type      = EXCLUDED.selection_type,
        project_category_id = COALESCE(EXCLUDED.project_category_id, project_items.project_category_id)
@@ -144,6 +169,55 @@ async function add(data) {
   // regular-Marketplace add so the Estimate drawer + Overview cards
   // reflect the new cart. Previously only the AI-matcher path did this.
   await recomputeProjectBallparks(project_id);
+  return result.rows[0];
+}
+
+/** v1.65fA — partial update for the project_items snapshot. Accepts
+    any subset of { name, base_price, unit, description, quantity }
+    and patches only the provided keys via a COALESCE pattern so
+    untouched columns stay as they were. base_price + unit changes
+    trigger recomputeProjectBallparks so the Estimate stays live.
+    Returns the updated row, or null if the row doesn't exist.
+
+    Why a single update() instead of per-field setters: the cart UI's
+    Adjust form typically saves name + price + unit + description in
+    one click — sending them as one PATCH is faster + atomic. */
+async function update(projectId, itemId, patch) {
+  const p = patch || {};
+  const cols = ['name', 'base_price', 'unit', 'description', 'quantity'];
+  const hasAny = cols.some(c => p[c] !== undefined);
+  if (!hasAny) {
+    const err = new Error('At least one of name/base_price/unit/description/quantity is required');
+    err.status = 400;
+    throw err;
+  }
+  // Quantity floor: 1 (zero/negative reserved for DELETE).
+  const qty = p.quantity !== undefined ? Math.max(1, Number(p.quantity) || 1) : undefined;
+  const result = await pool.query(
+    `UPDATE project_items
+        SET name        = COALESCE($3, name),
+            base_price  = COALESCE($4, base_price),
+            unit        = COALESCE($5, unit),
+            description = COALESCE($6, description),
+            quantity    = COALESCE($7, quantity)
+      WHERE project_id = $1 AND item_id = $2
+      RETURNING *`,
+    [
+      projectId,
+      itemId,
+      p.name        ?? null,
+      p.base_price  ?? null,
+      p.unit        ?? null,
+      p.description ?? null,
+      qty           ?? null,
+    ]
+  );
+  if (!result.rows[0]) return null;
+  // Only recompute when something money-relevant changed (skip when
+  // only name or description were patched — cosmetic).
+  if (p.base_price !== undefined || p.unit !== undefined || p.quantity !== undefined) {
+    await recomputeProjectBallparks(projectId);
+  }
   return result.rows[0];
 }
 
@@ -180,4 +254,4 @@ async function remove(projectId, itemId) {
   return result.rows[0] || null;
 }
 
-module.exports = { getByProject, add, setQuantity, remove, recomputeProjectBallparks };
+module.exports = { getByProject, add, update, setQuantity, remove, recomputeProjectBallparks };

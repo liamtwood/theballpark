@@ -48,6 +48,23 @@ export class ProjectItemService {
     );
   }
 
+  /** v1.65fA — partial snapshot update. Pass any subset of
+      { name, base_price, unit, description, quantity } — only the
+      provided keys are written. Edits go to the project_items
+      SNAPSHOT row, not the catalogue master, so the agent can tweak
+      "Sit-Down Dinner" for this brief without changing Rocket
+      Food's catalogue. Ballpark recompute fires server-side when
+      base_price / unit / quantity change. */
+  update(
+    projectId: string,
+    itemId: string,
+    patch: Partial<Pick<ProjectItem, 'name' | 'base_price' | 'unit' | 'description' | 'quantity'>>
+  ): Observable<ProjectItem> {
+    return this.api.patch<ProjectItem>(`/project-items/${projectId}/${itemId}`, patch).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
   /** v1.65f2 — synchronous quantity read against the cache.
       Defaults to 1 if the row hasn't been fetched yet or no quantity
       was set, mirroring the DB DEFAULT. */
