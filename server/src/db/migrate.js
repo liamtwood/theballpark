@@ -348,6 +348,9 @@ const migrate = async () => {
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
       ALTER TABLE project_items ADD COLUMN IF NOT EXISTS description TEXT;
+      -- v1.65fJ: image_url joins the snapshot set so the agent can
+      -- set a per-brief image without touching the catalogue master.
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS image_url   TEXT;
 
       -- v1.65fH: per-cart-item supplier roster. Records WHICH
       -- suppliers will receive a quote request on this cart line

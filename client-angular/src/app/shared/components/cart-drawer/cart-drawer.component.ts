@@ -241,8 +241,10 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                       (click)="toggleAdjust(pi)">
                 <lucide-icon name="square-pen" [size]="14"></lucide-icon>
               </button>
-              <button *ngIf="isSupplier"
-                      type="button"
+              <!-- v1.65fJ — image button now available to both roles.
+                   Supplier flow queues an adjust action; agent flow
+                   PATCHes the project_items snapshot directly. -->
+              <button type="button"
                       class="bp-detail-action"
                       [class.active]="!!pi.image_url || imageOpenId === pi.id"
                       title="Photo — upload, search, or paste"
@@ -371,9 +373,10 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             </ng-container>
           </div>
 
-          <!-- Inline Image picker — supplier only, opens below the card. -->
+          <!-- v1.65fJ — inline Image picker now available to both
+               roles. Save path branches in onImagePicked. -->
           <app-image-upload-panel
-            *ngIf="isSupplier && imageOpenId === pi.id"
+            *ngIf="imageOpenId === pi.id"
             [entityId]="pi.item_id || pi.id"
             type="item"
             [existingCoverUrl]="adjustForm.imageUrl || pi.image_url || ''"
@@ -2102,8 +2105,25 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     if (!url) return;
     this.adjustForm.imageUrl = url;
     (pi as any).image_url = url;
-    // v1.65ev — queue an adjust action carrying just the image (or
-    // merge with an existing queued adjust so we don't blow away
+    // v1.65fJ — agent path: PATCH the project_items snapshot
+    // directly so the per-brief image flips without touching the
+    // catalogue master. No queue, no Send required.
+    if (!this.isSupplier) {
+      if (pi.project_id && pi.item_id) {
+        this.projectItemSvc.update(pi.project_id, pi.item_id, { image_url: url })
+          .subscribe({
+            next: row => {
+              (pi as any).image_url = row.image_url || url;
+              this.cdr.markForCheck();
+            },
+            error: () => { this.cdr.markForCheck(); }
+          });
+      }
+      this.closeImage();
+      return;
+    }
+    // v1.65ev — supplier path: queue an adjust action carrying just
+    // the image (merge with any existing queued adjust to preserve
     // price/name set earlier). Flushed on Send.
     const prev = this.pendingActions.get(pi.id);
     this.pendingActions.set(pi.id, {

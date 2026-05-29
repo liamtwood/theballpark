@@ -111,7 +111,7 @@ async function getByProject(projectId) {
             COALESCE(pi.base_price,  i.base_price)  AS base_price,
             COALESCE(pi.unit,        i.unit)        AS unit,
             i.time_unit,
-            i.image_url,
+            COALESCE(pi.image_url,   i.image_url)   AS image_url,
             i.tier,
             i.lead_time_days,
             i.category_id     AS item_category_id,
@@ -361,10 +361,10 @@ async function add(data) {
     one click — sending them as one PATCH is faster + atomic. */
 async function update(projectId, itemId, patch) {
   const p = patch || {};
-  const cols = ['name', 'base_price', 'unit', 'description', 'quantity'];
+  const cols = ['name', 'base_price', 'unit', 'description', 'quantity', 'image_url'];
   const hasAny = cols.some(c => p[c] !== undefined);
   if (!hasAny) {
-    const err = new Error('At least one of name/base_price/unit/description/quantity is required');
+    const err = new Error('At least one of name/base_price/unit/description/quantity/image_url is required');
     err.status = 400;
     throw err;
   }
@@ -376,7 +376,8 @@ async function update(projectId, itemId, patch) {
             base_price  = COALESCE($4, base_price),
             unit        = COALESCE($5, unit),
             description = COALESCE($6, description),
-            quantity    = COALESCE($7, quantity)
+            quantity    = COALESCE($7, quantity),
+            image_url   = COALESCE($8, image_url)
       WHERE project_id = $1 AND item_id = $2
       RETURNING *`,
     [
@@ -387,6 +388,7 @@ async function update(projectId, itemId, patch) {
       p.unit        ?? null,
       p.description ?? null,
       qty           ?? null,
+      p.image_url   ?? null,
     ]
   );
   if (!result.rows[0]) return null;

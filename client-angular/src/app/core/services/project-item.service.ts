@@ -80,7 +80,7 @@ export class ProjectItemService {
   update(
     projectId: string,
     itemId: string,
-    patch: Partial<Pick<ProjectItem, 'name' | 'base_price' | 'unit' | 'description' | 'quantity'>>
+    patch: Partial<Pick<ProjectItem, 'name' | 'base_price' | 'unit' | 'description' | 'quantity' | 'image_url'>>
   ): Observable<ProjectItem> {
     return this.api.patch<ProjectItem>(`/project-items/${projectId}/${itemId}`, patch).pipe(
       tap(row => this.upsertCache(projectId, row))

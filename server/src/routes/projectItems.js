@@ -36,7 +36,7 @@ router.post('/adhoc', async (req, res, next) => {
 // side so the Estimate panel + Overview cards stay current.
 router.patch('/:projectId/:itemId', async (req, res, next) => {
   try {
-    const allowed = ['name', 'base_price', 'unit', 'description', 'quantity'];
+    const allowed = ['name', 'base_price', 'unit', 'description', 'quantity', 'image_url'];
     const patch = {};
     for (const k of allowed) {
       if (req.body[k] !== undefined) patch[k] = req.body[k];
