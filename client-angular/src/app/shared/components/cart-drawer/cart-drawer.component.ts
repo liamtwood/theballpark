@@ -227,12 +227,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                [style.background-color]="imageBgColor(pi)">
             <span *ngIf="!pi.image_url" class="bp-detail-hero-initials">{{ initial(pi) }}</span>
             <div class="bp-detail-actions">
-              <button *ngIf="isSupplier"
-                      type="button"
+              <!-- v1.65fQ — Accept visible to both roles. Confirms
+                   before firing so the agent / supplier doesn't
+                   click through accidentally. -->
+              <button type="button"
                       class="bp-detail-action"
                       [class.active]="rowStatus(pi) === 'accepted'"
                       title="Accept"
-                      (click)="onRowAccept(pi)">
+                      (click)="onAcceptClick(pi)">
                 <lucide-icon name="check" [size]="14"></lucide-icon>
               </button>
               <button type="button"
@@ -252,11 +254,16 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                       (click)="toggleImage(pi)">
                 <lucide-icon name="image" [size]="14"></lucide-icon>
               </button>
+              <!-- v1.65fQ — × is Decline when the row has a status
+                   (post-send: there's something to decline);
+                   otherwise it's Remove (pre-send: clear out of
+                   the cart). Decline confirms; Remove doesn't —
+                   re-adding from the marketplace is one click. -->
               <button type="button"
                       class="bp-detail-action"
                       [class.active]="isDeclined(pi)"
-                      [title]="isSupplier ? 'Decline' : 'Remove from project'"
-                      (click)="isSupplier ? onRowDecline(pi) : remove(pi)">
+                      [title]="rowStatus(pi) ? 'Decline' : 'Remove from project'"
+                      (click)="onDeclineOrRemove(pi)">
                 <lucide-icon name="x" [size]="14"></lucide-icon>
               </button>
             </div>
@@ -2342,6 +2349,41 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     (pi as any)._raw_status = 'declined_by_supplier';
     this.syncAutoMessage();
     this.cdr.markForCheck();
+  }
+  /** v1.65fQ — Accept handler with a confirm prompt. Supplier flow
+      reuses onRowAccept (queues a batch action); agent flow flips
+      the local row status — server persistence for the agent-side
+      acceptance comes with the double-accept handshake later. */
+  onAcceptClick(pi: ProjectItem): void {
+    const ok = window.confirm(`Accept "${pi.name || 'this item'}"?`);
+    if (!ok) return;
+    if (this.isSupplier) {
+      this.onRowAccept(pi);
+      return;
+    }
+    (pi as any)._raw_status = 'accepted';
+    this.cdr.markForCheck();
+  }
+  /** v1.65fQ — × button branches by context: post-send (rowStatus
+      already set) → Decline with confirm; pre-send → Remove (no
+      confirm, easily reversible). Agent decline only flips the
+      local status for now; supplier decline queues the existing
+      batch action. */
+  onDeclineOrRemove(pi: ProjectItem): void {
+    if (this.rowStatus(pi)) {
+      const ok = window.confirm(`Decline "${pi.name || 'this item'}"?`);
+      if (!ok) return;
+      if (this.isSupplier) {
+        this.onRowDecline(pi);
+      } else {
+        (pi as any)._raw_status = 'declined_by_agent';
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+    // No status → behave as Remove (existing path).
+    if (this.isSupplier) this.onRowDecline(pi);
+    else this.remove(pi);
   }
   toggleAdjust(pi: ProjectItem): void {
     if (this.adjustOpenId === pi.id) { this.cancelAdjust(); return; }
