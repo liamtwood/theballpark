@@ -88,43 +88,49 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                    [class.bp-cd-row-status--bad]="isDeclined(pi)">
                 {{ rowStatusLabel(pi) }}
               </div>
-            </div>
-            <!-- v1.65f3 — row layout for agent mode now shows three
-                 distinct pieces of math on every row:
-                   • a small "£rate / unit × multiplier" breakdown
-                     (left, under the supplier line)
-                   • the qty stepper (inline next to the breakdown)
-                   • the LINE TOTAL (right column, large, prominent)
-                 So a Catering per-head row reads as
-                   £85 / head × 250 guests   [− 1 +]
-                 with £21,250 sitting on the right. Supplier mode
-                 keeps the old read-only "rate only" cell since the
-                 supplier is pricing the unit, not buying. -->
-            <div class="bp-cd-price">
-              <div class="bp-cd-price-rate" *ngIf="isSupplier">
-                {{ (pi.base_price || 0) | gbp }}
-              </div>
+              <!-- v1.65f4 — agent-mode breakdown line lives inside
+                   the text block so it stacks below the supplier line
+                   via the same flex column. Keeps the grid simple
+                   (no row collisions in col 2). -->
               <div class="bp-cd-price-line" *ngIf="!isSupplier">
                 {{ rateLine(pi) }}
               </div>
-              <div class="bp-cd-qty" *ngIf="!isSupplier && pi.item_id"
-                   (click)="$event.stopPropagation()">
-                <button type="button" class="bp-cd-qty-btn"
-                        [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
-                        (click)="onQtyMinus(pi)"
-                        title="Decrease quantity">−</button>
-                <span class="bp-cd-qty-n">{{ qtyOf(pi) }}</span>
-                <button type="button" class="bp-cd-qty-btn"
-                        [disabled]="qtySaving[pi.id]"
-                        (click)="onQtyPlus(pi)"
-                        title="Increase quantity">+</button>
+            </div>
+            <!-- v1.65f3 → v1.65f4 — row layout shows three pieces of
+                 math, with the stepper always on its OWN row so the
+                 visual rhythm is consistent regardless of breakdown
+                 length:
+                   ROW 1: name + supplier + breakdown text  |  LINE TOTAL
+                   ROW 2: stepper                            |  ×
+                 Per-head items display the EFFECTIVE head count in
+                 the stepper (qty × guest_count, so 250 not 1) — and
+                 +/− step in groups of guest_count. Flat-unit items
+                 keep the simple qty stepper.
+                 Supplier mode keeps a read-only "rate" cell on row 2
+                 col 2, with the 4-action cluster on the right. -->
+            <div class="bp-cd-price" *ngIf="isSupplier">
+              <div class="bp-cd-price-rate">
+                {{ (pi.base_price || 0) | gbp }}
               </div>
             </div>
-            <!-- v1.65f3 — agent-mode line total, lives in its own
-                 grid column on the right. Big serif number — visually
-                 outranks the rate breakdown so the user reads "this
-                 line costs £21,250" at a glance, then drills into the
-                 multiplier text below if they want to verify. -->
+            <!-- v1.65f4 — stepper hoisted out of .bp-cd-price into its
+                 own grid cell on row 2 so it sits cleanly on its own
+                 line every time (no wrap-when-breakdown-is-long). -->
+            <div class="bp-cd-qty" *ngIf="!isSupplier && pi.item_id"
+                 (click)="$event.stopPropagation()">
+              <button type="button" class="bp-cd-qty-btn"
+                      [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
+                      (click)="onQtyMinus(pi)"
+                      title="Decrease">−</button>
+              <span class="bp-cd-qty-n">{{ stepperValue(pi) | number }}</span>
+              <button type="button" class="bp-cd-qty-btn"
+                      [disabled]="qtySaving[pi.id]"
+                      (click)="onQtyPlus(pi)"
+                      title="Increase">+</button>
+            </div>
+            <!-- v1.65f3 — agent-mode line total, right column, big
+                 serif number. Visually outranks the breakdown so the
+                 user reads "this line costs £21,250" at a glance. -->
             <div class="bp-cd-row-total" *ngIf="!isSupplier">
               {{ lineTotal(pi) | gbp }}
             </div>
@@ -625,21 +631,27 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
 
-    /* v1.65ew → v1.65f3 — row layout. Three-column grid in agent mode
-       so the line total lives on the right of every row; supplier
-       mode keeps two columns (no total — supplier prices the unit,
-       doesn't buy quantities). Layout (agent):
+    /* v1.65ew → v1.65f4 — row layout. Three-column / three-row grid
+       in agent mode. The breakdown line sits stacked with the name
+       and supplier (row 1, col 2); the stepper ALWAYS gets its own
+       row (row 2, col 2) so the visual rhythm is consistent
+       regardless of breakdown length. Line total spans rows 1-2 in
+       col 3 (vertically centred), remove × drops to row 2 col 3.
+       Supplier mode keeps two columns (no total, action cluster
+       stays in col 2 row 2).
          ┌──────┬──────────────────────────┬──────────┐
-         │  IMG │ Name                     │  TOTAL   │
-         │      │ Supplier                 │   ×      │
-         │      │ £rate / unit × N  [−1+]  │          │
+         │  IMG │ Name                     │          │
+         │      │ Supplier                 │  TOTAL   │
+         │      │ £rate / unit × N         │          │
+         │      ├──────────────────────────┼──────────┤
+         │      │ [− 250 +]                │    ×     │
          └──────┴──────────────────────────┴──────────┘ */
     .bp-cd-row--selected {
       display: grid;
       grid-template-columns: 44px minmax(0, 1fr) auto;
       grid-template-rows: auto auto;
       column-gap: 12px;
-      row-gap: 6px;
+      row-gap: 8px;
       align-items: start;
       padding: 12px 14px;
     }
@@ -659,27 +671,28 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       text-overflow: clip;
       line-height: 1.3;
     }
-    /* Row-2 strip: price breakdown + stepper (col 2), remove × (col 3
-       under the line total). Vertical centering under the total
-       keeps the eye on the big number. */
+    /* v1.65f4 — .bp-cd-price now only renders in SUPPLIER mode (the
+       read-only rate cell). Sits in col 2 row 2, alongside the
+       4-action cluster on the right. Agent mode dropped this
+       wrapper — the breakdown text moved inside .bp-cd-text and the
+       stepper lives in its own grid cell. */
     .bp-cd-row--selected .bp-cd-price {
       grid-column: 2; grid-row: 2;
       justify-self: start;
       text-align: left;
-      align-self: end;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      column-gap: 10px;
-      row-gap: 6px;
+      align-self: center;
     }
-    /* v1.65f3 — line total lives in its own grid column on the right.
-       Sits in row 1 next to the name + supplier text; the remove ×
-       drops into row 2 directly below it. Big serif number, same
-       vocabulary as the category Estimate panel total. */
+    /* v1.65f4 — stepper on its own row, left-justified in col 2 row 2. */
+    .bp-cd-row--selected .bp-cd-qty {
+      grid-column: 2; grid-row: 2;
+      justify-self: start;
+      align-self: center;
+    }
+    /* v1.65f3 → v1.65f4 — line total in col 3 spans both rows so it
+       sits vertically centred next to the row body. */
     .bp-cd-row--selected .bp-cd-row-total {
-      grid-column: 3; grid-row: 1;
-      align-self: start;
+      grid-column: 3; grid-row: 1 / span 2;
+      align-self: center;
       justify-self: end;
       font-family: var(--font-display);
       font-size: 19px;
@@ -690,13 +703,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       white-space: nowrap;
       padding-left: 8px;
     }
-    /* Supplier mode (no line-total cell) — remove × sits in col 2 row 2. */
+    /* Supplier mode (no line-total cell) — action cluster sits in
+       col 2 row 2 (the cell now occupied by the agent-mode stepper). */
     .bp-cd-row--selected .bp-cd-row-actions {
       grid-column: 2; grid-row: 2;
       justify-self: end;
       align-self: end;
     }
-    /* Agent mode remove × sits under the line total in col 3. */
+    /* Agent mode remove × pinned to col 3 row 2, lined up under the
+       line total. */
     .bp-cd-row--selected .bp-cd-action--remove {
       grid-column: 3; grid-row: 2;
       justify-self: end;
@@ -712,9 +727,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       letter-spacing: -0.01em;
       line-height: 1.1;
     }
-    /* v1.65f3 — agent-mode breakdown line. Calm secondary text since
-       the eye-catcher is the line total over on the right; this is
-       the "show your working" for the user
+    /* v1.65f3 → v1.65f4 — agent-mode breakdown line. Now lives inside
+       .bp-cd-text so it stacks below the supplier line via that
+       block's flex column. Calm secondary text since the
+       eye-catcher is the line total over on the right; this is the
+       "show your working" for the user
          (£85 / head × 250 guests × 2). */
     .bp-cd-price-line {
       font-size: 12px;
@@ -726,6 +743,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
+      margin-top: 4px;
     }
 
     /* v1.65f2 — buy-quantity stepper under the row price (agent mode).
@@ -1689,15 +1707,32 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       item_id so multiple rows can be edited concurrently. */
   qtySaving: { [piId: string]: boolean } = {};
 
-  /** v1.65f2 — bump the row's quantity by +1. Optimistic-update: we
-      mutate the local row immediately so the UI feels instant, then
-      PATCH and reconcile on success. Rolls back on error. */
+  /** v1.65f4 — number displayed inside the stepper pill. For per-head
+      / per-cover items it shows qty × guest_count (e.g. "250" not
+      "1" for the canonical case of one round at full attendance, or
+      "500" for two rounds); for flat-unit items it stays as the raw
+      qty. This matches the breakdown text above, so the stepper
+      reads as "the head count this row is feeding" instead of "the
+      buy multiplier" which only makes sense once you've internalised
+      the schema. */
+  stepperValue(pi: ProjectItem): number {
+    const qty = this.qtyOf(pi);
+    const unit = (pi.unit || '').toLowerCase();
+    if (this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit)) {
+      return qty * this.guestCount;
+    }
+    return qty;
+  }
+
+  /** v1.65f2 → v1.65f4 — bump the row's quantity by 1. The DB column
+      still stores raw qty (1, 2, 3) regardless of unit; we just
+      display the effective head-count derived value. */
   onQtyPlus(pi: ProjectItem): void {
     this.changeQty(pi, this.qtyOf(pi) + 1);
   }
-  /** v1.65f2 — drop by 1, floored at 1. Removing the row is a separate
-      affordance (the × button) so we don't conflate "decrement to 0"
-      with "delete from cart". */
+  /** v1.65f2 → v1.65f4 — decrement qty by 1, floored at 1. The
+      stepper display jumps by step size, but the underlying qty
+      column moves by 1 every click. */
   onQtyMinus(pi: ProjectItem): void {
     const next = Math.max(1, this.qtyOf(pi) - 1);
     if (next === this.qtyOf(pi)) return;
