@@ -315,16 +315,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                 <lucide-icon name="map-pin" [size]="12"></lucide-icon>
                 {{ pi.supplier_name }}
               </div>
+              <!-- v1.65fD — unit stays as static read-only text; the
+                   supplier set how they bill on the catalogue item,
+                   the agent shouldn't change it per-brief. Only the
+                   numeric price is editable here. -->
               <div class="bp-detail-price-row">
                 <input type="number" class="bp-detail-price-input"
                        [(ngModel)]="adjustForm.price"
                        min="0" step="1" placeholder="0"/>
-                <select class="bp-detail-unit-select"
-                        [(ngModel)]="adjustForm.unit">
-                  <option *ngFor="let u of unitOptions" [value]="u.code">
-                    per {{ u.label }}
-                  </option>
-                </select>
+                <span class="bp-detail-price-unit" *ngIf="pi.unit">{{ unitShort(pi.unit) }}</span>
               </div>
               <textarea class="bp-detail-desc-input" rows="3"
                         [(ngModel)]="adjustForm.description"

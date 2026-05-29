@@ -2421,58 +2421,69 @@ app-top-nav { flex-shrink: 0; }
 .bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
 .bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
 
-/* v1.65fC — inline edit primitives. When a detail card flips to
-   "editing" the static text rows swap for compact inputs that match
-   the surrounding type rhythm. Used in cart drawer's snapshot-edit
-   flow; catalogue grid can adopt later. */
+/* v1.65fC → v1.65fD — inline edit primitives. The inputs MIRROR the
+   view-mode text exactly (same font / size / weight / color / line-
+   height) so the card doesn't visually shift when toggling edit;
+   editability is signalled by a faint hairline border + theme-accent
+   focus, not by chunky form chrome. Padding is kept to ~2px on each
+   axis so the layout stays on the same baseline. */
 .bp-detail-name-input {
   width: 100%;
   font-family: var(--font-display);
   font-size: 18px; font-weight: 400;
   color: var(--color-text-primary);
   line-height: 1.3;
-  padding: 4px 8px;
-  border: 0.5px solid var(--color-border);
-  border-radius: var(--radius-input);
-  background: var(--color-surface);
-  margin-bottom: 8px;
+  padding: 2px 4px;
+  margin: -2px -4px 6px;        /* cancel padding so the text sits flush */
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
 }
+.bp-detail-name-input:hover { border-color: var(--theme-accent); }
 .bp-detail-name-input:focus {
   outline: none;
+  border-style: solid;
   border-color: var(--theme-accent);
+  background: var(--color-surface);
 }
 .bp-detail-price-input {
-  font-size: 20px; font-weight: 700;
-  width: 100px;
-  padding: 4px 8px;
-  border: 0.5px solid var(--color-border);
-  border-radius: var(--radius-input);
-  background: var(--color-surface);
+  font-size: 22px; font-weight: 700;
   color: var(--color-text-primary);
+  width: 110px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
   font-variant-numeric: tabular-nums;
 }
-.bp-detail-price-input:focus { outline: none; border-color: var(--theme-accent); }
-.bp-detail-unit-select {
-  font-size: 12px;
-  padding: 6px 8px;
-  border: 0.5px solid var(--color-border);
-  border-radius: var(--radius-input);
+.bp-detail-price-input:hover { border-color: var(--theme-accent); }
+.bp-detail-price-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--theme-accent);
   background: var(--color-surface);
-  color: var(--color-text-secondary);
 }
 .bp-detail-desc-input {
   width: 100%;
   font-family: var(--font-body);
-  font-size: 12px; line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--color-text-secondary);
-  padding: 6px 8px;
-  border: 0.5px solid var(--color-border);
-  border-radius: var(--radius-input);
-  background: var(--color-surface);
-  resize: vertical; min-height: 64px;
-  margin-bottom: 14px;
+  padding: 2px 4px;
+  margin: -2px -4px 14px;
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  resize: vertical; min-height: 60px;
 }
-.bp-detail-desc-input:focus { outline: none; border-color: var(--theme-accent); }
+.bp-detail-desc-input:hover { border-color: var(--theme-accent); }
+.bp-detail-desc-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--theme-accent);
+  background: var(--color-surface);
+}
 .bp-detail-edit-foot {
   display: flex; gap: 8px; justify-content: flex-end;
   margin-top: 4px;
