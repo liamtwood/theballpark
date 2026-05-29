@@ -367,6 +367,24 @@ const migrate = async () => {
       CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
         ON project_item_suppliers(project_item_id);
 
+      -- v1.65fW: per-item per-side decision satellite. Each row is
+      -- a single accept / decline event from one side (buyer = agent,
+      -- seller = supplier), with the actor and an optional note.
+      -- Append-only; current state = latest row per (item, side).
+      -- Designed to extend to additional sides (approver / client)
+      -- without schema change.
+      CREATE TABLE IF NOT EXISTS message_item_decisions (
+        id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        message_item_id UUID NOT NULL REFERENCES message_items(id) ON DELETE CASCADE,
+        side            VARCHAR(20) NOT NULL,
+        decision        VARCHAR(20) NOT NULL,
+        user_id         UUID REFERENCES users(id),
+        note            TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ix_mid_latest
+        ON message_item_decisions(message_item_id, side, created_at DESC);
+
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS card_color VARCHAR(20);

@@ -2,7 +2,7 @@ const router = require('express').Router();
 const pool = require('../db/pool');
 const MessageService = require('../services/message.service');
 const {
-  transitionItem, getByMessage,
+  transitionItem, getByMessage, recordDecision, listDecisions,
 } = require('../services/message-item.service');
 const { replyNotificationEmail } = require('../services/notification.service');
 
@@ -174,6 +174,22 @@ router.post('/:id/reply', async (req, res, next) => {
         executor: db,
       });
 
+      // v1.65fW — accept / decline also writes a row to the
+      // message_item_decisions satellite so we have a clean per-side
+      // record (with user + timestamp) that survives status changes.
+      // 'adjust' / 'quote' / 'pay' / 'think' don't write a decision —
+      // those are state transitions, not accept/decline acts.
+      if (action === 'accept' || action === 'decline') {
+        const side = isSupplier ? 'seller' : 'buyer';
+        await db.query(
+          `INSERT INTO message_item_decisions
+             (message_item_id, side, decision, user_id, note)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [message_item_id, side, action === 'accept' ? 'accepted' : 'declined',
+           user_id || null, note || null]
+        );
+      }
+
       changes.push({ name: b.name, fromLabel: b.status, toLabel: result.toStatus });
     }
 
@@ -202,6 +218,29 @@ router.post('/:id/reply', async (req, res, next) => {
   } finally {
     db.release();
   }
+});
+
+// v1.65fW — standalone decision record/list endpoints. The reply
+// route above already writes a decision on accept/decline (via
+// /api/messages/:id/reply), but the agent can also Accept a row
+// from inside the cart drawer without going through a full reply
+// flow — that path uses this endpoint.
+router.post('/:messageId/items/:itemId/decisions', async (req, res, next) => {
+  try {
+    const row = await recordDecision({
+      messageItemId: req.params.itemId,
+      side: req.body.side,
+      decision: req.body.decision,
+      userId: req.body.user_id,
+      note: req.body.note,
+    });
+    res.status(201).json(row);
+  } catch (err) { next(err); }
+});
+router.get('/:messageId/items/:itemId/decisions', async (req, res, next) => {
+  try {
+    res.json(await listDecisions(req.params.itemId));
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

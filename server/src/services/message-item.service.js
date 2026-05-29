@@ -213,7 +213,11 @@ function aggregateStatus(items, viewer) {
     in the marketplace-card shape (mirrors project-item.service which
     already does the same join). Columns prefixed with `item_` /
     `supplier_` are pulled-through; the existing message_items columns
-    stay untouched. */
+    stay untouched.
+
+    v1.65fW — also returns buyer_status / seller_status derived from
+    the message_item_decisions satellite (latest row per side). The
+    UI uses these to drive the two-sided handshake badges. */
 async function getByMessage(messageId, { executor = null } = {}) {
   const db = executor || pool;
   const r = await db.query(
@@ -222,13 +226,74 @@ async function getByMessage(messageId, { executor = null } = {}) {
             i.image_display   AS item_image_display,
             o.id              AS supplier_org_id,
             o.name            AS supplier_name,
-            o.logo_url        AS supplier_logo_url
+            o.logo_url        AS supplier_logo_url,
+            buyer.decision    AS buyer_status,
+            buyer.user_id     AS buyer_user_id,
+            buyer.created_at  AS buyer_at,
+            seller.decision   AS seller_status,
+            seller.user_id    AS seller_user_id,
+            seller.created_at AS seller_at
        FROM message_items mi
        LEFT JOIN items i ON i.id = mi.item_id
        LEFT JOIN orgs  o ON o.id = i.org_id
+       LEFT JOIN LATERAL (
+         SELECT d.decision, d.user_id, d.created_at
+           FROM message_item_decisions d
+          WHERE d.message_item_id = mi.id AND d.side = 'buyer'
+          ORDER BY d.created_at DESC LIMIT 1
+       ) buyer ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT d.decision, d.user_id, d.created_at
+           FROM message_item_decisions d
+          WHERE d.message_item_id = mi.id AND d.side = 'seller'
+          ORDER BY d.created_at DESC LIMIT 1
+       ) seller ON TRUE
       WHERE mi.message_id = $1
       ORDER BY mi.created_at ASC`,
     [messageId]
+  );
+  return r.rows;
+}
+
+/** v1.65fW — record a buyer/seller decision on a message_item.
+    Append-only — every click is a new row; the current state is the
+    latest row per (message_item_id, side). Caller passes the actor's
+    user_id + optional note. Returns the inserted row.
+
+    Validates side ∈ { buyer, seller } and decision ∈ { accepted,
+    declined } but leaves room for additional values (e.g. 'cleared'
+    when we wire material-edit reset later). */
+async function recordDecision({ messageItemId, side, decision, userId, note, executor = null }) {
+  const db = executor || pool;
+  if (!messageItemId) {
+    const err = new Error('message_item_id is required'); err.status = 400; throw err;
+  }
+  if (side !== 'buyer' && side !== 'seller') {
+    const err = new Error('side must be buyer or seller'); err.status = 400; throw err;
+  }
+  if (decision !== 'accepted' && decision !== 'declined') {
+    const err = new Error('decision must be accepted or declined'); err.status = 400; throw err;
+  }
+  const r = await db.query(
+    `INSERT INTO message_item_decisions
+       (message_item_id, side, decision, user_id, note)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [messageItemId, side, decision, userId || null, note || null]
+  );
+  return r.rows[0];
+}
+
+/** v1.65fW — full decision history for a message_item, both sides,
+    newest first. Powers the future "decision timeline" UI. */
+async function listDecisions(messageItemId) {
+  const r = await pool.query(
+    `SELECT d.*, u.email AS user_email, u.name AS user_name
+       FROM message_item_decisions d
+       LEFT JOIN users u ON u.id = d.user_id
+      WHERE d.message_item_id = $1
+      ORDER BY d.created_at DESC`,
+    [messageItemId]
   );
   return r.rows;
 }
@@ -265,5 +330,7 @@ module.exports = {
   aggregateStatus,
   getByMessage,
   getThreadByToken,
+  recordDecision,
+  listDecisions,
   STATUS_META,
 };
