@@ -400,26 +400,19 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              flips to the quote summary on demand. The "← Back" link
              at the top returns to the detail view. -->
         <div class="bp-cd-totals-stack" *ngIf="checkoutMode">
-        <button type="button" class="bp-cd-checkout-back"
-                (click)="checkoutMode = false">
-          <lucide-icon name="chevron-left" [size]="13"></lucide-icon> Back
-        </button>
-
-        <!-- v1.65fF — CHECKOUT header + per-item invoice table.
-             Reads like a standard invoice line list:
-               Working Lunch Platters · £85 / head · 250 · £21,250
-             The totals breakdown below adds margin / VAT / budget /
-             textarea / Send. -->
+        <!-- v1.65fK — Back link dropped, replaced by Cancel in the
+             footer. Checkout header + invoice now sit at the top of
+             the column (margin-top:auto removed below). -->
         <div class="bp-cd-checkout-hd">CHECKOUT</div>
         <table class="bp-cd-invoice">
           <tbody>
             <tr *ngFor="let pi of selected">
               <td class="bp-cd-invoice-name">{{ pi.name }}</td>
-              <td class="bp-cd-invoice-rate">
-                {{ (pi.base_price || 0) | gbp }}<span class="bp-cd-invoice-unit" *ngIf="pi.unit"> / {{ unitShort(pi.unit) }}</span>
+              <td class="bp-cd-invoice-line">
+                <span class="bp-cd-invoice-mul">{{ stepperValue(pi) | number }} @ {{ (pi.base_price || 0) | gbp }}</span>
+                <span class="bp-cd-invoice-eq">=</span>
+                <span class="bp-cd-invoice-total">{{ lineTotal(pi) | gbp }}</span>
               </td>
-              <td class="bp-cd-invoice-count">{{ stepperValue(pi) | number }}</td>
-              <td class="bp-cd-invoice-total">{{ lineTotal(pi) | gbp }}</td>
             </tr>
           </tbody>
         </table>
@@ -457,16 +450,23 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                     rows="3"
                     [disabled]="sending"
                     placeholder="Add a message — anything the agent should know about your quote."></textarea>
-          <button type="button"
-                  class="bp-cd-send-cta"
-                  [disabled]="!canSend"
-                  (click)="onSend()">
-            <lucide-icon name="send" [size]="14"></lucide-icon>
-            <span>{{ sending ? 'Sending…' : 'Send reply' }}</span>
-            <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
-              {{ pendingCount }}
-            </span>
-          </button>
+          <!-- v1.65fK — Cancel returns to the detail view; primary
+               CTA renamed to "Next" (advances to the next stage of
+               the brief flow). -->
+          <div class="bp-cd-checkout-foot">
+            <button type="button" class="bp-cd-checkout-cancel"
+                    (click)="checkoutMode = false">Cancel</button>
+            <button type="button"
+                    class="bp-cd-send-cta"
+                    [disabled]="!canSend"
+                    (click)="onSend()">
+              <span>{{ sending ? 'Sending…' : 'Next' }}</span>
+              <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
+              <span *ngIf="pendingCount > 0" class="bp-cd-send-cta-count">
+                {{ pendingCount }}
+              </span>
+            </button>
+          </div>
         </div>
 
         <!-- v1.65eg — estimate-style summary. Matches the layout on
@@ -524,15 +524,20 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                pre-populated from the cart's items + supplier set.
                v1.65es — agency-only. Suppliers get a "Review &
                respond" CTA wired in Phase 2. -->
-          <button *ngIf="!isSupplier"
-                  type="button"
-                  class="bp-cd-send-cta"
-                  [disabled]="!canSendBrief"
-                  (click)="sendBrief()">
-            <lucide-icon name="send" [size]="14"></lucide-icon>
-            <span>Send brief to suppliers</span>
-            <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
-          </button>
+          <!-- v1.65fK — Cancel + Next footer for the agent checkout
+               view too. Cancel returns to the detail card; Next
+               advances to the outreach train. -->
+          <div class="bp-cd-checkout-foot">
+            <button type="button" class="bp-cd-checkout-cancel"
+                    (click)="checkoutMode = false">Cancel</button>
+            <button type="button"
+                    class="bp-cd-send-cta"
+                    [disabled]="!canSendBrief"
+                    (click)="sendBrief()">
+              <span>Next</span>
+              <lucide-icon name="arrow-right" [size]="14" class="bp-cd-send-cta-chev"></lucide-icon>
+            </button>
+          </div>
 
           <!-- v1.65ev → v1.65ew — supplier wrap-up moved up into the
                supplier footer block (above). This was misnested
@@ -644,29 +649,50 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-weight: 500;
       padding-right: 10px;
     }
-    .bp-cd-invoice-rate {
+    /* v1.65fK — single-cell math expression: "250 @ £32 = £8,000". */
+    .bp-cd-invoice-line {
       color: var(--color-text-secondary);
       font-variant-numeric: tabular-nums;
+      text-align: right;
       white-space: nowrap;
-      padding: 8px 10px 8px 0;
+      display: flex; align-items: baseline; justify-content: flex-end;
+      gap: 6px;
     }
-    .bp-cd-invoice-unit {
+    .bp-cd-invoice-mul {
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-invoice-eq {
       color: var(--color-text-muted);
       font-size: 11px;
     }
-    .bp-cd-invoice-count {
-      color: var(--color-text-secondary);
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-      padding: 8px 10px 8px 0;
-      white-space: nowrap;
-    }
     .bp-cd-invoice-total {
       color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
       font-weight: 600;
-      text-align: right;
-      white-space: nowrap;
+    }
+    /* v1.65fK — checkout footer: Cancel + Next. */
+    .bp-cd-checkout-foot {
+      display: flex; gap: 8px;
+      margin-top: 8px;
+    }
+    .bp-cd-checkout-foot .bp-cd-send-cta {
+      flex: 1;
+    }
+    .bp-cd-checkout-cancel {
+      flex-shrink: 0;
+      padding: 10px 16px;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+      font-size: 13px; font-weight: 500;
+      border-radius: var(--radius-button);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bp-cd-checkout-cancel:hover {
+      background: var(--theme-bg);
+      color: var(--color-text-primary);
+      border-color: var(--theme-accent);
     }
 
     /* Back link inside the checkout summary. */
@@ -696,12 +722,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       overflow-y: auto;
       min-height: 0;
     }
-    /* v1.65fB — totals stack pinned to the bottom of the right column. */
+    /* v1.65fB → v1.65fK — totals stack now sits at the TOP of the
+       right column when checkoutMode is true. The whole right
+       column flips to the checkout view, replacing the detail
+       card; no more pinning to the bottom. */
     .bp-cd-totals-stack {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-top: auto;
       flex-shrink: 0;
     }
 
