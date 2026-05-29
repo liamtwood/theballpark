@@ -2759,18 +2759,12 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       Falls back to flat when guest_count is missing/0.
       v1.65f2 — also multiplies by the row's buy quantity (default 1).
       So a per-head platter at £6.25, qty 10, 250 guests → £15,625. */
+  /** v1.65fV — line cost = base × qty. Qty already carries the
+      effective count (seeded as guest_count on add for per-head),
+      so no second multiplier needed. */
   lineTotal(pi: ProjectItem): number {
     const base = Number(pi.base_price) || 0;
     const qty = this.qtyOf(pi);
-    const unit = (pi.unit || '').toLowerCase();
-    // v1.65fR — match stepperValue: supplier rows without an explicit
-    // unit fall through to per-head math so the line total reflects
-    // the head count automatically.
-    const perAttendee = PER_ATTENDEE_UNITS.has(unit)
-      || (this.isSupplier && !unit);
-    if (this.guestCount > 0 && perAttendee) {
-      return base * qty * this.guestCount;
-    }
     return base * qty;
   }
 
@@ -2820,20 +2814,14 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       reads as "the head count this row is feeding" instead of "the
       buy multiplier" which only makes sense once you've internalised
       the schema. */
+  /** v1.65fV — qty IS the literal count now. Server seeds it to
+      project.guest_count on cart-add for per-head items, so a fresh
+      catering line lands at 250 (or whatever) and stays there
+      regardless of later guest_count changes. No more derived
+      multiplier — what the user typed (or what was seeded) is what
+      gets rendered everywhere. */
   stepperValue(pi: ProjectItem): number {
-    const qty = this.qtyOf(pi);
-    const unit = (pi.unit || '').toLowerCase();
-    // v1.65fR — supplier rows from message_items don't carry a unit
-    // (it's not on the message_items table). Default to per-head for
-    // the supplier view so the invoice shows the head count rather
-    // than 1 — that's the only context where the unit can be unknown
-    // here AND treating it as flat would mis-quote a catering brief.
-    const perAttendee = PER_ATTENDEE_UNITS.has(unit)
-      || (this.isSupplier && !unit);
-    if (this.guestCount > 0 && perAttendee) {
-      return qty * this.guestCount;
-    }
-    return qty;
+    return this.qtyOf(pi);
   }
 
   /** v1.65f2 → v1.65f4 — bump the row's quantity by 1. The DB column

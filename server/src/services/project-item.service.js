@@ -39,21 +39,18 @@ async function recomputeProjectBallparks(projectId) {
   // This means an agent's per-brief tweak to price (e.g. £85 → £80)
   // flows through to the project's ballpark_cost immediately, with
   // zero impact on the catalogue master other projects reference.
+  // v1.65fV — qty is now the literal count for per-head items too
+  // (seeded as guest_count on add). No more dynamic × guest_count
+  // multiplier — line cost is just base_price × quantity, full stop.
   await pool.query(
     `UPDATE project_categories pc
         SET ballpark_cost = COALESCE((
               SELECT SUM(
                        COALESCE(pi.base_price, i.base_price, 0)
                        * COALESCE(pi.quantity, 1)
-                       * CASE
-                           WHEN LOWER(COALESCE(pi.unit, i.unit, '')) IN ('cover', 'head')
-                             THEN COALESCE(p.guest_count, 1)
-                           ELSE 1
-                         END
                      )
                 FROM project_items pi
                 JOIN items i ON i.id = pi.item_id
-                JOIN projects p ON p.id = pi.project_id
                WHERE pi.project_id = pc.project_id
                  AND (
                    i.category_id = pc.category_id
@@ -315,13 +312,25 @@ async function add(data) {
   // tweaked the snapshot and we'd be clobbering their edits. The
   // catalogue copy lives in a subquery on the same statement so we
   // make one round-trip instead of two.
+  // v1.65fV — seed quantity ONCE on cart-add: for per-head /
+  // per-cover items, use the project's guest_count so the line
+  // count lands at the right number from the get-go. After that
+  // the agent can change it freely and we never recompute — qty
+  // stays whatever they typed last.
   const result = await pool.query(
     `INSERT INTO project_items
        (project_id, item_id, project_category_id, selection_type,
-        name, base_price, unit, description)
+        name, base_price, unit, description, quantity)
      SELECT $1, $2, $3, $4,
-            i.name, i.base_price, i.unit, i.description
+            i.name, i.base_price, i.unit, i.description,
+            CASE
+              WHEN LOWER(COALESCE(i.unit, '')) IN ('cover', 'head')
+                   AND COALESCE(p.guest_count, 0) > 0
+                THEN p.guest_count
+              ELSE 1
+            END
        FROM items i
+       JOIN projects p ON p.id = $1
       WHERE i.id = $2
      ON CONFLICT (project_id, item_id) DO UPDATE SET
        selection_type      = EXCLUDED.selection_type,
