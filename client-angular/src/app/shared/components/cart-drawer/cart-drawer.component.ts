@@ -1968,6 +1968,15 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
         next: row => {
           this.newAskName = '';
           this.addingAsk = false;
+          // v1.65fI fix — when the cart is category-scoped the load()
+          // refresh filters by itemFilter (the items that belong to
+          // this category). The new ad-hoc's item_id is brand new
+          // and isn't in that set, so it'd be filtered out and the
+          // row wouldn't render. Extend the filter so the new ask
+          // survives the refresh.
+          if (this.itemFilter && (row as any)?.item_id) {
+            this.itemFilter.add((row as any).item_id);
+          }
           // Auto-select the new row so the agent lands on its
           // detail card ready to fill in price / unit / desc /
           // suppliers.
