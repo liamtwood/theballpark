@@ -157,7 +157,7 @@ async function addAdhoc(data) {
     //    is owned by them by convention; the supplier slot stays
     //    empty until the brief fans out at Send time.
     const proj = await client.query(
-      'SELECT org_id, category_id FROM projects WHERE id = $1',
+      'SELECT org_id FROM projects WHERE id = $1',
       [project_id]
     );
     if (!proj.rows[0]) {
