@@ -308,16 +308,20 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                   <span class="bp-detail-spec-value">{{ lineTotal(pi) | gbp }}</span>
                 </div>
               </div>
-              <div class="bp-cd-qty bp-cd-qty--detail" *ngIf="!isSupplier && pi.item_id">
-                <button type="button" class="bp-cd-qty-btn"
-                        [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
-                        (click)="onQtyMinus(pi)"
-                        title="Decrease">−</button>
-                <span class="bp-cd-qty-n">{{ stepperValue(pi) | number }}</span>
-                <button type="button" class="bp-cd-qty-btn"
-                        [disabled]="qtySaving[pi.id]"
-                        (click)="onQtyPlus(pi)"
-                        title="Increase">+</button>
+              <!-- v1.65fG — quantity is a direct number input now,
+                   was a +/− stepper. Stepping 10 platters or 250
+                   heads 1-by-1 is painful; users type. Blur commits
+                   to the server (PATCH) so a stray edit doesn't fire
+                   a write per keystroke. -->
+              <div class="bp-cd-qty-input-row" *ngIf="!isSupplier && pi.item_id">
+                <label class="bp-cd-qty-lbl">Quantity</label>
+                <input type="number" class="bp-cd-qty-input"
+                       [value]="qtyOf(pi)"
+                       (change)="onQtyChange(pi, $event)"
+                       (blur)="onQtyChange(pi, $event)"
+                       (keyup.enter)="onQtyChange(pi, $event)"
+                       min="1" step="1"
+                       [disabled]="qtySaving[pi.id]"/>
               </div>
             </ng-container>
 
@@ -765,6 +769,39 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       overflow: hidden;
     }
     .bp-cd-qty--detail { margin-top: 10px; }
+
+    /* v1.65fG — quantity input row in the detail card (agent only).
+       Label on the left, number input on the right; the input is
+       hairline-bordered and right-aligned with tabular nums so wide
+       values like 250 / 10000 read cleanly. */
+    .bp-cd-qty-input-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-cd-qty-lbl {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      letter-spacing: 0.02em;
+    }
+    .bp-cd-qty-input {
+      width: 96px;
+      padding: 6px 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      text-align: right;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      background: var(--color-surface);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-qty-input:hover { border-color: var(--theme-accent); }
+    .bp-cd-qty-input:focus { outline: none; border-color: var(--theme-accent); }
+    .bp-cd-qty-input:disabled { opacity: 0.55; cursor: not-allowed; }
     .bp-cd-detail-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 8px;
@@ -2204,16 +2241,31 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
 
   /** v1.65f2 → v1.65f4 — bump the row's quantity by 1. The DB column
       still stores raw qty (1, 2, 3) regardless of unit; we just
-      display the effective head-count derived value. */
+      display the effective head-count derived value. Kept around
+      because legacy +/− stepper instances may still call this; the
+      detail-card UI now uses the direct number input below. */
   onQtyPlus(pi: ProjectItem): void {
     this.changeQty(pi, this.qtyOf(pi) + 1);
   }
-  /** v1.65f2 → v1.65f4 — decrement qty by 1, floored at 1. The
-      stepper display jumps by step size, but the underlying qty
-      column moves by 1 every click. */
+  /** v1.65f2 → v1.65f4 — decrement qty by 1, floored at 1. */
   onQtyMinus(pi: ProjectItem): void {
     const next = Math.max(1, this.qtyOf(pi) - 1);
     if (next === this.qtyOf(pi)) return;
+    this.changeQty(pi, next);
+  }
+  /** v1.65fG — direct number input handler. Parses the input value,
+      clamps to >= 1, and short-circuits when the value didn't move.
+      Fired on change (blur or Enter) so we don't PATCH per
+      keystroke. */
+  onQtyChange(pi: ProjectItem, ev: Event): void {
+    const raw = (ev.target as HTMLInputElement)?.value;
+    const parsed = Math.floor(Number(raw));
+    const next = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    if (next === this.qtyOf(pi)) {
+      // Reset the input if the user typed garbage like "0" or "abc".
+      (ev.target as HTMLInputElement).value = String(this.qtyOf(pi));
+      return;
+    }
     this.changeQty(pi, next);
   }
   private changeQty(pi: ProjectItem, next: number): void {
