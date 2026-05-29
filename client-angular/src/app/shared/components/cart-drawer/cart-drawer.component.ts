@@ -422,7 +422,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
               </span>
             </div>
             <div class="bp-cd-est-sub">
-              {{ stepperValue(pi) | number }} {{ unitShort(pi.unit) || 'units' }} × {{ (pi.base_price || 0) | gbp }}
+              {{ stepperValue(pi) | number }} {{ unitShort(pi.unit || '') || 'units' }} × {{ (pi.base_price || 0) | gbp }}
             </div>
           </div>
         </div>
