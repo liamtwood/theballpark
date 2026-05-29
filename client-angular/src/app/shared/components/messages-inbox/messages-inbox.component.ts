@@ -433,6 +433,14 @@ interface VendorThread {
                   <div class="bp-msg-lane"
                        [class.bp-msg-lane--out]="isFromMe(m)"
                        [class.bp-msg-lane--in]="!isFromMe(m)">
+                    <!-- v1.65fX — sender avatar. 2-char initials in a
+                         theme-soft circle, sits outside-left of the
+                         bubble on inbound lanes (the other person's
+                         message), outside-right on outbound. -->
+                    <div class="bp-msg-avatar"
+                         [title]="senderName(m)">
+                      {{ senderInitials(m) }}
+                    </div>
                     <div class="bp-msg-bubble"
                          [class.bp-msg-bubble--out]="isFromMe(m)"
                          [class.bp-msg-bubble--in]="!isFromMe(m)"
@@ -1399,10 +1407,32 @@ interface VendorThread {
     .bp-msg-lane {
       display: flex;
       width: 100%;
+      gap: 8px;
+      align-items: flex-end;
     }
     .bp-msg-lane--out { justify-content: flex-end; }
     .bp-msg-lane--in  { justify-content: flex-start; }
-    .bp-msg-lane > * { max-width: 75%; min-width: 0; }
+    .bp-msg-lane > .bp-msg-bubble { max-width: 75%; min-width: 0; }
+    /* v1.65fX — outbound lanes flip the order so the avatar sits to
+       the RIGHT of the bubble (next to the speaker's edge). Inbound
+       leaves the avatar to the LEFT, default flex order. */
+    .bp-msg-lane--out .bp-msg-avatar { order: 2; }
+    .bp-msg-lane--out .bp-msg-bubble { order: 1; }
+    /* v1.65fX — initials avatar. 32px theme-soft circle with
+       theme-accent body type — same chrome the rest of the app uses
+       for "person" tiles. */
+    .bp-msg-avatar {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--theme-soft);
+      color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.04em;
+      user-select: none;
+    }
 
     /* v1.65df — text bubble. WhatsApp convention: outbound = mint
        (#dcf8c6), inbound = white. These are intentionally semantic
@@ -2268,6 +2298,39 @@ export class MessagesInboxComponent implements OnInit {
   isFromMe(m: ThreadMessage): boolean {
     if (this.viewer === 'supplier') return m.direction !== 'outbound';
     return m.direction === 'outbound';
+  }
+
+  /** v1.65fX — best-effort sender name for the bubble avatar +
+      tooltip. Falls through:
+        1. m.sender_name (set on server when joined to users.name)
+        2. supplier_name when the bubble is from the supplier side
+        3. agency_name from the active thread
+        4. blank — the avatar renders "—" */
+  senderName(m: ThreadMessage): string {
+    if (m.sender_name) return m.sender_name;
+    if (!this.activeThread) return '';
+    // Inbound = from the other party. From agency POV that's the
+    // supplier; from supplier POV that's the agency. fromNameFor
+    // already encodes that asymmetry, so we use it directly.
+    const otherParty = this.fromNameFor(this.activeThread);
+    if (m.direction === 'inbound') return otherParty;
+    // Outbound = from us. Mirror image — agency name for the agent,
+    // supplier name for the supplier.
+    return this.viewer === 'supplier'
+      ? (this.activeThread.supplierName || '')
+      : (this.agencyName || '');
+  }
+
+  /** v1.65fX — 2-char initials for the avatar circle. Splits on
+      whitespace, takes the first char of each of the first two
+      tokens; falls back to a single char or "—" if nothing's
+      resolvable. */
+  senderInitials(m: ThreadMessage): string {
+    const name = this.senderName(m).trim();
+    if (!name) return '—';
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   /** MessageItemCardComponent's `viewer` input is typed as 'agent' |
