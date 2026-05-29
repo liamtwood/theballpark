@@ -1102,8 +1102,23 @@ async function requestQuotes(body) {
       } else {
         const itemId = r && r.item_id;
         if (!itemId) throw httpErr('a matched requirement needs an item_id', 400);
+        // v1.65fB — pin the agent's project_items SNAPSHOT into the
+        // brief at send-time. If the agent tweaked "Sit-Down Dinner"
+        // to £80 for THIS project, the brief sent to the supplier
+        // carries £80 — not the catalogue's £85. LEFT JOIN so an
+        // item never added to the cart (rare; only happens if a
+        // brief is fired before a cart add) still resolves to the
+        // catalogue master.
         const got = await client.query(
-          'SELECT id, name, description, base_price FROM items WHERE id = $1', [itemId]
+          `SELECT i.id,
+                  COALESCE(pi.name,        i.name)        AS name,
+                  COALESCE(pi.description, i.description) AS description,
+                  COALESCE(pi.base_price,  i.base_price)  AS base_price
+             FROM items i
+        LEFT JOIN project_items pi
+               ON pi.item_id = i.id AND pi.project_id = $2
+            WHERE i.id = $1`,
+          [itemId, project_id]
         );
         if (!got.rows.length) throw httpErr(`item ${itemId} not found`, 404);
         const it = got.rows[0];
