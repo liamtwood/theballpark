@@ -400,22 +400,32 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              flips to the quote summary on demand. The "← Back" link
              at the top returns to the detail view. -->
         <div class="bp-cd-totals-stack" *ngIf="checkoutMode">
-        <!-- v1.65fK — Back link dropped, replaced by Cancel in the
-             footer. Checkout header + invoice now sit at the top of
-             the column (margin-top:auto removed below). -->
-        <div class="bp-cd-checkout-hd">CHECKOUT</div>
-        <table class="bp-cd-invoice">
-          <tbody>
-            <tr *ngFor="let pi of selected">
-              <td class="bp-cd-invoice-name">{{ pi.name }}</td>
-              <td class="bp-cd-invoice-line">
-                <span class="bp-cd-invoice-mul">{{ stepperValue(pi) | number }} &#64; {{ (pi.base_price || 0) | gbp }}</span>
-                <span class="bp-cd-invoice-eq">=</span>
-                <span class="bp-cd-invoice-total">{{ lineTotal(pi) | gbp }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- v1.65fM — ESTIMATE header with project name + dates,
+             item list reading as a standard estimate (name + total
+             on one line, count × rate underneath in muted text),
+             "Included" for £0 lines. -->
+        <div class="bp-cd-est-hd">
+          <span class="bp-cd-est-hd-label">ESTIMATE</span>
+          <span class="bp-cd-est-hd-sep" *ngIf="projectName">·</span>
+          <span class="bp-cd-est-hd-meta" *ngIf="projectName">{{ projectName }}</span>
+          <span class="bp-cd-est-hd-sep" *ngIf="projectDates">·</span>
+          <span class="bp-cd-est-hd-meta" *ngIf="projectDates">{{ projectDates }}</span>
+        </div>
+        <div class="bp-cd-est-section-label">ITEMS</div>
+        <div class="bp-cd-est-list">
+          <div *ngFor="let pi of selected" class="bp-cd-est-row">
+            <div class="bp-cd-est-top">
+              <span class="bp-cd-est-name">{{ pi.name }}</span>
+              <span class="bp-cd-est-total"
+                    [class.bp-cd-est-total--free]="lineTotal(pi) === 0">
+                {{ lineTotalLabel(pi) }}
+              </span>
+            </div>
+            <div class="bp-cd-est-sub">
+              {{ stepperValue(pi) | number }} {{ unitShort(pi.unit) || 'units' }} × {{ (pi.base_price || 0) | gbp }}
+            </div>
+          </div>
+        </div>
         <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
              then auto-summary chip, then wrap-up textarea, then the
              Send reply CTA. The whole block lives in one *ngIf so
@@ -459,8 +469,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              cart drawer is a quick "what's this going to cost"
              glance, not the full breakdown. -->
         <div class="bp-cd-foot bp-cd-foot--summary" *ngIf="!isSupplier && selected.length">
+          <!-- v1.65fM — "Your cost" → "Subtotal" matches the estimate
+               vocabulary; CLIENT TOTAL below gets the double-rule
+               treatment. -->
           <div class="bp-cd-foot-row bp-cd-foot-row--cost">
-            <span class="bp-cd-foot-label">Your cost</span>
+            <span class="bp-cd-foot-label">Subtotal</span>
             <span class="bp-cd-foot-value">{{ yourCost | gbp }}</span>
           </div>
           <div class="bp-cd-foot-row bp-cd-foot-row--meta">
@@ -610,55 +623,84 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-size: 11px; font-weight: 700;
       line-height: 18px;
     }
-    /* v1.65fF — CHECKOUT eyebrow + invoice table. Table reads like
-       a standard invoice line list: name (1fr) · rate (auto) ·
-       count (auto, tabular) · total (auto, tabular, right). */
-    .bp-cd-checkout-hd {
+    /* v1.65fM — ESTIMATE header reads as "ESTIMATE · <name> · <date>"
+       with the eyebrow color on the label and muted body on the
+       meta. Sits at the top of the checkout column. */
+    .bp-cd-est-hd {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+      margin-bottom: 12px;
       font-family: var(--font-body);
+    }
+    .bp-cd-est-hd-label {
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--theme-accent);
-      margin-top: 4px;
     }
-    .bp-cd-invoice {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--font-body);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-    .bp-cd-invoice tr { border-bottom: 0.5px solid var(--color-border); }
-    .bp-cd-invoice tr:last-child { border-bottom: none; }
-    .bp-cd-invoice td {
-      padding: 8px 0;
-      vertical-align: top;
-    }
-    .bp-cd-invoice-name {
-      color: var(--color-text-primary);
-      font-weight: 500;
-      padding-right: 10px;
-    }
-    /* v1.65fK — single-cell math expression: "250 @ £32 = £8,000". */
-    .bp-cd-invoice-line {
-      color: var(--color-text-secondary);
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-      white-space: nowrap;
-      display: flex; align-items: baseline; justify-content: flex-end;
-      gap: 6px;
-    }
-    .bp-cd-invoice-mul {
-      color: var(--color-text-secondary);
-    }
-    .bp-cd-invoice-eq {
+    .bp-cd-est-hd-sep {
       color: var(--color-text-muted);
       font-size: 11px;
     }
-    .bp-cd-invoice-total {
+    .bp-cd-est-hd-meta {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-est-section-label {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      padding-bottom: 6px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    /* v1.65fM — estimate-style item list. Two lines per row: name
+       and total on the first line (name bold left, total tabular
+       right); count × rate breakdown on the second line in muted
+       small type. */
+    .bp-cd-est-list {
+      display: flex; flex-direction: column;
+      font-family: var(--font-body);
+    }
+    .bp-cd-est-row {
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-cd-est-row:last-child { border-bottom: none; }
+    .bp-cd-est-top {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px;
+    }
+    .bp-cd-est-name {
+      font-size: 13px;
+      font-weight: 500;
       color: var(--color-text-primary);
+    }
+    .bp-cd-est-total {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .bp-cd-est-total--free {
+      font-family: var(--font-body);
+      font-size: 11px;
       font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-success-dark, var(--theme-accent));
+    }
+    .bp-cd-est-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
     }
     /* v1.65fL — aside footer pinned to the bottom of the right
        column. margin-top: auto pushes it down when there's slack;
@@ -1569,6 +1611,10 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       margin-top: 10px;
       background: var(--theme-soft);
       border-radius: var(--radius-card);
+      /* v1.65fM — double-rule treatment to make CLIENT TOTAL pop
+         the way it does in a classic estimate doc. */
+      border-top: 3px double var(--theme-accent);
+      border-bottom: 3px double var(--theme-accent);
     }
     .bp-cd-foot-client-label {
       font-size: 11px;
@@ -1737,6 +1783,19 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       doesn't read as £0 for a fresh project that hasn't set guest
       count yet. */
   private guestCount = 0;
+  /** v1.65fM — captured in load() so the checkout header can render
+      "ESTIMATE · <event name> · <date>". */
+  projectName = '';
+  projectDates = '';
+
+  /** v1.65fM — display helper. Renders "Included" when the line
+      total is zero (a £0 line in the brief usually means "throw it
+      in for free"); otherwise the formatted gbp amount. */
+  lineTotalLabel(pi: ProjectItem): string {
+    const v = this.lineTotal(pi);
+    if (!v || v === 0) return 'Included';
+    return '£' + Math.round(v).toLocaleString('en-GB');
+  }
 
   /** v1.65eg — margin + VAT come from the project row's defaults
       (which inherit from the agency org). 20%/20% used as a sane
@@ -2684,6 +2743,10 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
     this.guestCount = 0;
     this.projectSvc.getById(this.projectId).subscribe(p => {
       this.guestCount = Number((p as any)?.guest_count) || 0;
+      // v1.65fM — capture project name + event date so the checkout
+      // header can read "ESTIMATE · <event name> · <date>".
+      this.projectName  = (p as any)?.event_name || (p as any)?.name || '';
+      this.projectDates = (p as any)?.event_date || '';
       // v1.65eg — pull margin + VAT defaults off the project row.
       // Falls back to 20/20 when null (matches the estimate
       // component's same defaults).
