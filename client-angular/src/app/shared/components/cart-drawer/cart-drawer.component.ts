@@ -585,6 +585,25 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           </ng-container>
 
           <ng-container *ngIf="isSupplier">
+            <!-- v1.65fS — per-item change list at the top of the
+                 review so the supplier can scan exactly what they're
+                 about to send: Accepted / Quoted / Declined badges,
+                 plus "£before → £after" for price adjustments. -->
+            <ng-container *ngIf="changesList.length">
+              <div class="bp-cd-est-section-label">CHANGES</div>
+              <div class="bp-cd-changes-list">
+                <div *ngFor="let c of changesList" class="bp-cd-change-row">
+                  <span class="bp-cd-change-name">{{ c.name }}</span>
+                  <span class="bp-cd-change-status"
+                        [class.bp-cd-change-status--ok]="c.status === 'Accepted' || c.status === 'Quoted'"
+                        [class.bp-cd-change-status--bad]="c.status === 'Declined'">
+                    {{ c.status }}
+                  </span>
+                  <span class="bp-cd-change-details" *ngIf="c.details">{{ c.details }}</span>
+                </div>
+              </div>
+            </ng-container>
+
             <div class="bp-cd-est-section-label">MESSAGE TO AGENT</div>
             <textarea class="bp-cd-greeting-input"
                       [(ngModel)]="supplierMessage"
@@ -863,6 +882,55 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       line-height: 1.5;
     }
     .bp-cd-ballnote b { color: var(--theme-accent); font-weight: 700; }
+
+    /* v1.65fS — per-item changes list on the supplier review. Each
+       row reads as "Item Name · Accepted/Quoted/Declined · details".
+       Status pill picks up the same color tokens as the in-row
+       status badges (ok = green, bad = red). */
+    .bp-cd-changes-list {
+      display: flex; flex-direction: column;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .bp-cd-change-row {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: 8px;
+      padding: 6px 8px;
+      border-bottom: 0.5px solid var(--color-border);
+      font-family: var(--font-body);
+      font-size: 12px;
+    }
+    .bp-cd-change-row:last-child { border-bottom: none; }
+    .bp-cd-change-name {
+      flex: 1;
+      color: var(--color-text-primary);
+      font-weight: 500;
+      min-width: 0;
+    }
+    .bp-cd-change-status {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--theme-bg);
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-change-status--ok {
+      background: var(--color-booked-soft, rgba(5, 150, 105, 0.10));
+      color: var(--color-booked, #059669);
+    }
+    .bp-cd-change-status--bad {
+      background: rgba(220, 38, 38, 0.10);
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-change-details {
+      width: 100%;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
     /* v1.65fL — aside footer pinned to the bottom of the right
        column. margin-top: auto pushes it down when there's slack;
        a hairline top border + small padding visually separates it
@@ -951,6 +1019,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       border-color: var(--theme-accent);
       box-shadow: var(--shadow-xs);
     }
+    /* v1.65fS — accepted compact row gets the green tint that
+       .bp-cd-row--accepted had on the old layout (regression — the
+       Accept handler was setting the right class, but the new
+       .bp-cd-mini-- variants had no CSS rule). */
+    .bp-cd-mini--accepted {
+      background: var(--color-booked-soft, rgba(5, 150, 105, 0.08));
+      border-color: var(--color-booked, #059669);
+    }
+    .bp-cd-mini--accepted .bp-cd-mini-name { color: var(--color-booked, #059669); }
     .bp-cd-mini--declined .bp-cd-mini-name,
     .bp-cd-mini--declined .bp-cd-mini-total {
       text-decoration: line-through;
@@ -1948,6 +2025,33 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       "ESTIMATE · <event name> · <date>". */
   projectName = '';
   projectDates = '';
+
+  /** v1.65fS — structured per-item change list rendered on the
+      supplier's review stage. Each entry shows what happened to a
+      row (Accepted / Quoted / Declined / Updated) plus a brief
+      details string for adjust actions ("£9 → £10 · description
+      updated"). Lifted from the same data pendingSummary uses, but
+      kept as objects so the template can style each piece. */
+  get changesList(): { name: string; status: 'Accepted'|'Declined'|'Quoted'|'Updated'; details?: string }[] {
+    const out: { name: string; status: 'Accepted'|'Declined'|'Quoted'|'Updated'; details?: string }[] = [];
+    for (const a of this.pendingActions.values()) {
+      const fallbackName = this.selected.find(p => p.id === a.rowId)?.name;
+      const itemName = a.name || this.actionBefores.get(a.rowId)?.name || fallbackName || 'item';
+      if (a.action === 'accept')  { out.push({ name: itemName, status: 'Accepted' }); continue; }
+      if (a.action === 'decline') { out.push({ name: itemName, status: 'Declined' }); continue; }
+      if (a.action === 'adjust') {
+        const before = this.actionBefores.get(a.rowId);
+        const bits: string[] = [];
+        if (before && a.price != null && Number(a.price) !== Number(before.price)) {
+          bits.push(`£${Number(before.price || 0).toLocaleString('en-GB')} → £${Number(a.price).toLocaleString('en-GB')}`);
+        }
+        if (before && a.description && a.description !== before.description) bits.push('description updated');
+        if (a.image_url && a.image_url !== (before as any)?.image_url) bits.push('photo added');
+        out.push({ name: itemName, status: 'Quoted', details: bits.join(' · ') });
+      }
+    }
+    return out;
+  }
 
   /** v1.65fO — distinct supplier count across every cart row's
       asked_supplier_ids. Drives the "sent to N suppliers" copy on
