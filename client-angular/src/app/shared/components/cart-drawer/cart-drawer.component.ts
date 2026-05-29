@@ -1595,18 +1595,30 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
   /** v1.65ev — flush all queued actions + the wrap-up message in one
       consolidated reply. Builds the body from the supplier's typed
       message (if any) + the auto-summary, then emits batchAction$.
-      The inbox catches and posts a single reply to the server. */
+      The inbox catches and posts a single reply to the server.
+
+      v1.65f7 — dedupe fix. syncAutoMessage() pre-fills the textarea
+      with the live summary, so when Ryan clicks Send WITHOUT typing
+      anything, both `typed` and `summary` equal the auto-summary —
+      the old `typed + '\n\n' + summary` concat then sent the same
+      line twice. Compare `typed` against the last auto-written
+      value: if equal, the textarea is still the auto fill, so send
+      it once. Only prefix-and-append when Ryan has genuinely added
+      his own copy on top. */
   onSend(): void {
     if (!this.canSend) return;
     this.sending = true;
     const actions = Array.from(this.pendingActions.values());
     const typed = (this.supplierMessage || '').trim();
     const summary = this.pendingSummary;
-    // Compose: typed message first, then summary on a new paragraph.
-    // If only one is present, use it alone.
+    const lastAuto = (this.lastAutoMessage || '').trim();
+    const isAutoOnly = !!typed && typed === lastAuto;
     let body = '';
-    if (typed && summary) body = typed + '\n\n' + summary;
-    else body = typed || summary;
+    if (typed && summary && !isAutoOnly) {
+      body = typed + '\n\n' + summary;
+    } else {
+      body = typed || summary;
+    }
     this.svc.emitBatchAction({ actions, body });
     // Reset local state + close the drawer. The inbox refreshes
     // thread items after the server confirms.
