@@ -409,7 +409,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <tr *ngFor="let pi of selected">
               <td class="bp-cd-invoice-name">{{ pi.name }}</td>
               <td class="bp-cd-invoice-line">
-                <span class="bp-cd-invoice-mul">{{ stepperValue(pi) | number }} @ {{ (pi.base_price || 0) | gbp }}</span>
+                <span class="bp-cd-invoice-mul">{{ stepperValue(pi) | number }} &#64; {{ (pi.base_price || 0) | gbp }}</span>
                 <span class="bp-cd-invoice-eq">=</span>
                 <span class="bp-cd-invoice-total">{{ lineTotal(pi) | gbp }}</span>
               </td>
