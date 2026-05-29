@@ -37,6 +37,10 @@ export interface ProjectItem {
   /** v1.22: joined from orgs (the item's supplier) for the per-row
       "{supplier} · {N} days lead" subtitle. */
   supplier_name?: string;
+  /** v1.65el: joined orgs.id (the source catalogue item's owner)
+      for sender filtering in the inbox + per-item supplier roster
+      checkbox tagging in the cart drawer. */
+  supplier_org_id?: string;
   /** v1.23: joined from categories so the shared category header can
       render an icon next to the project_item's category without a
       separate categories lookup. */
