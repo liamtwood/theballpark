@@ -200,6 +200,20 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           </button>
         </div>
         </ng-container>
+
+        <!-- v1.65fE — Checkout CTA. Flips the right column from the
+             detail card to the cost summary (totals + budget +
+             auto-summary textarea + Send). Disabled when the cart
+             is empty — nothing to send. -->
+        <button type="button"
+                class="bp-cd-checkout-cta"
+                [disabled]="!selected.length"
+                (click)="checkoutMode = true"
+                *ngIf="!checkoutMode">
+          <lucide-icon name="shopping-cart" [size]="14"></lucide-icon>
+          <span>Checkout</span>
+          <span class="bp-cd-checkout-count" *ngIf="selected.length">{{ selected.length }}</span>
+        </button>
       </div><!-- /.bp-cd-grid-items -->
 
       <!-- v1.65f9 — summary column on the right of the 2-col grid.
@@ -223,6 +237,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              cards. Edit toggles to in-place inputs — name / price /
              unit / description swap for editable fields without
              leaving the card. -->
+        <ng-container *ngIf="!checkoutMode">
         <div class="bp-cd-detail" *ngIf="selectedRow as pi; else detailEmpty">
           <!-- HERO: image with the 4-action cluster anchored top-right. -->
           <div class="bp-detail-hero"
@@ -362,11 +377,18 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <div>Select an item to see details</div>
           </div>
         </ng-template>
+        </ng-container><!-- /*ngIf=!checkoutMode -->
 
-        <!-- v1.65fB — pinned totals + Send CTA. Wrapped in
-             .bp-cd-totals-stack so flex-shrink: 0 keeps them docked
-             to the bottom of the right column. -->
-        <div class="bp-cd-totals-stack">
+        <!-- v1.65fB → v1.65fE — pinned totals + Send CTA. Now only
+             render when the user has clicked "Checkout" on the left,
+             so the right column shows the detail card by default and
+             flips to the quote summary on demand. The "← Back" link
+             at the top returns to the detail view. -->
+        <div class="bp-cd-totals-stack" *ngIf="checkoutMode">
+        <button type="button" class="bp-cd-checkout-back"
+                (click)="checkoutMode = false">
+          <lucide-icon name="chevron-left" [size]="13"></lucide-icon> Back
+        </button>
         <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
              then auto-summary chip, then wrap-up textarea, then the
              Send reply CTA. The whole block lives in one *ngIf so
@@ -529,6 +551,51 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-grid-items {
       overflow-y: auto;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    /* v1.65fE — Checkout CTA pinned to the bottom of the left column. */
+    .bp-cd-checkout-cta {
+      margin-top: auto;
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: var(--radius-button);
+      font-family: var(--font-body);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-cd-checkout-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-checkout-cta:hover:not(:disabled) { opacity: 0.85; }
+    .bp-cd-checkout-count {
+      min-width: 18px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      font-size: 11px; font-weight: 700;
+      line-height: 18px;
+    }
+    /* Back link inside the checkout summary. */
+    .bp-cd-checkout-back {
+      align-self: flex-start;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 8px 4px 4px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: var(--radius-input);
+    }
+    .bp-cd-checkout-back:hover {
+      color: var(--theme-accent);
+      background: var(--theme-bg);
     }
     .bp-cd-grid-summary {
       display: flex;
@@ -1505,6 +1572,17 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       thread context). */
   selectedRowId: string | null = null;
 
+  /** v1.65fE — when true the right column flips from the detail card
+      to the cost summary + textarea + Send. Toggled by the new
+      "Checkout" button at the bottom of the left column and the
+      "← Back" link at the top of the summary. */
+  checkoutMode = false;
+
+  /** v1.65fE — before-snapshots captured at the moment toggleAdjust
+      opens, used by pendingSummary to build a per-item diff
+      ("changed the price from £9 to £10"). Keyed by row id. */
+  private actionBefores: Map<string, { name?: string; price?: number; unit?: string; description?: string }> = new Map();
+
   selectRow(pi: ProjectItem): void {
     this.selectedRowId = (pi as any).id || null;
     // v1.65fC — switching selection cancels any in-flight edit so the
@@ -1592,24 +1670,49 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       and prepended when they do. Natural English + plurals. */
   get pendingSummary(): string {
     if (!this.pendingActions.size) return '';
-    let accepted = 0, adjusted = 0, declined = 0, thinking = 0;
+    // v1.65fE — per-item diff lines, e.g.
+    //   "Mobile Cocktail Bar: updated the description and changed
+    //    the price from £9 to £10 per head"
+    //   "Sit-Down Dinner: accepted"
+    //   "Dessert Table: declined"
+    const lines: string[] = [];
     for (const a of this.pendingActions.values()) {
-      if (a.action === 'accept')   accepted++;
-      else if (a.action === 'adjust')   adjusted++;
-      else if (a.action === 'decline')  declined++;
-      else if (a.action === 'think')    thinking++;
+      const itemName = a.name
+        || this.actionBefores.get(a.rowId)?.name
+        || 'item';
+      if (a.action === 'accept') {
+        lines.push(`${itemName}: accepted`);
+      } else if (a.action === 'decline') {
+        lines.push(`${itemName}: declined`);
+      } else if (a.action === 'think') {
+        lines.push(`${itemName}: need more time`);
+      } else if (a.action === 'adjust') {
+        const before = this.actionBefores.get(a.rowId);
+        const parts: string[] = [];
+        if (before && a.price != null && Number(a.price) !== Number(before.price)) {
+          const beforeStr = '£' + Number(before.price || 0).toLocaleString('en-GB');
+          const afterStr  = '£' + Number(a.price).toLocaleString('en-GB');
+          const unitStr = a.unit || before.unit;
+          parts.push(`changed the price from ${beforeStr} to ${afterStr}${unitStr ? ' per ' + unitStr : ''}`);
+        }
+        if (before && a.description && a.description !== before.description) {
+          parts.push('updated the description');
+        }
+        if (before && a.name && a.name !== before.name) {
+          parts.push(`renamed to "${a.name}"`);
+        }
+        if (a.image_url && a.image_url !== (before as any)?.image_url) {
+          parts.push('added a photo');
+        }
+        if (parts.length) {
+          lines.push(`${itemName}: ${parts.join(' and ')}`);
+        } else {
+          lines.push(`${itemName}: updated`);
+        }
+      }
     }
-    const bits: string[] = [];
-    if (accepted) bits.push(`accepted ${accepted} ${accepted === 1 ? 'item' : 'items'}`);
-    if (adjusted) bits.push(`edited ${adjusted} ${adjusted === 1 ? 'item' : 'items'} please review`);
-    if (declined) bits.push(`declined ${declined} ${declined === 1 ? 'item' : 'items'}`);
-    if (thinking) bits.push(`marked ${thinking} as needing more time`);
-    if (!bits.length) return '';
-    // "accepted 2 items and edited 2 items please review"
-    const joined = bits.length === 1
-      ? bits[0]
-      : bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1];
-    return `I've ${joined}.`;
+    if (!lines.length) return '';
+    return lines.join('\n');
   }
   get canSend(): boolean {
     return !this.sending && (this.pendingActions.size > 0 || !!this.supplierMessage.trim());
@@ -1673,6 +1776,10 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       // auto-selects the first selected item once rows are in so the
       // right detail panel is never empty when there's stuff in the cart.
       this.selectedRowId = null;
+      // v1.65fE — fresh state for the checkout / diff machinery on
+      // every open so a previous session's befores don't leak in.
+      this.checkoutMode = false;
+      this.actionBefores = new Map();
       if (req) this.load();
       this.cdr.markForCheck();
     });
@@ -1750,6 +1857,18 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       imageUrl: pi.image_url || '',
       description: pi.description || '',
     };
+    // v1.65fE — snapshot the current values so pendingSummary can
+    // diff "before → after" and write a human line. Only store
+    // ONCE per row (first edit captures the true original; later
+    // re-opens of Edit keep the same baseline).
+    if (!this.actionBefores.has(pi.id)) {
+      this.actionBefores.set(pi.id, {
+        name: pi.name || '',
+        price: Number(pi.base_price) || undefined,
+        unit: pi.unit || '',
+        description: pi.description || '',
+      });
+    }
     this.cdr.markForCheck();
   }
   cancelAdjust(): void {
