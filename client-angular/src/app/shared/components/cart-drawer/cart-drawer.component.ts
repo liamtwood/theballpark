@@ -2281,15 +2281,16 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       and prepended when they do. Natural English + plurals. */
   get pendingSummary(): string {
     if (!this.pendingActions.size) return '';
-    // v1.65fE — per-item diff lines, e.g.
-    //   "Mobile Cocktail Bar: updated the description and changed
-    //    the price from £9 to £10 per head"
-    //   "Sit-Down Dinner: accepted"
-    //   "Dessert Table: declined"
+    // v1.65fE → v1.65fZ — per-item diff lines. Accept actions don't
+    // carry an `a.name` (only adjust does), so we also fall back to
+    // a lookup against `this.selected` so the name still surfaces
+    // ("Sit-Down Dinner: accepted" instead of "item: accepted").
     const lines: string[] = [];
     for (const a of this.pendingActions.values()) {
+      const fallback = this.selected.find(p => p.id === a.rowId);
       const itemName = a.name
         || this.actionBefores.get(a.rowId)?.name
+        || fallback?.name
         || 'item';
       if (a.action === 'accept') {
         lines.push(`${itemName}: accepted`);
@@ -3122,6 +3123,15 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       thumbnail via the supplier_cover_url fallback chain (handled
       by imageStyle/imageBgColor below). */
   private rowToProjectItem(r: CartDrawerRow): ProjectItem {
+    // v1.65fZ — message_items has no quantity column yet, so supplier
+    // rows synthesised from preRows would default to qty=1 and the
+    // line totals would collapse. Seed quantity from guest_count for
+    // per-head items (or when the unit is unknown — message_items
+    // doesn't snapshot the unit either, and per-head is the supplier-
+    // side default the rest of the math already assumes).
+    const unit = (r.unit || '').toLowerCase();
+    const isPerHead = unit === 'cover' || unit === 'head' || (this.isSupplier && !unit);
+    const seededQty = (this.guestCount > 0 && isPerHead) ? this.guestCount : 1;
     const pi = {
       id: r.id,
       project_id: this.projectId,
@@ -3132,6 +3142,7 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
       description: r.description || undefined,
       base_price: Number(r.base_price) || 0,
       unit: r.unit || undefined,
+      quantity: seededQty,
       image_url: r.image_url || undefined,
       supplier_name: r.supplier_name || undefined,
       supplier_cover_url: r.supplier_cover_url || undefined,

@@ -2307,18 +2307,30 @@ export class MessagesInboxComponent implements OnInit {
         3. agency_name from the active thread
         4. blank — the avatar renders "—" */
   senderName(m: ThreadMessage): string {
-    if (m.sender_name) return m.sender_name;
-    if (!this.activeThread) return '';
+    // v1.65fZ — outbound = us. Prefer the active persona's display
+    // name so the avatar reads as the person who actually clicked
+    // Send (e.g. "Sarah Mitchell" → "SM"). Server-set sender_name
+    // only wins when it's present AND matches our direction
+    // expectations — historically inbound rows can carry a
+    // sender_name that's the OPPOSITE side, which produced the
+    // wrong initials.
+    if (!this.activeThread) return m.sender_name || '';
+    if (m.direction === 'outbound') {
+      // From us. Persona name first (live, always our display
+      // name); then server sender_name; then org name fallback.
+      const p = this.personaSvc.active?.name;
+      if (p) return p;
+      if (m.sender_name) return m.sender_name;
+      return this.viewer === 'supplier'
+        ? (this.activeThread.supplierName || '')
+        : (this.agencyName || '');
+    }
     // Inbound = from the other party. From agency POV that's the
-    // supplier; from supplier POV that's the agency. fromNameFor
-    // already encodes that asymmetry, so we use it directly.
-    const otherParty = this.fromNameFor(this.activeThread);
-    if (m.direction === 'inbound') return otherParty;
-    // Outbound = from us. Mirror image — agency name for the agent,
-    // supplier name for the supplier.
-    return this.viewer === 'supplier'
-      ? (this.activeThread.supplierName || '')
-      : (this.agencyName || '');
+    // supplier; from supplier POV that's the agency. Use the
+    // server-joined sender_name when available so we get the
+    // actual user (e.g. "Ryan Foster") rather than the org name.
+    if (m.sender_name) return m.sender_name;
+    return this.fromNameFor(this.activeThread);
   }
 
   /** v1.65fX — 2-char initials for the avatar circle. Splits on
@@ -2483,6 +2495,21 @@ export class MessagesInboxComponent implements OnInit {
     this.lastDate = '';
     t.unread = false;
     this.threadItems = [];
+    // v1.65fZ — when the user clicks into a thread, refresh the
+    // threads list from the server so any replies that landed since
+    // the inbox first loaded are visible in the conversation
+    // stream. Capture the key, kick the load, re-bind activeThread
+    // after the fetch returns — same dance sendBatchReply uses.
+    const activeKey = t.key;
+    if (this.boundProjectId) this.load();
+    else this.loadAllMessages();
+    setTimeout(() => {
+      const fresh = this.threads.find(x => x.key === activeKey);
+      if (fresh) {
+        this.activeThread = fresh;
+        this.cdr.detectChanges();
+      }
+    }, 300);
     // v1.65cz (p0013 §1) → v1.65dw — accordion state reset trimmed
     // to just the Conversation header (Event + Items now open in
     // their own shared drawers via the chip bar).
