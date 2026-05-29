@@ -80,39 +80,33 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
             <div class="bp-cd-text">
               <div class="bp-cd-name" [title]="pi.name">{{ pi.name }}</div>
               <div class="bp-cd-sub">{{ pi.supplier_name || '—' }}</div>
-              <!-- v1.65et — small status badge in supplier mode so
-                   Ryan sees what he's already actioned. -->
-              <div *ngIf="isSupplier && rowStatus(pi)"
+              <!-- v1.65et → v1.65f8 — status badge no longer gated
+                   on isSupplier. Both viewers see "Quoted" /
+                   "Accepted" / "Declined" / "Booked" when a row has
+                   a status. The agent reviewing a supplier's reply
+                   needs the same visibility the supplier does. -->
+              <div *ngIf="rowStatus(pi)"
                    class="bp-cd-row-status"
                    [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
                    [class.bp-cd-row-status--bad]="isDeclined(pi)">
                 {{ rowStatusLabel(pi) }}
               </div>
-              <!-- v1.65f4 — agent-mode breakdown line lives inside
-                   the text block so it stacks below the supplier line
-                   via the same flex column. Keeps the grid simple
-                   (no row collisions in col 2). -->
-              <div class="bp-cd-price-line" *ngIf="!isSupplier">
+              <!-- v1.65f4 → v1.65f8 — breakdown line shown for both
+                   viewers ("£85 / head × 250 guests"). Replaces the
+                   old supplier-only bare-rate cell so the card reads
+                   the same regardless of who's looking. -->
+              <div class="bp-cd-price-line">
                 {{ rateLine(pi) }}
               </div>
             </div>
-            <!-- v1.65f3 → v1.65f4 — row layout shows three pieces of
-                 math, with the stepper always on its OWN row so the
-                 visual rhythm is consistent regardless of breakdown
-                 length:
-                   ROW 1: name + supplier + breakdown text  |  LINE TOTAL
-                   ROW 2: stepper                            |  ×
-                 Per-head items display the EFFECTIVE head count in
-                 the stepper (qty × guest_count, so 250 not 1) — and
-                 +/− step in groups of guest_count. Flat-unit items
-                 keep the simple qty stepper.
-                 Supplier mode keeps a read-only "rate" cell on row 2
-                 col 2, with the 4-action cluster on the right. -->
-            <div class="bp-cd-price" *ngIf="isSupplier">
-              <div class="bp-cd-price-rate">
-                {{ (pi.base_price || 0) | gbp }}
-              </div>
-            </div>
+            <!-- v1.65f3 → v1.65f8 — unified row layout. Both modes
+                 share the same grid: text block (col 2), line total
+                 (col 3 spanning rows 1-2), and an action band on row
+                 2. The action band's contents differ by role —
+                 stepper + remove × for the agent, 4-action cluster
+                 for the supplier — but the layout/typography/spacing
+                 are identical. -->
+
             <!-- v1.65f4 — stepper hoisted out of .bp-cd-price into its
                  own grid cell on row 2 so it sits cleanly on its own
                  line every time (no wrap-when-breakdown-is-long). -->
@@ -128,10 +122,11 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
                       (click)="onQtyPlus(pi)"
                       title="Increase">+</button>
             </div>
-            <!-- v1.65f3 — agent-mode line total, right column, big
-                 serif number. Visually outranks the breakdown so the
-                 user reads "this line costs £21,250" at a glance. -->
-            <div class="bp-cd-row-total" *ngIf="!isSupplier">
+            <!-- v1.65f3 → v1.65f8 — line total visible to both
+                 viewers. Big serif number in col 3 so the row reads
+                 "this line costs £21,250" at a glance for either
+                 role. -->
+            <div class="bp-cd-row-total">
               {{ lineTotal(pi) | gbp }}
             </div>
             <!-- v1.65et → v1.65eu — supplier mode action cluster.
@@ -671,11 +666,12 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       text-overflow: clip;
       line-height: 1.3;
     }
-    /* v1.65f4 — .bp-cd-price now only renders in SUPPLIER mode (the
-       read-only rate cell). Sits in col 2 row 2, alongside the
-       4-action cluster on the right. Agent mode dropped this
-       wrapper — the breakdown text moved inside .bp-cd-text and the
-       stepper lives in its own grid cell. */
+    /* v1.65f4 → v1.65f8 — .bp-cd-price is no longer rendered inside
+       a selected row. The breakdown line lives inside .bp-cd-text
+       (both modes) and the line total is its own col-3 cell. Rule
+       kept here only so wishlist + ad-hoc rows (which still emit
+       .bp-cd-price as a price cell) inherit alignment if they're
+       ever wrapped in --selected. */
     .bp-cd-row--selected .bp-cd-price {
       grid-column: 2; grid-row: 2;
       justify-self: start;
