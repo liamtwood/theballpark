@@ -444,7 +444,24 @@ interface VendorThread {
                         ↳ {{ tagName }}
                       </div>
                       <div class="bp-msg-bubble-body" *ngIf="m.body">{{ m.body }}</div>
-                      <div class="bp-msg-bubble-time">{{ m.created_at | date:'HH:mm' }}</div>
+                      <!-- v1.65f6 — Reply affordance next to the
+                           timestamp on every bubble. Opens the Cart
+                           drawer for this thread so the viewer can
+                           review / edit / batch-respond inline. Only
+                           rendered when the thread actually has a
+                           cart attached (no items → nothing to reply
+                           to). -->
+                      <div class="bp-msg-bubble-foot">
+                        <button *ngIf="threadItems.length"
+                                type="button"
+                                class="bp-msg-bubble-reply"
+                                title="Reply with cart"
+                                (click)="openItemsDrawerForThread()">
+                          <lucide-icon name="corner-up-left" [size]="11"></lucide-icon>
+                          Reply
+                        </button>
+                        <span class="bp-msg-bubble-time">{{ m.created_at | date:'HH:mm' }}</span>
+                      </div>
                     </div>
                   </div>
                 </ng-container>
@@ -1413,10 +1430,39 @@ interface VendorThread {
     }
     .bp-msg-bubble--unread { border-left: 3px solid var(--theme-accent); border-radius: 0 var(--radius-card) var(--radius-card) 0; }
     .bp-msg-bubble-body { white-space: pre-wrap; }
+    /* v1.65f6 — bubble footer: reply (left) + timestamp (right). */
+    .bp-msg-bubble-foot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      min-height: 14px;
+    }
+    .bp-msg-bubble-reply {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 1px 6px 1px 4px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      opacity: 0.7;
+    }
+    .bp-msg-bubble:hover .bp-msg-bubble-reply { opacity: 1; }
+    .bp-msg-bubble-reply:hover {
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+    }
+    .bp-msg-bubble-reply lucide-icon { line-height: 0; }
     .bp-msg-bubble-time {
       font-size: 10px;
       color: var(--color-text-muted);
-      margin-top: 4px;
+      margin-left: auto;
       text-align: right;
     }
     .bp-msg-bubble-crumb {
