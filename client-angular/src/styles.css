@@ -2340,6 +2340,144 @@ app-top-nav { flex-shrink: 0; }
 }
 .bp-md-preview tr:nth-child(even) td { background: var(--color-surface); }
 
+/* v1.65fC — shared item-detail card vocabulary.
+   Promoted from catalogue-grid component-scoped styles to global so the
+   cart drawer's right-column detail panel can render in the same
+   shape. One marketplace card design used everywhere. The `.bp-detail-*`
+   primitives compose into hero + body block layouts; the markup that
+   uses them lives in each component. */
+.bp-detail-hero {
+  width: 100%; height: 160px;
+  background-size: cover; background-position: center;
+  position: relative;
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+  overflow: hidden;
+}
+.bp-detail-edit-btn {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface); border: 0.5px solid var(--theme-border);
+  border-radius: 50%; cursor: pointer; color: var(--theme-accent);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.bp-detail-edit-btn:hover { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
+.bp-detail-actions {
+  display: flex; gap: 6px;
+  position: absolute;
+  top: 10px; right: 10px;
+  z-index: 2;
+}
+.bp-detail-action {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 0.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.bp-detail-action:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+.bp-detail-action.active {
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--color-surface);
+}
+.bp-detail-action.active:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+}
+.bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+.bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+.bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
+.bp-detail-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+.bp-detail-body { padding: 16px 20px; }
+.bp-detail-cat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
+.bp-detail-name { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 8px; line-height: 1.3; }
+.bp-detail-subtitle { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-bottom: 10px; }
+.bp-detail-price-row { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 0.5px solid var(--color-border); }
+.bp-detail-price { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
+.bp-detail-price-sep { font-size: 16px; color: var(--color-text-muted); }
+.bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 6px; }
+.bp-detail-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 14px; }
+.bp-detail-specs { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.bp-detail-spec { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
+.bp-detail-spec:last-child { border-bottom: none; }
+.bp-detail-spec-label { color: var(--color-text-muted); }
+.bp-detail-spec-value { font-weight: 500; color: var(--color-text-primary); }
+.bp-detail-parent { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
+.bp-detail-parent:hover { border-color: var(--theme-accent); }
+.bp-detail-parent-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
+.bp-detail-parent-img-default { background: var(--theme-bg); }
+.bp-detail-parent-body { flex: 1; min-width: 0; }
+.bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+.bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
+
+/* v1.65fC — inline edit primitives. When a detail card flips to
+   "editing" the static text rows swap for compact inputs that match
+   the surrounding type rhythm. Used in cart drawer's snapshot-edit
+   flow; catalogue grid can adopt later. */
+.bp-detail-name-input {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 400;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  padding: 4px 8px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-surface);
+  margin-bottom: 8px;
+}
+.bp-detail-name-input:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+}
+.bp-detail-price-input {
+  font-size: 20px; font-weight: 700;
+  width: 100px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bp-detail-price-input:focus { outline: none; border-color: var(--theme-accent); }
+.bp-detail-unit-select {
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+.bp-detail-desc-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 12px; line-height: 1.6;
+  color: var(--color-text-secondary);
+  padding: 6px 8px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: var(--color-surface);
+  resize: vertical; min-height: 64px;
+  margin-bottom: 14px;
+}
+.bp-detail-desc-input:focus { outline: none; border-color: var(--theme-accent); }
+.bp-detail-edit-foot {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 4px;
+}
+
 /* v1.65ez — PrimeNG toast theme override.
    Lara-light-blue ships success toasts in a hard #4CAF50 green that
    clashes with every theme preset. We re-skin all four severities so

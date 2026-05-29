@@ -216,119 +216,136 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
              empty state. Lives at the top of the right column;
              totals + Send CTA sit pinned at the bottom via the
              .bp-cd-totals-stack flex-shrink: 0 wrapper below. -->
+        <!-- v1.65fC — detail card now uses the shared .bp-detail-*
+             vocabulary (the same hero + body + specs primitives that
+             the catalogue grid's right-rail card uses), so the cart
+             drawer and the marketplace render visually identical
+             cards. Edit toggles to in-place inputs — name / price /
+             unit / description swap for editable fields without
+             leaving the card. -->
         <div class="bp-cd-detail" *ngIf="selectedRow as pi; else detailEmpty">
-          <div class="bp-cd-detail-hero"
+          <!-- HERO: image with the 4-action cluster anchored top-right. -->
+          <div class="bp-detail-hero"
+               [class.bp-detail-hero-default]="!pi.image_url"
                [style.background-image]="imageStyle(pi)"
                [style.background-color]="imageBgColor(pi)">
-            <span *ngIf="!imageStyle(pi)" class="bp-cd-detail-hero-letter">{{ initial(pi) }}</span>
-          </div>
-          <div class="bp-cd-detail-hd">
-            <div class="bp-cd-detail-name">{{ pi.name }}</div>
-            <div class="bp-cd-detail-sub">{{ pi.supplier_name || '—' }}</div>
-            <div *ngIf="rowStatus(pi)"
-                 class="bp-cd-row-status"
-                 [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
-                 [class.bp-cd-row-status--bad]="isDeclined(pi)">
-              {{ rowStatusLabel(pi) }}
-            </div>
-          </div>
-          <div class="bp-cd-detail-desc" *ngIf="pi.description">{{ pi.description }}</div>
-          <div class="bp-cd-detail-pricing">
-            <div class="bp-cd-price-line">{{ rateLine(pi) }}</div>
-            <div class="bp-cd-detail-line-total">{{ lineTotal(pi) | gbp }}</div>
-          </div>
-          <!-- Stepper (agent only) -->
-          <div class="bp-cd-qty" *ngIf="!isSupplier && pi.item_id">
-            <button type="button" class="bp-cd-qty-btn"
-                    [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
-                    (click)="onQtyMinus(pi)"
-                    title="Decrease">−</button>
-            <span class="bp-cd-qty-n">{{ stepperValue(pi) | number }}</span>
-            <button type="button" class="bp-cd-qty-btn"
-                    [disabled]="qtySaving[pi.id]"
-                    (click)="onQtyPlus(pi)"
-                    title="Increase">+</button>
-          </div>
-          <!-- Universal 4-action cluster (tick / edit / image / ×).
-               Semantics differ by role but the layout is identical:
-                 agent:    edit snapshot          × remove
-                 supplier: tick accept · edit adjust · image · × decline -->
-          <div class="bp-cd-detail-actions">
-            <button *ngIf="isSupplier"
-                    type="button"
-                    class="bp-cd-row-act bp-cd-row-act--accept"
-                    [class.bp-cd-row-act--active]="rowStatus(pi) === 'accepted'"
-                    title="Accept"
-                    (click)="onRowAccept(pi)">
-              <lucide-icon name="check" [size]="14"></lucide-icon>
-            </button>
-            <button type="button"
-                    class="bp-cd-row-act bp-cd-row-act--adjust"
-                    [class.bp-cd-row-act--active]="adjustOpenId === pi.id || rowStatus(pi) === 'adjusted_by_supplier' || rowStatus(pi) === 'quoted'"
-                    [title]="isSupplier ? 'Adjust — set price / details' : 'Edit for this brief'"
-                    (click)="toggleAdjust(pi)">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-            <button *ngIf="isSupplier"
-                    type="button"
-                    class="bp-cd-row-act bp-cd-row-act--image"
-                    [class.bp-cd-row-act--active]="!!pi.image_url || imageOpenId === pi.id"
-                    title="Photo — upload, search, or paste"
-                    (click)="toggleImage(pi)">
-              <lucide-icon name="image" [size]="14"></lucide-icon>
-            </button>
-            <button type="button"
-                    class="bp-cd-row-act bp-cd-row-act--decline"
-                    [class.bp-cd-row-act--active]="isDeclined(pi)"
-                    [title]="isSupplier ? 'Decline' : 'Remove from project'"
-                    (click)="isSupplier ? onRowDecline(pi) : remove(pi)">
-              <lucide-icon name="x" [size]="14"></lucide-icon>
-            </button>
-          </div>
-          <!-- Inline Adjust form — Edit (agent) / Adjust (supplier). -->
-          <div *ngIf="adjustOpenId === pi.id" class="bp-cd-adjust">
-            <div class="bp-cd-adjust-hd">
-              {{ isSupplier ? 'Quote & add to catalogue' : 'Edit for this brief' }}
-            </div>
-            <div class="bp-cd-adjust-row">
-              <label class="bp-cd-adjust-lbl">Name</label>
-              <input type="text" class="bp-cd-adjust-input"
-                     [(ngModel)]="adjustForm.name"
-                     [placeholder]="pi.name"/>
-            </div>
-            <div class="bp-cd-adjust-row">
-              <label class="bp-cd-adjust-lbl">Price</label>
-              <input type="number" class="bp-cd-adjust-input bp-cd-adjust-price"
-                     [(ngModel)]="adjustForm.price"
-                     min="0" step="1" placeholder="0"/>
-              <select class="bp-cd-adjust-input bp-cd-adjust-unit-sel"
-                      [(ngModel)]="adjustForm.unit">
-                <option *ngFor="let u of unitOptions" [value]="u.code">
-                  per {{ u.label }}
-                </option>
-              </select>
-            </div>
-            <div class="bp-cd-adjust-row">
-              <label class="bp-cd-adjust-lbl">Description</label>
-              <textarea class="bp-cd-adjust-input bp-cd-adjust-textarea" rows="2"
-                        [(ngModel)]="adjustForm.description"
-                        placeholder="Short description"></textarea>
-            </div>
-            <div class="bp-cd-adjust-foot">
-              <span class="bp-cd-adjust-note">
-                <lucide-icon name="sparkles" [size]="11"></lucide-icon>
-                {{ isSupplier ? 'Adds to your catalogue' : 'Saves to this brief only' }}
-              </span>
-              <button type="button" class="bp-cd-adjust-cancel"
-                      (click)="cancelAdjust()">Cancel</button>
-              <button type="button" class="bp-cd-adjust-save"
-                      [disabled]="!canSaveAdjust"
-                      (click)="onSaveAdjust(pi)">
-                <lucide-icon name="check" [size]="13"></lucide-icon> Save
+            <span *ngIf="!pi.image_url" class="bp-detail-hero-initials">{{ initial(pi) }}</span>
+            <div class="bp-detail-actions">
+              <button *ngIf="isSupplier"
+                      type="button"
+                      class="bp-detail-action"
+                      [class.active]="rowStatus(pi) === 'accepted'"
+                      title="Accept"
+                      (click)="onRowAccept(pi)">
+                <lucide-icon name="check" [size]="14"></lucide-icon>
+              </button>
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="adjustOpenId === pi.id"
+                      [title]="isSupplier ? 'Adjust — set price / details' : 'Edit for this brief'"
+                      (click)="toggleAdjust(pi)">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+              <button *ngIf="isSupplier"
+                      type="button"
+                      class="bp-detail-action"
+                      [class.active]="!!pi.image_url || imageOpenId === pi.id"
+                      title="Photo — upload, search, or paste"
+                      (click)="toggleImage(pi)">
+                <lucide-icon name="image" [size]="14"></lucide-icon>
+              </button>
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="isDeclined(pi)"
+                      [title]="isSupplier ? 'Decline' : 'Remove from project'"
+                      (click)="isSupplier ? onRowDecline(pi) : remove(pi)">
+                <lucide-icon name="x" [size]="14"></lucide-icon>
               </button>
             </div>
           </div>
-          <!-- Inline Image picker — supplier only. -->
+
+          <!-- BODY -->
+          <div class="bp-detail-body">
+            <div class="bp-detail-cat-label" *ngIf="pi.category_name">{{ pi.category_name | uppercase }}</div>
+
+            <!-- VIEW MODE -->
+            <ng-container *ngIf="!isEditingDetail">
+              <div class="bp-detail-name">{{ pi.name }}</div>
+              <div class="bp-detail-subtitle" *ngIf="pi.supplier_name">
+                <lucide-icon name="map-pin" [size]="12"></lucide-icon>
+                {{ pi.supplier_name }}
+              </div>
+              <div *ngIf="rowStatus(pi)"
+                   class="bp-cd-row-status"
+                   [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
+                   [class.bp-cd-row-status--bad]="isDeclined(pi)">
+                {{ rowStatusLabel(pi) }}
+              </div>
+              <div class="bp-detail-price-row">
+                <span class="bp-detail-price">{{ (pi.base_price || 0) | gbp }}</span>
+                <span class="bp-detail-price-unit" *ngIf="pi.unit">{{ unitShort(pi.unit) }}</span>
+              </div>
+              <p class="bp-detail-desc" *ngIf="pi.description">{{ pi.description }}</p>
+              <!-- Breakdown + line total + stepper (agent only) -->
+              <div class="bp-detail-specs">
+                <div class="bp-detail-spec">
+                  <span class="bp-detail-spec-label">{{ rateLine(pi) }}</span>
+                  <span class="bp-detail-spec-value">{{ lineTotal(pi) | gbp }}</span>
+                </div>
+              </div>
+              <div class="bp-cd-qty bp-cd-qty--detail" *ngIf="!isSupplier && pi.item_id">
+                <button type="button" class="bp-cd-qty-btn"
+                        [disabled]="qtyOf(pi) <= 1 || qtySaving[pi.id]"
+                        (click)="onQtyMinus(pi)"
+                        title="Decrease">−</button>
+                <span class="bp-cd-qty-n">{{ stepperValue(pi) | number }}</span>
+                <button type="button" class="bp-cd-qty-btn"
+                        [disabled]="qtySaving[pi.id]"
+                        (click)="onQtyPlus(pi)"
+                        title="Increase">+</button>
+              </div>
+            </ng-container>
+
+            <!-- EDIT MODE — same body slots, but inputs in place. -->
+            <ng-container *ngIf="isEditingDetail">
+              <input type="text" class="bp-detail-name-input"
+                     [(ngModel)]="adjustForm.name"
+                     [placeholder]="pi.name"/>
+              <div class="bp-detail-subtitle" *ngIf="pi.supplier_name">
+                <lucide-icon name="map-pin" [size]="12"></lucide-icon>
+                {{ pi.supplier_name }}
+              </div>
+              <div class="bp-detail-price-row">
+                <input type="number" class="bp-detail-price-input"
+                       [(ngModel)]="adjustForm.price"
+                       min="0" step="1" placeholder="0"/>
+                <select class="bp-detail-unit-select"
+                        [(ngModel)]="adjustForm.unit">
+                  <option *ngFor="let u of unitOptions" [value]="u.code">
+                    per {{ u.label }}
+                  </option>
+                </select>
+              </div>
+              <textarea class="bp-detail-desc-input" rows="3"
+                        [(ngModel)]="adjustForm.description"
+                        placeholder="Short description"></textarea>
+              <div class="bp-detail-edit-foot">
+                <span class="bp-cd-adjust-note">
+                  <lucide-icon name="sparkles" [size]="11"></lucide-icon>
+                  {{ isSupplier ? 'Adds to your catalogue' : 'Saves to this brief only' }}
+                </span>
+                <button type="button" class="bp-cd-adjust-cancel"
+                        (click)="cancelAdjust()">Cancel</button>
+                <button type="button" class="bp-cd-adjust-save"
+                        [disabled]="!canSaveAdjust"
+                        (click)="onSaveAdjust(pi)">
+                  <lucide-icon name="check" [size]="13"></lucide-icon> Save
+                </button>
+              </div>
+            </ng-container>
+          </div>
+
+          <!-- Inline Image picker — supplier only, opens below the card. -->
           <app-image-upload-panel
             *ngIf="isSupplier && imageOpenId === pi.id"
             [entityId]="pi.item_id || pi.id"
@@ -595,64 +612,19 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       letter-spacing: 0.02em;
     }
 
-    /* v1.65fB — detail panel at the top of the right column. */
+    /* v1.65fB → v1.65fC — detail panel is now the same marketplace
+       card shape used by catalogue-grid's right rail. The .bp-detail-*
+       primitives (hero + body + cat-label + name + subtitle + price-row
+       + desc + specs + actions) live in global styles.css; this wrapper
+       just provides the card container chrome (surface fill, hairline
+       border, rounded corners, overflow:hidden so the hero clips). */
     .bp-cd-detail {
-      display: flex; flex-direction: column;
-      gap: 10px;
-      padding: 14px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-card);
+      overflow: hidden;
     }
-    .bp-cd-detail-hero {
-      width: 100%;
-      aspect-ratio: 16/9;
-      max-height: 180px;
-      border-radius: var(--radius-card);
-      background-size: cover; background-position: center;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .bp-cd-detail-hero-letter {
-      font-family: var(--font-display);
-      font-size: 36px;
-      color: var(--theme-accent);
-      opacity: 0.55;
-    }
-    .bp-cd-detail-hd {
-      display: flex; flex-direction: column; gap: 3px;
-    }
-    .bp-cd-detail-name {
-      font-family: var(--font-display);
-      font-size: 17px; font-weight: 500;
-      color: var(--color-text-primary);
-      line-height: 1.25;
-    }
-    .bp-cd-detail-sub {
-      font-size: 12px;
-      color: var(--color-text-muted);
-    }
-    .bp-cd-detail-desc {
-      font-size: 12.5px;
-      color: var(--color-text-secondary);
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-    .bp-cd-detail-pricing {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-top: 8px;
-      border-top: 0.5px solid var(--color-border);
-    }
-    .bp-cd-detail-line-total {
-      font-family: var(--font-display);
-      font-size: 20px; font-weight: 500;
-      color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
-    }
-    .bp-cd-detail-actions {
-      display: flex; gap: 8px;
-      padding-top: 4px;
-    }
+    .bp-cd-qty--detail { margin-top: 10px; }
     .bp-cd-detail-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 8px;
@@ -1536,12 +1508,25 @@ export class CartDrawerComponent implements OnInit, OnDestroy {
 
   selectRow(pi: ProjectItem): void {
     this.selectedRowId = (pi as any).id || null;
+    // v1.65fC — switching selection cancels any in-flight edit so the
+    // form doesn't leak between rows.
+    if (this.adjustOpenId && this.adjustOpenId !== this.selectedRowId) {
+      this.cancelAdjust();
+    }
     this.cdr.markForCheck();
   }
 
   get selectedRow(): ProjectItem | null {
     if (!this.selectedRowId) return null;
     return [...this.selected, ...this.wishlist].find(p => (p as any).id === this.selectedRowId) || null;
+  }
+
+  /** v1.65fC — true when the selected detail card is in inline-edit
+      mode. Wired off the existing adjustOpenId so the same Edit pen
+      that used to open an inline form now flips the card itself
+      into edit. */
+  get isEditingDetail(): boolean {
+    return !!this.selectedRowId && this.adjustOpenId === this.selectedRowId;
   }
 
   adjustOpenId: string | null = null;
