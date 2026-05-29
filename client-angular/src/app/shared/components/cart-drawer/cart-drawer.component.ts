@@ -46,7 +46,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
                position="right"
-               [style]="{ width: '420px' }"
+               [style]="{ width: 'min(880px, 92vw)' }"
                styleClass="bp-drawer bp-cart-drawer"
                [showCloseIcon]="false">
       <ng-template pTemplate="header">
@@ -64,7 +64,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
         </div>
       </ng-template>
 
-      <div class="bp-cd-body">
+      <!-- v1.65f9 — 2-column drawer body. Items list (selected,
+           wishlist, ad-hoc) lives in col 1; the summary block
+           (totals, budget headroom, textarea, Send CTA) lives in
+           col 2 so the user can see what they're buying and what it
+           costs at the same time. Drawer width doubled to
+           min(880px, 92vw) to make room. Footer template removed —
+           the Send action now lives in col 2's summary stack. -->
+      <div class="bp-cd-grid">
+      <div class="bp-cd-body bp-cd-grid-items">
         <!-- SELECTED ----------------------------------------------- -->
         <div class="bp-field-label bp-cd-eyebrow">SELECTED</div>
         <ng-container *ngIf="selected.length; else noSel">
@@ -357,9 +365,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           </button>
         </div>
         </ng-container>
-      </div>
+      </div><!-- /.bp-cd-grid-items -->
 
-      <ng-template pTemplate="footer">
+      <!-- v1.65f9 — summary column on the right of the 2-col grid.
+           Sticky vertical stack that holds the cost breakdown,
+           budget headroom, optional textarea (supplier), and the
+           Send CTA. Same content the old pTemplate="footer" carried,
+           now living inside the body so it can sit next to the
+           items list instead of below it. -->
+      <aside class="bp-cd-grid-summary">
         <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
              then auto-summary chip, then wrap-up textarea, then the
              Send reply CTA. The whole block lives in one *ngIf so
@@ -483,7 +497,8 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
           <span class="bp-cd-foot-label">CLIENT TOTAL</span>
           <span class="bp-cd-foot-total">£0</span>
         </div>
-      </ng-template>
+      </aside><!-- /.bp-cd-grid-summary -->
+      </div><!-- /.bp-cd-grid -->
     </p-sidebar>
   `,
   styles: [`
@@ -505,6 +520,68 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     }
 
     .bp-cd-body { padding: 20px 20px 24px; }
+
+    /* v1.65f9 — 2-column drawer body. Items list (existing
+       .bp-cd-body) sits in col 1; the summary aside sits in col 2.
+       Heights stretch to fill the sidebar content area so the
+       items column scrolls independently of the summary panel. */
+    .bp-cd-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 0;
+      height: 100%;
+      min-height: 0;
+    }
+    .bp-cd-grid-items {
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .bp-cd-grid-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px 20px 24px;
+      background: var(--theme-bg);
+      border-left: 0.5px solid var(--color-border);
+      overflow-y: auto;
+      min-height: 0;
+    }
+    /* Footer rows / send CTA inside the summary aside drop their
+       previous "footer band" margins — they're now stacked
+       vertically inside a column, not pinned to the drawer bottom. */
+    .bp-cd-grid-summary .bp-cd-foot {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .bp-cd-grid-summary .bp-cd-foot--supplier,
+    .bp-cd-grid-summary .bp-cd-foot--summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    /* Narrow viewport fallback — stack the two columns vertically so
+       the drawer doesn't break on mobile / very narrow tablets. */
+    @media (max-width: 720px) {
+      .bp-cd-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+        height: 100%;
+      }
+      .bp-cd-grid-summary {
+        border-left: none;
+        border-top: 0.5px solid var(--color-border);
+      }
+    }
+
+    /* p-sidebar content area must allow the grid to fill it. */
+    :host ::ng-deep .bp-cart-drawer .p-sidebar-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
     .bp-cd-eyebrow {
       color: var(--theme-accent) !important;
       margin-top: 4px;
