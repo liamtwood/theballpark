@@ -191,7 +191,21 @@ export class MarketplaceComponent implements OnInit {
     // modal's "Yes, recommend" path). We fire the AI matcher across all
     // briefed project_categories after the forkJoin resolves so the
     // catalogue-grid is mounted and projectContext is populated.
+    // v1.65f5 — strip the query param immediately after reading it.
+    // Without this strip, a hard page refresh re-mounts the marketplace
+    // with the recommend=1 still in the URL, which re-fires the
+    // (expensive, billable) AI matcher across every category every
+    // time the user hits ⌘R. replaceUrl:true means we don't pollute
+    // the back-stack with the recommend-triggering URL either.
     this.pendingRecommendOnLoad = this.route.snapshot.queryParamMap.get('recommend') === '1';
+    if (this.pendingRecommendOnLoad) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { recommend: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
 
     // v1.65b — when a category is added via the shared drawer, refresh.
     this.addCategorySvc.added$.subscribe(({ projectId }) => {
