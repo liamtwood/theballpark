@@ -303,12 +303,20 @@ const DEFAULT_CONTENT: Content = {
     }
     /* v1.65g9 — image variant. The uploaded BALLPARK wordmark sits
        at the same vertical height as the text fallback so swapping
-       between the two doesn't shift the header layout. */
+       between the two doesn't shift the header layout.
+       v1.65gA — render as solid white on the coloured welcome
+       backgrounds via brightness(0) + invert(1) (drops every
+       non-transparent pixel to pure white). This REQUIRES the
+       uploaded logo to have a transparent background — re-upload
+       through /ballpark-settings/marketplace with the "Remove
+       background" checkbox enabled. A magenta-on-white JPG would
+       end up as a white rectangle blocking the gradient. */
     .bp-welcome-logo-img {
       height: 32px;
       width: auto;
       display: block;
       object-fit: contain;
+      filter: brightness(0) invert(1);
     }
     .bp-welcome-counter {
       font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
