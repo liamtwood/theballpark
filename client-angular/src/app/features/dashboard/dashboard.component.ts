@@ -21,6 +21,7 @@ import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
+import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
@@ -28,7 +29,12 @@ import { CreateProjectService } from '../../core/services/create-project.service
 import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CodelistService } from '../../core/services/codelist.service';
 
-type DashTab = 'projects';
+// v1.65g2 — Inbox tab added next to Home/Projects. The label of the
+// "projects" tab still reads from settingsDraft.homePageLabel (so
+// orgs that renamed it to "Events" keep their label); Inbox is
+// fixed. activeTab='projects' = the dashboard home content;
+// activeTab='inbox' renders the embedded MessagesInboxComponent.
+type DashTab = 'projects' | 'inbox';
 
 @Component({
   selector: 'app-dashboard',
@@ -39,11 +45,22 @@ type DashTab = 'projects';
     CardModule, ButtonModule, CheckboxModule, InputTextModule,
     ConfirmDialogModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
+    MessagesInboxComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   providers: [ConfirmationService, MessageService],
   template: `
-    <div class="bp-page">
+    <!-- v1.65g2 — when the Inbox hero tab is active, render the
+         shared MessagesInboxComponent at the org level. No new
+         component or route — the same inbox the supplier uses
+         (and the existing /messages route mounts) flips on inside
+         the dashboard so users don't have to leave home. -->
+    <app-messages-inbox *ngIf="activeTab === 'inbox'"
+                        [showProjectSelector]="true"
+                        viewer="agency">
+    </app-messages-inbox>
+
+    <div class="bp-page" *ngIf="activeTab === 'projects'">
     <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
          v1.23f: the strip's body is now a <ng-template> captured
          by ViewChild and pushed to ConfigStripService.setTemplate
@@ -1406,15 +1423,14 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     return map[(cat || '').toLowerCase()] || 'default';
   }
 
-  private setTab(tab: DashTab) {
+  /** v1.65g2 — public (was private) so the hero tab band's
+      onTabClick can call it. Sync activeTab + re-push the
+      activeTabPath so the hero highlight matches. */
+  setTab(tab: DashTab) {
     this.activeTab = tab;
-    // Update activeTabPath so AppShell highlights correct tab
-    const tabMap: Record<DashTab, string> = {
-      projects: 'tab:projects',
-    };
     this.shellCtx.set({
       ...this.shellCtx.current,
-      activeTabPath: tabMap[tab]
+      activeTabPath: tab,
     });
     this.cdr.detectChanges();
   }
@@ -1474,11 +1490,21 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       with the settings draft. */
   private pushShellContext() {
     if (!this.org) return;
+    // v1.65g2 — two-tab hero: home (the existing dashboard content,
+    // labelled by settingsDraft.homePageLabel) + Inbox. Tab click
+    // routes through setTab so activeTab + activeTabPath stay in
+    // sync with the AppShell's hero highlight.
+    const homeLabel = this.settingsDraft.homePageLabel || 'Projects';
     const ctx: any = {
       heroTitle: this.org.name,
-      heroSub: (this.settingsDraft.homePageLabel || 'Projects').toUpperCase(),
+      heroSub: homeLabel.toUpperCase(),
       pills: [],
-      tabs: [],
+      tabs: [
+        { label: 'Home',  path: 'projects' },
+        { label: 'Inbox', path: 'inbox'    },
+      ],
+      activeTabPath: this.activeTab,
+      onTabClick: (t: any) => this.setTab(t.path as DashTab),
     };
     // Upcoming pill — when enabled AND we've got a future project.
     if (this.settingsDraft.showUpcoming && this.nextProject) {
