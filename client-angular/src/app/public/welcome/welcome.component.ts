@@ -130,14 +130,22 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg>
           <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-2-inner">
-            <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
-            <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
-          </div>
-          <div class="bp-marquee-wrap">
-            <div class="bp-marquee-track">
-              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">
-                {{ cat }}<span class="bp-marquee-sep">✦</span>
+          <!-- v1.65gD — vertical train per design review. Slide 2
+               becomes a two-column layout: headline + eyebrow on
+               the left, category column scrolling vertically on
+               the right. The marquee track lists each category
+               with the ✦ separator BELOW the label (centre-anchored
+               so the column reads as a stacked stack). -->
+          <div class="bp-slide-2-grid">
+            <div class="bp-slide-inner bp-slide-2-inner">
+              <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
+              <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
+            </div>
+            <div class="bp-marquee-wrap bp-marquee-wrap--vertical">
+              <div class="bp-marquee-track bp-marquee-track--vertical">
+                <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item bp-marquee-item--vertical">
+                  {{ cat }}<span class="bp-marquee-sep bp-marquee-sep--vertical">✦</span>
+                </div>
               </div>
             </div>
           </div>
@@ -266,8 +274,8 @@ const DEFAULT_CONTENT: Content = {
           class="bp-welcome-next"
           (click)="next()"
           [class.hidden]="step === TOTAL_STEPS - 1"
-          aria-label="Next">
-          {{ step === TOTAL_STEPS - 2 ? 'Get on the guestlist' : 'Next' }}
+          aria-label="Get on the guestlist">
+          Get on the guestlist
           <span aria-hidden="true">→</span>
         </button>
       </div>
@@ -494,6 +502,65 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-scroll-x {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
+    }
+
+    /* v1.65gD — vertical marquee variant. Two-column layout: copy
+       on the left, scrolling category column on the right. The
+       track scrolls upward; the ✦ separator sits centred BELOW
+       each label, not to its right. Categories are repeated 3×
+       in marqueeCategories so the loop is seamless. */
+    .bp-slide-2-grid {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 96px;
+      align-items: center;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 64px;
+    }
+    .bp-slide-2-inner { padding: 0; text-align: left; align-items: flex-start; }
+    .bp-marquee-wrap--vertical {
+      width: auto;
+      max-height: 70vh;
+      overflow: hidden;
+      border-top: none;
+      border-bottom: none;
+      padding: 0;
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+    }
+    .bp-marquee-track--vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: auto;
+      white-space: normal;
+      animation: bp-scroll-y 28s linear infinite;
+    }
+    .bp-marquee-item--vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0;
+      text-align: center;
+      font-size: clamp(40px, 6.5vw, 96px);
+      line-height: 1;
+    }
+    .bp-marquee-sep--vertical {
+      margin-left: 0;
+      margin-top: 18px;
+      font-size: 0.4em;
+    }
+    @keyframes bp-scroll-y {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(-33.333%); }
+    }
+
+    @media (max-width: 768px) {
+      .bp-slide-2-grid { grid-template-columns: 1fr; gap: 40px; padding: 0 32px; }
+      .bp-marquee-wrap--vertical { max-height: 40vh; }
     }
 
     /* ── Slide 3 ──────────────────────────────── */
