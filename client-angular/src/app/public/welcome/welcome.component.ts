@@ -98,7 +98,15 @@ const DEFAULT_CONTENT: Content = {
           </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-1-inner">
-            <span class="bp-eyebrow-pill">{{ text('hero.eyebrow') }}</span>
+            <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
+                 the BALLPARK wordmark, per the design review. Falls
+                 back to the original eyebrow text when the logo
+                 hasn't loaded so first paint never feels empty. -->
+            <div class="bp-eyebrow-welcome">
+              <span class="bp-eyebrow-welcome-prefix">Welcome to</span>
+              <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-eyebrow-welcome-logo"/>
+              <span *ngIf="!logoUrl" class="bp-eyebrow-welcome-fallback">BALLPARK</span>
+            </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
           </div>
@@ -400,6 +408,38 @@ const DEFAULT_CONTENT: Content = {
       padding: 6px 16px;
       margin-bottom: 32px;
       backdrop-filter: blur(8px);
+    }
+    /* v1.65gB — "Welcome to BALLPARK" replaces the eyebrow pill on
+       slide 1. "Welcome to" sits as light italic prefix; the
+       wordmark renders inline at the same vertical anchor as the
+       text (brightness(0)+invert(1) so the magenta uploaded asset
+       reads as pure white on the gradient). */
+    .bp-eyebrow-welcome {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      color: #DCF0EB;
+    }
+    .bp-eyebrow-welcome-prefix {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 400;
+      font-style: italic;
+      letter-spacing: -0.01em;
+    }
+    .bp-eyebrow-welcome-logo {
+      height: 28px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    .bp-eyebrow-welcome-fallback {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
     }
     .bp-hero-headline {
       font-family: 'Fraunces', Georgia, serif;
