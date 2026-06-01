@@ -116,34 +116,41 @@ interface VendorThread {
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- PROJECT SELECTOR — global mode only -->
-      <div class="bp-msg-project-bar" *ngIf="!boundProjectId">
-        <p-dropdown
+      <!-- v1.65g4 — top filter row: Client | Project | Search on a
+           single line. Client + Project dropdowns only render in
+           global (un-bound) mode; search is universal. The two
+           previously-separate bars (bp-msg-project-bar + bp-browse-
+           strip) collapsed into one row so the inbox loses ~50px of
+           chrome and the three coarsest filters sit shoulder to
+           shoulder. -->
+      <div class="bp-msg-top-filter-row">
+        <p-dropdown *ngIf="!boundProjectId"
+          [(ngModel)]="selectedClientId"
+          [options]="clientDropdownOptions"
+          optionLabel="name" optionValue="id"
+          styleClass="bp-msg-top-dd"
+          placeholder="All clients"
+          (onChange)="onClientChange()">
+        </p-dropdown>
+
+        <p-dropdown *ngIf="!boundProjectId"
           [(ngModel)]="selectedProjectId"
           [options]="projectOptions"
           optionLabel="name" optionValue="id"
-          styleClass="w-full bp-input-edit"
+          styleClass="bp-msg-top-dd"
           placeholder="All projects"
           (onChange)="onProjectChange()">
         </p-dropdown>
-      </div>
 
-      <!-- v1.65dv (p0015 follow-up) — browse strip slimmed to just the
-           search row. Category circles retired (Category dropdown in
-           the INBOX header replaces them); filter sidebar gone entirely
-           so the body becomes 2-column. -->
-      <div class="bp-browse-strip">
-        <div class="bp-search-panel">
-          <div class="bp-search-row">
-            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-            <input pInputText type="text"
-                   [(ngModel)]="searchTerm"
-                   (ngModelChange)="onSearchChange()"
-                   placeholder="Search threads, suppliers, messages…"
-                   class="bp-search-input"/>
-          </div>
+        <div class="bp-search-row bp-msg-top-search">
+          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+          <input pInputText type="text"
+                 [(ngModel)]="searchTerm"
+                 (ngModelChange)="onSearchChange()"
+                 placeholder="Search threads, suppliers, messages…"
+                 class="bp-search-input"/>
         </div>
-      </div><!-- /.bp-browse-strip -->
+      </div><!-- /.bp-msg-top-filter-row -->
 
       <!-- ═══════════════ TWO-COLUMN BODY ═══════════════
            v1.65dv (p0015 follow-up) — filter sidebar retired. Three
@@ -722,11 +729,40 @@ interface VendorThread {
       opacity: 0.5;
     }
 
-    /* Project selector (global mode) */
+    /* Project selector (global mode) — kept for legacy refs (no
+       longer rendered; replaced by .bp-msg-top-filter-row below). */
     .bp-msg-project-bar {
       padding: 10px 24px;
       max-width: 1200px;
       margin: 0 auto;
+    }
+
+    /* v1.65g4 — single horizontal row at the top of the inbox holding
+       Client + Project + Search. Same horizontal padding as the
+       former two bars combined; the search input flexes to consume
+       the remaining width so the line reads:
+         [Client ▼] [Project ▼] [🔍 search ............................. ] */
+    .bp-msg-top-filter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .bp-msg-top-filter-row :host ::ng-deep .bp-msg-top-dd,
+    .bp-msg-top-filter-row ::ng-deep .bp-msg-top-dd {
+      min-width: 200px;
+    }
+    /* v1.65g4 — top-row search reuses the shared .bp-search-row
+       chrome (flex icon + p-inputtext sibling). We just flex it to
+       consume the remaining width and pad it inside so the icon
+       isn't flush against the border. */
+    .bp-msg-top-search {
+      flex: 1 1 auto;
+      padding: 0 12px;
+      height: 34px;
     }
 
     /* Long supplier names truncate inside the shared bp-sidebar-item. */
@@ -1786,6 +1822,11 @@ export class MessagesInboxComponent implements OnInit {
   projects: Project[] = [];
   projectOptions: any[] = [];
   selectedProjectId = '';
+  /** v1.65g4 — Client filter that sits to the LEFT of the project
+      filter on the top row. Selecting a client narrows projectOptions
+      to that client's projects (and clears selectedProjectId if the
+      previously-selected project no longer fits). '' = All clients. */
+  selectedClientId = '';
   activeStatus = 'all';
   activeFolder = 'all';
   /** v1.27: supplier filter (left sidebar). 'all' = no filter. */
@@ -1984,6 +2025,69 @@ export class MessagesInboxComponent implements OnInit {
     } else {
       this.loadAllMessages();
     }
+  }
+
+  /** v1.65g4 — Client dropdown options for the top filter row.
+      Deduped over this.projects[].client_id (with client_name as the
+      label). The server's /projects endpoint already left-joins
+      clients.name as client_name, so no extra fetch is required.
+      Lead row is "All clients" (id ''). */
+  get clientDropdownOptions(): Array<{ id: string; name: string }> {
+    const map: Record<string, string> = {};
+    for (const p of (this.projects || [])) {
+      const cid = (p as any)?.client_id || '';
+      const cname = (p as any)?.client_name || '';
+      if (cid && cname && !map[cid]) map[cid] = cname;
+    }
+    const opts: Array<{ id: string; name: string }> = [
+      { id: '', name: 'All clients' }
+    ];
+    Object.keys(map)
+      .sort((a, b) => map[a].localeCompare(map[b]))
+      .forEach(cid => opts.push({ id: cid, name: map[cid] }));
+    return opts;
+  }
+
+  /** v1.65g4 — Project options narrow to the currently-selected
+      client (if any). All "All projects" lead row remains so the
+      user can clear the project filter independently. */
+  get projectOptionsFiltered(): any[] {
+    if (!this.selectedClientId) return this.projectOptions;
+    return this.projectOptions.filter(o =>
+      // Keep the 'All Projects' sentinel (id '') always.
+      !o.id || this.projects.find(p => p.id === o.id && (p as any).client_id === this.selectedClientId)
+    );
+  }
+
+  /** v1.65g4 — Client change handler. Rebuilds the project option
+      set to match the selected client. If the previously-selected
+      project no longer belongs to this client, clear the project
+      filter (and reset the thread list to mirror the "no project
+      picked yet" state, exactly like onProjectChange does). */
+  onClientChange() {
+    // If the currently-selected project doesn't belong to this client,
+    // drop it so the dropdown shows the right label.
+    if (this.selectedProjectId && this.selectedClientId) {
+      const proj = this.projects.find(p => p.id === this.selectedProjectId);
+      if (proj && (proj as any).client_id !== this.selectedClientId) {
+        this.selectedProjectId = '';
+        this.threads = [];
+        this.activeThread = null;
+        this.categoryFolders = [];
+        this.activeFolder = 'all';
+      }
+    }
+    // Rebuild projectOptions to honour the client narrowing. Keep
+    // the 'All Projects' lead row.
+    const lead = [{ name: 'All Projects', id: '' }];
+    const filtered = this.selectedClientId
+      ? this.projects.filter(p => (p as any).client_id === this.selectedClientId)
+      : this.projects;
+    this.projectOptions = [
+      ...lead,
+      ...filtered.map(p => ({ name: (p as any).event_name || p.name, id: p.id }))
+    ];
+    this.cdr.detectChanges();
   }
 
   loadCategories(pid?: string) {

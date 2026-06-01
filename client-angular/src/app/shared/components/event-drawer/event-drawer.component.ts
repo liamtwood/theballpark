@@ -310,7 +310,12 @@ type SectionKey = EventDrawerSection;
         </div>
 
         <!-- ═══ SECTION 4: FINANCIALS ═══
-             No subtitle per spec. -->
+             No subtitle per spec.
+             v1.65g4 — hidden in view mode per UX request: agents
+             don't need to see budget / margins inline while glancing
+             at event details. The block stays in the template so we
+             can re-enable it later by flipping showLegacySections. -->
+        <ng-container *ngIf="showLegacySections">
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">FINANCIALS</span>
           <div class="bp-section-actions">
@@ -403,8 +408,14 @@ type SectionKey = EventDrawerSection;
             </div>
           </div>
         </div>
+        </ng-container><!-- /showLegacySections (FINANCIALS) -->
 
-        <!-- ═══ SECTION 5: PROJECT BRIEF ═══ -->
+        <!-- ═══ SECTION 5: PROJECT BRIEF ═══
+             v1.65g4 — hidden in view mode (same reasoning as
+             FINANCIALS above). Brief is still captured during the new
+             project flow; the event drawer just doesn't re-surface it
+             here. -->
+        <ng-container *ngIf="showLegacySections">
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">PROJECT BRIEF</span>
           <div class="bp-section-actions">
@@ -454,6 +465,7 @@ type SectionKey = EventDrawerSection;
             </button>
           </div>
         </ng-container>
+        </ng-container><!-- /showLegacySections (PROJECT BRIEF) -->
 
       </div>
 
@@ -583,6 +595,13 @@ export class EventDrawerComponent implements OnInit, OnDestroy {
 
   saving = false;
   form: Partial<Project> = {};
+  /** v1.65g4 — gate for the FINANCIALS + PROJECT BRIEF sections.
+      Hidden in view mode per UX request: agents don't need to see
+      budget/margins or the full brief inline while glancing at event
+      details. Flip to `true` to re-enable both sections (template
+      still references the same `editing.financials` / `editing.brief`
+      flags so the original save/cancel wiring is intact). */
+  showLegacySections = false;
   /** Per-section edit flags — only the touched section's fields go to
       the server on save. */
   editing = { details: false, type: false, logistics: false, financials: false, brief: false };

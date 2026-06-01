@@ -74,6 +74,32 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
            the Send action now lives in col 2's summary stack. -->
       <div class="bp-cd-grid">
       <div class="bp-cd-body bp-cd-grid-items">
+        <!-- EVENT ─────────────────────────────────────────────────────
+             v1.65g4 — context block at the top of the cart so the
+             user can see the brief + key event facts (date / venue /
+             guests) while picking items. The pieces are the same
+             ones the review stage shows in its EVENT DETAILS box —
+             now lifted to the top of every cart open so the context
+             stays visible from item one. -->
+        <div class="bp-field-label bp-cd-eyebrow">EVENT</div>
+        <div class="bp-cd-event-summary">
+          <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
+          <div class="bp-cd-event-box">
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Date</span>
+              <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Venue</span>
+              <span class="bp-cd-event-v">{{ projectVenue || '—' }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Guests</span>
+              <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- SELECTED ----------------------------------------------- -->
         <div class="bp-field-label bp-cd-eyebrow">SELECTED</div>
         <!-- v1.65fB — compact read-only rows. Action buttons + Adjust
@@ -850,6 +876,15 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       border-radius: var(--radius-card);
       background: var(--color-surface);
       gap: 4px;
+    }
+    /* v1.65g4 — EVENT section wrapper at the top of the cart body.
+       Stacks the (optional) brief text and the key-value box with a
+       comfortable gap, then leaves a margin below before SELECTED. */
+    .bp-cd-event-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
     }
     .bp-cd-event-hd {
       font-size: 10px;
