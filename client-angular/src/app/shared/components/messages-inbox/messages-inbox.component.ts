@@ -468,6 +468,17 @@ interface VendorThread {
                           <lucide-icon name="corner-up-left" [size]="11"></lucide-icon>
                           Reply
                         </button>
+                        <!-- v1.65g0 — delete affordance on every
+                             bubble. Soft delete: confirms first,
+                             POSTs DELETE /messages/:id, then
+                             refreshes the thread so the bubble
+                             vanishes. Either side can delete. -->
+                        <button type="button"
+                                class="bp-msg-bubble-del"
+                                title="Delete message"
+                                (click)="deleteMessage(m)">
+                          <lucide-icon name="trash-2" [size]="11"></lucide-icon>
+                        </button>
                         <span class="bp-msg-bubble-time">{{ m.created_at | date:'HH:mm' }}</span>
                       </div>
                     </div>
@@ -1489,6 +1500,26 @@ interface VendorThread {
       background: var(--theme-bg);
     }
     .bp-msg-bubble-reply lucide-icon { line-height: 0; }
+    /* v1.65g0 — delete trash icon. Same hover-fade vocabulary as
+       the reply pill but tinted red so destructive intent reads
+       at a glance. */
+    .bp-msg-bubble-del {
+      display: inline-flex; align-items: center;
+      padding: 2px 6px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      opacity: 0.5;
+      border-radius: 999px;
+      transition: color 0.15s, background 0.15s, opacity 0.15s;
+    }
+    .bp-msg-bubble:hover .bp-msg-bubble-del { opacity: 1; }
+    .bp-msg-bubble-del:hover {
+      color: var(--color-danger);
+      background: rgba(225, 29, 72, 0.08);
+    }
+    .bp-msg-bubble-del lucide-icon { line-height: 0; }
     .bp-msg-bubble-time {
       font-size: 10px;
       color: var(--color-text-muted);
@@ -2487,6 +2518,40 @@ export class MessagesInboxComponent implements OnInit {
       // Map inbox viewer ('agency'|'supplier') to cart-drawer viewer
       // ('agent'|'supplier').
       viewer: this.viewer === 'supplier' ? 'supplier' : 'agent',
+    });
+  }
+
+  /** v1.65g0 — soft-delete a single conversation bubble. Confirms
+      first to avoid stray clicks, then POSTs DELETE /messages/:id.
+      Server stamps deleted_at = NOW(); list queries filter it out
+      so the bubble vanishes on the next thread refresh. Rebinds
+      activeThread by key after the load, same pattern openThread +
+      sendBatchReply use. */
+  deleteMessage(m: ThreadMessage): void {
+    if (!m?.id) return;
+    const ok = window.confirm('Delete this message? It will be removed from the conversation.');
+    if (!ok) return;
+    const activeKey = this.activeThread?.key;
+    this.msgSvc.delete(m.id).subscribe({
+      next: () => {
+        if (this.boundProjectId) this.load();
+        else this.loadAllMessages();
+        if (activeKey) {
+          setTimeout(() => {
+            const fresh = this.threads.find(x => x.key === activeKey);
+            this.activeThread = fresh || null;
+            this.cdr.detectChanges();
+          }, 300);
+        }
+      },
+      error: () => {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Could not delete',
+          detail: 'Please try again.',
+          life: 3000,
+        });
+      }
     });
   }
 

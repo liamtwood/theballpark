@@ -18,7 +18,7 @@ async function getAll(projectId) {
       FROM messages m
       LEFT JOIN users u   ON m.user_id          = u.id
       LEFT JOIN orgs  so  ON m.supplier_org_id  = so.id
-     WHERE 1=1
+     WHERE m.deleted_at IS NULL
   `;
   const params = [];
   if (projectId) { params.push(projectId); query += ` AND m.project_id = $${params.length}`; }
@@ -97,6 +97,7 @@ async function getAllByOrg(orgId) {
        LEFT JOIN projects p  ON m.project_id       = p.id
        LEFT JOIN orgs     so ON m.supplier_org_id  = so.id
       WHERE p.org_id = $1
+        AND m.deleted_at IS NULL
       ORDER BY m.created_at ASC`,
     [orgId]
   );
@@ -127,10 +128,24 @@ async function getAllForSupplier(supplierOrgId) {
        LEFT JOIN orgs     so ON m.supplier_org_id  = so.id
        LEFT JOIN orgs     ao ON p.org_id           = ao.id
       WHERE m.supplier_org_id = $1
+        AND m.deleted_at IS NULL
       ORDER BY m.created_at ASC`,
     [supplierOrgId]
   );
   return result.rows;
 }
 
-module.exports = { getAll, getById, getAllByOrg, getAllForSupplier, create, update, hardDelete };
+// v1.65g0 — soft delete. Stamps deleted_at = NOW(); all list queries
+// above filter on deleted_at IS NULL so deleted rows disappear from
+// the conversation stream without losing the audit trail.
+async function softDelete(id) {
+  const result = await pool.query(
+    `UPDATE messages SET deleted_at = NOW(), updated_at = NOW()
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *`,
+    [id]
+  );
+  return result.rows[0] || null;
+}
+
+module.exports = { getAll, getById, getAllByOrg, getAllForSupplier, create, update, hardDelete, softDelete };

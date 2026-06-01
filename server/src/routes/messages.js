@@ -29,6 +29,16 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.65g0 — soft delete a single message. Both agent and supplier
+// can hit this; further fine-grained permissions can come later.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const row = await MessageService.softDelete(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  } catch (err) { next(err); }
+});
+
 router.post('/', async (req, res, next) => {
   try { res.status(201).json(await MessageService.create(req.body)); } catch (err) { next(err); }
 });
