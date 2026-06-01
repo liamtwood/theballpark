@@ -2473,15 +2473,15 @@ export class MessagesInboxComponent implements OnInit {
         3. agency_name from the active thread
         4. blank — the avatar renders "—" */
   senderName(m: ThreadMessage): string {
-    // v1.65fZ — outbound = us. Prefer the active persona's display
-    // name so the avatar reads as the person who actually clicked
-    // Send (e.g. "Sarah Mitchell" → "SM"). Server-set sender_name
-    // only wins when it's present AND matches our direction
-    // expectations — historically inbound rows can carry a
-    // sender_name that's the OPPOSITE side, which produced the
-    // wrong initials.
+    // v1.65g5 — viewer-aware. The previous version keyed off
+    // m.direction === 'outbound' as "from us", but direction is
+    // ALWAYS stored from the AGENCY's POV (outbound = agency →
+    // supplier). For the supplier viewer that means an outbound
+    // brief is actually FROM the agency. isFromMe() already has
+    // the viewer-aware mapping; reuse it here so the bubble
+    // avatar matches the lane side it lives on.
     if (!this.activeThread) return m.sender_name || '';
-    if (m.direction === 'outbound') {
+    if (this.isFromMe(m)) {
       // From us. Persona name first (live, always our display
       // name); then server sender_name; then org name fallback.
       const p = this.personaSvc.active?.name;
@@ -2491,11 +2491,18 @@ export class MessagesInboxComponent implements OnInit {
         ? (this.activeThread.supplierName || '')
         : (this.agencyName || '');
     }
-    // Inbound = from the other party. From agency POV that's the
-    // supplier; from supplier POV that's the agency. Use the
-    // server-joined sender_name when available so we get the
-    // actual user (e.g. "Ryan Foster") rather than the org name.
+    // From the other party. From agency POV that's the supplier;
+    // from supplier POV that's the agency. Use the server-joined
+    // sender_name when available so we get the actual user (e.g.
+    // "Ryan Foster") rather than the org name. v1.65g5 — for the
+    // supplier viewer we also prefer the joined agency_name over
+    // this.agencyName (which is actually the CURRENT persona's
+    // org name and would read "Rocket Food" for the supplier
+    // viewer — wrong side).
     if (m.sender_name) return m.sender_name;
+    if (this.viewer === 'supplier' && (m as any).agency_name) {
+      return (m as any).agency_name;
+    }
     return this.fromNameFor(this.activeThread);
   }
 

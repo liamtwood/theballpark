@@ -43,7 +43,21 @@ const ROLE_OPTIONS = [
     <p-toast></p-toast>
 
     <div class="bp-ea-page">
-      <h2 class="bp-page-title">Early Access</h2>
+      <div class="bp-ea-title-row">
+        <h2 class="bp-page-title">Early Access</h2>
+        <!-- v1.65g6 — quick link out to the live welcome page so the
+             admin can preview / share without typing the URL. Opens
+             in a new tab; underlying route is public so no auth
+             handshake required. -->
+        <a class="bp-ea-preview-link"
+           href="/welcome"
+           target="_blank"
+           rel="noopener"
+           title="Open the live welcome page in a new tab">
+          <lucide-icon name="external-link" [size]="13"></lucide-icon>
+          Preview welcome page
+        </a>
+      </div>
 
       <!-- Sub-tab switcher -->
       <div class="bp-ea-tabs" role="tablist">
@@ -237,6 +251,31 @@ const ROLE_OPTIONS = [
   `,
   styles: [`
     .bp-ea-page { max-width: 1080px; margin: 0 auto; padding: 0 var(--section-pad); }
+
+    /* v1.65g6 — title row: page title + "Preview welcome page" link.
+       Link uses the calm ghost-pill style (theme-soft fill + accent
+       text, hairline border) so it reads as an action without
+       competing with the page title. */
+    .bp-ea-title-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .bp-ea-preview-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button);
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .bp-ea-preview-link:hover {
+      background: var(--theme-soft);
+      border-color: var(--theme-accent);
+    }
+    .bp-ea-preview-link lucide-icon { line-height: 0; }
 
     /* ── Sub-tabs ─────────────────── */
     .bp-ea-tabs {
