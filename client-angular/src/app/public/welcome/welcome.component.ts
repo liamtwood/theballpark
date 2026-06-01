@@ -130,22 +130,14 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg>
           <div class="bp-grain"></div>
-          <!-- v1.65gD — vertical train per design review. Slide 2
-               becomes a two-column layout: headline + eyebrow on
-               the left, category column scrolling vertically on
-               the right. The marquee track lists each category
-               with the ✦ separator BELOW the label (centre-anchored
-               so the column reads as a stacked stack). -->
-          <div class="bp-slide-2-grid">
-            <div class="bp-slide-inner bp-slide-2-inner">
-              <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
-              <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
-            </div>
-            <div class="bp-marquee-wrap bp-marquee-wrap--vertical">
-              <div class="bp-marquee-track bp-marquee-track--vertical">
-                <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item bp-marquee-item--vertical">
-                  {{ cat }}<span class="bp-marquee-sep bp-marquee-sep--vertical">✦</span>
-                </div>
+          <div class="bp-slide-inner bp-slide-2-inner">
+            <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
+            <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
+          </div>
+          <div class="bp-marquee-wrap">
+            <div class="bp-marquee-track">
+              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">
+                {{ cat }}<span class="bp-marquee-sep">✦</span>
               </div>
             </div>
           </div>
@@ -250,6 +242,19 @@ const DEFAULT_CONTENT: Content = {
 
       </div>
 
+      <!-- v1.65gE — slide indicator "train" is now a vertical pill
+           strip on the LEFT edge (per design review mockup). The
+           Back / Next CTAs stay in the bottom nav. -->
+      <div class="bp-welcome-dots bp-welcome-dots--vertical">
+        <button
+          *ngFor="let _ of dots; let i = index"
+          class="bp-welcome-dot"
+          [class.active]="i === step"
+          [attr.aria-label]="'Go to slide ' + (i + 1)"
+          (click)="goTo(i)">
+        </button>
+      </div>
+
       <!-- Persistent bottom nav -->
       <div class="bp-welcome-bottom">
         <button
@@ -259,16 +264,6 @@ const DEFAULT_CONTENT: Content = {
           aria-label="Back">
           <span aria-hidden="true">←</span> Back
         </button>
-
-        <div class="bp-welcome-dots">
-          <button
-            *ngFor="let _ of dots; let i = index"
-            class="bp-welcome-dot"
-            [class.active]="i === step"
-            [attr.aria-label]="'Go to slide ' + (i + 1)"
-            (click)="goTo(i)">
-          </button>
-        </div>
 
         <button
           class="bp-welcome-next"
@@ -729,9 +724,27 @@ const DEFAULT_CONTENT: Content = {
       border-radius: 999px; border: none;
       background: rgba(220,240,235,0.45);
       cursor: pointer; padding: 0;
-      transition: width 0.3s, background 0.3s;
+      transition: width 0.3s, height 0.3s, background 0.3s;
     }
     .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
+    /* v1.65gE — vertical train variant for the slide indicator.
+       Fixed to the LEFT edge of the viewport, vertically centred.
+       Each dot stacks; the active dot becomes a tall pill (height
+       grows, width stays slim) so the indicator reads top→bottom
+       like the mockup. */
+    .bp-welcome-dots--vertical {
+      position: fixed;
+      left: 28px;
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: column;
+      gap: 10px;
+      z-index: 60;
+      pointer-events: auto;
+    }
+    .bp-welcome-dots--vertical .bp-welcome-dot.active {
+      width: 8px; height: 32px;
+    }
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
