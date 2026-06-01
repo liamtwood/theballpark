@@ -261,11 +261,17 @@ const DEFAULT_CONTENT: Content = {
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+    /* v1.65g8 — Fraunces (OFL, free for commercial) stands in for
+       the personal-use-only Sharpe trial until the licensed Sharpe
+       pack is bought and dropped in. Closest free-for-commercial
+       match: variable serif, high contrast, full weight range,
+       italics. Swap back to Sharpe by replacing this @import and
+       changing 'Fraunces' → 'Sharpe' across the rules below. */
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
 
     :host {
       display: block;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       color: #DCF0EB;
       height: 100vh;
       overflow: hidden;
@@ -284,7 +290,7 @@ const DEFAULT_CONTENT: Content = {
       display: flex; align-items: center; justify-content: space-between;
     }
     .bp-welcome-logo {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 22px; font-weight: 900; letter-spacing: 0.02em;
       color: #DCF0EB; background: none; border: none; cursor: pointer; padding: 0;
     }
@@ -361,7 +367,7 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 1 typography ───────────────────── */
     .bp-eyebrow-pill {
       display: inline-block;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 500;
       letter-spacing: 0.18em; text-transform: uppercase;
       background: rgba(220,240,235,0.15);
@@ -372,7 +378,7 @@ const DEFAULT_CONTENT: Content = {
       backdrop-filter: blur(8px);
     }
     .bp-hero-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(56px, 11vw, 144px);
       font-weight: 900;
       line-height: 0.95;
@@ -380,7 +386,7 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 0 28px 0;
     }
     .bp-hero-subtitle {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(17px, 2vw, 21px);
       font-weight: 500; line-height: 1.5;
       max-width: 560px; margin: 0 auto;
@@ -389,14 +395,14 @@ const DEFAULT_CONTENT: Content = {
 
     /* ── Slide 2 typography + marquee ─────────── */
     .bp-eyebrow {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 500;
       letter-spacing: 0.2em; text-transform: uppercase;
       opacity: 0.75;
       margin-bottom: 24px;
     }
     .bp-suppliers-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(40px, 6.5vw, 88px);
       font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0;
@@ -415,7 +421,7 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-marquee-item {
       display: flex; align-items: center;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(36px, 5vw, 64px);
       font-weight: 900; letter-spacing: 0.02em;
       padding: 0 48px;
@@ -435,20 +441,20 @@ const DEFAULT_CONTENT: Content = {
       gap: 96px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(48px, 8vw, 112px);
       font-weight: 900; line-height: 0.95;
       letter-spacing: -0.03em;
       margin: 0 0 24px 0;
     }
     .bp-producers-tagline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(20px, 2.4vw, 28px);
       font-weight: 500;
       opacity: 0.9; margin: 0;
     }
     .bp-producers-body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 20px; font-weight: 500;
       line-height: 1.6; opacity: 0.95; margin: 0 0 20px 0;
     }
@@ -461,13 +467,13 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 4 ──────────────────────────────── */
     .bp-slide-4-inner { max-width: 560px; width: 100%; }
     .bp-guestlist-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(36px, 5.5vw, 64px);
       font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0 0 16px 0;
     }
     .bp-guestlist-subtitle {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 16px; font-weight: 500;
       line-height: 1.6;
       opacity: 0.9; margin: 0 0 36px 0;
@@ -488,7 +494,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-form-block:has(.bp-form-select) { margin-bottom: 20px; }
     .bp-form-label {
       display: block;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
       opacity: 0.75; margin-bottom: 6px;
@@ -500,7 +506,7 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid rgba(220,240,235,0.25);
       border-radius: 8px;
       color: #DCF0EB; font-size: 14px;
-      font-family: 'Inter', sans-serif; font-weight: 500;
+      font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
     }
     .bp-form-input::placeholder { color: rgba(220,240,235,0.45); }
@@ -509,7 +515,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-form-select option { color: #133C23; }
     .bp-form-error {
       margin: 10px 0 0;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       color: #FFD3DD;
     }
@@ -517,7 +523,7 @@ const DEFAULT_CONTENT: Content = {
       width: 100%;
       margin-top: 4px;
       padding: 14px 24px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 15px; font-weight: 700;
       background: #DCF0EB; color: #133C23;
       border: none; border-radius: 999px;
@@ -543,12 +549,12 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 auto 18px; font-size: 28px;
     }
     .bp-success-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 26px; font-weight: 900;
       margin: 0 0 10px 0;
     }
     .bp-success-body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 15px; font-weight: 500;
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
@@ -566,7 +572,7 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid rgba(220,240,235,0.3);
       color: #DCF0EB;
       padding: 10px 18px; border-radius: 999px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       cursor: pointer; backdrop-filter: blur(8px);
       display: inline-flex; align-items: center; gap: 8px;
@@ -578,7 +584,7 @@ const DEFAULT_CONTENT: Content = {
       background: #DCF0EB; color: #133C23;
       border: none;
       padding: 12px 24px; border-radius: 999px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 14px; font-weight: 700;
       cursor: pointer;
       display: inline-flex; align-items: center; gap: 8px;
