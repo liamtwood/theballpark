@@ -5,7 +5,14 @@ You will receive briefs in many formats: casual emails, formal RFPs, creative de
 SPLITTING RULES:
 - Items that are separate costs MUST be separate categories. AV and lighting are always two items. Public catering and VIP catering are always two. Set build and set dressing are always two.
 
-INFERENCE RULES — always apply:
+HARD RULES — non-negotiable, must be applied EVERY TIME the trigger fires:
+- ANY mention of food, drink, meal, lunch, dinner, breakfast, brunch, canapés, refreshments, bar, drinks reception, hospitality, F&B, cocktails, wine, beer, coffee, tea → MUST include catering. No exceptions, even if the brief is short.
+- ANY mention of comedian, band, DJ, performer, performance, entertainment, music, MC, host → MUST include entertainment.
+- ANY mention of presentation, demo, screen, projection, AV, sound, mic, microphone, LED, speakers → MUST include av.
+- ANY mention of photographer, video, content capture, social, KOL → MUST include photography.
+- ANY mention of venue search, find venue, source venue, secure space → MUST include venues.
+
+INFERENCE RULES — apply when context suggests:
 - Outdoor or public location → add h-and-s (implied)
 - Media, press, KOL, or launch → add photography (implied)
 - Public-facing activation with guests → add staffing (implied)
@@ -20,6 +27,11 @@ Resolve relative dates to actual dates. May Half Term = 25-30 May. Easter = look
 
 DETAIL STANDARD:
 Each category oneLiner must be specific enough for a supplier to start quoting. Not "set build" but "Custom inflatable jelly structure with ball pit, approx 4m tall, Angel Delight branded, engineered for public interaction." Dimensions, quantities, brands, durations where mentioned.
+
+FORMATTING — applies to every oneLiner and the summary:
+- Plain prose: one or two complete sentences, sentence case, ending with a full stop.
+- NO bullet points, dashes, asterisks, numbering, markdown or line breaks inside a field.
+- Specs (dimensions, quantities, brands) sit inline within the sentence, never as a list.
 
 Return exactly:
 {
@@ -56,19 +68,35 @@ async function parseBrief(rawBriefText) {
   }
 
   const Anthropic = require('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // v1.49f — maxRetries 8 (was 4): rides out transient 429 / 5xx / 529
+  // overloads with exponential backoff. 4 wasn't always enough to
+  // outlast an Anthropic overload window before the call failed.
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 8 });
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
-      },
-    ],
-  });
+  let message;
+  try {
+    message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Scope this event brief into production categories:\n\n${rawBriefText}`,
+        },
+      ],
+    });
+  } catch (e) {
+    const status = e && e.status;
+    const type = e && e.error && e.error.error && e.error.error.type;
+    if (status === 429 || status === 529 || (status >= 500 && status < 600)
+        || type === 'overloaded_error' || type === 'rate_limit_error') {
+      const err = new Error('The AI service is busy right now — please try again in a moment.');
+      err.status = 503;
+      throw err;
+    }
+    throw e;
+  }
 
   const responseText = message.content[0].text;
 
@@ -77,6 +105,23 @@ async function parseBrief(rawBriefText) {
   // server logs readable; full body is in the API response.
   try {
     const parsed = JSON.parse(responseText);
+
+    // v1.51b — formatting cleanup: strip any bullet residue / stray line
+    // breaks the model leaves in oneLiners + summary, so the brief reads
+    // as clean prose everywhere downstream (Brief tab, outreach email).
+    const tidy = (s) => typeof s === 'string'
+      ? s.replace(/[\r\n]+/g, ' ')
+          .replace(/^[\s•·\-–—*]+/, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+      : s;
+    if (Array.isArray(parsed.categories)) {
+      for (const c of parsed.categories) {
+        if (c && typeof c.oneLiner === 'string') c.oneLiner = tidy(c.oneLiner);
+      }
+    }
+    if (parsed.summary) parsed.summary = tidy(parsed.summary);
+
     console.log('[ai.parseBrief] response',
       JSON.stringify({
         projectName:  parsed.projectName,

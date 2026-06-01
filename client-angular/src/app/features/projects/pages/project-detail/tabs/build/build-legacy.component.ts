@@ -48,11 +48,15 @@ interface CategoryWithBrief {
     <ng-container *ngIf="!loading">
 
       <!-- EMPTY STATE -->
+      <!-- v1.65cg (p0005) — Brief tab deleted; the legacy supplier
+           build page now points users at the Marketplace (Recommend
+           button covers the AI-matching path that used to live in
+           the Brief tab). -->
       <div *ngIf="categories.length === 0" class="bp-build-empty">
         <div class="bp-build-empty-icon">🏗️</div>
         <h3 class="bp-build-empty-title">No categories yet</h3>
-        <p class="bp-build-empty-body">Start with the Brief tab to let AI parse your project brief and populate categories automatically.</p>
-        <p-button label="Go to Brief →" styleClass="p-button-outlined" [routerLink]="['../brief']"></p-button>
+        <p class="bp-build-empty-body">Open the Marketplace and hit Recommend to let AI populate categories from your project brief.</p>
+        <p-button label="Go to Marketplace →" styleClass="p-button-outlined" [routerLink]="['../marketplace']"></p-button>
       </div>
 
       <!-- CATEGORY LIST -->

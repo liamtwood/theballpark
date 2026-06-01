@@ -17,6 +17,7 @@ import { OrgService } from '../../core/services/org.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
+import { PersonaService } from '../../core/services/persona.service';
 import { Category, ProjectItem } from '../../models';
 import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
@@ -24,6 +25,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
+import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models';
 
 @Component({
@@ -34,7 +36,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, SupplierDrawerComponent
+    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent
   ],
   providers: [MessageService],
   template: `
@@ -42,18 +44,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading && supplier">
 
-      <!-- ═══ HOME / STORE TAB BAR ═══════════════════════════════════
-           Reuses the global .bp-hero-tabs / .bp-hero-tab styles from
-           styles.css (the same look the project detail tabs use).
-           Tabs are page-local state, not routed. -->
-      <div class="bp-hero-tabs bp-supplier-tabs">
-        <button class="bp-hero-tab"
-                [class.active]="activeTab === 'home'"
-                (click)="activeTab = 'home'">Home</button>
-        <button class="bp-hero-tab"
-                [class.active]="activeTab === 'store'"
-                (click)="activeTab = 'store'">Store</button>
-      </div>
+      <!-- v1.65dm — Home/Store tabs moved INTO the shell hero. The local
+           tab bar that used to sit below the hero was duplicating the
+           hero-tabs band and breaking the back-button rail. Now we push
+           the tabs through ShellContextService with an onTabClick
+           callback + activeTabPath, matching the dashboard's
+           page-local-state pattern. -->
 
       <!-- ═══ HOME TAB ════════════════════════════════════════════════
            Layout (top → bottom):
@@ -64,58 +60,104 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
              5. Subcategory cards grouped by parent category header
              6. Contact 2×2 icon grid + VAT footer
            TODO: gate the edit pencil on ownership once auth lands. -->
-      <ng-container *ngIf="activeTab === 'home'">
-
-        <div class="bp-supplier-home">
-
-          <!-- Cover banner — lives in the same 720px column as the rest of
-               the Home content. background-size: contain so the image is
-               never zoomed/cropped (any aspect-ratio gap shows the theme
-               background). -->
-          <div class="bp-supplier-cover"
-               [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
-               [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-            <button class="bp-supplier-cover-edit"
-                    (click)="openSupplierEditDrawer()"
-                    title="Edit supplier details">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-          </div>
-
-          <!-- Identity row — small initial avatar + name + location.
-               Sits in the same centred column as the description below. -->
-          <div class="bp-supplier-identity">
-            <div class="bp-supplier-avatar">
-              <span class="bp-supplier-avatar-initial">{{ supplier.name.charAt(0) }}</span>
+      <!-- ═══ HOME TAB (v1.65e1 / p0015) ═══════════════════════════
+           Rendered only when the supplier persona is viewing their
+           own page (ownsCatalogue). Mirrors the agency dashboard
+           pattern: parchment ground + elevated .bp-dash-card panels.
+           Placeholder welcome card for now; the real supplier
+           dashboard (recent threads, action queue, store summary)
+           lands in a follow-up. -->
+      <ng-container *ngIf="activeTab === 'home' && ownsCatalogue">
+        <div class="bp-supplier-home-ground">
+          <div class="bp-supplier-home">
+            <div class="bp-dash-card">
+              <div class="bp-section-header">
+                <lucide-icon name="house" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">Welcome back</span>
+              </div>
+              <p style="margin: 0; font-size: 16px; line-height: 1.5; color: var(--color-text-primary);">
+                {{ supplier.name }} home page. Quick stats, recent
+                replies, and pending actions will live here.
+              </p>
             </div>
-            <div class="bp-supplier-identity-body">
-              <div class="bp-supplier-name">{{ supplier.name }}</div>
-              <div class="bp-supplier-location" *ngIf="supplierTagline()">
-                {{ supplierTagline() }}
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'front'">
+
+        <!-- v1.65dm — Home tab now mirrors the dashboard:
+             parchment ground (--theme-bg) with shadow-only .bp-dash-card
+             panels floating on it. Three cards in the column:
+               1. Profile — cover (rounded-top of the card) + identity
+                  row + logo + description.
+               2. Category groups — one card per parent the supplier
+                  has items under, with a left-justified section header
+                  and the subcategory grid below.
+               3. Contact — 2×2 icon-tile grid + optional VAT footer. -->
+        <div class="bp-supplier-home-ground">
+          <div class="bp-supplier-home">
+
+            <!-- ─── PROFILE BLOCK (open) ─────────────────────────────
+                 v1.65dq — no card chrome on this top block. Cover +
+                 identity + logo + description sit directly on the
+                 parchment ground (no fill, no border, no shadow) so
+                 the supplier's brand image is the visual anchor and
+                 the elevated cards start at Categories below. -->
+            <div class="bp-supplier-profile-card">
+              <!-- Cover banner — sits on the parchment ground with
+                   rounded corners on its own. Edit pencil overlays
+                   top-right (ownership gating TODO). -->
+              <div class="bp-supplier-cover"
+                   [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
+                   [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
+                <button class="bp-supplier-cover-edit"
+                        (click)="openSupplierEditDrawer()"
+                        title="Edit supplier details">
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+                </button>
+              </div>
+
+              <div class="bp-supplier-profile-body">
+                <!-- Identity row — small avatar + name + location. -->
+                <div class="bp-supplier-identity">
+                  <div class="bp-supplier-avatar">
+                    <span class="bp-supplier-avatar-initial">{{ supplier.name.charAt(0) }}</span>
+                  </div>
+                  <div class="bp-supplier-identity-body">
+                    <div class="bp-supplier-name">{{ supplier.name }}</div>
+                    <div class="bp-supplier-location" *ngIf="supplierTagline()">
+                      {{ supplierTagline() }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Centred logo — hidden when no logo_url is set. -->
+                <div class="bp-supplier-logo-block" *ngIf="supplier.logo_url">
+                  <img [src]="supplier.logo_url"
+                       [alt]="supplier.name + ' logo'"
+                       class="bp-supplier-logo-img"/>
+                </div>
+
+                <!-- Description -->
+                <p class="bp-supplier-desc" *ngIf="supplier.description">{{ supplier.description }}</p>
+                <p class="bp-supplier-desc bp-supplier-desc--muted" *ngIf="!supplier.description">
+                  No description yet.
+                </p>
               </div>
             </div>
-          </div>
 
-          <!-- Centred company logo — uses logo_url, displayed prominently
-               above the description. Hidden when no logo_url is set. -->
-          <div class="bp-supplier-logo-block" *ngIf="supplier.logo_url">
-            <img [src]="supplier.logo_url"
-                 [alt]="supplier.name + ' logo'"
-                 class="bp-supplier-logo-img"/>
-          </div>
-
-          <!-- Description -->
-          <p class="bp-supplier-desc" *ngIf="supplier.description">{{ supplier.description }}</p>
-          <p class="bp-supplier-desc bp-supplier-desc--muted" *ngIf="!supplier.description">
-            No description yet.
-          </p>
-
-          <!-- Subcategory card sections — one section per parent category
-               the supplier has items under. Each section: parent name
-               header + card grid of subcategories in use. -->
-          <div class="bp-home-cats" *ngIf="homeCategoryGroups.length">
-            <div class="bp-home-cat-group" *ngFor="let group of homeCategoryGroups">
-              <div class="bp-home-cat-header">{{ group.parentName | uppercase }}</div>
+            <!-- ─── CATEGORY GROUP CARDS (one per parent) ────────── -->
+            <div class="bp-dash-card"
+                 *ngFor="let group of homeCategoryGroups">
+              <div class="bp-section-header">
+                <lucide-icon name="folder" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">{{ group.parentName }}</span>
+                <span class="bp-section-trail bp-section-count">
+                  {{ group.subcategories.length }}
+                  {{ group.subcategories.length === 1 ? 'category' : 'categories' }}
+                </span>
+              </div>
               <div class="bp-home-cat-grid">
                 <button type="button" class="bp-home-cat-card"
                         *ngFor="let sub of group.subcategories">
@@ -135,72 +177,76 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
                 </button>
               </div>
             </div>
-          </div>
 
-          <!-- Contact info heading — matches the parent-category header
-               style used by the sub-catalogue sections above. -->
-          <div class="bp-home-cat-header" *ngIf="hasAnyContact()">CONTACT INFO</div>
-
-          <!-- Contact 2×2 icon grid -->
-          <div class="bp-supplier-contact-grid" *ngIf="hasAnyContact()">
-            <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="map-pin" [size]="16"></lucide-icon>
+            <!-- ─── CONTACT CARD ─────────────────────────────────── -->
+            <div class="bp-dash-card" *ngIf="hasAnyContact()">
+              <div class="bp-section-header">
+                <lucide-icon name="contact-round" [size]="13" class="bp-section-icon"></lucide-icon>
+                <span class="bp-section-title">Contact info</span>
               </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Address</div>
-                <div class="bp-contact-tile-value">
-                  <span *ngIf="supplier.address">{{ supplier.address }}</span>
-                  <span *ngIf="supplier.address && (supplier.city || supplier.country)"><br/></span>
-                  <span *ngIf="supplier.city">{{ supplier.city }}</span><span *ngIf="supplier.city && supplier.country">, </span><span *ngIf="supplier.country">{{ supplier.country }}</span>
+
+              <div class="bp-supplier-contact-grid">
+                <div class="bp-contact-tile" *ngIf="supplier.address || supplier.city || supplier.country">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="map-pin" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Address</div>
+                    <div class="bp-contact-tile-value">
+                      <span *ngIf="supplier.address">{{ supplier.address }}</span>
+                      <span *ngIf="supplier.address && (supplier.city || supplier.country)"><br/></span>
+                      <span *ngIf="supplier.city">{{ supplier.city }}</span><span *ngIf="supplier.city && supplier.country">, </span><span *ngIf="supplier.country">{{ supplier.country }}</span>
+                    </div>
+                  </div>
                 </div>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.phone"
+                   [href]="'tel:' + supplier.phone">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="phone" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Phone</div>
+                    <div class="bp-contact-tile-value">{{ supplier.phone }}</div>
+                  </div>
+                </a>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.email"
+                   [href]="'mailto:' + supplier.email">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="mail" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Email</div>
+                    <div class="bp-contact-tile-value">{{ supplier.email }}</div>
+                  </div>
+                </a>
+
+                <a class="bp-contact-tile bp-contact-tile--link"
+                   *ngIf="supplier.website"
+                   [href]="supplier.website" target="_blank" rel="noopener">
+                  <div class="bp-contact-tile-icon">
+                    <lucide-icon name="globe" [size]="16"></lucide-icon>
+                  </div>
+                  <div class="bp-contact-tile-body">
+                    <div class="bp-contact-tile-label">Website</div>
+                    <div class="bp-contact-tile-value">{{ supplier.website }}</div>
+                  </div>
+                </a>
+              </div>
+
+              <div class="bp-supplier-vat"
+                   *ngIf="supplier.vat_registered || supplier.vat_number">
+                VAT
+                <ng-container *ngIf="supplier.vat_registered">
+                  Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
+                </ng-container>
+                <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
               </div>
             </div>
 
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.phone"
-               [href]="'tel:' + supplier.phone">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="phone" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Phone</div>
-                <div class="bp-contact-tile-value">{{ supplier.phone }}</div>
-              </div>
-            </a>
-
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.email"
-               [href]="'mailto:' + supplier.email">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="mail" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Email</div>
-                <div class="bp-contact-tile-value">{{ supplier.email }}</div>
-              </div>
-            </a>
-
-            <a class="bp-contact-tile bp-contact-tile--link"
-               *ngIf="supplier.website"
-               [href]="supplier.website" target="_blank" rel="noopener">
-              <div class="bp-contact-tile-icon">
-                <lucide-icon name="globe" [size]="16"></lucide-icon>
-              </div>
-              <div class="bp-contact-tile-body">
-                <div class="bp-contact-tile-label">Website</div>
-                <div class="bp-contact-tile-value">{{ supplier.website }}</div>
-              </div>
-            </a>
-          </div>
-
-          <div class="bp-supplier-vat"
-               *ngIf="supplier.vat_registered || supplier.vat_number">
-            VAT
-            <ng-container *ngIf="supplier.vat_registered">
-              Registered<span *ngIf="supplier.vat_number"> · {{ supplier.vat_number }}</span>
-            </ng-container>
-            <ng-container *ngIf="!supplier.vat_registered">Not registered</ng-container>
           </div>
         </div>
 
@@ -278,7 +324,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [item]="drawerItem"
           [prefill]="addPrefill"
           (saved)="onItemSaved($event)"
-          (cancelled)="onItemDrawerCancelled()">
+          (cancelled)="onItemDrawerCancelled()"
+          (deleted)="onItemDeleted($event)">
         </app-item-drawer>
 
         <app-image-upload-panel
@@ -290,6 +337,15 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (imagesUpdated)="onItemImageUpdated($event)"
           (closed)="uploadEntityId = ''">
         </app-image-upload-panel>
+      </ng-container>
+
+      <!-- ═══ INBOX TAB (v1.65e1 / p0015) ════════════════════════════
+           Mounts the shared MessagesInboxComponent with viewer='supplier'
+           so the supplier-side of the conversation renders inline. Only
+           rendered when ownsCatalogue (a supplier viewing their own
+           page); agencies browsing this supplier never see this tab. -->
+      <ng-container *ngIf="activeTab === 'inbox' && ownsCatalogue">
+        <app-messages-inbox viewer="supplier"></app-messages-inbox>
       </ng-container>
 
     </ng-container>
@@ -376,34 +432,67 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     }
     .bp-store-scope-toggle:hover { opacity: 0.75; }
 
-    /* ── Home/Store tab bar ───────────────────────────────────────────
-       Reuses .bp-hero-tabs / .bp-hero-tab from styles.css. We just
-       center the bar within the page and put a little vertical padding
-       so the tabs sit naturally below the shell hero. */
-    .bp-supplier-tabs {
-      justify-content: center;
-      padding: 0 28px;
+    /* v1.65dm — local .bp-supplier-tabs block retired; Home/Store
+       tabs now live in the shell hero via ShellContextService. */
+
+    /* ── HOME TAB ─────────────────────────────────────────────────────
+       v1.65dm — parchment ground wraps the 720px column; each section
+       lifts into its own .bp-dash-card so the layout mirrors the new
+       dashboard. The ground bleeds edge-to-edge so the cards float on
+       a continuous parchment surface. */
+
+    .bp-supplier-home-ground {
+      background: var(--theme-bg);
+      padding: 24px 20px;
+      min-height: calc(100vh - var(--nav-height) - 64px);
     }
 
-    /* ── HOME TAB ───────────────────────────────────────────────────── */
+    .bp-supplier-home {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-    /* Cover banner sits inside the 720px content column. background-size
-       is contain so the image displays at its natural aspect ratio. No
-       container fill — any letterboxing shows through to the page. Edit
-       pencil overlays the top-right corner. */
+    /* ── Profile block ───────────────────────────────────────────────
+       v1.65dq — no card chrome on this top block. No fill, no border,
+       no shadow — content sits directly on the parchment ground.
+       Cover keeps its own rounded corners; the body just owns its
+       vertical rhythm. */
+    .bp-supplier-profile-card {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+      padding: 0;
+    }
+    .bp-supplier-profile-body {
+      padding: 18px 4px 4px;
+    }
+
+    /* Cover banner — image only, no chrome. v1.65dr drops the white
+       --color-surface fill that boxed the logo against the parchment;
+       now the image sits on the parchment directly with any letterbox
+       area showing the page ground through. No border, no fill, no
+       shadow. Edit pencil overlays top-right.
+
+       background-size: contain keeps the image at its natural aspect;
+       the container reserves vertical space (220px) but is otherwise
+       invisible when the image doesn't fill it. */
     .bp-supplier-cover {
       position: relative;
       width: 100%;
-      height: 200px;
-      border-radius: 12px;
+      height: 220px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
-      margin-bottom: 20px;
+      background-color: transparent;
     }
-    .bp-supplier-cover--empty {
-      background: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
-    }
+    /* v1.65dr — empty cover (no cover_image_url) used to fill with a
+       parchment→border gradient. Stripped now so the open-block rule
+       applies uniformly: the edit pencil floats in the top-right of an
+       invisible reserved area, ready to wire a cover image. */
+    .bp-supplier-cover--empty { background: transparent; }
     .bp-supplier-cover-edit {
       position: absolute; top: 14px; right: 14px;
       width: 34px; height: 34px;
@@ -423,24 +512,39 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--color-surface);
     }
 
-    .bp-supplier-home {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 28px;
+    /* Section-header count trail (e.g. "5 categories") — sits at the
+       right end of the header strip via .bp-section-trail (the global
+       rule margin-left:auto's it). v1.65dq — 12px to track the wider
+       typography on this page. */
+    .bp-section-count {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
     }
 
-    /* Identity row: small avatar circle + name + location.
-       Sits at the top of the description column. */
+    /* v1.65dq — section title on the Home tab reads a hair larger
+       than the global .bp-section-title (11px). Card headers act as
+       row eyebrows here, so a bump to 12px keeps them legible against
+       the heavier surrounding copy without becoming chrome. Scoped to
+       .bp-supplier-home so it doesn't leak elsewhere. */
+    .bp-supplier-home .bp-section-title {
+      font-size: 12px;
+    }
+
+    /* Identity row: small avatar circle + name + location. First child
+       of the profile card body; spacing handled by sibling margins
+       below, not bottom margin here. */
     .bp-supplier-identity {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
     .bp-supplier-avatar {
-      width: 40px; height: 40px;
+      width: 48px; height: 48px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-surface);
       border: 0.5px solid var(--theme-border);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
@@ -448,21 +552,23 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-supplier-avatar-initial {
       color: var(--theme-accent);
       font-family: var(--font-display);
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 400;
     }
     .bp-supplier-identity-body { min-width: 0; }
+    /* v1.65dq — bumped typography on the Home tab so it reads as a
+       proper profile page, not catalogue boilerplate. */
     .bp-supplier-name {
       font-family: var(--font-display);
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.2;
     }
     .bp-supplier-location {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--color-text-muted);
-      margin-top: 2px;
+      margin-top: 3px;
       letter-spacing: 0.02em;
     }
 
@@ -480,30 +586,24 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       object-fit: contain;
     }
 
-    /* Description */
+    /* Description — last child of the profile body, so no trailing
+       margin. v1.65dq — 16px / 1.65 reads as proper body copy on the
+       parchment ground (was 14px when it lived inside a card). */
     .bp-supplier-desc {
-      font-size: 14px;
-      line-height: 1.6;
+      font-size: 16px;
+      line-height: 1.65;
       color: var(--color-text-primary);
-      margin: 0 0 28px;
+      margin: 0;
       white-space: pre-wrap;
       text-align: left;
     }
     .bp-supplier-desc--muted { color: var(--color-text-muted); font-style: italic; }
 
-    /* Sub-catalogue cards grouped by parent category. */
-    .bp-home-cats { margin-bottom: 28px; }
-    .bp-home-cat-group + .bp-home-cat-group { margin-top: 24px; }
-    .bp-home-cat-header {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--theme-accent);
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-      border-bottom: 0.5px solid var(--theme-border);
-      font-family: var(--font-body);
-    }
+    /* v1.65dm — category-group cards now use the shared .bp-section-header
+       pattern (Lucide icon + .bp-section-title + trailing count), so the
+       legacy .bp-home-cat-header / .bp-home-cats / .bp-home-cat-group
+       rules are retired. .bp-home-cat-grid below carries the card layout
+       inside each group card. */
     .bp-home-cat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -546,26 +646,28 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--theme-accent);
       opacity: 0.6;
     }
-    .bp-home-cat-card-body { padding: 10px 12px 12px; }
+    .bp-home-cat-card-body { padding: 12px 14px 14px; }
+    /* v1.65dq — typography bump across the Home tab. Was 14/11; now
+       16/12 so subcat cards read at body-copy scale, not metadata. */
     .bp-home-cat-card-name {
       font-family: var(--font-display);
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.25;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
     .bp-home-cat-card-count {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--color-text-muted);
     }
 
-    /* Contact 2×2 icon grid */
+    /* Contact 2×2 icon grid — sits inside the .bp-dash-card contact
+       block; the card owns the outer padding so no margin needed here. */
     .bp-supplier-contact-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 12px;
     }
     .bp-contact-tile {
       display: flex;
@@ -594,8 +696,9 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       flex-shrink: 0;
     }
     .bp-contact-tile-body { flex: 1; min-width: 0; }
+    /* v1.65dq — label + value bumped one step (was 10/13, now 11/15). */
     .bp-contact-tile-label {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -603,10 +706,10 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       margin-bottom: 4px;
     }
     .bp-contact-tile-value {
-      font-size: 13px;
+      font-size: 15px;
       color: var(--color-text-primary);
       word-break: break-word;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .bp-supplier-vat {
@@ -614,7 +717,9 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       color: var(--color-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-top: 14px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: var(--border-hairline);
       text-align: center;
     }
 
@@ -672,8 +777,14 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       +/♡ buttons; suppliers don't. */
   currentOrgType: string | null = null;
 
-  // Home / Store tabs — default 'home'. Page-local state, not routed.
-  activeTab: 'home' | 'store' = 'home';
+  // v1.65dz (p0015) — "Home" tab renamed to "Front" (the supplier's
+  // public shopfront).
+  // v1.65e1 — supplier-detail expanded to FOUR tabs when viewing your
+  // own org (ownsCatalogue): Home / Front / Store / Inbox. Agencies
+  // browsing a supplier see only Front + Store (the public surface).
+  // Page-local state, not routed; ?tab= query-param overrides the
+  // default on first paint.
+  activeTab: 'home' | 'front' | 'store' | 'inbox' = 'front';
 
   // Supplier edit drawer state.
   showSupplierDrawer = false;
@@ -705,7 +816,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   /** Seed values passed to the drawer in add mode. Computed from the
       catalogue-grid's current category filter on each Add click so the
       drawer lands pre-populated with the user's contextual view. */
-  addPrefill: { category_id?: string; subcategory_id?: string } | null = null;
+  addPrefill: { category_id?: string; subcategory_id?: string; org_id?: string } | null = null;
 
   @ViewChild(CatalogueGridComponent) private catGrid?: CatalogueGridComponent;
 
@@ -719,6 +830,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private categorySvc: CategoryService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
+    public  personaSvc: PersonaService,
     private msg: MessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -730,13 +842,36 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
     const qp = this.route.snapshot.queryParams;
     if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
+    // v1.65dz (p0015) → v1.65e1 — ?tab= deep-links into any of the 4
+    // supplier-detail tabs. Defaults to 'front' (the public shopfront)
+    // when no param is set OR when an agency is browsing someone
+    // else's supplier page (Home + Inbox only render when ownsCatalogue
+    // is true, so picking them on a foreign page just sticks to front).
+    const tabParam = qp['tab'];
+    if (tabParam === 'home' || tabParam === 'front' ||
+        tabParam === 'store' || tabParam === 'inbox') {
+      this.activeTab = tabParam;
+    }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
       if (org) {
         this.ballsBalance = org.balls_balance || 0;
-        this.ownsCatalogue = org.id === this.sid;
         this.currentOrgId = org.id;
         this.currentOrgType = org.type || null;
+        // v1.65e1 (p0015) — when a supplier persona is active (dev/admin
+        // switcher), treat the persona's supplierOrgId as the "current
+        // supplier" for the owns-this-page check. Production users hit
+        // the org-based branch.
+        const personaSupplierId = this.personaSvc.isSupplier()
+          ? this.personaSvc.active.supplierOrgId
+          : null;
+        this.ownsCatalogue = personaSupplierId
+          ? personaSupplierId === this.sid
+          : org.id === this.sid;
+        // Re-push the tab set in case ownsCatalogue flipped (4-tab vs
+        // 2-tab band). Safe to call even before .supplier loads —
+        // applyShellHero short-circuits when this.supplier is null.
+        this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -758,15 +893,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.supplierSvc.getAll().subscribe({
       next: (suppliers: any[]) => {
         this.supplier = suppliers.find(s => s.id === this.sid) || null;
-        if (this.supplier) {
-          this.shellCtx.set({
-            heroTitle: this.supplier.name,
-            heroSub: this.supplier.city || 'London',
-            pills: [],
-            tabs: [],
-            back: { label: 'Back', onBack: () => this.goBack() }
-          });
-        }
+        if (this.supplier) this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -946,18 +1073,33 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // First: per item.category_id → enriched subcategory CategoryInfo
-    // (with the full record's cover/description and a rolled-up count).
+    // v1.65dm — items carry BOTH category_id (top-level parent) and
+    // subcategory_id (leaf). The Home tab wants leaf cards grouped under
+    // their parent, so prefer subcategory_id and fall back to category_id
+    // only when the item is pinned directly to a top-level parent
+    // (rare — most items have a leaf). The previous version only looked
+    // at category_id which is why a supplier with five Catering subcats
+    // surfaced as a single "Catering" card.
+    //
+    // v1.65do — subcategory card image now uses the first item's
+    // image_url (from THIS supplier's catalogue), not the category's
+    // own cover. Reasoning: catalogue covers are generic stock; an
+    // item photo shows the supplier's actual work in that subcat.
+    // Order matters — catalogueItems is the API's natural sort, so
+    // the "first item" is whichever the supplier service surfaced
+    // first. Fallback chain: item.image_url → category.cover_image_url
+    // → initial-letter tile (handled in the template).
     const subMap: Record<string, CategoryInfo> = {};
     for (const item of this.catalogueItems) {
-      const id = item.category_id;
+      const id = item.subcategory_id || item.category_id;
       if (!id) continue;
       if (!subMap[id]) {
         const cat = this.allCatalogueCategories.find(c => c.id === id);
         subMap[id] = {
           id,
           name: cat?.name || item.category_name || 'Other',
-          cover_image_url: cat?.cover_image_url,
+          // Prefer the first item's image; fall back to the category cover.
+          cover_image_url: item.image_url || cat?.cover_image_url,
           icon_name: cat?.icon_name,
           icon_color: cat?.icon_color,
           tagline: cat?.tagline,
@@ -965,6 +1107,11 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
           parent_id: cat?.parent_id,
           count: 0
         };
+      } else if (!subMap[id].cover_image_url && item.image_url) {
+        // First item didn't have an image but a later item does —
+        // adopt it so the card isn't stuck on the initial-letter
+        // fallback when an image exists somewhere in the subcat.
+        subMap[id].cover_image_url = item.image_url;
       }
       subMap[id].count = (subMap[id].count || 0) + 1;
     }
@@ -996,6 +1143,46 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
 
   // ── Event handlers ────────────────────────────────────────────────────
+
+  /** v1.65dm — single source of truth for the shell hero state on this
+      page.
+      v1.65e1 (p0015) — tabs are now persona-aware: when ownsCatalogue
+      is true (the supplier persona viewing their own org), all four
+      tabs render — Home / Front / Store / Inbox. Otherwise (an agency
+      browsing this supplier from the catalogue) only the public-
+      surface tabs render — Front + Store. */
+  private applyShellHero() {
+    if (!this.supplier) return;
+    const tabs = this.ownsCatalogue
+      ? [
+          { label: 'Home',  path: 'home'  },
+          { label: 'Front', path: 'front' },
+          { label: 'Store', path: 'store' },
+          { label: 'Inbox', path: 'inbox' },
+        ]
+      : [
+          { label: 'Front', path: 'front' },
+          { label: 'Store', path: 'store' },
+        ];
+    this.shellCtx.set({
+      heroTitle: this.supplier.name,
+      heroSub: this.supplier.city || 'London',
+      pills: [],
+      tabs,
+      activeTabPath: this.activeTab,
+      onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'front' | 'store' | 'inbox'),
+      back: { label: 'Back', onBack: () => this.goBack() }
+    });
+  }
+
+  /** v1.65dm — flip the page-local tab AND re-push the shell context so
+      the active state on the hero tab band stays in sync. */
+  setActiveTab(tab: 'home' | 'front' | 'store' | 'inbox') {
+    if (this.activeTab === tab) return;
+    this.activeTab = tab;
+    this.applyShellHero();
+    this.cdr.detectChanges();
+  }
 
   goBack() {
     // v1.32: history.back() so the user lands wherever they came
@@ -1039,7 +1226,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   openAddItemDrawer() {
     this.drawerItem = null;
     this.drawerMode = 'add';
-    this.addPrefill = this.computeAddPrefill();
+    // v1.43a — the new item belongs to the SUPPLIER whose page this is
+    // (this.sid), not the logged-in org. Without this, an agency adding
+    // an item from a supplier's catalogue filed it under the agency.
+    this.addPrefill = { ...(this.computeAddPrefill() ?? {}), org_id: this.sid };
     this.showItemDrawer = true;
     this.cdr.detectChanges();
   }
@@ -1103,6 +1293,23 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   onItemSaved(_item: Item) {
     // Refresh the catalogue so the grid AND the Home subcategory cards
     // reflect the new/updated row.
+    this.supplierSvc.getCatalogue(this.sid).subscribe({
+      next: (items: any[]) => {
+        this.catalogueItems = items || [];
+        this.mapItems();
+        this.buildCategories();
+        this.buildHomeCategoryGroups();
+        this.cdr.detectChanges();
+      }
+    });
+    this.drawerItem = null;
+  }
+
+  /** v1.65ey — drawer fires `deleted` after a successful soft-delete.
+      Same refresh path as save: re-pull the supplier's catalogue so
+      the deleted row drops out of the grid + the Home subcategory
+      counts update. */
+  onItemDeleted(_e: { id: string }) {
     this.supplierSvc.getCatalogue(this.sid).subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
@@ -1209,13 +1416,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.supplier = { ...this.supplier, ...updated };
     this.showSupplierDrawer = false;
     // Update the shell hero label so the page header reflects any name change.
-    this.shellCtx.set({
-      heroTitle: this.supplier.name,
-      heroSub: this.supplier.city || 'London',
-      pills: [],
-      tabs: [],
-      back: { label: 'Back', onBack: () => this.goBack() }
-    });
+    this.applyShellHero();
     this.cdr.detectChanges();
   }
 

@@ -19,6 +19,7 @@ import { FavouriteService } from '../../../../core/services/favourite.service';
 import { ProjectService } from '../../../../core/services/project.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { ShellContextService } from '../../../../core/services/shell-context.service';
+import { OutreachService } from '../../../../core/services/outreach.service';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemDrawerComponent } from '../../../../shared/components/item-drawer/item-drawer.component';
@@ -147,6 +148,10 @@ import { Item, Org, Project } from '../../../../models';
               <lucide-icon name="heart" [size]="14"></lucide-icon>
               {{ isFav ? 'Wishlisted' : 'Wishlist' }}
             </button>
+            <button *ngIf="canRequestQuote" class="bp-itempage-btn bp-itempage-btn--secondary"
+                    (click)="requestQuote()">
+              <lucide-icon name="mail" [size]="14"></lucide-icon> Request quote
+            </button>
             <button class="bp-itempage-btn bp-itempage-btn--icon" (click)="openEdit()" title="Edit">
               <lucide-icon name="square-pen" [size]="14"></lucide-icon>
             </button>
@@ -169,9 +174,7 @@ import { Item, Org, Project } from '../../../../models';
             </div>
             <div class="bp-itempage-spec-row">
               <div class="bp-itempage-spec-label">Subcategory</div>
-              <!-- v1.34: items.subcategory doesn't exist on the model today;
-                   render an em-dash until a subcategory field lands. -->
-              <div class="bp-itempage-spec-value">—</div>
+              <div class="bp-itempage-spec-value">{{ item.subcategory_name || '—' }}</div>
             </div>
             <div class="bp-itempage-spec-row">
               <div class="bp-itempage-spec-label">Lead time</div>
@@ -201,11 +204,17 @@ import { Item, Org, Project } from '../../../../models';
             </div>
           </div>
 
-          <!-- Tags -->
-          <div class="bp-itempage-section" *ngIf="item.tags && item.tags.length">
-            <div class="bp-itempage-section-label">Tags</div>
-            <div class="bp-itempage-tags">
-              <span *ngFor="let t of item.tags" class="bp-itempage-tag">{{ t }}</span>
+          <!-- v1.45c — the legacy free-text "Tags" section was removed;
+               structured attribute tags below are the source of truth. -->
+
+          <!-- v1.45a — structured attribute tags, grouped by dimension -->
+          <div class="bp-itempage-section" *ngIf="attributeGroups.length">
+            <div class="bp-itempage-section-label">Attributes</div>
+            <div class="bp-itempage-attr-group" *ngFor="let g of attributeGroups">
+              <span class="bp-itempage-attr-dim">{{ g.dimension }}</span>
+              <div class="bp-itempage-tags">
+                <span *ngFor="let l of g.labels" class="bp-itempage-tag">{{ l }}</span>
+              </div>
             </div>
           </div>
 
@@ -488,6 +497,21 @@ import { Item, Org, Project } from '../../../../models';
       background: var(--color-surface);
       color: var(--color-text-muted);
     }
+    /* v1.45a — structured attribute tags, grouped by dimension */
+    .bp-itempage-attr-group { margin-bottom: 10px; }
+    .bp-itempage-attr-group:last-child { margin-bottom: 0; }
+    .bp-itempage-attr-dim {
+      display: block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 5px;
+    }
+    .bp-itempage-attr-group .bp-itempage-tag {
+      color: var(--theme-accent);
+      border-color: var(--theme-border);
+      background: var(--theme-bg);
+    }
 
     /* Supplier card — v1.34b: constrained width + taller cover for a more
        square card silhouette (matches the dashboard saved-suppliers shape). */
@@ -612,6 +636,7 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     private projectSvc: ProjectService,
     private configSvc: ConfigService,
     private shellCtx: ShellContextService,
+    private outreach: OutreachService,
     private msg: MessageService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
@@ -708,12 +733,13 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
         heroTitle: (p as any).event_name || p.name || 'Untitled',
         heroSub: 'MARKETPLACE',
         pills,
+        // v1.65cg (p0005) — Brief tab removed (Plan/Brief deleted, AI
+        // matching + per-category brief editing both live on the
+        // Marketplace now). Tab set mirrors project-detail's three.
         tabs: [
           { label: 'Overview',    path: `/projects/${this.projectId}/overview` },
-          { label: 'Brief',       path: `/projects/${this.projectId}/brief` },
           { label: 'Marketplace', path: `/projects/${this.projectId}/marketplace` },
-          { label: 'Estimate',    path: `/projects/${this.projectId}/estimate` },
-          { label: 'Messages',    path: `/projects/${this.projectId}/messages` }
+          { label: 'Inbox',       path: `/projects/${this.projectId}/messages` }
         ]
       });
     } else if (this.context === 'supplier' && this.contextSupplier) {
@@ -845,6 +871,41 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
 
   openEdit() { this.showEditDrawer = true; }
 
+  /** v1.51a — Request-quote outreach. Only available inside a project
+      context (you need a project to send a quote request from). */
+  get canRequestQuote(): boolean { return !!this.projectId && !!this.item; }
+
+  requestQuote() {
+    if (!this.item || !this.projectId) return;
+    // v1.52a — requesting a quote implies selecting the item.
+    this.addToProject();
+    this.outreach.open({
+      item: {
+        item_id:     this.item.id,
+        name:        this.item.name,
+        description: this.item.description,
+        price:       this.item.base_price ?? null,
+        isNew:       false
+      },
+      categoryId: this.item.category_id || '',
+      projectId:  this.projectId
+    });
+  }
+
+  /** v1.45a — the item's structured tags grouped by dimension, for the
+      read-only Attributes section. */
+  get attributeGroups(): { dimension: string; labels: string[] }[] {
+    const tags: Array<{ dimension: string; label: string }> =
+      (this.item && (this.item as any).item_tags) || [];
+    const order: string[] = [];
+    const map = new Map<string, string[]>();
+    for (const t of tags) {
+      if (!map.has(t.dimension)) { map.set(t.dimension, []); order.push(t.dimension); }
+      map.get(t.dimension)!.push(t.label);
+    }
+    return order.map(d => ({ dimension: d, labels: map.get(d)! }));
+  }
+
   onItemSaved(updated: Item) {
     if (updated) {
       this.item = { ...this.item, ...updated };
@@ -853,7 +914,9 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
       this.currentImg = 0;
       this.cdr.markForCheck();
     }
-    this.showEditDrawer = false;
+    // v1.43 — do NOT force the drawer shut here: after a save it stays
+    // open to show the AI classification panel and self-closes once the
+    // supplier accepts / edits / skips it.
   }
 
   copyLink() {

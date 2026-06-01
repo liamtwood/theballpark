@@ -33,7 +33,7 @@ export class ProjectService {
   getCategories(projectId: string) {
     return this.api.get<ProjectCategory[]>(`/projects/${projectId}/categories`);
   }
-  upsertCategory(projectId: string, categoryId: string, data: { requirement_brief?: string; requirement_detail?: string; ballpark_budget?: number | null }) {
+  upsertCategory(projectId: string, categoryId: string, data: { requirement_brief?: string; requirement_detail?: string; ballpark_budget?: number | null; ballpark_cost?: number | null; status_code?: string }) {
     return this.api.patch<ProjectCategory>(`/projects/${projectId}/categories/${categoryId}`, data);
   }
   removeCategory(projectId: string, categoryId: string) {

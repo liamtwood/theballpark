@@ -183,9 +183,14 @@ export class OrgsComponent implements OnInit {
   typeCategories: CategoryInfo[] = [];
   emptySet = new Set<string>();
 
+  // v1.65e7 (p0015) — 'admin' added as a third org type. Platform-
+  // admin orgs (e.g. Ballpark itself) sit alongside agencies and
+  // suppliers. DB CHECK constraint expanded in
+  // migrate-v1.65e7-admin-org-type.js.
   typeOptions = [
-    { label: 'Agency', value: 'agency' },
-    { label: 'Supplier', value: 'supplier' }
+    { label: 'Agency',   value: 'agency'   },
+    { label: 'Supplier', value: 'supplier' },
+    { label: 'Admin',    value: 'admin'    }
   ];
 
   // Drawers
@@ -224,7 +229,7 @@ export class OrgsComponent implements OnInit {
       category_id: o.type,
       subtitle: (o as any).city || '—',
       specs: [
-        { label: 'Type', value: o.type === 'agency' ? 'Agency' : 'Supplier' },
+        { label: 'Type', value: this.orgTypeLabel(o.type) },
         { label: 'Tier', value: o.subscription_tier || 'starter' },
         ...(o.type === 'agency' ? [{ label: 'Balls', value: String(o.balls_balance || 0) }] : [])
       ],
@@ -233,12 +238,27 @@ export class OrgsComponent implements OnInit {
   }
 
   buildTypeCategories() {
-    const agencyCount = this.orgs.filter(o => o.type === 'agency').length;
+    const agencyCount   = this.orgs.filter(o => o.type === 'agency').length;
     const supplierCount = this.orgs.filter(o => o.type === 'supplier').length;
+    const adminCount    = this.orgs.filter(o => o.type === 'admin').length;
     this.typeCategories = [
-      { id: 'agency', name: 'Agency', count: agencyCount },
-      { id: 'supplier', name: 'Supplier', count: supplierCount }
+      { id: 'agency',   name: 'Agency',   count: agencyCount   },
+      { id: 'supplier', name: 'Supplier', count: supplierCount },
+      { id: 'admin',    name: 'Admin',    count: adminCount    }
     ];
+  }
+
+  /** v1.65e7 — labelled name for an org.type value (used by the row
+      "Type" spec + any future read-only displays). Falls back to a
+      title-cased version of the raw value so future types render
+      without code change. */
+  orgTypeLabel(t: string | undefined | null): string {
+    switch (t) {
+      case 'agency':   return 'Agency';
+      case 'supplier': return 'Supplier';
+      case 'admin':    return 'Admin';
+      default:         return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : '—';
+    }
   }
 
   // Image upload
@@ -301,7 +321,7 @@ export class OrgsComponent implements OnInit {
     if (!this.addForm.name?.trim()) return;
     this.orgSvc.create({
       name: this.addForm.name,
-      type: this.addForm.type as 'agency' | 'supplier',
+      type: this.addForm.type as 'agency' | 'supplier' | 'admin',
       city: this.addForm.city,
       email: this.addForm.email
     } as any).subscribe({

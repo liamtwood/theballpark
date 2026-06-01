@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>p0008 — Conversation pattern — Ballpark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-sans: 'Libre Franklin', system-ui, sans-serif;
+    --font-serif: 'Playfair Display', serif;
+    --theme-accent: #E8285D;
+    --theme-bg: #fbe9f0;
+    --theme-text: #993556;
+    --theme-soft: #fbeaf0;
+    --theme-tint: #faf6f7;
+    --theme-contrast: #3DBE73;
+    --theme-contrast-soft: #DFF0E4;
+    --theme-contrast-strong: #0F6E56;
+    --color-surface: #ffffff;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b6b6b;
+    --color-text-muted: #a0a0a0;
+    --border-hairline: 0.5px solid rgba(0,0,0,0.08);
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --radius-card: 12px;
+    --radius-button: 8px;
+    --radius-pill: 999px;
+    --color-action-bg: #FEF2F2; --color-action-text: #DC2626;
+    --color-waiting-bg: #FFFBEB; --color-waiting-text: #D97706;
+    --color-quoted-bg: #EFF6FF; --color-quoted-text: #2563EB;
+    --color-booked-bg: #ECFDF5; --color-booked-text: #059669;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ece8e9; font-family: var(--font-sans); color: var(--color-text-primary); }
+  body { padding: 24px 16px 40px; }
+  svg.lucide { display: inline-block; vertical-align: middle; }
+
+  /* View toggle */
+  .view-toggle { max-width: 640px; margin: 0 auto 16px; display: flex; gap: 6px; padding: 4px; background: #fff; border: var(--border-hairline); border-radius: var(--radius-pill); box-shadow: var(--shadow-xs); }
+  .view-toggle button { flex: 1; background: none; border: none; padding: 8px 14px; font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--color-text-secondary); border-radius: var(--radius-pill); cursor: pointer; transition: all 0.15s; }
+  .view-toggle button.active { background: var(--theme-accent); color: #fff; }
+
+  /* Conversation panel */
+  .conv-panel { max-width: 640px; margin: 0 auto; background: var(--color-surface); border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); overflow: hidden; display: flex; flex-direction: column; height: 80vh; min-height: 720px; }
+
+  /* Header */
+  .conv-head { padding: 12px 16px; border-bottom: var(--border-hairline); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .head-logo { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-serif); }
+  .head-info { flex: 1; min-width: 0; }
+  .head-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .head-sub { font-size: 11px; color: var(--color-text-muted); display: flex; align-items: center; gap: 6px; margin-top: 1px; }
+  .head-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-quoted-text); }
+
+  /* Items summary */
+  .items-summary { background: #fff; border-bottom: var(--border-hairline); flex-shrink: 0; }
+  .summary-head { padding: 10px 16px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 12px; color: var(--color-text-primary); transition: background 0.12s; }
+  .summary-head:hover { background: var(--theme-tint); }
+  .summary-chevron { transition: transform 0.2s; }
+  .summary-head.open .summary-chevron { transform: rotate(90deg); }
+  .summary-count { font-weight: 500; }
+  .summary-action { color: var(--color-action-text); font-weight: 500; margin-left: 4px; }
+  .summary-body { padding: 4px 12px 10px; display: none; }
+  .summary-head.open + .summary-body { display: block; }
+  .summary-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+  .summary-row:hover { background: var(--theme-tint); }
+  .summary-thumb { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .summary-name { flex: 1; min-width: 0; font-size: 12px; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .summary-status { font-size: 10px; padding: 2px 7px; border-radius: var(--radius-pill); flex-shrink: 0; font-weight: 500; }
+  .summary-arrow { color: var(--color-text-muted); font-size: 12px; flex-shrink: 0; }
+
+  /* Status badge colors */
+  .badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: var(--radius-pill); display: inline-block; }
+  .badge-action { background: var(--color-action-bg); color: var(--color-action-text); }
+  .badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
+  .badge-quoted { background: var(--color-quoted-bg); color: var(--color-quoted-text); }
+  .badge-accepted { background: var(--color-booked-bg); color: var(--color-booked-text); }
+  .badge-booked { background: var(--color-booked-bg); color: var(--color-booked-text); }
+  .badge-brief { background: #f4eef0; color: var(--theme-text); }
+  .badge-declined { background: #f3f4f6; color: #6b7280; }
+
+  /* Chat stream */
+  .chat { flex: 1; overflow-y: auto; padding: 14px 16px; background-color: var(--theme-tint); background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.2 0 0 0 0 0.34 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+
+  .date-divider { text-align: center; margin: 8px 0 4px; }
+  .date-divider span { background: var(--color-surface); color: var(--color-text-muted); font-size: 10px; padding: 4px 12px; border-radius: var(--radius-pill); border: var(--border-hairline); display: inline-block; }
+
+  .msg { display: flex; flex-direction: column; max-width: 90%; }
+  .msg-in { align-self: flex-start; align-items: flex-start; }
+  .msg-out { align-self: flex-end; align-items: flex-end; }
+  .sender { font-size: 11px; color: var(--theme-text); font-weight: 500; margin: 4px 4px 2px; }
+
+  .bubble { background: #fff; border: var(--border-hairline); border-radius: 12px; padding: 8px 11px; font-size: 13px; line-height: 1.4; color: var(--color-text-primary); position: relative; }
+  .msg-out .bubble { background: var(--theme-soft); border-color: rgba(232,40,93,0.12); border-bottom-right-radius: 4px; }
+  .msg-in .bubble { border-bottom-left-radius: 4px; }
+  .bubble-time { font-size: 10px; color: var(--color-text-muted); margin-top: 3px; text-align: right; display: flex; gap: 3px; justify-content: flex-end; align-items: center; }
+  .bubble-time .check { color: var(--color-quoted-text); }
+
+  /* Item card in chat */
+  .msg-item { max-width: 85%; }
+  .item-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-xs); transition: box-shadow 0.15s, transform 0.15s; }
+  .msg-out .item-card { background: #fffafb; border-color: rgba(232,40,93,0.15); }
+  .item-card.highlight { box-shadow: 0 0 0 2px var(--theme-accent), var(--shadow-xs); transform: scale(1.01); }
+  .item-row { display: flex; gap: 10px; padding: 10px 11px; align-items: flex-start; }
+  .item-img { width: 56px; height: 56px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .item-body { flex: 1; min-width: 0; }
+  .item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .item-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .item-spec { font-size: 12px; color: var(--color-text-primary); margin-top: 2px; }
+  .item-spec .was { color: var(--color-text-muted); text-decoration: line-through; font-size: 11px; margin-left: 6px; }
+  .item-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 10px; color: var(--color-text-muted); }
+  .item-actions { display: flex; gap: 6px; padding: 8px 11px 10px; border-top: 0.5px solid rgba(0,0,0,0.06); background: rgba(0,0,0,0.02); }
+  .item-btn { flex: 1; padding: 6px 8px; font-size: 11px; font-weight: 500; border-radius: 6px; cursor: pointer; font-family: var(--font-sans); border: 0.5px solid rgba(0,0,0,0.12); background: #fff; color: var(--color-text-primary); transition: all 0.12s; }
+  .item-btn:hover:not(:disabled) { background: var(--theme-tint); border-color: rgba(0,0,0,0.2); }
+  .item-btn.primary { background: var(--theme-accent); color: #fff; border-color: var(--theme-accent); }
+  .item-btn.primary:hover { opacity: 0.92; }
+  .item-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .item-btn.danger:hover { background: var(--color-action-bg); color: var(--color-action-text); border-color: var(--color-action-bg); }
+
+  /* Compose */
+  .compose { padding: 10px 14px; border-top: var(--border-hairline); background: #fff; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .compose-attach { width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent; color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
+  .compose-attach:hover { background: var(--theme-tint); color: var(--theme-accent); }
+  .compose-input { flex: 1; background: var(--theme-tint); border: var(--border-hairline); border-radius: var(--radius-pill); padding: 8px 14px; font-family: var(--font-sans); font-size: 13px; color: var(--color-text-primary); outline: none; }
+  .compose-input::placeholder { color: var(--color-text-muted); }
+  .compose-send { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--theme-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.12s, transform 0.08s; }
+  .compose-send:hover { opacity: 0.92; }
+  .compose-send:active { transform: scale(0.96); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  .hint { max-width: 640px; margin: 12px auto 0; font-size: 11px; color: var(--color-text-muted); text-align: center; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="view-toggle">
+  <button class="active" id="btn-agent" onclick="switchView('agent')">Agent view (Sarah Mitchell)</button>
+  <button id="btn-supplier" onclick="switchView('supplier')">Supplier view (James Chen)</button>
+</div>
+
+<div class="conv-panel">
+
+  <div class="conv-head">
+    <div class="head-logo" id="headLogo"></div>
+    <div class="head-info">
+      <div class="head-name" id="headName"></div>
+      <div class="head-sub" id="headSub"></div>
+    </div>
+  </div>
+
+  <div class="items-summary">
+    <div class="summary-head open" onclick="toggleSummary(this)">
+      <span class="summary-chevron"><i data-lucide="chevron-right" style="width:14px;height:14px"></i></span>
+      <span class="summary-count" id="summaryCount">3 items</span>
+      <span class="summary-action" id="summaryAction">· 1 needs your action</span>
+    </div>
+    <div class="summary-body" id="summaryBody"></div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="compose">
+    <button class="compose-attach" title="Attach file"><i data-lucide="paperclip" style="width:16px;height:16px"></i></button>
+    <input class="compose-input" placeholder="Type a message…">
+    <button class="compose-send" title="Send"><i data-lucide="send" style="width:16px;height:16px;color:#fff"></i></button>
+  </div>
+
+</div>
+
+<div class="hint">
+  Click an item in the summary to jump to its latest card. Click <strong>Accept</strong> on the Quoted item to see it transition to Booked. Toggle Agent / Supplier to see the symmetric view.
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  // ── State ──────────────────────────────────────────────────────────────
+  let currentView = 'agent';
+
+  const items = [
+    {
+      id: 1, name: 'Stage florals', emoji: '🌸',
+      imgBg: '#f5d8e3', imgColor: '#993556',
+      priceWas: 2250, priceNow: 2500, unit: 'per event',
+      status: 'quoted',   // supplier adjusted, agent needs to act
+      adjustedBy: 'supplier', lastAt: '17:05'
+    },
+    {
+      id: 2, name: 'Activation pod', emoji: '🏛️',
+      imgBg: '#d8e8f0', imgColor: '#185FA5',
+      priceWas: 6200, priceNow: 6200, unit: 'event',
+      status: 'accepted', adjustedBy: null, lastAt: 'Sun 26 May'
+    },
+    {
+      id: 3, name: 'Bar-top runs', emoji: '🌹',
+      imgBg: '#f7e1d9', imgColor: '#993C1D',
+      priceWas: 1800, priceNow: 1800, unit: '/ 3m',
+      status: 'brief_sent', adjustedBy: null, lastAt: 'Sat 25 May 15:54'
+    }
+  ];
+
+  // Chronological message stream. Each entry is either text (bubble) or
+  // an item-card snapshot (state at that moment).
+  let stream = [
+    { type: 'date', date: 'Saturday, 25 May' },
+    { type: 'text', sender: 'agent', body: "Hi James, sourcing quotes for our Angel Delight pop-up over May half-term. Brief and items below — let me know your availability and a quote.", time: '15:54', read: true },
+    { type: 'item', sender: 'agent', itemId: 3, snapshot: { price: 1800, status: 'brief_sent' }, time: '15:54' },
+    { type: 'item', sender: 'agent', itemId: 2, snapshot: { price: 6200, status: 'brief_sent' }, time: '15:54' },
+    { type: 'item', sender: 'agent', itemId: 1, snapshot: { price: 2250, status: 'brief_sent' }, time: '15:54' },
+    { type: 'text', sender: 'supplier', body: "Hi Sarah — thanks for the brief. Activation pod is fine for the dates. Bar-top runs no problem either. Stage piece needs a slight adjustment.", time: '16:20' },
+    { type: 'item', sender: 'supplier', itemId: 2, snapshot: { price: 6200, status: 'accepted' }, time: '16:25' },
+    { type: 'item', sender: 'supplier', itemId: 1, snapshot: { price: 2500, status: 'quoted', priceWas: 2250 }, time: '17:05' },
+    { type: 'text', sender: 'supplier', body: "Adjusted the stage piece — bigger arrangement, larger blooms. £250 more but it'll be a properly hero moment.", time: '17:08' }
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────
+
+  function statusLabel(s) {
+    return ({ 'brief_sent': 'Brief sent', 'accepted': 'Accepted', 'quoted': 'Quoted',
+              'booked': 'Booked', 'action_needed': 'Action', 'declined': 'Declined' })[s] || s;
+  }
+  function statusBadgeClass(s) {
+    return ({ 'brief_sent': 'badge-brief', 'accepted': 'badge-accepted', 'quoted': 'badge-quoted',
+              'booked': 'badge-booked', 'action_needed': 'badge-action', 'declined': 'badge-declined' })[s] || 'badge-brief';
+  }
+
+  function renderHeader() {
+    const isAgent = currentView === 'agent';
+    const logo = document.getElementById('headLogo');
+    const name = document.getElementById('headName');
+    const sub = document.getElementById('headSub');
+    if (isAgent) {
+      logo.style.background = '#3a2f4a'; logo.style.color = '#fff'; logo.style.fontSize = '11px'; logo.style.fontStyle = 'italic'; logo.style.lineHeight = '1'; logo.style.textAlign = 'center';
+      logo.innerHTML = 'Construct';
+      name.textContent = 'Construct & Co. London';
+      sub.innerHTML = 'James Chen · Stand structure <span class="head-status-dot"></span> Quoted';
+    } else {
+      logo.style.background = 'var(--theme-soft)'; logo.style.color = 'var(--theme-text)'; logo.style.fontSize = '13px'; logo.style.fontStyle = 'normal';
+      logo.textContent = 'WA';
+      name.textContent = 'Woodland Agency';
+      sub.innerHTML = 'Sarah Mitchell · Pop-Up Activation · Ref WA-016';
+    }
+  }
+
+  function renderSummary() {
+    const body = document.getElementById('summaryBody');
+    body.innerHTML = '';
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'summary-row';
+      row.onclick = () => jumpToItem(it.id);
+      row.innerHTML = `
+        <div class="summary-thumb" style="background:${it.imgBg}; color:${it.imgColor}; font-size:14px;">${it.emoji}</div>
+        <div class="summary-name">${it.name}</div>
+        <span class="badge ${statusBadgeClass(it.status)} summary-status">${statusLabel(it.status)}</span>
+        <span class="summary-arrow">→</span>
+      `;
+      body.appendChild(row);
+    });
+    // Count action-needed items for the header
+    const isAgent = currentView === 'agent';
+    const needs = items.filter(it => {
+      if (isAgent) return it.status === 'quoted';
+      return it.status === 'brief_sent';
+    }).length;
+    document.getElementById('summaryCount').textContent = `${items.length} items`;
+    document.getElementById('summaryAction').textContent = needs > 0 ? `· ${needs} needs your action` : '';
+    document.getElementById('summaryAction').style.color = needs > 0 ? 'var(--color-action-text)' : 'var(--color-text-muted)';
+  }
+
+  function actionsForItem(it) {
+    // Returns array of { label, action, primary, disabled, danger } based on
+    // current view + item status.
+    const isAgent = currentView === 'agent';
+    const post = it.status === 'accepted' || it.status === 'booked';
+    const supplierWaiting = it.status === 'brief_sent';
+    const agentReviewing = it.status === 'quoted';
+
+    if (post) {
+      // Pay / Decline / Adjust (Pay inert for supplier)
+      return [
+        { label: 'Pay',     action: 'pay',     primary: true,  disabled: !isAgent },
+        { label: 'Decline', action: 'decline', primary: false, danger: true },
+        { label: 'Adjust',  action: 'adjust',  primary: false }
+      ];
+    }
+    if (isAgent && agentReviewing) {
+      return [
+        { label: 'Accept',  action: 'accept',  primary: true },
+        { label: 'Decline', action: 'decline', primary: false, danger: true },
+        { label: 'Adjust',  action: 'adjust',  primary: false }
+      ];
+    }
+    if (!isAgent && supplierWaiting) {
+      return [
+        { label: 'Agree',   action: 'agree',   primary: true },
+        { label: 'Decline', action: 'decline', primary: false, danger: true },
+        { label: 'Adjust',  action: 'adjust',  primary: false }
+      ];
+    }
+    // No actions available for the viewing party (waiting on the other side)
+    return null;
+  }
+
+  function renderItemCard(entry, idForRef) {
+    const it = items.find(x => x.id === entry.itemId);
+    const snap = entry.snapshot;
+    const isOut = entry.sender === currentView; // align by viewing party — out=right, in=left
+    const acts = actionsForItem({ ...it, status: snap.status });
+    const wasMarkup = snap.priceWas && snap.priceWas !== snap.price
+      ? `<span class="was">was £${snap.priceWas.toLocaleString()}</span>`
+      : '';
+    const byMarkup = entry.sender === 'agent'
+      ? 'Sent by Sarah'
+      : 'From Construct & Co.';
+    const actionMarkup = acts ? `
+      <div class="item-actions">
+        ${acts.map(a => `
+          <button class="item-btn ${a.primary ? 'primary' : ''} ${a.danger ? 'danger' : ''}"
+                  ${a.disabled ? 'disabled title="Your client will pay this invoice."' : ''}
+                  onclick="event.stopPropagation(); itemAction(${it.id}, '${a.action}')">
+            ${a.label}
+          </button>
+        `).join('')}
+      </div>
+    ` : '';
+    return `
+      <div class="msg msg-item msg-${isOut ? 'out' : 'in'}">
+        ${entry.sender === 'supplier' && currentView === 'agent' ? '<div class="sender">James Chen</div>' : ''}
+        ${entry.sender === 'agent' && currentView === 'supplier' ? '<div class="sender">Sarah Mitchell</div>' : ''}
+        <div class="item-card" id="card-item-${idForRef}">
+          <div class="item-row">
+            <div class="item-img" style="background:${it.imgBg}; color:${it.imgColor}; font-size:24px;">${it.emoji}</div>
+            <div class="item-body">
+              <div class="item-top">
+                <span class="item-name">${it.name}</span>
+                <span class="badge ${statusBadgeClass(snap.status)}">${statusLabel(snap.status)}</span>
+              </div>
+              <div class="item-spec">£${snap.price.toLocaleString()} ${wasMarkup} <span style="color:var(--color-text-muted); font-size:11px;">${it.unit}</span></div>
+              <div class="item-meta">${byMarkup} · ${entry.time}</div>
+            </div>
+          </div>
+          ${actionMarkup}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBubble(entry) {
+    const isOut = entry.sender === currentView;
+    const showSender = !isOut;
+    const senderName = entry.sender === 'agent' ? 'Sarah Mitchell' : 'James Chen';
+    const check = entry.read ? '✓✓' : '✓';
+    return `
+      <div class="msg msg-${isOut ? 'out' : 'in'}">
+        ${showSender ? `<div class="sender">${senderName}</div>` : ''}
+        <div class="bubble">
+          ${entry.body}
+          <div class="bubble-time">${entry.time}${isOut ? ` <span class="check">${check}</span>` : ''}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDate(entry) {
+    return `<div class="date-divider"><span>${entry.date}</span></div>`;
+  }
+
+  function renderChat() {
+    const chat = document.getElementById('chat');
+    chat.innerHTML = '';
+    stream.forEach((entry, idx) => {
+      if (entry.type === 'date') chat.insertAdjacentHTML('beforeend', renderDate(entry));
+      else if (entry.type === 'text') chat.insertAdjacentHTML('beforeend', renderBubble(entry));
+      else if (entry.type === 'item') chat.insertAdjacentHTML('beforeend', renderItemCard(entry, idx));
+    });
+    chat.scrollTop = chat.scrollHeight;
+    lucide.createIcons();
+  }
+
+  function render() {
+    renderHeader();
+    renderSummary();
+    renderChat();
+  }
+
+  // ── Interactions ──────────────────────────────────────────────────────
+
+  function switchView(v) {
+    currentView = v;
+    document.getElementById('btn-agent').classList.toggle('active', v === 'agent');
+    document.getElementById('btn-supplier').classList.toggle('active', v === 'supplier');
+    render();
+  }
+
+  function toggleSummary(el) {
+    el.classList.toggle('open');
+    // Re-init lucide so chevron animates properly on rotate
+    lucide.createIcons();
+  }
+
+  function jumpToItem(itemId) {
+    // Find the LATEST stream entry for this item
+    let lastIdx = -1;
+    stream.forEach((e, i) => { if (e.type === 'item' && e.itemId === itemId) lastIdx = i; });
+    if (lastIdx === -1) return;
+    const card = document.getElementById(`card-item-${lastIdx}`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('highlight');
+    setTimeout(() => card.classList.remove('highlight'), 1400);
+  }
+
+  function itemAction(itemId, action) {
+    const it = items.find(x => x.id === itemId);
+    if (!it) return;
+    const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+    if (action === 'pay') {
+      showToast('Payments coming soon — your invoice will arrive via email.');
+      return;
+    }
+    if (action === 'decline') {
+      const newStatus = it.status === 'accepted' || it.status === 'booked' ? 'declined' : 'declined';
+      it.status = newStatus;
+      stream.push({ type: 'item', sender: currentView, itemId, snapshot: { price: it.priceNow, status: newStatus }, time: now });
+      showToast(`${it.name} declined.`);
+      render();
+      setTimeout(() => jumpToItem(itemId), 50);
+      return;
+    }
+    if (action === 'agree') {
+      it.status = 'accepted';
+      stream.push({ type: 'item', sender: currentView, itemId, snapshot: { price: it.priceNow, status: 'accepted' }, time: now });
+      showToast(`${it.name} accepted.`);
+      render();
+      setTimeout(() => jumpToItem(itemId), 50);
+      return;
+    }
+    if (action === 'accept') {
+      it.status = 'booked';
+      stream.push({ type: 'item', sender: currentView, itemId, snapshot: { price: it.priceNow, status: 'booked' }, time: now });
+      showToast(`${it.name} booked.`);
+      render();
+      setTimeout(() => jumpToItem(itemId), 50);
+      return;
+    }
+    if (action === 'adjust') {
+      // Simulate a small price adjustment to show the flow.
+      const oldPrice = it.priceNow;
+      it.priceWas = oldPrice;
+      it.priceNow = Math.round(oldPrice * 1.05);
+      it.status = 'quoted';
+      stream.push({ type: 'item', sender: currentView, itemId, snapshot: { price: it.priceNow, status: 'quoted', priceWas: oldPrice }, time: now });
+      showToast(`${it.name} adjusted to £${it.priceNow.toLocaleString()} — sent back.`);
+      render();
+      setTimeout(() => jumpToItem(itemId), 50);
+      return;
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  render();
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

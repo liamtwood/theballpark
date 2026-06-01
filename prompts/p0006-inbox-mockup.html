@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>p0006 — Inbox simplification — Ballpark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-sans: 'Libre Franklin', system-ui, sans-serif;
+    --font-serif: 'Playfair Display', serif;
+    --theme-accent: #E8285D;
+    --theme-bg: #fbe9f0;
+    --theme-text: #993556;
+    --theme-soft: #fbeaf0;
+    --theme-contrast: #3DBE73;
+    --theme-contrast-soft: #DFF0E4;
+    --theme-contrast-strong: #0F6E56;
+    --color-surface: #ffffff;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b6b6b;
+    --color-text-muted: #a0a0a0;
+    --border-hairline: 0.5px solid rgba(0,0,0,0.08);
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --radius-card: 12px;
+    --radius-button: 8px;
+    --radius-pill: 999px;
+    --color-action-bg: #FEF2F2; --color-action-text: #DC2626;
+    --color-waiting-bg: #FFFBEB; --color-waiting-text: #D97706;
+    --color-quoted-bg: #EFF6FF; --color-quoted-text: #2563EB;
+    --color-booked-bg: #ECFDF5; --color-booked-text: #059669;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ece8e9; font-family: var(--font-sans); color: var(--color-text-primary); }
+  body { padding: 28px 16px; }
+  .page-wrap { max-width: 1100px; margin: 0 auto; background: var(--color-surface); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+  svg.lucide { display: inline-block; vertical-align: middle; }
+
+  .nav { display: flex; align-items: center; padding: 10px 22px; border-bottom: var(--border-hairline); background: var(--color-surface); gap: 14px; }
+  .logo { font-family: var(--font-serif); font-size: 19px; font-weight: 500; }
+  .logo b { color: var(--theme-accent); font-weight: 500; }
+  .nav-tag { font-size: 11px; color: var(--theme-text); letter-spacing: 0.08em; font-weight: 500; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--color-text-secondary); }
+  .nav-right a { color: var(--color-text-secondary); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .balls-pill { background: var(--theme-soft); color: var(--theme-text); padding: 4px 11px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 500; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--theme-accent); color: #fff; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; }
+
+  .hero { position: relative; background: var(--theme-accent); padding: 32px 24px 0; text-align: center; overflow: hidden; }
+  .hero-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+  .hero-grain { position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: overlay; opacity: 0.18; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .hero-inner { position: relative; z-index: 3; }
+  .hero-meta { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .hero-pill { display: inline-flex; align-items: center; gap: 4px; background: #fff; color: var(--theme-text); font-size: 11px; font-weight: 500; padding: 3px 11px; border-radius: var(--radius-pill); }
+  .hero-title { font-family: var(--font-serif); font-size: 32px; font-weight: 500; color: #fff; letter-spacing: -0.02em; line-height: 1.1; margin: 0 0 6px; }
+  .hero-page-label { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.82); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 22px; display: block; }
+  .tabs { display: flex; gap: 3px; justify-content: center; }
+  .tab { padding: 10px 18px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); border-radius: 9px 9px 0 0; cursor: pointer; transition: background 0.12s, color 0.12s; }
+  .tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .tab.active { color: var(--color-text-primary); background: #fff; }
+  .tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; margin-left: 6px; border-radius: var(--radius-pill); background: #fff; color: var(--theme-accent); font-size: 10px; font-weight: 500; }
+  .tab.active .tab-badge { background: var(--theme-accent); color: #fff; }
+
+  .body-wrap { background: var(--color-surface); padding: 14px 20px 24px; }
+  .top-bar { display: flex; align-items: center; margin-bottom: 12px; gap: 10px; }
+  .search-scope { background: var(--theme-accent); color: #fff; padding: 6px 12px; border-radius: var(--radius-button); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .search-field { flex: 1; background: #faf6f7; border: var(--border-hairline); border-radius: var(--radius-button); padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+  .search-field input { flex: 1; background: transparent; border: none; outline: none; font-size: 13px; }
+  .toggle-state { font-size: 11px; color: var(--theme-text); padding: 5px 10px; border: 0.5px solid var(--theme-accent); border-radius: var(--radius-button); cursor: pointer; background: #fff; }
+
+  .grid { display: grid; grid-template-columns: 150px minmax(0, 1fr) 280px; gap: 12px; }
+
+  .panel { background: var(--color-surface); border-radius: var(--radius-card); overflow: hidden; }
+  .panel-head { background: var(--theme-accent); padding: 9px 12px; display: flex; align-items: center; gap: 6px; color: #fff; }
+  .panel-head .label { font-size: 11px; color: #fff; letter-spacing: 0.08em; font-weight: 500; }
+  .panel-head .count { font-size: 11px; color: rgba(255,255,255,0.85); margin-left: 4px; }
+
+  .filter-body { padding: 8px 10px; }
+  .filter-sec { font-size: 10px; color: var(--color-text-muted); letter-spacing: 0.06em; font-weight: 500; padding: 6px 2px; }
+  .filter-row { display: flex; justify-content: space-between; padding: 5px 8px; font-size: 12px; color: var(--color-text-primary); border-radius: 5px; cursor: pointer; }
+  .filter-row:hover { background: var(--theme-soft); }
+  .filter-row.active { background: var(--theme-soft); color: var(--theme-text); font-weight: 500; }
+  .filter-row .num { color: var(--color-text-muted); }
+
+  /* Thread list (the new card design) */
+  .thread-list { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .thread-card { border: 0.5px solid rgba(0,0,0,0.1); border-radius: var(--radius-button); padding: 10px 12px; display: flex; gap: 11px; align-items: center; background: #fff; cursor: pointer; transition: border-color 0.12s, background 0.12s, box-shadow 0.12s; }
+  .thread-card:hover { border-color: rgba(0,0,0,0.2); box-shadow: var(--shadow-xs); }
+  .thread-card.selected { background: var(--theme-soft); border-color: var(--theme-accent); }
+  .thread-card.unread { background: #faf6f7; }
+  .thread-card.unread.selected { background: var(--theme-soft); }
+  .thread-logo { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-serif); }
+  .thread-body { flex: 1; min-width: 0; }
+  .thread-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .thread-supplier { font-size: 13px; font-weight: 500; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thread-time { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
+  .thread-subject { font-size: 12px; color: var(--color-text-primary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thread-card.unread .thread-subject { font-weight: 500; }
+  .thread-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: var(--radius-pill); }
+  .badge-action { background: var(--color-action-bg); color: var(--color-action-text); }
+  .badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
+  .badge-quoted { background: var(--color-quoted-bg); color: var(--color-quoted-text); }
+  .badge-booked { background: var(--color-booked-bg); color: var(--color-booked-text); }
+  .thread-cat { font-size: 11px; color: var(--color-text-muted); }
+  .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-accent); flex-shrink: 0; }
+
+  /* Conversation panel */
+  .conv-head { padding: 10px 12px; border-bottom: var(--border-hairline); display: flex; align-items: center; gap: 10px; background: var(--color-surface); }
+  .conv-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-serif); }
+  .conv-info { flex: 1; min-width: 0; }
+  .conv-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+  .conv-sub { font-size: 11px; color: var(--color-text-muted); }
+  .conv-stream { padding: 12px; background: #faf6f7; display: flex; flex-direction: column; gap: 8px; min-height: 220px; }
+  .msg { border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #3a3a3a; line-height: 1.45; }
+  .msg-in { background: #f1efef; border: 0.5px solid rgba(0,0,0,0.06); }
+  .msg-unread { background: #fff; border: 0.5px solid rgba(0,0,0,0.08); border-left: 3px solid var(--theme-accent); border-radius: 0 8px 8px 0; }
+  .msg-out { align-self: flex-end; background: #fdf6f8; border: 0.5px solid #f0d0dc; max-width: 85%; }
+  .conv-compose { padding: 10px 12px; border-top: var(--border-hairline); display: flex; gap: 8px; align-items: center; }
+  .conv-reply { flex: 1; background: #faf6f7; border: var(--border-hairline); border-radius: 6px; padding: 6px 10px; font-size: 11px; color: var(--color-text-muted); }
+  .conv-send { width: 30px; height: 30px; border-radius: 8px; background: var(--theme-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; border: none; }
+
+  /* Empty state */
+  .empty-state { padding: 56px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 320px; }
+  .empty-state-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--theme-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .empty-state-title { font-family: var(--font-serif); font-size: 18px; color: var(--color-text-primary); margin-bottom: 6px; }
+  .empty-state-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; max-width: 320px; margin-bottom: 18px; }
+  .empty-state-cta { background: var(--theme-accent); color: #fff; border: none; padding: 8px 16px; border-radius: var(--radius-button); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 6px; }
+
+  .conv-empty { padding: 48px 16px; text-align: center; color: var(--color-text-muted); display: flex; flex-direction: column; align-items: center; min-height: 280px; justify-content: center; }
+  .conv-empty-icon { color: #cbb8c1; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <div class="nav">
+    <div class="logo">B<b>·</b>llpark</div>
+    <div class="nav-tag">AGENCY PLANNING</div>
+    <div class="nav-right">
+      <a><i data-lucide="home" style="width:14px;height:14px"></i> Home</a>
+      <a><i data-lucide="settings" style="width:14px;height:14px"></i> Admin</a>
+      <div class="balls-pill">17 Balls left</div>
+      <div class="avatar">SM</div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <svg class="hero-svg" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs><filter id="hb" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="55"/></filter></defs>
+      <g filter="url(#hb)"><circle cx="75" cy="40" r="170" fill="#3DBE73"/><circle cx="755" cy="290" r="195" fill="#3DBE73"/></g>
+    </svg>
+    <div class="hero-grain"></div>
+    <div class="hero-inner">
+      <div class="hero-meta">
+        <span class="hero-pill">WA-016</span>
+        <span class="hero-pill"><i data-lucide="map-pin" style="width:11px;height:11px"></i> Angel Delight</span>
+      </div>
+      <h1 class="hero-title">Pop-Up Activation</h1>
+      <span class="hero-page-label">Inbox</span>
+      <div class="tabs">
+        <div class="tab" onclick="setTab(this)">Overview</div>
+        <div class="tab" onclick="setTab(this)">Marketplace</div>
+        <div class="tab active" onclick="setTab(this)">Inbox <span class="tab-badge" id="tabBadge">2</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-wrap">
+
+    <div class="top-bar">
+      <div class="search-scope">All ▾</div>
+      <div class="search-field">
+        <i data-lucide="search" style="width:14px;height:14px;color:#a0a0a0"></i>
+        <input placeholder="Search threads, suppliers, messages…">
+      </div>
+      <button class="toggle-state" onclick="toggleState()" id="toggleBtn">View empty state</button>
+    </div>
+
+    <div class="grid">
+
+      <!-- FILTER -->
+      <div class="panel">
+        <div class="panel-head">
+          <i data-lucide="filter" style="width:12px;height:12px;color:#fff"></i>
+          <span class="label">FILTER</span>
+        </div>
+        <div class="filter-body">
+          <div class="filter-sec">STATUS</div>
+          <div class="filter-row active"><span>All</span><span class="num" id="fAll">3</span></div>
+          <div class="filter-row"><span>Action</span><span class="num" id="fAction">1</span></div>
+          <div class="filter-row"><span>Waiting</span><span class="num" id="fWaiting">1</span></div>
+          <div class="filter-row"><span>Quoted</span><span class="num" id="fQuoted">1</span></div>
+          <div class="filter-row"><span>Booked</span><span class="num" id="fBooked">0</span></div>
+          <div class="filter-sec" style="border-top:0.5px solid rgba(0,0,0,0.06); margin-top:6px; padding-top:10px;">SUPPLIERS</div>
+          <div class="filter-row"><span>Greenhouse</span><span class="num">1</span></div>
+          <div class="filter-row"><span>ProBuild</span><span class="num">1</span></div>
+          <div class="filter-row"><span>Rocket Food</span><span class="num">1</span></div>
+        </div>
+      </div>
+
+      <!-- THREAD LIST -->
+      <div class="panel" id="threadPanel">
+        <div class="panel-head">
+          <i data-lucide="inbox" style="width:12px;height:12px;color:#fff"></i>
+          <span class="label">INBOX</span>
+          <span class="count" id="threadCount">3 threads · 2 unread</span>
+        </div>
+
+        <!-- Populated state -->
+        <div class="thread-list" id="threadList">
+
+          <div class="thread-card unread" id="t-greenhouse" onclick="selectThread('greenhouse')">
+            <div class="thread-logo" style="background:var(--theme-soft); color:var(--theme-text); font-size:10px; line-height:1; text-align:center;">The<br/>Green.</div>
+            <div class="thread-body">
+              <div class="thread-top">
+                <span class="thread-supplier">Greenhouse London</span>
+                <span class="thread-time">1h</span>
+              </div>
+              <div class="thread-subject">Re: Florals brief — Pop-Up Activation</div>
+              <div class="thread-meta">
+                <span class="badge badge-quoted">Quoted</span>
+                <span class="thread-cat">Florals</span>
+              </div>
+            </div>
+            <div class="unread-dot"></div>
+          </div>
+
+          <div class="thread-card unread" onclick="selectThread('probuild')" id="t-probuild">
+            <div class="thread-logo" style="background:#3a2f4a; color:#fff; font-size:11px; font-style:italic;">ProBuild</div>
+            <div class="thread-body">
+              <div class="thread-top">
+                <span class="thread-supplier">ProBuild Events</span>
+                <span class="thread-time">4h</span>
+              </div>
+              <div class="thread-subject">Site visit before quote?</div>
+              <div class="thread-meta">
+                <span class="badge badge-action">Action</span>
+                <span class="thread-cat">Stand structure</span>
+              </div>
+            </div>
+            <div class="unread-dot"></div>
+          </div>
+
+          <div class="thread-card" onclick="selectThread('rocket')" id="t-rocket">
+            <div class="thread-logo" style="background:#2f7e8c; color:#fff; font-size:15px;">RF</div>
+            <div class="thread-body">
+              <div class="thread-top">
+                <span class="thread-supplier">Rocket Food</span>
+                <span class="thread-time">1d</span>
+              </div>
+              <div class="thread-subject">Menu samples Thursday</div>
+              <div class="thread-meta">
+                <span class="badge badge-waiting">Waiting</span>
+                <span class="thread-cat">Catering &amp; hospitality</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState" style="display:none;">
+          <div class="empty-state-icon">
+            <i data-lucide="inbox" style="width:28px;height:28px;color:var(--theme-accent)"></i>
+          </div>
+          <div class="empty-state-title">No replies yet</div>
+          <div class="empty-state-sub">Emails you send from your cart will land here as supplier replies arrive.</div>
+          <button class="empty-state-cta" onclick="alert('Goes back to the Marketplace tab and opens the cart drawer.')">
+            <i data-lucide="shopping-cart" style="width:13px;height:13px"></i> Go to cart
+          </button>
+        </div>
+      </div>
+
+      <!-- CONVERSATION -->
+      <div class="panel" id="convPanel">
+        <div id="convContent">
+          <div class="conv-head">
+            <div class="conv-logo" style="background:var(--theme-soft); color:var(--theme-text); font-size:9px; line-height:1; text-align:center;">The<br/>Green.</div>
+            <div class="conv-info">
+              <div class="conv-name">Greenhouse London</div>
+              <div class="conv-sub">Florals · Quoted</div>
+            </div>
+          </div>
+          <div class="conv-stream">
+            <div class="msg msg-out">Hi Greenhouse — running an Angel Delight pop-up over May half-term and would love your help with the florals. Suspended chandelier, bar-top runs, stage piece. Brief attached.</div>
+            <div class="msg msg-in">Hi Sarah — thanks for the brief, we'd love to be involved.</div>
+            <div class="msg msg-unread">Quote attached — happy to discuss the bar-top pieces; we can do all three for the dates.</div>
+          </div>
+          <div class="conv-compose">
+            <div class="conv-reply">Reply…</div>
+            <button class="conv-send"><i data-lucide="send" style="width:14px;height:14px;color:#fff"></i></button>
+          </div>
+        </div>
+        <div class="conv-empty" id="convEmpty" style="display:none;">
+          <i data-lucide="message-square" class="conv-empty-icon" style="width:28px;height:28px"></i>
+          <div style="margin-top:10px; font-size:12px; line-height:1.45;">Select a thread to read.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  lucide.createIcons();
+
+  const threads = {
+    greenhouse: {
+      logoBg: 'var(--theme-soft)', logoColor: 'var(--theme-text)', logoText: 'TG', logoFont: '9px',
+      name: 'Greenhouse London',
+      sub: 'Florals · Quoted',
+      messages: [
+        { kind: 'out', body: "Hi Greenhouse — running an Angel Delight pop-up over May half-term and would love your help with the florals. Suspended chandelier, bar-top runs, stage piece. Brief attached." },
+        { kind: 'in', body: "Hi Sarah — thanks for the brief, we'd love to be involved." },
+        { kind: 'unread', body: "Quote attached — happy to discuss the bar-top pieces; we can do all three for the dates." }
+      ]
+    },
+    probuild: {
+      logoBg: '#3a2f4a', logoColor: '#fff', logoText: 'ProBuild', logoFont: '8px',
+      name: 'ProBuild Events',
+      sub: 'Stand structure · Action',
+      messages: [
+        { kind: 'out', body: "Hi ProBuild — looking for a branded inflatable jelly with integrated ball pit. ~4m tall. Brief attached. 1-day and 3-day quotes please." },
+        { kind: 'unread', body: "Can we book a site visit before quoting? Standard for builds this size — want to check the load points and confirm the canopy spec." }
+      ]
+    },
+    rocket: {
+      logoBg: '#2f7e8c', logoColor: '#fff', logoText: 'RF', logoFont: '13px',
+      name: 'Rocket Food',
+      sub: 'Catering & hospitality · Waiting',
+      messages: [
+        { kind: 'out', body: "Hi Rocket — catering brief attached. Bowl food + cocktail bar for ~400 guests across 3 days." },
+        { kind: 'in', body: "Thanks Sarah — we'll send menu samples Thursday and a draft quote alongside." }
+      ]
+    }
+  };
+
+  function selectThread(key) {
+    document.querySelectorAll('.thread-card').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById('t-' + key);
+    card.classList.add('selected');
+
+    const t = threads[key];
+    const content = document.getElementById('convContent');
+    let html = '<div class="conv-head"><div class="conv-logo" style="background:' + t.logoBg + '; color:' + t.logoColor + '; font-size:' + t.logoFont + '; line-height:1; text-align:center;' + (t.logoFont === '8px' ? ' font-style:italic;' : '') + '">' + t.logoText.replace('\n', '<br/>') + '</div><div class="conv-info"><div class="conv-name">' + t.name + '</div><div class="conv-sub">' + t.sub + '</div></div></div>';
+    html += '<div class="conv-stream">';
+    t.messages.forEach(m => {
+      html += '<div class="msg msg-' + m.kind + '">' + m.body + '</div>';
+    });
+    html += '</div><div class="conv-compose"><div class="conv-reply">Reply…</div><button class="conv-send"><i data-lucide="send" style="width:14px;height:14px;color:#fff"></i></button></div>';
+    content.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function setTab(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  let isEmpty = false;
+  function toggleState() {
+    isEmpty = !isEmpty;
+    document.getElementById('threadList').style.display = isEmpty ? 'none' : 'flex';
+    document.getElementById('emptyState').style.display = isEmpty ? 'flex' : 'none';
+    document.getElementById('convContent').style.display = isEmpty ? 'none' : 'block';
+    document.getElementById('convEmpty').style.display = isEmpty ? 'flex' : 'none';
+    document.getElementById('toggleBtn').textContent = isEmpty ? 'View populated state' : 'View empty state';
+    document.getElementById('threadCount').textContent = isEmpty ? '0 threads' : '3 threads · 2 unread';
+    document.getElementById('tabBadge').textContent = isEmpty ? '0' : '2';
+    document.getElementById('fAll').textContent = isEmpty ? '0' : '3';
+    document.getElementById('fAction').textContent = isEmpty ? '0' : '1';
+    document.getElementById('fWaiting').textContent = isEmpty ? '0' : '1';
+    document.getElementById('fQuoted').textContent = isEmpty ? '0' : '1';
+  }
+</script>
+
+</body>
+</html>

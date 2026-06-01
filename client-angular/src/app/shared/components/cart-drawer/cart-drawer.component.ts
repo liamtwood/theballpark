@@ -1,0 +1,3307 @@
+import {
+  Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { SidebarModule } from 'primeng/sidebar';
+import { LucideAngularModule } from 'lucide-angular';
+import { Subscription } from 'rxjs';
+
+import { CartDrawerService, CartDrawerOptions, CartDrawerRow, CartDrawerRowAction } from '../../../core/services/cart-drawer.service';
+import { ProjectItemService } from '../../../core/services/project-item.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { ProjectCategoryService } from '../../../core/services/project-category.service';
+import { OutreachService } from '../../../core/services/outreach.service';
+import { ApiService } from '../../../core/services/api.service';
+import { ProjectItem } from '../../../models';
+import { GbpPipe } from '../../pipes/gbp.pipe';
+import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
+
+/** v1.65ef — units that bill per-attendee. Item.base_price for these
+    is treated as a per-cover/per-head rate, so the cart-drawer total
+    multiplies by project.guest_count for the extended line price.
+    All other unit codes (each, platter, event, day, project, …) are
+    treated as flat amounts. */
+const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
+
+/**
+ * v1.65ab — single shared "Project Items" cart drawer. Mounted once in
+ * app-shell; opened from the project marketplace cart icon (and any
+ * future surface) via CartDrawerService.open(projectId).
+ *
+ * Renders project_items in two sections:
+ *   SELECTED  — items the project has ticked (selection_type = 'selected')
+ *   WISHLIST  — items the project has hearted (selection_type = 'liked')
+ *
+ * Row hover (SELECTED): description tooltip slides in below the row;
+ * a remove ✕ surfaces on the right.
+ * Row hover (WISHLIST):  a green tick (promote → selected) + remove ✕.
+ * Footer: BALLPARK label + sum of SELECTED items' base_price.
+ */
+@Component({
+  selector: 'app-cart-drawer',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, FormsModule, SidebarModule, LucideAngularModule, GbpPipe, ImageUploadPanelComponent],
+  template: `
+    <p-sidebar [(visible)]="visible"
+               (visibleChange)="onVisibleChange($event)"
+               position="right"
+               [style]="{ width: 'min(880px, 92vw)' }"
+               styleClass="bp-drawer bp-cart-drawer"
+               [showCloseIcon]="false">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">{{ contextLabel }}</span>
+            <div class="bp-drawer-title">{{ contextTitle }}</div>
+          </div>
+          <div class="bp-cd-head-right">
+            <span class="bp-cd-count">{{ totalCount }} item{{ totalCount === 1 ? '' : 's' }}</span>
+            <button type="button" class="bp-icon-btn" title="Close" (click)="close()">
+              <lucide-icon name="x" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </ng-template>
+
+      <!-- v1.65f9 — 2-column drawer body. Items list (selected,
+           wishlist, ad-hoc) lives in col 1; the summary block
+           (totals, budget headroom, textarea, Send CTA) lives in
+           col 2 so the user can see what they're buying and what it
+           costs at the same time. Drawer width doubled to
+           min(880px, 92vw) to make room. Footer template removed —
+           the Send action now lives in col 2's summary stack. -->
+      <div class="bp-cd-grid">
+      <div class="bp-cd-body bp-cd-grid-items">
+        <!-- EVENT ─────────────────────────────────────────────────────
+             v1.65g4 — context block at the top of the cart so the
+             user can see the brief + key event facts (date / venue /
+             guests) while picking items. The pieces are the same
+             ones the review stage shows in its EVENT DETAILS box —
+             now lifted to the top of every cart open so the context
+             stays visible from item one. -->
+        <div class="bp-field-label bp-cd-eyebrow">EVENT</div>
+        <div class="bp-cd-event-summary">
+          <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
+          <div class="bp-cd-event-box">
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Date</span>
+              <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Venue</span>
+              <span class="bp-cd-event-v">{{ projectVenue || '—' }}</span>
+            </div>
+            <div class="bp-cd-event-row">
+              <span class="bp-cd-event-k">Guests</span>
+              <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SELECTED ----------------------------------------------- -->
+        <div class="bp-field-label bp-cd-eyebrow">SELECTED</div>
+        <!-- v1.65fB — compact read-only rows. Action buttons + Adjust
+             form + Image picker all moved to the detail panel on the
+             right. Clicking a row promotes it into the detail view. -->
+        <ng-container *ngIf="selected.length; else noSel">
+          <div *ngFor="let pi of selected"
+               class="bp-cd-mini"
+               [class.bp-cd-mini--active]="selectedRowId === pi.id"
+               [class.bp-cd-mini--accepted]="rowStatus(pi) === 'accepted'"
+               [class.bp-cd-mini--declined]="isDeclined(pi)"
+               (click)="selectRow(pi)">
+            <div class="bp-cd-mini-img"
+                 [style.background-image]="imageStyle(pi)"
+                 [style.background-color]="imageBgColor(pi)">
+              <span *ngIf="!imageStyle(pi)" class="bp-cd-img-letter">{{ initial(pi) }}</span>
+            </div>
+            <div class="bp-cd-mini-body">
+              <div class="bp-cd-mini-name" [title]="pi.name">{{ pi.name }}</div>
+              <div class="bp-cd-mini-sub">
+                <span>{{ pi.supplier_name || '—' }}</span>
+                <span *ngIf="rowStatus(pi)"
+                      class="bp-cd-row-status bp-cd-row-status--inline"
+                      [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
+                      [class.bp-cd-row-status--bad]="isDeclined(pi)">
+                  · {{ rowStatusLabel(pi) }}
+                </span>
+              </div>
+            </div>
+            <div class="bp-cd-mini-total">{{ lineTotal(pi) | gbp }}</div>
+          </div>
+        </ng-container>
+        <ng-template #noSel>
+          <div class="bp-cd-empty">No items selected yet</div>
+        </ng-template>
+
+        <!-- WISHLIST ----------------------------------------------- -->
+        <!-- v1.65es — agent-only section. Suppliers don't need the
+             wishlist concept; they're reviewing a delivered brief. -->
+        <ng-container *ngIf="!isSupplier">
+        <div class="bp-field-label bp-cd-eyebrow">WISHLIST</div>
+        <ng-container *ngIf="wishlist.length; else noWl">
+          <div *ngFor="let pi of wishlist" class="bp-list-row bp-cd-row bp-cd-row--wishlist">
+            <div class="bp-cd-img"
+                 [style.background-image]="imageStyle(pi)"
+                 [style.background-color]="imageBgColor(pi)">
+              <span *ngIf="!imageStyle(pi)" class="bp-cd-img-letter">{{ initial(pi) }}</span>
+            </div>
+            <div class="bp-cd-text">
+              <div class="bp-cd-name" [title]="pi.name">{{ pi.name }}</div>
+              <div class="bp-cd-sub">{{ pi.supplier_name || '—' }}</div>
+            </div>
+            <div class="bp-cd-price">
+              {{ lineTotal(pi) | gbp }}
+              <div *ngIf="isPerAttendee(pi)" class="bp-cd-price-sub">
+                {{ (pi.base_price || 0) | gbp }} × {{ guestCountValue }}
+              </div>
+            </div>
+            <button type="button"
+                    class="bp-cd-action bp-cd-action--promote"
+                    title="Move to selected"
+                    (click)="promote(pi)">
+              <lucide-icon name="check" [size]="13"></lucide-icon>
+            </button>
+            <button type="button"
+                    class="bp-cd-action bp-cd-action--remove"
+                    title="Remove from wishlist"
+                    (click)="remove(pi)">
+              <lucide-icon name="x" [size]="13"></lucide-icon>
+            </button>
+          </div>
+        </ng-container>
+        <ng-template #noWl>
+          <div class="bp-cd-empty">No items yet — heart an item to save it here.</div>
+        </ng-template>
+        </ng-container>
+
+        <!-- v1.65ep — ADDITIONAL ASKS: title-only "create" rows the
+             agent adds in-cart. They aren't project_items yet — the
+             outreach send promotes them into items rows (pending) +
+             links them as message_items per the existing Create path
+             in taxonomy.requestQuotes.
+             v1.65es — agent-only. Suppliers see ad-hoc asks already
+             materialised as SELECTED rows (one per message_item). -->
+        <!-- v1.65fI — Additional asks are now first-class cart lines.
+             Adding one creates an items row + project_items row on
+             the server, so it appears in SELECTED above and is fully
+             editable via the detail card (name / price / unit /
+             description + per-item supplier picker). The session-
+             state list and "ADDITIONAL ASKS" eyebrow are gone — only
+             the add input remains, as a "+ custom item" affordance. -->
+        <ng-container *ngIf="!isSupplier">
+        <div class="bp-cd-addask">
+          <input type="text"
+                 class="bp-cd-addask-input"
+                 [(ngModel)]="newAskName"
+                 (keyup.enter)="addAsk()"
+                 placeholder="Add a custom item (e.g. open bar for cocktails)"/>
+          <button type="button"
+                  class="bp-cd-addask-btn"
+                  [disabled]="!newAskName.trim() || addingAsk"
+                  (click)="addAsk()">
+            <lucide-icon name="plus" [size]="13"></lucide-icon>
+            {{ addingAsk ? 'Adding…' : 'Add' }}
+          </button>
+        </div>
+        </ng-container>
+
+        <!-- v1.65fE — Checkout CTA. Flips the right column from the
+             detail card to the cost summary (totals + budget +
+             auto-summary textarea + Send). Disabled when the cart
+             is empty — nothing to send. -->
+        <button type="button"
+                class="bp-cd-checkout-cta"
+                [disabled]="!selected.length"
+                (click)="checkoutMode = true"
+                *ngIf="!checkoutMode">
+          <lucide-icon name="shopping-cart" [size]="14"></lucide-icon>
+          <span>Checkout</span>
+          <span class="bp-cd-checkout-count" *ngIf="selected.length">{{ selected.length }}</span>
+        </button>
+      </div><!-- /.bp-cd-grid-items -->
+
+      <!-- v1.65f9 — summary column on the right of the 2-col grid.
+           Sticky vertical stack that holds the cost breakdown,
+           budget headroom, optional textarea (supplier), and the
+           Send CTA. Same content the old pTemplate="footer" carried,
+           now living inside the body so it can sit next to the
+           items list instead of below it. -->
+      <aside class="bp-cd-grid-summary">
+        <!-- v1.65fB — detail panel for the row currently selected in
+             the left list. Shows the full item view + the action
+             cluster (tick/edit/image/×) + the inline Adjust + Image
+             forms. When nothing is selected (empty cart), shows an
+             empty state. Lives at the top of the right column;
+             totals + Send CTA sit pinned at the bottom via the
+             .bp-cd-totals-stack flex-shrink: 0 wrapper below. -->
+        <!-- v1.65fC — detail card now uses the shared .bp-detail-*
+             vocabulary (the same hero + body + specs primitives that
+             the catalogue grid's right-rail card uses), so the cart
+             drawer and the marketplace render visually identical
+             cards. Edit toggles to in-place inputs — name / price /
+             unit / description swap for editable fields without
+             leaving the card. -->
+        <ng-container *ngIf="!checkoutMode">
+        <div class="bp-cd-detail" *ngIf="selectedRow as pi; else detailEmpty">
+          <!-- HERO: image with the 4-action cluster anchored top-right. -->
+          <div class="bp-detail-hero"
+               [class.bp-detail-hero-default]="!pi.image_url"
+               [style.background-image]="imageStyle(pi)"
+               [style.background-color]="imageBgColor(pi)">
+            <span *ngIf="!pi.image_url" class="bp-detail-hero-initials">{{ initial(pi) }}</span>
+            <div class="bp-detail-actions">
+              <!-- v1.65fQ — Accept visible to both roles. Confirms
+                   before firing so the agent / supplier doesn't
+                   click through accidentally. -->
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="rowStatus(pi) === 'accepted'"
+                      title="Accept"
+                      (click)="onAcceptClick(pi)">
+                <lucide-icon name="check" [size]="14"></lucide-icon>
+              </button>
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="adjustOpenId === pi.id"
+                      [title]="isSupplier ? 'Adjust — set price / details' : 'Edit for this brief'"
+                      (click)="toggleAdjust(pi)">
+                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+              </button>
+              <!-- v1.65fJ — image button now available to both roles.
+                   Supplier flow queues an adjust action; agent flow
+                   PATCHes the project_items snapshot directly. -->
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="!!pi.image_url || imageOpenId === pi.id"
+                      title="Photo — upload, search, or paste"
+                      (click)="toggleImage(pi)">
+                <lucide-icon name="image" [size]="14"></lucide-icon>
+              </button>
+              <!-- v1.65fQ — × is Decline when the row has a status
+                   (post-send: there's something to decline);
+                   otherwise it's Remove (pre-send: clear out of
+                   the cart). Decline confirms; Remove doesn't —
+                   re-adding from the marketplace is one click. -->
+              <button type="button"
+                      class="bp-detail-action"
+                      [class.active]="isDeclined(pi)"
+                      [title]="rowStatus(pi) ? 'Decline' : 'Remove from project'"
+                      (click)="onDeclineOrRemove(pi)">
+                <lucide-icon name="x" [size]="14"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- BODY -->
+          <div class="bp-detail-body">
+            <div class="bp-detail-cat-label" *ngIf="pi.category_name">{{ pi.category_name | uppercase }}</div>
+
+            <!-- VIEW MODE -->
+            <ng-container *ngIf="!isEditingDetail">
+              <div class="bp-detail-name">{{ pi.name }}</div>
+              <div class="bp-detail-subtitle" *ngIf="pi.supplier_name">
+                <lucide-icon name="map-pin" [size]="12"></lucide-icon>
+                {{ pi.supplier_name }}
+              </div>
+              <div *ngIf="rowStatus(pi)"
+                   class="bp-cd-row-status"
+                   [class.bp-cd-row-status--ok]="rowStatus(pi) === 'accepted' || rowStatus(pi) === 'quoted' || rowStatus(pi) === 'adjusted_by_supplier'"
+                   [class.bp-cd-row-status--bad]="isDeclined(pi)">
+                {{ rowStatusLabel(pi) }}
+              </div>
+              <div class="bp-detail-price-row">
+                <span class="bp-detail-price">{{ (pi.base_price || 0) | gbp }}</span>
+                <span class="bp-detail-price-unit" *ngIf="pi.unit">{{ unitShort(pi.unit) }}</span>
+              </div>
+              <p class="bp-detail-desc" *ngIf="pi.description">{{ pi.description }}</p>
+              <!-- Breakdown + line total + stepper (agent only) -->
+              <div class="bp-detail-specs">
+                <div class="bp-detail-spec">
+                  <span class="bp-detail-spec-label">{{ rateLine(pi) }}</span>
+                  <span class="bp-detail-spec-value">{{ lineTotal(pi) | gbp }}</span>
+                </div>
+              </div>
+              <!-- v1.65fG — quantity is a direct number input now,
+                   was a +/− stepper. Stepping 10 platters or 250
+                   heads 1-by-1 is painful; users type. Blur commits
+                   to the server (PATCH) so a stray edit doesn't fire
+                   a write per keystroke. -->
+              <div class="bp-cd-qty-input-row" *ngIf="!isSupplier && pi.item_id">
+                <label class="bp-cd-qty-lbl">Quantity</label>
+                <input type="number" class="bp-cd-qty-input"
+                       [value]="qtyOf(pi)"
+                       (change)="onQtyChange(pi, $event)"
+                       (blur)="onQtyChange(pi, $event)"
+                       (keyup.enter)="onQtyChange(pi, $event)"
+                       min="1" step="1"
+                       [disabled]="qtySaving[pi.id]"/>
+              </div>
+
+              <!-- v1.65fH — per-item supplier roster (agent only).
+                   Lists every supplier already represented in the
+                   cart, with the source supplier (catalogue owner)
+                   pre-ticked and tagged. Agent can untick the
+                   source or tick alternates to fan the brief out to
+                   more than one supplier on this line. Ad-hoc items
+                   start empty and must have ≥1 tick before Send. -->
+              <div class="bp-cd-suppliers" *ngIf="!isSupplier && inCartSuppliers.length">
+                <div class="bp-cd-suppliers-hd">
+                  Suppliers
+                  <span class="bp-cd-suppliers-warn"
+                        *ngIf="!(pi.asked_supplier_ids?.length)">
+                    required
+                  </span>
+                </div>
+                <label *ngFor="let s of inCartSuppliers"
+                       class="bp-cd-supplier-row">
+                  <input type="checkbox"
+                         [checked]="(pi.asked_supplier_ids || []).includes(s.id)"
+                         (change)="onSupplierToggle(pi, s.id, $event)"/>
+                  <span class="bp-cd-supplier-name">{{ s.name }}</span>
+                  <span class="bp-cd-supplier-source"
+                        *ngIf="s.id === pi.supplier_org_id">
+                    source
+                  </span>
+                </label>
+              </div>
+            </ng-container>
+
+            <!-- EDIT MODE — same body slots, but inputs in place. -->
+            <ng-container *ngIf="isEditingDetail">
+              <input type="text" class="bp-detail-name-input"
+                     [(ngModel)]="adjustForm.name"
+                     [placeholder]="pi.name"/>
+              <div class="bp-detail-subtitle" *ngIf="pi.supplier_name">
+                <lucide-icon name="map-pin" [size]="12"></lucide-icon>
+                {{ pi.supplier_name }}
+              </div>
+              <!-- v1.65fD — unit stays as static read-only text; the
+                   supplier set how they bill on the catalogue item,
+                   the agent shouldn't change it per-brief. Only the
+                   numeric price is editable here. -->
+              <div class="bp-detail-price-row">
+                <input type="number" class="bp-detail-price-input"
+                       [(ngModel)]="adjustForm.price"
+                       min="0" step="1" placeholder="0"/>
+                <span class="bp-detail-price-unit" *ngIf="pi.unit">{{ unitShort(pi.unit) }}</span>
+              </div>
+              <textarea class="bp-detail-desc-input" rows="3"
+                        [(ngModel)]="adjustForm.description"
+                        placeholder="Short description"></textarea>
+              <div class="bp-detail-edit-foot">
+                <span class="bp-cd-adjust-note">
+                  <lucide-icon name="sparkles" [size]="11"></lucide-icon>
+                  {{ isSupplier ? 'Adds to your catalogue' : 'Saves to this brief only' }}
+                </span>
+                <button type="button" class="bp-cd-adjust-cancel"
+                        (click)="cancelAdjust()">Cancel</button>
+                <button type="button" class="bp-cd-adjust-save"
+                        [disabled]="!canSaveAdjust"
+                        (click)="onSaveAdjust(pi)">
+                  <lucide-icon name="check" [size]="13"></lucide-icon> Save
+                </button>
+              </div>
+            </ng-container>
+          </div>
+
+          <!-- v1.65fJ — inline Image picker now available to both
+               roles. Save path branches in onImagePicked. -->
+          <app-image-upload-panel
+            *ngIf="imageOpenId === pi.id"
+            [entityId]="pi.item_id || pi.id"
+            type="item"
+            [existingCoverUrl]="adjustForm.imageUrl || pi.image_url || ''"
+            [existingImageDisplay]="'cover'"
+            [searchTerm]="adjustForm.name || pi.name || ''"
+            (imagesUpdated)="onImagePicked(pi, $event)"
+            (closed)="closeImage()">
+          </app-image-upload-panel>
+        </div>
+        <ng-template #detailEmpty>
+          <div class="bp-cd-detail-empty">
+            <lucide-icon name="shopping-cart" [size]="24"></lucide-icon>
+            <div>Select an item to see details</div>
+          </div>
+        </ng-template>
+        </ng-container><!-- /*ngIf=!checkoutMode -->
+
+        <!-- v1.65fB → v1.65fE — pinned totals + Send CTA. Now only
+             render when the user has clicked "Checkout" on the left,
+             so the right column shows the detail card by default and
+             flips to the quote summary on demand. The "← Back" link
+             at the top returns to the detail view. -->
+        <div class="bp-cd-totals-stack" *ngIf="checkoutMode">
+        <ng-container *ngIf="checkoutStage === 'invoice'">
+        <!-- v1.65fM — ESTIMATE header with project name + dates,
+             item list reading as a standard estimate (name + total
+             on one line, count × rate underneath in muted text),
+             "Included" for £0 lines. -->
+        <div class="bp-cd-est-hd">
+          <span class="bp-cd-est-hd-label">ESTIMATE</span>
+          <span class="bp-cd-est-hd-sep" *ngIf="projectName">·</span>
+          <span class="bp-cd-est-hd-meta" *ngIf="projectName">{{ projectName }}</span>
+          <span class="bp-cd-est-hd-sep" *ngIf="projectDates">·</span>
+          <span class="bp-cd-est-hd-meta" *ngIf="projectDates">{{ projectDates }}</span>
+        </div>
+        <div class="bp-cd-est-section-label">ITEMS</div>
+        <div class="bp-cd-est-list">
+          <div *ngFor="let pi of selected" class="bp-cd-est-row">
+            <div class="bp-cd-est-top">
+              <span class="bp-cd-est-name">{{ pi.name }}</span>
+              <span class="bp-cd-est-total"
+                    [class.bp-cd-est-total--free]="lineTotal(pi) === 0">
+                {{ lineTotalLabel(pi) }}
+              </span>
+            </div>
+            <div class="bp-cd-est-sub">
+              {{ stepperValue(pi) | number }} {{ unitShort(pi.unit || '') || 'units' }} × {{ (pi.base_price || 0) | gbp }}
+            </div>
+          </div>
+        </div>
+        <!-- v1.65es → v1.65ew — supplier-side footer. Totals on top,
+             then auto-summary chip, then wrap-up textarea, then the
+             Send reply CTA. The whole block lives in one *ngIf so
+             the supplier always sees the action affordances even
+             before they queue anything (sending just a message is
+             also valid). -->
+        <div class="bp-cd-foot bp-cd-foot--supplier" *ngIf="isSupplier">
+          <ng-container *ngIf="selected.length">
+            <div class="bp-cd-foot-row bp-cd-foot-row--cost">
+              <span class="bp-cd-foot-label">Cost per head</span>
+              <span class="bp-cd-foot-value">{{ perHeadTotal | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="guestCountValue > 0">
+              <span class="bp-cd-foot-meta-label">× {{ guestCountValue }} guests</span>
+              <span class="bp-cd-foot-meta-value">{{ yourCost | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
+              <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
+              <span class="bp-cd-foot-meta-value">{{ vatOnCost | gbp }}</span>
+            </div>
+            <div class="bp-cd-foot-client">
+              <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
+              <span class="bp-cd-foot-client-value">{{ supplierClientTotal | gbp:2 }}</span>
+            </div>
+          </ng-container>
+
+          <!-- v1.65fR — textarea moved to the review stage so the
+               supplier sees it AFTER clicking Next. Auto-summary
+               still syncs into supplierMessage as actions are
+               queued; it just lands on the review page rather than
+               inline on the invoice page. -->
+        </div>
+
+        <!-- v1.65eg — estimate-style summary. Matches the layout on
+             the project Estimate tab: Your cost / Margin / VAT /
+             CLIENT TOTAL (highlighted in theme-soft). Skips the
+             contingency line that the full estimate carries — the
+             cart drawer is a quick "what's this going to cost"
+             glance, not the full breakdown. -->
+        <div class="bp-cd-foot bp-cd-foot--summary" *ngIf="!isSupplier && selected.length">
+          <!-- v1.65fM — "Your cost" → "Subtotal" matches the estimate
+               vocabulary; CLIENT TOTAL below gets the double-rule
+               treatment. -->
+          <div class="bp-cd-foot-row bp-cd-foot-row--cost">
+            <span class="bp-cd-foot-label">Subtotal</span>
+            <span class="bp-cd-foot-value">{{ yourCost | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta">
+            <span class="bp-cd-foot-meta-label">Margin ({{ marginPct }}%)</span>
+            <span class="bp-cd-foot-meta-value">{{ marginAmount | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-row bp-cd-foot-row--meta" *ngIf="vatPct > 0">
+            <span class="bp-cd-foot-meta-label">VAT ({{ vatPct }}%)</span>
+            <span class="bp-cd-foot-meta-value">{{ vatAmount | gbp }}</span>
+          </div>
+          <div class="bp-cd-foot-client">
+            <span class="bp-cd-foot-client-label">CLIENT TOTAL</span>
+            <span class="bp-cd-foot-client-value">{{ clientTotal | gbp:2 }}</span>
+          </div>
+
+          <!-- v1.65eh — budget headroom card. Same shape + class
+               naming as the Estimate page's bp-est-budget-card.
+               Only renders when project.budget is set (>0).
+               v1.65es — agency-only; suppliers don't see the
+               agency's budget. -->
+          <div class="bp-cd-budget-card"
+               *ngIf="!isSupplier && budget > 0"
+               [class.over]="isOverBudget">
+            <div class="bp-cd-budget-header">
+              <lucide-icon [name]="isOverBudget ? 'alert-triangle' : 'check-square'" [size]="16"></lucide-icon>
+              <span class="bp-cd-budget-label">{{ isOverBudget ? 'Over budget' : 'Within budget' }}</span>
+              <span class="bp-cd-budget-diff">{{ budgetDiff | gbp }}</span>
+            </div>
+            <div class="bp-cd-budget-bar-wrap">
+              <div class="bp-cd-budget-bar" [style.width.%]="barPct"></div>
+            </div>
+            <div class="bp-cd-budget-footer">
+              <span>Client total {{ clientTotal | gbp }}</span>
+              <span>Budget {{ budget | gbp }}</span>
+            </div>
+            <div class="bp-cd-budget-sub">
+              {{ barPct | number:'1.0-0' }}%
+              {{ isOverBudget ? 'over budget' : 'under budget — you have headroom to add more' }}
+            </div>
+          </div>
+
+          <!-- v1.65ek — Send brief CTA. Launches the 4-step outreach
+               train (Suppliers → Requirements → Review → Send)
+               pre-populated from the cart's items + supplier set.
+               v1.65es — agency-only. Suppliers get a "Review &
+               respond" CTA wired in Phase 2. -->
+
+          <!-- v1.65ev → v1.65ew — supplier wrap-up moved up into the
+               supplier footer block (above). This was misnested
+               inside the agency *ngIf="!isSupplier" gate so it
+               never rendered. -->
+
+        </div>
+        <!-- Empty state — keep the band so the drawer chrome stays
+             stable even when SELECTED is empty. -->
+        <div class="bp-cd-foot" *ngIf="!selected.length">
+          <span class="bp-cd-foot-label">CLIENT TOTAL</span>
+          <span class="bp-cd-foot-total">£0</span>
+        </div>
+        </ng-container><!-- /checkoutStage === 'invoice' -->
+
+        <!-- v1.65fO → v1.65fR — review stage. Two role-specific
+             layouts under the same shell:
+               agent    — greeting + brief + event details + ball note
+               supplier — textarea (with auto-summary) + ball note
+             Both share the header, section labels, and footer style. -->
+        <ng-container *ngIf="checkoutStage === 'review'">
+          <div class="bp-cd-est-hd">
+            <span class="bp-cd-est-hd-label">REVIEW</span>
+            <span class="bp-cd-est-hd-sep" *ngIf="projectName">·</span>
+            <span class="bp-cd-est-hd-meta" *ngIf="projectName">{{ projectName }}</span>
+          </div>
+
+          <ng-container *ngIf="!isSupplier">
+            <div class="bp-cd-est-section-label">GREETING</div>
+            <textarea class="bp-cd-greeting-input"
+                      [(ngModel)]="greeting"
+                      rows="3"
+                      placeholder="Hi — event details are attached. Need this estimate fast, please. Thanks."></textarea>
+
+            <div class="bp-cd-est-section-label" *ngIf="projectBrief">BRIEF</div>
+            <div class="bp-cd-brief-text" *ngIf="projectBrief">{{ projectBrief }}</div>
+
+            <div class="bp-cd-event-box">
+              <div class="bp-cd-event-hd">EVENT DETAILS</div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Date</span>
+                <span class="bp-cd-event-v">{{ projectDates || 'TBC' }}</span>
+              </div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Venue</span>
+                <span class="bp-cd-event-v">{{ projectVenue }}</span>
+              </div>
+              <div class="bp-cd-event-row">
+                <span class="bp-cd-event-k">Guests</span>
+                <span class="bp-cd-event-v">{{ guestCountValue || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="bp-cd-ballnote">
+              🎱 This will use <b>1 ball</b> — sent to {{ briefSupplierCount }} supplier{{ briefSupplierCount === 1 ? '' : 's' }}.
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="isSupplier">
+            <!-- v1.65fS — per-item change list at the top of the
+                 review so the supplier can scan exactly what they're
+                 about to send: Accepted / Quoted / Declined badges,
+                 plus "£before → £after" for price adjustments. -->
+            <ng-container *ngIf="changesList.length">
+              <div class="bp-cd-est-section-label">CHANGES</div>
+              <div class="bp-cd-changes-list">
+                <div *ngFor="let c of changesList" class="bp-cd-change-row">
+                  <span class="bp-cd-change-name">{{ c.name }}</span>
+                  <span class="bp-cd-change-status"
+                        [class.bp-cd-change-status--ok]="c.status === 'Accepted'"
+                        [class.bp-cd-change-status--info]="c.status === 'Review'"
+                        [class.bp-cd-change-status--bad]="c.status === 'Declined'">
+                    {{ c.status }}
+                  </span>
+                  <span class="bp-cd-change-details" *ngIf="c.details">{{ c.details }}</span>
+                </div>
+              </div>
+            </ng-container>
+
+            <div class="bp-cd-est-section-label">MESSAGE TO AGENT</div>
+            <textarea class="bp-cd-greeting-input"
+                      [(ngModel)]="supplierMessage"
+                      rows="4"
+                      [disabled]="sending"
+                      placeholder="Anything the agent should know about your quote — lead time, prep notes, alternates."></textarea>
+            <div class="bp-cd-ballnote">
+              ⏱ Reply lands in the agent's inbox immediately.
+              <span *ngIf="pendingCount > 0">
+                <b>{{ pendingCount }}</b>
+                {{ pendingCount === 1 ? 'item' : 'items' }} updated.
+              </span>
+            </div>
+          </ng-container>
+        </ng-container>
+        </div><!-- /.bp-cd-totals-stack -->
+        <!-- v1.65fL — checkout footer pinned to the bottom of the
+             right column. Uses the app's standard outlined pill
+             (.bp-search-view-estimate) — same shape as the
+             marketplace's "Event detail" + "View estimate" CTAs. -->
+        <div class="bp-cd-aside-foot" *ngIf="checkoutMode">
+          <!-- v1.65fO — stage-aware footer. Invoice stage:
+               Cancel + Next (→ review). Review stage: Back +
+               Send (fires /taxonomy/request-quotes). Supplier
+               flow stays as a single-Next that triggers onSend(). -->
+          <!-- v1.65fR — both roles now have the same two-stage flow:
+               invoice → Next → review → Send. The review stage shows
+               different content per role (agent: greeting + brief +
+               event details + ball note; supplier: the existing
+               textarea + auto-summary), but the footer pattern is
+               identical. Supplier Send fires onSend() (queued batch
+               action via the inbox listener); agent fires
+               onBriefSend() (direct POST to request-quotes). -->
+          <ng-container *ngIf="checkoutStage === 'invoice'">
+            <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
+                    (click)="checkoutMode = false">Cancel</button>
+            <button type="button" class="bp-search-view-estimate"
+                    [disabled]="!selected.length"
+                    (click)="checkoutStage = 'review'">
+              Next
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+          </ng-container>
+          <ng-container *ngIf="checkoutStage === 'review'">
+            <button type="button" class="bp-search-view-estimate bp-cd-aside-foot-cancel"
+                    (click)="checkoutStage = 'invoice'">Back</button>
+            <button *ngIf="isSupplier"
+                    type="button" class="bp-search-view-estimate"
+                    [disabled]="sending"
+                    (click)="onSend()">
+              {{ sending ? 'Sending…' : 'Send' }}
+              <lucide-icon name="send" [size]="13"></lucide-icon>
+            </button>
+            <button *ngIf="!isSupplier"
+                    type="button" class="bp-search-view-estimate"
+                    [disabled]="briefSending || !briefSupplierCount"
+                    (click)="onBriefSend()">
+              {{ briefSending ? 'Sending…' : 'Send' }}
+              <lucide-icon name="send" [size]="13"></lucide-icon>
+            </button>
+          </ng-container>
+        </div>
+      </aside><!-- /.bp-cd-grid-summary -->
+      </div><!-- /.bp-cd-grid -->
+    </p-sidebar>
+  `,
+  styles: [`
+    /* Standard bp-drawer header chrome already in styles.css.
+       Local rules below cover only the cart-drawer-specific pieces. */
+    :host ::ng-deep .bp-cart-drawer .p-sidebar-content { padding: 0; }
+    :host ::ng-deep .bp-cart-drawer .p-sidebar-footer {
+      padding: 14px 20px !important;
+      justify-content: stretch !important;
+    }
+
+    .bp-cd-head-right {
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .bp-cd-count {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+    }
+
+    .bp-cd-body { padding: 20px 20px 24px; }
+
+    /* v1.65f9 — 2-column drawer body. Items list (existing
+       .bp-cd-body) sits in col 1; the summary aside sits in col 2.
+       Heights stretch to fill the sidebar content area so the
+       items column scrolls independently of the summary panel. */
+    .bp-cd-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 0;
+      height: 100%;
+      min-height: 0;
+    }
+    .bp-cd-grid-items {
+      overflow-y: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    /* v1.65fE — Checkout CTA pinned to the bottom of the left column. */
+    .bp-cd-checkout-cta {
+      margin-top: auto;
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: var(--radius-button);
+      font-family: var(--font-body);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-cd-checkout-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-checkout-cta:hover:not(:disabled) { opacity: 0.85; }
+    .bp-cd-checkout-count {
+      min-width: 18px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      font-size: 11px; font-weight: 700;
+      line-height: 18px;
+    }
+    /* v1.65fM — ESTIMATE header reads as "ESTIMATE · <name> · <date>"
+       with the eyebrow color on the label and muted body on the
+       meta. Sits at the top of the checkout column. */
+    .bp-cd-est-hd {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+      margin-bottom: 12px;
+      font-family: var(--font-body);
+    }
+    .bp-cd-est-hd-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-cd-est-hd-sep {
+      color: var(--color-text-muted);
+      font-size: 11px;
+    }
+    .bp-cd-est-hd-meta {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-est-section-label {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      padding-bottom: 6px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    /* v1.65fM — estimate-style item list. Two lines per row: name
+       and total on the first line (name bold left, total tabular
+       right); count × rate breakdown on the second line in muted
+       small type. */
+    .bp-cd-est-list {
+      display: flex; flex-direction: column;
+      font-family: var(--font-body);
+    }
+    .bp-cd-est-row {
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .bp-cd-est-row:last-child { border-bottom: none; }
+    .bp-cd-est-top {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px;
+    }
+    .bp-cd-est-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+    .bp-cd-est-total {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .bp-cd-est-total--free {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-success-dark, var(--theme-accent));
+    }
+    .bp-cd-est-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* v1.65fO — review stage primitives. Greeting textarea matches
+       the rest of the app's bp-input styling without depending on
+       primeng. Brief renders read-only italic. Event-details box
+       borrows from the catalogue grid's project summary strip
+       look. Ball-note is a calm theme-bg panel. */
+    .bp-cd-greeting-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      background: var(--color-surface);
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--color-text-primary);
+      resize: vertical;
+      min-height: 60px;
+    }
+    .bp-cd-greeting-input:focus { outline: none; border-color: var(--theme-accent); }
+    .bp-cd-brief-text {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+      padding: 8px 10px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      font-style: italic;
+    }
+    .bp-cd-event-box {
+      display: flex; flex-direction: column;
+      padding: 10px 12px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      background: var(--color-surface);
+      gap: 4px;
+    }
+    /* v1.65g4 — EVENT section wrapper at the top of the cart body.
+       Stacks the (optional) brief text and the key-value box with a
+       comfortable gap, then leaves a margin below before SELECTED. */
+    .bp-cd-event-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .bp-cd-event-hd {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-cd-event-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 12.5px;
+      gap: 12px;
+    }
+    .bp-cd-event-k {
+      color: var(--color-text-muted);
+      font-size: 11px;
+    }
+    .bp-cd-event-v {
+      color: var(--color-text-primary);
+      font-weight: 500;
+      text-align: right;
+    }
+    .bp-cd-ballnote {
+      padding: 10px 12px;
+      border: 0.5px solid var(--theme-border);
+      border-radius: var(--radius-card);
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .bp-cd-ballnote b { color: var(--theme-accent); font-weight: 700; }
+
+    /* v1.65fS — per-item changes list on the supplier review. Each
+       row reads as "Item Name · Accepted/Quoted/Declined · details".
+       Status pill picks up the same color tokens as the in-row
+       status badges (ok = green, bad = red). */
+    .bp-cd-changes-list {
+      display: flex; flex-direction: column;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .bp-cd-change-row {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: 8px;
+      padding: 6px 8px;
+      border-bottom: 0.5px solid var(--color-border);
+      font-family: var(--font-body);
+      font-size: 12px;
+    }
+    .bp-cd-change-row:last-child { border-bottom: none; }
+    .bp-cd-change-name {
+      flex: 1;
+      color: var(--color-text-primary);
+      font-weight: 500;
+      min-width: 0;
+    }
+    .bp-cd-change-status {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--theme-bg);
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-change-status--ok {
+      background: var(--color-booked-soft, rgba(5, 150, 105, 0.10));
+      color: var(--color-booked, #059669);
+    }
+    /* v1.65fT — Review pill uses theme-accent so it pops as "needs
+       attention" without competing with Accepted (green) or
+       Declined (red). */
+    .bp-cd-change-status--info {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-cd-change-status--bad {
+      background: rgba(220, 38, 38, 0.10);
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-change-details {
+      width: 100%;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    /* v1.65fL — aside footer pinned to the bottom of the right
+       column. margin-top: auto pushes it down when there's slack;
+       a hairline top border + small padding visually separates it
+       from the scrolling content above. Buttons inside use the
+       app's standard .bp-search-view-estimate outlined pill. */
+    .bp-cd-aside-foot {
+      margin-top: auto;
+      flex-shrink: 0;
+      display: flex; gap: 8px;
+      padding-top: 12px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-cd-aside-foot .bp-search-view-estimate {
+      flex: 1;
+      justify-content: center;
+    }
+    /* Cancel variant: muted text + border, no theme-accent fill on
+       hover so the primary "Next" pill is visually dominant. */
+    .bp-cd-aside-foot-cancel {
+      background: var(--color-surface) !important;
+      color: var(--color-text-muted) !important;
+    }
+    .bp-cd-aside-foot-cancel:hover {
+      background: var(--theme-bg) !important;
+      color: var(--color-text-primary) !important;
+      border-color: var(--color-border) !important;
+    }
+
+    /* Back link inside the checkout summary. */
+    .bp-cd-checkout-back {
+      align-self: flex-start;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 8px 4px 4px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: var(--radius-input);
+    }
+    .bp-cd-checkout-back:hover {
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+    }
+    .bp-cd-grid-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px 20px 24px;
+      background: var(--theme-bg);
+      border-left: 0.5px solid var(--color-border);
+      overflow-y: auto;
+      min-height: 0;
+    }
+    /* v1.65fB → v1.65fK — totals stack now sits at the TOP of the
+       right column when checkoutMode is true. The whole right
+       column flips to the checkout view, replacing the detail
+       card; no more pinning to the bottom. */
+    .bp-cd-totals-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* v1.65fB — compact left-column rows. Click to promote into the
+       right-column detail panel. */
+    .bp-cd-mini {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border: 0.5px solid transparent;
+      border-bottom: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .bp-cd-mini:hover {
+      background: var(--theme-bg);
+    }
+    .bp-cd-mini--active {
+      background: var(--color-surface);
+      border-color: var(--theme-accent);
+      box-shadow: var(--shadow-xs);
+    }
+    /* v1.65fS — accepted compact row gets the green tint that
+       .bp-cd-row--accepted had on the old layout (regression — the
+       Accept handler was setting the right class, but the new
+       .bp-cd-mini-- variants had no CSS rule). */
+    .bp-cd-mini--accepted {
+      background: var(--color-booked-soft, rgba(5, 150, 105, 0.08));
+      border-color: var(--color-booked, #059669);
+    }
+    .bp-cd-mini--accepted .bp-cd-mini-name { color: var(--color-booked, #059669); }
+    .bp-cd-mini--declined .bp-cd-mini-name,
+    .bp-cd-mini--declined .bp-cd-mini-total {
+      text-decoration: line-through;
+      opacity: 0.55;
+    }
+    .bp-cd-mini-img {
+      width: 40px; height: 40px;
+      border-radius: 6px;
+      background-size: cover; background-position: center;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--theme-accent); font-weight: 600;
+      flex-shrink: 0;
+    }
+    .bp-cd-mini-body { min-width: 0; }
+    .bp-cd-mini-name {
+      font-size: 13px; font-weight: 500;
+      color: var(--color-text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-cd-mini-sub {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      display: flex; align-items: center; gap: 4px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bp-cd-mini-total {
+      font-family: var(--font-display);
+      font-size: 15px; font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    /* Inline status badge variant: smaller, no chip background. */
+    .bp-cd-row-status--inline {
+      padding: 0;
+      background: none;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+
+    /* v1.65fB → v1.65fC — detail panel is now the same marketplace
+       card shape used by catalogue-grid's right rail. The .bp-detail-*
+       primitives (hero + body + cat-label + name + subtitle + price-row
+       + desc + specs + actions) live in global styles.css; this wrapper
+       just provides the card container chrome (surface fill, hairline
+       border, rounded corners, overflow:hidden so the hero clips). */
+    .bp-cd-detail {
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .bp-cd-qty--detail { margin-top: 10px; }
+
+    /* v1.65fG — quantity input row in the detail card (agent only).
+       Label on the left, number input on the right; the input is
+       hairline-bordered and right-aligned with tabular nums so wide
+       values like 250 / 10000 read cleanly. */
+    .bp-cd-qty-input-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-cd-qty-lbl {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      letter-spacing: 0.02em;
+    }
+    .bp-cd-qty-input {
+      width: 96px;
+      padding: 6px 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      text-align: right;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      background: var(--color-surface);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-qty-input:hover { border-color: var(--theme-accent); }
+    .bp-cd-qty-input:focus { outline: none; border-color: var(--theme-accent); }
+    .bp-cd-qty-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* v1.65fH — per-item supplier roster in the detail card. */
+    .bp-cd-suppliers {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 0.5px solid var(--color-border);
+      display: flex; flex-direction: column;
+      gap: 4px;
+    }
+    .bp-cd-suppliers-hd {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .bp-cd-suppliers-warn {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-danger);
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(225, 29, 72, 0.08);
+    }
+    .bp-cd-supplier-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 0;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+    }
+    .bp-cd-supplier-row input[type="checkbox"] {
+      width: 14px; height: 14px;
+      accent-color: var(--theme-accent);
+      cursor: pointer;
+    }
+    .bp-cd-supplier-name { flex: 1; min-width: 0; }
+    .bp-cd-supplier-source {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .bp-cd-detail-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px;
+      min-height: 200px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      text-align: center;
+      border: 0.5px dashed var(--color-border);
+      border-radius: var(--radius-card);
+      padding: 24px 16px;
+    }
+    .bp-cd-detail-empty lucide-icon {
+      color: var(--theme-accent);
+      opacity: 0.5;
+    }
+    /* Footer rows / send CTA inside the summary aside drop their
+       previous "footer band" margins — they're now stacked
+       vertically inside a column, not pinned to the drawer bottom. */
+    .bp-cd-grid-summary .bp-cd-foot {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .bp-cd-grid-summary .bp-cd-foot--supplier,
+    .bp-cd-grid-summary .bp-cd-foot--summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    /* Narrow viewport fallback — stack the two columns vertically so
+       the drawer doesn't break on mobile / very narrow tablets. */
+    @media (max-width: 720px) {
+      .bp-cd-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+        height: 100%;
+      }
+      .bp-cd-grid-summary {
+        border-left: none;
+        border-top: 0.5px solid var(--color-border);
+      }
+    }
+
+    /* p-sidebar content area must allow the grid to fill it. */
+    :host ::ng-deep .bp-cart-drawer .p-sidebar-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .bp-cd-eyebrow {
+      color: var(--theme-accent) !important;
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+    .bp-cd-eyebrow + .bp-cd-eyebrow,
+    .bp-cd-row + .bp-cd-eyebrow,
+    .bp-cd-empty + .bp-cd-eyebrow { margin-top: 22px; }
+
+    .bp-cd-empty {
+      font-style: italic;
+      font-size: 13px;
+      color: var(--color-text-muted);
+      padding: 8px 2px 12px;
+    }
+
+    /* v1.65aj (p0001) — row chrome (border / radius / padding / hover)
+       now comes from the shared .bp-list-row primitive in styles.css.
+       Only cart-specific additions live here: vertical rhythm between
+       rows + the absolute-positioned hover tooltip. */
+    .bp-cd-row { margin-bottom: 6px; }
+
+    .bp-cd-img {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      border-radius: var(--radius-button);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .bp-cd-img-letter {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 400;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .bp-cd-text { flex: 1; min-width: 0; }
+    .bp-cd-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bp-cd-sub {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bp-cd-price {
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    /* v1.65ef — small "£rate × guests" line under the extended total
+       for per-cover / per-head items. Muted so the eye lands on the
+       extended figure first. */
+    .bp-cd-price-sub {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      letter-spacing: 0.01em;
+      margin-top: 1px;
+    }
+
+    /* v1.65ep — ad-hoc ask rows + add-input. Same row primitive as
+       SELECTED / WISHLIST so the visual rhythm is unbroken; ad-hoc
+       rows get a theme-accent sparkles glyph in place of the image
+       to mark them as Create-path. */
+    .bp-cd-row--adhoc { background: var(--theme-soft); }
+    .bp-cd-img--adhoc {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bp-cd-img--adhoc lucide-icon { color: inherit; }
+    .bp-cd-addask {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .bp-cd-addask-input {
+      flex: 1;
+      padding: 8px 10px;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      color: var(--color-text-primary);
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 7px;
+      outline: none;
+    }
+    .bp-cd-addask-input:focus {
+      border-color: var(--theme-accent);
+      background: var(--color-surface);
+    }
+    .bp-cd-addask-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 12px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: 7px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bp-cd-addask-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-addask-btn:hover:not(:disabled) { opacity: 0.85; }
+
+    /* v1.65ew → v1.65f4 — row layout. Three-column / three-row grid
+       in agent mode. The breakdown line sits stacked with the name
+       and supplier (row 1, col 2); the stepper ALWAYS gets its own
+       row (row 2, col 2) so the visual rhythm is consistent
+       regardless of breakdown length. Line total spans rows 1-2 in
+       col 3 (vertically centred), remove × drops to row 2 col 3.
+       Supplier mode keeps two columns (no total, action cluster
+       stays in col 2 row 2).
+         ┌──────┬──────────────────────────┬──────────┐
+         │  IMG │ Name                     │          │
+         │      │ Supplier                 │  TOTAL   │
+         │      │ £rate / unit × N         │          │
+         │      ├──────────────────────────┼──────────┤
+         │      │ [− 250 +]                │    ×     │
+         └──────┴──────────────────────────┴──────────┘ */
+    .bp-cd-row--selected {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
+      column-gap: 12px;
+      row-gap: 8px;
+      align-items: start;
+      padding: 12px 14px;
+    }
+    .bp-cd-row--selected .bp-cd-img { grid-row: 1 / span 2; align-self: start; }
+    .bp-cd-row--selected .bp-cd-text {
+      grid-column: 2; grid-row: 1;
+      min-width: 0;
+      display: flex; flex-direction: column;
+      gap: 2px;
+    }
+    .bp-cd-row--selected .bp-cd-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      line-height: 1.3;
+    }
+    /* v1.65f4 → v1.65f8 — .bp-cd-price is no longer rendered inside
+       a selected row. The breakdown line lives inside .bp-cd-text
+       (both modes) and the line total is its own col-3 cell. Rule
+       kept here only so wishlist + ad-hoc rows (which still emit
+       .bp-cd-price as a price cell) inherit alignment if they're
+       ever wrapped in --selected. */
+    .bp-cd-row--selected .bp-cd-price {
+      grid-column: 2; grid-row: 2;
+      justify-self: start;
+      text-align: left;
+      align-self: center;
+    }
+    /* v1.65f4 — stepper on its own row, left-justified in col 2 row 2. */
+    .bp-cd-row--selected .bp-cd-qty {
+      grid-column: 2; grid-row: 2;
+      justify-self: start;
+      align-self: center;
+    }
+    /* v1.65f3 → v1.65f4 — line total in col 3 spans both rows so it
+       sits vertically centred next to the row body. */
+    .bp-cd-row--selected .bp-cd-row-total {
+      grid-column: 3; grid-row: 1 / span 2;
+      align-self: center;
+      justify-self: end;
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      padding-left: 8px;
+    }
+    /* Supplier mode (no line-total cell) — action cluster sits in
+       col 2 row 2 (the cell now occupied by the agent-mode stepper). */
+    .bp-cd-row--selected .bp-cd-row-actions {
+      grid-column: 2; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+    }
+    /* Agent mode remove × pinned to col 3 row 2, lined up under the
+       line total. */
+    .bp-cd-row--selected .bp-cd-action--remove {
+      grid-column: 3; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+    }
+    /* v1.65fA — agent action cluster (Edit + Remove). Lives in col
+       3 row 2 alongside the line total above. Two compact 22px
+       buttons in a flex row so they hug the right edge. */
+    .bp-cd-row--selected .bp-cd-agent-actions {
+      grid-column: 3; grid-row: 2;
+      justify-self: end;
+      align-self: end;
+      display: flex;
+      gap: 4px;
+    }
+    .bp-cd-action--edit {
+      color: var(--color-text-muted);
+    }
+    .bp-cd-action--edit:hover,
+    .bp-cd-action--active.bp-cd-action--edit {
+      color: var(--theme-accent);
+      background: var(--theme-bg);
+    }
+    /* Price rate — supplier mode only (read-only big number, no
+       multiplier breakdown). */
+    .bp-cd-price-rate {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    /* v1.65f3 → v1.65f4 — agent-mode breakdown line. Now lives inside
+       .bp-cd-text so it stacks below the supplier line via that
+       block's flex column. Calm secondary text since the
+       eye-catcher is the line total over on the right; this is the
+       "show your working" for the user
+         (£85 / head × 250 guests × 2). */
+    .bp-cd-price-line {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      margin-top: 4px;
+    }
+
+    /* v1.65f2 — buy-quantity stepper under the row price (agent mode).
+       Compact pill: − N + with hairline border, theme-bg fill. Sits
+       directly under the rate so the user reads "£140 × 3" naturally.
+       Disabled state on the − button when qty=1 prevents going below
+       the floor; deletion is the × button's job. */
+    .bp-cd-qty {
+      /* v1.65f3 — was margin-top:6px (stepper stacked under the rate);
+         now sits inline next to the breakdown text via the parent
+         flex layout. No top margin needed; the parent row-gap handles
+         spacing on wrap. */
+      display: inline-flex; align-items: center;
+      height: 22px;
+      padding: 0 2px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-family: var(--font-body);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-qty-btn {
+      width: 20px; height: 20px;
+      border: none; background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bp-cd-qty-btn:hover:not(:disabled) {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-cd-qty-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .bp-cd-qty-n {
+      min-width: 18px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      padding: 0 4px;
+    }
+    .bp-cd-price-unit-line {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
+      margin-top: 1px;
+    }
+
+    /* v1.65et → v1.65eu — supplier-side row action cluster. Four
+       CIRCULAR icon buttons (Accept / Adjust / Image / Decline)
+       matching the rest of the app's selector pattern: hairline
+       circle at rest, theme-accent SOLID fill when active. */
+    .bp-cd-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .bp-cd-row-act {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border: 0.5px solid var(--color-border);
+      border-radius: 50%;
+      background: var(--color-surface);
+      cursor: pointer;
+      color: var(--color-text-muted);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      padding: 0;
+    }
+    .bp-cd-row-act:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+    }
+    .bp-cd-row-act lucide-icon { color: inherit; }
+    /* Active = bold theme fill (matches the selector pattern used by
+       category circles, view toggles, status pills). */
+    .bp-cd-row-act--active {
+      background: var(--theme-accent) !important;
+      border-color: var(--theme-accent) !important;
+      color: var(--color-surface) !important;
+    }
+    .bp-cd-row-act--active:hover {
+      background: var(--theme-accent) !important;
+      border-color: var(--theme-accent) !important;
+      color: var(--color-surface) !important;
+      opacity: 0.9;
+    }
+
+    /* Per-unit suffix on the row price ("/ cover"). Muted so the
+       headline figure still owns the eye. */
+    .bp-cd-price-unit {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      margin-left: 4px;
+    }
+
+    /* v1.65ev — supplier wrap-up block (auto-summary chip + textarea
+       + Send CTA count badge). Lives in the footer; the
+       .bp-cd-send-cta class above carries the button chrome already. */
+    .bp-cd-send-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-button);
+      font-size: 12px;
+      color: var(--theme-accent);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .bp-cd-send-summary lucide-icon {
+      color: inherit;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bp-cd-send-textarea {
+      width: 100%;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--color-text-primary);
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-button);
+      outline: none;
+      resize: vertical;
+      line-height: 1.4;
+    }
+    .bp-cd-send-textarea:focus {
+      border-color: var(--theme-accent);
+    }
+    .bp-cd-send-textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .bp-cd-send-cta-count {
+      margin-left: 4px;
+      padding: 0 7px;
+      height: 18px;
+      min-width: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.25);
+      color: var(--color-surface);
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Status badge under the supplier_name on a row */
+    .bp-cd-row-status {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .bp-cd-row-status--ok  { color: var(--color-booked, #059669); }
+    .bp-cd-row-status--bad { color: var(--color-action, #DC2626); }
+
+    /* Row tinting based on action state — subtle, non-destructive. */
+    .bp-cd-row--accepted { background: var(--color-booked-soft, rgba(5,150,105,0.06)); }
+    .bp-cd-row--declined { opacity: 0.55; }
+
+    /* Inline Adjust editor — expands below the row when Ryan
+       clicks the pencil. Sits inside the SELECTED list, not in a
+       modal, so the supplier can scan the cart while editing. */
+    .bp-cd-adjust {
+      padding: 14px 16px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-card);
+      margin: -2px 10px 10px 60px;
+      display: flex; flex-direction: column;
+      gap: 8px;
+    }
+    .bp-cd-adjust-hd {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      margin-bottom: 4px;
+    }
+    .bp-cd-adjust-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bp-cd-adjust-lbl {
+      width: 88px; flex-shrink: 0;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+    .bp-cd-adjust-input {
+      flex: 1;
+      padding: 6px 9px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-primary);
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      outline: none;
+    }
+    .bp-cd-adjust-input:focus { border-color: var(--theme-accent); }
+    .bp-cd-adjust-textarea { resize: vertical; line-height: 1.4; }
+    .bp-cd-adjust-unit { max-width: 80px; flex: 0 0 auto; }
+    /* v1.65eu — price input + unit selector pair. Price input grows;
+       select chooses the rate basis. */
+    .bp-cd-adjust-price { max-width: 120px; flex: 0 0 auto; }
+    .bp-cd-adjust-unit-sel {
+      max-width: 130px;
+      flex: 0 0 auto;
+      background: var(--color-surface);
+      font-family: var(--font-body);
+      cursor: pointer;
+    }
+    .bp-cd-adjust-foot {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 4px;
+    }
+    .bp-cd-adjust-note {
+      display: inline-flex; align-items: center; gap: 4px;
+      flex: 1;
+      font-size: 10.5px;
+      color: var(--theme-accent);
+      font-weight: 500;
+    }
+    .bp-cd-adjust-note lucide-icon { color: inherit; }
+    .bp-cd-adjust-cancel,
+    .bp-cd-adjust-save {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 6px 12px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .bp-cd-adjust-cancel:hover { background: var(--theme-bg); }
+    .bp-cd-adjust-save {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border-color: var(--theme-accent);
+    }
+    .bp-cd-adjust-save:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bp-cd-adjust-save:hover:not(:disabled) { opacity: 0.85; }
+
+    /* Hover-only action buttons. Reserve their column space so the row
+       doesn't shift when they appear. */
+    .bp-cd-action {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: none; background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      opacity: 0;
+      border-radius: 4px;
+      transition: opacity 0.12s, background 0.12s, color 0.12s;
+    }
+    .bp-cd-row:hover .bp-cd-action { opacity: 1; }
+    .bp-cd-action--remove:hover {
+      color: var(--color-danger);
+      background: rgba(225, 29, 72, 0.08);
+    }
+    .bp-cd-action--promote {
+      color: #16a34a; /* green-600 */
+    }
+    .bp-cd-action--promote:hover {
+      background: rgba(22, 163, 74, 0.10);
+    }
+
+    /* Hover tooltip — only on SELECTED rows, only when description exists.
+       Sits below the row; row's :hover reveals it. */
+    .bp-cd-tip {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      padding: 8px 10px;
+      border: var(--border-hairline);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--color-text-secondary);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-2px);
+      transition: opacity 0.15s, transform 0.15s;
+      z-index: 10;
+    }
+    .bp-cd-row--selected:hover .bp-cd-tip {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Footer — BALLPARK label + total (legacy / empty-state shape). */
+    .bp-cd-foot {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .bp-cd-foot-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+    }
+    .bp-cd-foot-total {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* v1.65eg — estimate-style summary footer. Stacks Your cost,
+       Margin, VAT, then CLIENT TOTAL in a theme-soft pill. Mirrors
+       the project Estimate page chrome so the two surfaces feel
+       like the same number presented at different fidelity.
+       v1.65es — same shape for the supplier variant (--supplier).
+       Difference is the row contents, not the chrome. */
+    .bp-cd-foot--summary,
+    .bp-cd-foot--supplier {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+    .bp-cd-foot-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .bp-cd-foot-row--cost {
+      padding-bottom: 10px;
+      border-bottom: 0.5px solid var(--color-border);
+      margin-bottom: 6px;
+    }
+    .bp-cd-foot-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .bp-cd-foot-meta-label,
+    .bp-cd-foot-meta-value {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-foot-client {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 12px 14px;
+      margin-top: 10px;
+      background: var(--theme-soft);
+      border-radius: var(--radius-card);
+      /* v1.65fM — double-rule treatment to make CLIENT TOTAL pop
+         the way it does in a classic estimate doc. */
+      border-top: 3px double var(--theme-accent);
+      border-bottom: 3px double var(--theme-accent);
+    }
+    .bp-cd-foot-client-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-cd-foot-client-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--theme-accent);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+
+    /* v1.65eh — budget headroom card. Same chrome + state colours as
+       the Estimate page's .bp-est-budget-card; class names scoped to
+       the cart drawer so the two surfaces can evolve independently. */
+    .bp-cd-budget-card {
+      margin-top: 10px;
+      padding: 12px 14px;
+      background: var(--color-booked-soft, rgba(5,150,105,0.10));
+      border: 0.5px solid var(--color-booked, #059669);
+      border-radius: var(--radius-card);
+    }
+    .bp-cd-budget-card.over {
+      background: var(--color-action-soft, rgba(236,31,109,0.10));
+      border-color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .bp-cd-budget-header lucide-icon {
+      color: var(--color-booked, #059669);
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-header lucide-icon {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-label {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-booked, #059669);
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-label {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-diff {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-booked, #059669);
+      font-variant-numeric: tabular-nums;
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-diff {
+      color: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-bar-wrap {
+      height: 6px;
+      background: rgba(0,0,0,0.08);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .bp-cd-budget-bar {
+      height: 100%;
+      background: var(--color-booked, #059669);
+      border-radius: var(--radius-pill);
+      transition: width 0.4s;
+      max-width: 100%;
+    }
+    .bp-cd-budget-card.over .bp-cd-budget-bar {
+      background: var(--color-action, #DC2626);
+    }
+    .bp-cd-budget-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-bottom: 4px;
+    }
+    .bp-cd-budget-sub {
+      font-size: 11px;
+      color: var(--color-text-muted);
+    }
+
+    /* v1.65ek — Send brief CTA. Sits below the budget card; theme-
+       accent fill so it reads as the primary forward action on the
+       drawer. Disabled state mutes to neutral when there's nothing
+       to send. */
+    .bp-cd-send-cta {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: var(--radius-button);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .bp-cd-send-cta:hover:not(:disabled) {
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    .bp-cd-send-cta:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .bp-cd-send-cta:disabled {
+      background: var(--color-border);
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+    }
+    .bp-cd-send-cta lucide-icon {
+      color: inherit;
+      flex-shrink: 0;
+    }
+    .bp-cd-send-cta-chev {
+      margin-left: auto;
+    }
+  `]
+})
+export class CartDrawerComponent implements OnInit, OnDestroy {
+  visible = false;
+  projectId = '';
+
+  selected: ProjectItem[] = [];
+  wishlist: ProjectItem[] = [];
+
+  /** v1.65ep — title-only "additional asks" the agent adds in-cart.
+      v1.65fI — DEPRECATED. Ad-hoc asks are now first-class
+      project_items rows from the moment they're added (server
+      creates the items + project_items rows in one transaction).
+      Kept as an empty array because canSendBrief / sendBrief still
+      reference it indirectly via the outreach-drawer signature
+      (adhocAsks: [] is passed through). */
+  adhocAsks: { name: string }[] = [];
+  newAskName = '';
+
+  /** v1.65ae — defaults are the All-view labels; openers that scope to
+      a single category override via CartDrawerOptions. */
+  contextLabel = 'PROJECT ITEMS';
+  contextTitle = 'Your selections';
+  private itemFilter: Set<string> | null = null;
+  /** v1.65ej — active category id when the drawer is opened scoped
+      to one category (e.g. Catering). Drives the budget headroom
+      card to read the per-category ballpark_budget instead of the
+      project-wide project_budget. */
+  private contextCategoryId: string | null = null;
+
+  /** v1.65ef — project guest_count drives per-cover / per-head line
+      math. Loaded alongside the project_items on every open(). 0
+      means "unknown" and falls back to flat pricing so an item
+      doesn't read as £0 for a fresh project that hasn't set guest
+      count yet. */
+  private guestCount = 0;
+  /** v1.65fM — captured in load() so the checkout header can render
+      "ESTIMATE · <event name> · <date>". */
+  projectName = '';
+  projectDates = '';
+
+  /** v1.65fS — structured per-item change list rendered on the
+      supplier's review stage. Each entry shows what happened to a
+      row (Accepted / Quoted / Declined / Updated) plus a brief
+      details string for adjust actions ("£9 → £10 · description
+      updated"). Lifted from the same data pendingSummary uses, but
+      kept as objects so the template can style each piece. */
+  get changesList(): { name: string; status: 'Accepted'|'Declined'|'Review'; details?: string }[] {
+    const out: { name: string; status: 'Accepted'|'Declined'|'Review'; details?: string }[] = [];
+    for (const a of this.pendingActions.values()) {
+      const fallbackName = this.selected.find(p => p.id === a.rowId)?.name;
+      const itemName = a.name || this.actionBefores.get(a.rowId)?.name || fallbackName || 'item';
+      if (a.action === 'accept')  { out.push({ name: itemName, status: 'Accepted' }); continue; }
+      if (a.action === 'decline') { out.push({ name: itemName, status: 'Declined' }); continue; }
+      if (a.action === 'adjust') {
+        const before = this.actionBefores.get(a.rowId);
+        const bits: string[] = [];
+        if (before && a.price != null && Number(a.price) !== Number(before.price)) {
+          bits.push(`£${Number(before.price || 0).toLocaleString('en-GB')} → £${Number(a.price).toLocaleString('en-GB')}`);
+        }
+        if (before && a.description && a.description !== before.description) bits.push('description updated');
+        if (a.image_url && a.image_url !== (before as any)?.image_url) bits.push('photo added');
+        // v1.65fT — adjust = Review (agent needs to review the
+        // supplier's edit), not Quoted.
+        out.push({ name: itemName, status: 'Review', details: bits.join(' · ') });
+      }
+    }
+    return out;
+  }
+
+  /** v1.65fO — distinct supplier count across every cart row's
+      asked_supplier_ids. Drives the "sent to N suppliers" copy on
+      the review stage. */
+  get briefSupplierCount(): number {
+    const set = new Set<string>();
+    for (const pi of this.selected) {
+      for (const id of (pi.asked_supplier_ids || [])) {
+        if (id) set.add(id);
+      }
+    }
+    return set.size;
+  }
+
+  /** v1.65fO — Send button on the review stage. Posts to the same
+      /taxonomy/request-quotes endpoint the outreach drawer uses,
+      with the cart's items as requirements + the union of every
+      row's asked_supplier_ids as the supplier set. Closes the
+      drawer on success. */
+  onBriefSend(): void {
+    if (this.briefSending || !this.selected.length) return;
+    const supplierIds = Array.from(new Set(
+      this.selected.flatMap(pi => pi.asked_supplier_ids || [])
+    )).filter(Boolean);
+    if (!supplierIds.length) return;
+    const requirements = this.selected.map(pi => pi.item_id
+      ? { kind: 'matched', item_id: pi.item_id }
+      : { kind: 'new', name: pi.name || '', description: pi.description || '', estimated_price: Number(pi.base_price) || 0 }
+    );
+    const first: any = this.selected[0];
+    const categoryId = first?.item_category_id || first?.project_category_id || '';
+    if (!categoryId) return;
+    this.briefSending = true;
+    this.cdr.markForCheck();
+    this.api.post('/taxonomy/request-quotes', {
+      project_id: this.projectId,
+      category_id: categoryId,
+      project_category_id: first?.project_category_id || null,
+      requirements,
+      supplier_ids: supplierIds,
+      body: this.greeting || '',
+    }).subscribe({
+      next: () => {
+        this.briefSending = false;
+        // v1.65fP — mark each cart line "Sent" so the agent sees
+        // visual confirmation before the drawer closes. Flip back
+        // to the invoice stage so the SELECTED rows are visible
+        // with their new badges, then close shortly.
+        for (const pi of this.selected) {
+          (pi as any)._raw_status = 'sent';
+        }
+        this.checkoutStage = 'invoice';
+        this.checkoutMode = false;
+        this.svc.markChanged(this.projectId);
+        this.cdr.markForCheck();
+        // Brief pause so the Sent badges land before the drawer
+        // animates out — feels like an acknowledgement rather than
+        // a no-op.
+        setTimeout(() => this.close(), 900);
+      },
+      error: () => {
+        this.briefSending = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** v1.65fM — display helper. Renders "Included" when the line
+      total is zero (a £0 line in the brief usually means "throw it
+      in for free"); otherwise the formatted gbp amount. */
+  lineTotalLabel(pi: ProjectItem): string {
+    const v = this.lineTotal(pi);
+    if (!v || v === 0) return 'Included';
+    return '£' + Math.round(v).toLocaleString('en-GB');
+  }
+
+  /** v1.65eg — margin + VAT come from the project row's defaults
+      (which inherit from the agency org). 20%/20% used as a sane
+      fallback if the project hasn't overridden either yet. */
+  marginPct = 20;
+  vatPct = 20;
+
+  /** v1.65er — pre-supplied rows from the inbox "Cart" chip. When
+      set, load() skips the project_items fetch and renders these
+      directly. */
+  private preRows: CartDrawerRow[] | null = null;
+  /** v1.65es — viewer side. 'agent' = full agency chrome; 'supplier'
+      strips WISHLIST + ADDITIONAL ASKS, hides margin in the summary,
+      swaps the Send Brief CTA for the supplier action train trigger. */
+  viewer: 'agent' | 'supplier' = 'agent';
+  get isSupplier(): boolean { return this.viewer === 'supplier'; }
+
+  /** v1.65et — when the supplier clicks Adjust on a row, this holds
+      the row id and the editor expands below it. One adjust open at a
+      time. */
+  /** v1.65fB — left list is now read-only; clicking a row promotes
+      it into the right column's detail panel which carries the
+      action buttons + Adjust / Image inline forms. Keyed by
+      project_items.id (or message_items.id when rendered from a
+      thread context). */
+  selectedRowId: string | null = null;
+
+  /** v1.65fE — when true the right column flips from the detail card
+      to the cost summary + textarea + Send. Toggled by the new
+      "Checkout" button at the bottom of the left column and the
+      "← Back" link at the top of the summary. */
+  checkoutMode = false;
+
+  /** v1.65fO — within checkoutMode, two stages:
+        'invoice' — the estimate (default after clicking Checkout)
+        'review'  — greeting + brief + event details + ball note,
+                    just before the brief is actually sent.
+      Next on invoice → review; Back on review → invoice; Send on
+      review fires /taxonomy/request-quotes. */
+  checkoutStage: 'invoice' | 'review' = 'invoice';
+
+  /** v1.65fO — greeting line typed in the review stage; becomes the
+      message body alongside the auto-summary. */
+  greeting = '';
+  /** v1.65fO — captured in load() from project_categories so the
+      review shows the agent's per-category requirement_brief as
+      read-only context. */
+  projectBrief = '';
+  projectVenue = '';
+  /** v1.65fO — true while the Send POST is in flight. */
+  briefSending = false;
+
+  /** v1.65fE — before-snapshots captured at the moment toggleAdjust
+      opens, used by pendingSummary to build a per-item diff
+      ("changed the price from £9 to £10"). Keyed by row id. */
+  private actionBefores: Map<string, { name?: string; price?: number; unit?: string; description?: string }> = new Map();
+
+  selectRow(pi: ProjectItem): void {
+    this.selectedRowId = (pi as any).id || null;
+    // v1.65fC — switching selection cancels any in-flight edit so the
+    // form doesn't leak between rows.
+    if (this.adjustOpenId && this.adjustOpenId !== this.selectedRowId) {
+      this.cancelAdjust();
+    }
+    this.cdr.markForCheck();
+  }
+
+  get selectedRow(): ProjectItem | null {
+    if (!this.selectedRowId) return null;
+    return [...this.selected, ...this.wishlist].find(p => (p as any).id === this.selectedRowId) || null;
+  }
+
+  /** v1.65fC — true when the selected detail card is in inline-edit
+      mode. Wired off the existing adjustOpenId so the same Edit pen
+      that used to open an inline form now flips the card itself
+      into edit. */
+  get isEditingDetail(): boolean {
+    return !!this.selectedRowId && this.adjustOpenId === this.selectedRowId;
+  }
+
+  adjustOpenId: string | null = null;
+  /** v1.65eu — when the supplier clicks the Image button, this holds
+      the row id and the inline ImageUploadPanel renders below. */
+  imageOpenId: string | null = null;
+  adjustForm: {
+    name: string;
+    price: number | null;
+    unit: string;
+    imageUrl: string;
+    description: string;
+  } = { name: '', price: null, unit: 'cover', imageUrl: '', description: '' };
+
+  /** v1.65eu — unit dropdown options for the adjust form. The two
+      per-attendee units (cover, head) trigger the × guest_count
+      multiplier in the line math; others stay flat. */
+  readonly unitOptions: { code: string; label: string }[] = [
+    { code: 'cover',   label: 'cover'   },
+    { code: 'head',    label: 'head'    },
+    { code: 'each',    label: 'item'    },
+    { code: 'package', label: 'package' },
+    { code: 'table',   label: 'table'   },
+    { code: 'day',     label: 'day'     },
+    { code: 'event',   label: 'event'   },
+  ];
+
+  /** v1.65eu — short label shown as the price suffix ("/ cover"). */
+  unitShort(code: string): string {
+    const u = this.unitOptions.find(o => o.code === (code || '').toLowerCase());
+    return u ? u.label : code;
+  }
+
+  /** v1.65ev — queue of supplier row actions, keyed by rowId so a
+      second click on the same row overwrites (last action wins).
+      Flushed in one batch on Send. */
+  pendingActions: Map<string, CartDrawerRowAction> = new Map();
+  /** v1.65ex — wrap-up message. Auto-syncs to the current
+      pendingSummary as Ryan queues actions, UNTIL he edits the
+      textarea manually. Once edited, his text wins and the auto-
+      sync stops. */
+  supplierMessage = '';
+  /** Last value the auto-sync wrote — used to detect whether the
+      textarea is still pristine (Ryan hasn't typed) or custom. */
+  private lastAutoMessage = '';
+  /** True while the consolidated reply is in flight (Send → server
+      reply → drawer close). */
+  sending = false;
+
+  /** v1.65ex — push the live summary into the textarea if Ryan hasn't
+      manually edited it. Called after every queue mutation. */
+  private syncAutoMessage(): void {
+    const cur = (this.supplierMessage || '').trim();
+    const isPristine = !cur || cur === this.lastAutoMessage.trim();
+    if (!isPristine) return;
+    const next = this.pendingSummary;
+    this.supplierMessage = next;
+    this.lastAutoMessage = next;
+  }
+
+  get pendingCount(): number { return this.pendingActions.size; }
+  /** v1.65ev — auto-summary of queued actions. Used as the default
+      body line when the supplier doesn't type their own message,
+      and prepended when they do. Natural English + plurals. */
+  get pendingSummary(): string {
+    if (!this.pendingActions.size) return '';
+    // v1.65fE → v1.65fZ — per-item diff lines. Accept actions don't
+    // carry an `a.name` (only adjust does), so we also fall back to
+    // a lookup against `this.selected` so the name still surfaces
+    // ("Sit-Down Dinner: accepted" instead of "item: accepted").
+    const lines: string[] = [];
+    for (const a of this.pendingActions.values()) {
+      const fallback = this.selected.find(p => p.id === a.rowId);
+      const itemName = a.name
+        || this.actionBefores.get(a.rowId)?.name
+        || fallback?.name
+        || 'item';
+      if (a.action === 'accept') {
+        lines.push(`${itemName}: accepted`);
+      } else if (a.action === 'decline') {
+        lines.push(`${itemName}: declined`);
+      } else if (a.action === 'think') {
+        lines.push(`${itemName}: need more time`);
+      } else if (a.action === 'adjust') {
+        const before = this.actionBefores.get(a.rowId);
+        const parts: string[] = [];
+        if (before && a.price != null && Number(a.price) !== Number(before.price)) {
+          const beforeStr = '£' + Number(before.price || 0).toLocaleString('en-GB');
+          const afterStr  = '£' + Number(a.price).toLocaleString('en-GB');
+          const unitStr = a.unit || before.unit;
+          parts.push(`changed the price from ${beforeStr} to ${afterStr}${unitStr ? ' per ' + unitStr : ''}`);
+        }
+        if (before && a.description && a.description !== before.description) {
+          parts.push('updated the description');
+        }
+        if (before && a.name && a.name !== before.name) {
+          parts.push(`renamed to "${a.name}"`);
+        }
+        if (a.image_url && a.image_url !== (before as any)?.image_url) {
+          parts.push('added a photo');
+        }
+        if (parts.length) {
+          lines.push(`${itemName}: ${parts.join(' and ')}`);
+        } else {
+          lines.push(`${itemName}: updated`);
+        }
+      }
+    }
+    if (!lines.length) return '';
+    return lines.join('\n');
+  }
+  get canSend(): boolean {
+    return !this.sending && (this.pendingActions.size > 0 || !!this.supplierMessage.trim());
+  }
+  get canSaveAdjust(): boolean {
+    // At least a price OR a photo OR a name override; otherwise
+    // pressing Save would be a no-op.
+    return this.adjustForm.price != null
+        || !!this.adjustForm.imageUrl.trim()
+        || !!this.adjustForm.name.trim()
+        || !!this.adjustForm.description.trim();
+  }
+
+  /** v1.65eh — project.budget drives the headroom indicator below
+      the CLIENT TOTAL. 0 means "no budget set" and the card hides
+      entirely (same gate as the Estimate page). */
+  budget = 0;
+
+  private sub?: Subscription;
+
+  constructor(
+    private svc: CartDrawerService,
+    private projectItemSvc: ProjectItemService,
+    private projectSvc: ProjectService,
+    private projectCategorySvc: ProjectCategoryService,
+    private outreach: OutreachService,
+    private api: ApiService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    this.sub = this.svc.request$.subscribe(req => {
+      this.projectId = req?.projectId || '';
+      this.visible = !!req;
+      const opts: CartDrawerOptions = req?.options || {};
+      this.contextLabel = opts.contextLabel || 'PROJECT ITEMS';
+      this.contextTitle = opts.contextTitle || 'Your selections';
+      this.itemFilter = opts.itemIds ? new Set(opts.itemIds) : null;
+      this.contextCategoryId = opts.contextCategoryId || null;
+      // v1.65ep — reset ad-hoc asks every open so the drawer starts
+      // fresh per project visit. (Persistence is a v2 — would need
+      // a project_asks table or similar.)
+      this.adhocAsks = [];
+      this.newAskName = '';
+      // v1.65er — pre-supplied rows path. Inbox passes its
+      // threadItems directly so we render every message_item
+      // (catalogue + ad-hoc), not just the project_items
+      // intersection. When set, load() short-circuits the
+      // project_items fetch.
+      this.preRows = opts.rows || null;
+      // v1.65es — viewer side. Defaults to 'agent' so any existing
+      // caller that doesn't set it keeps the full agency chrome.
+      this.viewer = opts.viewer || 'agent';
+      // v1.65ev — fresh supplier-batch state per open.
+      this.pendingActions = new Map();
+      this.supplierMessage = '';
+      this.lastAutoMessage = '';
+      this.sending = false;
+      this.adjustOpenId = null;
+      this.imageOpenId = null;
+      // v1.65fB — drawer opens with no selection; the load() callback
+      // auto-selects the first selected item once rows are in so the
+      // right detail panel is never empty when there's stuff in the cart.
+      this.selectedRowId = null;
+      // v1.65fE — fresh state for the checkout / diff machinery on
+      // every open so a previous session's befores don't leak in.
+      this.checkoutMode = false;
+      this.checkoutStage = 'invoice';
+      this.greeting = '';
+      this.projectBrief = '';
+      this.projectVenue = '';
+      this.briefSending = false;
+      this.actionBefores = new Map();
+      if (req) this.load();
+      this.cdr.markForCheck();
+    });
+  }
+
+  /** v1.65fI — commit a title-only "+ Add custom item" entry. Calls
+      the server adhoc endpoint which creates an items row +
+      project_items row in one transaction so the new line shows up
+      in SELECTED, editable via the detail card. Refreshes via
+      load() so the cache + UI pick up the new row consistently. */
+  addingAsk = false;
+  addAsk(): void {
+    const name = (this.newAskName || '').trim();
+    if (!name || this.addingAsk || !this.projectId) return;
+    this.addingAsk = true;
+    this.projectItemSvc.addAdhoc(this.projectId, name, this.contextCategoryId || undefined)
+      .subscribe({
+        next: row => {
+          this.newAskName = '';
+          this.addingAsk = false;
+          // v1.65fI fix — when the cart is category-scoped the load()
+          // refresh filters by itemFilter (the items that belong to
+          // this category). The new ad-hoc's item_id is brand new
+          // and isn't in that set, so it'd be filtered out and the
+          // row wouldn't render. Extend the filter so the new ask
+          // survives the refresh.
+          if (this.itemFilter && (row as any)?.item_id) {
+            this.itemFilter.add((row as any).item_id);
+          }
+          // Auto-select the new row so the agent lands on its
+          // detail card ready to fill in price / unit / desc /
+          // suppliers.
+          this.selectedRowId = (row as any)?.id || null;
+          this.svc.markChanged(this.projectId);
+          this.load();
+        },
+        error: () => {
+          this.addingAsk = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  // ── v1.65et — supplier-side row actions ────────────────────────────
+  // Each fires CartDrawerService.rowAction$ which the inbox catches
+  // and routes through its existing onItemAction reply pipeline.
+  // The inbox knows the message_id; the cart drawer just has rowId
+  // (= message_items.id), action verb, and adjust payload.
+
+  /** v1.65et — read the row's underlying status (came in via the
+      pre-supplied rows path). Drives the row's status badge + the
+      disabled/enabled state of the action buttons. */
+  rowStatus(pi: ProjectItem): string {
+    const raw = (pi as any)._raw_status as string | undefined;
+    return raw || '';
+  }
+  rowStatusLabel(pi: ProjectItem): string {
+    switch (this.rowStatus(pi)) {
+      case 'accepted':              return 'Accepted';
+      case 'declined_by_supplier':  return 'Declined';
+      case 'declined_by_agent':     return 'Declined';
+      // v1.65fT — supplier edits = "Review" (the agent's next move
+      // is to review the change). Was "Quoted" but that conflated
+      // with the formal quoted state below.
+      case 'adjusted_by_supplier':  return 'Review';
+      case 'adjusted_by_agent':     return 'Review';
+      case 'quoted':                return 'Quoted';
+      case 'holding':               return 'Holding';
+      case 'booked':                return 'Booked';
+      case 'sent':                  return 'Sent';
+      default:                      return '';
+    }
+  }
+  isDeclined(pi: ProjectItem): boolean {
+    const s = this.rowStatus(pi);
+    return s === 'declined_by_supplier' || s === 'declined_by_agent';
+  }
+
+  // v1.65ev — row actions now QUEUE instead of firing immediately.
+  // The supplier batches their decisions, optionally types a wrap-up
+  // message, and clicks Send → one consolidated reply rather than a
+  // per-row barrage in the conversation.
+  onRowAccept(pi: ProjectItem): void {
+    this.pendingActions.set(pi.id, { rowId: pi.id, action: 'accept' });
+    (pi as any)._raw_status = 'accepted';
+    this.syncAutoMessage();
+    this.cdr.markForCheck();
+  }
+  onRowDecline(pi: ProjectItem): void {
+    this.pendingActions.set(pi.id, { rowId: pi.id, action: 'decline' });
+    (pi as any)._raw_status = 'declined_by_supplier';
+    this.syncAutoMessage();
+    this.cdr.markForCheck();
+  }
+  /** v1.65fQ → v1.65fY — Accept handler with a confirm prompt.
+      Supplier flow reuses onRowAccept (queues a batch action);
+      agent flow flips the local row status AND persists a buyer
+      decision to the satellite when we're in a thread context
+      (preRows set → pi.id is the message_items.id). */
+  onAcceptClick(pi: ProjectItem): void {
+    const ok = window.confirm(`Accept "${pi.name || 'this item'}"?`);
+    if (!ok) return;
+    if (this.isSupplier) {
+      this.onRowAccept(pi);
+      return;
+    }
+    (pi as any)._raw_status = 'accepted';
+    this.recordBuyerDecision(pi, 'accepted');
+    this.cdr.markForCheck();
+  }
+  /** v1.65fQ → v1.65fY — × button branches by context: post-send
+      (rowStatus already set) → Decline with confirm + buyer
+      decision persisted; pre-send → Remove (no confirm). */
+  onDeclineOrRemove(pi: ProjectItem): void {
+    if (this.rowStatus(pi)) {
+      const ok = window.confirm(`Decline "${pi.name || 'this item'}"?`);
+      if (!ok) return;
+      if (this.isSupplier) {
+        this.onRowDecline(pi);
+      } else {
+        (pi as any)._raw_status = 'declined_by_agent';
+        this.recordBuyerDecision(pi, 'declined');
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+    // No status → behave as Remove (existing path).
+    if (this.isSupplier) this.onRowDecline(pi);
+    else this.remove(pi);
+  }
+
+  /** v1.65fY — POST to the decisions satellite when the agent
+      clicks Accept/Decline inside a thread cart. Skipped silently
+      for pre-send (marketplace) carts since pi.id there is a
+      project_items.id, not a message_items.id — and there's no
+      thread to record against yet. */
+  private recordBuyerDecision(pi: ProjectItem, decision: 'accepted' | 'declined'): void {
+    if (!this.preRows) return;
+    const id = (pi as any).id;
+    if (!id) return;
+    this.api.post(`/messages/items/${id}/decisions`, {
+      side: 'buyer',
+      decision,
+    }).subscribe({
+      next: () => { /* server-stamped; UI already updated */ },
+      error: () => { /* surface in console; local state still reflects intent */ }
+    });
+  }
+  toggleAdjust(pi: ProjectItem): void {
+    if (this.adjustOpenId === pi.id) { this.cancelAdjust(); return; }
+    this.adjustOpenId = pi.id;
+    this.adjustForm = {
+      name: pi.name || '',
+      price: Number(pi.base_price) || null,
+      unit: pi.unit || 'cover',
+      imageUrl: pi.image_url || '',
+      description: pi.description || '',
+    };
+    // v1.65fE — snapshot the current values so pendingSummary can
+    // diff "before → after" and write a human line. Only store
+    // ONCE per row (first edit captures the true original; later
+    // re-opens of Edit keep the same baseline).
+    if (!this.actionBefores.has(pi.id)) {
+      this.actionBefores.set(pi.id, {
+        name: pi.name || '',
+        price: Number(pi.base_price) || undefined,
+        unit: pi.unit || '',
+        description: pi.description || '',
+      });
+    }
+    this.cdr.markForCheck();
+  }
+  cancelAdjust(): void {
+    this.adjustOpenId = null;
+    this.cdr.markForCheck();
+  }
+
+  /** v1.65eu — open / close the inline ImageUploadPanel for a row.
+      Mutually exclusive with the adjust editor so the drawer doesn't
+      balloon out — clicking Image while adjust is open closes adjust
+      first (the supplier can re-open it; the image they picked is
+      already remembered in adjustForm.imageUrl). */
+  toggleImage(pi: ProjectItem): void {
+    if (this.imageOpenId === pi.id) { this.closeImage(); return; }
+    // Make sure adjustForm is seeded (in case the supplier opens
+    // Image first, then Adjust).
+    if (this.adjustOpenId !== pi.id) {
+      this.adjustForm = {
+        name: pi.name || '',
+        price: Number(pi.base_price) || null,
+        unit: pi.unit || 'cover',
+        imageUrl: pi.image_url || '',
+        description: pi.description || '',
+      };
+    }
+    this.imageOpenId = pi.id;
+    this.adjustOpenId = null;
+    this.cdr.markForCheck();
+  }
+  closeImage(): void {
+    this.imageOpenId = null;
+    this.cdr.markForCheck();
+  }
+  /** v1.65eu — picked an image. Stage it on the adjustForm + the row's
+      visible image (optimistic) AND fire an immediate adjust action
+      so the catalogue fork picks it up. The supplier can still open
+      Adjust afterwards to set price/name/description. */
+  onImagePicked(pi: ProjectItem, evt: { coverUrl: string }): void {
+    const url = (evt?.coverUrl || '').trim();
+    if (!url) return;
+    this.adjustForm.imageUrl = url;
+    (pi as any).image_url = url;
+    // v1.65fJ — agent path: PATCH the project_items snapshot
+    // directly so the per-brief image flips without touching the
+    // catalogue master. No queue, no Send required.
+    if (!this.isSupplier) {
+      if (pi.project_id && pi.item_id) {
+        this.projectItemSvc.update(pi.project_id, pi.item_id, { image_url: url })
+          .subscribe({
+            next: row => {
+              (pi as any).image_url = row.image_url || url;
+              this.cdr.markForCheck();
+            },
+            error: () => { this.cdr.markForCheck(); }
+          });
+      }
+      this.closeImage();
+      return;
+    }
+    // v1.65ev — supplier path: queue an adjust action carrying just
+    // the image (merge with any existing queued adjust to preserve
+    // price/name set earlier). Flushed on Send.
+    const prev = this.pendingActions.get(pi.id);
+    this.pendingActions.set(pi.id, {
+      rowId: pi.id,
+      action: 'adjust',
+      name: prev?.name,
+      description: prev?.description,
+      price: prev?.price,
+      unit: prev?.unit,
+      image_url: url,
+    });
+    (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.syncAutoMessage();
+    this.closeImage();
+  }
+
+  /** v1.65ev — flush all queued actions + the wrap-up message in one
+      consolidated reply. Builds the body from the supplier's typed
+      message (if any) + the auto-summary, then emits batchAction$.
+      The inbox catches and posts a single reply to the server.
+
+      v1.65f7 — dedupe fix. syncAutoMessage() pre-fills the textarea
+      with the live summary, so when Ryan clicks Send WITHOUT typing
+      anything, both `typed` and `summary` equal the auto-summary —
+      the old `typed + '\n\n' + summary` concat then sent the same
+      line twice. Compare `typed` against the last auto-written
+      value: if equal, the textarea is still the auto fill, so send
+      it once. Only prefix-and-append when Ryan has genuinely added
+      his own copy on top. */
+  onSend(): void {
+    if (!this.canSend) return;
+    this.sending = true;
+    const actions = Array.from(this.pendingActions.values());
+    const typed = (this.supplierMessage || '').trim();
+    const summary = this.pendingSummary;
+    const lastAuto = (this.lastAutoMessage || '').trim();
+    const isAutoOnly = !!typed && typed === lastAuto;
+    let body = '';
+    if (typed && summary && !isAutoOnly) {
+      body = typed + '\n\n' + summary;
+    } else {
+      body = typed || summary;
+    }
+    this.svc.emitBatchAction({ actions, body });
+    // Reset local state + close the drawer. The inbox refreshes
+    // thread items after the server confirms.
+    this.pendingActions.clear();
+    this.supplierMessage = '';
+    setTimeout(() => {
+      this.sending = false;
+      this.close();
+      this.cdr.markForCheck();
+    }, 250);
+    this.cdr.markForCheck();
+  }
+  /** v1.65fA — single Save handler the template calls. Branches by
+      viewer: supplier → queue a batch row-action (existing flow that
+      forks the catalogue on Send); agent → PATCH the project_items
+      snapshot directly (no catalogue side-effects). */
+  onSaveAdjust(pi: ProjectItem): void {
+    if (this.isSupplier) this.onRowAdjust(pi);
+    else this.onAgentSnapshotSave(pi);
+  }
+
+  /** v1.65fA — agent-side snapshot edit. Patches project_items.name/
+      base_price/unit/description for THIS project only. Optimistic
+      local update so the cart row repaints immediately; server PATCH
+      then confirms + recomputes category ballpark. */
+  onAgentSnapshotSave(pi: ProjectItem): void {
+    if (!this.canSaveAdjust || !pi.project_id || !pi.item_id) {
+      this.cancelAdjust();
+      return;
+    }
+    const f = this.adjustForm;
+    const patch: any = {};
+    if (f.name.trim())                  patch.name = f.name.trim();
+    if (f.description.trim())           patch.description = f.description.trim();
+    if (f.price != null && !isNaN(Number(f.price))) patch.base_price = Number(f.price);
+    if (f.unit.trim())                  patch.unit = f.unit.trim();
+
+    // Optimistic local update — match the patch we just sent.
+    if (patch.name)              (pi as any).name = patch.name;
+    if (patch.description)       (pi as any).description = patch.description;
+    if (patch.base_price != null) (pi as any).base_price = patch.base_price;
+    if (patch.unit)              (pi as any).unit = patch.unit;
+    this.cancelAdjust();
+
+    this.projectItemSvc.update(pi.project_id, pi.item_id, patch).subscribe({
+      next: row => {
+        // Server-normalised values win (handles trimming, numeric
+        // coercion); preserve the joined display fields we don't
+        // round-trip (supplier_name, category_icon_*, image_url).
+        Object.assign(pi as any, {
+          name:        row.name,
+          description: row.description,
+          base_price:  row.base_price,
+          unit:        row.unit,
+          quantity:    row.quantity,
+        });
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        // Rollback path is messy because we threw away the prev
+        // values; rely on the next getByProject() to re-sync. The
+        // user can re-edit if the PATCH actually failed.
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onRowAdjust(pi: ProjectItem): void {
+    const f = this.adjustForm;
+    // v1.65ev — queue, don't fire. If an earlier Image pick already
+    // queued an adjust for this row, merge so we don't lose the
+    // image URL when the supplier fills in price/name later.
+    const prev = this.pendingActions.get(pi.id);
+    this.pendingActions.set(pi.id, {
+      rowId: pi.id,
+      action: 'adjust',
+      name: f.name.trim() || prev?.name,
+      description: f.description.trim() || prev?.description,
+      price: f.price != null ? Number(f.price) : prev?.price,
+      unit: f.unit.trim() || prev?.unit,
+      image_url: f.imageUrl.trim() || prev?.image_url,
+    });
+    // Optimistic local update so the row reflects the new price /
+    // image / name immediately. Server will confirm via the inbox
+    // refresh after Send.
+    if (f.price != null) (pi as any).base_price = Number(f.price);
+    if (f.imageUrl.trim()) (pi as any).image_url = f.imageUrl.trim();
+    if (f.name.trim()) (pi as any).name = f.name.trim();
+    if (f.description.trim()) (pi as any).description = f.description.trim();
+    if (f.unit.trim()) (pi as any).unit = f.unit.trim();
+    (pi as any)._raw_status = 'adjusted_by_supplier';
+    this.syncAutoMessage();
+    this.cancelAdjust();
+  }
+
+  ngOnDestroy(): void { this.sub?.unsubscribe(); }
+
+  onVisibleChange(open: boolean): void { if (!open) this.close(); }
+  close(): void { this.svc.close(); }
+
+  get totalCount(): number { return this.selected.length + this.wishlist.length; }
+
+  /** v1.65ef — extended line price. Per-cover/per-head items multiply
+      base_price by project.guest_count; everything else is flat.
+      Falls back to flat when guest_count is missing/0.
+      v1.65f2 — also multiplies by the row's buy quantity (default 1).
+      So a per-head platter at £6.25, qty 10, 250 guests → £15,625. */
+  /** v1.65fV — line cost = base × qty. Qty already carries the
+      effective count (seeded as guest_count on add for per-head),
+      so no second multiplier needed. */
+  lineTotal(pi: ProjectItem): number {
+    const base = Number(pi.base_price) || 0;
+    const qty = this.qtyOf(pi);
+    return base * qty;
+  }
+
+  /** v1.65f2 — current buy quantity for a row. Defaults to 1 when the
+      row was created before the column existed or was never set. */
+  qtyOf(pi: ProjectItem): number {
+    const q = Number((pi as any).quantity);
+    return Number.isFinite(q) && q > 0 ? q : 1;
+  }
+
+  /** v1.65f3 — formatted multiplier breakdown shown under the row name.
+      Three shapes, depending on the item's unit + qty:
+        per-head, qty=1   →  "£85 / head × 250 guests"
+        per-head, qty=3   →  "£85 / head × 250 guests × 3"
+        flat,     qty=1   →  "£95 / platter"
+        flat,     qty=3   →  "£95 / platter × 3"
+      The line total (right column) is the result of the math; this
+      string is the show-your-working for the user. */
+  rateLine(pi: ProjectItem): string {
+    const rate = Number(pi.base_price) || 0;
+    const unitCode = (pi.unit || '').toLowerCase();
+    const unitLabel = this.unitShort(unitCode) || 'item';
+    const qty = this.qtyOf(pi);
+    const perHead = PER_ATTENDEE_UNITS.has(unitCode) && this.guestCount > 0;
+
+    const rateStr = `£${rate.toLocaleString('en-GB')}`;
+    let line = `${rateStr} / ${unitLabel}`;
+    if (perHead) {
+      line += ` × ${this.guestCount.toLocaleString('en-GB')} guests`;
+      if (qty > 1) line += ` × ${qty}`;
+    } else if (qty > 1) {
+      line += ` × ${qty}`;
+    }
+    return line;
+  }
+
+  /** v1.65f2 — per-row in-flight flag so the +/− buttons disable while
+      a PATCH is in transit. Keyed by project_items.id rather than
+      item_id so multiple rows can be edited concurrently. */
+  qtySaving: { [piId: string]: boolean } = {};
+
+  /** v1.65f4 — number displayed inside the stepper pill. For per-head
+      / per-cover items it shows qty × guest_count (e.g. "250" not
+      "1" for the canonical case of one round at full attendance, or
+      "500" for two rounds); for flat-unit items it stays as the raw
+      qty. This matches the breakdown text above, so the stepper
+      reads as "the head count this row is feeding" instead of "the
+      buy multiplier" which only makes sense once you've internalised
+      the schema. */
+  /** v1.65fV — qty IS the literal count now. Server seeds it to
+      project.guest_count on cart-add for per-head items, so a fresh
+      catering line lands at 250 (or whatever) and stays there
+      regardless of later guest_count changes. No more derived
+      multiplier — what the user typed (or what was seeded) is what
+      gets rendered everywhere. */
+  stepperValue(pi: ProjectItem): number {
+    return this.qtyOf(pi);
+  }
+
+  /** v1.65f2 → v1.65f4 — bump the row's quantity by 1. The DB column
+      still stores raw qty (1, 2, 3) regardless of unit; we just
+      display the effective head-count derived value. Kept around
+      because legacy +/− stepper instances may still call this; the
+      detail-card UI now uses the direct number input below. */
+  onQtyPlus(pi: ProjectItem): void {
+    this.changeQty(pi, this.qtyOf(pi) + 1);
+  }
+  /** v1.65f2 → v1.65f4 — decrement qty by 1, floored at 1. */
+  onQtyMinus(pi: ProjectItem): void {
+    const next = Math.max(1, this.qtyOf(pi) - 1);
+    if (next === this.qtyOf(pi)) return;
+    this.changeQty(pi, next);
+  }
+  /** v1.65fH — union of every supplier represented in this cart
+      (any selected row whose source supplier is set). Drives the
+      checkbox list in the detail card's SUPPLIERS section. */
+  get inCartSuppliers(): { id: string; name: string }[] {
+    const map = new Map<string, string>();
+    for (const pi of this.selected) {
+      const id = (pi as any).supplier_org_id as string | undefined;
+      const name = pi.supplier_name || '';
+      if (id) map.set(id, name);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }
+
+  /** v1.65fH — tick/untick handler for the per-item supplier
+      roster. Optimistic local update + persist. Rolls back on
+      error. */
+  onSupplierToggle(pi: ProjectItem, supplierId: string, ev: Event): void {
+    if (!pi.project_id || !pi.item_id || !supplierId) return;
+    const isChecked = (ev.target as HTMLInputElement).checked;
+    const cur = pi.asked_supplier_ids || [];
+    const before = [...cur];
+    // Optimistic local update.
+    if (isChecked && !cur.includes(supplierId)) {
+      (pi as any).asked_supplier_ids = [...cur, supplierId];
+    } else if (!isChecked && cur.includes(supplierId)) {
+      (pi as any).asked_supplier_ids = cur.filter(x => x !== supplierId);
+    }
+    this.cdr.markForCheck();
+    const obs = isChecked
+      ? this.projectItemSvc.addItemSupplier(pi.project_id, pi.item_id, supplierId)
+      : this.projectItemSvc.removeItemSupplier(pi.project_id, pi.item_id, supplierId);
+    obs.subscribe({
+      next: res => {
+        (pi as any).asked_supplier_ids = res.supplier_org_ids || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        (pi as any).asked_supplier_ids = before;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** v1.65fG — direct number input handler. Parses the input value,
+      clamps to >= 1, and short-circuits when the value didn't move.
+      Fired on change (blur or Enter) so we don't PATCH per
+      keystroke. */
+  onQtyChange(pi: ProjectItem, ev: Event): void {
+    const raw = (ev.target as HTMLInputElement)?.value;
+    const parsed = Math.floor(Number(raw));
+    const next = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    if (next === this.qtyOf(pi)) {
+      // Reset the input if the user typed garbage like "0" or "abc".
+      (ev.target as HTMLInputElement).value = String(this.qtyOf(pi));
+      return;
+    }
+    this.changeQty(pi, next);
+  }
+  private changeQty(pi: ProjectItem, next: number): void {
+    if (!pi.project_id || !pi.item_id) return;
+    const prev = this.qtyOf(pi);
+    (pi as any).quantity = next;          // optimistic
+    this.qtySaving[pi.id] = true;
+    this.cdr.markForCheck();
+    this.projectItemSvc.setQuantity(pi.project_id, pi.item_id, next).subscribe({
+      next: row => {
+        (pi as any).quantity = Number((row as any).quantity) || next;
+        this.qtySaving[pi.id] = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        (pi as any).quantity = prev;       // rollback
+        this.qtySaving[pi.id] = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** Helper for the row template — true when this item bills per
+      attendee AND we know the guest count, so we can show the small
+      "× N" multiplier breakdown under the price. */
+  isPerAttendee(pi: ProjectItem): boolean {
+    const unit = (pi.unit || '').toLowerCase();
+    return this.guestCount > 0 && PER_ATTENDEE_UNITS.has(unit);
+  }
+
+  get guestCountValue(): number { return this.guestCount; }
+
+  get ballparkTotal(): number {
+    return this.selected.reduce((s, pi) => s + this.lineTotal(pi), 0);
+  }
+
+  // ── v1.65eg — estimate-style breakdown for the footer ──────────────
+  // Mirrors features/projects/.../estimate.component.ts recalc():
+  //   yourCost   = sum of lineTotals (subtotal of SELECTED rows)
+  //   margin     = yourCost × marginPct/100
+  //   preVat     = yourCost + margin
+  //   vat        = preVat × vatPct/100
+  //   clientTotal= preVat + vat
+  // Contingency is omitted here (the full Estimate page includes it;
+  // the cart drawer is a quick at-a-glance summary).
+  get yourCost():    number { return this.ballparkTotal; }
+  get marginAmount(): number { return this.yourCost * (this.marginPct / 100); }
+  get vatAmount():   number {
+    return (this.yourCost + this.marginAmount) * (this.vatPct / 100);
+  }
+  get clientTotal(): number {
+    return this.yourCost + this.marginAmount + this.vatAmount;
+  }
+
+  // ── v1.65es — supplier-side derived totals ────────────────────────
+  // Margin is excluded from the supplier view (it's agency
+  // bookkeeping). The supplier sees their own cost, multiplied by
+  // guests for per-attendee units, then VAT, then client total.
+  /** Sum of base_prices across all rows — the per-head rate, NOT
+      multiplied by guest count. For the demo: £28 + £85 + £0 + £0
+      = £113. */
+  get perHeadTotal(): number {
+    return this.selected.reduce((s, pi) => s + (Number(pi.base_price) || 0), 0);
+  }
+  get vatOnCost(): number {
+    return this.yourCost * (this.vatPct / 100);
+  }
+  get supplierClientTotal(): number {
+    return this.yourCost + this.vatOnCost;
+  }
+
+  // ── v1.65eh — budget headroom (mirrors estimate.component recalc) ─
+  /** £ difference vs budget. Positive when over, negative when under
+      (we display the absolute via | gbp; the sign of the diff drives
+      the prefix sign in the row). */
+  get budgetDiff(): number {
+    return this.budget > 0 ? this.clientTotal - this.budget : 0;
+  }
+  /** Width-percent for the progress bar — clamped to 100% so the
+      fill never overruns its track even when way over budget. */
+  get barPct(): number {
+    if (this.budget <= 0) return 0;
+    return Math.min((this.clientTotal / this.budget) * 100, 100);
+  }
+  get isOverBudget(): boolean {
+    return this.budget > 0 && this.clientTotal > this.budget;
+  }
+
+  // ── v1.65ek — Send brief to suppliers ─────────────────────────────
+  /** True when there's at least one selected item with a supplier,
+      OR there's at least one ad-hoc ask (which always needs a
+      supplier picked in step 1 of the outreach drawer regardless).
+      Drives the CTA's disabled state.
+      v1.65ep — ad-hoc asks alone now enable the CTA; the outreach
+      drawer's step 1 lets the agent pick suppliers for ask-only
+      briefs. */
+  get canSendBrief(): boolean {
+    // v1.65fI — ad-hoc asks are now first-class project_items so we
+    // only need to verify the selection has at least one row + some
+    // supplier representation. Validation that every row has ≥1
+    // ticked supplier happens in the per-item picker UI.
+    return this.selected.length > 0
+        && this.selected.some(pi => !!(pi as any).supplier_org_id);
+  }
+
+  /** v1.65ek — open the existing 4-step outreach drawer (Suppliers →
+      Requirements → Review → Send) pre-populated from the cart. The
+      outreach flow expects ONE OutreachItem; we synthesise a "cart
+      brief" item that bundles every selected row so the suppliers
+      see the whole ask in one email. Cart drawer closes so the
+      outreach drawer takes focus. */
+  sendBrief(): void {
+    if (!this.canSendBrief) return;
+
+    // Collect unique supplier_org_ids from the cart selection — these
+    // get pre-ticked in step 1 (Suppliers) of the outreach drawer.
+    const supplierMap = new Map<string, string>();
+    for (const pi of this.selected) {
+      const sid = (pi as any).supplier_org_id as string | undefined;
+      if (sid) supplierMap.set(sid, pi.supplier_name || '');
+    }
+    const suppliers = Array.from(supplierMap.entries())
+      .map(([id, name]) => ({ supplier_id: id, supplier_name: name }));
+
+    // Use the cart's dominant category (first item's category) as the
+    // outreach category. Multi-category carts pick the first; the
+    // user can adjust suppliers in step 1 if needed. v2 will split
+    // by category automatically.
+    const first: any = this.selected[0];
+    const categoryId = first?.item_category_id || first?.project_category_id || '';
+
+    // v1.65em — pass structured cart rows so the outreach drawer's
+    // step 2 can render them as a row list (image + name + line
+    // total) instead of a flat bullet string buried in the
+    // "additional details" textarea. The drawer adds an "Add
+    // additional ask" input on top so the agent can append ad-hoc
+    // items (e.g. "open bar for cocktails") that don't have
+    // catalogue rows.
+    const cartItems = this.selected.map(pi => ({
+      item_id: pi.item_id,
+      name: pi.name || 'Item',
+      description: pi.description || '',
+      image_url: pi.image_url || pi.supplier_cover_url || null,
+      base_price: Number(pi.base_price) || 0,
+      unit: pi.unit || null,
+      line_total: this.lineTotal(pi),
+      supplier_org_id: (pi as any).supplier_org_id || null,
+      supplier_name: pi.supplier_name || null,
+    }));
+
+    // v1.65fI — ad-hoc asks are now first-class project_items so the
+    // total is just the selection count. Empty adhocAsks list kept
+    // for back-compat with the outreach drawer signature.
+    const totalAsks = this.selected.length;
+
+    this.outreach.open({
+      // Synthesised single-item kept for back-compat with the
+      // existing per-item outreach callers; the drawer prefers
+      // cartItems when set.
+      item: {
+        name: totalAsks === 1
+          ? (this.selected[0]?.name || 'Cart item')
+          : `${totalAsks}-item brief`,
+        description: '',
+        price: this.yourCost,
+        isNew: true,
+      },
+      categoryId,
+      projectId: this.projectId,
+      suppliers,
+      cartItems,
+      adhocAsks: [],
+      guestCount: this.guestCount,
+    });
+
+    // Close the cart drawer so the outreach drawer is the only
+    // active overlay; user can come back to the cart afterwards
+    // via the marketplace cart icon.
+    this.close();
+  }
+
+  /** Build the background-image url, walking the fallback chain:
+      item.image_url → supplier cover. Returns null when only the colour
+      swatch (initial letter) should render. */
+  imageStyle(pi: ProjectItem): string | null {
+    const url = pi.image_url || pi.supplier_cover_url;
+    return url ? `url('${url}')` : null;
+  }
+  /** Third-tier fallback — the category's icon_color as a solid swatch.
+      Always returned so the letter has a tinted backdrop even when an
+      image is present (the image covers it). */
+  imageBgColor(pi: ProjectItem): string {
+    return pi.category_icon_color || 'var(--theme-accent)';
+  }
+  initial(pi: ProjectItem): string {
+    return (pi.name || '?').charAt(0).toUpperCase();
+  }
+  truncate(text: string): string {
+    if (!text) return '';
+    const t = text.trim();
+    return t.length > 120 ? t.slice(0, 117).trimEnd() + '…' : t;
+  }
+
+  /** v1.65er — adapt a CartDrawerRow (from the inbox) into a
+      ProjectItem-shaped row so the existing template renders it
+      unchanged. Ad-hoc / zero-price rows surface a sparkles
+      thumbnail via the supplier_cover_url fallback chain (handled
+      by imageStyle/imageBgColor below). */
+  private rowToProjectItem(r: CartDrawerRow): ProjectItem {
+    // v1.65fZ — message_items has no quantity column yet, so supplier
+    // rows synthesised from preRows would default to qty=1 and the
+    // line totals would collapse. Seed quantity from guest_count for
+    // per-head items (or when the unit is unknown — message_items
+    // doesn't snapshot the unit either, and per-head is the supplier-
+    // side default the rest of the math already assumes).
+    const unit = (r.unit || '').toLowerCase();
+    const isPerHead = unit === 'cover' || unit === 'head' || (this.isSupplier && !unit);
+    const seededQty = (this.guestCount > 0 && isPerHead) ? this.guestCount : 1;
+    const pi = {
+      id: r.id,
+      project_id: this.projectId,
+      item_id: r.item_id || '',
+      selection_type: 'selected',
+      created_at: new Date().toISOString(),
+      name: r.name,
+      description: r.description || undefined,
+      base_price: Number(r.base_price) || 0,
+      unit: r.unit || undefined,
+      quantity: seededQty,
+      image_url: r.image_url || undefined,
+      supplier_name: r.supplier_name || undefined,
+      supplier_cover_url: r.supplier_cover_url || undefined,
+      category_icon_color: r.category_icon_color || undefined,
+    } as ProjectItem;
+    // v1.65et — stash the message_item status on the synthesised
+    // row so rowStatus() / isDeclined() can read it without
+    // touching the ProjectItem model.
+    (pi as any)._raw_status = r.status || '';
+    return pi;
+  }
+
+  // ── data ────────────────────────────────────────────────────────────
+  private load(): void {
+    if (!this.projectId) return;
+    // v1.65er — pre-supplied rows path (inbox "Cart" chip). Render
+    // directly without touching project_items. Still loads the
+    // project for guest_count + margin + VAT so the line math +
+    // summary footer work.
+    if (this.preRows) {
+      this.selected = this.preRows.map(r => this.rowToProjectItem(r));
+      this.wishlist = [];
+      // v1.65fB — auto-select the first item so the detail panel on
+      // the right is populated on open.
+      if (this.selected.length && !this.selectedRowId) {
+        this.selectedRowId = (this.selected[0] as any).id;
+      }
+    }
+    // v1.65ef — pull the project alongside the items so the
+    // per-attendee line math (base_price × guest_count) has a number
+    // to multiply by. Reset to 0 first so a missing project doesn't
+    // surface stale guests from a prior open.
+    this.guestCount = 0;
+    this.projectSvc.getById(this.projectId).subscribe(p => {
+      this.guestCount = Number((p as any)?.guest_count) || 0;
+      // v1.65fM — capture project name + event date so the checkout
+      // header can read "ESTIMATE · <event name> · <date>".
+      this.projectName  = (p as any)?.event_name || (p as any)?.name || '';
+      this.projectDates = (p as any)?.event_date || '';
+      // v1.65fO — venue label for the review's event-details box.
+      const city = (p as any)?.venue_city;
+      const venue = (p as any)?.venue_name;
+      this.projectVenue = [venue, city].filter(x => x && String(x).trim()).join(', ') || 'TBC';
+      // v1.65eg — pull margin + VAT defaults off the project row.
+      // Falls back to 20/20 when null (matches the estimate
+      // component's same defaults).
+      this.marginPct = Number((p as any)?.default_margin_pct) || 20;
+      this.vatPct    = Number((p as any)?.default_vat_pct)    || 20;
+      // v1.65eh — project.project_budget (set on intake / in the
+      // project summary) feeds the headroom card under CLIENT TOTAL.
+      // Field name is project_budget (NOT budget); same field
+      // estimate.component reads.
+      // v1.65ej — category-scoped opens override this with the
+      // per-category ballpark_budget (loaded below). The project-
+      // wide value is the fallback when no contextCategoryId is set
+      // OR when the category doesn't carry its own budget.
+      this.budget    = Number((p as any)?.project_budget)     || 0;
+      this.cdr.markForCheck();
+    });
+
+    // v1.65ej — when scoped to a single category, look up that
+    // project_category and prefer its ballpark_budget over the
+    // project-wide project_budget. Order doesn't matter relative to
+    // the project load above — last one to land wins; with category
+    // scope, the category budget should win.
+    if (this.contextCategoryId) {
+      this.projectCategorySvc.getByProject(this.projectId).subscribe(rows => {
+        const cat = (rows || []).find(c =>
+          (c as any).category_id === this.contextCategoryId
+        );
+        const catBudget = Number((cat as any)?.ballpark_budget) || 0;
+        if (catBudget > 0) {
+          this.budget = catBudget;
+          this.cdr.markForCheck();
+        }
+        // v1.65fO — capture the per-category requirement_brief so
+        // the review stage can show it as read-only context for
+        // the agent.
+        this.projectBrief = (cat as any)?.requirement_brief || '';
+        this.cdr.markForCheck();
+      });
+    }
+    // v1.65er — skip project_items fetch when rendering pre-supplied
+    // rows (inbox "Cart" chip path).
+    if (this.preRows) return;
+    this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+      const list = (rows || []).filter(r =>
+        this.itemFilter ? this.itemFilter.has(r.item_id) : true
+      );
+      this.selected = list.filter(r => r.selection_type === 'selected');
+      this.wishlist = list.filter(r => r.selection_type === 'liked');
+      // v1.65fB — auto-select the first item if nothing is currently
+      // selected, OR if the currently selected row was just removed
+      // (e.g. after a remove() call that triggers a load() refresh).
+      const has = this.selectedRowId && this.selected.some(p => (p as any).id === this.selectedRowId);
+      if (!has) {
+        this.selectedRowId = this.selected.length ? (this.selected[0] as any).id : null;
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  remove(pi: ProjectItem): void {
+    if (!this.projectId) return;
+    this.projectItemSvc.remove(this.projectId, pi.item_id).subscribe({
+      next: () => {
+        this.svc.markChanged(this.projectId);
+        this.load();
+      }
+    });
+  }
+
+  /** Promote a wishlist item to selected. Same endpoint as add() — the
+      backend upserts on (project_id, item_id) so the row's selection_type
+      flips from 'liked' → 'selected' in place. */
+  promote(pi: ProjectItem): void {
+    if (!this.projectId) return;
+    this.projectItemSvc.add(
+      this.projectId, pi.item_id, 'selected', pi.project_category_id
+    ).subscribe({
+      next: () => {
+        this.svc.markChanged(this.projectId);
+        this.load();
+      }
+    });
+  }
+}

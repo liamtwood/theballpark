@@ -100,17 +100,18 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // v1.29 tab bar — Event removed. Event details are now reached
-    // via the drawer opened from the Overview event strip.
-    //   Overview · Brief · Marketplace · Estimate · Messages
-    // /event still routes — redirects to /overview for bookmarks.
+    // v1.29 tab bar — Event removed. v1.64 Estimate removed too — it
+    // now opens as a shared drawer from the Overview card, Marketplace
+    // footer link, and dashboard menu.
+    // v1.65cg (p0005) — Plan tab removed; AI matching + per-category
+    // brief editing both moved into the Marketplace. /plan and /brief
+    // still route — they redirect to /marketplace.
+    //   Overview · Marketplace · Inbox
     const tabs = [
       { label: 'Overview',    path: `/projects/${this.pid}/overview` },
-      { label: 'Brief',       path: `/projects/${this.pid}/brief` },
       { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
-      { label: 'Estimate',    path: `/projects/${this.pid}/estimate` },
       {
-        label: 'Messages',
+        label: 'Inbox',
         path: `/projects/${this.pid}/messages`,
         // v1.24: render the red notification chip next to the tab
         // label when there are unread inbound messages.
@@ -119,12 +120,16 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     ];
 
     // Pills: auto-ref (v1.39g — was missing from the hero), client
-    // name, then venue. The ref is the project's identifier; surfacing
-    // it as the leftmost pill keeps it visible on every project tab.
+    // name. The ref is the project's identifier; surfacing it as the
+    // leftmost pill keeps it visible on every project tab.
+    // v1.65v — venue_name pill removed from the hero. AI parses can
+    // produce long descriptive text ("Family-friendly venue (TBC —
+    // high footfall location for families with tweens)") that bloats
+    // the hero; the venue still appears in the Overview event strip
+    // and the project Marketplace's Project Summary panel.
     const pills: string[] = [];
     if (p.ref)         pills.push(p.ref);
     if (p.client_name) pills.push(p.client_name);
-    if (p.venue_name)  pills.push(p.venue_name);
 
     // v1.24: eyebrow tracks the current tab. Spec calls for "PROJECT
     // OVERVIEW" only on the Overview tab — other tabs use their own
@@ -142,10 +147,11 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   /** Map the current URL segment to the hero's eyebrow label.
-      Returns '' for tabs that prefer their own page-level title. */
+      Returns '' for tabs that prefer their own page-level title.
+      v1.65cg (p0005) — /plan + /brief entries removed; both now
+      redirect to /marketplace so they're never the resolved URL. */
   private eyebrowForUrl(url: string): string {
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
-    if (url.includes('/brief'))        return 'BRIEF';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
     if (url.includes('/estimate'))     return 'ESTIMATE';
     if (url.includes('/messages'))     return 'MESSAGES';

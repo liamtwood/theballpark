@@ -69,6 +69,12 @@ export interface ProjectContext {
   projectBrief: string;
   /** Active project_categories rows for this project, keyed off category_id. */
   projectCategories: ProjectCategory[];
+  /** v1.65o — full project row. Surfaces in the "Project Summary" panel
+      (catalogue-grid "All" view) so we can render REF / CLIENT / EVENT
+      NAME / GUESTS / DATE / VENUE without re-fetching. Optional so
+      existing call sites (which only need projectId + brief + categories)
+      don't break. */
+  project?: Project;
 }
 
 export interface ProjectCategory {
@@ -95,10 +101,17 @@ export interface ProjectCategory {
   status_id?: string;
   status_name?: string;
   status_color?: string;
+  /** v1.53 — per-category workflow status. Code from the
+      category_status codelist (draft | briefed | awaiting |
+      client_managed | out_for_quote | quoted | confirmed | na). */
+  status_code?: string;
   category_name?: string;
   category_icon_name?: string;
   category_icon_color?: string;
   category_cover_image_url?: string;
   category_sort_order?: number;
   is_active: boolean;
+  /** v1.49e — persisted Brief-tab "Find items" result (full matcher
+      payload + the brief it was searched against). */
+  match_result_json?: any;
 }

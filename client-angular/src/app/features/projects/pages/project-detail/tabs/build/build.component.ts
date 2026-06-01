@@ -159,10 +159,6 @@ type CardTab = 'items' | 'wishlist' | 'brief';
                         + Add {{ rowNameLower(row) }}
                       </span>
                     </ng-template>
-                    <span class="bp-build-brief-dot"
-                          [class.filled]="hasBrief(row)"
-                          [title]="hasBrief(row) ? 'Brief written' : 'No brief yet'">
-                    </span>
                   </div>
                 </div>
 
@@ -568,18 +564,6 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       font-style: normal;
     }
     .bp-build-card-empty-text:hover { opacity: 0.75; }
-    .bp-build-brief-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      border: 1px solid var(--color-text-muted);
-      background: transparent;
-      flex-shrink: 0;
-      display: inline-block;
-    }
-    .bp-build-brief-dot.filled {
-      background: var(--theme-accent);
-      border-color: var(--theme-accent);
-    }
     .bp-build-card-cost {
       font-size: 13px;
       font-weight: 600;

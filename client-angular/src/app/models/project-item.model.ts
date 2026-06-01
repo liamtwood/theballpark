@@ -6,6 +6,16 @@ export interface ProjectItem {
   item_id: string;
   project_category_id?: string;
   selection_type: SelectionType;
+  /** v1.65f2 — buy quantity per cart row. Default 1. Ballpark cost
+      multiplies by this in addition to the per-head guest_count
+      multiplier (so a per-cover platter at qty 10, 250 guests, £6.25
+      computes to £15,625). */
+  quantity?: number;
+  /** v1.65fH — the set of suppliers ticked to receive a quote
+      request on this cart line when the brief is sent. Pre-filled
+      with the source supplier on cart-add for catalogue items;
+      empty for ad-hoc asks (agent must pick before Send). */
+  asked_supplier_ids?: string[];
   created_at: string;
 
   // Joined fields populated by ProjectItemService.getByProject() — present
@@ -27,8 +37,19 @@ export interface ProjectItem {
   /** v1.22: joined from orgs (the item's supplier) for the per-row
       "{supplier} · {N} days lead" subtitle. */
   supplier_name?: string;
+  /** v1.65el: joined orgs.id (the source catalogue item's owner)
+      for sender filtering in the inbox + per-item supplier roster
+      checkbox tagging in the cart drawer. */
+  supplier_org_id?: string;
   /** v1.23: joined from categories so the shared category header can
       render an icon next to the project_item's category without a
       separate categories lookup. */
   category_icon_name?: string;
+  /** v1.65ab: joined fields powering the Project Items cart drawer.
+      description → hover tooltip in the SELECTED rows.
+      supplier_cover_url → second fallback for the image thumbnail.
+      category_icon_color → third fallback (solid colour swatch). */
+  description?: string;
+  supplier_cover_url?: string;
+  category_icon_color?: string;
 }

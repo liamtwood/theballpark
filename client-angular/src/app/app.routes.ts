@@ -2,11 +2,42 @@ import { Routes } from '@angular/router';
 import { AppShellComponent } from './shared/components/app-shell/app-shell.component';
 import { devOnlyGuard } from './core/guards/dev-only.guard';
 
+// v1.65dg — shared Home/Settings hero-tab band. Mounted on both the
+// dashboard route (`/`) AND the settings sub-tree so the folder-tab
+// band stays visible across both surfaces, matching the project tab
+// pattern (Overview/Marketplace/Inbox is one band; Home/Settings is
+// the other).
+// v1.65e4 — top-nav now carries Home + Settings as text links per
+// persona, so this band on the dashboard is duplicative. Kept for
+// any consumer still referencing the constant; dashboard tabs entry
+// now empty.
+const HOME_SETTINGS_TABS = [
+  { label: 'Home',     path: '/' },
+  { label: 'Settings', path: '/settings' },
+];
+
+// v1.65e5 — Settings page sub-tabs (Organisation / Team / Subscription).
+// Renders in the hero tab band when on /settings/*. The Subscription
+// path is at /settings/subscription but the shell's startsWith match
+// will light it up; same for Team. Organisation is the default child
+// (SETTINGS_ROUTES redirects '' → 'organisation').
+const SETTINGS_TABS = [
+  { label: 'Organisation', path: '/settings/organisation' },
+  { label: 'Team',         path: '/settings/team' },
+  { label: 'Subscription', path: '/settings/subscription' },
+];
+
 export const routes: Routes = [
   // ── PUBLIC ── (rendered standalone, outside the app shell)
   {
     path: 'welcome',
     loadComponent: () => import('./public/welcome/welcome.component').then(m => m.WelcomeComponent)
+  },
+  // v1.65cv (p0008 §5) — supplier brief surface. No auth — the token
+  // in the URL is the credential. Lives outside the agency app shell.
+  {
+    path: 'brief/:token',
+    loadComponent: () => import('./features/brief-public/brief-public.component').then(m => m.BriefPublicComponent)
   },
 
   // ── AUTHENTICATED APP ──
@@ -16,10 +47,22 @@ export const routes: Routes = [
     children: [
 
       // ── DASHBOARD ──
+      // v1.65dg — Home/Settings hero tabs added so the home screen
+      // carries a folder-tab band like project pages do.
+      // v1.65di — heroVariant='calm' reverted. The dashboard now uses
+      // the default folder-tab chip treatment, matching the project
+      // marketplace tabs exactly. The .bp-hero--calm CSS in styles.css
+      // is dormant for now (kept in case a future page wants it).
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        data: { pageLabel: '', tabs: [] }
+        // v1.65e6 — dashboard tab band reduced to a single "Home" tab.
+        // Top-nav already carries Home + Settings as text links per
+        // persona; the old HOME_SETTINGS_TABS pair was duplicative.
+        data: {
+          pageLabel: '',
+          tabs: [{ label: 'Home', path: '/' }]
+        }
       },
 
       // ── PROJECTS ──
@@ -68,6 +111,20 @@ export const routes: Routes = [
         data: { pageLabel: 'MESSAGES', tabs: [] }
       },
 
+      // ── SUPPLIER PERSONA INBOX ──
+      // v1.65dz (p0015) — supplier-side mount of the shared
+      // MessagesInboxComponent with viewer='supplier'. Reached from
+      // the supplier persona's top-nav (PersonaService gating).
+      {
+        path: 'inbox',
+        loadComponent: () => import('./features/messages/supplier-inbox.component').then(m => m.SupplierInboxComponent),
+        data: { pageLabel: 'INBOX', tabs: [] }
+      },
+
+      // v1.65e4 — /admin-home retired. Beth's home is /ballpark-settings
+      // (which already carries the Categories / Marketplace / Orgs /
+      // Early Access / Feedback tabs).
+
       // ── CLIENTS ──
       {
         path: 'clients',
@@ -81,6 +138,13 @@ export const routes: Routes = [
       },
 
       // ── SETTINGS ──
+      // v1.65dg — Settings hero tabs were Home/Settings (shared with
+      // the dashboard tab band).
+      // v1.65e5 — swapped to the actual Settings sub-routes:
+      // Organisation / Team / Subscription. Top-nav already carries
+      // Home + Settings, so the hero band can finally show what was
+      // marked TODO(v1.65dg-settings-subnav) — the secondary nav
+      // between the three settings sub-pages.
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES),
@@ -90,11 +154,7 @@ export const routes: Routes = [
           // (or the dashboard's Invite Member quick action) so there's no
           // longer a nav link to return through.
           back: '/',
-          tabs: [
-            { label: 'Organisation', path: '/settings/organisation' },
-            { label: 'Team',         path: '/settings/team' },
-            { label: 'Subscription', path: '/settings/subscription' }
-          ]
+          tabs: SETTINGS_TABS
         }
       },
 

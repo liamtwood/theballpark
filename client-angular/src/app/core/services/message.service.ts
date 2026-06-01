@@ -13,4 +13,10 @@ export class MessageService {
   delete(id: string) { return this.api.delete<Message>(`/messages/${id}`); }
   getByProject(projectId: string) { return this.api.get<Message[]>(`/messages?project_id=${projectId}`); }
   getAllByOrg(orgId: string) { return this.api.get<Message[]>(`/messages?org_id=${orgId}`); }
+  /** v1.65ea (p0015) — supplier-side inbox feed. Returns messages
+      where supplier_org_id matches, joined with the sending agency
+      identity so the supplier UI can render "From: Agency". */
+  getAllBySupplier(supplierOrgId: string) {
+    return this.api.get<Message[]>(`/messages?supplier_org_id=${supplierOrgId}`);
+  }
 }

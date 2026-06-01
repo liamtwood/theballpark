@@ -23,6 +23,7 @@ import { AiService } from '../../../../core/services/ai.service';
 import {
   CreateProjectService
 } from '../../../../core/services/create-project.service';
+import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import {
   BriefParserService, EXAMPLE_BRIEFS, ParsedBrief as RuleParsedBrief
 } from '../../../../core/services/brief-parser.service';
@@ -52,7 +53,7 @@ import {
  * project" call site uses CreateProjectService.open() to surface this
  * single instance.
  */
-type ModalState = 'input' | 'loading' | 'results';
+type ModalState = 'input' | 'loading' | 'results' | 'confirm';
 
 interface PendingCategory {
   ai: ParsedBriefCategory;
@@ -68,7 +69,8 @@ interface PendingCategory {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule, LucideAngularModule,
-    DialogModule, ButtonModule, InputTextModule, InputTextareaModule, ToastModule
+    DialogModule, ButtonModule, InputTextModule, InputTextareaModule, ToastModule,
+    GbpPipe
   ],
   providers: [MessageService],
   template: `
@@ -82,8 +84,12 @@ interface PendingCategory {
       <ng-template pTemplate="header">
         <div class="bp-cp-head">
           <div>
-            <div class="bp-cp-title">New project</div>
-            <div class="bp-cp-sub">{{ subtitle }}</div>
+            <!-- v1.65r — title becomes the AI-derived project name once
+                 we're past the input/loading states. Subtitle only shows
+                 on input + loading; on results / confirm the hero card
+                 already carries all the meta the user needs. -->
+            <div class="bp-cp-title">{{ headerTitle }}</div>
+            <div class="bp-cp-sub" *ngIf="subtitle">{{ subtitle }}</div>
           </div>
           <button type="button" class="bp-icon-btn" (click)="close()" title="Close">
             <i class="pi pi-times"></i>
@@ -95,16 +101,40 @@ interface PendingCategory {
       <ng-container *ngIf="state === 'input'">
         <div class="bp-cp-body">
 
-          <div class="bp-cp-ref" *ngIf="nextRef">
-            <span>Ref</span>
-            <span class="bp-cp-ref-code">{{ nextRef }}</span>
-            <span class="bp-cp-ref-auto">auto-generated</span>
+          <div class="bp-cp-top">
+            <div class="bp-cp-ref" *ngIf="nextRef">
+              <span>Ref</span>
+              <span class="bp-cp-ref-code">{{ nextRef }}</span>
+              <span class="bp-cp-ref-auto">auto-generated</span>
+            </div>
+
+            <!-- v1.65f0 — segmented toggle. Upload and Write are now
+                 mutually exclusive surfaces, instead of stacked with an
+                 "or paste text" divider. Auto-flips to 'write' after a
+                 successful extract so the user can review / edit. -->
+            <div class="bp-cp-mode" role="tablist" aria-label="Brief input mode">
+              <button type="button" role="tab"
+                      class="bp-cp-mode-btn"
+                      [class.active]="inputMode === 'upload'"
+                      [attr.aria-selected]="inputMode === 'upload'"
+                      (click)="setMode('upload')">
+                <lucide-icon name="upload" [size]="13"></lucide-icon>
+                Upload
+              </button>
+              <button type="button" role="tab"
+                      class="bp-cp-mode-btn"
+                      [class.active]="inputMode === 'write'"
+                      [attr.aria-selected]="inputMode === 'write'"
+                      (click)="setMode('write')">
+                <lucide-icon name="pencil" [size]="13"></lucide-icon>
+                Write
+              </button>
+            </div>
           </div>
 
-          <!-- File upload zone. Stays compact once a file is selected
-               so the textarea below is always available for paste /
-               edit, even after upload. -->
-          <label class="bp-cp-upload"
+          <!-- ─────────────────────────────────────────── UPLOAD MODE ─── -->
+          <label *ngIf="inputMode === 'upload'"
+                 class="bp-cp-upload"
                  [class.has-file]="uploadedFile"
                  [class.extracting]="extracting"
                  (dragover)="$event.preventDefault()"
@@ -113,9 +143,9 @@ interface PendingCategory {
                    accept=".pdf,.docx,.eml,.txt,.png,.jpg,.jpeg"
                    (change)="onFilePicked($event)"/>
             <ng-container *ngIf="!uploadedFile">
-              <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+              <lucide-icon name="upload" [size]="28"></lucide-icon>
               <div class="bp-cp-upload-text">
-                <div class="bp-cp-upload-title">Upload brief</div>
+                <div class="bp-cp-upload-title">Upload a brief</div>
                 <div class="bp-cp-upload-sub">Drag &amp; drop or click to browse</div>
               </div>
               <div class="bp-cp-upload-formats">
@@ -126,13 +156,17 @@ interface PendingCategory {
               </div>
             </ng-container>
             <ng-container *ngIf="uploadedFile">
-              <lucide-icon name="paperclip" [size]="14"></lucide-icon>
-              <span class="bp-cp-upload-name">{{ uploadedFile.name }}</span>
-              <span *ngIf="extracting"   class="bp-cp-upload-status">extracting…</span>
-              <span *ngIf="!extracting && extractedChars > 0"
-                    class="bp-cp-upload-status bp-cp-upload-status-ok">
-                ✓ {{ extractedChars | number }} chars
-              </span>
+              <lucide-icon name="paperclip" [size]="22"></lucide-icon>
+              <div class="bp-cp-upload-text">
+                <div class="bp-cp-upload-title">{{ uploadedFile.name }}</div>
+                <div class="bp-cp-upload-sub">
+                  <span *ngIf="extracting">extracting…</span>
+                  <span *ngIf="!extracting && extractedChars > 0"
+                        class="bp-cp-upload-status-ok">
+                    ✓ {{ extractedChars | number }} characters extracted
+                  </span>
+                </div>
+              </div>
               <button type="button" class="bp-cp-upload-x"
                       (click)="$event.preventDefault(); $event.stopPropagation(); removeFile()">
                 <i class="pi pi-times"></i>
@@ -140,17 +174,21 @@ interface PendingCategory {
             </ng-container>
           </label>
 
-          <div class="bp-cp-or">
-            <span class="bp-cp-or-line"></span>
-            <span class="bp-cp-or-text">{{ uploadedFile ? 'review or edit text' : 'or paste text' }}</span>
-            <span class="bp-cp-or-line"></span>
+          <!-- ─────────────────────────────────────────── WRITE MODE ──── -->
+          <div *ngIf="inputMode === 'write'" class="bp-cp-write">
+            <div class="bp-cp-write-pill" *ngIf="uploadedFile && extractedChars > 0">
+              <lucide-icon name="paperclip" [size]="12"></lucide-icon>
+              From {{ uploadedFile.name }} · ✓ {{ extractedChars | number }} chars
+              <button type="button" class="bp-cp-write-pill-x"
+                      (click)="removeFile()" title="Clear">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <textarea pInputTextarea
+                      [(ngModel)]="form.brief"
+                      placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
+                      class="w-full bp-input-edit bp-cp-brief"></textarea>
           </div>
-
-          <textarea pInputTextarea
-                    [(ngModel)]="form.brief"
-                    [rows]="5"
-                    placeholder="Paste a client email, brief, WhatsApp message, or rough notes..."
-                    class="w-full bp-input-edit bp-cp-brief"></textarea>
 
           <div class="bp-cp-examples">
             <span class="bp-cp-examples-label">Try:</span>
@@ -166,7 +204,13 @@ interface PendingCategory {
         </div>
       </ng-container>
 
-      <!-- ═══════════════════════════════════════════════════ LOADING ═ -->
+      <!-- ═══════════════════════════════════════════════════ LOADING ═
+           v1.65p — status-text only. The previous version showed
+           "{aiCategoryCount} categories identified" which read as "0
+           categories identified" until the AI response arrived (the
+           loadStep timer fired before the counts populated). Pure
+           progression copy keeps the user informed without the misleading
+           zero. -->
       <ng-container *ngIf="state === 'loading'">
         <div class="bp-cp-loading">
           <div class="bp-cp-spinner"></div>
@@ -178,27 +222,17 @@ interface PendingCategory {
             Identifying categories, writing supplier briefs, flagging questions
           </div>
           <div class="bp-cp-loading-steps">
-            <div class="bp-cp-step" [class.done]="loadStep >= 1">
-              <lucide-icon *ngIf="loadStep >= 1" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 1">⏳</span>
-              {{ loadStep >= 1 ? 'Details extracted' : 'Extracting details' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 1" [class.active]="loadStep < 1">
+              {{ loadStep >= 1 ? 'Parsed event details' : 'Parsing event details…' }}
             </div>
-            <div class="bp-cp-step" [class.done]="loadStep >= 2" *ngIf="loadStep >= 1">
-              <lucide-icon *ngIf="loadStep >= 2" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 2">⏳</span>
-              {{ loadStep >= 2
-                  ? (aiCategoryCount + ' categories identified')
-                  : 'Writing category briefs' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 2" [class.active]="loadStep >= 1 && loadStep < 2" *ngIf="loadStep >= 1">
+              {{ loadStep >= 2 ? 'Identified categories' : 'Identifying categories…' }}
             </div>
-            <div class="bp-cp-step" [class.done]="loadStep >= 3" *ngIf="loadStep >= 2">
-              <lucide-icon *ngIf="loadStep >= 3" name="check" [size]="12"></lucide-icon>
-              <span *ngIf="loadStep < 3">⏳</span>
-              {{ loadStep >= 3
-                  ? (aiQuestionCount + ' questions flagged')
-                  : 'Flagging questions' }}
+            <div class="bp-cp-step" [class.done]="loadStep >= 3" [class.active]="loadStep >= 2 && loadStep < 3" *ngIf="loadStep >= 2">
+              {{ loadStep >= 3 ? 'Flagged questions' : 'Flagging questions…' }}
             </div>
-            <div class="bp-cp-step" *ngIf="loadStep >= 3 && !aiSettled">
-              ⏳ Still working…
+            <div class="bp-cp-step bp-cp-step--active" *ngIf="loadStep >= 3 && !aiSettled">
+              Still working…
             </div>
           </div>
         </div>
@@ -208,21 +242,43 @@ interface PendingCategory {
       <ng-container *ngIf="state === 'results' && aiResult">
         <div class="bp-cp-body">
 
-          <div class="bp-cp-hero">
-            <div class="bp-cp-hero-row">
-              <div class="bp-cp-hero-main">
-                <div class="bp-cp-hero-name">{{ aiResult.projectName || 'Untitled project' }}</div>
-                <div class="bp-cp-hero-meta">
-                  <span class="bp-cp-chip" *ngIf="aiResult.client">👤 {{ aiResult.client }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.dates">📅 {{ aiResult.dates }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.location">📍 {{ aiResult.location }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.budget">💰 {{ aiResult.budget }}</span>
-                  <span class="bp-cp-chip" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">
-                    🎯 {{ aiResult.budgetSignal }}
-                  </span>
-                </div>
+          <!-- v1.65p — emoji icons swapped for "Label: value" pairs.
+               Easier to scan and reads as a real project detail card. -->
+          <!-- v1.65s — project details rendered in the same style as the
+               project Overview's event strip (.bp-event-strip / -cols /
+               -col / -eyebrow / -value / -sub). Two rows of three:
+                 ROW 1 — REF (narrow) | CLIENT | EVENT NAME
+                 ROW 2 — GUESTS (narrow) | DATE | VENUE
+               so the new-project review matches the post-create page. -->
+          <div class="bp-cp-strip">
+            <div class="bp-event-cols">
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">REF</span>
+                <span class="bp-event-value">{{ nextRef || '—' }}</span>
               </div>
-              <span class="bp-cp-hero-ref">{{ nextRef || '—' }}</span>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">CLIENT</span>
+                <span class="bp-event-value">{{ aiResult.client || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">EVENT NAME</span>
+                <span class="bp-event-value">{{ displayEventName || '—' }}</span>
+              </div>
+
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">GUESTS</span>
+                <span class="bp-event-value">{{ aiResult.guestCount || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">DATE</span>
+                <span class="bp-event-value">{{ aiResult.dates || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="aiResult.budgetSignal && aiResult.budgetSignal !== 'Unknown'">{{ aiResult.budgetSignal }} tier</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">VENUE</span>
+                <span class="bp-event-value">{{ aiResult.location || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="aiResult.city">{{ aiResult.city }}</span>
+              </div>
             </div>
           </div>
 
@@ -230,45 +286,60 @@ interface PendingCategory {
             “{{ aiResult.summary }}”
           </div>
 
-          <div class="bp-cp-section">{{ activeCategoryCount }} categories identified</div>
-          <div class="bp-cp-cats">
-            <div *ngFor="let p of pendingCategories; let i = index"
-                 class="bp-cp-cat" [class.removed]="p.removed">
-              <div class="bp-cp-cat-icon">
-                <lucide-icon *ngIf="p.db?.icon_name"
-                             [name]="p.db?.icon_name || 'circle'"
-                             [size]="14"></lucide-icon>
-                <span *ngIf="!p.db?.icon_name">{{ (p.ai.categoryLabel || '?').charAt(0) }}</span>
-              </div>
-              <div class="bp-cp-cat-body">
-                <div class="bp-cp-cat-name">
-                  {{ p.db?.name || p.ai.categoryLabel }}
-                  <span *ngIf="p.ai.implied" class="bp-cp-cat-implied">Implied</span>
-                  <span *ngIf="!p.db" class="bp-cp-cat-unmatched" title="Catalogue category not found — will be skipped on Create.">
-                    No match
-                  </span>
-                </div>
-                <div class="bp-cp-cat-brief">{{ p.ai.oneLiner }}</div>
-              </div>
-              <div class="bp-cp-cat-est" *ngIf="p.ai.budgetEstimate">{{ p.ai.budgetEstimate }}</div>
-              <button type="button" class="bp-cp-cat-x"
-                      (click)="toggleRemove(i)"
-                      [title]="p.removed ? 'Undo remove' : 'Remove category'">
-                <i class="pi" [class.pi-times]="!p.removed" [class.pi-undo]="p.removed"></i>
-              </button>
+          <!-- v1.65r — KPI circles in the same style as the project home
+               overview cards (bp-ov-kpis / bp-ov-kpi-circle / bp-ov-kpi-glyph
+               / bp-ov-kpi-lab). Categories, questions, estimate. -->
+          <div class="bp-cp-kpis">
+            <div class="bp-cp-kpi">
+              <span class="bp-cp-kpi-circle">
+                <span class="bp-cp-kpi-glyph">{{ activeCategoryCount }}</span>
+              </span>
+              <span class="bp-cp-kpi-lab">CATEGORIES</span>
+            </div>
+            <div class="bp-cp-kpi">
+              <span class="bp-cp-kpi-circle">
+                <span class="bp-cp-kpi-glyph">{{ aiResult.topQuestions?.length || 0 }}</span>
+              </span>
+              <span class="bp-cp-kpi-lab">QUESTIONS</span>
+            </div>
+            <!-- v1.65s — Estimate drops the circle chrome so the full
+                 money figure is visible (e.g. £52,500 was clipping the
+                 52px circle). Number sits on its own; label still below
+                 for visual rhythm with the two circled KPIs. -->
+            <div class="bp-cp-kpi bp-cp-kpi--wide" *ngIf="totalEstimate">
+              <span class="bp-cp-kpi-figure">{{ totalEstimate | gbp }}</span>
+              <span class="bp-cp-kpi-lab">ESTIMATE</span>
             </div>
           </div>
 
-          <ng-container *ngIf="aiResult.topQuestions?.length">
-            <div class="bp-cp-section">{{ aiResult.topQuestions?.length }} questions to resolve</div>
-            <div class="bp-cp-questions">
-              <div class="bp-cp-question" *ngFor="let q of aiResult.topQuestions">
-                <lucide-icon name="help-circle" [size]="12"></lucide-icon>
-                {{ q }}
-              </div>
-            </div>
-          </ng-container>
+          <!-- v1.65q — per-category card list and v1.65r — questions
+               list both removed. Category details surface on the Plan tab;
+               questions appear in the Overview's collapsible "Questions
+               to resolve" panel once the project is created. The KPI
+               circles above tell the user what's coming. -->
 
+          <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
+        </div>
+      </ng-container>
+
+      <!-- ════════════════════════════════════════════════ CONFIRM RECOMMEND ═
+           v1.65p — after the user clicks Continue on results we ask
+           whether to also run the AI item matcher. Yes → create the
+           project and land on /marketplace?recommend=1 (the marketplace
+           tab fires the Recommend fan-out on mount). No → create the
+           project and land on /marketplace as normal. -->
+      <ng-container *ngIf="state === 'confirm'">
+        <div class="bp-cp-body bp-cp-confirm">
+          <div class="bp-cp-confirm-icon">
+            <lucide-icon name="sparkles" [size]="28"></lucide-icon>
+          </div>
+          <div class="bp-cp-confirm-title">Recommend items now?</div>
+          <div class="bp-cp-confirm-sub">
+            AI can suggest catalogue items for each category based on the
+            brief. You'll see them in the Marketplace under
+            <strong>AI Recommendations</strong>. You can always run this
+            later from the Marketplace.
+          </div>
           <div *ngIf="errorMsg" class="bp-cp-error">{{ errorMsg }}</div>
         </div>
       </ng-container>
@@ -295,21 +366,39 @@ interface PendingCategory {
           </p-button>
         </ng-container>
 
-        <!-- RESULTS footer: ← Edit brief · Cancel · Create project → -->
+        <!-- RESULTS footer: Back · Continue (→ confirm-recommend) -->
         <ng-container *ngIf="state === 'results'">
           <button type="button" class="bp-cp-back" (click)="backToInput()">
-            ← Edit brief
+            ← Back
           </button>
           <div class="bp-cp-footer-r">
-            <p-button label="Cancel" styleClass="bp-btn-cancel"
-                      [disabled]="creating"
-                      (onClick)="close()"></p-button>
             <p-button styleClass="bp-btn-save"
                       [disabled]="creating"
-                      (onClick)="createProject()">
+                      (onClick)="goToConfirm()">
+              <ng-template pTemplate="content">
+                Continue →
+              </ng-template>
+            </p-button>
+          </div>
+        </ng-container>
+
+        <!-- CONFIRM footer: ← Back · Skip · Yes, recommend -->
+        <ng-container *ngIf="state === 'confirm'">
+          <button type="button" class="bp-cp-back" (click)="backToResults()"
+                  [disabled]="creating">
+            ← Back
+          </button>
+          <div class="bp-cp-footer-r">
+            <p-button label="Skip" styleClass="bp-btn-cancel"
+                      [disabled]="creating"
+                      (onClick)="createProject(false)"></p-button>
+            <p-button styleClass="bp-btn-save"
+                      [disabled]="creating"
+                      (onClick)="createProject(true)">
               <ng-template pTemplate="content">
                 <i *ngIf="creating" class="pi pi-spin pi-spinner" style="margin-right:6px"></i>
-                {{ creating ? 'Creating…' : 'Create project →' }}
+                <lucide-icon *ngIf="!creating" name="sparkles" [size]="13" style="margin-right:6px"></lucide-icon>
+                {{ creating ? 'Creating…' : 'Yes, recommend' }}
               </ng-template>
             </p-button>
           </div>
@@ -378,31 +467,81 @@ interface PendingCategory {
       color: var(--color-text-muted);
     }
 
+    /* ── Top row: ref chip + mode toggle ─────────────────────────────── */
+    .bp-cp-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+
+    /* v1.65f0 — segmented Upload / Write toggle. Same pill grammar as
+       the marketplace view-toggle (track + sliding active pill). The
+       active button picks up --theme-accent solid fill matching the
+       unified active-state rule across the app. */
+    .bp-cp-mode {
+      display: inline-flex;
+      padding: 3px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      gap: 2px;
+    }
+    .bp-cp-mode-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 12px;
+      border: none; background: transparent;
+      font-family: var(--font-body);
+      font-size: 11.5px; font-weight: 500;
+      color: var(--color-text-muted);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-cp-mode-btn:hover { color: var(--color-text-primary); }
+    .bp-cp-mode-btn.active {
+      background: var(--theme-accent);
+      color: var(--theme-contrast-soft, #fff);
+    }
+    .bp-cp-mode-btn.active:hover { color: var(--theme-contrast-soft, #fff); }
+
     /* ── Upload zone ─────────────────────────────────────────────────── */
+    /* v1.65f0 — upload card now occupies the same vertical real-estate
+       as the textarea below (240px min) so toggling between Upload and
+       Write doesn't reflow the dialog. Centred content; "has-file"
+       variant keeps the same height but switches to a row layout with
+       the filename + status pill. */
     .bp-cp-upload {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      padding: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+      padding: 24px;
+      min-height: 240px;
       border: 2px dashed var(--color-border);
       border-radius: 10px;
       background: var(--color-surface);
       color: var(--color-text-muted);
       cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
       text-align: center;
     }
     .bp-cp-upload:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
+      background: var(--theme-bg);
     }
     .bp-cp-upload.has-file {
-      padding: 10px 14px;
-      flex-direction: row;
-      justify-content: flex-start;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
     }
-    .bp-cp-upload-text { display: flex; flex-direction: column; gap: 1px; }
-    .bp-cp-upload-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
-    .bp-cp-upload-sub   { font-size: 11px; color: var(--color-text-muted); }
-    .bp-cp-upload-formats { display: flex; gap: 6px; margin-top: 4px; }
+    .bp-cp-upload-text { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+    .bp-cp-upload-title {
+      font-size: 15px; font-weight: 500;
+      color: var(--color-text-primary);
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-cp-upload-sub   { font-size: 11.5px; color: var(--color-text-muted); }
+    .bp-cp-upload-formats { display: flex; gap: 6px; margin-top: 6px; }
     .bp-cp-upload-fmt {
       font-size: 9px;
       padding: 2px 8px;
@@ -455,8 +594,48 @@ interface PendingCategory {
     }
     .bp-cp-or-line { flex: 1; height: 0.5px; background: var(--color-border); }
 
+    /* v1.65f0 — write-mode wrapper sits inside the same 240px envelope
+       as the upload card; the optional "from <file>" pill stacks above
+       the textarea and the textarea fills the rest of the space. */
+    .bp-cp-write {
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 240px;
+    }
+    .bp-cp-write-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      align-self: flex-start;
+      padding: 4px 10px 4px 8px;
+      background: var(--theme-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+    .bp-cp-write-pill lucide-icon { color: var(--theme-accent); }
+    .bp-cp-write-pill-x {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 0.5px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 8px;
+      margin-left: 2px;
+    }
+    .bp-cp-write-pill-x:hover {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
     .bp-cp-brief {
-      resize: vertical; min-height: 100px;
+      /* v1.65f0 — matches the Upload card height so toggling between
+         the two modes never reflows the dialog. flex:1 lets the
+         textarea consume the remaining space when the from-file pill
+         is present. Still vertically resizable past the floor. */
+      resize: vertical;
+      min-height: 240px;
+      flex: 1;
       line-height: 1.6;
     }
 
@@ -528,9 +707,35 @@ interface PendingCategory {
     .bp-cp-step {
       display: flex; align-items: center; gap: 6px;
       transition: color 0.2s;
+      opacity: 0.5;
+    }
+    .bp-cp-step.active, .bp-cp-step--active {
+      opacity: 1;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-step.active::before, .bp-cp-step--active::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--theme-accent);
+      animation: bp-cp-pulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
     }
     .bp-cp-step.done {
       color: var(--theme-accent);
+      opacity: 1;
+    }
+    .bp-cp-step.done::before {
+      content: '✓';
+      color: var(--theme-accent);
+      font-weight: 700;
+      width: 6px; height: 6px; line-height: 6px;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+    @keyframes bp-cp-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.85); }
+      50%      { opacity: 1;   transform: scale(1.1);  }
     }
 
     /* ── RESULTS state ───────────────────────────────────────────────── */
@@ -552,14 +757,159 @@ interface PendingCategory {
       color: var(--color-text-primary);
     }
     .bp-cp-hero-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+    /* v1.65p — chip now renders as "Label value" (no emoji). The label
+       sits left, semi-bold + uppercase eyebrow style; the value sits
+       right in the secondary text colour. */
     .bp-cp-chip {
+      display: inline-flex; align-items: center; gap: 6px;
       font-size: 11px;
       padding: 3px 10px;
       border-radius: 999px;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
-      color: var(--color-text-secondary);
+      color: var(--color-text-primary);
     }
+    .bp-cp-chip-l {
+      font-size: 9.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+    }
+
+    /* v1.65t — event-strip styles re-declared locally because Angular
+       view-encapsulation scopes .bp-event-* to the overview component.
+       Lifted verbatim from overview.component.ts and neutered for the
+       modal context (no hover lift, no pointer cursor since the
+       project doesn't exist yet, so the Event drawer can't open).
+       Eventually these should move to styles.css as a design-system
+       primitive — for now duplicated to fix the immediate render. */
+    .bp-cp-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px 20px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      cursor: default;
+    }
+    .bp-cp-strip .bp-event-cols {
+      display: grid;
+      grid-template-columns: minmax(96px, 0.5fr) minmax(140px, 1fr) minmax(140px, 1fr);
+      column-gap: 24px;
+      row-gap: 14px;
+      flex: 1;
+    }
+    .bp-cp-strip .bp-event-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .bp-cp-strip .bp-event-col--narrow { max-width: 140px; }
+    .bp-cp-strip .bp-event-eyebrow {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    .bp-cp-strip .bp-event-value {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--color-text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bp-cp-strip .bp-event-sub {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* v1.65r — KPI circles matching the project home Overview cards
+       (.bp-ov-kpis / .bp-ov-kpi-circle / .bp-ov-kpi-glyph /
+       .bp-ov-kpi-lab). Same metrics on the new-project review dialog
+       so the user sees a familiar pattern when they land. */
+    .bp-cp-kpis {
+      display: flex; justify-content: space-around; align-items: flex-start;
+      gap: 12px; padding: 4px 0;
+    }
+    .bp-cp-kpi {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; min-width: 60px;
+    }
+    .bp-cp-kpi-circle {
+      display: inline-grid; place-items: center;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      box-shadow: 0 0 0 0.5px var(--theme-border);
+      padding: 0 6px;
+    }
+    .bp-cp-kpi-glyph {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 18px; font-weight: 700; line-height: 1;
+      font-feature-settings: 'tnum' 1, 'lnum' 1;
+      white-space: nowrap;
+    }
+    /* v1.65s — Estimate variant: no circle chrome, just the number on
+       its own. The 52px circle was clipping money figures like £52,500.
+       Sits at roughly the same optical height as the circled glyphs so
+       the three KPIs still feel like a row. */
+    .bp-cp-kpi--wide { min-width: 96px; }
+    .bp-cp-kpi-figure {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 22px; font-weight: 700; line-height: 1;
+      color: var(--theme-accent);
+      font-feature-settings: 'tnum' 1, 'lnum' 1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding: 14px 0;
+    }
+    .bp-cp-kpi-lab {
+      font-family: var(--font-body);
+      font-size: 9px; font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+
+    /* v1.65p — confirm-recommend state: centred prompt with sparkles
+       icon, title, and a paragraph of context. */
+    .bp-cp-confirm {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 14px;
+      padding: 28px 24px;
+    }
+    .bp-cp-confirm-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bp-cp-confirm-title {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 500;
+      color: var(--color-text-primary);
+    }
+    .bp-cp-confirm-sub {
+      font-size: 13px; line-height: 1.55;
+      color: var(--color-text-secondary);
+      max-width: 420px;
+    }
+    .bp-cp-confirm-sub strong { color: var(--theme-accent); font-weight: 600; }
     .bp-cp-hero-ref {
       font-size: 11px;
       color: var(--color-text-secondary);
@@ -638,10 +988,7 @@ interface PendingCategory {
       font-size: 10.5px;
       color: var(--color-text-muted);
       line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      white-space: pre-wrap;
     }
     .bp-cp-cat-est {
       font-family: var(--font-display);
@@ -694,6 +1041,10 @@ export class CreateProjectModalComponent implements OnInit {
   state: ModalState = 'input';
 
   // INPUT
+  /** v1.65f0 — segmented toggle: 'upload' shows the drag/drop box,
+      'write' shows the textarea. After a successful upload we auto-flip
+      to 'write' so the user lands on the extracted text ready to edit. */
+  inputMode: 'upload' | 'write' = 'upload';
   form = { brief: '' };
   uploadedFile: File | null = null;
   /** True while POST /ai/extract-text is in flight. */
@@ -715,6 +1066,11 @@ export class CreateProjectModalComponent implements OnInit {
   aiResult: ParsedBrief | null = null;
   pendingCategories: PendingCategory[] = [];
   creating = false;
+  /** v1.65p — set by createProject(withRecommend). Read by finish() to
+      decide whether to add ?recommend=1 to the marketplace landing URL,
+      which makes the marketplace tab fire the AI matcher across every
+      briefed project_category on mount. */
+  private pendingRecommend = false;
 
   private categories: Category[] = [];
   private orgId = '';
@@ -786,6 +1142,7 @@ export class CreateProjectModalComponent implements OnInit {
   }
   reset() {
     this.state = 'input';
+    this.inputMode = 'upload';
     this.form = { brief: '' };
     this.uploadedFile = null;
     this.extracting = false;
@@ -813,10 +1170,49 @@ export class CreateProjectModalComponent implements OnInit {
     });
   }
 
+  /** v1.65r — dialog title swaps to the AI-derived project name on
+      results / confirm. Falls back to "New project" while we're still
+      gathering the brief. */
+  get headerTitle(): string {
+    if ((this.state === 'results' || this.state === 'confirm')
+        && this.aiResult?.projectName) {
+      return this.aiResult.projectName;
+    }
+    return 'New project';
+  }
+
+  /** v1.65ez — AI returns projectName as "Client — Event Type" (e.g.
+      "Nike — Employee Celebration Dinner") which is fine as the dialog
+      title and project name, but the EVENT NAME column displayed under
+      its own CLIENT column should drop the duplicate client prefix.
+      Strips "Client — " / "Client - " / "Client: " case-insensitively.
+      Used in the strip display + as the event_name field on create. */
+  get displayEventName(): string {
+    return this.stripClientPrefix(
+      this.aiResult?.projectName || '',
+      this.aiResult?.client || ''
+    );
+  }
+
+  private stripClientPrefix(projectName: string, client: string): string {
+    if (!projectName) return '';
+    if (!client) return projectName;
+    const c = client.trim();
+    if (!c) return projectName;
+    // Match "<client> <sep>" at the start where sep is em-dash, en-dash,
+    // hyphen-minus or colon, with optional surrounding spaces.
+    const escaped = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^\\s*${escaped}\\s*[—–\\-:]\\s*`, 'i');
+    const stripped = projectName.replace(re, '').trim();
+    return stripped || projectName;
+  }
+
   get subtitle(): string {
     if (this.state === 'input')   return 'Upload a brief or paste text — AI will do the rest';
     if (this.state === 'loading') return this.nextRef || '';
-    return 'Review AI results — remove categories before creating';
+    // v1.65r — empty on results / confirm so the title sits cleanly on
+    // its own. The body's hero card already carries the meta.
+    return '';
   }
 
   get canParse(): boolean {
@@ -827,11 +1223,22 @@ export class CreateProjectModalComponent implements OnInit {
   }
 
   // ── INPUT actions ─────────────────────────────────────────────────────
+  /** v1.65f0 — segmented toggle handler. Swaps between the upload card
+      and the textarea. Triggered by user click and auto-fired after
+      a successful file extract (so they see the parsed text). */
+  setMode(m: 'upload' | 'write') {
+    this.inputMode = m;
+    this.cdr.markForCheck();
+  }
+
   loadExample(key: string) {
     const ex = this.examples.find(e => e.key === key);
     if (!ex) return;
     this.form.brief = ex.text;
     this.uploadedFile = null;
+    // Example pills populate the textarea — flip to write mode so the
+    // user sees what got loaded rather than staring at the upload box.
+    this.inputMode = 'write';
     this.cdr.markForCheck();
   }
 
@@ -869,10 +1276,13 @@ export class CreateProjectModalComponent implements OnInit {
         this.extracting = false;
         this.form.brief = out.text || '';
         this.extractedChars = (out.text || '').length;
+        // v1.65f0 — flip to write so the user lands on the extracted
+        // text ready to clean up before Parse with AI.
+        this.inputMode = 'write';
         this.msg.add({
           severity: 'success',
           summary: `✓ Extracted ${this.extractedChars.toLocaleString()} characters from ${f.name}`,
-          detail: 'Review the text below, then Parse with AI.',
+          detail: 'Review the text, then Parse with AI.',
           life: 3500
         });
         this.cdr.markForCheck();
@@ -1004,6 +1414,14 @@ export class CreateProjectModalComponent implements OnInit {
   get activeCategoryCount(): number {
     return this.pendingCategories.filter(p => !p.removed).length;
   }
+  /** v1.65p — sum of midOfBand parsed budget estimates across the
+      active (non-removed) categories. Drives the "estimate" stat
+      shown next to category + question counts on the results screen. */
+  get totalEstimate(): number {
+    return this.pendingCategories
+      .filter(p => !p.removed)
+      .reduce((sum, p) => sum + (this.midOfBand(p.ai.budgetEstimate) || 0), 0);
+  }
   toggleRemove(i: number) {
     const p = this.pendingCategories[i];
     if (!p) return;
@@ -1016,8 +1434,23 @@ export class CreateProjectModalComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  createProject() {
+  /** v1.65p — Continue → confirm-recommend prompt. */
+  goToConfirm() {
+    this.errorMsg = '';
+    this.state = 'confirm';
+    this.cdr.markForCheck();
+  }
+  /** v1.65p — back from confirm → results (keep parsed data). */
+  backToResults() {
+    if (this.creating) return;
+    this.errorMsg = '';
+    this.state = 'results';
+    this.cdr.markForCheck();
+  }
+
+  createProject(withRecommend: boolean = false) {
     if (this.creating || !this.aiResult) return;
+    this.pendingRecommend = withRecommend;
     this.creating = true;
     this.errorMsg = '';
     this.cdr.markForCheck();
@@ -1044,7 +1477,11 @@ export class CreateProjectModalComponent implements OnInit {
       // advances orgs.ref_counter so subsequent previews stay correct.
       ref:            this.nextRef || undefined,
       name:           r.projectName || 'Untitled project',
-      event_name:     r.projectName,
+      // v1.65ez — event_name drops the duplicate client prefix
+      // ("Nike — Employee Celebration Dinner" → "Employee Celebration
+      // Dinner") because the Client field already carries it. The full
+      // joined name lives on `name` for breadcrumbs / titles.
+      event_name:     this.stripClientPrefix(r.projectName || '', r.client || ''),
       client_name:    r.client,
       venue_name:     r.location,
       venue_city:     r.city,
@@ -1125,7 +1562,19 @@ export class CreateProjectModalComponent implements OnInit {
     this.creating = false;
     this.projSvc.triggerRefresh();
     this.cpSvc.close();
-    this.router.navigate(['/projects', project.id], { queryParams: { tab: 'brief' } });
+    // v1.65p — land on the Marketplace tab so the user sees their new
+    // project's catalogue. If they asked for AI Recommend on the confirm
+    // step, pass ?recommend=1 — the Marketplace reads it on mount and
+    // fires the matcher across every briefed project_category. The Plan
+    // tab is still a click away; we used to land there but Marketplace
+    // is a better starting point now that the All view shows a Project
+    // Summary panel.
+    const queryParams = this.pendingRecommend ? { recommend: 1 } : {};
+    this.router.navigate(
+      ['/projects', project.id, 'marketplace'],
+      { queryParams }
+    );
+    this.pendingRecommend = false;
     this.msg.add({
       severity: 'success',
       summary: n > 0

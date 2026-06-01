@@ -33,7 +33,7 @@ const migrate = async () => {
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         name VARCHAR(255) NOT NULL,
         description TEXT,
-        type VARCHAR(20) NOT NULL CHECK (type IN ('agency', 'supplier')),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('agency', 'supplier', 'admin')),
         address TEXT,
         city VARCHAR(100),
         country VARCHAR(100),
@@ -326,6 +326,64 @@ const migrate = async () => {
       -- Shape: [{ url, sort_order, is_hero }]. image_url stays populated
       -- from images[0].url for backward compat on existing display surfaces.
       ALTER TABLE items ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]';
+
+      -- v1.65f2: project_items.quantity — buy count per cart row. Default
+      -- 1 so existing rows behave the same. Marketplace card + cart
+      -- drawer expose a stepper; ballpark recompute multiplies by it
+      -- IN ADDITION TO the per-head guest_count multiplier (so
+      --   10 platters × 250 guests × £6.25 → £15,625 reads correctly
+      --   for "qty × heads" billing, and a flat-unit item like
+      --   "AV crew per day" with qty=3 → 3 × £800 = £2,400).
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS quantity NUMERIC(10,2) DEFAULT 1;
+
+      -- v1.65fA: project_items is now the per-brief snapshot of the
+      -- catalogue item. Adding these columns means the agent can
+      -- tweak name / price / unit / description for THIS brief
+      -- without mutating the supplier's catalogue master row, and
+      -- ballpark recompute reads from the snapshot first.
+      -- items.id stays as the lineage pointer (where this snapshot
+      -- came from). Reads COALESCE(pi.<col>, i.<col>) so legacy rows
+      -- with NULL snapshot values still render the catalogue value.
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS name        VARCHAR(255);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS description TEXT;
+      -- v1.65fJ: image_url joins the snapshot set so the agent can
+      -- set a per-brief image without touching the catalogue master.
+      ALTER TABLE project_items ADD COLUMN IF NOT EXISTS image_url   TEXT;
+
+      -- v1.65fH: per-cart-item supplier roster. Records WHICH
+      -- suppliers will receive a quote request on this cart line
+      -- when the brief is sent. Defaults to {source supplier} on
+      -- cart-add (the catalogue item's org); the agent can untick
+      -- the source or tick alternates from elsewhere in the cart.
+      -- Ad-hoc items start empty and require ≥1 pick before Send.
+      CREATE TABLE IF NOT EXISTS project_item_suppliers (
+        project_item_id UUID NOT NULL REFERENCES project_items(id) ON DELETE CASCADE,
+        supplier_org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (project_item_id, supplier_org_id)
+      );
+      CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
+        ON project_item_suppliers(project_item_id);
+
+      -- v1.65fW: per-item per-side decision satellite. Each row is
+      -- a single accept / decline event from one side (buyer = agent,
+      -- seller = supplier), with the actor and an optional note.
+      -- Append-only; current state = latest row per (item, side).
+      -- Designed to extend to additional sides (approver / client)
+      -- without schema change.
+      CREATE TABLE IF NOT EXISTS message_item_decisions (
+        id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        message_item_id UUID NOT NULL REFERENCES message_items(id) ON DELETE CASCADE,
+        side            VARCHAR(20) NOT NULL,
+        decision        VARCHAR(20) NOT NULL,
+        user_id         UUID REFERENCES users(id),
+        note            TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ix_mid_latest
+        ON message_item_decisions(message_item_id, side, created_at DESC);
 
       -- Add image/config columns to categories
       ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;

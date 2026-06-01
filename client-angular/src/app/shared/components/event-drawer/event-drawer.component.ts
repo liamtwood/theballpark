@@ -1,6 +1,6 @@
 import {
-  Component, Input, Output, EventEmitter,
-  ChangeDetectionStrategy, ChangeDetectorRef, OnChanges, SimpleChanges
+  Component, OnInit, OnDestroy,
+  ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,22 +13,36 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideAngularModule, SquarePen, WandSparkles } from 'lucide-angular';
 
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 
-import { ProjectService } from '../../../../core/services/project.service';
-import { CodelistService } from '../../../../core/services/codelist.service';
-import { ClientService } from '../../../../core/services/client.service';
-import { CategoryService } from '../../../../core/services/category.service';
-import { AiService } from '../../../../core/services/ai.service';
-import { ApiService } from '../../../../core/services/api.service';
-import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../../models';
+import { ProjectService } from '../../../core/services/project.service';
+import { CodelistService } from '../../../core/services/codelist.service';
+import { ClientService } from '../../../core/services/client.service';
+import { CategoryService } from '../../../core/services/category.service';
+import { AiService } from '../../../core/services/ai.service';
+import { ApiService } from '../../../core/services/api.service';
+import {
+  EventDrawerService, EventDrawerSection
+} from '../../../core/services/event-drawer.service';
+import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../models';
 
 /**
- * Event drawer — v1.29b.
+ * Event drawer — v1.65o.
  *
- * Replaces the standalone /event tab. Opens from the Overview page's
- * event strip (and from the "⋯" menu on the strip). Mirrors the
- * Settings > Team "Member" drawer pattern exactly:
+ * v1.65o relocated this component from features/projects/components/ to
+ * shared/components/ and switched it from @Input-driven to
+ * service-driven. Mounted ONCE globally in app-shell, opened from any
+ * surface via `EventDrawerService.open(projectId, section?)`. Mirrors
+ * the established shared-drawer pattern (Outreach / Estimate / AddCategory).
+ *
+ * On a successful save the drawer re-fetches the project and pushes the
+ * fresh copy via `EventDrawerService.markSaved(p)`, so every subscriber
+ * (overview event strip, marketplace project-summary panel, etc.) can
+ * refresh local state without re-loading the page.
+ *
+ * Originally — v1.29b — replaced the standalone /event tab and opened
+ * from the Overview page's event strip (and from the "⋯" menu on the
+ * strip). Mirrors the Settings > Team "Member" drawer pattern exactly:
  *
  *   - p-sidebar position="right", styleClass="bp-drawer", 480px
  *   - parchment header — eyebrow + serif title + ✕ close
@@ -47,7 +61,7 @@ import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory }
  * git-history continuity; the field definitions + dropdown options here
  * are lifted directly from it.
  */
-type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
+type SectionKey = EventDrawerSection;
 
 @Component({
   selector: 'app-event-drawer',
@@ -63,14 +77,14 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     <p-sidebar [(visible)]="visible" position="right"
                styleClass="bp-drawer" [style]="{width:'480px'}"
                [showCloseIcon]="false"
-               (visibleChange)="visibleChange.emit($event)">
+               (visibleChange)="onVisibleChange($event)">
 
       <ng-template pTemplate="header">
         <div class="bp-drawer-header-row">
           <div class="bp-drawer-header">
             <span class="bp-drawer-label">
               PROJECT
-              <span *ngIf="project?.ref" class="bp-evd-ref-chip">{{ project?.ref }}</span>
+              <span *ngIf="project?.ref" class="bp-drawer-ref-chip">{{ project?.ref }}</span>
             </span>
             <div class="bp-drawer-title">Event details</div>
           </div>
@@ -110,10 +124,16 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
              Row 3: Venue | City
              Ref leads the section per request — Status sits to its right. -->
         <div class="bp-evd-row bp-evd-row--2">
+          <!-- v1.65g3 — "Ref" was ambiguous (form.po_ref is the
+               CLIENT's PO number, distinct from project.ref which
+               is the auto-generated agency ref shown in the chip
+               above). Renamed to "PO Ref" + null-safe view: a
+               literal string "null" used to fall through the
+               existing || em-dash guard. -->
           <div class="bp-evd-field">
-            <label class="bp-field-label">Ref</label>
+            <label class="bp-field-label">PO Ref</label>
             <input pInputText *ngIf="!editing.details"
-                   [value]="form.po_ref || '—'"
+                   [value]="poRefDisplay"
                    class="w-full bp-field-readonly" readonly/>
             <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.po_ref"
@@ -290,7 +310,12 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
         </div>
 
         <!-- ═══ SECTION 4: FINANCIALS ═══
-             No subtitle per spec. -->
+             No subtitle per spec.
+             v1.65g4 — hidden in view mode per UX request: agents
+             don't need to see budget / margins inline while glancing
+             at event details. The block stays in the template so we
+             can re-enable it later by flipping showLegacySections. -->
+        <ng-container *ngIf="showLegacySections">
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">FINANCIALS</span>
           <div class="bp-section-actions">
@@ -383,8 +408,14 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
             </div>
           </div>
         </div>
+        </ng-container><!-- /showLegacySections (FINANCIALS) -->
 
-        <!-- ═══ SECTION 5: PROJECT BRIEF ═══ -->
+        <!-- ═══ SECTION 5: PROJECT BRIEF ═══
+             v1.65g4 — hidden in view mode (same reasoning as
+             FINANCIALS above). Brief is still captured during the new
+             project flow; the event drawer just doesn't re-surface it
+             here. -->
+        <ng-container *ngIf="showLegacySections">
         <div class="bp-section-header bp-section-header--top">
           <span class="bp-section-title">PROJECT BRIEF</span>
           <div class="bp-section-actions">
@@ -434,6 +465,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
             </button>
           </div>
         </ng-container>
+        </ng-container><!-- /showLegacySections (PROJECT BRIEF) -->
 
       </div>
 
@@ -449,22 +481,9 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
   styles: [`
     :host { font-family: var(--font-body); }
 
-    /* v1.39g — auto-ref chip in the drawer header (next to "PROJECT"
-       eyebrow). Compact monospace-leaning style so the identifier
-       reads as data, not a label. */
-    .bp-evd-ref-chip {
-      display: inline-block;
-      margin-left: 6px;
-      padding: 1px 8px;
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      border-radius: 999px;
-      font-size: 10.5px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      color: var(--color-text-secondary);
-      vertical-align: middle;
-    }
+    /* v1.65cp — .bp-evd-ref-chip renamed + promoted to global
+       .bp-drawer-ref-chip so the estimate drawer reuses the same
+       header chip. See styles.css for the canonical rule. */
 
     /* Section spacing — first section sits flush under the header; the
        rest get a top divider via --top. */
@@ -527,28 +546,9 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     }
     :host ::ng-deep input[type="number"].p-inputtext { -moz-appearance: textfield; }
 
-    /* p-dropdown alignment — match text-input height/radius so dropdowns
-       line up with plain inputs in the same grid row. */
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown {
-      width: 100% !important;
-      height: 34px !important;
-      min-height: 34px !important;
-      border-radius: 6px !important;
-      border: 0.5px solid rgba(0,0,0,0.12) !important;
-      font-size: 13px !important;
-      align-items: center !important;
-    }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-label {
-      padding: 6px 11px !important;
-      font-size: 13px !important;
-      font-family: var(--font-body) !important;
-      line-height: 1.4 !important;
-    }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown .p-dropdown-trigger { width: 28px !important; }
-    :host ::ng-deep .bp-evd-dropdown.p-dropdown.p-focus {
-      border-color: var(--theme-accent) !important;
-      box-shadow: none !important;
-    }
+    /* v1.65ab — dropdowns inherit the unified calm style from styles.css
+       (.p-dropdown rules). Width 100% kept so they fill the field column. */
+    :host ::ng-deep .bp-evd-dropdown.p-dropdown { width: 100% !important; }
 
     /* Project brief — view mode prose + edit-mode textarea + parse pill. */
     .bp-evd-brief-view {
@@ -585,20 +585,23 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials' | 'brief';
     }
   `]
 })
-export class EventDrawerComponent implements OnChanges {
-  /** Project loaded by the parent (Overview). When this swaps, the
-      drawer re-syncs its form from the new instance. */
-  @Input() project: Project | null = null;
-  @Input() visible = false;
+export class EventDrawerComponent implements OnInit, OnDestroy {
+  /** Service-driven — the drawer fetches the project itself when
+      EventDrawerService.open(projectId) fires. No @Inputs / @Outputs. */
+  project: Project | null = null;
+  visible = false;
 
-  @Output() visibleChange = new EventEmitter<boolean>();
-  /** Fires after a successful save with the updated project. Parent
-      replaces its local copy so the Overview event strip reflects the
-      new values immediately. */
-  @Output() projectUpdated = new EventEmitter<Project>();
+  private sub?: Subscription;
 
   saving = false;
   form: Partial<Project> = {};
+  /** v1.65g4 — gate for the FINANCIALS + PROJECT BRIEF sections.
+      Hidden in view mode per UX request: agents don't need to see
+      budget/margins or the full brief inline while glancing at event
+      details. Flip to `true` to re-enable both sections (template
+      still references the same `editing.financials` / `editing.brief`
+      flags so the original save/cancel wiring is intact). */
+  showLegacySections = false;
   /** Per-section edit flags — only the touched section's fields go to
       the server on save. */
   editing = { details: false, type: false, logistics: false, financials: false, brief: false };
@@ -655,7 +658,8 @@ export class EventDrawerComponent implements OnChanges {
     private catSvc: CategoryService,
     private aiSvc: AiService,
     private msg: MessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private svc: EventDrawerService
   ) {
     this.codelistSvc.getByName('currency').subscribe(rows => {
       this.currencyOptions = rows || [];
@@ -681,15 +685,54 @@ export class EventDrawerComponent implements OnChanges {
     this.clientSvc.getAll().subscribe(rows => { this.clients = rows || []; });
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['project'] && this.project) {
-      this.syncForm(this.project);
-    }
+  ngOnInit(): void {
+    // v1.65o — service-driven. open(projectId, section?) fetches the
+    // project and surfaces the drawer; close() (or the sidebar close
+    // button) clears it. Optional `section` jumps straight into edit
+    // mode for that section (replaces the legacy openSection() call
+    // that the Overview kebab menu used).
+    this.sub = this.svc.request$.subscribe(req => {
+      if (!req) {
+        this.visible = false;
+        this.project = null;
+        this.cdr.markForCheck();
+        return;
+      }
+      this.projSvc.getById(req.projectId).subscribe({
+        next: p => {
+          this.project = p;
+          this.syncForm(p);
+          this.visible = true;
+          if (req.section) {
+            // Wait a frame so the section is rendered before flipping
+            // its edit flag (the pencil button needs to be in the DOM).
+            setTimeout(() => {
+              this.startEdit(req.section as SectionKey);
+              this.cdr.markForCheck();
+            }, 0);
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.msg.add({
+            severity: 'error', summary: 'Could not load project',
+            detail: 'Try refreshing the page.', life: 3000
+          });
+          this.svc.close();
+        }
+      });
+    });
   }
 
-  close() {
+  ngOnDestroy(): void { this.sub?.unsubscribe(); }
+
+  /** PrimeNG sidebar's two-way visible binding — only react on close,
+      since we control open via the service. */
+  onVisibleChange(open: boolean): void { if (!open) this.close(); }
+
+  close(): void {
     this.visible = false;
-    this.visibleChange.emit(false);
+    this.svc.close();
   }
 
   // ── Form sync ───────────────────────────────────────────────────────
@@ -716,6 +759,16 @@ export class EventDrawerComponent implements OnChanges {
       // resolves the code → status_id (see project.service.js).
       status_code:             (p as any).status_name || 'draft',
     } as any;
+  }
+
+  /** v1.65g3 — PO Ref display value. Treats both real null and the
+      literal string "null" (which legacy data sometimes stores)
+      as empty so the field shows "—". */
+  get poRefDisplay(): string {
+    const v = (this.form as any)?.po_ref;
+    if (v == null) return '—';
+    const s = String(v).trim();
+    return (s === '' || s.toLowerCase() === 'null') ? '—' : s;
   }
 
   /** v1.31: pill label resolved against the project_status codelist. */
@@ -773,7 +826,7 @@ export class EventDrawerComponent implements OnChanges {
               this.editing[section] = false;
               this.msg.add({ severity: 'success', summary: 'Saved ✓', life: 1500 });
               this.projSvc.triggerRefresh();
-              this.projectUpdated.emit(p);
+              this.svc.markSaved(p);
               this.cdr.markForCheck();
             },
             error: () => {
@@ -885,9 +938,11 @@ export class EventDrawerComponent implements OnChanges {
   }
 
   /** AI categoryId → DB catalogue category name. Mirrored exactly
-      from BriefComponent + CreateProjectModalComponent so all three
-      parse-brief paths upsert against the same catalogue rows.
-      v1.39f: added venues + photography rows. */
+      from CreateProjectModalComponent so both parse-brief paths
+      upsert against the same catalogue rows.
+      v1.39f: added venues + photography rows.
+      v1.65cg (p0005): BriefComponent removed from the mirror list —
+      the Plan/Brief tab was deleted along with this prompt. */
   private static readonly AI_CATEGORY_TO_DB: Record<string, string> = {
     'set-build':     'Stand Structure',
     'print':         'Graphics & Signage',

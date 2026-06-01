@@ -13,6 +13,10 @@ import { ProjectItemService } from '../../../../../../core/services/project-item
 import { CategoryService } from '../../../../../../core/services/category.service';
 import { SupplierService } from '../../../../../../core/services/supplier.service';
 import { OrgService } from '../../../../../../core/services/org.service';
+import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
+import { EventDrawerService } from '../../../../../../core/services/event-drawer.service';
+import { AddCategoryService } from '../../../../../../core/services/add-category.service';
+import { CartDrawerService } from '../../../../../../core/services/cart-drawer.service';
 import {
   Project, ProjectCategory, ProjectContext, CatalogueEntity, CategoryInfo,
   Item, ProjectItem
@@ -56,16 +60,16 @@ import {
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
-    <h2 *ngIf="!loading" class="bp-page-title">Marketplace</h2>
-    <div *ngIf="!loading" class="bp-page-divider"></div>
-
     <app-catalogue-grid *ngIf="!loading"
       [entities]="itemEntities"
+      [autoRecommend]="pendingRecommendOnLoad"
       [categories]="categories"
       entityType="item"
       entityLabel="item"
-      sectionTitle="CATALOGUE"
+      sectionTitle="RESULTS"
       actionLabel="View item"
+      detailSize="lg"
+      [showAdd]="true"
       [projectContext]="projectContext"
       [showEdit]="false"
       [showFavourite]="false"
@@ -87,7 +91,13 @@ import {
       (addToProject)="onAddToProject($event)"
       (removeFromProject)="onRemoveFromProject($event)"
       (briefUpdated)="onContextBriefUpdated($event)"
-      (openEstimate)="onOpenEstimate()">
+      (budgetUpdated)="onContextBudgetUpdated($event)"
+      (estimateUpdated)="onContextEstimateUpdated($event)"
+      (statusUpdated)="onContextStatusUpdated($event)"
+      (projectBudgetUpdated)="onProjectBudgetUpdated($event)"
+      (projectStatusUpdated)="onProjectStatusUpdated($event)"
+      (openEstimate)="onOpenEstimate()"
+      (addClicked)="onAddCategory()">
     </app-catalogue-grid>
 
     <!-- Item drawer — view (read-only) and edit (own-org items only).
@@ -115,6 +125,13 @@ export class MarketplaceComponent implements OnInit {
   projectContext: ProjectContext | null = null;
   categories: CategoryInfo[] = [];
   itemEntities: CatalogueEntity[] = [];
+
+  /** v1.65q — flipped true when the marketplace was opened with
+      ?recommend=1 (the create-project flow's "Yes, recommend" path).
+      Bound straight into <app-catalogue-grid [autoRecommend]="...">;
+      the grid fires its own recommendItems() once projectContext lands.
+      Template-bound, so left public. */
+  pendingRecommendOnLoad = false;
 
   /** Raw item rows from the supplier API — keyed by id for fast lookup
       when the detail panel emits view/edit and we need the full Item to
@@ -151,6 +168,10 @@ export class MarketplaceComponent implements OnInit {
     private categorySvc: CategoryService,
     private supplierSvc: SupplierService,
     private orgSvc: OrgService,
+    private estimateDrawer: EstimateDrawerService,
+    private eventDrawer: EventDrawerService,
+    private addCategorySvc: AddCategoryService,
+    private cartDrawerSvc: CartDrawerService,
     private msg: MessageService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -165,6 +186,58 @@ export class MarketplaceComponent implements OnInit {
     }
     this.projectId = pid;
     if (!pid) { this.loading = false; return; }
+
+    // v1.65p — read ?recommend=1 from the URL (set by the create-project
+    // modal's "Yes, recommend" path). We fire the AI matcher across all
+    // briefed project_categories after the forkJoin resolves so the
+    // catalogue-grid is mounted and projectContext is populated.
+    // v1.65f5 — strip the query param immediately after reading it.
+    // Without this strip, a hard page refresh re-mounts the marketplace
+    // with the recommend=1 still in the URL, which re-fires the
+    // (expensive, billable) AI matcher across every category every
+    // time the user hits ⌘R. replaceUrl:true means we don't pollute
+    // the back-stack with the recommend-triggering URL either.
+    this.pendingRecommendOnLoad = this.route.snapshot.queryParamMap.get('recommend') === '1';
+    if (this.pendingRecommendOnLoad) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { recommend: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+
+    // v1.65b — when a category is added via the shared drawer, refresh.
+    this.addCategorySvc.added$.subscribe(({ projectId }) => {
+      if (projectId !== this.projectId) return;
+      this.refreshProjectCategories();
+    });
+
+    // v1.65o — when the Event drawer saves, swap in the fresh project so
+    // the catalogue's Project Summary panel reflects the new values
+    // (ref, client, event name, guests, date, venue, brief).
+    this.eventDrawer.saved$.subscribe(p => {
+      if (p && p.id === this.projectId) {
+        this.project = p;
+        this.rebuildContext();
+        this.cdr.detectChanges();
+      }
+    });
+
+    // v1.65ab — when the cart drawer mutates project_items (remove or
+    // promote), refresh the local cart cache so cards + cart badge stay
+    // in sync.
+    this.cartDrawerSvc.changed$.subscribe(({ projectId }) => {
+      if (projectId !== this.projectId) return;
+      this.refreshCart();
+      // v1.65g3 — also refetch project_categories so the
+      // per-category Estimate field (ballpark_cost, recomputed
+      // server-side on every cart mutation) updates live in the
+      // context panel. Was only refreshing the cart list before,
+      // which left the Estimate value stale until the user
+      // navigated away and back.
+      this.refreshProjectCategories();
+    });
 
     forkJoin({
       project:    this.projectSvc.getById(pid),
@@ -201,6 +274,10 @@ export class MarketplaceComponent implements OnInit {
         this.rebuildContext();
         this.loading = false;
         this.cdr.detectChanges();
+        // v1.65q — pendingRecommendOnLoad is bound through to the grid
+        // via [autoRecommend]; the grid fires recommendItems() itself
+        // on the next ngOnChanges once projectContext is set. No more
+        // race against ViewChild population.
       },
       error: () => { this.loading = false; this.cdr.detectChanges(); }
     });
@@ -356,21 +433,72 @@ export class MarketplaceComponent implements OnInit {
       new requirement_brief on project_categories. Same endpoint the
       Brief tab uses. */
   onContextBriefUpdated(e: { categoryId: string; brief: string }) {
-    this.projectSvc.upsertCategory(this.projectId, e.categoryId, { requirement_brief: e.brief }).subscribe({
+    this.persistCategoryPatch(e.categoryId, { requirement_brief: e.brief }, 'Brief');
+  }
+  /** v1.65w — inline category edits (budget / estimate / status) from
+      the category-context-panel all funnel through upsertCategory with
+      a single field patch. Same toast feedback as the brief edit. */
+  onContextBudgetUpdated(e: { categoryId: string; ballpark_budget: number | null }) {
+    this.persistCategoryPatch(e.categoryId, { ballpark_budget: e.ballpark_budget }, 'Budget');
+  }
+  onContextEstimateUpdated(e: { categoryId: string; ballpark_cost: number | null }) {
+    this.persistCategoryPatch(e.categoryId, { ballpark_cost: e.ballpark_cost }, 'Estimate');
+  }
+  onContextStatusUpdated(e: { categoryId: string; status_code: string }) {
+    this.persistCategoryPatch(e.categoryId, { status_code: e.status_code }, 'Status');
+  }
+  private persistCategoryPatch(catId: string, patch: any, label: string) {
+    this.projectSvc.upsertCategory(this.projectId, catId, patch).subscribe({
       next: () => {
         this.refreshProjectCategories();
-        this.msg.add({ severity: 'success', summary: 'Brief saved', life: 1500 });
+        this.msg.add({ severity: 'success', summary: `${label} saved`, life: 1500 });
       },
       error: () => {
-        this.msg.add({ severity: 'error', summary: 'Save failed', life: 3000 });
+        this.msg.add({ severity: 'error', summary: `${label} save failed`, life: 3000 });
       }
     });
   }
 
-  /** "Open estimate →" link in the panel footer → route to the
-      Build/Estimate tab. Post-v1.18b that's /estimate. */
+  /** v1.65ch — project-level inline edits from the catalogue-grid
+      "All" view (Project Summary panel). Same toast pattern as the
+      per-category edits, but PUTs the project row directly. */
+  onProjectBudgetUpdated(project_budget: number | null) {
+    this.persistProjectPatch({ project_budget }, 'Budget');
+  }
+  onProjectStatusUpdated(status_code: string) {
+    this.persistProjectPatch({ status_code }, 'Status');
+  }
+  private persistProjectPatch(patch: any, label: string) {
+    if (!this.projectId) return;
+    this.projectSvc.update(this.projectId, patch).subscribe({
+      next: (updated) => {
+        if (updated) this.project = updated;
+        this.rebuildContext();
+        this.cdr.detectChanges();
+        this.msg.add({ severity: 'success', summary: `${label} saved`, life: 1500 });
+      },
+      error: () => {
+        this.msg.add({ severity: 'error', summary: `${label} save failed`, life: 3000 });
+      }
+    });
+  }
+
+  /** "Open estimate →" link in the panel footer → v1.64 opens the
+      shared Estimate drawer (was: routed to the Estimate tab). */
   onOpenEstimate() {
-    this.router.navigate(['/projects', this.projectId, 'estimate']);
+    if (this.projectId) this.estimateDrawer.open(this.projectId);
+  }
+
+  /** v1.65b — trailing "+" pseudo-circle in the marketplace category
+      strip. Fetches unused catalogue categories and opens the shared
+      AddCategoryService drawer. */
+  onAddCategory() {
+    if (!this.projectId) return;
+    this.categorySvc.getAll('catalogue').subscribe(all => {
+      const used = new Set(this.projectCategories.map(p => p.category_id));
+      const unused = (all || []).filter((c: any) => !c.parent_id && !used.has(c.id));
+      this.addCategorySvc.open(this.projectId, unused);
+    });
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -386,7 +514,11 @@ export class MarketplaceComponent implements OnInit {
     this.projectContext = {
       projectId: this.projectId,
       projectBrief: this.project?.raw_brief_text || '',
-      projectCategories: this.projectCategories
+      projectCategories: this.projectCategories,
+      // v1.65o — surface the full project so the catalogue's "All" view
+      // can render the Project Summary details strip (REF / CLIENT /
+      // EVENT NAME / GUESTS / DATE / VENUE).
+      project: this.project || undefined
     };
   }
 

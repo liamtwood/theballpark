@@ -21,9 +21,20 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     pathMatch: 'full'
   },
   {
-    // Brief tab — In Scope picker (split out of the original Brief tab).
+    // v1.65cg (p0005) — Plan tab removed. AI matching (Recommend
+    // button + ?recommend=1 auto-fire) and per-category brief editing
+    // both live on the Marketplace now, so /plan and /brief redirect
+    // there. BriefComponent was deleted at the same time.
+    path: 'plan',
+    redirectTo: 'marketplace',
+    pathMatch: 'full'
+  },
+  {
+    // Backward compat: anyone with a saved /brief link lands on the
+    // Marketplace (was previously chained through /plan).
     path: 'brief',
-    loadComponent: () => import('./tabs/brief/brief.component').then(m => m.BriefComponent)
+    redirectTo: 'marketplace',
+    pathMatch: 'full'
   },
   {
     // Marketplace tab (v1.18) — catalogue-grid browse in project context.

@@ -38,6 +38,89 @@ export class ProjectItemService {
     );
   }
 
+  /** v1.65fI — promote an ad-hoc ask into a real cart line. Server
+      creates the items row (agency-owned, pending) + project_items
+      row atomically so the new ask renders in the SELECTED list
+      and can be edited like a catalogue line.
+
+      categoryId is the CATALOGUE categories.id (e.g. Catering's id)
+      from cart-drawer.contextCategoryId. Server resolves it to a
+      project_categories.id for the FK. */
+  addAdhoc(
+    projectId: string,
+    name: string,
+    categoryId?: string
+  ): Observable<ProjectItem> {
+    return this.api.post<ProjectItem>('/project-items/adhoc', {
+      project_id: projectId,
+      category_id: categoryId ?? null,
+      name,
+    }).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
+  /** v1.65f2 — update buy quantity on a cart row. Server clamps to a
+      minimum of 1; pass an integer >= 1 here. Triggers a ballpark
+      recompute server-side, so the Estimate / Overview panels see
+      fresh numbers on next read. */
+  setQuantity(projectId: string, itemId: string, quantity: number): Observable<ProjectItem> {
+    return this.api.patch<ProjectItem>(`/project-items/${projectId}/${itemId}`, { quantity }).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
+  /** v1.65fA — partial snapshot update. Pass any subset of
+      { name, base_price, unit, description, quantity } — only the
+      provided keys are written. Edits go to the project_items
+      SNAPSHOT row, not the catalogue master, so the agent can tweak
+      "Sit-Down Dinner" for this brief without changing Rocket
+      Food's catalogue. Ballpark recompute fires server-side when
+      base_price / unit / quantity change. */
+  update(
+    projectId: string,
+    itemId: string,
+    patch: Partial<Pick<ProjectItem, 'name' | 'base_price' | 'unit' | 'description' | 'quantity' | 'image_url'>>
+  ): Observable<ProjectItem> {
+    return this.api.patch<ProjectItem>(`/project-items/${projectId}/${itemId}`, patch).pipe(
+      tap(row => this.upsertCache(projectId, row))
+    );
+  }
+
+  /** v1.65f2 — synchronous quantity read against the cache.
+      Defaults to 1 if the row hasn't been fetched yet or no quantity
+      was set, mirroring the DB DEFAULT. */
+  getQuantity(projectId: string, itemId: string): number {
+    const row = this.cache.get(projectId)?.find(p => p.item_id === itemId);
+    const q = Number(row?.quantity);
+    return Number.isFinite(q) && q > 0 ? q : 1;
+  }
+
+  /** v1.65fH — tick a supplier for a cart line. Returns the new
+      roster. Cache is updated in place. */
+  addItemSupplier(projectId: string, itemId: string, supplierOrgId: string): Observable<{ supplier_org_ids: string[] }> {
+    return this.api.post<{ supplier_org_ids: string[] }>(
+      `/project-items/${projectId}/${itemId}/suppliers`,
+      { supplier_org_id: supplierOrgId }
+    ).pipe(
+      tap(res => this.patchCacheRoster(projectId, itemId, res.supplier_org_ids))
+    );
+  }
+  /** v1.65fH — untick a supplier. */
+  removeItemSupplier(projectId: string, itemId: string, supplierOrgId: string): Observable<{ supplier_org_ids: string[] }> {
+    return this.api.delete<{ supplier_org_ids: string[] }>(
+      `/project-items/${projectId}/${itemId}/suppliers/${supplierOrgId}`
+    ).pipe(
+      tap(res => this.patchCacheRoster(projectId, itemId, res.supplier_org_ids))
+    );
+  }
+  private patchCacheRoster(projectId: string, itemId: string, list: string[]): void {
+    const arr = this.cache.get(projectId);
+    if (!arr) return;
+    const row = arr.find(p => p.item_id === itemId);
+    if (row) (row as any).asked_supplier_ids = list || [];
+  }
+
   remove(projectId: string, itemId: string): Observable<ProjectItem> {
     return this.api.delete<ProjectItem>(`/project-items/${projectId}/${itemId}`).pipe(
       tap(() => this.removeFromCache(projectId, itemId))

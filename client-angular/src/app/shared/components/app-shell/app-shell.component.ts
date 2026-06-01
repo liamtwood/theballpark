@@ -10,11 +10,27 @@ import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { PersonaService } from '../../../core/services/persona.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 import { TemplateRef } from '@angular/core';
 import {
   CreateProjectModalComponent
 } from '../../../features/projects/components/create-project-modal/create-project-modal.component';
+import {
+  OutreachComposeComponent
+} from '../outreach-compose/outreach-compose.component';
+import {
+  EstimateDrawerComponent
+} from '../estimate-drawer/estimate-drawer.component';
+import {
+  AddCategoryDrawerComponent
+} from '../add-category-drawer/add-category-drawer.component';
+import {
+  EventDrawerComponent
+} from '../event-drawer/event-drawer.component';
+import {
+  CartDrawerComponent
+} from '../cart-drawer/cart-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -22,11 +38,34 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
-    <div class="bp-hero" *ngIf="!hideHero">
+    <!-- v1.65dh — heroVariant='calm' switches to the dashboard/settings
+         treatment: parchment fill, no orbs/grain (even in Bold mode),
+         calm underline tabs. -->
+    <div class="bp-hero" *ngIf="!hideHero"
+         [class.bp-hero--calm]="heroVariant === 'calm'">
+
+      <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
+           grain overlay sit behind hero content. Always present in the
+           DOM; styles.css hides them outside [data-mode="bold"] so
+           light + dark heroes are untouched. Same recipe as
+           welcome.component.ts. -->
+      <svg class="bp-hero-orbs" viewBox="0 0 800 300"
+           preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <filter id="bp-hero-orb-blur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="55"/>
+          </filter>
+        </defs>
+        <g filter="url(#bp-hero-orb-blur)">
+          <circle cx="75" cy="40" r="165" fill="var(--theme-contrast)"/>
+          <circle cx="755" cy="290" r="190" fill="var(--theme-contrast)"/>
+        </g>
+      </svg>
+      <div class="bp-hero-grain" aria-hidden="true"></div>
 
       <!-- Optional left-aligned back link, vertically centred in the hero.
            Pages opt-in via shellCtx.set({ back: { label, onBack } }).
@@ -91,16 +130,22 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <!-- SUB -->
       <p class="bp-hero-page-label">{{ heroSub }}</p>
 
-      <!-- TABS -->
-      <div class="bp-hero-tabs" *ngIf="navMode === 'tabs' && activeTabs.length > 0">
-        <button *ngFor="let tab of activeTabs"
-          class="bp-hero-tab"
-          [class.active]="isTabActive(tab)"
-          (click)="onTabClick(tab)">
-          {{ tab.label }}
-          <!-- v1.24: notification badge — only when tab.badge > 0. -->
-          <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
-        </button>
+      <!-- v1.65bh — TAB BAND moved BACK inside .bp-hero so it
+           shares the hero's parchment (or accent in bold) fill. The
+           band itself has no background — it inherits visually from
+           its hero parent. Tabs are centred. -->
+      <div class="bp-hero-tab-band"
+           *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+        <div class="bp-hero-tabs">
+          <button *ngFor="let tab of activeTabs"
+            class="bp-hero-tab"
+            [class.active]="isTabActive(tab)"
+            (click)="onTabClick(tab)">
+            {{ tab.label }}
+            <!-- v1.24: notification badge — only when tab.badge > 0. -->
+            <span *ngIf="tab.badge && tab.badge > 0" class="bp-hero-tab-badge">{{ tab.badge }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -148,6 +193,33 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     <!-- v1.30: single shared "+ New project" intake modal. Every
          entry point in the app opens it via CreateProjectService.open(). -->
     <app-create-project-modal></app-create-project-modal>
+
+    <!-- v1.50: single shared competitive-quote outreach drawer. Opened
+         from the Brief tab, project marketplace and item detail via
+         OutreachService.open(). -->
+    <app-outreach-compose></app-outreach-compose>
+
+    <!-- v1.64: single shared Estimate drawer. Opened from project home,
+         Overview, Brief col-1 card and Marketplace via
+         EstimateDrawerService.open(projectId). -->
+    <app-estimate-drawer></app-estimate-drawer>
+
+    <!-- v1.65b: single shared "Add category" drawer. Opened from the
+         Plan tab and the project Marketplace via
+         AddCategoryService.open(projectId, unusedCategories). -->
+    <app-add-category-drawer></app-add-category-drawer>
+
+    <!-- v1.65o: single shared Event drawer (project details + brief).
+         Opened from Overview event strip, the project Marketplace
+         summary panel, and any future surface via
+         EventDrawerService.open(projectId, section?). -->
+    <app-event-drawer></app-event-drawer>
+
+    <!-- v1.65ab: single shared "Project Items" cart drawer. Opened from
+         the project Marketplace cart icon via
+         CartDrawerService.open(projectId). Shows selected + wishlist
+         project_items with a description tooltip on hover. -->
+    <app-cart-drawer></app-cart-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -161,6 +233,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       left: var(--section-pad, 28px);
       top: 50%;
       transform: translateY(-50%);
+      /* v1.65ds — z-index: 3 explicitly so the back link still sits
+         above the orbs/grain. The .bp-hero direct-child layering
+         rule below excludes .bp-hero-back (because that rule forces
+         position:relative which clobbers our absolute positioning),
+         so the back link needs to lift itself manually. */
+      z-index: 3;
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -169,7 +247,9 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       font-size: 12px;
       font-weight: 500;
-      color: var(--theme-accent);
+      /* v1.65bs — back link on the accent-filled hero needs to be
+         white for contrast. */
+      color: var(--color-surface);
       padding: 4px 0;
       white-space: nowrap;
     }
@@ -256,8 +336,33 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     }
 
     /* v1.22: hero band gets a hairline separator to mark the
-       boundary between header and KPI strip / body. */
-    .bp-hero { border-bottom: var(--border-hairline); }
+       boundary between header and KPI strip / body.
+       v1.65bb — hairline removed. Tabs now carry their own outline so
+       a separator above them creates a double-line effect with the
+       tab's top border. Hero + tab band share parchment fill, so
+       removing the divider lets the tabs read as "stuck into" the
+       hero region. */
+    .bp-hero {
+      position: relative;
+    }
+
+    /* p0003 — Bold-mode hero rules live in global styles.css (the
+       [data-mode="bold"] attribute is set on document.documentElement,
+       which is outside this component's scope). Hero stays
+       position:relative here so the global rules' absolute-positioned
+       orb / grain elements anchor correctly in light + dark modes too.
+
+       v1.65ds — exclude .bp-hero-back from the layering rule. It needs
+       to stay position:absolute (pinned to the left edge); the rule was
+       force-overriding it to relative, dropping it into the centred
+       flow of the hero. Z-index is set manually on .bp-hero-back so it
+       still sits above orbs/grain. */
+    .bp-hero-orbs,
+    .bp-hero-grain { display: none; }
+    .bp-hero > *:not(.bp-hero-orbs):not(.bp-hero-grain):not(.bp-hero-back) {
+      position: relative;
+      z-index: 3;
+    }
 
     /* v1.24: notification badge on tabs. Red circle, white text,
        positioned inline after the tab label. Used by the project
@@ -301,6 +406,16 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
     .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
+    /* v1.65an — paint the scroll viewport with the page ground so the
+       empty area below the 3-col body doesn't reveal white.
+       v1.65bp — reverted to --theme-bg parchment (was --theme-contrast-soft
+       green). Cat + search panels are contained white cards on the
+       parchment ground. */
+    .bp-shell-content:has(app-catalogue-grid),
+    .bp-shell-content:has(app-messages-inbox),
+    .bp-shell-content:has(app-project-detail) {
+      background: var(--theme-bg);
+    }
 
     /* ── SIDE NAV ── */
     .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }
@@ -323,6 +438,11 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   pageLabel    = '';
   hideHero     = false;
+  /** v1.65dh — route-data flag for a calm, non-Bold hero treatment
+      (used by the dashboard + settings surfaces per p0013-followup).
+      'calm' = light parchment fill, no orbs/grain even in Bold mode,
+      calm-underline tabs. Default = the existing Bold-aware hero. */
+  heroVariant: 'default' | 'calm' = 'default';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -334,16 +454,31 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
-    // v1.23c: title-case the role so "admin" renders as "Admin" in
-    // the pill. The DB column stores it lowercase ('owner' / 'admin'
-    // / 'member') — only the display is capitalised.
-    if (this.showUserName && this.userName) {
-      const role = this.userRole
-        ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
-        : '';
-      pills.push(role ? `${this.userName} · ${role}` : this.userName);
+    // v1.65e2 (p0015) — prefer the active persona's name + role over
+    // the legacy users[0] lookup. Persona is the source of truth for
+    // who is "viewing" — in dev/admin sessions it swaps via the
+    // switcher dropdown; in production it reflects the real user.
+    // The legacy userName / userRole pathway stays as a fallback for
+    // any code path that runs before PersonaService initialises.
+    if (this.showUserName) {
+      const p = this.personaSvc.active;
+      if (p) {
+        pills.push(p.role ? `${p.name} · ${p.role}` : p.name);
+      } else if (this.userName) {
+        const role = this.userRole
+          ? this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1)
+          : '';
+        pills.push(role ? `${this.userName} · ${role}` : this.userName);
+      }
     }
-    if (this.showLocation && this.orgCity)  pills.push(this.orgCity);
+    // v1.65e2 — location pill prefers persona.location (lets each
+    // persona carry its own city; Beth admin has no city, so the
+    // pill simply hides for her). Falls back to orgCity for legacy.
+    if (this.showLocation) {
+      const personaLoc = this.personaSvc.active?.location;
+      const loc = personaLoc || this.orgCity;
+      if (loc) pills.push(loc);
+    }
     return pills;
   }
   get activeTabs(): ShellTab[] { return this.ctx?.tabs?.length ? this.ctx.tabs : this.routeTabs; }
@@ -444,6 +579,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private shellCtx: ShellContextService,
     private configStripSvc: ConfigStripService,
     private msg: MessageService,
+    public  personaSvc: PersonaService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -527,6 +663,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
+    // v1.65e2 (p0015) — re-render the hero pills whenever the active
+    // persona flips. heroPills getter reads PersonaService.active, so
+    // the change detection cycle picks up the new name/role/location
+    // without any direct binding.
+    this.personaSvc.active$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.detectChanges();
+    });
+
     // v1.23f: track the lifted config-strip slot. Pages that pushed
     // a TemplateRef render their strip here (above bp-shell-body);
     // pages still on the inline <app-config-strip> pattern leave
@@ -593,6 +737,8 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.pageLabel  = data['pageLabel'];
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
+        // v1.65dh — heroVariant flag plumbed through route data.
+        this.heroVariant = (data['heroVariant'] === 'calm') ? 'calm' : 'default';
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero

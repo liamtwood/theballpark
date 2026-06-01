@@ -1,26 +1,144 @@
 /**
- * Routes for TaxonomyService — v1.41.
+ * Routes for TaxonomyService.
  *
  * Mounted at /api/taxonomy (see server/src/index.js).
- *   POST /suggest-subcategory  body: { itemId }
- *   POST /backfill             body: { categoryId? } — admin path
+ *
+ * v1.43 — AI classification + pending-suggestion workflow:
+ *   POST /classify              body: { itemId }
+ *   POST /apply-classification  body: { itemId, category_id, subcategory_id, tag_ids[] }
+ *   POST /dismiss-classification body: { itemId }
+ *   GET  /dimensions?category_id=...
+ *
+ * v1.41 — subcategory helpers:
+ *   POST /suggest-subcategory   body: { itemId }
+ *   POST /backfill              body: { categoryId? } — admin path
  */
 const router = require('express').Router();
 const TaxonomyService = require('../services/taxonomy.service');
 
+// ── v1.43 — full-taxonomy AI classification ────────────────────────────
+router.post('/classify', async (req, res, next) => {
+  try {
+    const { itemId } = req.body || {};
+    res.json(await TaxonomyService.classifyItem(itemId));
+  } catch (err) { next(err); }
+});
+
+router.post('/apply-classification', async (req, res, next) => {
+  try {
+    const { itemId, category_id, subcategory_id, tag_ids } = req.body || {};
+    const out = await TaxonomyService.applyClassification(itemId, {
+      category_id, subcategory_id, tag_ids
+    });
+    res.json(out);
+  } catch (err) { next(err); }
+});
+
+router.post('/dismiss-classification', async (req, res, next) => {
+  try {
+    const { itemId } = req.body || {};
+    res.json(await TaxonomyService.dismissClassification(itemId));
+  } catch (err) { next(err); }
+});
+
+// Replace an item's structured tags (item drawer Index tab).
+router.post('/item-tags', async (req, res, next) => {
+  try {
+    const { itemId, tag_ids } = req.body || {};
+    res.json(await TaxonomyService.setItemTags(itemId, tag_ids));
+  } catch (err) { next(err); }
+});
+
+router.get('/dimensions', async (req, res, next) => {
+  try {
+    if (!req.query.category_id) {
+      return res.status(400).json({ error: 'category_id required' });
+    }
+    res.json(await TaxonomyService.getDimensions(req.query.category_id));
+  } catch (err) { next(err); }
+});
+
+// ── v1.49 — suppliers in a category (category card + sidebar filter).
+//   category_id optional: omitted = every supplier with active items.
+router.get('/category-suppliers', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.categorySuppliers(req.query.category_id || null));
+  } catch (err) { next(err); }
+});
+
+// Event-type values aggregated across categories (the "All" view filter).
+router.get('/event-types', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.eventTypes());
+  } catch (err) { next(err); }
+});
+
+// ── v1.46 — Brief-tab item matching ────────────────────────────────────
+router.post('/match-items', async (req, res, next) => {
+  try {
+    const { brief, categoryId, budgetEstimate, projectId } = req.body || {};
+    res.json(await TaxonomyService.matchItems(brief, categoryId, budgetEstimate, projectId));
+  } catch (err) { next(err); }
+});
+
+router.post('/add-match', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.addMatchToProject(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+// v1.54 — un-add a Brief-tab match. body: { project_id, category_id, item_id }
+router.post('/remove-match', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.removeMatchFromProject(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+router.post('/search-hint', async (req, res, next) => {
+  try {
+    const { projectId, categoryId, searchTerms, userHint } = req.body || {};
+    res.json(await TaxonomyService.saveSearchHint(projectId, categoryId, searchTerms, userHint));
+  } catch (err) { next(err); }
+});
+
+// ── v1.50 — competitive quote outreach (RFQ, Phase 1) ──────────────────
+//   POST /request-quotes  body: { project_id, category_id,
+//     project_category_id?, requirements[], supplier_ids[], user_id? }
+//   GET  /quote-requests?projectId=...
+router.post('/request-quotes', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.requestQuotes(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+router.get('/quote-requests', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.listProjectQuoteRequests(req.query.projectId));
+  } catch (err) { next(err); }
+});
+
+// v1.52e — promote an AI-proposed brief item to a real (inactive,
+// approval-pending) catalogue row so it can be edited / viewed.
+//   POST /materialize-proposed  body: { supplier_id, category_id,
+//     name, description?, estimated_price? }
+router.post('/materialize-proposed', async (req, res, next) => {
+  try {
+    res.json(await TaxonomyService.materializeProposedItem(req.body || {}));
+  } catch (err) { next(err); }
+});
+
+// ── v1.41 — subcategory-only helpers ───────────────────────────────────
 router.post('/suggest-subcategory', async (req, res, next) => {
   try {
     const { itemId } = req.body || {};
-    const out = await TaxonomyService.suggestSubcategory(itemId);
-    res.json(out);
+    res.json(await TaxonomyService.suggestSubcategory(itemId));
   } catch (err) { next(err); }
 });
 
 router.post('/backfill', async (req, res, next) => {
   try {
     const { categoryId } = req.body || {};
-    const out = await TaxonomyService.backfillSubcategories(categoryId);
-    res.json(out);
+    res.json(await TaxonomyService.backfillSubcategories(categoryId));
   } catch (err) { next(err); }
 });
 

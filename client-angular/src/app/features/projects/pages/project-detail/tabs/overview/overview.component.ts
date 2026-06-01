@@ -1,6 +1,6 @@
 import {
   Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef,
-  ViewChild, HostListener
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -11,6 +11,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../../../../core/services/project.service';
 import { ProjectItemService } from '../../../../../../core/services/project-item.service';
 import { EstimateItemService } from '../../../../../../core/services/estimate-item.service';
+import { EstimateDrawerService } from '../../../../../../core/services/estimate-drawer.service';
 import { MessageService } from '../../../../../../core/services/message.service';
 import { ClientService } from '../../../../../../core/services/client.service';
 import {
@@ -20,7 +21,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 import { EventDatePipe } from '../../../../../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../../../../../shared/pipes/compact-currency.pipe';
 import { GbpPipe } from '../../../../../../shared/pipes/gbp.pipe';
-import { EventDrawerComponent } from '../../../../components/event-drawer/event-drawer.component';
+import { EventDrawerService } from '../../../../../../core/services/event-drawer.service';
 
 /**
  * v1.24 — Project Overview tab.
@@ -93,7 +94,6 @@ interface MessagesSummary {
   imports: [
     CommonModule, LucideAngularModule, LoadingSpinnerComponent,
     EventDatePipe, CompactCurrencyPipe, GbpPipe,
-    EventDrawerComponent
   ],
   template: `
     <app-loading *ngIf="loading"></app-loading>
@@ -101,8 +101,9 @@ interface MessagesSummary {
     <ng-container *ngIf="!loading && project">
       <div class="bp-overview">
 
-        <h2 class="bp-page-title">Project Overview</h2>
-        <div class="bp-page-divider"></div>
+        <!-- v1.65bx — page title removed; the hero already carries the
+             event identity, so a second "Project Overview" h2 was
+             redundant chrome. -->
 
         <!-- ── EVENT STRIP ──────────────────────────────────────
              v1.39j: now a 2-row × 3-col grid.
@@ -110,95 +111,87 @@ interface MessagesSummary {
                Row 2: GUESTS | DATE | VENUE
              All values render at the same font size — the
              value--num variant was retired so the user's eye doesn't
-             jump between numeric + label values. -->
+             jump between numeric + label values.
+             v1.65ck — EVENT DETAILS header bar added on top, reusing
+             the .bp-ov-head + .bp-ov-label primitives from the
+             BRIEF / MARKETPLACE / ESTIMATE / MESSAGES cards below
+             so the four containers read as one family. -->
         <div class="bp-event-strip" (click)="openEventDrawer()">
-          <div class="bp-event-cols">
-            <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
-            <div class="bp-event-col bp-event-col--narrow">
-              <span class="bp-event-eyebrow">REF</span>
-              <span class="bp-event-value">{{ project.ref || '—' }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">CLIENT</span>
-              <span class="bp-event-value">{{ project.client_name || '—' }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">EVENT NAME</span>
-              <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
-            </div>
-
-            <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
-            <div class="bp-event-col bp-event-col--narrow">
-              <span class="bp-event-eyebrow">GUESTS</span>
-              <span class="bp-event-value">{{ guestCount || '—' }}</span>
-              <span class="bp-event-sub">{{ guestSub }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">DATE</span>
-              <span class="bp-event-value">{{ datePrimary || '—' }}</span>
-              <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
-              <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
-            </div>
-            <div class="bp-event-col">
-              <span class="bp-event-eyebrow">VENUE</span>
-              <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
-              <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
-            </div>
+          <div class="bp-ov-head">
+            <span class="bp-ov-label">EVENT DETAILS</span>
           </div>
-          <div class="bp-event-actions">
-            <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
-            <!-- "⋯" kebab — same UI as the dashboard project card menu.
-                 stopPropagation on the button + the menu so clicks inside
-                 don't bubble to the strip's open handler. -->
-            <button type="button"
-                    class="bp-event-menu-btn"
-                    (click)="toggleEventMenu($event)"
-                    title="More actions">⋯</button>
-            <div *ngIf="eventMenuOpen"
-                 class="bp-event-menu"
-                 (click)="$event.stopPropagation()">
-              <button type="button" class="bp-event-menu-item"
-                      (click)="onEventMenu('edit', $event)">Edit event</button>
-              <button type="button" class="bp-event-menu-item"
-                      (click)="onEventMenu('brief', $event)">Project brief</button>
+          <div class="bp-event-strip-body">
+            <div class="bp-event-cols">
+              <!-- ROW 1 — REF (narrow) | CLIENT | EVENT NAME -->
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">REF</span>
+                <span class="bp-event-value">{{ project.ref || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">CLIENT</span>
+                <span class="bp-event-value">{{ project.client_name || '—' }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">EVENT NAME</span>
+                <span class="bp-event-value">{{ project.event_name || project.name || '—' }}</span>
+              </div>
+
+              <!-- ROW 2 — GUESTS (narrow) | DATE (+duration sub) | VENUE -->
+              <div class="bp-event-col bp-event-col--narrow">
+                <span class="bp-event-eyebrow">GUESTS</span>
+                <span class="bp-event-value">{{ guestCount || '—' }}</span>
+                <span class="bp-event-sub">{{ guestSub }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">DATE</span>
+                <span class="bp-event-value">{{ datePrimary || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="durationLabel">{{ durationLabel }}</span>
+                <span class="bp-event-sub" *ngIf="!durationLabel && dateRelative">{{ dateRelative }}</span>
+              </div>
+              <div class="bp-event-col">
+                <span class="bp-event-eyebrow">VENUE</span>
+                <span class="bp-event-value">{{ project.venue_name || '—' }}</span>
+                <span class="bp-event-sub" *ngIf="project.venue_city">{{ project.venue_city }}</span>
+              </div>
+            </div>
+            <div class="bp-event-actions">
+              <span *ngIf="runSheetPending" class="bp-event-badge">Run sheet pending</span>
+              <!-- "⋯" kebab — same UI as the dashboard project card menu.
+                   stopPropagation on the button + the menu so clicks inside
+                   don't bubble to the strip's open handler. -->
+              <button type="button"
+                      class="bp-event-menu-btn"
+                      (click)="toggleEventMenu($event)"
+                      title="More actions">⋯</button>
+              <div *ngIf="eventMenuOpen"
+                   class="bp-event-menu"
+                   (click)="$event.stopPropagation()">
+                <button type="button" class="bp-event-menu-item"
+                        (click)="onEventMenu('edit', $event)">Edit event</button>
+                <button type="button" class="bp-event-menu-item"
+                        (click)="onEventMenu('brief', $event)">Project brief</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
-             v1.39j: moved BELOW the event strip per Liam — reads more
-             naturally as "here are the facts, here are the open
-             questions". Same data (parsed_brief_json.topQuestions).
-             Hidden entirely when there are no questions. -->
-        <div *ngIf="questions.length" class="bp-questions-panel">
-          <button type="button" class="bp-questions-toggle"
-                  (click)="questionsOpen = !questionsOpen">
-            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
-            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
-            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
-          </button>
-          <ul class="bp-questions-list" *ngIf="questionsOpen">
-            <li *ngFor="let q of questions" class="bp-question">
-              <span class="bp-q-marker">?</span>
-              <span class="bp-q-text">{{ q }}</span>
-            </li>
-          </ul>
-        </div>
+        <!-- v1.65bx — Questions panel relocated to BELOW the 2×2 card
+             grid (the grid leads with BRIEF). The order now reads:
+             event facts → KPI cards → open questions. -->
 
-        <!-- v1.29: shared Event drawer — same instance reused on every
-             open. projectUpdated rehydrates the local copy so the strip
-             above updates immediately on save. -->
-        <app-event-drawer #eventDrawer
-          [project]="project"
-          [(visible)]="eventDrawerVisible"
-          (projectUpdated)="onProjectUpdated($event)">
-        </app-event-drawer>
+        <!-- v1.65o — Event drawer is now mounted globally in app-shell
+             and opened via EventDrawerService.open(projectId, section?).
+             We subscribe to .saved$ in this component to keep the event
+             strip + KPI cards in sync after a save. -->
 
         <!-- ── 2×2 CARD GRID ───────────────────────────────────── -->
         <div class="bp-overview-grid">
 
           <!-- BRIEF CARD -->
-          <div class="bp-ov-card" (click)="goTo('brief')">
+          <!-- v1.65cg (p0005) — Plan tab removed; the BRIEF card now
+               opens directly on the Marketplace where per-category
+               briefs are edited. -->
+          <div class="bp-ov-card" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">BRIEF</span>
               <span class="bp-ov-status" *ngIf="brief.total > 0">{{ briefPct }}%</span>
@@ -297,8 +290,9 @@ interface MessagesSummary {
             </div>
           </div>
 
-          <!-- ESTIMATE CARD -->
-          <div class="bp-ov-card" (click)="goTo('estimate')">
+          <!-- ESTIMATE CARD — v1.64: opens the shared Estimate drawer
+               (was: route navigation to the Estimate tab). -->
+          <div class="bp-ov-card" (click)="openEstimate()">
             <div class="bp-ov-head">
               <span class="bp-ov-label">ESTIMATE</span>
               <span class="bp-ov-status" *ngIf="estimateStatus">{{ estimateStatus }}</span>
@@ -425,6 +419,25 @@ interface MessagesSummary {
           </div>
 
         </div>
+
+        <!-- ── QUESTIONS PANEL ──────────────────────────────────────
+             v1.65bx: now sits BELOW the 2×2 card grid (was above the
+             grid). White fill so it reads as a discrete section
+             rather than a parchment band. Same data + interaction. -->
+        <div *ngIf="questions.length" class="bp-questions-panel">
+          <button type="button" class="bp-questions-toggle"
+                  (click)="questionsOpen = !questionsOpen">
+            <lucide-icon name="circle-help" [size]="13"></lucide-icon>
+            {{ questions.length }} question{{ questions.length === 1 ? '' : 's' }} to resolve
+            <lucide-icon [name]="questionsOpen ? 'chevron-down' : 'chevron-right'" [size]="13"></lucide-icon>
+          </button>
+          <ul class="bp-questions-list" *ngIf="questionsOpen">
+            <li *ngFor="let q of questions" class="bp-question">
+              <span class="bp-q-marker">?</span>
+              <span class="bp-q-text">{{ q }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </ng-container>
   `,
@@ -445,18 +458,34 @@ interface MessagesSummary {
     }
 
     /* ── EVENT STRIP ─────────────────────────────────────────── */
+    /* v1.65ck — strip is now a vertical card: EVENT DETAILS header
+       on top + .bp-event-strip-body underneath (was a single
+       horizontal flex). The body keeps the original 6-col grid +
+       actions layout. */
     .bp-event-strip {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      padding: 16px 20px;
+      flex-direction: column;
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-xs);
       cursor: pointer;
       transition: box-shadow 150ms ease;
+    }
+    .bp-event-strip-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px 20px;
+    }
+    /* v1.65ck — header bar reuses .bp-ov-head from the KPI cards.
+       Round its top corners to match the card so the accent fill
+       doesn't bleed past the radius (no overflow:hidden needed on
+       the parent — would clip the kebab dropdown). */
+    .bp-event-strip .bp-ov-head {
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
     }
     /* v1.29c: dropped the translateY on hover — the transform property
        creates a stacking context which trapped the kebab dropdown
@@ -486,15 +515,18 @@ interface MessagesSummary {
        grid track, so this is mostly a hint for future use (e.g. nested
        grids) — kept as a marker class. */
     .bp-event-col--narrow { max-width: 140px; }
-    /* v1.39j — Questions panel below the event strip. Parchment
-       container, theme-accent eyebrow + chevron. */
+    /* v1.65bx — Questions panel now sits below the 2×2 card grid.
+       White surface (was parchment --theme-bg) so the panel reads
+       as a discrete section like the cards above it. Theme-accent
+       eyebrow + chevron unchanged. */
     .bp-questions-panel {
       margin-top: 16px;
       margin-bottom: 16px;
       padding: 10px 14px;
-      background: var(--theme-bg);
-      border: 0.5px solid var(--color-border);
-      border-radius: 8px;
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
     }
     .bp-questions-toggle {
       display: inline-flex; align-items: center; gap: 8px;
@@ -959,11 +991,8 @@ export class OverviewComponent implements OnInit {
   questions: string[] = [];
   questionsOpen = true;
 
-  /** v1.29: Event drawer state — opened by clicking the event strip. */
-  eventDrawerVisible = false;
   /** v1.29b: Kebab menu (Edit event / Project brief) on the event strip. */
   eventMenuOpen = false;
-  @ViewChild('eventDrawer') eventDrawerRef?: any;
 
   // Derived summaries — populated by recompute() once data lands.
   brief: BriefSummary = { total: 0, written: 0, toWrite: 0, missing: [], updated: null };
@@ -983,6 +1012,8 @@ export class OverviewComponent implements OnInit {
     private projSvc: ProjectService,
     private projItemSvc: ProjectItemService,
     private estItemSvc: EstimateItemService,
+    private estimateDrawer: EstimateDrawerService,
+    private eventDrawer: EventDrawerService,
     private msgSvc: MessageService,
     private clientSvc: ClientService,
     private cdr: ChangeDetectorRef
@@ -996,6 +1027,17 @@ export class OverviewComponent implements OnInit {
     this.pid = match?.[1] || this.route.parent?.snapshot.paramMap.get('id') || '';
 
     if (!this.pid) { this.loading = false; this.cdr.markForCheck(); return; }
+
+    // v1.65o — re-hydrate from the shared EventDrawerService whenever the
+    // user saves changes. Replaces the old (projectUpdated) Output that
+    // came back from the locally-mounted drawer.
+    this.eventDrawer.saved$.subscribe(p => {
+      if (p && p.id === this.pid) {
+        this.project = p;
+        this.recompute();
+        this.cdr.markForCheck();
+      }
+    });
 
     forkJoin({
       project:    this.projSvc.getById(this.pid).pipe(catchError(() => of(null))),
@@ -1043,12 +1085,20 @@ export class OverviewComponent implements OnInit {
 
   // v1.29: 'event' is no longer a routable tab — the event strip
   // opens the drawer instead. Other tabs still route normally.
-  goTo(tab: 'brief' | 'marketplace' | 'estimate' | 'messages') {
+  // v1.65cg (p0005) — 'plan' and 'brief' removed from the type; both
+  // slugs still redirect to /marketplace at the route level, so any
+  // stragglers wouldn't break anyway.
+  goTo(tab: 'marketplace' | 'estimate' | 'messages') {
     this.router.navigate([`/projects/${this.pid}/${tab}`]);
   }
 
+  /** v1.64 — Estimate is no longer a tab; click opens the shared drawer. */
+  openEstimate(): void {
+    if (this.pid) this.estimateDrawer.open(this.pid);
+  }
+
   openEventDrawer() {
-    this.eventDrawerVisible = true;
+    if (this.pid) this.eventDrawer.open(this.pid);
     this.eventMenuOpen = false;
     this.cdr.markForCheck();
   }
@@ -1067,13 +1117,11 @@ export class OverviewComponent implements OnInit {
   onEventMenu(action: 'edit' | 'brief', ev: MouseEvent) {
     ev.stopPropagation();
     this.eventMenuOpen = false;
-    this.eventDrawerVisible = true;
-    // Wait a frame so the drawer mounts before we drive its edit state.
-    setTimeout(() => {
+    if (this.pid) {
       const section = action === 'brief' ? 'brief' : 'details';
-      this.eventDrawerRef?.openSection?.(section);
-      this.cdr.markForCheck();
-    }, 0);
+      // v1.65o — service handles loading + section jump in one call.
+      this.eventDrawer.open(this.pid, section);
+    }
     this.cdr.markForCheck();
   }
 
@@ -1086,14 +1134,8 @@ export class OverviewComponent implements OnInit {
     }
   }
 
-  /** Save handler from <app-event-drawer>. Replaces the local project
-      copy and recomputes derived summaries so the event strip + KPI
-      cards reflect the new values without a full reload. */
-  onProjectUpdated(p: Project) {
-    this.project = p;
-    this.recompute();
-    this.cdr.markForCheck();
-  }
+  /* v1.65o — onProjectUpdated removed; EventDrawerService.saved$ now
+      delivers the fresh project to ngOnInit (above). */
 
   // ── DERIVATIONS ──────────────────────────────────────────────
 

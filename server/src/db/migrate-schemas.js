@@ -596,38 +596,10 @@ const migrate = async () => {
          WHERE name = 'Photography' AND namespace = 'catalogue' AND parent_id IS NULL
       );
 
-      -- v1.40: three new catalogue categories required by the full
-      -- subcategory taxonomy.
-      --   Set Build         — scenic, dressing, theming (distinct
-      --                       from Stand Structure which is the
-      --                       physical build)
-      --   Event Accessories — red carpets, gift bags, lanyards,
-      --                       scent design, etc.
-      --   Other             — PM fees, contingency, design fees and
-      --                       other admin lines that don't fit a
-      --                       supplier category.
-      INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM public.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-      INSERT INTO preview.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM preview.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-      INSERT INTO master.categories (name, description, icon, sort_order, namespace, parent_id)
-      SELECT 'Set Build', 'Scenic painting, props, theming, set dressing and window displays.',
-             'Paintbrush', 13, 'catalogue', NULL
-      WHERE NOT EXISTS (
-        SELECT 1 FROM master.categories
-         WHERE name = 'Set Build' AND namespace = 'catalogue' AND parent_id IS NULL
-      );
-
+      -- v1.42: "Set Build" was retired here — the Taxonomy v2 migration
+      -- (migrate-taxonomy-v2.js) merges it into Stand Structure. Only
+      -- Event Accessories + Other remain as standalone v2 categories;
+      -- both are seeded below (idempotent WHERE NOT EXISTS).
       INSERT INTO public.categories (name, description, icon, sort_order, namespace, parent_id)
       SELECT 'Event Accessories', 'Red carpets, gift bags, lanyards, table dressing, scent design and other event accessories.',
              'Sparkles', 14, 'catalogue', NULL
@@ -673,41 +645,33 @@ const migrate = async () => {
       );
     `);
 
-    // v1.40: ensure tag table exists in preview + master. It was
-    // created in public via a one-off migration (migration_category_tags
-    // .sql) but never carried across. Mirror the public schema exactly
-    // so the same INSERTs below work uniformly.
-    for (const schema of ['preview', 'master']) {
+    // v1.42: ensure the tag table exists in all 3 schemas with the v2
+    // shape — a `dimension` column and UNIQUE(category_id, dimension,
+    // label) so values like "Both"/"Yes" can recur across dimensions.
+    // The actual taxonomy + tag VALUES are seeded by
+    // migrate-taxonomy-v2.js (run per schema after this script).
+    for (const schema of ['public', 'preview', 'master']) {
       await client.query(`
         CREATE TABLE IF NOT EXISTS ${schema}.tag (
           id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           category_id UUID NOT NULL REFERENCES ${schema}.categories(id) ON DELETE CASCADE,
+          dimension   VARCHAR(50),
           label       TEXT NOT NULL,
           sort_order  INTEGER NOT NULL DEFAULT 0,
           created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_category_id_label_key
-          ON ${schema}.tag (category_id, label);
+        ALTER TABLE ${schema}.tag ADD COLUMN IF NOT EXISTS dimension VARCHAR(50);
+        CREATE UNIQUE INDEX IF NOT EXISTS ${schema}_tag_cat_dim_label_key
+          ON ${schema}.tag (category_id, dimension, label);
       `);
     }
 
-    // v1.40: seed the complete subcategory taxonomy. ~140 tags across
-    // 17 catalogue groupings. Idempotent — `ON CONFLICT (category_id,
-    // label) DO NOTHING` thanks to the unique constraint on
-    // (category_id, label). Lookup is by category name so the same
-    // SQL works across public/preview/master (UUIDs differ per schema).
-    //
-    // Mapping decisions (Liam, v1.40 brief):
-    //   - "Set Build" → new category (NOT Stand Structure)
-    //   - "Talent & Staffing" tags → existing "Staffing" (no rename)
-    //   - "Photography & Content" tags → existing "Photography"
-    //   - "Event Accessories" → new category
-    //   - "Venues" tags → existing "Venue" (singular)
-    //   - "Other" → new category
-    //   - Construction & Build left as-is (its 5 existing tags untouched)
-    //
-    // No dedupe — if a label already exists with slight variation
-    // (e.g. "Outdoor Structures" vs "Outdoor Structure") both stay.
+    // ─────────────────────────────────────────────────────────────────
+    // SUPERSEDED (v1.42) — the v1.40 taxonomy array below is kept for
+    // history only. It is NOT executed: the loops that consumed it were
+    // removed when Taxonomy v2 landed. The live taxonomy is defined in
+    // FINAL_TAXONOMY_v2.md and seeded by migrate-taxonomy-v2.js.
+    // ─────────────────────────────────────────────────────────────────
     const TAXONOMY = [
       // Stand Structure
       ['Stand Structure', 'Shell Scheme', 1],
@@ -876,68 +840,23 @@ const migrate = async () => {
       ['Other', 'Travel & Accommodation', 5],
       ['Other', 'Miscellaneous', 6],
     ];
-    // Render the VALUES list once. Single-quotes need doubling for SQL.
-    const valuesSql = TAXONOMY
-      .map(([cat, label, ord]) => `(${"'"}${cat.replace(/'/g, "''")}${"'"}, ${"'"}${label.replace(/'/g, "''")}${"'"}, ${ord})`)
-      .join(',\n        ');
-    for (const schema of ['public', 'preview', 'master']) {
-      await client.query(`
-        WITH src(cat_name, label, sort_order) AS (
-          VALUES
-            ${valuesSql}
-        )
-        INSERT INTO ${schema}.tag (category_id, label, sort_order)
-        SELECT c.id, src.label, src.sort_order
-          FROM src
-          JOIN ${schema}.categories c
-            ON c.name = src.cat_name
-           AND c.namespace = 'catalogue'
-           AND c.parent_id IS NULL
-        ON CONFLICT (category_id, label) DO NOTHING;
-      `);
-    }
+    void TAXONOMY; // referenced only by the superseded loops removed below.
+
+    // v1.42 — the v1.40 tag seed + v1.41 child-category promotion that
+    // used the TAXONOMY array above are REMOVED. They seeded the old
+    // (pre-v2) taxonomy and the old tag shape, and the
+    // `ON CONFLICT (category_id,label)` they relied on no longer exists
+    // (the constraint moved to (category_id,dimension,label)). The
+    // canonical v2 taxonomy + tag dimensions are seeded by
+    // migrate-taxonomy-v2.js, run per schema after this script.
     console.log('  items columns ensured (time_unit, derived_from_id, parent_item_id, attributes, images).');
     console.log('  estimate_items drift reconciled (drop unit + is_active; add shortlisted + status_id).');
     console.log('  estimate_items v1.13 columns ensured (offer_price + 9 deal/approval fields).');
     console.log('  project_items table + unique index ensured.');
     console.log('  orgs.auto_publish_items ensured.');
     console.log('  orgs.ref_prefix + ref_counter and projects.ref ensured (v1.39).');
-    console.log('  Photography catalogue category ensured (v1.39f).');
-    console.log('  Set Build / Event Accessories / Other catalogue categories ensured (v1.40).');
-    console.log(`  Subcategory taxonomy seeded — ${TAXONOMY.length} tags × 3 schemas (v1.40).`);
-
-    // ─────────────────────────────────────────────────────────────────
-    // v1.41 — promote the TAXONOMY labels into CHILD CATEGORY rows so
-    // the categories table is the canonical subcategory source (the
-    // two-field model on items uses categories.parent_id, not the tag
-    // table). Tag table stays seeded for a future use.
-    //
-    // Idempotent: only inserts labels that don't already exist as a
-    // child of the same parent. Preserves the 27 existing Catering
-    // children (Working Lunch, Canapes, etc.) — they coexist with
-    // the new ones from the taxonomy.
-    // ─────────────────────────────────────────────────────────────────
-    for (const schema of ['public', 'preview', 'master']) {
-      await client.query(`
-        WITH src(cat_name, label, sort_order) AS (
-          VALUES
-            ${valuesSql}
-        )
-        INSERT INTO ${schema}.categories (name, parent_id, sort_order, namespace, icon, icon_name)
-        SELECT src.label, p.id, src.sort_order, 'catalogue', NULL, NULL
-          FROM src
-          JOIN ${schema}.categories p
-            ON p.name = src.cat_name
-           AND p.namespace = 'catalogue'
-           AND p.parent_id IS NULL
-         WHERE NOT EXISTS (
-            SELECT 1 FROM ${schema}.categories c
-             WHERE c.name = src.label
-               AND c.parent_id = p.id
-         );
-      `);
-    }
-    console.log('  Child categories promoted from taxonomy (v1.41).');
+    console.log('  Photography / Event Accessories / Other catalogue categories ensured.');
+    console.log('  tag table (v2 shape) ensured — taxonomy seeded separately by migrate-taxonomy-v2.js.');
 
     // ─────────────────────────────────────────────────────────────────
     // v1.41 — two-field subcategory model on items.
@@ -997,6 +916,219 @@ const migrate = async () => {
       `);
     }
     console.log('  items.subcategory_id column ensured + 15 items migrated + trg_check_item_subcategory installed (v1.41).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.43 — Taxonomy v2 Part 2: AI classification + pending suggestions.
+    //   items.pending_classification JSONB — the latest unaccepted AI
+    //     classification suggestion ({category, subcategory, tags,
+    //     confidence}); NULL once the supplier accepts or skips it.
+    //   supplier_item_tag                  — junction items ↔ tag, the
+    //     structured (dimension-scoped) tag system. Eventually replaces
+    //     the legacy free-text items.tags[] (migrated in Part 3).
+    //   trg_check_item_tag_category        — rejects a junction row whose
+    //     tag.category_id ≠ item.category_id (mirrors the subcategory
+    //     trigger; this constraint drove the Option-A decision to
+    //     duplicate the event-type dimension across categories).
+    // All additive + IF NOT EXISTS — safe to re-run on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    await client.query(`
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS pending_classification JSONB;
+    `);
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.supplier_item_tag (
+          id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          item_id    UUID NOT NULL REFERENCES ${schema}.items(id) ON DELETE CASCADE,
+          tag_id     UUID NOT NULL REFERENCES ${schema}.tag(id)   ON DELETE CASCADE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          UNIQUE (item_id, tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS ${schema}_supplier_item_tag_item_idx
+          ON ${schema}.supplier_item_tag (item_id);
+        CREATE INDEX IF NOT EXISTS ${schema}_supplier_item_tag_tag_idx
+          ON ${schema}.supplier_item_tag (tag_id);
+
+        CREATE OR REPLACE FUNCTION ${schema}.check_item_tag_category()
+        RETURNS TRIGGER AS $body$
+        DECLARE
+          tag_cat  UUID;
+          item_cat UUID;
+        BEGIN
+          SELECT category_id INTO tag_cat  FROM ${schema}.tag   WHERE id = NEW.tag_id;
+          SELECT category_id INTO item_cat FROM ${schema}.items WHERE id = NEW.item_id;
+          IF tag_cat IS DISTINCT FROM item_cat THEN
+            RAISE EXCEPTION 'Tag % (category %) does not match item % (category %)',
+              NEW.tag_id, tag_cat, NEW.item_id, item_cat;
+          END IF;
+          RETURN NEW;
+        END;
+        $body$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trg_check_item_tag_category ON ${schema}.supplier_item_tag;
+        CREATE TRIGGER trg_check_item_tag_category
+          BEFORE INSERT OR UPDATE ON ${schema}.supplier_item_tag
+          FOR EACH ROW EXECUTE FUNCTION ${schema}.check_item_tag_category();
+      `);
+    }
+    console.log('  items.pending_classification + supplier_item_tag table + trg_check_item_tag_category installed (v1.43).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.46 — Part 3 Brief tab: AI item matching.
+    //   project_items.source           — 'catalogue' | 'ai_proposed'
+    //   project_items.ai_confidence    — 1-10 score from the matcher
+    //   project_items.ai_match_reason  — one-line rationale
+    //   project_items.ai_estimated_price — AI price for proposed items
+    //   ai_search_hints                — captures the AI's search terms
+    //     + the user's "I'd have looked for…" hint (training data).
+    // All additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'catalogue';
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_confidence INTEGER;
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_match_reason TEXT;
+        ALTER TABLE ${schema}.project_items ADD COLUMN IF NOT EXISTS ai_estimated_price NUMERIC(12,2);
+
+        CREATE TABLE IF NOT EXISTS ${schema}.ai_search_hints (
+          id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          project_id      UUID REFERENCES ${schema}.projects(id) ON DELETE CASCADE,
+          category_id     UUID REFERENCES ${schema}.categories(id),
+          ai_search_terms TEXT[],
+          user_hint       TEXT,
+          created_at      TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+    }
+    console.log('  project_items AI-match columns + ai_search_hints table installed (v1.46).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.48 — refreshed user-facing descriptions for the 15 v2 catalogue
+    // parent categories. The old seed copy predated Taxonomy v2 and was
+    // inconsistent with it (e.g. Lighting still claimed "electrical
+    // distribution", which is now AV's). Idempotent — plain UPDATE on name.
+    // ─────────────────────────────────────────────────────────────────
+    const CATEGORY_DESCRIPTIONS = {
+      'Stand Structure':       'Exhibition stands, custom builds and the trades behind them — joinery, metalwork, scenic finishes, flooring and install.',
+      'Lighting':              'Lighting design and fixtures — architectural wash, feature spots, uplighting, moving heads, festoon, neon and ambient effects.',
+      'AV & Technology':       'Sound, screens and show technology — PA, LED walls, projection, interactive, streaming, connectivity, rigging and power.',
+      'Furniture & Fixtures':  'Hired furniture and display units — seating, tables, lounge sets, bars, plinths, shelving and reception desks.',
+      'Catering':              'Food and drink — canapés, bowl food, buffets, street food, live stations, sampling, desserts, bars and coffee.',
+      'Florals':               'Event floristry and botanical installations — centrepieces, arches, hanging features, feature walls, greenery and bouquets.',
+      'Graphics & Signage':    'Printed and branded materials — banners, wayfinding, vinyl, large-format print, portable displays, stationery and merchandise.',
+      'Staffing':              'Event crew and talent — producers, brand ambassadors, hospitality, technical crew, specialists and multilingual staff.',
+      'Health & Safety':       'Risk, compliance and safety services — RAMS, insurance, fire and first-aid cover, crowd management, certification and permits.',
+      'Logistics & Transport': 'Moving and supporting the event — transport, crew, storage, temporary power, water, waste, freight and traffic.',
+      'Entertainment':         'Live performance and hosted experiences — bands, DJs, hosts, speakers, performers, interactive and roaming acts.',
+      'Photography':           'Capture and content — event photography, videography, drone, social content, photo booths and immersive capture.',
+      'Event Accessories':     'The finishing touches — red carpet, gift bags, lanyards, linen, glassware hire, branded uniforms, pyro and scent.',
+      'Venue':                 'Spaces to hire — exhibition centres, hotels, museums, outdoor sites, warehouses, restaurants and unique venues.',
+      'Other':                 'Agency line items — project management and design fees, contingency, client hospitality, travel and site surveys.'
+    };
+    for (const schema of ['public', 'preview', 'master']) {
+      for (const [name, desc] of Object.entries(CATEGORY_DESCRIPTIONS)) {
+        await client.query(
+          `UPDATE ${schema}.categories SET description = $1
+            WHERE name = $2 AND parent_id IS NULL AND namespace = 'catalogue'`,
+          [desc, name]
+        );
+      }
+    }
+    console.log('  v2 category descriptions refreshed on all schemas (v1.48).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.49e — Brief tab: persist the AI "Find items" result so it
+    // re-displays after the user navigates away. match_result_json holds
+    // the full matcher payload plus the brief text it was searched
+    // against (used to decide when "Find again" should re-enable),
+    // keyed by the project_categories (project_id, category_id) row.
+    // Additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS match_result_json JSONB`
+      );
+    }
+    console.log('  project_categories.match_result_json column installed (v1.49e).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.49k — items.approval_status. AI-proposed items (created when an
+    // agency picks a Brief-tab "proposed" match) must NOT enter the live
+    // catalogue until the supplier approves them. They are inserted
+    // is_active = false + approval_status = 'pending' — hidden from every
+    // catalogue query (all filter is_active = true) yet still usable on
+    // the project that proposed them. Existing + supplier-created items
+    // default to 'approved'. Values: pending | approved | rejected.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.items
+           ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'approved'`
+      );
+    }
+    console.log('  items.approval_status column installed (v1.49k).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.50 — quote_requests: the RFQ status tracker. When an agency
+    // sends a Brief-tab requirement out for competitive quotes, one row
+    // per (requirement item × supplier) tracks where each ask stands.
+    // It sits ON TOP of existing infrastructure — it does NOT replace it:
+    //   • the conversation     → messages   (message_thread_id → the
+    //                            anchor / opening message of the thread)
+    //   • the quote line items → message_items
+    //   • the Ball spend       → balls_transactions (ONE debit per
+    //                            project/category outreach, shared by
+    //                            every quote_request in that batch)
+    // quote_requests only carries status + the links to those records.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.quote_requests (
+          id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          project_id          UUID NOT NULL REFERENCES ${schema}.projects(id) ON DELETE CASCADE,
+          project_category_id UUID REFERENCES ${schema}.project_categories(id) ON DELETE SET NULL,
+          category_id         UUID REFERENCES ${schema}.categories(id),
+          item_id             UUID REFERENCES ${schema}.items(id) ON DELETE SET NULL,
+          supplier_org_id     UUID NOT NULL REFERENCES ${schema}.orgs(id),
+          status              VARCHAR(20) NOT NULL DEFAULT 'pending'
+                                CHECK (status IN ('pending','quoted','declined','won','cancelled')),
+          message_thread_id   UUID REFERENCES ${schema}.messages(id) ON DELETE SET NULL,
+          ball_transaction_id UUID REFERENCES ${schema}.balls_transactions(id) ON DELETE SET NULL,
+          created_at          TIMESTAMPTZ DEFAULT NOW(),
+          updated_at          TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS ${schema}_quote_requests_supplier_idx
+          ON ${schema}.quote_requests (supplier_org_id, status);
+        CREATE INDEX IF NOT EXISTS ${schema}_quote_requests_project_idx
+          ON ${schema}.quote_requests (project_id);
+      `);
+    }
+    console.log('  quote_requests table installed (v1.50).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v1.53 — Brief tab: category form upgrades.
+    //  • ballpark_budget — historically added only by the standalone
+    //    migrate-v1.12-brief-tab.js, which targets APP_SCHEMA (dev only),
+    //    so preview + master were missing it. Folded in here, idempotent.
+    //  • status_code — per-category workflow status (Draft, Briefed,
+    //    Out for Quote, Confirmed, …). Drives the Brief-tab status pill +
+    //    dropdown and the Client-Managed / N-A card behaviour. Codes come
+    //    from the category_status codelist seeded in shared.codelists.
+    // Additive + IF NOT EXISTS — safe on every schema.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS ballpark_budget NUMERIC DEFAULT 0`
+      );
+      await client.query(
+        `ALTER TABLE ${schema}.project_categories
+           ADD COLUMN IF NOT EXISTS status_code VARCHAR(30) DEFAULT 'draft'`
+      );
+    }
+    console.log('  project_categories.ballpark_budget + status_code installed (v1.53).');
 
     // ── 4. Create shared schema ──────────────────────────────────────────
     console.log('  Creating shared schema tables...');
@@ -1223,6 +1355,21 @@ const migrate = async () => {
         ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
         ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
         ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+      ON CONFLICT (list_name, code) DO NOTHING;
+
+      -- v1.53: category_status drives the Brief-tab per-category status
+      -- pill + dropdown. meta.color is read by the pill via
+      -- CodelistService.getMeta('category_status', code).color.
+      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
+        ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
+        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"#F97316"}'::jsonb, true),
+        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"#6366F1"}'::jsonb, true),
+        ('category_status', 'quoted',         'Quoted',          5, '{"color":"#0EA5E9"}'::jsonb, true),
+        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"#22C55E"}'::jsonb, true),
+        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"#F59E0B"}'::jsonb, true),
+        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"#8B5CF6"}'::jsonb, true),
+        ('category_status', 'na',             'N/A',             9, '{"color":"#9CA3AF"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

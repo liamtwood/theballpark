@@ -5,6 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
 import { forkJoin } from 'rxjs';
 import {
   LucideAngularModule, Search, Heart, List, Layers,
@@ -21,6 +22,10 @@ import {
   CategoryCirclesComponent, CategoryCircle
 } from '../category-circles/category-circles.component';
 import { CodelistService } from '../../../core/services/codelist.service';
+import { ApiService } from '../../../core/services/api.service';
+import { OutreachService } from '../../../core/services/outreach.service';
+import { EventDrawerService } from '../../../core/services/event-drawer.service';
+import { CartDrawerService } from '../../../core/services/cart-drawer.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -32,13 +37,17 @@ export type DetailMode = 'inline' | 'drawer';
   imports: [
     CommonModule, FormsModule,
     InputTextModule, InputTextareaModule, ButtonModule, CheckboxModule,
+    DropdownModule,
     LucideAngularModule, GbpPipe, ConfigStripComponent,
     CategoryContextPanelComponent, CategoryCirclesComponent
   ],
   template: `
     <!-- CONFIG STRIP — toggled from cog in top-nav. Page projects its own
-         control widgets via [config-content]. -->
-    <app-config-strip>
+         control widgets via [config-content]. v1.65am (p0002 #2) —
+         opt-in via [showConfigStrip]="true" so consumers that don't
+         project anything (Marketplace, Messages) don't render an empty
+         host element above the category-circles panel. -->
+    <app-config-strip *ngIf="showConfigStrip">
       <ng-content select="[config-content]"></ng-content>
     </app-config-strip>
 
@@ -68,37 +77,96 @@ export type DetailMode = 'inline' | 'drawer';
       <span class="bp-breadcrumb-current">{{ drilledCategory.name }}</span>
     </div>
 
-    <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
-         Catalogue-grid owns the data + drill/scope state; the sub-
-         component owns the markup, scroll-arrow state and event wiring.
-         Messages tab mounts the SAME component so the two stay aligned. -->
-    <app-category-circles
-      *ngIf="categories.length && showCategoryCircles"
-      [categories]="displayedCircles"
-      [activeId]="circleActiveId"
-      [size]="circleSize"
-      [showEdit]="showEdit && !projectContext"
-      [unscopedIds]="circleUnscopedIds"
-      [footerToggleLabel]="circleFooterToggleLabel"
-      (select)="onCircleSelect($event)"
-      (edit)="onCategoryEdit($event)"
-      (footerToggle)="toggleShowAllCategories()">
-    </app-category-circles>
+    <!-- v1.65ax — BROWSE STRIP. One contained panel holding both the
+         category circles section and the search section. Previously
+         the two were sibling panels and the page-ground colour
+         between them read as accidental bleed-through. -->
+    <div class="bp-browse-strip"
+         *ngIf="categories.length && showCategoryCircles">
+      <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
+           Catalogue-grid owns the data + drill/scope state; the sub-
+           component owns the markup, scroll-arrow state and event wiring.
+           Messages tab mounts the SAME component so the two stay aligned. -->
+      <div class="bp-browse-panel">
+        <app-category-circles
+          [categories]="displayedCircles"
+          [activeId]="circleActiveId"
+          [size]="circleSize"
+          [showEdit]="showEdit && !projectContext"
+          [unscopedIds]="circleUnscopedIds"
+          [showAdd]="showAdd"
+          (select)="onCircleSelect($event)"
+          (edit)="onCategoryEdit($event)"
+          (addClicked)="addClicked.emit()">
+        </app-category-circles>
+      </div>
 
-    <!-- v1.41 — SUBCATEGORY CHIP STRIP.
-         Renders only when the parent has populated [subcategories].
-         "All" chip clears the filter; subcat chips set
-         activeSubcategoryId. Text pills (not image circles) per the
-         design spec; one CSS variable away from theme accent. -->
-    <div *ngIf="subcategories?.length" class="bp-subcat-strip">
-      <button type="button" class="bp-subcat-chip"
-              [class.active]="!activeSubcategoryId"
-              (click)="onSubcategoryClick('')">All</button>
-      <button *ngFor="let sc of subcategories"
-              type="button" class="bp-subcat-chip"
-              [class.active]="activeSubcategoryId === sc.id"
-              (click)="onSubcategoryClick(sc.id)">{{ sc.name }}</button>
-    </div>
+      <!-- v1.65aj (p0001) — SEARCH section. Sits inside the same
+           browse strip so the two browse controls read as one block.
+           v1.65cl — SEARCH + QUICK ACTIONS are now TWO separate
+           contained panels in project context, laid out on a grid
+           that mirrors the 3-col body below:
+             search-panel       spans col 1 (sidebar) + col 2 (main)
+             quick-actions-panel  spans col 3 (detail panel)
+           Outside project context the search panel still renders
+           single-width via .bp-search-row-wrap (non-split). -->
+      <div class="bp-search-row-wrap"
+           [class.bp-search-row-wrap--split]="!!projectContext"
+           [attr.data-detail-size]="detailSize">
+        <div class="bp-search-panel">
+          <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
+          <div class="bp-search-row">
+            <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+                        [options]="stripDropdownOptions"
+                        [ngModel]="stripDropdownValue"
+                        (onChange)="onStripDropdownChange($event.value)"
+                        optionLabel="name" optionValue="id"
+                        styleClass="bp-strip-search-dd"
+                        appendTo="body"
+                        placeholder="All"></p-dropdown>
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
+                   [placeholder]="searchPlaceholder"
+                   class="bp-search-input"
+                   (keyup.enter)="applySearch()"/>
+            <!-- v1.65cm — Recommend lives in the SEARCH row (was in
+                 QUICK ACTIONS). It's an AI-driven search/match action
+                 — belongs alongside the text search + scope dropdown.
+                 canRecommend still gates it (project + briefed cat). -->
+            <button *ngIf="canRecommend"
+                    type="button"
+                    class="bp-search-view-estimate bp-search-recommend"
+                    [disabled]="recommending"
+                    [title]="activeCategory === 'all'
+                      ? 'Recommend items across every category that has a brief'
+                      : 'Recommend items based on this category\\'s brief'"
+                    (click)="recommendItems()">
+              <lucide-icon name="sparkles" [size]="13"></lucide-icon>
+              {{ recommending ? 'Recommending…' : 'Recommend' }}
+            </button>
+          </div>
+        </div>
+        <div class="bp-quick-actions-panel" *ngIf="projectContext">
+          <div class="bp-search-section-label">QUICK ACTIONS</div>
+          <div class="bp-search-actions">
+            <button type="button"
+                    class="bp-search-view-estimate"
+                    (click)="openProjectEdit()"
+                    title="Open the event drawer">
+              Event detail
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+            <button type="button"
+                    class="bp-search-view-estimate"
+                    (click)="onContextOpenEstimate()"
+                    title="Open the estimate drawer">
+              View estimate
+              <lucide-icon name="arrow-right" [size]="13"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /.bp-browse-strip -->
 
     <!-- BEFORE-BODY SLOT — pages project content that should sit between
          the hero/circles and the 3-col body (e.g. feedback area circles,
@@ -112,16 +180,27 @@ export type DetailMode = 'inline' | 'drawer';
 
       <!-- ── SIDEBAR ── -->
       <div class="bp-cat-sidebar">
-        <div class="bp-sidebar-search">
-          <lucide-icon name="search" [size]="14" class="bp-sidebar-search-icon"></lucide-icon>
-          <input pInputText [(ngModel)]="searchQuery" (ngModelChange)="applySearch()"
-            placeholder="Search..." class="bp-sidebar-search-input"/>
+        <!-- v1.65c — search moved out to the strip-bar above. -->
+
+        <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
+             head so the scrollbar starts BELOW the header rather than
+             running alongside it. Only shown when there are filters to
+             render (canFilter); other consumers without filters get no
+             panel head and the body fills the whole sidebar.
+             v1.65aj (p0001) — Lucide leading icon per the panel-header
+             convention. -->
+        <div class="bp-cat-sidebar-head" *ngIf="canFilter">
+          <lucide-icon name="list-filter" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
+          <div class="bp-filter-title">FILTER</div>
         </div>
 
-        <!-- v1.41a — single sidebar mode. The drill-down FORMAT
-             section was removed (subcat pills handle that role).
-             Sidebar always shows the parent-category list + the
-             aggregated TYPE/tag checkboxes when the parent has tags. -->
+        <div class="bp-cat-sidebar-body">
+
+        <!-- v1.45b — the sidebar category list is only a fallback for
+             grids without the category-circle strip; when the circles
+             are shown they own category navigation, so the list is
+             hidden and the sidebar is purely the dimension filter. -->
+        <ng-container *ngIf="!showCategoryCircles">
         <div class="bp-sidebar-sublabel">{{ sidebarCategoryLabel }}</div>
         <button class="bp-sidebar-item" [class.active]="activeCategory === 'all'" (click)="setCategory('all')">
           <span>All</span>
@@ -136,31 +215,184 @@ export type DetailMode = 'inline' | 'drawer';
           <span>{{ cat.name }}</span>
           <span class="bp-sidebar-count" *ngIf="cat.count">{{ cat.count }}</span>
         </button>
+        </ng-container>
 
-        <!-- TYPE section (items.tags aggregated for active category).
-             Kept as-is — independent free-text keywords, separate
-             concept from the controlled subcategory pills above. -->
-        <ng-container *ngIf="tags.length && activeCategory !== 'all'">
-          <div class="bp-sidebar-section-header mt-4">
-            <span class="bp-sidebar-sublabel">Type</span>
-            <div class="bp-sidebar-check-actions">
-              <button class="bp-sidebar-check-link" (click)="checkAllTags()">All</button>
-              <span class="bp-sidebar-check-sep">·</span>
-              <button class="bp-sidebar-check-link" (click)="uncheckAllTags()">None</button>
+        <!-- v1.45c — DIMENSION FILTERS in three fixed groups: PRICE
+             (price + tier), the active category's own dimensions
+             (alphabetical), then EVENT (event-type + lead time). The
+             common groups keep a fixed position so the user always
+             knows where they are. Shown only when a category is active. -->
+        <ng-container *ngIf="canFilter">
+          <!-- v1.65ai — FILTER eyebrow lifted to .bp-cat-sidebar-head;
+               removed from here. -->
+
+          <!-- ── GROUP 1 · PRICE ─────────────────────────────────── -->
+          <div class="bp-filter-grouphdr">
+            <span class="bp-sidebar-sublabel">Price</span>
+            <button *ngIf="hasActiveFilters" class="bp-sidebar-check-link"
+                    (click)="clearAllFilters()">Clear all</button>
+          </div>
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="priceExpanded = !priceExpanded">
+              <span class="bp-filter-sec-name">price</span>
+              <span *ngIf="selectedPriceBuckets.size" class="bp-filter-sec-badge">{{ selectedPriceBuckets.size }}</span>
+              <span class="bp-filter-caret">{{ priceExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="priceExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let b of priceBuckets" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedPriceBuckets.has(b.key)"
+                  (onChange)="togglePriceBucket(b.key)"
+                  [label]="b.label">
+                </p-checkbox>
+              </div>
             </div>
           </div>
-          <div *ngFor="let tag of tags" class="bp-sidebar-check-item">
-            <p-checkbox [binary]="true"
-              [ngModel]="checkedTags.has(tag)"
-              (onChange)="toggleTag(tag)"
-              [label]="tag">
-            </p-checkbox>
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="tierExpanded = !tierExpanded">
+              <span class="bp-filter-sec-name">tier</span>
+              <span *ngIf="selectedTiers.size" class="bp-filter-sec-badge">{{ selectedTiers.size }}</span>
+              <span class="bp-filter-caret">{{ tierExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="tierExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let t of tierFilterOptions" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTiers.has(t.value)"
+                  (onChange)="toggleTierFilter(t.value)"
+                  [label]="t.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GROUP 2 · CATEGORY-SPECIFIC (alphabetical) ───────── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
+               *ngIf="categoryDimensions.length">
+            <span class="bp-sidebar-sublabel">{{ activeCategoryName }}</span>
+          </div>
+          <div *ngFor="let g of categoryDimensions" class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="toggleDimension(g)">
+              <span class="bp-filter-sec-name">{{ g.dimension }}</span>
+              <span *ngIf="dimensionSelectedCount(g)" class="bp-filter-sec-badge">{{ dimensionSelectedCount(g) }}</span>
+              <span class="bp-filter-caret">{{ g.expanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="g.expanded" class="bp-filter-sec-body">
+              <div *ngFor="let v of g.values" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedTagIds.has(v.tag_id)"
+                  (onChange)="toggleFilterTag(v.tag_id)"
+                  [label]="v.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GROUP 3 · SUPPLIER (v1.49d — own header) ─────────── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule"
+               *ngIf="categorySuppliers.length">
+            <span class="bp-sidebar-sublabel">Supplier</span>
+          </div>
+          <div class="bp-filter-sec" *ngIf="categorySuppliers.length">
+            <button type="button" class="bp-filter-sec-head" (click)="supplierExpanded = !supplierExpanded">
+              <span class="bp-filter-sec-name">supplier</span>
+              <span *ngIf="selectedSupplierIds.size" class="bp-filter-sec-badge">{{ selectedSupplierIds.size }}</span>
+              <span class="bp-filter-caret">{{ supplierExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="supplierExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let s of categorySuppliers" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedSupplierIds.has(s.supplier_id)"
+                  (onChange)="toggleSupplierFilter(s.supplier_id)"
+                  [label]="s.supplier_name">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GROUP 4 · EVENT (common — fixed at the bottom) ───── -->
+          <div class="bp-filter-grouphdr bp-filter-grouphdr--rule">
+            <span class="bp-sidebar-sublabel">Event</span>
+          </div>
+          <div class="bp-filter-sec" *ngIf="eventTypeValues.length">
+            <button type="button" class="bp-filter-sec-head" (click)="eventExpanded = !eventExpanded">
+              <span class="bp-filter-sec-name">event-type</span>
+              <span *ngIf="eventTypeSelectedCount" class="bp-filter-sec-badge">{{ eventTypeSelectedCount }}</span>
+              <span class="bp-filter-caret">{{ eventExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="eventExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let et of eventTypeValues" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="eventTypeOn(et)"
+                  (onChange)="toggleEventType(et)"
+                  [label]="et.label">
+                </p-checkbox>
+              </div>
+            </div>
+          </div>
+          <div class="bp-filter-sec">
+            <button type="button" class="bp-filter-sec-head" (click)="leadExpanded = !leadExpanded">
+              <span class="bp-filter-sec-name">lead time</span>
+              <span *ngIf="selectedLeadBuckets.size" class="bp-filter-sec-badge">{{ selectedLeadBuckets.size }}</span>
+              <span class="bp-filter-caret">{{ leadExpanded ? '▾' : '▸' }}</span>
+            </button>
+            <div *ngIf="leadExpanded" class="bp-filter-sec-body">
+              <div *ngFor="let b of leadTimeBuckets" class="bp-sidebar-check-item">
+                <p-checkbox [binary]="true"
+                  [ngModel]="selectedLeadBuckets.has(b.key)"
+                  (onChange)="toggleLeadBucket(b.key)"
+                  [label]="b.label">
+                </p-checkbox>
+              </div>
+            </div>
           </div>
         </ng-container>
+        </div><!-- /.bp-cat-sidebar-body -->
       </div>
 
       <!-- ── MAIN ── -->
       <div class="bp-cat-main">
+
+        <!-- v1.65ai — RESULTS panel head. Sits outside the scrolling
+             body so the scrollbar starts BELOW the header. View toggle
+             stays anchored to the right of the RESULTS title.
+             v1.65cj — Recommend button MOVED to the Quick Actions
+             column in the search panel so all project-context CTAs
+             live in one place. Main head is now just title + count +
+             projected toggles + view toggle. -->
+        <div class="bp-cat-main-head">
+          <lucide-icon name="package" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
+          <span class="bp-cat-section-title">{{ sectionTitle }}</span>
+          <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
+          <ng-content select="[catalogue-toggles]"></ng-content>
+          <div class="bp-view-toggle" *ngIf="showLayoutToggle">
+            <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
+              <lucide-icon name="list" [size]="14"></lucide-icon>
+            </button>
+            <button class="bp-view-btn" [class.active]="layout === 'card'" (click)="layout = 'card'">
+              <lucide-icon name="layers" [size]="14"></lucide-icon>
+            </button>
+            <button class="bp-view-btn" [class.active]="layout === 'table'" (click)="layout = 'table'">
+              <lucide-icon name="table" [size]="14"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="bp-cat-main-body">
+
+        <!-- v1.65eb (p0015) — recommending banner. Surfaces a calm
+             "AI agent is working some magic" message at the top of
+             the results body while recommendItems() is in flight.
+             Sparkles icon spins; band uses --theme-soft so it reads
+             as a temporary affordance, not a permanent panel. -->
+        <div *ngIf="recommending" class="bp-recommending-banner">
+          <lucide-icon name="sparkles" [size]="16" class="bp-recommending-icon"></lucide-icon>
+          <div class="bp-recommending-body">
+            <div class="bp-recommending-title">AI agent is working some magic</div>
+            <div class="bp-recommending-sub">
+              Matching suppliers to your brief…
+            </div>
+          </div>
+        </div>
 
         <!-- BREADCRUMB — always visible. Parent segments are clickable
              when drilled and reset to top via onBreadcrumbBack(). -->
@@ -181,22 +413,46 @@ export type DetailMode = 'inline' | 'drawer';
           </ng-template>
         </nav>
 
-        <div class="bp-cat-section-header">
-          <span class="bp-cat-section-title">{{ sectionTitle }}</span>
-          <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
-          <ng-content select="[catalogue-toggles]"></ng-content>
-          <div class="bp-view-toggle" *ngIf="showLayoutToggle">
-            <button class="bp-view-btn" [class.active]="layout === 'list'" (click)="layout = 'list'">
-              <lucide-icon name="list" [size]="14"></lucide-icon>
-            </button>
-            <button class="bp-view-btn" [class.active]="layout === 'card'" (click)="layout = 'card'">
-              <lucide-icon name="layers" [size]="14"></lucide-icon>
-            </button>
-            <button class="bp-view-btn" [class.active]="layout === 'table'" (click)="layout = 'table'">
-              <lucide-icon name="table" [size]="14"></lucide-icon>
-            </button>
+        <!-- v1.65i — Selected + Wishlist sections (project context only).
+             Render as card grids using the same card markup as the
+             main RESULTS grid, just sourced from the project_items.
+             v1.65j — always shown; empty state "no items yet" when the
+             section has nothing. -->
+        <ng-container *ngIf="projectContext">
+          <!-- v1.65k — AI RECOMMENDATIONS. Surfaced only when the user has
+               clicked Recommend (recommendedEntities is non-empty); we
+               don't render an empty heading because it's a discretionary,
+               on-demand action rather than a default section. -->
+          <ng-container *ngIf="recommendedEntities.length">
+            <div class="bp-cat-section-header bp-cat-section-header--sub bp-cat-section-header--ai">
+              <span class="bp-cat-section-title">
+                <lucide-icon name="sparkles" [size]="14"></lucide-icon>
+                AI RECOMMENDATIONS
+              </span>
+              <span class="bp-cat-section-count">{{ recommendedEntities.length }} item{{ recommendedEntities.length === 1 ? '' : 's' }}</span>
+            </div>
+            <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: recommendedEntities }"></ng-container>
+          </ng-container>
+
+          <!-- v1.65ab — SELECTED ITEMS + WISHLIST ITEMS sections moved
+               into the shared Project Items cart drawer (CartDrawerService).
+               Opened from the cart icon in the All-view header. Centre
+               column now shows only Proposed (AI) + Catalogue items.
+               v1.65ai — RESULTS section header lifted to .bp-cat-main-head
+               above; this is where it used to live.
+               v1.65cn — RESULTS sub-header restored INSIDE the scroll body
+               when recommendations are showing, so the user can clearly
+               read "here are the AI picks · here's everything else".
+               Only renders when both sections coexist. -->
+          <div *ngIf="recommendedEntities.length && filteredEntities.length"
+               class="bp-cat-section-header bp-cat-section-header--sub bp-cat-section-header--results">
+            <span class="bp-cat-section-title">
+              <lucide-icon name="package" [size]="14"></lucide-icon>
+              {{ sectionTitle }}
+            </span>
+            <span class="bp-cat-section-count">{{ filteredEntities.length }} {{ entityLabel }}{{ filteredEntities.length !== 1 ? 's' : '' }}</span>
           </div>
-        </div>
+        </ng-container>
 
         <div *ngIf="!filteredEntities.length" class="bp-cat-empty">No {{ entityLabel }}s found.</div>
 
@@ -246,6 +502,10 @@ export type DetailMode = 'inline' | 'drawer';
                       [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
                 <lucide-icon name="heart" [size]="14"></lucide-icon>
               </button>
+              <button type="button" class="bp-cart-btn"
+                      (click)="onRequestQuoteClick($event, e)" title="Request a quote">
+                <lucide-icon name="mail" [size]="14"></lucide-icon>
+              </button>
             </ng-container>
 
             <button *ngIf="showFavourite" class="bp-heart-btn" [class.active]="favouriteIds.has(e.id)"
@@ -256,10 +516,15 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
         </ng-container>
 
-        <!-- CARD GRID -->
+        <!-- CARD GRID — uses the reusable cardGridTpl so the Selected
+             and Wishlist sections above can render the same cards. -->
         <ng-container *ngIf="layout === 'card' && filteredEntities.length">
+          <ng-container *ngTemplateOutlet="cardGridTpl; context: { $implicit: filteredEntities }"></ng-container>
+        </ng-container>
+
+        <ng-template #cardGridTpl let-entities>
           <div class="bp-item-grid">
-            <div *ngFor="let e of filteredEntities"
+            <div *ngFor="let e of entities"
               class="bp-item-card"
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
@@ -271,10 +536,6 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
-                  <!-- v1.20: + / ♡ project-cart on the card image
-                       (agency + item + projectId). Active state fills
-                       amber for selected, red for liked — same
-                       semantics as the Estimate-tab count chips. -->
                   <button *ngIf="showCartActions" type="button"
                           class="bp-grid-action-btn"
                           [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
@@ -288,6 +549,11 @@ export type DetailMode = 'inline' | 'drawer';
                           (click)="onCartLikeClick($event, e)"
                           [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
                     <lucide-icon name="heart" [size]="14"></lucide-icon>
+                  </button>
+                  <button *ngIf="showCartActions" type="button"
+                          class="bp-grid-action-btn"
+                          (click)="onRequestQuoteClick($event, e)" title="Request a quote">
+                    <lucide-icon name="mail" [size]="14"></lucide-icon>
                   </button>
                   <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
                     <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -303,16 +569,24 @@ export type DetailMode = 'inline' | 'drawer';
                   {{ e.name }}
                   <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
                 </div>
-                <div class="bp-item-card-price" *ngIf="e.price">
-                  {{ e.price | gbp }}
+                <!-- v1.65ee — card price now mirrors the list-view
+                     fallback: prefer priceRange (min – max) when set,
+                     else fall back to base_price. Was only rendering
+                     base_price, so an item with only min/max set
+                     (e.g. Rocket Food's sit-down dinner at £7k-£12k)
+                     showed as priceless on the card while the detail
+                     panel displayed the range correctly. -->
+                <div class="bp-item-card-price" *ngIf="e.priceRange || e.price">
+                  <ng-container *ngIf="e.priceRange">{{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}</ng-container>
+                  <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
                   <span class="bp-item-card-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</span>
                 </div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !e.price">{{ e.subtitle }}</div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && e.price">{{ e.subtitle }}</div>
+                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !(e.priceRange || e.price)">{{ e.subtitle }}</div>
+                <div class="bp-item-card-supplier" *ngIf="e.subtitle && (e.priceRange || e.price)">{{ e.subtitle }}</div>
               </div>
             </div>
           </div>
-        </ng-container>
+        </ng-template>
 
         <!-- TABLE VIEW — projected when useCustomMain, otherwise a basic
              auto-table generated from entities[]. -->
@@ -347,6 +621,7 @@ export type DetailMode = 'inline' | 'drawer';
             </table>
           </div>
         </ng-container>
+        </div><!-- /.bp-cat-main-body -->
       </div>
 
       <!-- ── RIGHT DETAIL PANEL ── -->
@@ -407,6 +682,16 @@ export type DetailMode = 'inline' | 'drawer';
                                ? 'Remove from project'
                                : 'Like for project'">
                 <lucide-icon name="heart" [size]="14"></lucide-icon>
+              </button>
+              <!-- v1.52c — Request a quote. Same gate as the card/row mail
+                   action (showCartActions ⇒ agency + a projectId bound),
+                   so it only appears inside a project context. -->
+              <button *ngIf="showCartActions"
+                      type="button"
+                      class="bp-detail-action"
+                      (click)="onRequestQuoteClick($event, selectedEntity)"
+                      title="Request a quote">
+                <lucide-icon name="mail" [size]="14"></lucide-icon>
               </button>
               <!-- Edit — visible for all users until auth + roles ship.
                    Future gate: own-org items OR platform admin role.
@@ -509,39 +794,144 @@ export type DetailMode = 'inline' | 'drawer';
         <!-- When projectContext is set and no item is selected, show the
              relevant brief in place of the empty state. -->
         <ng-container *ngIf="!useCustomDetail && !selectedEntity && projectContext">
-          <!-- "All" view → project brief card -->
-          <div *ngIf="activeCategory === 'all'" class="bp-brief-card">
-            <div class="bp-brief-card-h">
-              <span class="bp-brief-card-eyebrow">PROJECT BRIEF</span>
-              <button *ngIf="!editingProjectBrief" class="bp-icon-btn"
-                (click)="startEditProjectBrief()" title="Edit project brief">
-                <lucide-icon name="square-pen" [size]="12"></lucide-icon>
+          <!-- v1.65g — "All" view: matches the per-category panel
+               style. Pink header · totals badge row · read-only brief. -->
+          <div *ngIf="activeCategory === 'all'" class="bp-allctx">
+            <div class="bp-allctx-head">
+              <lucide-icon name="clipboard-list" [size]="13" class="bp-allctx-head-icon"></lucide-icon>
+              <div class="bp-allctx-head-name">Project Summary</div>
+              <!-- v1.65y — edit pencil removed (deferred). Cart icon +
+                   count badge in its spot, matching the per-cat panel.
+                   Count is total selected items across every category.
+                   v1.65ab — click opens the shared Project Items drawer
+                   (CartDrawerService). Badge counts ALL project_items
+                   (selected + wishlist) so the user sees a full inbox. -->
+              <button type="button"
+                      class="bp-allctx-cart"
+                      [attr.title]="allCartCount + ' item' + (allCartCount === 1 ? '' : 's') + ' in cart'"
+                      (click)="openCartDrawer()">
+                <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
+                <span class="bp-allctx-cart-badge"
+                      *ngIf="allCartCount">{{ allCartCount }}</span>
               </button>
-              <ng-container *ngIf="editingProjectBrief">
-                <button class="bp-icon-btn bp-icon-save"
-                  (click)="saveProjectBrief()" title="Save">
-                  <i class="pi pi-check"></i>
-                </button>
-                <button class="bp-icon-btn bp-icon-cancel"
-                  (click)="cancelEditProjectBrief()" title="Cancel">
-                  <i class="pi pi-times"></i>
-                </button>
-              </ng-container>
             </div>
-            <ng-container *ngIf="!editingProjectBrief">
-              <p *ngIf="projectContext.projectBrief" class="bp-brief-card-text bp-brief-card-text--project">
+            <!-- v1.65ai — body wraps everything below the head so the
+                 scrollbar lives only on the body, not alongside the
+                 sticky PROJECT SUMMARY header. -->
+            <div class="bp-allctx-body">
+            <!-- v1.65aa — Budget / Estimate / Status using the Event
+                 drawer's form-field treatment (bp-field-label above
+                 bp-field-readonly). 3-column grid.
+                 v1.65ch — Budget + Status are now click-to-edit
+                 (project-level project_budget + status_code). Estimate
+                 stays readonly — it's a derived total from items, not
+                 user-set. Click any readonly Budget/Status to swap in
+                 the edit input/dropdown; blur/Enter commits, Escape
+                 cancels — same pattern as the per-category panel. -->
+            <div class="bp-allctx-fields">
+              <div class="bp-evd-field">
+                <label class="bp-field-label">Budget</label>
+                <input pInputText *ngIf="!editingAllBudget"
+                       readonly
+                       class="w-full bp-field-readonly bp-ctx-field-clickable"
+                       [value]="allBudgetTotal | gbp"
+                       (click)="startEditAllBudget()"
+                       title="Click to edit"/>
+                <input pInputText *ngIf="editingAllBudget"
+                       type="number" min="0" step="100"
+                       class="w-full bp-input-edit"
+                       [(ngModel)]="allBudgetDraft"
+                       (blur)="commitAllBudget()"
+                       (keyup.enter)="commitAllBudget()"
+                       (keyup.escape)="cancelAllBudget()"/>
+              </div>
+              <div class="bp-evd-field">
+                <label class="bp-field-label">Estimate</label>
+                <input pInputText readonly
+                       class="w-full bp-field-readonly"
+                       [value]="allEstimateTotal | gbp"/>
+              </div>
+              <div class="bp-evd-field" *ngIf="projectStatuses.length">
+                <label class="bp-field-label">Status</label>
+                <input pInputText *ngIf="!editingAllStatus"
+                       readonly
+                       class="w-full bp-field-readonly bp-ctx-field-clickable"
+                       [value]="projectStatusDisplay()"
+                       (click)="startEditAllStatus()"
+                       title="Click to change status"/>
+                <p-dropdown *ngIf="editingAllStatus"
+                            [options]="projectStatuses"
+                            [ngModel]="projectStatusCode"
+                            (onChange)="commitAllStatus($event.value)"
+                            (onHide)="editingAllStatus = false"
+                            optionLabel="label" optionValue="code"
+                            appendTo="body"
+                            styleClass="w-full bp-evd-dropdown"
+                            panelStyleClass="bp-dd-panel"
+                            [autoDisplayFirst]="false"
+                            placeholder="—"></p-dropdown>
+              </div>
+            </div>
+            <!-- v1.65o — project details strip. Same fields as the
+                 Overview event strip (REF / CLIENT / EVENT NAME / GUESTS
+                 / DATE / VENUE) rendered as compact label/value pairs so
+                 it doesn't overshadow the brief below.
+                 v1.65by — wrapped with an EVENT DETAILS section eyebrow
+                 (bold-theme accent) so the section reads as a labelled
+                 block of the current event's data. -->
+            <div *ngIf="projectContext?.project as proj" class="bp-allctx-section">
+              <div class="bp-allctx-section-label">EVENT DETAILS</div>
+              <div class="bp-allctx-details">
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">REF</span>
+                  <span class="bp-allctx-d-v">{{ proj.ref || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">CLIENT</span>
+                  <span class="bp-allctx-d-v">{{ proj.client_name || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">EVENT</span>
+                  <span class="bp-allctx-d-v">{{ proj.event_name || proj.name || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">DATE</span>
+                  <span class="bp-allctx-d-v">{{ proj.event_date ? (proj.event_date | date:'d MMM y') : '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">GUESTS</span>
+                  <span class="bp-allctx-d-v">{{ proj.guest_count || '—' }}</span>
+                </div>
+                <div class="bp-allctx-d-row">
+                  <span class="bp-allctx-d-l">VENUE</span>
+                  <span class="bp-allctx-d-v">
+                    {{ proj.venue_name || '—' }}<span *ngIf="proj.venue_city">, {{ proj.venue_city }}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="bp-allctx-brief">
+              <div class="bp-drawer-label">Project brief</div>
+              <div class="bp-allctx-brief-text" *ngIf="projectContext.projectBrief; else allBriefEmpty">
                 {{ projectContext.projectBrief }}
-              </p>
-              <p *ngIf="!projectContext.projectBrief" class="bp-brief-card-empty">
-                No project brief yet — click the pencil to add one.
-              </p>
-            </ng-container>
-            <textarea *ngIf="editingProjectBrief" pInputTextarea
-              class="bp-brief-card-edit"
-              [(ngModel)]="projectBriefDraft"
-              [rows]="6"
-              placeholder="Describe the project at a high level…">
-            </textarea>
+              </div>
+              <ng-template #allBriefEmpty>
+                <div class="bp-allctx-brief-empty">
+                  No project brief yet — add one on the Plan tab to share with suppliers.
+                </div>
+              </ng-template>
+            </div>
+            <!-- v1.65af — restored "Open estimate →" link on the All
+                 view. Mirrors the per-category panel footer. -->
+            <div class="bp-allctx-footer">
+              <button type="button"
+                      class="bp-allctx-foot-link"
+                      (click)="onContextOpenEstimate()">
+                Open estimate
+                <lucide-icon name="arrow-right" [size]="12"></lucide-icon>
+              </button>
+            </div>
+            </div><!-- /.bp-allctx-body -->
           </div>
 
           <!-- v1.19: per-category branch handed off to
@@ -566,6 +956,8 @@ export type DetailMode = 'inline' | 'drawer';
             [briefText]="ctxBriefText"
             [briefDetail]="ctxBriefDetail"
             [budgetPrice]="ctxBudget"
+            [estimatePrice]="ctxEstimate"
+            [statusCode]="ctxStatusCode"
             [selectedItems]="getCategorySelectedItems()"
             [likedItems]="getCategoryLikedItems()"
             [context]="panelContext"
@@ -576,7 +968,11 @@ export type DetailMode = 'inline' | 'drawer';
             (itemMoved)="onContextItemMoved($event)"
             (browseClicked)="onContextBrowseClicked()"
             (briefUpdated)="onContextBriefUpdated($event)"
-            (openEstimate)="onContextOpenEstimate()">
+            (budgetUpdated)="onContextBudgetUpdated($event)"
+            (estimateUpdated)="onContextEstimateUpdated($event)"
+            (statusUpdated)="onContextStatusUpdated($event)"
+            (openEstimate)="onContextOpenEstimate()"
+            (openCart)="openCategoryCart()">
           </app-category-context-panel>
         </ng-container>
 
@@ -590,15 +986,159 @@ export type DetailMode = 'inline' | 'drawer';
     </div>
   `,
   styles: [`
-    :host { display: block; }
-
-    /* v1.41 — subcategory chip strip below the category circles. Text
-       pills, theme-accent active state, hairline border default. */
-    .bp-subcat-strip {
-      display: flex; flex-wrap: wrap; gap: 6px;
-      padding: 8px 28px 0;
-      margin-bottom: 4px;
+    /* v1.65ag — page ground behind the browse panel + 3-col body so
+       each panel reads as a contained object.
+       v1.65bp — reverted to --theme-bg parchment. */
+    :host {
+      display: block;
+      background: var(--theme-bg);
     }
+
+    /* v1.65ax — .bp-browse-panel chrome moved to .bp-browse-strip in
+       styles.css (the wrapper now carries the panel chrome; browse +
+       search inside are layout-only sections). */
+
+    /* v1.65ar — .bp-search-panel + .bp-search-row + .bp-search-icon +
+       .bp-search-input rules promoted to styles.css (shared with the
+       Messages tab). The component-scoped copies that lived here were
+       still using the old tinted-row design and overriding the
+       cleaned-up globals — removed so both surfaces read the same. */
+    /* v1.65cb — .bp-strip-search-dd styling promoted to global
+       styles.css so the messages-inbox search row uses the same
+       chrome. Removed the ::ng-deep scoped copies that lived here. */
+
+    /* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
+       tint, fixed size, matches the eyebrow vertical centre. */
+    .bp-cat-sidebar-head-icon,
+    .bp-cat-main-head-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      display: inline-flex;
+    }
+    .bp-cat-sidebar-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* v1.65d — centred segmented search bar below the category circles.
+       Left: subcategory dropdown. Middle: text input. Right: search btn.
+       v1.65e — tightened padding + font, longer bar, no pink focus
+       ring or rounded inner segments.
+       v1.65m — strip-bar is a 3-col grid (1fr | auto | 1fr) so the
+       search stays optically centred and Recommend anchors to the right
+       flank regardless of whether it's shown. Border-bottom traded for
+       a faint tinted band so the bar feels like a container rather than
+       a thin line under a floating capsule. Search max-width halved
+       (980 → 490) per design feedback. Min-heights matched so the
+       Recommend pill sits flush with the segmented search. */
+    .bp-strip-bar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 28px;
+      /* v1.65ag — strip-bar now sits inside the browse-panel so it
+         inherits --color-surface; parchment band removed. */
+      background: var(--color-surface);
+    }
+    .bp-strip-search {
+      grid-column: 2;
+      justify-self: center;
+      display: flex; align-items: stretch;
+      width: 100%; max-width: 490px; min-height: 32px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-input);
+      overflow: hidden; background: var(--color-surface);
+    }
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown {
+      background: var(--theme-bg);
+      border: none !important;
+      border-right: 0.5px solid var(--color-border) !important;
+      border-radius: 0 !important; box-shadow: none !important;
+      min-width: 92px; }
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown:not(.p-disabled).p-focus,
+    :host ::ng-deep .bp-strip-search-dd.p-dropdown:not(.p-disabled):hover {
+      border-color: transparent !important;
+      border-right-color: var(--color-border) !important;
+      box-shadow: none !important; }
+    :host ::ng-deep .bp-strip-search-dd .p-dropdown-label {
+      font-size: var(--text-xs); padding: 5px 8px;
+      color: var(--color-text-secondary); font-family: var(--font-body); }
+    :host ::ng-deep .bp-strip-search-dd .p-dropdown-trigger {
+      color: var(--color-text-muted); width: 22px; }
+    :host ::ng-deep .bp-strip-search-input.p-inputtext,
+    .bp-strip-search-input {
+      flex: 1; min-width: 0; outline: none;
+      padding: 5px 10px;
+      font-family: var(--font-body); font-size: var(--text-sm);
+      background: var(--color-surface) !important;
+      color: var(--color-text-primary);
+      border: none !important; border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    :host ::ng-deep .bp-strip-search-input.p-inputtext:focus,
+    .bp-strip-search-input:focus {
+      box-shadow: none !important; border: none !important;
+      outline: none !important;
+    }
+    .bp-strip-search-btn {
+      background: var(--theme-accent); border: none; cursor: pointer;
+      padding: 0 16px; color: var(--color-surface);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: filter 0.12s; flex-shrink: 0;
+    }
+    .bp-strip-search-btn:hover { filter: brightness(0.92); }
+    .bp-strip-search-btn lucide-icon { display: inline-flex; }
+
+    /* v1.65k — AI Recommend pill in the strip bar. Outlined accent
+       button (matches the AI/match aesthetic on the Plan tab) that
+       fires the same /taxonomy/match-items matcher and pops an
+       AI RECOMMENDATIONS section above SELECTED ITEMS.
+       v1.65m — pinned to the right flank of the 3-col grid, height
+       matched to the segmented search (32px) so they sit flush. */
+    /* v1.65aj (p0001) — Recommend button moved to the Results column
+       head; the old strip-bar 3-col-grid position rules no longer apply.
+       Token-migrated radius/border. */
+    .bp-strip-recommend {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 28px; padding: 0 10px;
+      border: var(--border-hairline-strong);
+      border-color: var(--theme-accent);
+      border-radius: var(--radius-button);
+      background: var(--color-surface);
+      color: var(--theme-accent);
+      font-family: var(--font-body); font-size: var(--text-xs);
+      font-weight: 500;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, color 0.15s, filter 0.15s;
+    }
+    .bp-strip-recommend:hover:not(:disabled) {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+    }
+    .bp-strip-recommend:disabled { opacity: 0.6; cursor: progress; }
+    .bp-strip-recommend lucide-icon { display: inline-flex; }
+
+    /* v1.65k — AI RECOMMENDATIONS section heading (sparkles + accent).
+       v1.65cn — RESULTS sub-header mirrors the same icon + accent
+       treatment so the two in-scroll headings read as a matched pair. */
+    .bp-cat-section-header--ai .bp-cat-section-title,
+    .bp-cat-section-header--results .bp-cat-section-title {
+      color: var(--theme-accent);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .bp-cat-section-header--ai .bp-cat-section-title lucide-icon,
+    .bp-cat-section-header--results .bp-cat-section-title lucide-icon {
+      display: inline-flex;
+    }
+    /* v1.65cn — give the RESULTS sub-header extra top breathing room
+       so it reads as a clear section break after the AI cards above. */
+    .bp-cat-section-header--results {
+      margin-top: 20px;
+    }
+
+    /* v1.41 — subcategory chip pill (kept; used in the strip bar). */
     .bp-subcat-chip {
       display: inline-flex; align-items: center;
       padding: 4px 10px;
@@ -615,11 +1155,54 @@ export type DetailMode = 'inline' | 'drawer';
       border-color: var(--theme-accent);
       color: var(--theme-accent);
     }
+    /* v1.65an — already solid; token-migrate the foreground colour. */
     .bp-subcat-chip.active {
       background: var(--theme-accent);
       border-color: var(--theme-accent);
-      color: #fff;
+      color: var(--color-surface);
     }
+
+    /* ── v1.45c — SIDEBAR DIMENSION FILTERS ───────────────────────────
+       Three fixed groups (Price · Category · Event), each a labelled
+       header over a set of collapsible dimension rows. */
+    .bp-filter-caret { font-size: 9px; opacity: 0.6; }
+    /* v1.65cd — .bp-filter-title typography promoted to global
+       styles.css so the messages-inbox FILTER eyebrow picks up the
+       same theme-accent treatment (previously scoped here, so the
+       inbox rendered the FILTER text unstyled). */
+    .bp-filter-grouphdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 2px 2px;
+    }
+    .bp-filter-grouphdr--rule {
+      margin-top: 10px;
+      padding-top: 12px;
+      border-top: 0.5px solid var(--color-border);
+    }
+    .bp-filter-sec-head {
+      display: flex; align-items: center; gap: 6px;
+      width: 100%;
+      background: none; border: none;
+      padding: 7px 2px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-align: left;
+    }
+    .bp-filter-sec-name {
+      flex: 1;
+      font-size: 12px; font-weight: 500;
+      text-transform: capitalize;
+      color: var(--color-text-secondary);
+    }
+    .bp-filter-sec-head:hover .bp-filter-sec-name { color: var(--theme-accent); }
+    .bp-filter-sec-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 15px; height: 15px; padding: 0 4px;
+      border-radius: 999px;
+      background: var(--theme-accent); color: #fff;
+      font-size: 9px; font-weight: 700;
+    }
+    .bp-filter-sec-body { padding: 0 0 6px 2px; }
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
@@ -684,6 +1267,44 @@ export type DetailMode = 'inline' | 'drawer';
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox .p-checkbox-box { width: 16px !important; height: 16px !important; border-radius: 3px !important; }
     :host ::ng-deep .bp-sidebar-check-item .p-checkbox.p-checkbox-checked .p-checkbox-box { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; }
 
+    /* v1.65eb (p0015) — "AI agent is working some magic" banner.
+       Shown at the top of the results body while recommendItems() is
+       in flight. Theme-soft fill + accent text so it reads as a
+       calm temporary state, not an alert. Sparkles icon gently
+       pulses via the @keyframes below. */
+    .bp-recommending-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: var(--theme-soft);
+      border: 0.5px solid var(--theme-accent);
+      border-radius: var(--radius-card);
+      color: var(--theme-text);
+    }
+    .bp-recommending-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      animation: bp-recommending-pulse 1.4s ease-in-out infinite;
+    }
+    .bp-recommending-body {
+      display: flex; flex-direction: column;
+      gap: 2px; min-width: 0;
+    }
+    .bp-recommending-title {
+      font-size: 13px; font-weight: 600;
+      color: var(--theme-accent);
+      letter-spacing: 0.01em;
+    }
+    .bp-recommending-sub {
+      font-size: 12px; color: var(--color-text-muted);
+    }
+    @keyframes bp-recommending-pulse {
+      0%, 100% { opacity: 1;   transform: scale(1);    }
+      50%      { opacity: 0.5; transform: scale(0.85); }
+    }
+
     /* Breadcrumb at the top of the main column. Always visible; parent
        segments become clickable when drilled. */
     .bp-main-crumbs {
@@ -736,9 +1357,27 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
-    .bp-item-card { border-radius: 10px; overflow: hidden; border: 0.5px solid var(--color-border); cursor: pointer; transition: border-color 0.15s; background: var(--color-surface); }
-    .bp-item-card:hover { border-color: var(--theme-accent); }
-    .bp-item-card-selected { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent); }
+    /* v1.65ag — result cards adopt the v1.22 elevation system:
+       --shadow-xs at rest, --shadow-sm + translateY(-1px) on hover.
+       Lift uses transform so there's no layout shift. */
+    .bp-item-card {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+    }
+    .bp-item-card:hover {
+      border-color: var(--theme-accent);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    .bp-item-card-selected {
+      border-color: var(--theme-accent) !important;
+      box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-accent) !important;
+    }
     /* v1.22: defensive overflow:hidden so a logo image with extreme
        aspect (e.g. the DAR Hire wide-script logo) can't escape the
        card's rounded edge. Inner img already has max-width via
@@ -753,7 +1392,10 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-card-body { padding: 10px 12px; }
     .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+    /* v1.65f1 — explicit gap so "£140Platter" reads "£140 Platter".
+       padding-left rather than a literal space in the template so the
+       space survives whitespace collapsing across the *ngIf branches. */
+    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); padding-left: 6px; }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
     .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
@@ -860,6 +1502,191 @@ export type DetailMode = 'inline' | 'drawer';
       margin-top: 10px;
     }
 
+    /* v1.65g — "All" view summary panel. Mirrors the per-category
+       context panel: pink header · badge row · plain brief. */
+    /* v1.65ag — Project Summary panel adopts the v1.22 panel chrome:
+       white surface, hairline border, --radius-card, --shadow-xs.
+       v1.65ai — flex column with non-scrolling head + scrolling body so
+       the scrollbar starts BELOW the PROJECT SUMMARY header rather than
+       running alongside it. */
+    .bp-allctx {
+      font-family: var(--font-body);
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-xs);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 100%;
+    }
+    /* v1.65ag — saturated theme-accent header replaced by a calm
+       eyebrow strip. v1.65ai — head is outside the scroll container so
+       the scrollbar belongs to .bp-allctx-body only. */
+    /* v1.65am (p0002 #3) — fixed 44px head matches the other panels'
+       dividers across the row. */
+    .bp-allctx-head {
+      display: flex; align-items: center; gap: 7px;
+      height: 44px;
+      padding: 0 14px;
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+      flex-shrink: 0;
+    }
+    /* v1.65ai — scrolling body wrapper. Owns the panel's only
+       scrollbar; head sits above untouched. */
+    .bp-allctx-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    /* v1.65am (p0002 #4) — circle removed; plain inline Lucide icon
+       beside the eyebrow. Circles are reserved for category icons and
+       avatars, never panel-header eyebrows. */
+    .bp-allctx-head-icon {
+      color: var(--theme-accent);
+      flex-shrink: 0;
+      display: inline-flex;
+    }
+    /* v1.65by — header text uses --theme-accent (bold theme color),
+       same as the icon, so PROJECT SUMMARY reads as a brand-keyed
+       section eyebrow instead of dark body text. */
+    .bp-allctx-head-name {
+      flex: 1; min-width: 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+      line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    /* v1.65y — cart icon + count badge on the pink header. Same
+       Amazon / Best Buy pattern used on the per-cat panel. White cart
+       icon over the pink header; the count chip pins to the top-right
+       corner with a thin white ring so it pops against the pink. */
+    .bp-allctx-cart {
+      position: relative;
+      display: inline-flex; align-items: center;
+      flex-shrink: 0;
+      /* v1.65ag — calm header → icon takes --theme-accent on white. */
+      color: var(--theme-accent);
+      padding: 2px;
+      /* v1.65ab — promoted from <span> to <button>; reset native chrome. */
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.12s;
+    }
+    .bp-allctx-cart:hover { opacity: 0.78; }
+    .bp-allctx-cart lucide-icon { display: inline-flex; }
+    .bp-allctx-cart-badge {
+      position: absolute;
+      top: -4px; right: -8px;
+      min-width: 16px; height: 16px;
+      padding: 0 4px;
+      border-radius: var(--radius-pill);
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      font-family: var(--font-body);
+      font-size: 10px; font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      /* v1.65ag — ring now sits on white-surface so the surface tone
+         is the ring colour. */
+      box-shadow: 0 0 0 1.5px var(--color-surface);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* v1.65by — EVENT DETAILS section wrapper. The eyebrow label
+       uses --theme-accent (bold theme color) to match the calm
+       PROJECT SUMMARY header. The hairline still lives on the
+       inner .bp-allctx-details so panels below stay separated. */
+    .bp-allctx-section {
+      border-bottom: var(--border-hairline);
+    }
+    .bp-allctx-section-label {
+      padding: 10px 16px 0;
+      font-family: var(--font-body);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-accent);
+    }
+    /* v1.65o — project details strip. Compact label/value rows between
+       the badges row and the read-only project brief. Same fields the
+       Overview event strip shows, but stacked here so the panel stays
+       narrow.
+       v1.65by — border-bottom moved up to .bp-allctx-section so the
+       grid sits flush under the EVENT DETAILS eyebrow. */
+    .bp-allctx-details {
+      padding: 8px 16px 12px;
+      display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 16px;
+    }
+    .bp-allctx-d-row { display: flex; flex-direction: column; min-width: 0; }
+    .bp-allctx-d-l {
+      font-size: 10px; font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+    .bp-allctx-d-v {
+      font-size: var(--text-sm); color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    /* v1.65aa — Budget / Estimate / Status using the Event drawer's
+       form-field treatment (.bp-field-label + .bp-field-readonly).
+       Three-column grid; matches the per-cat panel.
+       v1.65ag — Budget + Estimate readonly inputs become tint-fill
+       blocks (--theme-soft, no border, --radius-button) per the v1.22
+       elevation pass.
+       v1.65ap — Budget + Estimate narrower so Status gets the breathing
+       room it needs for longer labels ("Need Supplier", "Client Managed"). */
+    .bp-allctx-fields {
+      display: grid; grid-template-columns: 0.9fr 0.9fr 1.3fr; gap: 12px;
+      padding: 12px 16px; border-bottom: var(--border-hairline);
+    }
+    :host ::ng-deep .bp-allctx-fields .bp-field-readonly.p-inputtext {
+      background: var(--theme-soft) !important;
+      border: none !important;
+      border-radius: var(--radius-button) !important;
+    }
+    .bp-allctx-brief { padding: 14px 16px; }
+    /* v1.65ci — Project brief eyebrow takes the bold theme accent so
+       it matches the PROJECT SUMMARY + EVENT DETAILS eyebrows above.
+       Scoped to the brief block so the global .bp-drawer-label colour
+       (drawer headers across the app) stays untouched. */
+    .bp-allctx-brief .bp-drawer-label {
+      margin-bottom: 6px;
+      color: var(--theme-accent);
+    }
+    .bp-allctx-brief-text {
+      font-family: var(--font-body); font-size: var(--text-base);
+      line-height: 1.55; color: var(--color-text-primary);
+      white-space: pre-wrap;
+    }
+    .bp-allctx-brief-empty {
+      font-size: var(--text-sm); color: var(--color-text-muted);
+      line-height: 1.55; font-style: italic;
+    }
+    /* v1.65af — All-view footer with restored "Open estimate →" link. */
+    .bp-allctx-footer {
+      padding: 10px 16px 14px;
+      border-top: 0.5px solid var(--color-border);
+      display: flex; justify-content: flex-end;
+    }
+    .bp-allctx-foot-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: none; padding: 4px 0;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 500;
+      color: var(--theme-accent);
+      transition: opacity 0.12s;
+    }
+    .bp-allctx-foot-link:hover { opacity: 0.75; }
+
     /* Build mode — category header above the requirement_brief.
        Mirrors the strip's circle visual (image / icon / initial) so
        the user has a clear anchor for whose brief they're editing. */
@@ -893,7 +1720,16 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-primary);
       text-align: center;
     }
-    .bp-detail-hero { width: 100%; height: 160px; background-size: cover; background-position: center; position: relative; }
+    /* v1.65aq — top corners rounded to match the panel's --radius-card
+       so the hero image doesn't square off the panel's rounded top. */
+    .bp-detail-hero {
+      width: 100%; height: 160px;
+      background-size: cover; background-position: center;
+      position: relative;
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
+      overflow: hidden;
+    }
     .bp-detail-edit-btn {
       position: absolute; top: 10px; right: 10px;
       width: 30px; height: 30px;
@@ -952,7 +1788,7 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-detail-price-row { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 0.5px solid var(--color-border); }
     .bp-detail-price { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
     .bp-detail-price-sep { font-size: 16px; color: var(--color-text-muted); }
-    .bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 4px; }
+    .bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 6px; }
     .bp-detail-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 14px; }
     .bp-detail-specs { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
     .bp-detail-spec { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
@@ -979,6 +1815,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   /** When false, suppresses the top horizontal category-circle row.
       Sidebar category list is unaffected. Default true (existing usages). */
   @Input() showCategoryCircles: boolean = true;
+  /** v1.65b — render a trailing "+" pseudo-circle on the strip. The
+      caller handles the actual "open the drawer" via (addClicked). */
+  @Input() showAdd: boolean = false;
   /** Header text for the sidebar category section. Default "Category". */
   @Input() sidebarCategoryLabel: string = 'Category';
   /** Hero block — eyebrow, h1 title, subtitle. Hero only renders when
@@ -1027,6 +1866,20 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() backLabel = 'Back';
   @Input() totalCount = 0;
 
+  /** v1.65am (p0002 #2) — render the inline <app-config-strip> wrapper
+      only when a consumer actually projects [config-content] into it.
+      supplier-list and ballpark-settings/feedback set this true; the
+      Marketplace + Messages tabs leave it false so no empty host
+      element renders above their category-circles panel. */
+  @Input() showConfigStrip = false;
+
+  /** v1.65aj (p0001) — placeholder for the new dedicated search panel.
+      Computed from totalCount + entityLabel so the marketplace reads
+      "Search 138 items…" without the caller having to pass anything. */
+  get searchPlaceholder(): string {
+    return `Search ${this.totalCount} ${this.entityLabel}s…`;
+  }
+
   /** Build tab — when set, the inline detail panel shows the project / per-
       category brief in place of the empty state, the circle strip greys
       categories not currently scoped to the project, and clicking a
@@ -1034,6 +1887,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       it via project-category.service.setScope(). Null = standard
       marketplace behaviour. */
   @Input() projectContext: ProjectContext | null = null;
+
+  /** v1.65q — auto-fire AI Recommend once on mount, after projectContext
+      lands. Drives the post-create flow: when the user picks
+      "Yes, recommend" in the create-project modal we land them here
+      with this flag flipped via the marketplace's ?recommend=1 query
+      param. Cleared after firing so re-renders don't loop. */
+  @Input() autoRecommend = false;
+  private autoRecommendFired = false;
 
   /** v1.17 — project-cart context for the inline detail panel's action
       cluster (+ / ♡ / ✎ / 👁). Optional: when not set, only the View
@@ -1103,7 +1964,19 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
         openEstimate → parent navigates to the Build/Estimate tab.
       Both are simple pass-throughs from the category-context-panel. */
   @Output() briefUpdated = new EventEmitter<{ categoryId: string; brief: string }>();
+  /** v1.65w — inline edits on the category context panel surface here
+      so the parent (marketplace) can persist them via upsertCategory. */
+  @Output() budgetUpdated = new EventEmitter<{ categoryId: string; ballpark_budget: number | null }>();
+  @Output() estimateUpdated = new EventEmitter<{ categoryId: string; ballpark_cost: number | null }>();
+  @Output() statusUpdated = new EventEmitter<{ categoryId: string; status_code: string }>();
+  /** v1.65ch — All-view inline edits for the project-level Budget +
+      Status fields. Parent persists via projectService.update. */
+  @Output() projectBudgetUpdated = new EventEmitter<number | null>();
+  @Output() projectStatusUpdated = new EventEmitter<string>();
   @Output() openEstimate = new EventEmitter<void>();
+  /** v1.65b — bubbles the trailing "+" pseudo-circle click up to the
+      parent, which opens the shared AddCategoryService drawer. */
+  @Output() addClicked = new EventEmitter<void>();
 
   selectedEntity: CatalogueEntity | null = null;
   activeCategory = 'all';
@@ -1147,6 +2020,67 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   checkedChildIds: Set<string> = new Set();
   checkedTags: Set<string> = new Set();
 
+  // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
+  // Tag dimensions for the active category, loaded from /taxonomy/dimensions.
+  dimensionGroups: Array<{
+    dimension: string;
+    values: Array<{ tag_id: string; label: string }>;
+    expanded: boolean;
+  }> = [];
+  /** v1.45c — the active category's own dimensions, event-type stripped
+      out and sorted alphabetically (middle "[Category]" filter group). */
+  categoryDimensions: Array<{
+    dimension: string;
+    values: Array<{ tag_id: string; label: string }>;
+    expanded: boolean;
+  }> = [];
+  /** v1.49c — event-type values for the fixed "Event" group. Each entry
+      carries every tag_id that shares its label, so the "All" view can OR
+      across the per-category duplicates; in a single-category view the
+      array holds just that one category's tag. */
+  eventTypeValues: Array<{ label: string; tag_ids: string[] }> = [];
+  /** tag_id → dimension, so applyFilter can OR within / AND across. */
+  private tagDimensionOf = new Map<string, string>();
+  /** Category-specific dimension tags. These cannot survive a category
+      change (their tag_ids belong to one category) so they are reset by
+      loadDimensions; every other facet below is category-agnostic. */
+  selectedTagIds = new Set<string>();
+  /** v1.49d — event-type selection tracked by label (stable across
+      categories), so it survives a category switch and applies on the
+      "All" view. applyFilter resolves labels → tag_ids per scope. */
+  selectedEventLabels = new Set<string>();
+  selectedTiers = new Set<string>();
+  selectedLeadBuckets = new Set<string>();
+  selectedPriceBuckets = new Set<string>();
+  /** v1.49b — suppliers with items in the active category, used as a
+      "supplier" filter section in the sidebar. */
+  categorySuppliers: Array<{ supplier_id: string; supplier_name: string; item_count: number }> = [];
+  selectedSupplierIds = new Set<string>();
+  tierExpanded = false;
+  leadExpanded = false;
+  priceExpanded = false;
+  supplierExpanded = false;
+  eventExpanded = false;
+  /** Tier values mirror items.tier (basic/mid/premium). */
+  readonly tierFilterOptions = [
+    { value: 'basic',   label: 'Core' },
+    { value: 'mid',     label: 'Signature' },
+    { value: 'premium', label: 'Premium' }
+  ];
+  /** Lead-time buckets filter items.lead_time_days directly. */
+  readonly leadTimeBuckets = [
+    { key: 'express',  label: 'Express · ≤1 wk',    min: 0,  max: 7 },
+    { key: 'standard', label: 'Standard · 1–3 wks', min: 8,  max: 21 },
+    { key: 'extended', label: 'Extended · 3 wks+',  min: 22, max: 999999 }
+  ];
+  /** Price buckets filter items.base_price directly. */
+  readonly priceBuckets = [
+    { key: 'p1', label: 'Under £1,000',      min: 0,     max: 999 },
+    { key: 'p2', label: '£1,000 – £5,000',   min: 1000,  max: 4999 },
+    { key: 'p3', label: '£5,000 – £20,000',  min: 5000,  max: 19999 },
+    { key: 'p4', label: '£20,000+',          min: 20000, max: 1e12 }
+  ];
+
   get parentCategories(): CategoryInfo[] {
     return this.categories.filter(c => !c.parent_id);
   }
@@ -1170,6 +2104,35 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   get circleFooterToggleLabel(): string | undefined {
     if (!this.projectContext) return undefined;
     return this.showAllCategories ? 'Show scoped only' : 'Show all categories';
+  }
+  /** v1.65d — options for the strip search bar's left dropdown.
+      v1.65h — context-aware: "All" view lists every category; once a
+      category is active it switches to the subcategory list. */
+  get stripDropdownOptions(): Array<{ id: string; name: string }> {
+    if (this.activeCategory === 'all') {
+      return [
+        { id: 'all', name: 'All' },
+        ...this.displayedCircles.map(c => ({ id: c.id, name: c.name || '' }))
+      ];
+    }
+    return [{ id: '', name: 'All' }, ...(this.subcategories || [])];
+  }
+  /** v1.65h — current dropdown selection, derived from active category /
+      subcategory state. */
+  get stripDropdownValue(): string {
+    return this.activeCategory === 'all'
+      ? 'all'
+      : (this.activeSubcategoryId || '');
+  }
+  /** v1.65h — dropdown change handler. In "All" view picking a category
+      activates it (same as clicking the circle); in category view
+      picking a subcategory filters the grid. */
+  onStripDropdownChange(value: string): void {
+    if (this.activeCategory === 'all') {
+      this.onCircleSelect(value || 'all');
+    } else {
+      this.onSubcategoryClick(value || '');
+    }
   }
   onCircleSelect(id: string) {
     if (id === 'all') {
@@ -1396,14 +2359,66 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private codelistSvc: CodelistService
+    private codelistSvc: CodelistService,
+    private api: ApiService,
+    private outreach: OutreachService,
+    private eventDrawerSvc: EventDrawerService,
+    private cartDrawerSvc: CartDrawerService
   ) {}
+
+  /** v1.65ab — open the shared Project Items cart drawer.
+      Wired to the All-view header cart icon (no args → unscoped).
+      v1.65ae — also wired to per-category-panel cart icon; we pre-filter
+      to the category's project_items by matching against the same tree
+      walk used to render the panel itself (getCategorySelectedItems +
+      getCategoryLikedItems), then pass the resulting item_ids through
+      the service so the drawer stays category-agnostic. */
+  openCartDrawer(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid) return;
+    this.cartDrawerSvc.open(pid);
+  }
+  openCategoryCart(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid) return;
+    const catName = this.currentCategoryInfo?.name || 'Category';
+    const scopedIds = [
+      ...this.getCategorySelectedItems(),
+      ...this.getCategoryLikedItems()
+    ].map(pi => pi.item_id);
+    this.cartDrawerSvc.open(pid, {
+      contextLabel: catName.toUpperCase(),
+      contextTitle: 'Selections in ' + catName,
+      itemIds: scopedIds,
+      // v1.65ej — pass the active category id so the drawer's budget
+      // headroom reads the per-category ballpark_budget (not the
+      // project-wide project_budget).
+      contextCategoryId: this.activeCategory !== 'all' ? this.activeCategory : undefined,
+    });
+  }
+
+  /** v1.65o — opens the shared Event drawer in 'details' edit mode so
+      the user can edit project details / brief from the catalogue's
+      Project Summary panel. The drawer is mounted globally in app-shell;
+      saved$ from the service rehydrates the marketplace's projectContext. */
+  openProjectEdit(): void {
+    const pid = this.projectContext?.projectId;
+    if (pid) this.eventDrawerSvc.open(pid, 'details');
+  }
 
   ngOnInit() {
     forkJoin({
       units: this.codelistSvc.getByName('item_unit'),
       timeUnits: this.codelistSvc.getByName('item_time_unit')
     }).subscribe(() => this.cdr.detectChanges());
+    // v1.65ch — project_status options for the All-view Status dropdown.
+    this.codelistSvc.getByName('project_status').subscribe({
+      next: rows => { this.projectStatuses = rows || []; this.cdr.markForCheck(); },
+      error: () => {}
+    });
+    // v1.49c — populate the filter facets for the initial "All" view
+    // (Price / Supplier / Event) without waiting for a category click.
+    this.loadDimensions();
   }
 
   unitDisplay(code?: string | null): string {
@@ -1420,6 +2435,24 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       // All tags checked by default whenever the tag list changes
       this.checkedTags = new Set(this.tags || []);
       this.applyFilter();
+    }
+    // v1.65cn — restore persisted recommendations when projectContext
+    // first lands. Runs at most once per projectId.
+    if (changes['projectContext'] && this.projectContext) {
+      this.restoreRecommended();
+    }
+    // v1.65q — autoRecommend fires once after projectContext lands.
+    // We listen on both inputs because either may arrive first (the
+    // marketplace sets autoRecommend up front and projectContext after
+    // its forkJoin resolves).
+    if ((changes['autoRecommend'] || changes['projectContext'])
+        && this.autoRecommend
+        && !this.autoRecommendFired
+        && this.projectContext) {
+      this.autoRecommendFired = true;
+      // Defer to the next macrotask so the grid finishes mounting any
+      // dependent children (category circles, dropdown options) first.
+      setTimeout(() => this.recommendItems(), 0);
     }
   }
 
@@ -1471,6 +2504,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.selectedEntity = null;
     this.categoryChanged.emit(cat.id);
     this.drillChanged.emit(null);
+    this.loadDimensions();
     this.applyFilter();
     this.cdr.detectChanges();
   }
@@ -1495,6 +2529,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
 
     this.categoryChanged.emit('all');
     this.drillChanged.emit(null);
+    this.loadDimensions();
     this.applyFilter();
     this.cdr.detectChanges();
   }
@@ -1550,6 +2585,181 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     const next = (id && id === this.activeSubcategoryId) ? '' : id;
     this.activeSubcategoryId = next;
     this.subcategoryChanged.emit(next);
+    this.applyFilter();
+  }
+
+  // ── v1.44 — dimension filter panel (Part 4) ─────────────────────────
+
+  /** Reload the filter facets for the current scope. v1.49d — only the
+      category-specific middle group is rebuilt; the Price / Supplier /
+      Event facets and every expanded section are category-agnostic and
+      are deliberately preserved so the sidebar does not reset under the
+      user when they change category. Called on each category change and
+      once on init. */
+  private loadDimensions(): void {
+    this.dimensionGroups = [];
+    this.categoryDimensions = [];
+    this.eventTypeValues = [];
+    this.categorySuppliers = [];
+    this.tagDimensionOf.clear();
+    // Category-specific dimension tags belong to the old category — they
+    // are the only selection that cannot be carried across. Everything
+    // else (price / tier / lead / supplier / event-type) is preserved.
+    this.selectedTagIds.clear();
+    // Dimension facets are catalogue-item only; skip supplier / feedback grids.
+    if (this.entityType !== 'item') return;
+
+    const catId = this.activeCategory;
+    const isAll = !catId || catId === 'all';
+
+    // v1.49b/c — supplier filter. For "All" we want every supplier with
+    // active items; for a category, just the suppliers stocking it.
+    const supplierUrl = isAll
+      ? '/taxonomy/category-suppliers'
+      : `/taxonomy/category-suppliers?category_id=${catId}`;
+    this.api.get<Array<{ supplier_id: string; supplier_name: string; item_count: number }>>(
+      supplierUrl
+    ).subscribe({
+      next: rows => {
+        if (catId !== this.activeCategory) return;
+        this.categorySuppliers = rows || [];
+        // Drop any preserved supplier selection that the new scope no
+        // longer offers, so there is no hidden ghost filter.
+        const valid = new Set(this.categorySuppliers.map(s => s.supplier_id));
+        const kept = [...this.selectedSupplierIds].filter(id => valid.has(id));
+        if (kept.length !== this.selectedSupplierIds.size) {
+          this.selectedSupplierIds = new Set(kept);
+          this.applyFilter();
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+
+    if (isAll) {
+      // v1.49c — "All" view: event-type is duplicated per category, so the
+      // backend aggregates every tag_id sharing a label.
+      this.api.get<Array<{ label: string; tag_ids: string[] }>>(
+        '/taxonomy/event-types'
+      ).subscribe({
+        next: rows => {
+          if (this.activeCategory !== catId) return;
+          this.eventTypeValues = rows || [];
+          this.applyFilter();
+          this.cdr.detectChanges();
+        },
+        error: () => { this.eventTypeValues = []; this.cdr.detectChanges(); }
+      });
+      return;
+    }
+
+    // A real category — its own dimensions plus the shared event-type.
+    this.api.get<Array<{ dimension: string; values: Array<{ tag_id: string; label: string }> }>>(
+      `/taxonomy/dimensions?category_id=${catId}`
+    ).subscribe({
+      next: groups => {
+        if (catId !== this.activeCategory) return; // category changed mid-flight
+        const all = (groups || []).map(g => ({ ...g, expanded: false }));
+        for (const g of all) {
+          for (const v of g.values) this.tagDimensionOf.set(v.tag_id, g.dimension);
+        }
+        this.dimensionGroups = all;
+        const evt = all.find(g => g.dimension === 'event-type');
+        this.eventTypeValues = evt
+          ? evt.values.map(v => ({ label: v.label, tag_ids: [v.tag_id] }))
+          : [];
+        this.categoryDimensions = all
+          .filter(g => g.dimension !== 'event-type')
+          .sort((a, b) => a.dimension.localeCompare(b.dimension));
+        this.applyFilter();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.dimensionGroups = [];
+        this.categoryDimensions = [];
+        this.eventTypeValues = [];
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** True when the filter panel should be offered. v1.49c — Price,
+      Supplier and Event facets now apply on the "All" view too, so the
+      panel shows for any item grid; the category-specific middle group
+      simply stays empty when no category is active. */
+  get canFilter(): boolean {
+    return this.entityType === 'item';
+  }
+  /** Display name of the active category — the middle filter group's label. */
+  get activeCategoryName(): string {
+    const c = this.categories.find(x => x.id === this.activeCategory);
+    return c ? c.name : '';
+  }
+  get activeFilterCount(): number {
+    return this.selectedTagIds.size + this.selectedTiers.size
+         + this.selectedLeadBuckets.size + this.selectedPriceBuckets.size
+         + this.selectedSupplierIds.size + this.selectedEventLabels.size;
+  }
+  get hasActiveFilters(): boolean { return this.activeFilterCount > 0; }
+
+  toggleDimension(g: { expanded: boolean }): void { g.expanded = !g.expanded; }
+
+  dimensionSelectedCount(g: { values: Array<{ tag_id: string }> }): number {
+    return g.values.reduce((n, v) => n + (this.selectedTagIds.has(v.tag_id) ? 1 : 0), 0);
+  }
+
+  toggleFilterTag(tagId: string): void {
+    if (this.selectedTagIds.has(tagId)) this.selectedTagIds.delete(tagId);
+    else this.selectedTagIds.add(tagId);
+    this.selectedTagIds = new Set(this.selectedTagIds);
+    this.applyFilter();
+  }
+  toggleTierFilter(value: string): void {
+    if (this.selectedTiers.has(value)) this.selectedTiers.delete(value);
+    else this.selectedTiers.add(value);
+    this.selectedTiers = new Set(this.selectedTiers);
+    this.applyFilter();
+  }
+  toggleLeadBucket(key: string): void {
+    if (this.selectedLeadBuckets.has(key)) this.selectedLeadBuckets.delete(key);
+    else this.selectedLeadBuckets.add(key);
+    this.selectedLeadBuckets = new Set(this.selectedLeadBuckets);
+    this.applyFilter();
+  }
+  togglePriceBucket(key: string): void {
+    if (this.selectedPriceBuckets.has(key)) this.selectedPriceBuckets.delete(key);
+    else this.selectedPriceBuckets.add(key);
+    this.selectedPriceBuckets = new Set(this.selectedPriceBuckets);
+    this.applyFilter();
+  }
+  toggleSupplierFilter(id: string): void {
+    if (this.selectedSupplierIds.has(id)) this.selectedSupplierIds.delete(id);
+    else this.selectedSupplierIds.add(id);
+    this.selectedSupplierIds = new Set(this.selectedSupplierIds);
+    this.applyFilter();
+  }
+  /** v1.49d — toggle an event-type label. Tracked by label so the
+      selection survives a category change; applyFilter resolves the
+      label to the current scope's tag_ids. */
+  toggleEventType(et: { label: string }): void {
+    if (this.selectedEventLabels.has(et.label)) this.selectedEventLabels.delete(et.label);
+    else this.selectedEventLabels.add(et.label);
+    this.selectedEventLabels = new Set(this.selectedEventLabels);
+    this.applyFilter();
+  }
+  eventTypeOn(et: { label: string }): boolean {
+    return this.selectedEventLabels.has(et.label);
+  }
+  get eventTypeSelectedCount(): number {
+    return this.selectedEventLabels.size;
+  }
+  clearAllFilters(): void {
+    this.selectedTagIds = new Set();
+    this.selectedTiers = new Set();
+    this.selectedLeadBuckets = new Set();
+    this.selectedPriceBuckets = new Set();
+    this.selectedSupplierIds = new Set();
+    this.selectedEventLabels = new Set();
     this.applyFilter();
   }
 
@@ -1665,10 +2875,228 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     return this.currentProjectCategory?.requirement_detail?.trim() || null;
   }
 
+  /** v1.65w — manual estimate (ballpark_cost) for the active
+      project_category. Read by category-context-panel via [estimatePrice].
+      v1.65ei — applies the project's margin + VAT on top of the stored
+      ballpark_cost ("your cost") so the panel field reads as the
+      client-facing total — same semantic as the Budget field above
+      it. Math matches estimate.component recalc() and cart-drawer's
+      summary footer:
+        clientTotal = cost × (1 + margin/100) × (1 + vat/100) */
+  get ctxEstimate(): number | null {
+    if (this.panelContext !== 'project') return null;
+    const v = (this.currentProjectCategory as any)?.ballpark_cost;
+    if (v == null) return null;
+    return this.applyMarginVat(Number(v) || 0);
+  }
+
+  /** v1.65ei — multiply a "your cost" figure by the project's margin
+      and VAT defaults to get the client-facing total. Falls back to
+      20/20 to match the same defaults estimate.component uses. */
+  private applyMarginVat(cost: number): number {
+    const p: any = this.projectContext?.project;
+    const margin = Number(p?.default_margin_pct) || 20;
+    const vat    = Number(p?.default_vat_pct)    || 20;
+    const preVat = cost * (1 + margin / 100);
+    return preVat * (1 + vat / 100);
+  }
   get ctxBudget(): number | null {
     if (this.panelContext !== 'project') return null;
     const v = this.currentProjectCategory?.ballpark_budget;
     return v != null ? Number(v) : null;
+  }
+  /** v1.65f — category_status code of the active project_category. */
+  get ctxStatusCode(): string | null {
+    if (this.panelContext !== 'project') return null;
+    return (this.currentProjectCategory as any)?.status_code || null;
+  }
+
+  /** v1.65i — entities matching project_items selection_type. Used to
+      render Selected + Wishlist sections above the main results grid
+      (project context only). Filters by activeCategory like the main
+      grid so a category-scoped view only shows that category's
+      selections. */
+  get selectedEntities(): CatalogueEntity[] {
+    if (!this.projectContext) return [];
+    const ids = new Set(
+      (this.projectItems || [])
+        .filter(pi => pi.selection_type === 'selected')
+        .map(pi => pi.item_id)
+    );
+    return this.filteredEntities.filter(e => ids.has(e.id));
+  }
+  get wishlistEntities(): CatalogueEntity[] {
+    if (!this.projectContext) return [];
+    const ids = new Set(
+      (this.projectItems || [])
+        .filter(pi => pi.selection_type === 'liked')
+        .map(pi => pi.item_id)
+    );
+    return this.filteredEntities.filter(e => ids.has(e.id));
+  }
+
+  /** v1.65k — AI Recommend. Re-uses the Plan-tab matcher
+      (POST /taxonomy/match-items) which scores existing catalogue items
+      against the project_category's requirement_brief. Returned item_ids
+      are stashed in recommendedIds and surfaced as an "AI RECOMMENDATIONS"
+      section in the centre column.
+      v1.65l — "all" view also supported: fans out one matcher request per
+      project_category that has a brief and merges all results.
+      v1.65cn — recommendedIds are persisted to localStorage keyed by
+      projectId so the AI RECOMMENDATIONS section survives a page reload
+      / route change. Cleared on a fresh Recommend run (the new result
+      replaces the old). */
+  recommending = false;
+  recommendedIds = new Set<string>();
+  private static readonly RECOMMENDED_STORAGE_PREFIX = 'bp-recommended-';
+  /** Tracks the projectId we've already attempted to restore from
+      storage for so we don't reapply the saved ids on every change-
+      detection cycle. */
+  private restoredRecommendedFor: string | null = null;
+
+  /** Project_categories that have a non-empty brief — eligible inputs for
+      the matcher when running across the whole project. */
+  private briefedProjectCategories(): ProjectCategory[] {
+    return (this.projectContext?.projectCategories || [])
+      .filter(pc => !!(pc.requirement_brief || '').trim());
+  }
+
+  get canRecommend(): boolean {
+    if (!this.projectContext) return false;
+    if (this.activeCategory === 'all') {
+      return this.briefedProjectCategories().length > 0;
+    }
+    const brief = (this.currentProjectCategory?.requirement_brief || '').trim();
+    return !!brief;
+  }
+
+  get recommendedEntities(): CatalogueEntity[] {
+    if (!this.recommendedIds.size) return [];
+    return this.filteredEntities.filter(e => this.recommendedIds.has(e.id));
+  }
+
+  /** Build a single match-items request for a project_category. */
+  private matchRequest$(pc: ProjectCategory) {
+    return this.api.post<any>('/taxonomy/match-items', {
+      brief: (pc.requirement_brief || '').trim(),
+      categoryId: pc.category_id,
+      projectId: this.projectContext?.projectId,
+      budgetEstimate: pc.ballpark_budget != null ? Number(pc.ballpark_budget) : undefined
+    });
+  }
+
+  /** Extract item_ids from a match-items response (matched_items + closest_item). */
+  private collectMatchIds(r: any, into: Set<string>): void {
+    (r?.matched_items || []).forEach((m: any) => { if (m?.item_id) into.add(m.item_id); });
+    if (r?.closest_item?.item_id) into.add(r.closest_item.item_id);
+  }
+
+  recommendItems(): void {
+    if (this.recommending || !this.projectContext) return;
+
+    // Fan-out target list: single category in scoped view, every briefed
+    // project_category in "all" view.
+    const targets: ProjectCategory[] = this.activeCategory === 'all'
+      ? this.briefedProjectCategories()
+      : (this.currentProjectCategory && (this.currentProjectCategory.requirement_brief || '').trim()
+          ? [this.currentProjectCategory] : []);
+    if (!targets.length) return;
+
+    this.recommending = true;
+    this.cdr.detectChanges();
+
+    forkJoin(targets.map(pc => this.matchRequest$(pc))).subscribe({
+      next: results => {
+        const ids = new Set<string>();
+        results.forEach(r => this.collectMatchIds(r, ids));
+        this.recommendedIds = ids;
+        this.recommending = false;
+        // v1.65cn — persist the recommendation set so it survives a
+        // reload. Keyed by projectId — saved per-project, not per
+        // category, since the matcher returns project-scoped ids.
+        this.persistRecommended();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.recommending = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** v1.65cn — write the current recommendedIds to localStorage. */
+  private persistRecommended(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid) return;
+    try {
+      const key = CatalogueGridComponent.RECOMMENDED_STORAGE_PREFIX + pid;
+      if (this.recommendedIds.size) {
+        localStorage.setItem(key, JSON.stringify([...this.recommendedIds]));
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch { /* localStorage may be unavailable */ }
+  }
+
+  /** v1.65cn — restore the saved recommendation set when projectContext
+      lands. Runs once per projectId so it doesn't override a fresh
+      recommendItems() result. */
+  private restoreRecommended(): void {
+    const pid = this.projectContext?.projectId;
+    if (!pid || this.restoredRecommendedFor === pid) return;
+    this.restoredRecommendedFor = pid;
+    try {
+      const key = CatalogueGridComponent.RECOMMENDED_STORAGE_PREFIX + pid;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) {
+        this.recommendedIds = new Set(arr.filter((s: any) => typeof s === 'string'));
+      }
+    } catch { /* ignore parse / storage errors */ }
+  }
+
+  /** v1.65g — All-view totals (project Marketplace summary panel).
+      v1.65ch — Budget switched from sum-of-categories to the project-
+      level project_budget field so the value is single-sourced + the
+      field can be edited inline. Falls back to the per-category sum
+      when project_budget isn't set, so older projects don't display
+      as £0. Estimate still aggregates per-category ballpark_cost. */
+  get allBudgetTotal(): number {
+    const p: any = this.projectContext?.project;
+    const direct = Number(p?.project_budget) || 0;
+    if (direct > 0) return direct;
+    return (this.projectContext?.projectCategories || [])
+      .reduce((s, c) => s + (Number((c as any).ballpark_budget) || 0), 0);
+  }
+  get allEstimateTotal(): number {
+    // v1.65ei — sum each category's ballpark_cost ("your cost"), then
+    // apply margin + VAT once at the project level so the All-view
+    // Estimate reads as a client-facing total to match per-category.
+    const yourCost = (this.projectContext?.projectCategories || [])
+      .reduce((s, p) => s + (Number((p as any).ballpark_cost) || 0), 0);
+    return this.applyMarginVat(yourCost);
+  }
+  get allSelectedCount(): number {
+    return (this.projectItems || []).filter(pi => pi.selection_type === 'selected').length;
+  }
+  get allLikedCount(): number {
+    return (this.projectItems || []).filter(pi => pi.selection_type === 'liked').length;
+  }
+  /** v1.65ab — total project_items (selected + wishlist) for the cart
+      icon badge. Drives the "Your selections" drawer trigger. */
+  get allCartCount(): number {
+    return (this.projectItems || []).length;
+  }
+  /** v1.65w — project_status label for the All-view status pill.
+      Project pushes status_name or status_code on its model; we accept
+      either. Falls back to "Draft" so the pill never renders empty. */
+  get projectStatusLabel(): string {
+    const p = this.projectContext?.project as any;
+    if (!p) return '';
+    return p.status_name
+        || p.status_code
+        || 'Draft';
   }
 
   /** Items in this category that the project has selected. Matches by
@@ -1769,10 +3197,74 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     this.briefUpdated.emit({ categoryId: catId, brief });
   }
 
+  /** v1.65w — inline-edit pass-throughs for Budget / Estimate / Status. */
+  onContextBudgetUpdated(ballpark_budget: number | null) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.budgetUpdated.emit({ categoryId: catId, ballpark_budget });
+  }
+  onContextEstimateUpdated(ballpark_cost: number | null) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.estimateUpdated.emit({ categoryId: catId, ballpark_cost });
+  }
+  onContextStatusUpdated(status_code: string) {
+    const catId = this.currentCategoryInfo?.id;
+    if (!catId) return;
+    this.statusUpdated.emit({ categoryId: catId, status_code });
+  }
+
   /** v1.22 — "Open estimate →" link click. Bubble to the parent which
       handles routing (the Build/Estimate tab path can vary per page). */
   onContextOpenEstimate() {
     this.openEstimate.emit();
+  }
+
+  // ── v1.65ch — All-view inline edits (project-level Budget + Status) ──
+
+  /** Click-to-edit state for the All-view Budget + Status fields.
+      Mirrors the per-category pattern in category-context-panel. */
+  editingAllBudget = false;
+  allBudgetDraft: number | null = null;
+  editingAllStatus = false;
+
+  /** project_status codelist rows (loaded once in ngOnInit). Powers
+      the All-view Status dropdown + label resolution. */
+  projectStatuses: any[] = [];
+
+  /** Lazy code → label resolver against projectStatuses; falls back
+      to the raw code if the codelist hasn't loaded or the code is
+      unknown. */
+  projectStatusDisplay(): string {
+    const p: any = this.projectContext?.project;
+    if (!p) return '';
+    const code = p.status_code || p.status_name || 'draft';
+    const row = this.projectStatuses.find(s => s.code === code);
+    return row?.label || p.status_name || (code.charAt(0).toUpperCase() + code.slice(1).replace(/_/g, ' '));
+  }
+
+  get projectStatusCode(): string {
+    const p: any = this.projectContext?.project;
+    return p?.status_code || 'draft';
+  }
+
+  startEditAllBudget(): void {
+    this.allBudgetDraft = this.allBudgetTotal || null;
+    this.editingAllBudget = true;
+  }
+  commitAllBudget(): void {
+    if (!this.editingAllBudget) return;
+    const v = this.allBudgetDraft;
+    const next = (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+    this.editingAllBudget = false;
+    if (next !== this.allBudgetTotal) this.projectBudgetUpdated.emit(next);
+  }
+  cancelAllBudget(): void { this.editingAllBudget = false; }
+
+  startEditAllStatus(): void { this.editingAllStatus = true; }
+  commitAllStatus(code: string): void {
+    this.editingAllStatus = false;
+    if (code && code !== this.projectStatusCode) this.projectStatusUpdated.emit(code);
   }
 
   /** v1.20: convenience getter — show the in-grid + / ♡ project-cart
@@ -1797,6 +3289,31 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   onCartLikeClick(event: MouseEvent, entity: CatalogueEntity) {
     event.stopPropagation();
     this.onLikeForProject(entity);
+  }
+
+  /** v1.51a — ✉ click: open the shared outreach drawer with this item as
+      the requirement. Same gate as +/♡ (showCartActions ⇒ a projectId is
+      bound), so the icon only appears within a project context. */
+  onRequestQuoteClick(event: MouseEvent, entity: CatalogueEntity) {
+    event.stopPropagation();
+    if (!this.projectId || !entity.category_id) return;
+    // v1.52a — requesting a quote on an item implies selecting it for
+    // the project (don't toggle off one already selected).
+    if (this.getSelectionType(entity.id) !== 'selected') {
+      this.addToProject.emit({ entity, type: 'selected' });
+    }
+    this.outreach.open({
+      item: {
+        item_id:     entity.id,
+        name:        entity.name,
+        description: entity.description,
+        price:       entity.price ?? null,
+        isNew:       false
+      },
+      categoryId:   entity.category_id,
+      categoryName: entity.categoryLabel,
+      projectId:    this.projectId
+    });
   }
 
   /** + button — adds the item to the project as 'selected', or removes
@@ -1849,15 +3366,85 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     // Plus the optional Type/tags filter (independent free-text)
     // and the search box. No more drill state in this branch.
     if (this.activeCategory !== 'all') {
-      result = result.filter(e => e.category_id === this.activeCategory);
+      // v1.49a — an item has one category_id, but a supplier belongs to
+      // many: filter supplier entities on their category_ids[] so the
+      // Suppliers view actually shows the suppliers for a category.
+      result = (this.entityType === 'supplier')
+        ? result.filter(e => (((e._raw && e._raw.category_ids) as string[]) || [])
+            .includes(this.activeCategory))
+        : result.filter(e => e.category_id === this.activeCategory);
     }
     if (this.activeSubcategoryId) {
       result = result.filter(e => (e as any).subcategory_id === this.activeSubcategoryId);
     }
-    if (this.tags.length && this.checkedTags.size < this.tags.length) {
+    // v1.44 — structured dimension facets. OR within a dimension,
+    // AND across dimensions; matched against the item's tag_ids[].
+    if (this.selectedTagIds.size) {
+      const byDim = new Map<string, Set<string>>();
+      for (const id of this.selectedTagIds) {
+        const dim = this.tagDimensionOf.get(id) || '_';
+        if (!byDim.has(dim)) byDim.set(dim, new Set());
+        byDim.get(dim)!.add(id);
+      }
       result = result.filter(e => {
-        const itemTags: string[] = e._raw?.tags || [];
-        return itemTags.some(t => this.checkedTags.has(t));
+        const owned = new Set<string>((e._raw && e._raw.tag_ids) || []);
+        for (const ids of byDim.values()) {
+          let hit = false;
+          for (const id of ids) { if (owned.has(id)) { hit = true; break; } }
+          if (!hit) return false;
+        }
+        return true;
+      });
+    }
+    // v1.49d — event-type facet. Tracked by label (category-agnostic);
+    // resolve the selected labels to tag_ids for the current scope and
+    // OR them. Skipped while eventTypeValues is still loading so the
+    // grid doesn't flash empty on a category change.
+    if (this.selectedEventLabels.size && this.eventTypeValues.length) {
+      const evtTagIds = new Set<string>();
+      for (const et of this.eventTypeValues) {
+        if (this.selectedEventLabels.has(et.label)) {
+          for (const id of et.tag_ids) evtTagIds.add(id);
+        }
+      }
+      if (evtTagIds.size) {
+        result = result.filter(e => {
+          const owned = (e._raw && e._raw.tag_ids) || [];
+          for (const id of owned) { if (evtTagIds.has(id)) return true; }
+          return false;
+        });
+      }
+    }
+    // Tier facet — items.tier column directly.
+    if (this.selectedTiers.size) {
+      result = result.filter(e => {
+        const tier = e._raw && e._raw.tier;
+        return !!tier && this.selectedTiers.has(tier);
+      });
+    }
+    // Lead-time facet — buckets over items.lead_time_days.
+    if (this.selectedLeadBuckets.size) {
+      result = result.filter(e => {
+        const d = e._raw && e._raw.lead_time_days;
+        if (d == null) return false;
+        return this.leadTimeBuckets.some(b =>
+          this.selectedLeadBuckets.has(b.key) && d >= b.min && d <= b.max);
+      });
+    }
+    // v1.45c — price facet — buckets over the item's base price.
+    if (this.selectedPriceBuckets.size) {
+      result = result.filter(e => {
+        const p = e.price;
+        if (p == null) return false;
+        return this.priceBuckets.some(b =>
+          this.selectedPriceBuckets.has(b.key) && p >= b.min && p <= b.max);
+      });
+    }
+    // v1.49b — supplier facet — item's org_id against the chosen suppliers.
+    if (this.selectedSupplierIds.size) {
+      result = result.filter(e => {
+        const oid = e._raw && e._raw.org_id;
+        return !!oid && this.selectedSupplierIds.has(oid);
       });
     }
     if (this.searchQuery.trim()) {

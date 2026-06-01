@@ -81,6 +81,14 @@
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+  /* v1.65aj (p0001) — TWO-TIER CARD RULE.
+     Grids / galleries (Marketplace result cards, category circles) are
+     ELEVATED: --shadow-xs at rest, --shadow-sm on hover (lift via
+     transform, no layout shift).
+     List rows (cart drawer rows, Messages thread rows) are FLAT: border
+     only, hover background-shift, NO shadow. Use the shared
+     `.bp-list-row` primitive defined further down so all list surfaces
+     stay aligned. */
 
   /* Hairline borders — slightly softer than the neutral
      --color-border, designed to pair with shadows. */
@@ -107,6 +115,13 @@
   --color-success:      #10B981;
   --color-success-dark: #065F46;
   --theme-soft: var(--theme-bg);
+
+  /* p0003 — three-stop contrast set per preset. Overridden by
+     ConfigService.applyTheme() when the preset changes. Defaults
+     below are the amber-preset values. */
+  --theme-contrast-soft:   #DDEEF2;
+  --theme-contrast:        #3FA8C4;
+  --theme-contrast-strong: #0C447C;
 }
 
 /* --- Dark mode overrides --- */
@@ -293,8 +308,66 @@ lucide-icon svg {
   font-size: var(--text-md) !important;
   font-family: var(--font-body) !important;
 }
-/* Dropdown focus */
-.p-dropdown:not(.p-disabled).p-focus { border-color: var(--theme-accent) !important; box-shadow: 0 0 0 1px var(--theme-accent) !important; }
+/* v1.65ab — unified dropdown trigger + panel (matches dashboard kebab menu).
+   Applies to EVERY p-dropdown app-wide. Hand-rolled menus like .bp-card-menu
+   are unaffected because they don't use the .p-dropdown selector. */
+.p-dropdown {
+  border: var(--border-hairline-strong) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--color-surface) !important;
+  box-shadow: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  align-items: center !important;
+}
+/* Lock trigger appearance — no border / shadow / outline change in any state */
+.p-dropdown,
+.p-dropdown:hover,
+.p-dropdown:focus,
+.p-dropdown:focus-within,
+.p-dropdown.p-focus,
+.p-dropdown.p-inputwrapper-focus,
+.p-dropdown.p-dropdown-open {
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.p-dropdown *:focus,
+.p-dropdown *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.p-dropdown .p-dropdown-label {
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  font-family: var(--font-body) !important;
+  line-height: 1.4 !important;
+  color: rgb(75, 85, 99) !important;
+}
+.p-dropdown .p-dropdown-trigger { width: 28px !important; }
+
+.p-dropdown-panel {
+  border: var(--border-hairline) !important;
+  border-radius: var(--radius-button) !important;
+  box-shadow: var(--shadow-md) !important;
+  background: var(--color-surface) !important;
+  margin-top: 4px;
+}
+.p-dropdown-panel .p-dropdown-items { padding: 4px 0 !important; }
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  font-family: var(--font-body) !important;
+  color: rgb(75, 85, 99) !important;
+  line-height: 1.4 !important;
+  border-radius: 0 !important;
+}
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
+  background: var(--theme-bg) !important;
+  color: var(--color-text-primary) !important;
+}
 /* InputSwitch — on state uses theme */
 .p-inputswitch.p-inputswitch-checked .p-inputswitch-slider {
   background: var(--theme-accent) !important;
@@ -586,8 +659,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
    ============================================ */
 
 /* ── Circles strip ── */
+/* v1.65ba (p0004 #2) — removed border-bottom; the bp-browse-panel
+   already provides the outer card border, so this inner hairline read
+   as a ghost divider near the bottom of the circles panel. */
 .bp-cat-circles-wrap {
-  padding: 20px 28px 0; border-bottom: 0.5px solid var(--color-border);
+  padding: 20px 28px 0;
   position: relative; display: flex; align-items: flex-start;
   min-width: 0; overflow: clip visible; overflow-x: clip; overflow-y: visible;
   --bp-circle-w: 96px;
@@ -595,7 +671,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circles-wrap[data-circle-size="sm"] { --bp-circle-w: 56px; }
 .bp-cat-circles-wrap[data-circle-size="md"] { --bp-circle-w: 72px; }
 .bp-cat-circles-wrap[data-circle-size="lg"] { --bp-circle-w: 96px; }
-.bp-cat-circles { display: flex; gap: 20px; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
+.bp-cat-circles { display: flex; gap: 20px; justify-content: center; overflow-x: auto; padding: 4px 4px 20px; margin: -4px -4px 0; scrollbar-width: none; flex: 1; min-width: 0; scroll-behavior: smooth; }
 .bp-cat-circles::-webkit-scrollbar { display: none; }
 .bp-circles-arrow {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
@@ -616,15 +692,44 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-circles-toggle:hover { opacity: 0.75; }
 .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; position: relative; }
-.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border); color: var(--color-text-muted); position: relative; }
+.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s, box-shadow 150ms ease; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-xs); color: var(--color-text-muted); position: relative; }
+/* v1.65ag — circles adopt the v1.22 elevation: --shadow-xs at rest,
+   --shadow-sm on hover. Active state preserves the themed ring and
+   lifts to --shadow-sm. */
+.bp-cat-circle-btn:hover .bp-cat-circle {
+  box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-sm);
+}
 .bp-cat-circle--all       { background-color: var(--color-surface); }
 .bp-cat-circle--no-image  { background-color: var(--theme-bg); }
+/* v1.65b — "+ Add category" trailing pseudo-circle: solid theme fill,
+   white icon, scaled up on hover. */
+.bp-cat-circle--add       { background-color: var(--theme-accent);
+                            color: var(--color-surface); box-shadow: none;
+                            border-color: var(--theme-accent); }
+.bp-cat-circle-btn--add:hover .bp-cat-circle--add { filter: brightness(0.95); }
+.bp-cat-circle-btn--add .bp-cat-circle-label { color: var(--theme-accent);
+                                               font-weight: 600; }
 .bp-cat-circle--logo      { background: var(--theme-bg); }
 .bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
 .bp-cat-circle-icon       { color: var(--theme-accent); }
 .bp-cat-circle-lucide     { color: var(--color-text-muted); }
 .bp-cat-circle-logo-img   { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
-.bp-cat-circle-btn.active .bp-cat-circle { border-color: var(--theme-accent); box-shadow: 0 0 0 2px var(--theme-accent); }
+/* v1.65am (p0002 #8) — active category circle: SOLID --theme-accent
+   fill with white-rendered contents. Unmistakable active state. The
+   "+ Add category" circle stays distinct via its plus icon and end-
+   of-row position. */
+.bp-cat-circle-btn.active .bp-cat-circle {
+  background-color: var(--theme-accent) !important;
+  background-image: none !important;
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 0.5px var(--theme-accent), var(--shadow-sm);
+  color: var(--color-surface);
+}
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-icon,
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-lucide,
+.bp-cat-circle-btn.active .bp-cat-circle .bp-cat-circle-initials {
+  color: var(--color-surface);
+}
 .bp-cat-circle-label      { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; max-width: 96px; line-height: 1.3; font-family: var(--font-body); }
 .bp-cat-circle-btn.active .bp-cat-circle-label { color: var(--theme-accent); font-weight: 600; }
 /* v1.28a: edit-pencil overlay — hidden until the circle is hovered.
@@ -661,8 +766,21 @@ input.bp-cfg-page-label.p-inputtext:focus {
   font-family: var(--font-body);
 }
 
-/* ── 3-column body ── */
-.bp-cat-body { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - var(--nav-height) - 160px); }
+/* ── 3-column body ──
+   v1.65ag — parchment page ground; each column becomes a contained panel
+   (--color-surface + hairline + --radius-card + --shadow-xs) with a gap
+   between them so the layout reads as objects, not zones. */
+.bp-cat-body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: calc(100vh - var(--nav-height) - 160px);
+  /* v1.65bp — page ground reverted to --theme-bg parchment (was
+     --theme-contrast-soft green). Cat + search panels back to
+     contained cards on the parchment ground. */
+  background: var(--theme-bg);
+  gap: 12px;
+  padding: 12px;
+}
 .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
@@ -674,9 +792,81 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
   grid-template-columns: 260px 1fr;
 }
-.bp-cat-sidebar { border-right: 0.5px solid var(--color-border); padding: 20px 16px; overflow-y: auto; }
-.bp-cat-main    { padding: 20px 28px; overflow-y: auto; min-width: 0; }
-.bp-cat-detail  { border-left: 0.5px solid var(--color-border); overflow-y: auto; }
+/* v1.65ai — sidebar + main become flex columns. Each has a fixed,
+   non-scrolling head and a flex:1 body wrapper that owns the scrollbar
+   so the scrollbar starts BELOW the sticky-equivalent header rather
+   than running alongside it. */
+.bp-cat-sidebar {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+/* v1.65am (p0002 #3) — panel heads share one fixed height so their
+   hairline dividers line up across FILTER / RESULTS / PROJECT SUMMARY. */
+.bp-cat-sidebar-head {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 14px;
+  border-bottom: var(--border-hairline);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* v1.65aj (p0001) — leading Lucide icon on panel heads. Theme-accent
+   tint, fixed size, sits at the eyebrow's vertical centre. */
+.bp-cat-sidebar-head-icon,
+.bp-cat-main-head-icon {
+  color: var(--theme-accent);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.bp-cat-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+.bp-cat-main {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+/* v1.65am (p0002 #3) — same fixed 44px head height as the sidebar
+   for divider alignment. */
+.bp-cat-main-head {
+  flex-shrink: 0;
+  height: 44px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  border-bottom: var(--border-hairline);
+}
+.bp-cat-main-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+/* v1.65aq — inline item detail panel adopts the same panel chrome as
+   the Filter / Results / Project Summary columns. Was just a left
+   hairline divider on the grid. */
+.bp-cat-detail {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  overflow-y: auto;
+}
 
 /* ── Sidebar primitives ── */
 .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }
@@ -695,29 +885,283 @@ input.bp-cfg-page-label.p-inputtext:focus {
   text-align: left;
 }
 .bp-sidebar-item:hover { background: var(--color-surface); color: var(--color-text-primary); }
-.bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; }
+/* v1.65an — selector active states unified on SOLID --theme-accent
+   fill + --color-surface text (matches the active category circle).
+   Applies to all filter/selector controls: sidebar items, view-toggle
+   buttons, segmented toggles, subcategory chips. Page-nav tabs keep
+   their underline pattern (different convention). */
+.bp-sidebar-item.active { background: var(--theme-accent); color: var(--color-surface); font-weight: 500; }
 .bp-sidebar-count {
   font-size: 11px;
   color: var(--color-text-secondary);
   background: var(--color-background-secondary, var(--color-surface));
   border: 0.5px solid var(--color-border);
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   padding: 1px 7px;
   flex-shrink: 0;
 }
 .bp-sidebar-item.active .bp-sidebar-count {
-  background: var(--theme-bg);
-  border-color: var(--theme-accent);
-  color: var(--theme-accent);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: transparent;
+  color: var(--color-surface);
 }
 
 /* ── Main-column header ── */
-.bp-cat-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.bp-cat-section-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+}
+/* v1.65ai — main RESULTS header lifted to .bp-cat-main-head (outside the
+   scrolling body), so the sticky rule that used to live here is gone.
+   Sub-section headers (AI RECOMMENDATIONS etc.) stay inside .bp-cat-main-body
+   and just keep their normal flow. */
+.bp-cat-section-header--sub { margin-top: 8px; }
+.bp-cat-section-header--sub + .bp-item-grid { margin-bottom: 24px; }
+.bp-cat-section-empty {
+  font-size: 12px; font-style: italic; color: var(--color-text-muted);
+  padding: 14px 4px 24px; line-height: 1.5;
+}
 .bp-cat-section-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--theme-accent); }
 .bp-cat-section-count  { font-size: 12px; color: var(--color-text-muted); flex: 1; }
+/* v1.65cd — FILTER sidebar eyebrow. Promoted from catalogue-grid
+   scoped styles so the messages-inbox FILTER text picks up the
+   same theme-accent treatment. Matches .bp-cat-section-title. */
+.bp-filter-title {
+  font-family: var(--font-body);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--theme-accent);
+}
+
+/* ── v1.65az — BROWSE + SEARCH (back to two separate cards) ────────
+   Two independent contained cards each with their own panel chrome.
+   The .bp-browse-strip is a transparent layout-only container.
+   v1.65ba (p0004 #1) — switched from `margin: 12px 12px 0` to padding
+   so the strip extends the full width of the shell. The page-ground
+   tint behind the strip now reads as one continuous band with the
+   3-col body below; the previous side-margin gutter no longer looks
+   like a pink wrapper around the cards. */
+/* v1.65bq — top padding restored (8px) to match the flex gap between
+   the cat and search panels. The cat panel now has equal page-ground
+   breathing room above (to the hero) and below (to the search panel).
+   v1.65bz — top padding doubled to 16px to give the cat container
+   more breathing room below the hero (per Liam). The 8px flex gap
+   between cat + search panels stays unchanged. */
+.bp-browse-strip {
+  padding: 16px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* v1.65bp — cat + search panels back to contained cards with their
+   own white fill + hairline + radius + soft shadow. The page ground
+   reverts to parchment (--theme-bg) below, so each card reads as a
+   distinct object sitting on the hero's parchment continuation. */
+.bp-browse-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 0 0 4px;
+  overflow: hidden;
+}
+.bp-search-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 8px 12px;
+}
+/* v1.65cl — search + quick-actions row wrapper. In project context
+   it lays the SEARCH panel + the QUICK ACTIONS panel side-by-side
+   on a grid that mirrors the 3-col body grid below (col 1+2 → search,
+   col 3 → actions). Outside project context the wrapper is a no-op
+   block and the search panel renders full-width as before. */
+.bp-search-row-wrap { display: block; }
+.bp-search-row-wrap--split {
+  display: grid;
+  gap: 12px;
+}
+/* Column widths mirror .bp-cat-body--detail's grid-template-columns
+   exactly so the search container's right edge meets the column
+   gap between the main column and the detail panel below. */
+.bp-search-row-wrap--split[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
+.bp-search-row-wrap--split[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
+.bp-search-row-wrap--split[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
+.bp-search-row-wrap--split .bp-search-panel       { grid-column: 1 / 3; }
+.bp-search-row-wrap--split .bp-quick-actions-panel { grid-column: 3; }
+
+/* Quick actions panel — same card chrome as the search panel so
+   the two read as a matched pair sitting above their respective
+   body columns. */
+.bp-quick-actions-panel {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 8px 12px;
+  min-width: 0;
+}
+
+.bp-search-section-label {
+  font-family: var(--font-body);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-accent);
+  margin-bottom: 6px;
+}
+.bp-search-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+/* v1.65ar — inner light-tint field container dropped. The white search
+   panel itself provides the input frame; the "All" chip + search input
+   sit directly in it. One panel, one fill — cleaner. */
+/* v1.65bo — search row gets its own white fill + hairline so the
+   input reads as a defined field while the surrounding browse + search
+   panels stay chrome-less. */
+.bp-search-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  overflow: hidden;
+}
+.bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.bp-search-input.p-inputtext {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* v1.65ch — Quick-actions CTA pills (Event detail / View estimate).
+   Subtle accent-tint pill (theme-soft fill, accent text + icon)
+   so they read as actions but don't fight the bold "All ▾"
+   selector inside the search row. Only render in project context. */
+.bp-search-view-estimate {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 6px 12px;
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.bp-search-view-estimate:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  border-color: var(--theme-accent);
+}
+.bp-search-view-estimate:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bp-search-view-estimate:disabled:hover {
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  border-color: var(--color-border);
+}
+
+/* v1.65cm — Recommend chip integrates INTO the search row, mirroring
+   the "All ▾" treatment on the opposite end: solid theme-accent fill +
+   white label + right-rounded so the row reads as a search pill with
+   a scope chip on the left and an AI-action chip on the right. */
+.bp-search-row .bp-search-recommend.bp-search-view-estimate {
+  margin-left: auto;
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  border: none;
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+  padding: 8px 14px;
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  filter: brightness(0.93);
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:disabled {
+  opacity: 0.6;
+  filter: none;
+}
+.bp-search-row .bp-search-recommend.bp-search-view-estimate:disabled:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+  filter: none;
+}
+
+/* v1.65cb — "All ▾" scope chip inside .bp-search-row. Promoted from
+   catalogue-grid's scoped block so the messages-inbox search row can
+   use the same chrome. Solid --theme-accent fill + white label +
+   white chevron — same convention as the active category circle. */
+.bp-search-panel .bp-strip-search-dd.p-dropdown {
+  background: var(--theme-accent) !important;
+  border: none !important;
+  border-radius: var(--radius-button) 0 0 var(--radius-button) !important;
+  box-shadow: none !important;
+  min-width: 92px;
+  height: auto;
+}
+.bp-search-panel .bp-strip-search-dd .p-dropdown-label {
+  color: var(--color-surface) !important;
+  font-weight: 500 !important;
+}
+.bp-search-panel .bp-strip-search-dd .p-dropdown-trigger {
+  color: var(--color-surface) !important;
+}
+
+/* ── v1.65aj (p0001) — SHARED LIST ROW PRIMITIVE ───────────────────
+   Canonical row card used by the cart drawer and the Messages tab's
+   thread rows. Flat per the two-tier card rule — border only, hover
+   background-shift, no shadow. Consumers compose their own internal
+   markup (visual / text / trailing / hover actions) inside.
+   The --active and --unread modifiers tint the row with --theme-soft. */
+.bp-list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.bp-list-row:hover {
+  background: var(--color-background-secondary, var(--theme-bg));
+}
+.bp-list-row--active,
+.bp-list-row--unread {
+  background: var(--theme-soft);
+}
+.bp-list-row--active { border-color: var(--theme-accent); }
 
 /* ── View toggle (list / card / table) ── */
 .bp-view-toggle { display: flex; gap: 4px; }
+/* v1.65am (p0002 #7) — hairline divider used between distinct control
+   clusters in a panel head (e.g. Recommend ▏view toggle). Inline,
+   half-height of the head. */
+.bp-head-sep {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
 .bp-view-btn {
   width: 30px; height: 30px; border-radius: 6px;
   border: 0.5px solid var(--color-border);
@@ -728,7 +1172,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
   transition: all 0.15s;
 }
 .bp-view-btn:hover { color: var(--theme-accent); }
-.bp-view-btn.active { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+/* v1.65an — solid --theme-accent active state (matches sidebar items + circles). */
+.bp-view-btn.active { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
 
 /* ============================================
    STATUS PILLS — app-status-badge
@@ -787,6 +1232,20 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* Acceptance criteria statuses */
 .bp-pill-agreed { background: #DCFCE7; color: #166534; border: 0.5px solid #86EFAC; }
 .bp-dot-agreed  { background: #16A34A; }
+
+/* Brief-tab category statuses (category_status codelist) */
+.bp-pill-briefed        { background: #DBEAFE; color: #1E40AF; border: 0.5px solid #93C5FD; }
+.bp-dot-briefed         { background: #3B82F6; }
+.bp-pill-need_supplier  { background: #FFEDD5; color: #9A3412; border: 0.5px solid #FDBA74; }
+.bp-dot-need_supplier   { background: #F97316; }
+.bp-pill-out_for_quote  { background: #E0E7FF; color: #3730A3; border: 0.5px solid #A5B4FC; }
+.bp-dot-out_for_quote   { background: #6366F1; }
+.bp-pill-awaiting       { background: #FEF3C7; color: #92400E; border: 0.5px solid #FDE68A; }
+.bp-dot-awaiting        { background: #F59E0B; }
+.bp-pill-client_managed { background: #EDE9FE; color: #5B21B6; border: 0.5px solid #C4B5FD; }
+.bp-dot-client_managed  { background: #8B5CF6; }
+.bp-pill-na             { background: #F3F4F6; color: #6B7280; border: 0.5px solid #D1D5DB; }
+.bp-dot-na              { background: #9CA3AF; }
 
 /* Team roles — no dot */
 .bp-pill-owner  { background: #F5F0E8; color: #92400E; border: 0.5px solid #E8D9C0; }
@@ -867,15 +1326,25 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* ── HERO BANNER ──
    Single standard across the whole app. Pills > title > subtitle > tabs.
    Border-bottom lives on .bp-hero-tabs only — never on the hero container. */
+/* v1.65bi — hairline moved here (was on .bp-hero-tabs which was
+   only as wide as the tab labels). .bp-hero spans the full page
+   width so the line now goes edge-to-edge. The active tab's
+   margin-bottom: -0.5px still covers the line at its position. */
+/* v1.65bs — hero now uses the bold theme fill (--theme-accent) in
+   light mode too; text + sub-label switch to white for legibility.
+   v1.65bw — hairline under the tabs uses --theme-bg (light theme
+   parchment) instead of the neutral rgba black hairline so it's
+   actually visible on the accent-filled hero. */
 .bp-hero {
-  background: var(--theme-bg);
+  background: var(--theme-accent);
   padding: 32px var(--section-pad) 0;
+  border-bottom: 0.5px solid var(--theme-bg);
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
   font-size: 36px;
   font-weight: 400;
-  color: var(--color-text-primary);
+  color: var(--color-surface);
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin-bottom: 6px;
@@ -883,27 +1352,263 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-page-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--theme-text) !important;
+  color: var(--color-surface) !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 20px;
   display: block;
 }
-.bp-hero-tabs { display: flex; border-bottom: 0.5px solid var(--color-border); }
+/* v1.65bd — hairline along the bottom of the tab row. Inactive tabs
+   sit on it (their bottom edge appears bordered because the band's
+   hairline shows below them). The active tab "punches through" via
+   a negative bottom margin + z-index, so its fill covers the
+   hairline at its position — classic folder-tab effect.
+   v1.65bi — hairline moved to .bp-hero so it spans full page width.
+   Tabs flex row no longer carries it. */
+.bp-hero-tabs {
+  display: flex;
+}
+/* v1.65n — tab band. Sibling of .bp-hero, painted in the same
+   parchment so the tabs feel like a continuation of the hero rather
+   than a row at the bottom of it. On the project Marketplace the
+   strip-bar below (also parchment) extends this same band, giving
+   one continuous tinted region for hero → tabs → search. The tonal
+   step into white content below handles the boundary, so no
+   hairline rule. */
+/* v1.65bg — tab band has NO fill in any mode. Was --theme-bg in
+   light/dark and --theme-accent in bold; now transparent so the
+   band only carries layout (padding) and the tabs are the only
+   visible chrome in the row. */
+.bp-hero-tab-band {
+  background: transparent;
+  padding: 0 var(--section-pad);
+}
+/* p0003 — REAL FOLDER TABS. Sentence case, --text-base, readable
+   inactive colour. Active tab = --theme-contrast-soft fill +
+   --theme-contrast-strong text with folder-tab top corners. Same
+   in light / dark / bold modes (per-mode rules below override the
+   inactive colour where the hero background changes).
+   v1.65ba — hairline outline on every tab (top + sides) so the
+   inactive tabs also read as folder-tab shapes, matching the Adobe
+   reference. The tab band's own bottom hairline handles the row
+   bottom so individual tabs don't need a border-bottom. */
 .bp-hero-tab {
-  padding: 10px 20px;
-  font-size: var(--text-sm);
+  padding: 10px 18px;
+  /* v1.65bc — even visual width across tabs regardless of label
+     length. "Marketplace" is the widest natural label (~95px); 130px
+     gives a small breathing margin and lets "Overview" / "Plan" /
+     "Inbox" share the same footprint. */
+  min-width: 130px;
+  text-align: center;
+  font-size: var(--text-base);
   font-weight: 500;
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
+  color: var(--color-text-secondary);
+  /* v1.65br — inactive tabs now carry a white fill so they read as
+     defined card chips on the parchment hero. */
+  background: var(--color-surface);
+  border: var(--border-hairline);
   border-bottom: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
   font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  border-radius: 9px 9px 0 0;
+  /* v1.65ca — soft drop shadow on the tabs (top + sides) so the
+     folder chips lift off the hero band. Negative-y + side spreads
+     keep the shadow above the bottom hairline of the active tab. */
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03);
 }
+.bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
 .bp-hero-tab:hover { color: var(--color-text-primary); }
-.bp-hero-tab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+/* v1.65br — active tab is now light-theme parchment (--theme-bg) with
+   --theme-text text, so it visually opens onto the hero and the
+   parchment page-ground below. Inactive tabs are the white chips;
+   active reads as the "this is the surface" tab. */
+.bp-hero-tab.active {
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  position: relative;
+  z-index: 1;
+  margin-bottom: -0.5px;
+}
+/* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
+   surface, so inactive tabs drop their hairline outline (which
+   reads as faint frame on coloured bg) and the band's bottom
+   hairline is suppressed. `!important` is necessary because
+   the duplicate .bp-hero-tab rule lower in styles.css carries
+   its own !important.
+   v1.65ca — Dark stays bare white-ish text on transparent.
+   Bold now gets white-filled inactive tabs (matching light mode)
+   so they read as defined folder chips on the accent hero. */
+[data-mode="dark"] .bp-hero-tab {
+  color: rgba(255, 255, 255, 0.82) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+[data-mode="dark"] .bp-hero-tab:hover {
+  color: #fff !important;
+}
+[data-mode="bold"] .bp-hero-tab {
+  color: var(--color-text-secondary) !important;
+  background: var(--color-surface) !important;
+  border: var(--border-hairline) !important;
+  border-bottom: none !important;
+}
+[data-mode="bold"] .bp-hero-tab:hover {
+  color: var(--color-text-primary) !important;
+}
+[data-mode="dark"] .bp-hero,
+[data-mode="bold"] .bp-hero {
+  border-bottom: none;
+}
+[data-mode="dark"] .bp-hero-tab.active,
+[data-mode="bold"] .bp-hero-tab.active {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+  border: none !important;
+  margin-bottom: 0 !important;
+}
+
+/* ─── p0003 — BOLD MODE HERO ──────────────────────────────────────
+   Third display mode alongside light and dark. Only the hero changes;
+   panels and content reuse light-mode treatment. data-mode is set on
+   document.documentElement by ConfigService.applyMode().
+   The .bp-hero-orbs / .bp-hero-grain elements always live in the
+   hero template; they're display:none outside [data-mode="bold"]
+   (see app-shell scoped styles). */
+[data-mode="bold"] .bp-hero-orbs {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+[data-mode="bold"] .bp-hero-grain {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* v1.65bg — tab band stays transparent in Bold mode too (was accent). */
+[data-mode="bold"] .bp-hero {
+  background: var(--theme-accent) !important;
+}
+/* v1.65cc — Bold hero top corners are now square (was rounded with
+   --radius-card). The accent fill should bleed edge-to-edge so the
+   hero reads as the page top, not a floating card. overflow:hidden
+   stays so the bold orbs + grain don't paint outside the hero. */
+[data-mode="bold"] .bp-hero {
+  border-bottom: none !important;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  overflow: hidden;
+}
+[data-mode="bold"] .bp-hero-org-name,
+[data-mode="bold"] .bp-hero-page-label,
+[data-mode="bold"] .bp-hero-back {
+  color: var(--color-surface) !important;
+}
+/* Pills on Bold hero — white-fill + theme-text for legibility. */
+[data-mode="bold"] .bp-hero-tag.p-tag,
+[data-mode="bold"] .bp-hero-tag-span {
+  background: #fff !important;
+  color: var(--theme-text) !important;
+  border-color: #fff !important;
+}
+/* Tab badge in Bold — danger-red on accent is muddy; flip to white-fill
+   + accent-text. */
+[data-mode="bold"] .bp-hero-tab-badge {
+  background: #fff !important;
+  color: var(--theme-accent) !important;
+}
+
+/* ─── v1.65dh — CALM HERO VARIANT ─────────────────────────────────
+   Used by the dashboard + settings surfaces (route data
+   heroVariant: 'calm'). Overrides the Bold-aware default hero with
+   a parchment fill, no orbs/grain regardless of [data-mode], and
+   calm underline tabs (text-muted by default, accent + bottom-
+   underline on active). Selectors win on specificity (.bp-hero--calm
+   + .bp-hero-tab), so the existing !important rules from p0003 +
+   v1.65ca are kept intact for the default hero.
+
+   Notes from the spec:
+   - Card chrome on this page is shadow-only (no hairline border).
+   - Tabs are calm underline, not folder-tab.
+   - No Bold-mode hero on this page even when data-mode='bold'. */
+.bp-hero.bp-hero--calm {
+  background: var(--theme-bg) !important;
+  border-bottom: var(--border-hairline) !important;
+  padding-top: 24px !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-orbs,
+.bp-hero.bp-hero--calm .bp-hero-grain { display: none !important; }
+.bp-hero.bp-hero--calm .bp-hero-org-name {
+  color: var(--color-text-primary) !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-page-label {
+  color: var(--color-text-muted) !important;
+}
+/* Tab band — strip-style flat bar with a hairline divider. */
+.bp-hero.bp-hero--calm .bp-hero-tab-band {
+  background: transparent !important;
+  padding-bottom: 0 !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tabs {
+  border-bottom: var(--border-hairline) !important;
+  gap: 4px;
+}
+/* Calm underline tab — bare text, no fill, no border-radius. */
+.bp-hero.bp-hero--calm .bp-hero-tab {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  padding: 10px 16px !important;
+  color: var(--color-text-muted) !important;
+  font-weight: 500 !important;
+  margin-bottom: 0 !important;
+  transition: color 0.15s, border-color 0.15s !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tab:hover {
+  color: var(--color-text-primary) !important;
+  background: transparent !important;
+}
+.bp-hero.bp-hero--calm .bp-hero-tab.active {
+  background: transparent !important;
+  color: var(--theme-accent) !important;
+  border-bottom-color: var(--theme-accent) !important;
+  font-weight: 600 !important;
+}
+/* Override Bold-mode rules so this variant looks identical regardless
+   of the global data-mode setting. */
+[data-mode="dark"] .bp-hero.bp-hero--calm,
+[data-mode="bold"] .bp-hero.bp-hero--calm {
+  background: var(--theme-bg) !important;
+}
+[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab,
+[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab {
+  background: transparent !important;
+  color: var(--color-text-muted) !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  box-shadow: none !important;
+}
+[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab.active,
+[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab.active {
+  background: transparent !important;
+  color: var(--theme-accent) !important;
+  border-bottom-color: var(--theme-accent) !important;
+}
 
 /* ── PAGE LAYOUT ── */
 .bp-settings-body  { max-width: 640px; margin: 0 auto; padding: var(--section-pad); }
@@ -938,6 +1643,44 @@ input.bp-cfg-page-label.p-inputtext:focus {
   letter-spacing: 0.08em;
   color: var(--theme-accent);
   text-transform: uppercase;
+}
+
+/* ── v1.65dm — SHARED DASHBOARD CARD PRIMITIVE ────────────────────────
+   Floating elevated card on parchment ground. Shadow-only chrome (no
+   border) so cards read as floating, not outlined. First adopted by
+   the dashboard (v1.65dh); promoted here so the supplier-detail Home
+   tab — and any future "home-style" surface — can share the same
+   visual language by class alone.
+
+   Pair with a parchment ground (--theme-bg) on the surrounding
+   container so the cards have something to lift off. */
+.bp-dash-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding: 16px 18px;
+}
+
+/* When .bp-section-header sits inside .bp-dash-card, override the
+   global "space-between" rule so the icon → title → trailing-actions
+   flow reads left-to-right with a full-bleed hairline divider beneath
+   (matching the dashboard pattern). Trailing buttons / chevrons get
+   margin-left:auto to flow to the right. */
+.bp-dash-card .bp-section-header {
+  justify-content: flex-start;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin: 0 -18px 14px;
+  padding-left: 18px;
+  padding-right: 18px;
+  border-bottom: var(--border-hairline);
+}
+.bp-dash-card .bp-section-header > .bp-section-trail {
+  margin-left: auto;
+}
+.bp-dash-card .bp-section-icon {
+  color: var(--theme-accent);
+  flex-shrink: 0;
 }
 
 /* ── FIELD LAYOUT ── */
@@ -1003,8 +1746,32 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-drawer-title      { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); }
 .bp-drawer-body       { padding: 24px; }
 .bp-drawer-ops-footer { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+/* v1.65cp — auto-ref chip in the drawer header, next to the
+   "PROJECT" eyebrow. Promoted from event-drawer scoped styles so
+   the estimate drawer (and any future drawer with a project ref)
+   can reuse the same compact monospace-leaning chip. */
+.bp-drawer-ref-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  vertical-align: middle;
+}
 
 /* ── INPUT STATES — PrimeNG overrides (must be global) ── */
+
+/* v1.65ao — STANDARD FIELD SIZE. View mode (.bp-field-readonly) and
+   edit mode (.bp-input-edit) share the SAME 34px height, padding,
+   font, and border-radius as the unified .p-dropdown. Switching
+   between view and edit produces ZERO size shift. This is the
+   canonical form-field metric used across the app (event drawer,
+   marketplace tab, project summary). */
 
 /* View mode — readonly inputs */
 .bp-field-readonly.p-inputtext,
@@ -1014,9 +1781,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-field-readonly.p-inputtext:hover,
 .bp-field-readonly.p-inputtext:enabled:hover,
 .bp-field-readonly.p-inputtext:enabled:focus {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-border) !important;
+  border-radius: var(--radius-button) !important;
   box-shadow: none !important;
   cursor: default !important;
   background: transparent !important;
@@ -1037,14 +1810,32 @@ input.bp-cfg-page-label.p-inputtext:focus {
   background: transparent !important;
 }
 
-/* Edit mode — parchment bg + accent border */
+/* Edit mode — parchment bg + accent border. Same 34px height and
+   metrics as .bp-field-readonly so view→edit produces no size shift. */
 .bp-input-edit.p-inputtext,
-input.bp-input-edit,
-textarea.bp-input-edit {
+input.bp-input-edit {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: var(--theme-bg) !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
+  border-radius: var(--radius-button) !important;
+}
+/* Textareas grow vertically — keep the same border/font, just no
+   fixed height. */
+textarea.bp-input-edit {
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  background: var(--theme-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--theme-accent) !important;
+  border-radius: var(--radius-button) !important;
 }
 .bp-input-edit.p-inputtext:focus,
 input.bp-input-edit:focus,
@@ -1058,46 +1849,53 @@ textarea.bp-input-edit:focus {
   border-color: var(--theme-accent) !important;
 }
 
-/* Edit mode — pInputNumber wrapper */
+/* Edit mode — pInputNumber wrapper. Matches the 34px input metric. */
 .bp-input-edit.p-inputnumber,
 .bp-input-edit.p-inputnumber:hover {
+  height: 34px !important;
+  min-height: 34px !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
   background: var(--theme-bg) !important;
-  border-radius: 6px;
+  border-radius: var(--radius-button) !important;
 }
 .bp-input-edit.p-inputnumber .p-inputtext {
+  height: 100% !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
-/* Readonly mode — pInputNumber wrapper */
+/* Readonly mode — pInputNumber wrapper. Same 34px metric. */
 .bp-field-readonly.p-inputnumber,
 .bp-field-readonly.p-inputnumber:hover {
+  height: 34px !important;
+  min-height: 34px !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-border) !important;
   background: transparent !important;
-  border-radius: 6px;
+  border-radius: var(--radius-button) !important;
   cursor: default !important;
 }
 .bp-field-readonly.p-inputnumber .p-inputtext {
+  height: 100% !important;
+  padding: 6px 11px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   cursor: default !important;
 }
 
-/* Edit mode — dropdown */
-.bp-input-edit.p-dropdown {
-  background: var(--theme-bg) !important;
-  border-color: var(--theme-accent) !important;
-}
-.bp-input-edit.p-dropdown:not(.p-disabled).p-focus {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
-}
+/* v1.65ab — bp-input-edit dropdowns inherit the unified calm style.
+   (The accent border / theme-bg are now handled by .p-dropdown globally;
+    keeping this empty stub so dropping the class later is harmless.) */
 
 /* Edit mode — chips */
 .bp-input-edit.p-chips .p-inputtext {
@@ -1262,15 +2060,18 @@ app-top-nav { flex-shrink: 0; }
    HERO SPACING FIX — append to styles.css
    ============================================================= */
 
-/* Equal padding above and below org name in hero */
+/* Equal padding above and below org name in hero.
+   v1.65bl — padding-bottom now 0 because the tabs nest inside .bp-hero
+   (v1.65bh) and any padding-bottom shoves the tabs up, leaving a
+   parchment gap between the tabs and the page below. */
 .bp-hero {
-  padding: 24px var(--section-pad) 24px !important;
+  padding: 24px var(--section-pad) 0 !important;
 }
 
-/* Mobile — tighter but still equal */
+/* Mobile — tighter, tabs still flush at bottom */
 @media (max-width: 768px) {
   .bp-hero {
-    padding: 16px 16px 16px !important;
+    padding: 16px 16px 0 !important;
   }
 
   /* Remove any top gap caused by bottom-nav padding bleeding up */
@@ -1292,8 +2093,10 @@ app-top-nav { flex-shrink: 0; }
   /* Remove bottom margin from org name — tabs sit right below */
   .bp-hero-org-name    { margin-bottom: 0 !important; }
 
-  /* Tight hero padding on mobile — breathing room top and bottom */
-  .bp-hero             { padding: 16px 16px 16px !important; margin-top: 0 !important; }
+  /* Tight hero padding on mobile — breathing room top, tabs flush at bottom.
+     v1.65bi — padding-bottom dropped to 0 so the tabs sit flush against
+     the hero's hairline border-bottom. */
+  .bp-hero             { padding: 16px 16px 0 !important; margin-top: 0 !important; }
 
   /* Ensure nav maintains exact height when nav-right is hidden */
   .bp-nav              { height: var(--nav-height) !important; min-height: var(--nav-height) !important; max-height: var(--nav-height) !important; }
@@ -1311,20 +2114,35 @@ app-top-nav { flex-shrink: 0; }
    active   = theme-accent colour only — no underline, no extra space
    ============================================================= */
 
+/* p0003 — restated here with !important to outweigh the earlier
+   uppercase rule that lived in this block. See line ~1205 for the
+   canonical .bp-hero-tab definition.
+   v1.65br — inactive tabs white-filled, active tabs --theme-bg
+   parchment.
+   v1.65ca — soft folder-tab drop shadow added (top + sides only,
+   bottom flush against the band hairline). */
 .bp-hero-tab {
-  color: var(--color-text-muted) !important;
-  border-bottom: none !important;
+  color: var(--color-text-secondary) !important;
+  background: var(--color-surface) !important;
   font-weight: 500 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  font-size: 11px !important;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: var(--text-base) !important;
+  border: var(--border-hairline) !important;
+  border-bottom: none !important;
+  border-radius: 9px 9px 0 0 !important;
 }
 .bp-hero-tab:hover {
-  color: var(--color-text-secondary) !important;
+  color: var(--color-text-primary) !important;
 }
 .bp-hero-tab.active {
-  color: var(--theme-accent) !important;
-  font-weight: 600 !important;
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+  font-weight: 500 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin-bottom: -0.5px !important;
 }
 
 /* ── FILLED HEART when active ── */
@@ -1521,6 +2339,215 @@ app-top-nav { flex-shrink: 0; }
   vertical-align: top;
 }
 .bp-md-preview tr:nth-child(even) td { background: var(--color-surface); }
+
+/* v1.65fC — shared item-detail card vocabulary.
+   Promoted from catalogue-grid component-scoped styles to global so the
+   cart drawer's right-column detail panel can render in the same
+   shape. One marketplace card design used everywhere. The `.bp-detail-*`
+   primitives compose into hero + body block layouts; the markup that
+   uses them lives in each component. */
+.bp-detail-hero {
+  width: 100%; height: 160px;
+  background-size: cover; background-position: center;
+  position: relative;
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+  overflow: hidden;
+}
+.bp-detail-edit-btn {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface); border: 0.5px solid var(--theme-border);
+  border-radius: 50%; cursor: pointer; color: var(--theme-accent);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.bp-detail-edit-btn:hover { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--color-surface); }
+.bp-detail-actions {
+  display: flex; gap: 6px;
+  position: absolute;
+  top: 10px; right: 10px;
+  z-index: 2;
+}
+.bp-detail-action {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 0.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.bp-detail-action:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+.bp-detail-action.active {
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--color-surface);
+}
+.bp-detail-action.active:hover {
+  background: var(--theme-accent);
+  color: var(--color-surface);
+}
+.bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+.bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+.bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
+.bp-detail-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
+.bp-detail-body { padding: 16px 20px; }
+.bp-detail-cat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
+.bp-detail-name { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--color-text-primary); margin-bottom: 8px; line-height: 1.3; }
+.bp-detail-subtitle { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-bottom: 10px; }
+.bp-detail-price-row { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 0.5px solid var(--color-border); }
+.bp-detail-price { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
+.bp-detail-price-sep { font-size: 16px; color: var(--color-text-muted); }
+.bp-detail-price-unit { font-size: 12px; color: var(--color-text-muted); margin-left: 6px; }
+.bp-detail-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 14px; }
+.bp-detail-specs { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.bp-detail-spec { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 0.5px solid var(--color-border); font-size: 12px; }
+.bp-detail-spec:last-child { border-bottom: none; }
+.bp-detail-spec-label { color: var(--color-text-muted); }
+.bp-detail-spec-value { font-weight: 500; color: var(--color-text-primary); }
+.bp-detail-parent { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
+.bp-detail-parent:hover { border-color: var(--theme-accent); }
+.bp-detail-parent-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
+.bp-detail-parent-img-default { background: var(--theme-bg); }
+.bp-detail-parent-body { flex: 1; min-width: 0; }
+.bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+.bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
+
+/* v1.65fC → v1.65fD — inline edit primitives. The inputs MIRROR the
+   view-mode text exactly (same font / size / weight / color / line-
+   height) so the card doesn't visually shift when toggling edit;
+   editability is signalled by a faint hairline border + theme-accent
+   focus, not by chunky form chrome. Padding is kept to ~2px on each
+   axis so the layout stays on the same baseline. */
+.bp-detail-name-input {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 400;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  padding: 2px 4px;
+  margin: -2px -4px 6px;        /* cancel padding so the text sits flush */
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+}
+.bp-detail-name-input:hover { border-color: var(--theme-accent); }
+.bp-detail-name-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--theme-accent);
+  background: var(--color-surface);
+}
+.bp-detail-price-input {
+  font-size: 22px; font-weight: 700;
+  color: var(--color-text-primary);
+  width: 110px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.bp-detail-price-input:hover { border-color: var(--theme-accent); }
+.bp-detail-price-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--theme-accent);
+  background: var(--color-surface);
+}
+.bp-detail-desc-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  padding: 2px 4px;
+  margin: -2px -4px 14px;
+  border: 0.5px dashed var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  resize: vertical; min-height: 60px;
+}
+.bp-detail-desc-input:hover { border-color: var(--theme-accent); }
+.bp-detail-desc-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--theme-accent);
+  background: var(--color-surface);
+}
+.bp-detail-edit-foot {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* v1.65ez — PrimeNG toast theme override.
+   Lara-light-blue ships success toasts in a hard #4CAF50 green that
+   clashes with every theme preset. We re-skin all four severities so
+   the toast reads as a Ballpark surface card with a coloured rail —
+   success/info pick up --theme-accent (the user's chosen preset),
+   warn picks up the amber waiting token, error picks up
+   --color-danger. Everything else (radius, shadow, body type) lifts
+   the existing card vocabulary. */
+.p-toast .p-toast-message {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-md) !important;
+  font-family: var(--font-body);
+}
+.p-toast .p-toast-message .p-toast-message-content {
+  padding: 12px 14px;
+  border-left: 4px solid var(--theme-accent);
+  border-radius: inherit;
+}
+.p-toast .p-toast-message-success .p-toast-message-content {
+  border-left-color: var(--theme-accent);
+}
+.p-toast .p-toast-message-info .p-toast-message-content {
+  border-left-color: var(--theme-contrast);
+}
+.p-toast .p-toast-message-warn .p-toast-message-content {
+  border-left-color: var(--color-waiting, #D97706);
+}
+.p-toast .p-toast-message-error .p-toast-message-content {
+  border-left-color: var(--color-danger);
+}
+.p-toast .p-toast-summary {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.p-toast .p-toast-detail {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.p-toast .p-toast-message .p-toast-icon-close,
+.p-toast .p-toast-message .p-toast-message-icon,
+.p-toast .p-toast-message .p-icon {
+  color: var(--theme-accent) !important;
+}
+.p-toast .p-toast-message-error .p-toast-message-icon,
+.p-toast .p-toast-message-error .p-icon {
+  color: var(--color-danger) !important;
+}
+.p-toast .p-toast-message-warn .p-toast-message-icon,
+.p-toast .p-toast-message-warn .p-icon {
+  color: var(--color-waiting, #D97706) !important;
+}
 
 /* Task list checkboxes (read-only in preview) */
 .bp-md-preview input[type=checkbox] {

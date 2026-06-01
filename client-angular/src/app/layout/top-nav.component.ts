@@ -3,19 +3,23 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus } from 'lucide-angular';
+import { LucideAngularModule, Sun, Moon, Settings, House, User, Building2, MessageCircle, FileText, Heart, Plus, Store, Package, Inbox, Sparkles } from 'lucide-angular';
 import { ConfigService } from '../core/services/config.service';
 import { OrgService } from '../core/services/org.service';
 import { ShellContextService } from '../core/services/shell-context.service';
 import { ConfigStripService } from '../core/services/config-strip.service';
 import { TagModule } from 'primeng/tag';
 import { AvatarComponent } from '../shared/components/avatar/avatar.component';
+import {
+  PersonaDropdownComponent
+} from '../shared/components/persona-dropdown/persona-dropdown.component';
+import { PersonaService } from '../core/services/persona.service';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-top-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent],
+  imports: [CommonModule, RouterModule, LucideAngularModule, TagModule, AvatarComponent, PersonaDropdownComponent],
   template: `
     <!-- DESKTOP TOP NAV -->
     <nav class="bp-nav">
@@ -29,32 +33,58 @@ import { environment } from '../../environments/environment';
         <span class="bp-nav-tagline">{{ tagline }}</span>
       </div>
       <button class="bp-mode-btn bp-mode-btn-mobile" (click)="toggleMode()"
-        [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-        <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="16"></lucide-icon>
+        [title]="modeTitle">
+        <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
-        <!-- v1.35: nav simplified to Home + Admin only. Marketplace moved
-             to Quick Actions on the dashboard; Settings is now the cog
-             icon on the right; Feedback (Requirements) sits under Admin. -->
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="bp-nav-link">
+        <!-- v1.65e4 (p0015) — top-nav unified across personas: just
+             Home + Settings as text links. The supplier's Front /
+             Store / Inbox tabs live INSIDE the home page (hero tab
+             band on /suppliers/:id); Beth's Categories / Marketplace
+             / Orgs / Early Access / Feedback tabs live inside her
+             home (/ballpark-settings hero tab band).
+             Home routes per persona:
+               agency   → /
+               admin    → /ballpark-settings
+               supplier → /suppliers/{supplierOrgId}?tab=home -->
+        <a [routerLink]="personaHomeRoute"
+           [queryParams]="personaHomeQueryParams"
+           routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact:true}"
+           class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
-        <a *ngIf="isAdmin"
-           routerLink="/ballpark-settings" routerLinkActive="active"
-           class="bp-nav-link bp-nav-link-admin">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Admin
+        <a routerLink="/settings"
+           routerLinkActive="active"
+           class="bp-nav-link">
+          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
         </a>
+
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
         <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
-        <!-- v1.35: Settings cog removed per user request — Settings is
-             reachable via the dashboard Quick Actions / Invite Member
-             quick action; the cog was redundant in the nav cluster. -->
-        <button class="bp-mode-btn" (click)="toggleMode()" [title]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
-          <lucide-icon [name]="isDark ? 'moon' : 'sun'" [size]="14"></lucide-icon>
+        <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
+          <lucide-icon [name]="modeIcon" [size]="14"></lucide-icon>
         </button>
-        <app-avatar [name]="userName || orgName" [size]="32"></app-avatar>
+        <!-- v1.65dz (p0015) — avatar opens persona dropdown when
+             PersonaService.canSwitch is true (dev / admin). Wrapper is
+             position:relative so the dropdown anchors below the avatar. -->
+        <div class="bp-nav-avatar-wrap">
+          <button type="button"
+                  class="bp-nav-avatar-btn"
+                  (click)="onAvatarClick($event)"
+                  [title]="personaSvc.canSwitch ? 'Switch persona' : ''">
+            <app-avatar
+              [name]="personaSvc.active.name"
+              [size]="32">
+            </app-avatar>
+          </button>
+          <app-persona-dropdown
+            *ngIf="personaSvc.canSwitch"
+            [(open)]="personaDropdownOpen">
+          </app-persona-dropdown>
+        </div>
       </div>
     </nav>
     <div class="bp-nav-version">{{ version }}</div>
@@ -77,12 +107,12 @@ import { environment } from '../../environments/environment';
           <span>Favourites</span>
         </a>
         <a routerLink="/messages" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="message-circle" [size]="20"></lucide-icon>
-          <span>Messages</span>
+          <lucide-icon name="inbox" [size]="20"></lucide-icon>
+          <span>Inbox</span>
         </a>
       </ng-container>
 
-      <!-- PROJECT NAV — Home, Project, Suppliers, Messages -->
+      <!-- PROJECT NAV — Home, Project, Suppliers, Inbox -->
       <ng-container *ngIf="inProject">
         <a routerLink="/" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
@@ -97,8 +127,8 @@ import { environment } from '../../environments/environment';
           <span>{{ catalogueLabel }}</span>
         </a>
         <a [routerLink]="projectMessagesPath" [queryParams]="projectMessagesQueryParams" routerLinkActive="active" class="bp-bottom-tab">
-          <lucide-icon name="message-circle" [size]="20"></lucide-icon>
-          <span>Messages</span>
+          <lucide-icon name="inbox" [size]="20"></lucide-icon>
+          <span>Inbox</span>
         </a>
       </ng-container>
 
@@ -136,6 +166,18 @@ import { environment } from '../../environments/environment';
       text-transform: uppercase; letter-spacing: 0.07em;
     }
     .bp-nav-right { display: flex; align-items: center; gap: 24px; }
+
+    /* v1.65dz (p0015) — avatar wrapper hosts the persona dropdown.
+       Position relative so the dropdown's top: 100% anchors here. */
+    .bp-nav-avatar-wrap { position: relative; }
+    .bp-nav-avatar-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
     .bp-nav-link {
       font-size: var(--text-base); color: #9CA3AF;
       cursor: pointer; text-decoration: none; transition: color 0.15s;
@@ -231,6 +273,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
       never render an empty circle. */
   userName     = '';
   isDark       = false;
+  /** p0003 — current display mode. Source of truth for modeIcon /
+      modeTitle / the three-way toggle. */
+  mode: 'light' | 'dark' | 'bold' = 'light';
   isAdmin      = false;
   version      = environment.version;
   inProject    = false;
@@ -239,7 +284,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
   // v1.18b: Build tab renamed to Estimate. Getter name kept for now to
   // avoid touching every top-nav consumer; URL points at /estimate.
   get projectBuildPath()    { return `/projects/${this.projectId}/estimate`; }
-  get projectBriefPath()    { return `/projects/${this.projectId}/brief`; }
+  // v1.65cg (p0005) — projectBriefPath getter removed; Plan tab
+  // deleted and /brief now redirects to /marketplace. No consumer
+  // referenced this getter.
   get projectMessagesPath() { return `/projects/${this.projectId}/messages`; }
   get projectMessagesQueryParams(): any { return {}; }
 
@@ -249,15 +296,61 @@ export class TopNavComponent implements OnInit, OnDestroy {
   private routerSub?: Subscription;
   private ctxSub?: Subscription;
   private cfgStripSub?: Subscription;
+  private personaSub?: Subscription;
+
+  /** v1.65dz (p0015) — persona dropdown open state, toggled by the
+      avatar button. Closed by default; the dropdown itself self-
+      closes on outside click. */
+  personaDropdownOpen = false;
 
   constructor(
     private configService: ConfigService,
     private orgService: OrgService,
     private shellCtx: ShellContextService,
     private configStrip: ConfigStripService,
+    public  personaSvc: PersonaService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  /** v1.65dz — clicking the avatar toggles the persona dropdown when
+      the user is allowed to switch personas. Stops propagation so
+      the dropdown's outside-click handler doesn't immediately close
+      it. No-op for real production users (single persona). */
+  onAvatarClick(ev: MouseEvent) {
+    if (!this.personaSvc.canSwitch) return;
+    ev.stopPropagation();
+    this.personaDropdownOpen = !this.personaDropdownOpen;
+  }
+
+  /** v1.65dz (p0015) — supplier persona's org id, used to build the
+      Front + Store nav links to /suppliers/:id. Returns empty when
+      not in supplier persona OR when no supplierOrgId is set on the
+      active persona record (defensive — keeps the link from
+      rendering /suppliers/undefined). */
+  get supplierPersonaOrgId(): string {
+    const p = this.personaSvc.active;
+    return p.kind === 'supplier' ? (p.supplierOrgId || '') : '';
+  }
+
+  /** v1.65e4 (p0015) — persona-aware Home link. The top-nav has one
+      "Home" item that routes to the active persona's landing surface;
+      each persona's sub-navigation (supplier tabs, admin tabs) lives
+      INSIDE that landing page, not as separate top-nav items. */
+  get personaHomeRoute(): any[] {
+    const p = this.personaSvc.active;
+    if (p.kind === 'supplier' && p.supplierOrgId) {
+      return ['/suppliers', p.supplierOrgId];
+    }
+    if (p.kind === 'admin') return ['/ballpark-settings'];
+    return ['/'];
+  }
+
+  /** Companion query-params for the persona Home link — only the
+      supplier persona needs a tab= param to land on the Home tab. */
+  get personaHomeQueryParams(): any {
+    return this.personaSvc.isSupplier() ? { tab: 'home' } : {};
+  }
 
   toggleConfigStrip() { this.configStrip.toggle(); }
 
@@ -280,17 +373,17 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.ballsBalance = org.balls_balance || 0;
-        // v1.23g: fall back to the org's DB logo_url when the local
-        // ConfigService doesn't have one (e.g. fresh browser, or a
-        // teammate who hasn't visited Marketplace settings). Don't
-        // overwrite a ConfigService value that was already set —
-        // that wins because it's the latest user action.
-        if (!this.logoUrl && (org as any).logo_url) {
+        // v1.65g7 — DB is canonical for the brand logo. Previously
+        // ConfigService.logoUrl (localStorage) won, so a fresh visitor
+        // who had a stale URL cached would never see a freshly-
+        // uploaded mark even after the owner pushed a new one. Now
+        // org.logo_url overrides localStorage whenever it is set;
+        // localStorage is only the seed for the "just uploaded,
+        // hasn't refetched yet" instant-feedback window.
+        if ((org as any).logo_url) {
           this.logoUrl = (org as any).logo_url;
-          this.cdr.detectChanges();
-        } else {
-          this.cdr.detectChanges();
         }
+        this.cdr.detectChanges();
       }
     });
 
@@ -335,21 +428,43 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (match) { this.projectId = match[1]; this.inProject = true; }
     else if (qpMatch) { this.projectId = qpMatch[1]; this.inProject = true; }
 
-    const saved = localStorage.getItem('bp-mode');
-    this.isDark = saved === 'dark';
-    this.configService.update({ mode: this.isDark ? 'dark' : 'light' });
+    /* p0003 — three-way mode preference (light / dark / bold). */
+    const saved = localStorage.getItem('bp-mode') as 'light' | 'dark' | 'bold' | null;
+    this.mode = (saved === 'dark' || saved === 'bold') ? saved : 'light';
+    this.isDark = this.mode === 'dark';
+    this.configService.update({ mode: this.mode });
 
     this.cfgStripSub = this.configStrip.hasConfig$.subscribe(has => {
       this.hasConfig = has;
       this.cdr.detectChanges();
     });
+
+    /* v1.65dz (p0015) — re-render the avatar + nav whenever the active
+       persona flips so the initials reflect the current persona. */
+    this.personaSub = this.personaSvc.active$.subscribe(() => {
+      this.cdr.detectChanges();
+    });
   }
 
+  /* p0003 — three-way cycle: light → dark → bold → light. */
   toggleMode() {
-    this.isDark = !this.isDark;
-    const mode = this.isDark ? 'dark' : 'light';
-    localStorage.setItem('bp-mode', mode);
-    this.configService.update({ mode });
+    const order: Array<'light' | 'dark' | 'bold'> = ['light', 'dark', 'bold'];
+    const next = order[(order.indexOf(this.mode) + 1) % order.length];
+    this.mode = next;
+    this.isDark = next === 'dark';
+    localStorage.setItem('bp-mode', next);
+    this.configService.update({ mode: next });
+  }
+
+  get modeIcon(): string {
+    if (this.mode === 'dark') return 'moon';
+    if (this.mode === 'bold') return 'sparkles';
+    return 'sun';
+  }
+  get modeTitle(): string {
+    if (this.mode === 'light') return 'Switch to dark mode';
+    if (this.mode === 'dark')  return 'Switch to bold mode';
+    return 'Switch to light mode';
   }
 
   ngOnDestroy() {
@@ -357,5 +472,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.routerSub?.unsubscribe();
     this.ctxSub?.unsubscribe();
     this.cfgStripSub?.unsubscribe();
+    this.personaSub?.unsubscribe();
   }
 }

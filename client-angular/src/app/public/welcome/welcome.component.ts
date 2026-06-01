@@ -62,9 +62,15 @@ const DEFAULT_CONTENT: Content = {
   template: `
     <div class="bp-welcome-root">
 
-      <!-- Persistent header -->
+      <!-- Persistent header. v1.65g9 — logo is now an image when the
+           agency's marketplace-logo has been uploaded (loaded from
+           /api/org on init), with the text wordmark as a fallback so
+           first paint never blocks on the network. -->
       <header class="bp-welcome-header">
-        <button class="bp-welcome-logo" (click)="goTo(0)">BALLPARK</button>
+        <button class="bp-welcome-logo" (click)="goTo(0)" [class.bp-welcome-logo--img]="logoUrl">
+          <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
+          <span *ngIf="!logoUrl">BALLPARK</span>
+        </button>
         <div class="bp-welcome-counter">
           {{ stepLabel }} / {{ totalLabel }}
         </div>
@@ -92,7 +98,15 @@ const DEFAULT_CONTENT: Content = {
           </svg>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-1-inner">
-            <span class="bp-eyebrow-pill">{{ text('hero.eyebrow') }}</span>
+            <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
+                 the BALLPARK wordmark, per the design review. Falls
+                 back to the original eyebrow text when the logo
+                 hasn't loaded so first paint never feels empty. -->
+            <div class="bp-eyebrow-welcome">
+              <span class="bp-eyebrow-welcome-prefix">Welcome to</span>
+              <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-eyebrow-welcome-logo"/>
+              <span *ngIf="!logoUrl" class="bp-eyebrow-welcome-fallback">BALLPARK</span>
+            </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
           </div>
@@ -228,6 +242,19 @@ const DEFAULT_CONTENT: Content = {
 
       </div>
 
+      <!-- v1.65gE — slide indicator "train" is now a vertical pill
+           strip on the LEFT edge (per design review mockup). The
+           Back / Next CTAs stay in the bottom nav. -->
+      <div class="bp-welcome-dots bp-welcome-dots--vertical">
+        <button
+          *ngFor="let _ of dots; let i = index"
+          class="bp-welcome-dot"
+          [class.active]="i === step"
+          [attr.aria-label]="'Go to slide ' + (i + 1)"
+          (click)="goTo(i)">
+        </button>
+      </div>
+
       <!-- Persistent bottom nav -->
       <div class="bp-welcome-bottom">
         <button
@@ -238,22 +265,12 @@ const DEFAULT_CONTENT: Content = {
           <span aria-hidden="true">←</span> Back
         </button>
 
-        <div class="bp-welcome-dots">
-          <button
-            *ngFor="let _ of dots; let i = index"
-            class="bp-welcome-dot"
-            [class.active]="i === step"
-            [attr.aria-label]="'Go to slide ' + (i + 1)"
-            (click)="goTo(i)">
-          </button>
-        </div>
-
         <button
           class="bp-welcome-next"
           (click)="next()"
           [class.hidden]="step === TOTAL_STEPS - 1"
-          aria-label="Next">
-          {{ step === TOTAL_STEPS - 2 ? 'Get on the guestlist' : 'Next' }}
+          aria-label="Get on the guestlist">
+          Get on the guestlist
           <span aria-hidden="true">→</span>
         </button>
       </div>
@@ -261,11 +278,17 @@ const DEFAULT_CONTENT: Content = {
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap');
+    /* v1.65g8 — Fraunces (OFL, free for commercial) stands in for
+       the personal-use-only Sharpe trial until the licensed Sharpe
+       pack is bought and dropped in. Closest free-for-commercial
+       match: variable serif, high contrast, full weight range,
+       italics. Swap back to Sharpe by replacing this @import and
+       changing 'Fraunces' → 'Sharpe' across the rules below. */
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
 
     :host {
       display: block;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       color: #DCF0EB;
       height: 100vh;
       overflow: hidden;
@@ -284,9 +307,27 @@ const DEFAULT_CONTENT: Content = {
       display: flex; align-items: center; justify-content: space-between;
     }
     .bp-welcome-logo {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 22px; font-weight: 900; letter-spacing: 0.02em;
       color: #DCF0EB; background: none; border: none; cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center;
+    }
+    /* v1.65g9 — image variant. The uploaded BALLPARK wordmark sits
+       at the same vertical height as the text fallback so swapping
+       between the two doesn't shift the header layout.
+       v1.65gA — render as solid white on the coloured welcome
+       backgrounds via brightness(0) + invert(1) (drops every
+       non-transparent pixel to pure white). This REQUIRES the
+       uploaded logo to have a transparent background — re-upload
+       through /ballpark-settings/marketplace with the "Remove
+       background" checkbox enabled. A magenta-on-white JPG would
+       end up as a white rectangle blocking the gradient. */
+    .bp-welcome-logo-img {
+      height: 32px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
     }
     .bp-welcome-counter {
       font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
@@ -361,7 +402,7 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 1 typography ───────────────────── */
     .bp-eyebrow-pill {
       display: inline-block;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 500;
       letter-spacing: 0.18em; text-transform: uppercase;
       background: rgba(220,240,235,0.15);
@@ -371,8 +412,39 @@ const DEFAULT_CONTENT: Content = {
       margin-bottom: 32px;
       backdrop-filter: blur(8px);
     }
+    /* v1.65gB — "Welcome to BALLPARK" replaces the eyebrow pill on
+       slide 1. "Welcome to" sits as light italic prefix; the
+       wordmark renders inline at the same vertical anchor as the
+       text (brightness(0)+invert(1) so the magenta uploaded asset
+       reads as pure white on the gradient). */
+    .bp-eyebrow-welcome {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      color: #DCF0EB;
+    }
+    .bp-eyebrow-welcome-prefix {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+    .bp-eyebrow-welcome-logo {
+      height: 28px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    .bp-eyebrow-welcome-fallback {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
     .bp-hero-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(56px, 11vw, 144px);
       font-weight: 900;
       line-height: 0.95;
@@ -380,7 +452,7 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 0 28px 0;
     }
     .bp-hero-subtitle {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(17px, 2vw, 21px);
       font-weight: 500; line-height: 1.5;
       max-width: 560px; margin: 0 auto;
@@ -389,14 +461,14 @@ const DEFAULT_CONTENT: Content = {
 
     /* ── Slide 2 typography + marquee ─────────── */
     .bp-eyebrow {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 500;
       letter-spacing: 0.2em; text-transform: uppercase;
       opacity: 0.75;
       margin-bottom: 24px;
     }
     .bp-suppliers-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(40px, 6.5vw, 88px);
       font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0;
@@ -415,7 +487,7 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-marquee-item {
       display: flex; align-items: center;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(36px, 5vw, 64px);
       font-weight: 900; letter-spacing: 0.02em;
       padding: 0 48px;
@@ -427,6 +499,65 @@ const DEFAULT_CONTENT: Content = {
       100% { transform: translateX(-50%); }
     }
 
+    /* v1.65gD — vertical marquee variant. Two-column layout: copy
+       on the left, scrolling category column on the right. The
+       track scrolls upward; the ✦ separator sits centred BELOW
+       each label, not to its right. Categories are repeated 3×
+       in marqueeCategories so the loop is seamless. */
+    .bp-slide-2-grid {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 96px;
+      align-items: center;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 64px;
+    }
+    .bp-slide-2-inner { padding: 0; text-align: left; align-items: flex-start; }
+    .bp-marquee-wrap--vertical {
+      width: auto;
+      max-height: 70vh;
+      overflow: hidden;
+      border-top: none;
+      border-bottom: none;
+      padding: 0;
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+    }
+    .bp-marquee-track--vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: auto;
+      white-space: normal;
+      animation: bp-scroll-y 28s linear infinite;
+    }
+    .bp-marquee-item--vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0;
+      text-align: center;
+      font-size: clamp(40px, 6.5vw, 96px);
+      line-height: 1;
+    }
+    .bp-marquee-sep--vertical {
+      margin-left: 0;
+      margin-top: 18px;
+      font-size: 0.4em;
+    }
+    @keyframes bp-scroll-y {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(-33.333%); }
+    }
+
+    @media (max-width: 768px) {
+      .bp-slide-2-grid { grid-template-columns: 1fr; gap: 40px; padding: 0 32px; }
+      .bp-marquee-wrap--vertical { max-height: 40vh; }
+    }
+
     /* ── Slide 3 ──────────────────────────────── */
     .bp-slide-3-inner { max-width: 1400px; }
     .bp-producers-grid {
@@ -435,20 +566,20 @@ const DEFAULT_CONTENT: Content = {
       gap: 96px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(48px, 8vw, 112px);
       font-weight: 900; line-height: 0.95;
       letter-spacing: -0.03em;
       margin: 0 0 24px 0;
     }
     .bp-producers-tagline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(20px, 2.4vw, 28px);
       font-weight: 500;
       opacity: 0.9; margin: 0;
     }
     .bp-producers-body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 20px; font-weight: 500;
       line-height: 1.6; opacity: 0.95; margin: 0 0 20px 0;
     }
@@ -461,13 +592,13 @@ const DEFAULT_CONTENT: Content = {
     /* ── Slide 4 ──────────────────────────────── */
     .bp-slide-4-inner { max-width: 560px; width: 100%; }
     .bp-guestlist-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(36px, 5.5vw, 64px);
       font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
       margin: 0 0 16px 0;
     }
     .bp-guestlist-subtitle {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 16px; font-weight: 500;
       line-height: 1.6;
       opacity: 0.9; margin: 0 0 36px 0;
@@ -488,7 +619,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-form-block:has(.bp-form-select) { margin-bottom: 20px; }
     .bp-form-label {
       display: block;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 11px; font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
       opacity: 0.75; margin-bottom: 6px;
@@ -500,7 +631,7 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid rgba(220,240,235,0.25);
       border-radius: 8px;
       color: #DCF0EB; font-size: 14px;
-      font-family: 'Inter', sans-serif; font-weight: 500;
+      font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
     }
     .bp-form-input::placeholder { color: rgba(220,240,235,0.45); }
@@ -509,7 +640,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-form-select option { color: #133C23; }
     .bp-form-error {
       margin: 10px 0 0;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       color: #FFD3DD;
     }
@@ -517,7 +648,7 @@ const DEFAULT_CONTENT: Content = {
       width: 100%;
       margin-top: 4px;
       padding: 14px 24px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 15px; font-weight: 700;
       background: #DCF0EB; color: #133C23;
       border: none; border-radius: 999px;
@@ -543,12 +674,12 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 auto 18px; font-size: 28px;
     }
     .bp-success-headline {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 26px; font-weight: 900;
       margin: 0 0 10px 0;
     }
     .bp-success-body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 15px; font-weight: 500;
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
@@ -566,7 +697,7 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid rgba(220,240,235,0.3);
       color: #DCF0EB;
       padding: 10px 18px; border-radius: 999px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       cursor: pointer; backdrop-filter: blur(8px);
       display: inline-flex; align-items: center; gap: 8px;
@@ -578,7 +709,7 @@ const DEFAULT_CONTENT: Content = {
       background: #DCF0EB; color: #133C23;
       border: none;
       padding: 12px 24px; border-radius: 999px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 14px; font-weight: 700;
       cursor: pointer;
       display: inline-flex; align-items: center; gap: 8px;
@@ -593,9 +724,28 @@ const DEFAULT_CONTENT: Content = {
       border-radius: 999px; border: none;
       background: rgba(220,240,235,0.45);
       cursor: pointer; padding: 0;
-      transition: width 0.3s, background 0.3s;
+      transition: width 0.3s, height 0.3s, background 0.3s;
     }
     .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
+    /* v1.65gE → v1.65gF — vertical train variant for the slide
+       indicator. Fixed to the RIGHT edge of the viewport, vertically
+       centred. Each dot stacks; the active dot becomes a tall pill
+       (height grows, width stays slim) so the indicator reads
+       top→bottom like the mockup (active migrates top→bottom as
+       you move slide 1 → 4). */
+    .bp-welcome-dots--vertical {
+      position: fixed;
+      right: 28px;
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: column;
+      gap: 10px;
+      z-index: 60;
+      pointer-events: auto;
+    }
+    .bp-welcome-dots--vertical .bp-welcome-dot.active {
+      width: 8px; height: 32px;
+    }
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
@@ -606,6 +756,11 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   step = 0;
   direction: 'forward' | 'backward' = 'forward';
   content: Content = { ...DEFAULT_CONTENT };
+  /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
+      Empty string until the fetch lands; the template falls back to
+      the "BALLPARK" text wordmark in that window so first paint
+      never feels broken. */
+  logoUrl = '';
 
   form = {
     name:    '',
@@ -629,6 +784,21 @@ export class WelcomeComponent implements OnInit, OnDestroy {
         }
       },
       error: () => { /* keep defaults */ }
+    });
+    // v1.65g9 — pull the agency's logo_url from /api/org so the
+    // marketplace logo (uploaded via /ballpark-settings/marketplace)
+    // appears in the top-left of the welcome page too. /api/org is
+    // public, so unauthenticated visitors get the same branding the
+    // signed-in admin sees in the app shell. Falls through silently
+    // on error — the text fallback covers it.
+    this.http.get<any>(`${environment.apiUrl}/org`).subscribe({
+      next: (org) => {
+        if (org?.logo_url) {
+          this.logoUrl = org.logo_url;
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => { /* keep text fallback */ }
     });
   }
 
