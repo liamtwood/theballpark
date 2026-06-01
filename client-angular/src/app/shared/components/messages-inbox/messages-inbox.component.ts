@@ -301,6 +301,16 @@ interface VendorThread {
                 </div>
               </div>
               <span *ngIf="t.unread" class="bp-msg-thread-dot"></span>
+              <!-- v1.65g1 — delete the whole thread (soft-deletes
+                   every message in it). Hover-only on the thread
+                   card so the resting state stays calm; click
+                   confirms before firing. -->
+              <button type="button"
+                      class="bp-msg-thread-del"
+                      title="Delete thread"
+                      (click)="deleteThread(t, $event)">
+                <lucide-icon name="trash-2" [size]="13"></lucide-icon>
+              </button>
             </div>
           </div>
 
@@ -920,6 +930,27 @@ interface VendorThread {
       background: var(--theme-accent);
       flex-shrink: 0;
     }
+    /* v1.65g1 — thread-card delete trash. Hover-only on the card
+       (opacity 0 → 1) so the resting state stays clean. Red tint +
+       red bg on hover so destructive intent reads. */
+    .bp-msg-thread-del {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+    }
+    .bp-msg-thread-card:hover .bp-msg-thread-del { opacity: 1; }
+    .bp-msg-thread-del:hover {
+      color: var(--color-danger);
+      background: rgba(225, 29, 72, 0.08);
+    }
+    .bp-msg-thread-del lucide-icon { line-height: 0; }
     /* Card-tile variant — stacks the body content with a touch more
        padding for the grid layout. */
     .bp-msg-thread-card--tile {
@@ -2519,6 +2550,33 @@ export class MessagesInboxComponent implements OnInit {
       // ('agent'|'supplier').
       viewer: this.viewer === 'supplier' ? 'supplier' : 'agent',
     });
+  }
+
+  /** v1.65g1 — soft-delete every message in a thread. Confirms
+      first, then fires DELETE on each m.id in parallel and
+      refreshes the inbox so the thread card disappears. */
+  deleteThread(t: VendorThread, ev?: Event): void {
+    if (ev) ev.stopPropagation();           // don't open the thread
+    const count = (t.messages || []).length;
+    if (!count) return;
+    const ok = window.confirm(
+      `Delete this thread? ${count} ${count === 1 ? 'message' : 'messages'} will be removed.`
+    );
+    if (!ok) return;
+    const ids = (t.messages || []).map(m => m.id).filter(Boolean) as string[];
+    let pending = ids.length;
+    const onDone = () => {
+      pending -= 1;
+      if (pending > 0) return;
+      // All deletes resolved — refresh the inbox + clear the
+      // active thread if it was the one we just deleted.
+      if (this.activeThread?.key === t.key) this.activeThread = null;
+      if (this.boundProjectId) this.load();
+      else this.loadAllMessages();
+    };
+    for (const id of ids) {
+      this.msgSvc.delete(id).subscribe({ next: onDone, error: onDone });
+    }
   }
 
   /** v1.65g0 — soft-delete a single conversation bubble. Confirms
