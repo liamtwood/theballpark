@@ -727,14 +727,15 @@ const DEFAULT_CONTENT: Content = {
       transition: width 0.3s, height 0.3s, background 0.3s;
     }
     .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
-    /* v1.65gE — vertical train variant for the slide indicator.
-       Fixed to the LEFT edge of the viewport, vertically centred.
-       Each dot stacks; the active dot becomes a tall pill (height
-       grows, width stays slim) so the indicator reads top→bottom
-       like the mockup. */
+    /* v1.65gE → v1.65gF — vertical train variant for the slide
+       indicator. Fixed to the RIGHT edge of the viewport, vertically
+       centred. Each dot stacks; the active dot becomes a tall pill
+       (height grows, width stays slim) so the indicator reads
+       top→bottom like the mockup (active migrates top→bottom as
+       you move slide 1 → 4). */
     .bp-welcome-dots--vertical {
       position: fixed;
-      left: 28px;
+      right: 28px;
       top: 50%;
       transform: translateY(-50%);
       flex-direction: column;
