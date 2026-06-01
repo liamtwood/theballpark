@@ -425,7 +425,6 @@ const DEFAULT_CONTENT: Content = {
       font-family: 'Fraunces', Georgia, serif;
       font-size: 22px;
       font-weight: 400;
-      font-style: italic;
       letter-spacing: -0.01em;
     }
     .bp-eyebrow-welcome-logo {
