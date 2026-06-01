@@ -62,9 +62,15 @@ const DEFAULT_CONTENT: Content = {
   template: `
     <div class="bp-welcome-root">
 
-      <!-- Persistent header -->
+      <!-- Persistent header. v1.65g9 — logo is now an image when the
+           agency's marketplace-logo has been uploaded (loaded from
+           /api/org on init), with the text wordmark as a fallback so
+           first paint never blocks on the network. -->
       <header class="bp-welcome-header">
-        <button class="bp-welcome-logo" (click)="goTo(0)">BALLPARK</button>
+        <button class="bp-welcome-logo" (click)="goTo(0)" [class.bp-welcome-logo--img]="logoUrl">
+          <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
+          <span *ngIf="!logoUrl">BALLPARK</span>
+        </button>
         <div class="bp-welcome-counter">
           {{ stepLabel }} / {{ totalLabel }}
         </div>
@@ -293,6 +299,16 @@ const DEFAULT_CONTENT: Content = {
       font-family: 'Fraunces', Georgia, serif;
       font-size: 22px; font-weight: 900; letter-spacing: 0.02em;
       color: #DCF0EB; background: none; border: none; cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center;
+    }
+    /* v1.65g9 — image variant. The uploaded BALLPARK wordmark sits
+       at the same vertical height as the text fallback so swapping
+       between the two doesn't shift the header layout. */
+    .bp-welcome-logo-img {
+      height: 32px;
+      width: auto;
+      display: block;
+      object-fit: contain;
     }
     .bp-welcome-counter {
       font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
@@ -612,6 +628,11 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   step = 0;
   direction: 'forward' | 'backward' = 'forward';
   content: Content = { ...DEFAULT_CONTENT };
+  /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
+      Empty string until the fetch lands; the template falls back to
+      the "BALLPARK" text wordmark in that window so first paint
+      never feels broken. */
+  logoUrl = '';
 
   form = {
     name:    '',
@@ -635,6 +656,21 @@ export class WelcomeComponent implements OnInit, OnDestroy {
         }
       },
       error: () => { /* keep defaults */ }
+    });
+    // v1.65g9 — pull the agency's logo_url from /api/org so the
+    // marketplace logo (uploaded via /ballpark-settings/marketplace)
+    // appears in the top-left of the welcome page too. /api/org is
+    // public, so unauthenticated visitors get the same branding the
+    // signed-in admin sees in the app shell. Falls through silently
+    // on error — the text fallback covers it.
+    this.http.get<any>(`${environment.apiUrl}/org`).subscribe({
+      next: (org) => {
+        if (org?.logo_url) {
+          this.logoUrl = org.logo_url;
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => { /* keep text fallback */ }
     });
   }
 
