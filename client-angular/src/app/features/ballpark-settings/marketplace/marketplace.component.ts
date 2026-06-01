@@ -474,21 +474,32 @@ export class MarketplaceComponent implements OnInit {
 
   onLogoUpdated(urls: { coverUrl: string }) {
     if (!this.org || urls.coverUrl === undefined) return;
-    const logoUrl = urls.coverUrl;
+    const logoUrl = (urls.coverUrl || '').trim();
+    // v1.65g7 — guard against empty payload. The previous version
+    // PATCHed any value through, so a stray emit with coverUrl=''
+    // (e.g. cancel-after-remove flow) would silently clear the
+    // canonical orgs.logo_url and break the brand mark for fresh
+    // visitors. Skip both writes when there's nothing to save.
+    if (!logoUrl) {
+      this.editingLogo = false;
+      this.cdr.detectChanges();
+      this.msg.add({ severity: 'warn', summary: 'No logo selected — nothing saved' });
+      return;
+    }
     // Local display update for the marketplace settings page itself.
     (this.org as any).logo_url = logoUrl;
     this.editingLogo = false;
     this.cdr.detectChanges();
 
-    // v1.23g: image-upload-panel uploads the file to storage but
-    // doesn't persist the URL anywhere when type='logo' (its API
-    // endpoint is null for that type). We persist it here:
+    // Persist to two places:
     //   1. ConfigService.logoUrl — picked up by the top-nav via
     //      config$ so the brand mark swaps to the uploaded logo
-    //      immediately. Also written to localStorage so it survives
-    //      a reload in this browser.
-    //   2. orgs.logo_url via the API — canonical DB record so other
-    //      sessions / browsers see the same logo.
+    //      immediately (instant local feedback). Also written to
+    //      localStorage for this browser's reload survival.
+    //   2. orgs.logo_url via the API — canonical DB record. Top-nav
+    //      reads this in preference to ConfigService on org load so
+    //      other sessions / browsers / fresh visitors all see the
+    //      same mark.
     this.configService.update({ logoUrl });
     this.orgSvc.updateCurrentOrg({ logo_url: logoUrl } as any).subscribe({
       next: () => {

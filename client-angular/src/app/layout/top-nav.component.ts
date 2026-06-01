@@ -373,17 +373,17 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (org) {
         this.orgName      = org.name;
         this.ballsBalance = org.balls_balance || 0;
-        // v1.23g: fall back to the org's DB logo_url when the local
-        // ConfigService doesn't have one (e.g. fresh browser, or a
-        // teammate who hasn't visited Marketplace settings). Don't
-        // overwrite a ConfigService value that was already set —
-        // that wins because it's the latest user action.
-        if (!this.logoUrl && (org as any).logo_url) {
+        // v1.65g7 — DB is canonical for the brand logo. Previously
+        // ConfigService.logoUrl (localStorage) won, so a fresh visitor
+        // who had a stale URL cached would never see a freshly-
+        // uploaded mark even after the owner pushed a new one. Now
+        // org.logo_url overrides localStorage whenever it is set;
+        // localStorage is only the seed for the "just uploaded,
+        // hasn't refetched yet" instant-feedback window.
+        if ((org as any).logo_url) {
           this.logoUrl = (org as any).logo_url;
-          this.cdr.detectChanges();
-        } else {
-          this.cdr.detectChanges();
         }
+        this.cdr.detectChanges();
       }
     });
 
