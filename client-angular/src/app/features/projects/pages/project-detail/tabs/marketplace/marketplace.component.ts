@@ -228,7 +228,15 @@ export class MarketplaceComponent implements OnInit {
     // promote), refresh the local cart cache so cards + cart badge stay
     // in sync.
     this.cartDrawerSvc.changed$.subscribe(({ projectId }) => {
-      if (projectId === this.projectId) this.refreshCart();
+      if (projectId !== this.projectId) return;
+      this.refreshCart();
+      // v1.65g3 — also refetch project_categories so the
+      // per-category Estimate field (ballpark_cost, recomputed
+      // server-side on every cart mutation) updates live in the
+      // context panel. Was only refreshing the cart list before,
+      // which left the Estimate value stale until the user
+      // navigated away and back.
+      this.refreshProjectCategories();
     });
 
     forkJoin({

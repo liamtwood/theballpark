@@ -111,21 +111,20 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
                    (keyup.escape)="cancelBudget()"/>
           </div>
 
+          <!-- v1.65g3 — Estimate is now purely derived from the
+               items added to this category (server-side
+               recomputeProjectBallparks fires on every cart add /
+               edit / quantity change and writes
+               project_categories.ballpark_cost). Click-to-edit
+               dropped so the figure can't drift from the math.
+               Title spells out where the number comes from. -->
           <div class="bp-evd-field">
             <label class="bp-field-label">Estimate</label>
-            <input pInputText *ngIf="!editingEstimate"
+            <input pInputText
                    readonly
-                   class="w-full bp-field-readonly bp-ctx-field-clickable"
+                   class="w-full bp-field-readonly"
                    [value]="(estimatePrice || 0) | gbp"
-                   (click)="startEditEstimate()"
-                   title="Click to edit"/>
-            <input pInputText *ngIf="editingEstimate"
-                   type="number" min="0" step="100"
-                   class="w-full bp-input-edit"
-                   [(ngModel)]="estimateDraft"
-                   (blur)="commitEstimate()"
-                   (keyup.enter)="commitEstimate()"
-                   (keyup.escape)="cancelEstimate()"/>
+                   title="Auto-calculated from items in this category"/>
           </div>
 
           <div class="bp-evd-field" *ngIf="categoryStatuses.length">

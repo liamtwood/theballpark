@@ -124,10 +124,16 @@ type SectionKey = EventDrawerSection;
              Row 3: Venue | City
              Ref leads the section per request — Status sits to its right. -->
         <div class="bp-evd-row bp-evd-row--2">
+          <!-- v1.65g3 — "Ref" was ambiguous (form.po_ref is the
+               CLIENT's PO number, distinct from project.ref which
+               is the auto-generated agency ref shown in the chip
+               above). Renamed to "PO Ref" + null-safe view: a
+               literal string "null" used to fall through the
+               existing || em-dash guard. -->
           <div class="bp-evd-field">
-            <label class="bp-field-label">Ref</label>
+            <label class="bp-field-label">PO Ref</label>
             <input pInputText *ngIf="!editing.details"
-                   [value]="form.po_ref || '—'"
+                   [value]="poRefDisplay"
                    class="w-full bp-field-readonly" readonly/>
             <input pInputText *ngIf="editing.details"
                    [(ngModel)]="form.po_ref"
@@ -734,6 +740,16 @@ export class EventDrawerComponent implements OnInit, OnDestroy {
       // resolves the code → status_id (see project.service.js).
       status_code:             (p as any).status_name || 'draft',
     } as any;
+  }
+
+  /** v1.65g3 — PO Ref display value. Treats both real null and the
+      literal string "null" (which legacy data sometimes stores)
+      as empty so the field shows "—". */
+  get poRefDisplay(): string {
+    const v = (this.form as any)?.po_ref;
+    if (v == null) return '—';
+    const s = String(v).trim();
+    return (s === '' || s.toLowerCase() === 'null') ? '—' : s;
   }
 
   /** v1.31: pill label resolved against the project_status codelist. */
