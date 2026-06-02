@@ -434,28 +434,35 @@ const DEFAULT_CONTENT: Content = {
        /touch/keyboard scroll natively. IntersectionObserver in TS
        adds .in-view to the current slide (one-shot) which fires the
        per-slide entry animations. */
+    /* v1.65gZ23 — scrollbar re-enabled per client mockup (their
+       reference shows a slim right-edge scrollbar). Replaces the
+       v1.65gL hide rules. Custom-styled as a glass pill so it
+       reads as part of the welcome aesthetic rather than the OS
+       default chrome. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
-      /* Hide scrollbar across browsers. Safari (desktop + iOS)
-         ignores plain display:none on ::-webkit-scrollbar under
-         scroll-snap — the track stays as a faint coloured strip on
-         the right edge of the welcome page (client-reported v1.65gL).
-         Forcing width: 0 + transparent track/thumb removes it. */
-      scrollbar-width: none;             /* Firefox */
-      -ms-overflow-style: none;          /* Edge legacy */
-      overscroll-behavior: contain;      /* iOS rubber-band suppression */
+      scrollbar-width: thin;                                     /* Firefox */
+      scrollbar-color: rgba(220, 240, 235, 0.45) transparent;    /* Firefox */
+      overscroll-behavior: contain;                              /* iOS rubber-band suppression */
     }
     .bp-welcome-stage::-webkit-scrollbar {
-      display: none;
-      width: 0;
-      height: 0;
+      width: 6px;
+      height: 6px;
       background: transparent;
     }
-    .bp-welcome-stage::-webkit-scrollbar-track,
-    .bp-welcome-stage::-webkit-scrollbar-thumb,
+    .bp-welcome-stage::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .bp-welcome-stage::-webkit-scrollbar-thumb {
+      background: rgba(220, 240, 235, 0.45);
+      border-radius: 999px;
+    }
+    .bp-welcome-stage::-webkit-scrollbar-thumb:hover {
+      background: rgba(220, 240, 235, 0.65);
+    }
     .bp-welcome-stage::-webkit-scrollbar-corner {
       background: transparent;
     }
