@@ -476,13 +476,13 @@ const DEFAULT_CONTENT: Content = {
       height: 100vh;
       width: 100%;
       scroll-snap-align: start;
-      /* v1.65gU — scroll-snap-stop: always removed. It was forcing
-         every snap point to be a hard stop, which broke programmatic
-         smooth scrolls (Next/Back buttons stopped halfway between
-         slides) AND prevented our scroll handler from registering
-         the new settled slide, so .in-view never moved. The natural
-         mandatory snap is still in effect on the stage, so the
-         visual snap experience is preserved. */
+      /* v1.65gV — scroll-snap-stop: always reinstated. Without it,
+         natural wheel + swipe scrolls could end between two snap
+         points (user-reported screenshot showed slide 1 + slide 2
+         half-visible). The original concern was that always broke
+         programmatic Next/Back scrollIntoView, but the wheel/swipe
+         UX is the priority — one swipe = one slide. */
+      scroll-snap-stop: always;
       display: flex; align-items: center; justify-content: center;
       color: #DCF0EB;
       overflow: hidden;
