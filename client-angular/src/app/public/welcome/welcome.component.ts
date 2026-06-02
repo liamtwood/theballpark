@@ -355,7 +355,7 @@ const DEFAULT_CONTENT: Content = {
 
           <h3 class="bp-legal-section">Cookies</h3>
           <p class="bp-legal-body">
-            We don't set any cookies of our own on this page, and we don't use analytics or advertising trackers. The only cookie involved is <code>__cf_bm</code>, set by Cloudflare on <code>challenges.cloudflare.com</code> when their bot-check runs on the signup form. It expires after 30 minutes, exists solely to remember that your browser has already passed a bot check, and is classified as strictly necessary for security. If we ever introduce other cookies, a full Cookie Policy will be added here and a banner will appear before any are set.
+            We don't set any cookies of our own on this page, and we don't use analytics or advertising trackers. The only cookie involved is <code>__cf_bm</code>, set by Cloudflare on <code>challenges.cloudflare.com</code> when their bot-check runs on the signup form. It expires after 30 minutes and exists solely to remember that your browser has already passed a bot check. Cloudflare classifies it as strictly necessary for security, which exempts it from cookie-banner consent under GDPR/ePrivacy. If we ever introduce other cookies, a full Cookie Policy will be added here and a banner will appear before any are set.
           </p>
 
           <h3 class="bp-legal-section">Changes</h3>
