@@ -762,17 +762,23 @@ const DEFAULT_CONTENT: Content = {
       letter-spacing: -0.02em;
       margin: 0 0 14px 0;
     }
+    /* v1.65gZ7 — tagline + body sizes bumped + body width capped per
+       client review ("increase the font size of By producers… and
+       Costing events…; decrease the width of the container"). */
     .bp-producers-tagline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(15px, 1.6vw, 19px);
+      font-size: clamp(18px, 2vw, 24px);
       font-weight: 500;
       opacity: 0.85; margin: 0;
     }
-    /* v1.65gZ6 — slide-3 body bolded (500 -> 700) per client review. */
     .bp-producers-body {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px; font-weight: 700;
-      line-height: 1.45; opacity: 0.95; margin: 0;
+      font-size: clamp(18px, 1.6vw, 22px);
+      font-weight: 700;
+      line-height: 1.5;
+      opacity: 0.95;
+      margin: 0;
+      max-width: 380px;
     }
 
     @media (max-width: 768px) {
