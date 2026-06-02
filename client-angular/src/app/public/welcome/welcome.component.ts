@@ -312,7 +312,7 @@ const DEFAULT_CONTENT: Content = {
        changing 'Fraunces' → 'Sharpe' across the rules below.
        v1.65gY — Inter (OFL) added for the slide-4 headline, per
        client review ("bold uppercase sans-serif"). */
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600;700;900&display=swap');
 
     :host {
       display: block;
@@ -715,7 +715,9 @@ const DEFAULT_CONTENT: Content = {
        max-width (900px) so the lines extend just beyond the text
        and span roughly the headline's footprint. */
     .bp-suppliers-subtitle {
-      font-family: 'Fraunces', Georgia, serif;
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review
+         (same family as the slide-4 headline). */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       font-size: clamp(15px, 1.5vw, 18px);
       font-weight: 500;
       line-height: 1.55;
@@ -749,7 +751,8 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-marquee-item {
       display: flex; align-items: center;
-      font-family: 'Fraunces', Georgia, serif;
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review. */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       font-size: clamp(22px, 3vw, 40px);
       font-weight: 900; letter-spacing: 0.02em;
       padding: 0 36px;
