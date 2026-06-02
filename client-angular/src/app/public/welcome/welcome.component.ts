@@ -791,9 +791,11 @@ const DEFAULT_CONTENT: Content = {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 140px; align-items: center; text-align: left;
     }
+    /* v1.65gZ15 — headline knocked down ~ half a step per client
+       review ("reduce size by 1/2 a size if you can"). */
     .bp-producers-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(36px, 5.5vw, 64px);
+      font-size: clamp(32px, 4.8vw, 56px);
       font-weight: 900; line-height: 1.0;
       letter-spacing: -0.02em;
       margin: 0 0 14px 0;
