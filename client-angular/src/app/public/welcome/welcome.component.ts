@@ -103,8 +103,10 @@ const DEFAULT_CONTENT: Content = {
       <div class="bp-welcome-stage" #stage>
 
         <!-- ── Slide 1: Hero ────────────────────────────── -->
-        <!-- v1.65gY — orbs zoomed in (r 280 → 460) per client review;
-             centred CTA pill sits below the subtitle. -->
+        <!-- v1.65gZ — orbs reverted to r=280 (the v1.65gY zoom was
+             undone per the next-day review: "the orbs should not
+             have been changed, only the text styling"). Centred CTA
+             pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -117,8 +119,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="460" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="460" fill="url(#s1-pink)"/>
+              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -143,7 +145,8 @@ const DEFAULT_CONTENT: Content = {
         <!-- ── Slide 2: Suppliers ───────────────────────── -->
         <!-- v1.65gY — eyebrow dropped, subtitle line added below the
              headline ("The best suppliers in the UK with quotes in
-             minutes."), orbs zoomed. -->
+             minutes.").
+             v1.65gZ — orbs reverted to r=280 (no zoom). -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -156,8 +159,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="460" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="460" fill="url(#s2-blue)"/>
+              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
+              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -191,8 +194,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="500" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="500" fill="url(#s3-light)"/>
+              <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
+              <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -211,7 +214,7 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 4: Guestlist ───────────────────────── -->
-        <!-- v1.65gY — redesigned per client review:
+        <!-- v1.65gY — content redesigned per client review:
               · eyebrow + subtitle dropped
               · headline rendered uppercase + sans-serif (Inter 900)
               · narrow vertical card replaced by a wide glassmorphism
@@ -222,14 +225,14 @@ const DEFAULT_CONTENT: Content = {
                 composed from First + Surname)
               · footer line below the form + Contact/Instagram/TikTok/
                 Legal/copyright row pinned to the bottom of the slide
-              · orbs repositioned cx=400 top + bottom (was 100/700
-                middle) so the slide reads green top + bottom with a
-                teal band through the middle, matching the target. -->
+             v1.65gZ — orb position + gradient reverted to the
+             pre-v1.65gY values (cx=100/700 cy=250, diagonal gradient)
+             per "the orbs should not have been changed". -->
         <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
-              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#2D8E53"/>
+              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#33A25F"/>
                 <stop offset="100%" stop-color="#133C23"/>
               </linearGradient>
               <filter id="s4-blur" x="-50%" y="-50%" width="200%" height="200%">
@@ -237,8 +240,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s4-blur)">
-              <circle cx="400" cy="0"   r="500" fill="url(#s4-darkgreen)"/>
-              <circle cx="400" cy="500" r="500" fill="url(#s4-darkgreen)"/>
+              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
