@@ -195,9 +195,14 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65gZ17 — r=280 had the top + bottom orbs
+                 overlapping in the middle band (combined diameter 560
+                 > viewBox height 500). Dropped to r=240 so they leave
+                 a 20-unit gap and the two colours read as separate
+                 blobs. -->
             <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
+              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
+              <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
