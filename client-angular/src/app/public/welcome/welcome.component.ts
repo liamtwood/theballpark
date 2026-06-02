@@ -689,15 +689,19 @@ const DEFAULT_CONTENT: Content = {
     .bp-suppliers-headline {
       font-family: 'Fraunces', Georgia, serif;
       /* v1.65gY — headline trimmed (was clamp 40-88) so the AI
-         prefix fits on the same compact 3-line block. */
+         prefix fits on the same compact 3-line block.
+         v1.65gZ9 — weight dropped 900 -> 500 (regular Fraunces) +
+         max-width 900 -> 700 per client review. Subtitle below
+         tracks the same width so its side-lines still extend just
+         beyond the headline. */
       font-size: clamp(32px, 4.8vw, 60px);
-      font-weight: 900; line-height: 1.1; letter-spacing: -0.02em;
+      font-weight: 500; line-height: 1.1; letter-spacing: -0.02em;
       /* v1.65gQ — centre the headline block. text-align: center is
          inherited from .bp-slide-inner, but the block itself was
          left-aligned because of max-width: 1000px without auto
          margins. */
       margin: 0 auto 28px;
-      max-width: 900px;
+      max-width: 700px;
     }
     /* v1.65gY — subtitle below the suppliers headline.
        v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
@@ -710,7 +714,7 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 500;
       line-height: 1.55;
       opacity: 0.9;
-      max-width: 900px;
+      max-width: 700px;
       margin: 0 auto;
       display: flex;
       align-items: center;
