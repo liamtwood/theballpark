@@ -206,8 +206,10 @@ const DEFAULT_CONTENT: Content = {
                 <p class="bp-producers-tagline">{{ text('producers.tagline') }}</p>
               </div>
               <div>
-                <p class="bp-producers-body">{{ text('producers.body_1') }}</p>
-                <p class="bp-producers-body">{{ text('producers.body_2') }}</p>
+                <!-- v1.65gZ6 — body_1 + body_2 collapsed into a single
+                     paragraph so the copy flows as one block with no
+                     paragraph return between them. -->
+                <p class="bp-producers-body">{{ text('producers.body_1') }} {{ text('producers.body_2') }}</p>
               </div>
             </div>
           </div>
@@ -766,12 +768,12 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 500;
       opacity: 0.85; margin: 0;
     }
+    /* v1.65gZ6 — slide-3 body bolded (500 -> 700) per client review. */
     .bp-producers-body {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px; font-weight: 500;
-      line-height: 1.45; opacity: 0.95; margin: 0 0 14px 0;
+      font-size: 16px; font-weight: 700;
+      line-height: 1.45; opacity: 0.95; margin: 0;
     }
-    .bp-producers-body:last-of-type { margin-bottom: 0; }
 
     @media (max-width: 768px) {
       .bp-producers-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
