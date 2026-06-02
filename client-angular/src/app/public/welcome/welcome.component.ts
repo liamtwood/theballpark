@@ -313,10 +313,19 @@ const DEFAULT_CONTENT: Content = {
            scroll-driven (wheel, trackpad, swipe, arrow keys) with the
            header CTA jumping straight to the form on slides 2 & 3. -->
 
-      <!-- v1.65gZ24 — custom scroll progress pill (per client mockup).
+      <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
            Position is driven by --scroll-progress on .bp-welcome-root,
-           updated by the scroll listener in ngAfterViewInit. -->
-      <div class="bp-scroll-pill" aria-hidden="true"></div>
+           updated by the scroll listener in ngAfterViewInit.
+           v1.65gZ25 — pill wrapped in an invisible clickable track.
+           Clicking above the pill moves to the previous slide;
+           clicking below moves to the next. The pill itself has
+           pointer-events: none so the track always owns the click. -->
+      <div class="bp-scroll-track"
+           (click)="onScrollTrackClick($event)"
+           role="button"
+           aria-label="Previous or next slide">
+        <div #scrollPill class="bp-scroll-pill" aria-hidden="true"></div>
+      </div>
 
       <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
            slide-4 footer. Backdrop click + close button + ESC all
@@ -466,20 +475,36 @@ const DEFAULT_CONTENT: Content = {
       background: transparent;
     }
 
-    /* The custom scroll pill. Position is driven by the
+    /* v1.65gZ25 — invisible clickable track that owns the right-edge
+       hit area. The visible pill sits inside it, positioned by the
        --scroll-progress CSS variable (0 to 1) set on .bp-welcome-root
        by the scroll listener in ngAfterViewInit. */
-    .bp-scroll-pill {
+    .bp-scroll-track {
       position: fixed;
-      right: 14px;
-      top: calc(96px + var(--scroll-progress, 0) * (100vh - 96px - 96px - 56px));
-      width: 4px;
-      height: 56px;
+      right: 8px;
+      top: 96px;
+      bottom: 96px;
+      width: 20px;
+      z-index: 50;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .bp-scroll-pill {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(var(--scroll-progress, 0) * (100% - 40px));
+      width: 6px;
+      height: 40px;
       background: rgba(220, 240, 235, 0.55);
       border-radius: 999px;
-      z-index: 50;
       pointer-events: none;
       transition: top 0.18s ease-out, background 0.2s;
+    }
+    .bp-scroll-track:hover .bp-scroll-pill {
+      background: rgba(220, 240, 235, 0.75);
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
@@ -1257,6 +1282,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       on scroll position. */
   @ViewChildren('slideRef') slideRefs!: QueryList<ElementRef<HTMLElement>>;
   @ViewChild('stage') stageRef!: ElementRef<HTMLElement>;
+  /** v1.65gZ25 — pill ref used by the track click handler so we can
+      compare the click Y to the pill's current centre and route
+      to prev() vs next(). */
+  @ViewChild('scrollPill') scrollPillRef?: ElementRef<HTMLElement>;
 
   step = 0;
   /** Kept for legacy bindings (template still references it). Now
@@ -1467,6 +1496,23 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (e.key === 'ArrowRight') this.next();
     if (e.key === 'ArrowLeft' && !isFormField) this.prev();
     if (e.key === 'Enter' && this.step < TOTAL_STEPS - 1 && !isFormField) this.next();
+  }
+
+  // ── Scroll-track click ────────────────────────────────────────
+  // v1.65gZ25 — clicking the right-edge track above the pill goes
+  // to the previous slide; clicking below the pill advances to the
+  // next. Pill itself has pointer-events: none so the track is
+  // always the click target.
+  onScrollTrackClick(e: MouseEvent) {
+    const pill = this.scrollPillRef?.nativeElement;
+    if (!pill) return;
+    const rect = pill.getBoundingClientRect();
+    const pillCentreY = rect.top + rect.height / 2;
+    if (e.clientY < pillCentreY) {
+      this.prev();
+    } else {
+      this.next();
+    }
   }
 
   // ── Legal modal ───────────────────────────────────────────────
