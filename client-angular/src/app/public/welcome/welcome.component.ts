@@ -1,7 +1,7 @@
 import {
   Component, ChangeDetectionStrategy, ChangeDetectorRef,
   HostListener, OnInit, OnDestroy, AfterViewInit,
-  ViewChildren, QueryList, ElementRef
+  ViewChildren, QueryList, ElementRef, ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -355,7 +355,7 @@ const DEFAULT_CONTENT: Content = {
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
       /* Hide scrollbar across browsers. Safari (desktop + iOS)
-         ignores plain `display: none` on ::-webkit-scrollbar under
+         ignores plain display:none on ::-webkit-scrollbar under
          scroll-snap — the track stays as a faint coloured strip on
          the right edge of the welcome page (client-reported v1.65gL).
          Forcing width: 0 + transparent track/thumb removes it. */
@@ -861,16 +861,20 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly dots = Array.from({ length: TOTAL_STEPS });
 
   /** v1.65gL — references to the four <section #slideRef> elements
-      so we can scroll a target slide into view and attach an
-      IntersectionObserver. */
+      so we can scroll a target slide into view + add .in-view based
+      on scroll position. */
   @ViewChildren('slideRef') slideRefs!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('stage') stageRef!: ElementRef<HTMLElement>;
 
   step = 0;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
-  /** v1.65gL — IntersectionObserver instance for cleanup on destroy. */
-  private slideObserver?: IntersectionObserver;
+  /** v1.65gN — scroll listener cleanup. */
+  private scrollListener?: () => void;
+  /** v1.65gN — track which slides have already triggered .in-view
+      so we don't keep adding the class on every scroll frame. */
+  private inViewSet = new Set<number>();
   content: Content = { ...DEFAULT_CONTENT };
   /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
       Empty string until the fetch lands; the template falls back to
@@ -919,51 +923,46 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // v1.65gL — IntersectionObserver tracks which slide is in view.
-    // Each entry gets .in-view added (one-shot — never removed) so
-    // the per-slide entry animations fire when the slide becomes
-    // visible and stay settled if the user scrolls back.
-    // The most-visible slide drives `step` for the pagination train
-    // + counter + Back / Get on the guestlist visibility.
-    if (typeof IntersectionObserver === 'undefined') return;
+    // v1.65gN — scroll-position handler replaces the
+    // IntersectionObserver. The previous IO approach didn't fire
+    // entries reliably inside the scroll-snap container in Angular's
+    // lifecycle (verified: equivalent JS-injected IO fires fine,
+    // suggests slideRefs ordering / change-detection timing edge).
+    // Deterministic math is simpler anyway: each slide is exactly
+    // 100vh tall, so currentSlide = round(scrollTop / vh).
+    const stage = this.stageRef?.nativeElement;
+    if (!stage) return;
 
-    let mostVisible: { idx: number; ratio: number } = { idx: 0, ratio: 0 };
-    this.slideObserver = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        const idx = Number((e.target as HTMLElement).dataset['slide'] || '0');
-        if (e.isIntersecting) {
-          (e.target as HTMLElement).classList.add('in-view');
-        }
-        if (e.intersectionRatio > mostVisible.ratio) {
-          mostVisible = { idx, ratio: e.intersectionRatio };
-        }
+    const onScroll = () => {
+      const vh = stage.clientHeight || window.innerHeight;
+      const idx = Math.max(0, Math.min(TOTAL_STEPS - 1,
+        Math.round(stage.scrollTop / vh)));
+
+      // Mark this slide (and every prior slide) as .in-view so its
+      // entry animations fire. Prior slides are tagged too so
+      // backwards-scrolling the page never shows a slide in its
+      // "from" pose. One-shot per slide via inViewSet.
+      for (let i = 0; i <= idx; i++) {
+        if (this.inViewSet.has(i)) continue;
+        this.inViewSet.add(i);
+        const el = this.slideRefs?.toArray()[i]?.nativeElement;
+        el?.classList.add('in-view');
       }
-      // Snapshot the current best across this callback batch.
-      const best = entries
-        .filter(en => en.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (best) {
-        const idx = Number((best.target as HTMLElement).dataset['slide'] || '0');
-        if (idx !== this.step) {
-          this.step = idx;
-          this.cdr.markForCheck();
-        }
+
+      if (idx !== this.step) {
+        this.step = idx;
+        this.cdr.markForCheck();
       }
-    }, {
-      // Fire at multiple thresholds so the active-slide handoff is
-      // responsive (don't wait for 50% before switching the dot
-      // train; update as the next slide takes over).
-      threshold: [0.25, 0.5, 0.75]
-    });
+    };
 
-    this.slideRefs.forEach(ref => this.slideObserver!.observe(ref.nativeElement));
-
-    // Slide 1 is in view on first paint — observer fires for it
-    // immediately, so animations there get .in-view straight away.
+    stage.addEventListener('scroll', onScroll, { passive: true });
+    this.scrollListener = () => stage.removeEventListener('scroll', onScroll);
+    // Fire once for the initial state (slide 1 visible on load).
+    onScroll();
   }
 
   ngOnDestroy() {
-    this.slideObserver?.disconnect();
+    this.scrollListener?.();
   }
 
   // ── Content access ────────────────────────────────────────────
