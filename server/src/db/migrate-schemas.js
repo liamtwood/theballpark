@@ -1781,6 +1781,41 @@ const migrate = async () => {
     `);
     console.log('  v1.65fW message_item_decisions table ensured.');
 
+    // ── 10. RLS / grant hardening (v1.65gZ27) ────────────────────────────
+    // Supabase Linter flagged public-schema tables as RLS-disabled +
+    // anon-grantable (rls_disabled_in_public + sensitive_columns_exposed).
+    // Our app doesn't use PostgREST — supabaseAnonKey is empty in every
+    // environment.*.ts and all DB access goes through Express using the
+    // postgres connection string. So we can safely:
+    //   (a) revoke anon / authenticated grants on public/preview/master
+    //   (b) revoke default privileges so future tables don't regrant
+    //   (c) enable RLS on every existing table
+    // Postgres owner-bypass means our server still has full access.
+    // Idempotent — re-running writes the same state back.
+    console.log('  Hardening RLS + grants on public/preview/master...');
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`REVOKE USAGE ON SCHEMA ${schema} FROM anon, authenticated`);
+      await client.query(`REVOKE ALL PRIVILEGES ON ALL TABLES    IN SCHEMA ${schema} FROM anon, authenticated`);
+      await client.query(`REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${schema} FROM anon, authenticated`);
+      await client.query(`REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ${schema} FROM anon, authenticated`);
+      await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} REVOKE ALL ON TABLES    FROM anon, authenticated`);
+      await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} REVOKE ALL ON SEQUENCES FROM anon, authenticated`);
+      await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} REVOKE ALL ON FUNCTIONS FROM anon, authenticated`);
+      await client.query(`
+        DO $do$
+        DECLARE r RECORD;
+        BEGIN
+          FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = '${schema}'
+          LOOP
+            EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY',
+                           '${schema}', r.tablename);
+          END LOOP;
+        END
+        $do$;
+      `);
+    }
+    console.log('  v1.65gZ27 RLS + grant hardening applied.');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
