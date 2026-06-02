@@ -219,6 +219,16 @@ bring a schema (dev/preview/master) into the current shape. Running
 it must be idempotent and complete in one pass — `IF NOT EXISTS`
 everywhere, `ON CONFLICT DO NOTHING` on all seeds.
 
+> ⚠️ `server/src/db/migrate.js` is the OLDER `public.`-only runner
+> and is **deprecated**. Do not add new ALTERs there. It is kept in
+> tree for historical reference only; touching it causes the exact
+> drift this section warns about — changes get applied to dev but
+> never reach preview/master because the canonical runner doesn't
+> see them. (Caught in v1.65gG: `project_items.image_url` was added
+> to `migrate.js` instead of `migrate-schemas.js`; preview Railway's
+> listing endpoint 500'd for weeks until the dev → preview promote
+> exposed it.)
+
 **Rules — no exceptions**
 - Every commit that adds/alters a column, table, index, codelist row,
   or seed entry on dev MUST update `migrate-schemas.js` in the same
@@ -229,15 +239,30 @@ everywhere, `ON CONFLICT DO NOTHING` on all seeds.
 - The script targets `public.`, `preview.`, and `master.` explicitly
   in each statement. Don't write `ALTER TABLE items ...` — write
   three statements, one per schema.
+- **Standalone `migrate-vX.Y.js` files are fine for incremental dev
+  work but are NOT the source of truth.** The same SQL MUST be
+  back-ported into `migrate-schemas.js` (all three schemas) in the
+  same commit, OR in a follow-up commit before the next dev →
+  preview promotion. The standalone file stays in tree as the
+  documented history of when the change landed.
 - Before merging dev → preview (or preview → master), run
   `node server/src/db/migrate-schemas.js`. It is idempotent and safe
   to run repeatedly.
+- After every merge into preview or master, smoke-test the
+  endpoints most likely to depend on new columns (e.g. project list,
+  project items, messages list) before considering the promote done.
 - Don't write inline backticks in SQL comments inside the JS
   template literal — they break the parser. Use plain quotes or
   unquoted names in `--` comments.
 - New seed data (codelists, demo rows) goes in the same script under
   `ON CONFLICT DO NOTHING`. Don't lean on one-off `seed-vX.Y.js`
   scripts as canonical — they're history, not state.
+- Prefer `gen_random_uuid()` over `uuid_generate_v4()` for new
+  tables. `gen_random_uuid()` is built into PG13+ and works on any
+  schema search_path; `uuid_generate_v4()` requires the `uuid-ossp`
+  extension to be in scope, which breaks when the connection lands
+  on a non-default schema (caught in v1.65gG migration of the
+  message_item_decisions table).
 
 ---
 
