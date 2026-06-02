@@ -37,20 +37,30 @@ interface Content {
 }
 
 const DEFAULT_CONTENT: Content = {
+  // v1.65gY — client design review pass:
+  //   · slide 1 headline: drop the comma + trailing period
+  //   · slide 2 headline: prepend "AI " and add a subtitle line
+  //   · slide 3 tagline: drop the comma, drop the "s" off producers
+  //   · slide 4 headline: store as UPPERCASE (CSS uses sans-serif),
+  //     drop eyebrow + subtitle in favour of a footer text line below
+  //     the form
   'hero.eyebrow':           'Coming soon · Event production reimagined',
-  'hero.headline':          'REAL COSTS,\nREAL FAST.',
-  'hero.subtitle':          'Turn your event brief into an accurate estimate in moments.',
+  'hero.headline':          'REAL COSTS\nREAL FAST',
+  'hero.subtitle':          'Turn your event into an accurate estimate in moments.',
+  'hero.cta':               'Get on the guestlist',
   'suppliers.eyebrow':      'The network',
-  'suppliers.headline':     'Powered by real costs from our network of incredible suppliers.',
+  'suppliers.headline':     'AI Powered by real costs from our network of incredible suppliers.',
+  'suppliers.subtitle':     'The best suppliers in the UK with quotes in minutes.',
   'suppliers.categories':   ['DESIGN', 'BUILD', 'VENUES', 'FURNITURE', 'AV', 'GRAPHICS', 'CATERING'],
-  'producers.headline':     "A PRODUCER'S BEST FRIEND.",
-  'producers.tagline':      'By producers, for creators.',
+  'producers.headline':     "A PRODUCERS BEST FRIEND.",
+  'producers.tagline':      'By producers for creators',
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
-  'guestlist.headline':        'Those who get in early, get ahead.',
+  'guestlist.headline':        'THOSE WHO GET IN EARLY,\nGET AHEAD',
   'guestlist.subtitle':        "Get on the guestlist",
-  'guestlist.cta_label':       'Add me to the guestlist',
+  'guestlist.cta_label':       'APPLY',
+  'guestlist.footer_text':     "Get on the guestlist and the moment we're live you'll be the first to know.",
   'guestlist.success_headline': "You're on the guestlist.",
   'guestlist.success_body':    "We'll be in touch the moment Ballpark goes live, {{firstName}}."
 };
@@ -66,15 +76,24 @@ const DEFAULT_CONTENT: Content = {
       <!-- Persistent header. v1.65g9 — logo is now an image when the
            agency's marketplace-logo has been uploaded (loaded from
            /api/org on init), with the text wordmark as a fallback so
-           first paint never blocks on the network. -->
+           first paint never blocks on the network.
+           v1.65gY — counter dropped per client review; top-right CTA
+           pill appears on slides 2 & 3, jumps the user to slide 4. -->
       <header class="bp-welcome-header">
         <button class="bp-welcome-logo" (click)="goTo(0)" [class.bp-welcome-logo--img]="logoUrl">
           <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
           <span *ngIf="!logoUrl">BALLPARK</span>
         </button>
-        <div class="bp-welcome-counter">
-          {{ stepLabel }} / {{ totalLabel }}
-        </div>
+        <!-- v1.65gZ20 — header CTA now advances by one slide (next())
+             rather than jumping straight to slide 4, per client
+             review. Label keeps reading "Get on the guestlist" since
+             that's still the eventual destination. -->
+        <button
+          *ngIf="step > 0 && step < TOTAL_STEPS - 1"
+          class="bp-welcome-header-cta"
+          (click)="next()">
+          Get on the guestlist
+        </button>
       </header>
 
       <!-- Slide stage. v1.65gL — restructured as a scroll-snap
@@ -88,6 +107,10 @@ const DEFAULT_CONTENT: Content = {
       <div class="bp-welcome-stage" #stage>
 
         <!-- ── Slide 1: Hero ────────────────────────────── -->
+        <!-- v1.65gZ — orbs reverted to r=280 (the v1.65gY zoom was
+             undone per the next-day review: "the orbs should not
+             have been changed, only the text styling"). Centred CTA
+             pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -117,10 +140,20 @@ const DEFAULT_CONTENT: Content = {
             </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
+            <!-- v1.65gZ22 — slide-1 centred CTA acts as a "next"
+                 button (advances one slide) for consistency with the
+                 top-right header CTA. Same label, same behaviour. -->
+            <button class="bp-hero-cta" (click)="next()">
+              {{ text('hero.cta') }}
+            </button>
           </div>
         </section>
 
         <!-- ── Slide 2: Suppliers ───────────────────────── -->
+        <!-- v1.65gY — eyebrow dropped, subtitle line added below the
+             headline ("The best suppliers in the UK with quotes in
+             minutes.").
+             v1.65gZ — orbs reverted to r=280 (no zoom). -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -139,14 +172,16 @@ const DEFAULT_CONTENT: Content = {
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-2-inner">
-            <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
+            <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
+          <!-- v1.65gZ8 — ✦ separator between items removed and the
+               top/bottom border rules on .bp-marquee-wrap dropped
+               per client review (let the marquee run freely without
+               visual frames around it). -->
           <div class="bp-marquee-wrap">
             <div class="bp-marquee-track">
-              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">
-                {{ cat }}<span class="bp-marquee-sep">✦</span>
-              </div>
+              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
           </div>
         </section>
@@ -167,9 +202,14 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65gZ17 — r=280 had the top + bottom orbs
+                 overlapping in the middle band (combined diameter 560
+                 > viewBox height 500). Dropped to r=240 so they leave
+                 a 20-unit gap and the two colours read as separate
+                 blobs. -->
             <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
+              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
+              <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -180,14 +220,30 @@ const DEFAULT_CONTENT: Content = {
                 <p class="bp-producers-tagline">{{ text('producers.tagline') }}</p>
               </div>
               <div>
-                <p class="bp-producers-body">{{ text('producers.body_1') }}</p>
-                <p class="bp-producers-body">{{ text('producers.body_2') }}</p>
+                <!-- v1.65gZ6 — body_1 + body_2 collapsed into a single
+                     paragraph so the copy flows as one block with no
+                     paragraph return between them. -->
+                <p class="bp-producers-body">{{ text('producers.body_1') }} {{ text('producers.body_2') }}</p>
               </div>
             </div>
           </div>
         </section>
 
         <!-- ── Slide 4: Guestlist ───────────────────────── -->
+        <!-- v1.65gY — content redesigned per client review:
+              · eyebrow + subtitle dropped
+              · headline rendered uppercase + sans-serif (Inter 900)
+              · narrow vertical card replaced by a wide glassmorphism
+                panel filling most of the viewport width
+              · form collapsed to one horizontal row:
+                First Name | Surname | Email | APPLY (role + company
+                removed; backend still receives a single "name" field
+                composed from First + Surname)
+              · footer line below the form + Contact/Instagram/TikTok/
+                Legal/copyright row pinned to the bottom of the slide
+             v1.65gZ — orb position + gradient reverted to the
+             pre-v1.65gY values (cx=100/700 cy=250, diagonal gradient)
+             per "the orbs should not have been changed". -->
         <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -206,85 +262,90 @@ const DEFAULT_CONTENT: Content = {
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
-            <div class="bp-eyebrow">{{ text('guestlist.eyebrow') }}</div>
-            <h2 class="bp-guestlist-headline">{{ text('guestlist.headline') }}</h2>
+            <!-- v1.65gZ3 — innerHTML + multiline() so the headline
+                 splits explicitly after the comma ("THOSE WHO GET IN
+                 EARLY,\nGET AHEAD"), no longer relying on natural
+                 word-wrap which broke at viewport-width changes. -->
+            <h2 class="bp-guestlist-headline" [innerHTML]="multiline(text('guestlist.headline'))"></h2>
 
-            <!-- v1.65gS — final form layout per design review:
-                  · each field on its own row (Name → I am a… →
-                    Email → Company), full-width inputs
-                  · subtitle removed (the headline is enough; the
-                    form card has its own "guestlist" feel)
-                  · whole .bp-guestlist-form glass card animates in
-                    as ONE unit (no per-field cascade). -->
             <div *ngIf="!submitted" class="bp-guestlist-form">
-              <div class="bp-form-block">
-                <label class="bp-form-label">Name</label>
-                <input class="bp-form-input" type="text" [(ngModel)]="form.name" placeholder="Jane Doe" />
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">I am a…</label>
-                <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
-                  <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
-                </select>
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">Email</label>
-                <input class="bp-form-input" type="email" [(ngModel)]="form.email" placeholder="jane@studio.com" />
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">Company</label>
-                <input class="bp-form-input" type="text" [(ngModel)]="form.company" placeholder="Studio name (optional)" />
-              </div>
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name" />
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.surname"   placeholder="Surname" />
+              <input class="bp-form-input" type="email" [(ngModel)]="form.email"     placeholder="Email Address" />
               <button
                 class="bp-guestlist-submit"
                 [disabled]="!canSubmit() || submitting"
                 (click)="submit()">
-                {{ submitting ? 'Adding…' : text('guestlist.cta_label') }}
+                {{ submitting ? '…' : text('guestlist.cta_label') }}
               </button>
-              <p *ngIf="errorMessage" class="bp-form-error">{{ errorMessage }}</p>
             </div>
+            <p *ngIf="!submitted && errorMessage" class="bp-form-error">{{ errorMessage }}</p>
+            <p *ngIf="!submitted" class="bp-guestlist-footer-text">
+              {{ text('guestlist.footer_text') }}
+            </p>
 
             <div *ngIf="submitted" class="bp-guestlist-success">
               <div class="bp-success-tick">✓</div>
               <h3 class="bp-success-headline">{{ text('guestlist.success_headline') }}</h3>
               <p class="bp-success-body">{{ successBody }}</p>
             </div>
+
+            <!-- v1.65gZ5 — footer (Contact / Instagram / TikTok / (c)
+                 / Legal) moved INSIDE the glass panel per client
+                 review. It absolute-positions to the bottom of the
+                 panel rather than to the viewport. -->
+            <div class="bp-welcome-footer">
+              <div class="bp-footer-links">
+                <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
+                <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
+                <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+              </div>
+              <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
+              <button type="button" class="bp-footer-link bp-footer-link--right bp-footer-link--button" (click)="openLegal($event)">Legal</button>
+            </div>
           </div>
         </section>
 
       </div>
 
-      <!-- v1.65gE — slide indicator "train" is now a vertical pill
-           strip on the LEFT edge (per design review mockup). The
-           Back / Next CTAs stay in the bottom nav. -->
-      <div class="bp-welcome-dots bp-welcome-dots--vertical">
-        <button
-          *ngFor="let _ of dots; let i = index"
-          class="bp-welcome-dot"
-          [class.active]="i === step"
-          [attr.aria-label]="'Go to slide ' + (i + 1)"
-          (click)="goTo(i)">
-        </button>
-      </div>
+      <!-- v1.65gY — pagination train + bottom nav (Back / Next pills)
+           removed per client review. Navigation is now exclusively
+           scroll-driven (wheel, trackpad, swipe, arrow keys) with the
+           header CTA jumping straight to the form on slides 2 & 3. -->
 
-      <!-- Persistent bottom nav -->
-      <div class="bp-welcome-bottom">
-        <button
-          class="bp-welcome-back"
-          (click)="prev()"
-          [class.hidden]="step === 0"
-          aria-label="Back">
-          <span aria-hidden="true">←</span> Back
-        </button>
+      <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
+           slide-4 footer. Backdrop click + close button + ESC all
+           dismiss. -->
+      <!-- v1.65gZ21 — replaced the generic 6-bullet placeholder with
+           the actual Ballpark welcome-page privacy + cookie statement
+           drafted from the client's notes. -->
+      <div *ngIf="legalOpen" class="bp-legal-overlay" (click)="closeLegal()">
+        <div class="bp-legal-modal" (click)="$event.stopPropagation()">
+          <button type="button" class="bp-legal-close" (click)="closeLegal()" aria-label="Close">×</button>
+          <h2 class="bp-legal-title">Legal</h2>
 
-        <button
-          class="bp-welcome-next"
-          (click)="next()"
-          [class.hidden]="step === TOTAL_STEPS - 1"
-          aria-label="Get on the guestlist">
-          Get on the guestlist
-          <span aria-hidden="true">→</span>
-        </button>
+          <h3 class="bp-legal-section">Your privacy</h3>
+          <p class="bp-legal-body">
+            Information about our customers is an important part of our business, and we are not in the business of selling our customers' personal information to others.
+          </p>
+
+          <h3 class="bp-legal-section">What we collect, and why</h3>
+          <p class="bp-legal-body">
+            We collect your contact information on this site for one reason only: so we can invite you to Ballpark when it becomes available. Your name and email address are stored securely and never shared with third parties.
+          </p>
+
+          <h3 class="bp-legal-section">Cookies</h3>
+          <p class="bp-legal-body">
+            There are no cookies in use on the Ballpark welcome page. None are currently set. If tracking technologies are introduced in the future, a full Cookie Policy will be added here and a banner will appear before any cookies are set.
+          </p>
+
+          <h3 class="bp-legal-section">Changes</h3>
+          <p class="bp-legal-body">
+            This statement may be updated as Ballpark evolves. Material changes will be communicated to anyone on the guestlist before they take effect.
+          </p>
+
+          <button type="button" class="bp-legal-dismiss" (click)="closeLegal()">Close</button>
+        </div>
       </div>
 
     </div>
@@ -295,8 +356,10 @@ const DEFAULT_CONTENT: Content = {
        pack is bought and dropped in. Closest free-for-commercial
        match: variable serif, high contrast, full weight range,
        italics. Swap back to Sharpe by replacing this @import and
-       changing 'Fraunces' → 'Sharpe' across the rules below. */
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
+       changing 'Fraunces' → 'Sharpe' across the rules below.
+       v1.65gY — Inter (OFL) added for the slide-4 headline, per
+       client review ("bold uppercase sans-serif"). */
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600;700;900&display=swap');
 
     :host {
       display: block;
@@ -341,10 +404,28 @@ const DEFAULT_CONTENT: Content = {
       object-fit: contain;
       filter: brightness(0) invert(1);
     }
-    .bp-welcome-counter {
-      font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
-      color: rgba(220,240,235,0.7);
-      font-variant-numeric: tabular-nums;
+    /* v1.65gY — top-right header CTA. Shown on slides 2 + 3 only
+       (slide 1 has its own centred CTA, slide 4 IS the form).
+       Subtle glass pill matching the slide-1 hero CTA so the
+       branding stays consistent as you scroll. */
+    .bp-welcome-header-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 9px 20px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-welcome-header-cta:hover {
+      background: rgba(220, 240, 235, 0.22);
+      transform: translateY(-1px);
     }
 
     /* ── Slide stage ──────────────────────────── */
@@ -381,13 +462,60 @@ const DEFAULT_CONTENT: Content = {
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
        already scrolling, so the orbs "scroll in" naturally as the
-       slide enters the viewport — no separate CSS wipe animation
-       needed (and any transform/clip-path on an ancestor of the
-       filtered SVG breaks the Gaussian blur compositing). */
+       slide enters the viewport. The wrapper exists for layering
+       only; we do NOT transform it (transforming the SVG or any
+       ancestor breaks the Gaussian blur). */
     .bp-bg-layer {
       position: absolute; inset: 0;
       z-index: 1;
       pointer-events: none;
+    }
+
+    /* v1.65gW — orb wipe-in restored by animating the individual
+       <circle> elements INSIDE the filtered group instead of the
+       SVG / group / wrapper. CSS transforms on SVG children render
+       inside the SVG's own coordinate space — the filter recomputes
+       over the moved circles natively, no HTML compositing layer is
+       created, and the Gaussian blur survives. */
+    .bp-svg-bg circle {
+      transform-box: view-box;
+      transform-origin: center;
+      transform: translateX(-100%);
+    }
+    .bp-slide.in-view .bp-svg-bg circle {
+      animation: bp-orb-wipe-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-orb-wipe-in {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(0); }
+    }
+
+    /* v1.65gX  — slide 3's two orbs both sit at cx=400 (vertically
+       stacked, not side-by-side), so a horizontal wipe leaves the
+       right half of the viewport showing the bare blue background
+       during the transition. Override to a scale-bloom from the
+       viewport centre instead — the orbs expand outward into their
+       final positions, no exposed corner.
+       v1.65gZ18 — scale-bloom produced a rectangular filter-region
+       artifact mid-transition (when scale 0 collapses the <g>'s
+       bbox to a point, the blur filter's relative region
+       degenerates and Chrome briefly paints a rectangle in that
+       area). Swapped to a pure opacity fade: orbs stay at their
+       final geometric position the whole time, only their alpha
+       animates 0 -> 1, so the bbox never collapses and the filter
+       region stays stable. The translateX(-100%) base rule for
+       circles is OVERRIDDEN to transform:none here so the global
+       wipe doesn't also fire on slide 3. */
+    .bp-slide-3 .bp-svg-bg circle {
+      transform: none;
+      opacity: 0;
+    }
+    .bp-slide-3.in-view .bp-svg-bg circle {
+      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-orb-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
@@ -510,7 +638,9 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
-    .bp-slide-2-inner { margin-bottom: 56px; }
+    /* v1.65gZ10 — gap between headline/subtitle block and the marquee
+       trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
+    .bp-slide-2-inner { margin-bottom: 16px; }
     .bp-slide-3 { background: #6391A4; }
     .bp-slide-4 { background: #6391A4; }
 
@@ -570,20 +700,46 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 900;
       letter-spacing: 0.02em;
     }
+    /* v1.65gY — headline shrunk + comma/period dropped (REAL COSTS /
+       REAL FAST as two clean lines), more breathing room before the
+       subtitle, centred CTA pill below. Per client review. */
     .bp-hero-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(56px, 11vw, 144px);
+      font-size: clamp(48px, 8.5vw, 116px);
       font-weight: 900;
-      line-height: 0.95;
+      line-height: 1.0;
       letter-spacing: -0.04em;
-      margin: 0 0 28px 0;
+      margin: 0 0 48px 0;
     }
+    /* v1.65gZ11  — subtitle font bumped + max-width tightened so the
+       copy wraps to multiple lines per client review.
+       v1.65gZ12 — max-width widened 380 -> 560 so the copy wraps
+       once (two lines), not multiple times. */
     .bp-hero-subtitle {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(17px, 2vw, 21px);
-      font-weight: 500; line-height: 1.5;
-      max-width: 560px; margin: 0 auto;
+      font-size: clamp(22px, 2.6vw, 30px);
+      font-weight: 500; line-height: 1.4;
+      max-width: 560px; margin: 0 auto 40px;
       opacity: 0.95;
+    }
+    .bp-hero-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 11px 26px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-hero-cta:hover {
+      background: rgba(220, 240, 235, 0.24);
+      transform: translateY(-1px);
     }
 
     /* ── Slide 2 typography + marquee ─────────── */
@@ -596,20 +752,55 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-suppliers-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(40px, 6.5vw, 88px);
-      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
+      /* v1.65gY — headline trimmed (was clamp 40-88) so the AI
+         prefix fits on the same compact 3-line block.
+         v1.65gZ9 — weight dropped 900 -> 500 (regular Fraunces) +
+         max-width 900 -> 700 per client review. Subtitle below
+         tracks the same width so its side-lines still extend just
+         beyond the headline. */
+      font-size: clamp(32px, 4.8vw, 60px);
+      font-weight: 500; line-height: 1.1; letter-spacing: -0.02em;
       /* v1.65gQ — centre the headline block. text-align: center is
          inherited from .bp-slide-inner, but the block itself was
          left-aligned because of max-width: 1000px without auto
          margins. */
-      margin: 0 auto;
-      max-width: 1000px;
+      margin: 0 auto 28px;
+      max-width: 700px;
     }
+    /* v1.65gY — subtitle below the suppliers headline.
+       v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
+       line either side of the text, sized to match the headline
+       max-width (900px) so the lines extend just beyond the text
+       and span roughly the headline's footprint. */
+    .bp-suppliers-subtitle {
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review
+         (same family as the slide-4 headline). */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .bp-suppliers-subtitle::before,
+    .bp-suppliers-subtitle::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(220, 240, 235, 0.4);
+    }
+    /* v1.65gZ8  — top + bottom 1px separators dropped.
+       v1.65gZ10 — wrap padding trimmed 24 -> 8 so the marquee
+       sits closer to the subtitle; item font shrunk
+       clamp(36-64) -> clamp(22-40) per client review. */
     .bp-marquee-wrap {
       width: 100%; overflow: hidden;
-      border-top: 1px solid rgba(220,240,235,0.2);
-      border-bottom: 1px solid rgba(220,240,235,0.2);
-      padding: 24px 0;
+      padding: 8px 0;
       position: relative; z-index: 5;
     }
     .bp-marquee-track {
@@ -618,13 +809,17 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-marquee-item {
       display: flex; align-items: center;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(36px, 5vw, 64px);
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review. */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(22px, 3vw, 40px);
       font-weight: 900; letter-spacing: 0.02em;
-      padding: 0 48px;
+      padding: 0 36px;
       flex-shrink: 0;
     }
-    .bp-marquee-sep { margin-left: 48px; opacity: 0.4; font-size: 0.6em; }
+    /* v1.65gZ8 — .bp-marquee-sep rule kept for safety in case any
+       admin-injected content still contains the glyph; the template
+       no longer emits one. */
+    .bp-marquee-sep { display: none; }
     @keyframes bp-scroll-x {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
@@ -643,113 +838,203 @@ const DEFAULT_CONTENT: Content = {
        and breaking the headline centring on phone. */
 
     /* ── Slide 3 ──────────────────────────────── */
-    .bp-slide-3-inner { max-width: 1400px; }
+    /* v1.65gY — headline shrunk + pulled centre-left, body tightened.
+       Per client review the headline shouldn't span the full left
+       column at maximum size; the new clamp keeps it compact and the
+       grid columns are more balanced. */
+    .bp-slide-3-inner { max-width: 1100px; }
+    /* v1.65gZ14 — horizontal gap widened 64 -> 140 per client review. */
     .bp-producers-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 96px; align-items: center; text-align: left;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 140px; align-items: center; text-align: left;
     }
+    /* v1.65gZ15 — headline knocked down ~ half a step per client
+       review ("reduce size by 1/2 a size if you can"). */
     .bp-producers-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(48px, 8vw, 112px);
-      font-weight: 900; line-height: 0.95;
-      letter-spacing: -0.03em;
-      margin: 0 0 24px 0;
+      font-size: clamp(32px, 4.8vw, 56px);
+      font-weight: 900; line-height: 1.0;
+      letter-spacing: -0.02em;
+      margin: 0 0 14px 0;
     }
+    /* v1.65gZ7 — tagline + body sizes bumped + body width capped per
+       client review ("increase the font size of By producers… and
+       Costing events…; decrease the width of the container"). */
     .bp-producers-tagline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(20px, 2.4vw, 28px);
+      font-size: clamp(18px, 2vw, 24px);
       font-weight: 500;
-      opacity: 0.9; margin: 0;
+      opacity: 0.85; margin: 0;
     }
     .bp-producers-body {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 20px; font-weight: 500;
-      line-height: 1.6; opacity: 0.95; margin: 0 0 20px 0;
+      font-size: clamp(18px, 1.6vw, 22px);
+      font-weight: 700;
+      line-height: 1.5;
+      opacity: 0.95;
+      margin: 0;
+      max-width: 380px;
     }
-    .bp-producers-body:last-of-type { margin-bottom: 0; }
 
     @media (max-width: 768px) {
       .bp-producers-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
     }
 
     /* ── Slide 4 ──────────────────────────────── */
-    .bp-slide-4-inner { max-width: 560px; width: 100%; }
-    .bp-guestlist-headline {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(36px, 5.5vw, 64px);
-      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
-      margin: 0 0 16px 0;
+    /* v1.65gY — full redesign per client review:
+        · wide centred glass panel (was a narrow 560px card)
+        · uppercase sans-serif headline (was serif title-case)
+        · single horizontal row of inputs + APPLY button
+        · explanatory footer text below the form
+        · contact/instagram/tiktok/copyright/legal pinned to slide
+          bottom */
+    /* v1.65gZ3 — slide-4 inner is now a glass panel that fills the
+       viewport below the header with rounded top corners. We absolute
+       -position it so the section's flex centering doesn't constrain
+       its width to the shared .bp-slide-inner max-width: 1100px. The
+       footer (links + (c) + Legal) overlays the panel's bottom via a
+       higher z-index — that's why border-bottom is none, the panel
+       slides off the bottom edge of the viewport. */
+    /* v1.65gZ4 — narrower + more rounded per client review. Anchored
+       via left:50% + translateX(-50%) so the max-width 960px caps the
+       panel and it stays centred regardless of viewport. Radius
+       bumped to 56px so the top corners read as a clear curve. */
+    .bp-slide-4-inner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 80px);
+      max-width: 960px;
+      bottom: 0;
+      max-height: none;
+      box-sizing: border-box;
+      /* v1.65gZ16 — content anchored toward the top of the panel
+         (justify-content flex-start) so the headline / form / footer
+         text sit higher; padding-top widened to give the headline
+         room to breathe below the panel's rounded edge. */
+      padding: 96px 60px 96px;
+
+      background: rgba(220, 240, 235, 0.08);
+      border: 1px solid rgba(220, 240, 235, 0.20);
+      border-bottom: none;
+      border-radius: 56px 56px 0 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 32px;
     }
-    .bp-guestlist-subtitle {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px; font-weight: 500;
-      line-height: 1.6;
-      opacity: 0.9; margin: 0 0 36px 0;
+    /* The gap collapses to flex-item margins; clear the headline's
+       own bottom margin so the gap is the single source of truth. */
+    .bp-slide-4-inner .bp-guestlist-headline { margin-bottom: 0; }
+    .bp-slide-4-inner .bp-guestlist-footer-text { margin-top: 0; }
+    @media (max-width: 720px) {
+      .bp-slide-4-inner {
+        width: calc(100% - 24px);
+        padding: 48px 24px 80px;
+        border-radius: 36px 36px 0 0;
+      }
+    }
+    .bp-guestlist-headline {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(28px, 4.2vw, 52px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin: 0 0 32px 0;
     }
     .bp-guestlist-form {
-      background: rgba(220,240,235,0.08);
-      border: 1px solid rgba(220,240,235,0.2);
-      border-radius: 16px;
-      padding: 28px;
-      backdrop-filter: blur(12px);
-      text-align: left;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 12px;
+      align-items: stretch;
+      background: rgba(220,240,235,0.06);
+      border: 1px solid rgba(220,240,235,0.18);
+      border-radius: 999px;
+      padding: 10px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      max-width: 880px;
+      margin: 0 auto;
     }
-    .bp-form-row {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 12px; margin-bottom: 12px;
-    }
-    .bp-form-block { margin-bottom: 12px; }
-    .bp-form-block:has(.bp-form-select) { margin-bottom: 20px; }
-    .bp-form-label {
-      display: block;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      opacity: 0.75; margin-bottom: 6px;
-    }
+    /* v1.65gZ2 — name/email inputs render on a solid white pill,
+       with dark-green text. APPLY button stays glass so the action
+       reads as the accent. */
     .bp-form-input {
-      width: 100%; box-sizing: border-box;
-      padding: 11px 14px;
-      background: rgba(220,240,235,0.1);
-      border: 1px solid rgba(220,240,235,0.25);
-      border-radius: 8px;
-      color: #DCF0EB; font-size: 14px;
+      box-sizing: border-box;
+      padding: 11px 18px;
+      background: #FFFFFF;
+      border: 1px solid #FFFFFF;
+      border-radius: 999px;
+      color: #133C23;
+      font-size: 14px;
       font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
+      text-align: center;
     }
-    .bp-form-input::placeholder { color: rgba(220,240,235,0.45); }
-    .bp-form-input:focus { border-color: rgba(220,240,235,0.55); }
-    .bp-form-select { cursor: pointer; appearance: none; }
-    .bp-form-select option { color: #133C23; }
+    .bp-form-input::placeholder { color: rgba(19,60,35,0.45); }
+    .bp-form-input:focus { border-color: rgba(19,60,35,0.25); }
     .bp-form-error {
-      margin: 10px 0 0;
+      margin: 14px 0 0;
       font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       color: #FFD3DD;
     }
     .bp-guestlist-submit {
-      width: 100%;
-      margin-top: 4px;
-      padding: 14px 24px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 15px; font-weight: 700;
-      background: #DCF0EB; color: #133C23;
-      border: none; border-radius: 999px;
+      padding: 11px 28px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(220,240,235,0.18);
+      color: #DCF0EB;
+      border: 1px solid rgba(220,240,235,0.25);
+      border-radius: 999px;
       cursor: pointer;
       transition: all 0.2s;
     }
+    .bp-guestlist-submit:hover:not(:disabled) {
+      background: rgba(220,240,235,0.30);
+    }
     .bp-guestlist-submit:disabled {
-      background: rgba(220,240,235,0.3);
-      color: rgba(220,240,235,0.6);
+      opacity: 0.5;
       cursor: not-allowed;
     }
+    .bp-guestlist-footer-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(14px, 1.4vw, 17px);
+      font-weight: 500;
+      line-height: 1.5;
+      opacity: 0.85;
+      max-width: 720px;
+      margin: 36px auto 0;
+    }
+
+    /* Slide 4 form responsive collapse — on narrow viewports the
+       horizontal row would otherwise crush the inputs unreadably
+       small. Stack them at <720px. */
+    @media (max-width: 720px) {
+      .bp-guestlist-form {
+        grid-template-columns: 1fr;
+        border-radius: 24px;
+        padding: 16px;
+      }
+    }
+
     .bp-guestlist-success {
       background: rgba(220,240,235,0.1);
       border: 1px solid rgba(220,240,235,0.3);
       border-radius: 16px;
       padding: 40px;
       backdrop-filter: blur(12px);
+      max-width: 560px;
+      margin: 0 auto;
     }
     .bp-success-tick {
       width: 56px; height: 56px; border-radius: 50%;
@@ -768,67 +1053,175 @@ const DEFAULT_CONTENT: Content = {
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
-    /* ── Bottom nav ───────────────────────────── */
-    .bp-welcome-bottom {
-      position: absolute; bottom: 0; left: 0; right: 0; z-index: 50;
-      padding: 20px 32px 28px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; pointer-events: none;
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─
+       v1.65gZ2 — switched from flex space-between to a 3-column grid
+       so the © line sits in the centre of the PAGE (the middle 1fr
+       column), not just between the left/right blocks. Left & right
+       blocks justify-self to keep their edges aligned. */
+    .bp-welcome-footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 6;
+      padding: 18px 32px 22px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 24px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 12px;
+      opacity: 0.85;
     }
-    .bp-welcome-back, .bp-welcome-next, .bp-welcome-dots { pointer-events: auto; }
-    .bp-welcome-back {
-      background: rgba(220,240,235,0.14);
-      border: 1px solid rgba(220,240,235,0.3);
+    .bp-footer-links {
+      display: flex; gap: 24px; align-items: center;
+      justify-self: start;
+    }
+    .bp-footer-link {
       color: #DCF0EB;
-      padding: 10px 18px; border-radius: 999px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 13px; font-weight: 500;
-      cursor: pointer; backdrop-filter: blur(8px);
-      display: inline-flex; align-items: center; gap: 8px;
-      transition: all 0.2s;
+      text-decoration: none;
+      transition: opacity 0.2s;
     }
-    .bp-welcome-back:hover { background: rgba(220,240,235,0.22); }
-    .bp-welcome-back.hidden { opacity: 0; visibility: hidden; }
-    .bp-welcome-next {
-      background: #DCF0EB; color: #133C23;
+    .bp-footer-link:hover { opacity: 0.7; }
+    .bp-footer-link--right {
+      justify-self: end;
+    }
+    .bp-footer-copy {
+      text-align: center;
+      opacity: 0.6;
+      letter-spacing: 0.02em;
+    }
+    @media (max-width: 720px) {
+      .bp-welcome-footer {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 8px;
+        font-size: 11px;
+        padding-bottom: 16px;
+      }
+      .bp-footer-links { justify-self: center; }
+      .bp-footer-link--right { display: none; }
+    }
+
+    /* v1.65gY — Bottom-nav (Back / Next pills) + vertical pagination
+       train styles removed alongside their template markup. Scroll-
+       snap + header CTA + slide-1 centred CTA cover every nav need;
+       any leftover .bp-welcome-bottom / .bp-welcome-dot rules would
+       be unreferenced dead code. */
+
+    /* ── Legal modal ─────────────────────────────────────────────────
+       v1.65gZ20 — opened by the Legal link in the slide-4 footer.
+       Backdrop overlay sits above every slide (z 100); the modal
+       card centres on screen with a glass treatment that matches
+       the rest of the welcome aesthetic. */
+    .bp-legal-overlay {
+      position: fixed; inset: 0;
+      z-index: 100;
+      background: rgba(15, 30, 24, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .bp-legal-modal {
+      position: relative;
+      max-width: 560px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 40px 40px 32px;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 24px;
+      color: #DCF0EB;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+    .bp-legal-close {
+      position: absolute;
+      top: 12px; right: 16px;
+      width: 32px; height: 32px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent;
       border: none;
-      padding: 12px 24px; border-radius: 999px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 14px; font-weight: 700;
+      color: #DCF0EB;
+      font-size: 24px;
+      line-height: 1;
       cursor: pointer;
-      display: inline-flex; align-items: center; gap: 8px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-      transition: all 0.2s;
+      opacity: 0.7;
+      transition: opacity 0.2s;
     }
-    .bp-welcome-next:hover { transform: translateY(-1px); }
-    .bp-welcome-next.hidden { opacity: 0; visibility: hidden; }
-    .bp-welcome-dots { display: flex; gap: 8px; }
-    .bp-welcome-dot {
-      width: 8px; height: 8px;
-      border-radius: 999px; border: none;
-      background: rgba(220,240,235,0.45);
-      cursor: pointer; padding: 0;
-      transition: width 0.3s, height 0.3s, background 0.3s;
+    .bp-legal-close:hover { opacity: 1; }
+    .bp-legal-title {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0 0 18px 0;
     }
-    .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
-    /* v1.65gE → v1.65gF — vertical train variant for the slide
-       indicator. Fixed to the RIGHT edge of the viewport, vertically
-       centred. Each dot stacks; the active dot becomes a tall pill
-       (height grows, width stays slim) so the indicator reads
-       top→bottom like the mockup (active migrates top→bottom as
-       you move slide 1 → 4). */
-    .bp-welcome-dots--vertical {
-      position: fixed;
-      right: 28px;
-      top: 50%;
-      transform: translateY(-50%);
-      flex-direction: column;
-      gap: 10px;
-      z-index: 60;
-      pointer-events: auto;
+    .bp-legal-list {
+      list-style: disc;
+      padding-left: 22px;
+      margin: 0 0 28px 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
     }
-    .bp-welcome-dots--vertical .bp-welcome-dot.active {
-      width: 8px; height: 32px;
+    .bp-legal-list li {
+      margin-bottom: 10px;
+      opacity: 0.92;
+    }
+    .bp-legal-list li:last-child { margin-bottom: 0; }
+
+    /* v1.65gZ21 — section headings + body paragraphs for the new
+       privacy / cookies / changes content. */
+    .bp-legal-section {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin: 22px 0 8px 0;
+    }
+    .bp-legal-section:first-of-type { margin-top: 4px; }
+    .bp-legal-body {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
+      margin: 0 0 6px 0;
+      opacity: 0.92;
+    }
+    .bp-legal-dismiss {
+      margin-top: 24px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.18);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .bp-legal-dismiss:hover { background: rgba(220, 240, 235, 0.30); }
+
+    /* Footer "Legal" link now renders as a button (so we can wire a
+       click handler without a phantom navigation). Strip the default
+       button chrome so it still reads as a footer link. */
+    .bp-footer-link--button {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      letter-spacing: inherit;
     }
   `]
 })
@@ -860,15 +1253,22 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       never feels broken. */
   logoUrl = '';
 
+  // v1.65gY — form simplified to First Name / Surname / Email per
+  // the client review. The submit() call still posts a single "name"
+  // field (firstName + " " + surname) so the existing backend route
+  // stays unchanged; role + company are sent as null.
   form = {
-    name:    '',
-    email:   '',
-    company: '',
-    role:    ROLE_OPTIONS[0]
+    firstName: '',
+    surname:   '',
+    email:     ''
   };
   submitting = false;
   submitted  = false;
   errorMessage: string | null = null;
+
+  /** v1.65gZ20 — Legal modal open state. Backdrop click + Close
+      button + ESC keydown all flip this back to false. */
+  legalOpen = false;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
@@ -1012,6 +1412,16 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @HostListener('window:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
+    // v1.65gZ20 — ESC closes the Legal modal first if open; nothing
+    // else binds to ESC, so it's an additive handler.
+    if (e.key === 'Escape' && this.legalOpen) {
+      this.closeLegal();
+      return;
+    }
+    // While the modal is up, swallow arrow / Enter nav so scrolling
+    // doesn't fire underneath the dialog.
+    if (this.legalOpen) return;
+
     if (this.submitted) return;
     const tag = (e.target as HTMLElement)?.tagName;
     const isFormField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
@@ -1020,9 +1430,22 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (e.key === 'Enter' && this.step < TOTAL_STEPS - 1 && !isFormField) this.next();
   }
 
+  // ── Legal modal ───────────────────────────────────────────────
+  openLegal(e?: Event) {
+    if (e) e.preventDefault();
+    this.legalOpen = true;
+    this.cdr.markForCheck();
+  }
+  closeLegal() {
+    this.legalOpen = false;
+    this.cdr.markForCheck();
+  }
+
   // ── Submit ────────────────────────────────────────────────────
   canSubmit(): boolean {
-    return this.form.name.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
+    return this.form.firstName.trim().length > 0
+        && this.form.surname.trim().length > 0
+        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
   }
 
   submit() {
@@ -1031,11 +1454,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.errorMessage = null;
     this.cdr.markForCheck();
 
+    const fullName = `${this.form.firstName.trim()} ${this.form.surname.trim()}`.trim();
     const body = {
-      name:    this.form.name.trim(),
+      name:    fullName,
       email:   this.form.email.trim(),
-      company: this.form.company.trim() || null,
-      role:    this.form.role
+      company: null,
+      role:    null
     };
     this.http.post<{ success: boolean; alreadyRegistered?: boolean }>(
       `${environment.apiUrl}/guestlist/signup`, body
@@ -1063,7 +1487,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   get successBody(): string {
     const tpl = this.text('guestlist.success_body');
-    const firstName = this.form.name.trim().split(' ')[0] || this.form.name.trim();
+    const firstName = this.form.firstName.trim() || 'friend';
     return tpl.replace(/\{\{firstName\}\}/g, firstName);
   }
 }

@@ -103,7 +103,10 @@ function validateSignupInput(body) {
   if (name.length < 1 || name.length > 100) return 'Name must be 1–100 characters';
   if (!isValidEmail(email))                   return 'Invalid email address';
   if (company && company.length > 200)        return 'Company must be ≤ 200 characters';
-  if (!ALLOWED_ROLES.includes(role))          return 'Invalid role';
+  // v1.65gZ19 — role is now optional (the welcome form dropped the
+  // I-am-a... dropdown in v1.65gY). If supplied it must be in the
+  // allowlist; if missing createSignup will store a sentinel.
+  if (role && !ALLOWED_ROLES.includes(role))  return 'Invalid role';
   return null;
 }
 
@@ -135,7 +138,10 @@ async function createSignup({ body, ip, userAgent }) {
   const name    = body.name.trim();
   const email   = body.email.trim().toLowerCase();
   const company = (body.company || '').trim() || null;
-  const role    = body.role.trim();
+  // v1.65gZ19 — fall back to a sentinel when the form (which no longer
+  // collects a role) sends null/empty. DB column is NOT NULL; this
+  // keeps the contract without a schema migration.
+  const role    = (body.role || '').trim() || 'Unknown';
 
   let signup;
   try {

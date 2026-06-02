@@ -1604,28 +1604,35 @@ const migrate = async () => {
     // ── 9. Seed marketing.welcome_content + welcome_settings ─────────────
     // Re-runnable: ON CONFLICT DO NOTHING preserves any admin edits.
     console.log('  Seeding marketing content + settings...');
+    // v1.65gY — copy updated per client design review (see screenshots
+    // in the dev/v1.65gY change set). Existing rows are preserved by
+    // the ON CONFLICT DO NOTHING below; to apply these to an already-
+    // seeded DB run server/src/db/update-welcome-v1.65gY.js.
     const SEED_CONTENT = [
       // Slide 1 — Hero
       ['hero.eyebrow',           'text',     'Coming soon · Event production reimagined', 'Eyebrow tag',  null, 1, 10],
-      ['hero.headline',           'longtext', 'REAL COSTS,\nREAL FAST.',                   'Headline',     'Use \\n for line breaks', 1, 20],
-      ['hero.subtitle',           'longtext', 'Turn your event brief into an accurate estimate in moments.', 'Subtitle', null, 1, 30],
+      ['hero.headline',           'longtext', 'REAL COSTS\nREAL FAST',                     'Headline',     'Use \\n for line breaks', 1, 20],
+      ['hero.subtitle',           'longtext', 'Turn your event into an accurate estimate in moments.', 'Subtitle', null, 1, 30],
+      ['hero.cta',                'text',     'Get on the guestlist',                      'Hero CTA label', null, 1, 40],
 
       // Slide 2 — Suppliers
       ['suppliers.eyebrow',       'text',     'The network',                                                       'Eyebrow tag', null, 2, 10],
-      ['suppliers.headline',      'longtext', 'Powered by real costs from our network of incredible suppliers.',   'Headline',    null, 2, 20],
+      ['suppliers.headline',      'longtext', 'AI Powered by real costs from our network of incredible suppliers.','Headline',    null, 2, 20],
+      ['suppliers.subtitle',      'longtext', 'The best suppliers in the UK with quotes in minutes.',              'Subtitle',    null, 2, 25],
       ['suppliers.categories',    'list',     'DESIGN,BUILD,VENUES,FURNITURE,AV,GRAPHICS,CATERING',                'Categories (marquee)', 'Comma-separated. Order = marquee order.', 2, 30],
 
       // Slide 3 — Producers
-      ['producers.headline',      'longtext', "A PRODUCER'S BEST FRIEND.",                                                 'Headline', null, 3, 10],
-      ['producers.tagline',       'text',     'By producers, for creators.',                                                'Italic tagline', null, 3, 20],
+      ['producers.headline',      'longtext', "A PRODUCERS BEST FRIEND.",                                                  'Headline', null, 3, 10],
+      ['producers.tagline',       'text',     'By producers for creators',                                                  'Italic tagline', null, 3, 20],
       ['producers.body_1',        'longtext', 'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.', 'Body paragraph 1', null, 3, 30],
       ['producers.body_2',        'longtext', 'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.', 'Body paragraph 2', null, 3, 40],
 
       // Slide 4 — Guestlist
       ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
-      ['guestlist.headline',         'longtext', 'Those who get in early, get ahead.',                       'Headline',        null, 4, 20],
-      ['guestlist.subtitle',         'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Subtitle', null, 4, 30],
-      ['guestlist.cta_label',        'text',     'Add me to the guestlist',                                  'Submit button label', null, 4, 40],
+      ['guestlist.headline',         'longtext', 'THOSE WHO GET IN EARLY,\nGET AHEAD',                       'Headline',        'Use \\n for line breaks', 4, 20],
+      ['guestlist.subtitle',         'longtext', "Get on the guestlist",                                     'Subtitle',        null, 4, 30],
+      ['guestlist.footer_text',      'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
+      ['guestlist.cta_label',        'text',     'APPLY',                                                    'Submit button label', null, 4, 40],
       ['guestlist.success_headline', 'text',     "You're on the guestlist.",                                  'Success headline', null, 4, 50],
       ['guestlist.success_body',     'longtext', "We'll be in touch the moment Ballpark goes live, {{firstName}}.", 'Success body', "Use {{firstName}} for the registrant's first name", 4, 60],
     ];
