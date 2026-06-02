@@ -31,6 +31,23 @@ router.get('/signups', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// v1.65gZ32 — soft-delete a signup. UUID id in the URL. Returns 404 if
+// the row doesn't exist or was already deleted (idempotent on the
+// caller's side — second click does nothing). Row stays in the table
+// with deleted_at set; the partial unique-email index lets the same
+// email sign up again afterwards.
+router.delete('/signups/:id', async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+    const result = await MarketingService.softDeleteSignup(id);
+    if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
+    res.json(result.body);
+  } catch (err) { next(err); }
+});
+
 router.get('/welcome/content', async (req, res, next) => {
   try { res.json(await MarketingService.getContentForAdmin()); }
   catch (err) { next(err); }

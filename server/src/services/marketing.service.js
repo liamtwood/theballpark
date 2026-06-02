@@ -242,10 +242,12 @@ async function createSignup({ body, ip, userAgent }) {
   return { ok: true, body: { success: true } };
 }
 
-// Admin: paginated list of signups with search + role filter + sort
+// Admin: paginated list of signups with search + role filter + sort.
+// v1.65gZ32 — only returns rows where deleted_at IS NULL. Soft-deleted
+// rows stay in the table for audit but are hidden from this listing.
 async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
   const params = [];
-  const where  = [];
+  const where  = ['deleted_at IS NULL'];
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
     where.push(`(LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(company, '')) LIKE $${params.length})`);
@@ -270,11 +272,13 @@ async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
        COUNT(*)::int AS total,
        COUNT(*) FILTER (WHERE created_at >= date_trunc('day',  NOW()))::int AS today,
        COUNT(*) FILTER (WHERE created_at >= date_trunc('week', NOW()))::int AS this_week
-     FROM marketing.guestlist_signup`
+     FROM marketing.guestlist_signup
+    WHERE deleted_at IS NULL`
   );
   const byRole = await pool.query(
     `SELECT role, COUNT(*)::int AS count
        FROM marketing.guestlist_signup
+      WHERE deleted_at IS NULL
       GROUP BY role`
   );
 
@@ -310,6 +314,26 @@ async function sendTestEmail({ recipients, subject, body_template }) {
   return sendEmail({ to: recipients, subject: finalSubject, text: finalText });
 }
 
+// v1.65gZ32 — soft-delete a signup row. Sets deleted_at = NOW(); the
+// partial unique index on lower(email) WHERE deleted_at IS NULL means
+// the same person can re-sign-up if they want (useful for QA reseeding
+// and for honoring a real "remove me" request without losing audit
+// history of the original submission).
+async function softDeleteSignup(id) {
+  const { rowCount, rows } = await pool.query(
+    `UPDATE marketing.guestlist_signup
+        SET deleted_at = NOW()
+      WHERE id = $1
+        AND deleted_at IS NULL
+      RETURNING id, email`,
+    [id]
+  );
+  if (!rowCount) {
+    return { ok: false, status: 404, error: 'Signup not found or already deleted' };
+  }
+  return { ok: true, body: { id: rows[0].id, email: rows[0].email, deleted: true } };
+}
+
 module.exports = {
   ALLOWED_ROLES,
   getPublicContent,
@@ -319,5 +343,6 @@ module.exports = {
   updateSettings,
   createSignup,
   listSignups,
+  softDeleteSignup,
   sendTestEmail
 };
