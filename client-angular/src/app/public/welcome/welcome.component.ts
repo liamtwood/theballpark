@@ -476,7 +476,13 @@ const DEFAULT_CONTENT: Content = {
       height: 100vh;
       width: 100%;
       scroll-snap-align: start;
-      scroll-snap-stop: always;
+      /* v1.65gU — scroll-snap-stop: always removed. It was forcing
+         every snap point to be a hard stop, which broke programmatic
+         smooth scrolls (Next/Back buttons stopped halfway between
+         slides) AND prevented our scroll handler from registering
+         the new settled slide, so .in-view never moved. The natural
+         mandatory snap is still in effect on the stage, so the
+         visual snap experience is preserved. */
       display: flex; align-items: center; justify-content: center;
       color: #DCF0EB;
       overflow: hidden;
@@ -915,8 +921,21 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.lastSettledIdx = idx;
       const refs = this.slideRefs?.toArray() || [];
       refs.forEach((ref, i) => {
-        if (i === idx) ref.nativeElement.classList.add('in-view');
-        else            ref.nativeElement.classList.remove('in-view');
+        const el = ref.nativeElement;
+        if (i === idx) {
+          // v1.65gU — force-restart the CSS animation. classList.add
+          // on an element that ALREADY has the class is a no-op and
+          // doesn't replay the animation, so backward-nav to a slide
+          // we previously visited wouldn't trigger its entry reveal.
+          // The remove + reflow + add cycle makes the browser treat
+          // the animation declaration as a fresh application.
+          el.classList.remove('in-view');
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+          el.offsetWidth;  // force reflow
+          el.classList.add('in-view');
+        } else {
+          el.classList.remove('in-view');
+        }
       });
     };
 
