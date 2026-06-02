@@ -273,16 +273,20 @@ const DEFAULT_CONTENT: Content = {
               <h3 class="bp-success-headline">{{ text('guestlist.success_headline') }}</h3>
               <p class="bp-success-body">{{ successBody }}</p>
             </div>
-          </div>
 
-          <div class="bp-welcome-footer">
-            <div class="bp-footer-links">
-              <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
-              <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
-              <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+            <!-- v1.65gZ5 — footer (Contact / Instagram / TikTok / (c)
+                 / Legal) moved INSIDE the glass panel per client
+                 review. It absolute-positions to the bottom of the
+                 panel rather than to the viewport. -->
+            <div class="bp-welcome-footer">
+              <div class="bp-footer-links">
+                <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
+                <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
+                <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+              </div>
+              <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
+              <a href="#" class="bp-footer-link bp-footer-link--right">Legal</a>
             </div>
-            <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
-            <a href="#" class="bp-footer-link bp-footer-link--right">Legal</a>
           </div>
         </section>
 
