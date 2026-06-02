@@ -852,7 +852,11 @@ const DEFAULT_CONTENT: Content = {
       bottom: 0;
       max-height: none;
       box-sizing: border-box;
-      padding: 64px 60px 96px;
+      /* v1.65gZ16 — content anchored toward the top of the panel
+         (justify-content flex-start) so the headline / form / footer
+         text sit higher; padding-top widened to give the headline
+         room to breathe below the panel's rounded edge. */
+      padding: 96px 60px 96px;
 
       background: rgba(220, 240, 235, 0.08);
       border: 1px solid rgba(220, 240, 235, 0.20);
@@ -863,7 +867,7 @@ const DEFAULT_CONTENT: Content = {
 
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
       gap: 32px;
     }
