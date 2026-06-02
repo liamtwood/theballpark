@@ -84,10 +84,14 @@ const DEFAULT_CONTENT: Content = {
           <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
           <span *ngIf="!logoUrl">BALLPARK</span>
         </button>
+        <!-- v1.65gZ20 — header CTA now advances by one slide (next())
+             rather than jumping straight to slide 4, per client
+             review. Label keeps reading "Get on the guestlist" since
+             that's still the eventual destination. -->
         <button
           *ngIf="step > 0 && step < TOTAL_STEPS - 1"
           class="bp-welcome-header-cta"
-          (click)="goTo(TOTAL_STEPS - 1)">
+          (click)="next()">
           Get on the guestlist
         </button>
       </header>
@@ -294,7 +298,7 @@ const DEFAULT_CONTENT: Content = {
                 <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
               </div>
               <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
-              <a href="#" class="bp-footer-link bp-footer-link--right">Legal</a>
+              <button type="button" class="bp-footer-link bp-footer-link--right bp-footer-link--button" (click)="openLegal($event)">Legal</button>
             </div>
           </div>
         </section>
@@ -305,6 +309,25 @@ const DEFAULT_CONTENT: Content = {
            removed per client review. Navigation is now exclusively
            scroll-driven (wheel, trackpad, swipe, arrow keys) with the
            header CTA jumping straight to the form on slides 2 & 3. -->
+
+      <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
+           slide-4 footer. Backdrop click + close button + ESC all
+           dismiss. -->
+      <div *ngIf="legalOpen" class="bp-legal-overlay" (click)="closeLegal()">
+        <div class="bp-legal-modal" (click)="$event.stopPropagation()">
+          <button type="button" class="bp-legal-close" (click)="closeLegal()" aria-label="Close">×</button>
+          <h2 class="bp-legal-title">Legal</h2>
+          <ul class="bp-legal-list">
+            <li>Include a clear Privacy Policy outlining data collection and usage practices.</li>
+            <li>Provide Terms of Service that define user rights and responsibilities.</li>
+            <li>Add a Disclaimer to limit liability for content accuracy and external links.</li>
+            <li>Ensure compliance with copyright laws by crediting third-party content.</li>
+            <li>Implement a Cookie Policy if your site uses tracking technologies.</li>
+            <li>Include an Accessibility Statement to promote inclusivity for all users.</li>
+          </ul>
+          <button type="button" class="bp-legal-dismiss" (click)="closeLegal()">Close</button>
+        </div>
+      </div>
 
     </div>
   `,
@@ -1064,6 +1087,102 @@ const DEFAULT_CONTENT: Content = {
        snap + header CTA + slide-1 centred CTA cover every nav need;
        any leftover .bp-welcome-bottom / .bp-welcome-dot rules would
        be unreferenced dead code. */
+
+    /* ── Legal modal ─────────────────────────────────────────────────
+       v1.65gZ20 — opened by the Legal link in the slide-4 footer.
+       Backdrop overlay sits above every slide (z 100); the modal
+       card centres on screen with a glass treatment that matches
+       the rest of the welcome aesthetic. */
+    .bp-legal-overlay {
+      position: fixed; inset: 0;
+      z-index: 100;
+      background: rgba(15, 30, 24, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .bp-legal-modal {
+      position: relative;
+      max-width: 560px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 40px 40px 32px;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 24px;
+      color: #DCF0EB;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+    .bp-legal-close {
+      position: absolute;
+      top: 12px; right: 16px;
+      width: 32px; height: 32px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: none;
+      color: #DCF0EB;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .bp-legal-close:hover { opacity: 1; }
+    .bp-legal-title {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0 0 18px 0;
+    }
+    .bp-legal-list {
+      list-style: disc;
+      padding-left: 22px;
+      margin: 0 0 28px 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    .bp-legal-list li {
+      margin-bottom: 10px;
+      opacity: 0.92;
+    }
+    .bp-legal-list li:last-child { margin-bottom: 0; }
+    .bp-legal-dismiss {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.18);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .bp-legal-dismiss:hover { background: rgba(220, 240, 235, 0.30); }
+
+    /* Footer "Legal" link now renders as a button (so we can wire a
+       click handler without a phantom navigation). Strip the default
+       button chrome so it still reads as a footer link. */
+    .bp-footer-link--button {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      letter-spacing: inherit;
+    }
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
@@ -1106,6 +1225,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   submitting = false;
   submitted  = false;
   errorMessage: string | null = null;
+
+  /** v1.65gZ20 — Legal modal open state. Backdrop click + Close
+      button + ESC keydown all flip this back to false. */
+  legalOpen = false;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
@@ -1249,12 +1372,33 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @HostListener('window:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
+    // v1.65gZ20 — ESC closes the Legal modal first if open; nothing
+    // else binds to ESC, so it's an additive handler.
+    if (e.key === 'Escape' && this.legalOpen) {
+      this.closeLegal();
+      return;
+    }
+    // While the modal is up, swallow arrow / Enter nav so scrolling
+    // doesn't fire underneath the dialog.
+    if (this.legalOpen) return;
+
     if (this.submitted) return;
     const tag = (e.target as HTMLElement)?.tagName;
     const isFormField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
     if (e.key === 'ArrowRight') this.next();
     if (e.key === 'ArrowLeft' && !isFormField) this.prev();
     if (e.key === 'Enter' && this.step < TOTAL_STEPS - 1 && !isFormField) this.next();
+  }
+
+  // ── Legal modal ───────────────────────────────────────────────
+  openLegal(e?: Event) {
+    if (e) e.preventDefault();
+    this.legalOpen = true;
+    this.cdr.markForCheck();
+  }
+  closeLegal() {
+    this.legalOpen = false;
+    this.cdr.markForCheck();
   }
 
   // ── Submit ────────────────────────────────────────────────────
