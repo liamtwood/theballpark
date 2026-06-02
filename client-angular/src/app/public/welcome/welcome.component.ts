@@ -580,7 +580,9 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
-    .bp-slide-2-inner { margin-bottom: 56px; }
+    /* v1.65gZ10 — gap between headline/subtitle block and the marquee
+       trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
+    .bp-slide-2-inner { margin-bottom: 16px; }
     .bp-slide-3 { background: #6391A4; }
     .bp-slide-4 { background: #6391A4; }
 
@@ -728,10 +730,13 @@ const DEFAULT_CONTENT: Content = {
       height: 1px;
       background: rgba(220, 240, 235, 0.4);
     }
-    /* v1.65gZ8 — top + bottom 1px separators dropped. */
+    /* v1.65gZ8  — top + bottom 1px separators dropped.
+       v1.65gZ10 — wrap padding trimmed 24 -> 8 so the marquee
+       sits closer to the subtitle; item font shrunk
+       clamp(36-64) -> clamp(22-40) per client review. */
     .bp-marquee-wrap {
       width: 100%; overflow: hidden;
-      padding: 24px 0;
+      padding: 8px 0;
       position: relative; z-index: 5;
     }
     .bp-marquee-track {
@@ -741,9 +746,9 @@ const DEFAULT_CONTENT: Content = {
     .bp-marquee-item {
       display: flex; align-items: center;
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(36px, 5vw, 64px);
+      font-size: clamp(22px, 3vw, 40px);
       font-weight: 900; letter-spacing: 0.02em;
-      padding: 0 48px;
+      padding: 0 36px;
       flex-shrink: 0;
     }
     /* v1.65gZ8 — .bp-marquee-sep rule kept for safety in case any
