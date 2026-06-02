@@ -390,43 +390,44 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* v1.65gO → v1.65gP — animations now declared on the targeted
-       element directly with animation-play-state: paused, so the
-       element is HELD in its "from" pose (translated / faded out)
-       until the slide's .in-view class flips it to running. This
-       removes the "see the final state, then watch the animation
-       run" glitch the user reported: previously when .in-view was
-       added the animation snapped the element to the "from" state
-       then animated back to "to", which read as a brief pop.
-       Now the element starts at "from" so the animation is the
-       reveal itself. */
+    /* v1.65gT — animation declared ONLY under .in-view, with the
+       "from" pose as the element's direct (no-class) state. When
+       the scroll handler removes .in-view (user navigates away)
+       the element snaps back to the from-pose; when .in-view is
+       added again on return, the animation declaration is freshly
+       applied and the reveal replays from scratch. Adding/removing
+       a class that ALSO toggles animation-play-state was no good —
+       paused→running on a completed animation holds the end frame
+       and never replays. */
 
-    /* ── Slide 2 enters: text scrolls up ── */
-    .bp-slide-2 .bp-slide-2-inner {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both paused;
-    }
+    /* ── Slide 2 from-pose + reveal ── */
+    .bp-slide-2 .bp-slide-2-inner,
     .bp-slide-2 .bp-marquee-wrap {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both paused;
+      transform: translateY(80px); opacity: 0;
     }
-    .bp-slide-2.in-view .bp-slide-2-inner,
+    .bp-slide-2.in-view .bp-slide-2-inner {
+      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
     .bp-slide-2.in-view .bp-marquee-wrap {
-      animation-play-state: running;
+      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
     }
     @keyframes bp-scroll-up {
       from { transform: translateY(80px); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
     }
 
-    /* ── Slide 3 enters: left from left, right (delayed 1.1s) from right ── */
+    /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
     .bp-slide-3 .bp-producers-grid > div:first-child {
-      animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both paused;
+      transform: translateX(-120px); opacity: 0;
     }
     .bp-slide-3 .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both paused;
+      transform: translateX(120px); opacity: 0;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:first-child,
+    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
+      animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
     .bp-slide-3.in-view .bp-producers-grid > div:last-child {
-      animation-play-state: running;
+      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
     }
     @keyframes bp-from-left {
       from { transform: translateX(-120px); opacity: 0; }
@@ -437,38 +438,37 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateX(0);      opacity: 1; }
     }
 
-    /* ── Slide 4 enters — SURPRISE ── */
+    /* ── Slide 4 from-pose + reveal ── */
     .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
-      animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both paused;
+      transform: scale(0) rotate(-12deg); opacity: 0;
+    }
+    .bp-slide-4 .bp-guestlist-headline {
+      transform: scale(0.7) translateY(30px); opacity: 0;
+    }
+    .bp-slide-4 .bp-guestlist-form {
+      transform: translateY(28px) scale(0.96); opacity: 0;
+    }
+    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow {
+      animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+    }
+    .bp-slide-4.in-view .bp-guestlist-headline {
+      animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
+    }
+    .bp-slide-4.in-view .bp-guestlist-form {
+      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both;
     }
     @keyframes bp-stamp {
       0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
       70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
       100% { transform: scale(1) rotate(0); opacity: 1; }
     }
-    .bp-slide-4 .bp-guestlist-headline {
-      animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both paused;
-    }
     @keyframes bp-bounce-in {
       0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
       100% { transform: scale(1) translateY(0); opacity: 1; }
     }
-    /* v1.65gS — form animates as ONE container. Per-field cascade
-       removed; the whole .bp-guestlist-form card scales + fades up
-       together so the form reads as a single unit per the design
-       review. Subtitle animation also gone (subtitle element
-       removed). */
-    .bp-slide-4 .bp-guestlist-form {
-      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both paused;
-    }
     @keyframes bp-form-rise {
       from { transform: translateY(28px) scale(0.96); opacity: 0; }
       to   { transform: translateY(0)    scale(1);    opacity: 1; }
-    }
-    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow,
-    .bp-slide-4.in-view .bp-guestlist-headline,
-    .bp-slide-4.in-view .bp-guestlist-form {
-      animation-play-state: running;
     }
 
     .bp-slide {
@@ -843,9 +843,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   direction: 'forward' | 'backward' = 'forward';
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
-  /** v1.65gN — track which slides have already triggered .in-view
-      so we don't keep adding the class on every scroll frame. */
-  private inViewSet = new Set<number>();
+  /** v1.65gT — last settled slide index. Used to gate the class
+      toggle so animations only replay when the user actually
+      changes slide (not on every scroll event). */
+  private lastSettledIdx = -1;
   content: Content = { ...DEFAULT_CONTENT };
   /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
       Empty string until the fetch lands; the template falls back to
@@ -894,27 +895,29 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // v1.65gN → v1.65gO — scroll-position handler.
+    // v1.65gT — scroll-position handler.
     // Two responsibilities, decoupled:
     //   1. step state — updated on EVERY scroll frame so the
     //      pagination train + counter respond in real time as the
     //      user scrolls.
-    //   2. .in-view class — added ONLY once scroll has settled (no
-    //      scroll events for 150ms). Otherwise the entry animations
-    //      fire while the slide is still off-screen during the snap
-    //      transition and finish before the user looks at it
-    //      (client-reported v1.65gN regression: "animations stop
-    //      working again, works on page 4" — slide 4 was the only
-    //      one where landing = settle so animations were visible).
+    //   2. .in-view class — moved to the settled slide ONLY after
+    //      150ms of scroll silence (so the animation runs once
+    //      the snap has landed and the user is looking at the
+    //      slide). Class is REMOVED from non-current slides so
+    //      backwards-scrolling re-triggers the animation: each
+    //      time you arrive at a slide, the reveal plays again.
     const stage = this.stageRef?.nativeElement;
     if (!stage) return;
 
     let settleTimer: any = null;
-    const markInView = (idx: number) => {
-      if (this.inViewSet.has(idx)) return;
-      this.inViewSet.add(idx);
-      const el = this.slideRefs?.toArray()[idx]?.nativeElement;
-      el?.classList.add('in-view');
+    const setCurrentInView = (idx: number) => {
+      if (idx === this.lastSettledIdx) return;
+      this.lastSettledIdx = idx;
+      const refs = this.slideRefs?.toArray() || [];
+      refs.forEach((ref, i) => {
+        if (i === idx) ref.nativeElement.classList.add('in-view');
+        else            ref.nativeElement.classList.remove('in-view');
+      });
     };
 
     const onScroll = () => {
@@ -931,7 +934,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       settleTimer = setTimeout(() => {
         const settledIdx = Math.max(0, Math.min(TOTAL_STEPS - 1,
           Math.round(stage.scrollTop / vh)));
-        markInView(settledIdx);
+        setCurrentInView(settledIdx);
       }, 150);
     };
 
@@ -941,9 +944,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       stage.removeEventListener('scroll', onScroll);
     };
 
-    // Slide 0 is in view on load — mark immediately, don't wait
-    // for the settle (avoids a 150ms blank pose on first paint).
-    markInView(0);
+    // Slide 0 is in view on load — mark immediately so first paint
+    // doesn't sit in the from-pose for 150ms.
+    setCurrentInView(0);
   }
 
   ngOnDestroy() {
