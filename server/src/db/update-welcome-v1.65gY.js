@@ -23,7 +23,7 @@ const ROWS = [
   ['hero.subtitle',          'Turn your event into an accurate estimate in moments.',                        'longtext', 'Subtitle',     null,                      1, 30],
   ['suppliers.headline',     'AI Powered by real costs from our network of incredible suppliers.',           'longtext', 'Headline',     null,                      2, 20],
   ['producers.tagline',      'By producers for creators',                                                    'text',     'Italic tagline', null,                    3, 20],
-  ['guestlist.headline',     'THOSE WHO GET IN EARLY, GET AHEAD',                                            'longtext', 'Headline',     null,                      4, 20],
+  ['guestlist.headline',     'THOSE WHO GET IN EARLY,\nGET AHEAD',                                           'longtext', 'Headline',     'Use \\n for line breaks',  4, 20],
   ['guestlist.cta_label',    'APPLY',                                                                        'text',     'Submit button label', null,                4, 40],
   // ── new keys (not in original seed) ────────────────────────────
   ['hero.cta',               'Get on the guestlist',                                                         'text',     'Hero CTA label', null,                    1, 40],

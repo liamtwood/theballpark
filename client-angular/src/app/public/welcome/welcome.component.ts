@@ -57,7 +57,7 @@ const DEFAULT_CONTENT: Content = {
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
-  'guestlist.headline':        'THOSE WHO GET IN EARLY, GET AHEAD',
+  'guestlist.headline':        'THOSE WHO GET IN EARLY,\nGET AHEAD',
   'guestlist.subtitle':        "Get on the guestlist",
   'guestlist.cta_label':       'APPLY',
   'guestlist.footer_text':     "Get on the guestlist and the moment we're live you'll be the first to know.",
@@ -246,7 +246,11 @@ const DEFAULT_CONTENT: Content = {
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
-            <h2 class="bp-guestlist-headline">{{ text('guestlist.headline') }}</h2>
+            <!-- v1.65gZ3 — innerHTML + multiline() so the headline
+                 splits explicitly after the comma ("THOSE WHO GET IN
+                 EARLY,\nGET AHEAD"), no longer relying on natural
+                 word-wrap which broke at viewport-width changes. -->
+            <h2 class="bp-guestlist-headline" [innerHTML]="multiline(text('guestlist.headline'))"></h2>
 
             <div *ngIf="!submitted" class="bp-guestlist-form">
               <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name" />
@@ -777,10 +781,46 @@ const DEFAULT_CONTENT: Content = {
         · explanatory footer text below the form
         · contact/instagram/tiktok/copyright/legal pinned to slide
           bottom */
+    /* v1.65gZ3 — slide-4 inner is now a glass panel that fills the
+       viewport below the header with rounded top corners. We absolute
+       -position it so the section's flex centering doesn't constrain
+       its width to the shared .bp-slide-inner max-width: 1100px. The
+       footer (links + (c) + Legal) overlays the panel's bottom via a
+       higher z-index — that's why border-bottom is none, the panel
+       slides off the bottom edge of the viewport. */
     .bp-slide-4-inner {
-      max-width: 1100px;
-      width: 100%;
-      padding: 0 32px;
+      position: absolute;
+      top: 56px;          /* just under the header (64px) with a hair of overlap */
+      left: 24px;
+      right: 24px;
+      bottom: 0;
+      max-width: none;
+      box-sizing: border-box;
+      padding: 64px 60px 96px;
+
+      background: rgba(220, 240, 235, 0.08);
+      border: 1px solid rgba(220, 240, 235, 0.20);
+      border-bottom: none;
+      border-radius: 32px 32px 0 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+    }
+    /* The gap collapses to flex-item margins; clear the headline's
+       own bottom margin so the gap is the single source of truth. */
+    .bp-slide-4-inner .bp-guestlist-headline { margin-bottom: 0; }
+    .bp-slide-4-inner .bp-guestlist-footer-text { margin-top: 0; }
+    @media (max-width: 720px) {
+      .bp-slide-4-inner {
+        left: 12px; right: 12px;
+        padding: 48px 24px 80px;
+        border-radius: 24px 24px 0 0;
+      }
     }
     .bp-guestlist-headline {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;

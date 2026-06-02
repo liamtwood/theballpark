@@ -1629,7 +1629,7 @@ const migrate = async () => {
 
       // Slide 4 — Guestlist
       ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
-      ['guestlist.headline',         'longtext', 'THOSE WHO GET IN EARLY, GET AHEAD',                        'Headline',        null, 4, 20],
+      ['guestlist.headline',         'longtext', 'THOSE WHO GET IN EARLY,\nGET AHEAD',                       'Headline',        'Use \\n for line breaks', 4, 20],
       ['guestlist.subtitle',         'longtext', "Get on the guestlist",                                     'Subtitle',        null, 4, 30],
       ['guestlist.footer_text',      'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
       ['guestlist.cta_label',        'text',     'APPLY',                                                    'Submit button label', null, 4, 40],
