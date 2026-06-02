@@ -1,7 +1,10 @@
 export const environment = {
   production: true,
+  // Preview keeps marketingOnly=false so the team can QC the full
+  // app surface alongside the welcome page. Only prod hides the app.
+  marketingOnly: false,
   apiUrl: 'https://theballpark-preview-preview.up.railway.app/api',
-  version: '[Preview] v1.65gF',
+  version: '[Preview] v1.65gG',
   supabaseUrl: '',
   supabaseAnonKey: '',
   storageBucketProjects: 'preview-project-assets',

@@ -1,7 +1,8 @@
 export const environment = {
   production: false,
+  marketingOnly: false,
   apiUrl: 'http://localhost:3001/api',
-  version: '[Dev] v1.65gF',
+  version: '[Dev] v1.65gG',
   supabaseUrl: '',
   supabaseAnonKey: '',
   storageBucketProjects: 'dev-project-assets',
