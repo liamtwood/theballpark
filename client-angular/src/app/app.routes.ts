@@ -1,6 +1,26 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './shared/components/app-shell/app-shell.component';
 import { devOnlyGuard } from './core/guards/dev-only.guard';
+import { environment } from '../environments/environment';
+
+// v1.65gG — marketing-only route set used on prod (and any build
+// where environment.marketingOnly === true). Only the public
+// welcome page and the supplier brief surface register; every
+// other URL bounces to /welcome. Lets us ship the full app bundle
+// to prod (so the welcome page's /api/org call still works) without
+// exposing the authenticated app surface to anonymous visitors.
+const MARKETING_ROUTES: Routes = [
+  {
+    path: 'welcome',
+    loadComponent: () => import('./public/welcome/welcome.component').then(m => m.WelcomeComponent)
+  },
+  {
+    path: 'brief/:token',
+    loadComponent: () => import('./features/brief-public/brief-public.component').then(m => m.BriefPublicComponent)
+  },
+  { path: '', pathMatch: 'full', redirectTo: 'welcome' },
+  { path: '**', redirectTo: 'welcome' }
+];
 
 // v1.65dg — shared Home/Settings hero-tab band. Mounted on both the
 // dashboard route (`/`) AND the settings sub-tree so the folder-tab
@@ -27,7 +47,7 @@ const SETTINGS_TABS = [
   { label: 'Subscription', path: '/settings/subscription' },
 ];
 
-export const routes: Routes = [
+const FULL_ROUTES: Routes = [
   // ── PUBLIC ── (rendered standalone, outside the app shell)
   {
     path: 'welcome',
@@ -202,3 +222,8 @@ export const routes: Routes = [
     ]
   }
 ];
+
+// v1.65gG — final export: marketing-only on prod, full app
+// everywhere else (dev + preview).
+export const routes: Routes =
+  (environment as any).marketingOnly ? MARKETING_ROUTES : FULL_ROUTES;
