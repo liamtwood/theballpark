@@ -448,21 +448,32 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateX(0); }
     }
 
-    /* v1.65gX — slide 3's two orbs both sit at cx=400 (vertically
+    /* v1.65gX  — slide 3's two orbs both sit at cx=400 (vertically
        stacked, not side-by-side), so a horizontal wipe leaves the
        right half of the viewport showing the bare blue background
        during the transition. Override to a scale-bloom from the
        viewport centre instead — the orbs expand outward into their
-       final positions, no exposed corner. */
+       final positions, no exposed corner.
+       v1.65gZ18 — scale-bloom produced a rectangular filter-region
+       artifact mid-transition (when scale 0 collapses the <g>'s
+       bbox to a point, the blur filter's relative region
+       degenerates and Chrome briefly paints a rectangle in that
+       area). Swapped to a pure opacity fade: orbs stay at their
+       final geometric position the whole time, only their alpha
+       animates 0 -> 1, so the bbox never collapses and the filter
+       region stays stable. The translateX(-100%) base rule for
+       circles is OVERRIDDEN to transform:none here so the global
+       wipe doesn't also fire on slide 3. */
     .bp-slide-3 .bp-svg-bg circle {
-      transform: scale(0);
+      transform: none;
+      opacity: 0;
     }
     .bp-slide-3.in-view .bp-svg-bg circle {
-      animation: bp-orb-bloom 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    @keyframes bp-orb-bloom {
-      from { transform: scale(0); }
-      to   { transform: scale(1); }
+    @keyframes bp-orb-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
