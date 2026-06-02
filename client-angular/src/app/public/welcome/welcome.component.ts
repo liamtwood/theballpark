@@ -208,28 +208,24 @@ const DEFAULT_CONTENT: Content = {
           <div class="bp-slide-inner bp-slide-4-inner">
             <div class="bp-eyebrow">{{ text('guestlist.eyebrow') }}</div>
             <h2 class="bp-guestlist-headline">{{ text('guestlist.headline') }}</h2>
-            <p class="bp-guestlist-subtitle">{{ text('guestlist.subtitle') }}</p>
 
-            <!-- v1.65gQ — form layout per design review:
-                  · NAME + I AM A… share row 1 (was NAME + EMAIL)
-                  · EMAIL gets its own full-width row so longer
-                    addresses have room (was the cramped half-width)
-                  · COMPANY full-width below
-                  · Submit at the bottom
-                 .bp-guestlist-form is already a glass-card container
-                 so the form reads as one unit. -->
+            <!-- v1.65gS — final form layout per design review:
+                  · each field on its own row (Name → I am a… →
+                    Email → Company), full-width inputs
+                  · subtitle removed (the headline is enough; the
+                    form card has its own "guestlist" feel)
+                  · whole .bp-guestlist-form glass card animates in
+                    as ONE unit (no per-field cascade). -->
             <div *ngIf="!submitted" class="bp-guestlist-form">
-              <div class="bp-form-row">
-                <div>
-                  <label class="bp-form-label">Name</label>
-                  <input class="bp-form-input" type="text" [(ngModel)]="form.name" placeholder="Jane Doe" />
-                </div>
-                <div>
-                  <label class="bp-form-label">I am a…</label>
-                  <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
-                    <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
-                  </select>
-                </div>
+              <div class="bp-form-block">
+                <label class="bp-form-label">Name</label>
+                <input class="bp-form-input" type="text" [(ngModel)]="form.name" placeholder="Jane Doe" />
+              </div>
+              <div class="bp-form-block">
+                <label class="bp-form-label">I am a…</label>
+                <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
+                  <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
+                </select>
               </div>
               <div class="bp-form-block">
                 <label class="bp-form-label">Email</label>
@@ -457,38 +453,21 @@ const DEFAULT_CONTENT: Content = {
       0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
       100% { transform: scale(1) translateY(0); opacity: 1; }
     }
-    .bp-slide-4 .bp-guestlist-subtitle {
-      animation: bp-fade-up 0.75s ease-out 0.8s both paused;
+    /* v1.65gS — form animates as ONE container. Per-field cascade
+       removed; the whole .bp-guestlist-form card scales + fades up
+       together so the form reads as a single unit per the design
+       review. Subtitle animation also gone (subtitle element
+       removed). */
+    .bp-slide-4 .bp-guestlist-form {
+      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both paused;
     }
-    @keyframes bp-fade-up {
-      from { transform: translateY(12px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-    .bp-slide-4 .bp-form-row > div,
-    .bp-slide-4 .bp-form-block {
-      animation: bp-cascade 0.65s cubic-bezier(0.22, 1, 0.36, 1) both paused;
-    }
-    .bp-slide-4 .bp-form-row > div:nth-child(1) { animation-delay: 1.0s; }
-    .bp-slide-4 .bp-form-row > div:nth-child(2) { animation-delay: 1.15s; }
-    .bp-slide-4 .bp-form-block:nth-of-type(1)  { animation-delay: 1.3s; }
-    .bp-slide-4 .bp-form-block:nth-of-type(2)  { animation-delay: 1.45s; }
-    @keyframes bp-cascade {
-      from { transform: translateY(20px) scale(0.97); opacity: 0; }
+    @keyframes bp-form-rise {
+      from { transform: translateY(28px) scale(0.96); opacity: 0; }
       to   { transform: translateY(0)    scale(1);    opacity: 1; }
-    }
-    .bp-slide-4 .bp-guestlist-submit {
-      animation: bp-button-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) 1.7s both paused;
-    }
-    @keyframes bp-button-pop {
-      0%   { transform: scale(0.6); opacity: 0; }
-      100% { transform: scale(1);   opacity: 1; }
     }
     .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow,
     .bp-slide-4.in-view .bp-guestlist-headline,
-    .bp-slide-4.in-view .bp-guestlist-subtitle,
-    .bp-slide-4.in-view .bp-form-row > div,
-    .bp-slide-4.in-view .bp-form-block,
-    .bp-slide-4.in-view .bp-guestlist-submit {
+    .bp-slide-4.in-view .bp-guestlist-form {
       animation-play-state: running;
     }
 
