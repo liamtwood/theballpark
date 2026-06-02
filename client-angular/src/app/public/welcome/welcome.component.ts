@@ -788,20 +788,26 @@ const DEFAULT_CONTENT: Content = {
        footer (links + (c) + Legal) overlays the panel's bottom via a
        higher z-index — that's why border-bottom is none, the panel
        slides off the bottom edge of the viewport. */
+    /* v1.65gZ4 — narrower + more rounded per client review. Anchored
+       via left:50% + translateX(-50%) so the max-width 960px caps the
+       panel and it stays centred regardless of viewport. Radius
+       bumped to 56px so the top corners read as a clear curve. */
     .bp-slide-4-inner {
       position: absolute;
-      top: 56px;          /* just under the header (64px) with a hair of overlap */
-      left: 24px;
-      right: 24px;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 80px);
+      max-width: 960px;
       bottom: 0;
-      max-width: none;
+      max-height: none;
       box-sizing: border-box;
       padding: 64px 60px 96px;
 
       background: rgba(220, 240, 235, 0.08);
       border: 1px solid rgba(220, 240, 235, 0.20);
       border-bottom: none;
-      border-radius: 32px 32px 0 0;
+      border-radius: 56px 56px 0 0;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
 
@@ -817,9 +823,9 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-4-inner .bp-guestlist-footer-text { margin-top: 0; }
     @media (max-width: 720px) {
       .bp-slide-4-inner {
-        left: 12px; right: 12px;
+        width: calc(100% - 24px);
         padding: 48px 24px 80px;
-        border-radius: 24px 24px 0 0;
+        border-radius: 36px 36px 0 0;
       }
     }
     .bp-guestlist-headline {
