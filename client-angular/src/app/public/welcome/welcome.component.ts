@@ -354,10 +354,26 @@ const DEFAULT_CONTENT: Content = {
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
+      /* Hide scrollbar across browsers. Safari (desktop + iOS)
+         ignores plain `display: none` on ::-webkit-scrollbar under
+         scroll-snap — the track stays as a faint coloured strip on
+         the right edge of the welcome page (client-reported v1.65gL).
+         Forcing width: 0 + transparent track/thumb removes it. */
       scrollbar-width: none;             /* Firefox */
       -ms-overflow-style: none;          /* Edge legacy */
+      overscroll-behavior: contain;      /* iOS rubber-band suppression */
     }
-    .bp-welcome-stage::-webkit-scrollbar { display: none; }
+    .bp-welcome-stage::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+      background: transparent;
+    }
+    .bp-welcome-stage::-webkit-scrollbar-track,
+    .bp-welcome-stage::-webkit-scrollbar-thumb,
+    .bp-welcome-stage::-webkit-scrollbar-corner {
+      background: transparent;
+    }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
        already scrolling, so the orbs "scroll in" naturally as the
