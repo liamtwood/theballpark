@@ -336,9 +336,24 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* ── Slide stage ──────────────────────────── */
+    /* v1.65gI — choreographed per-slide transitions per design
+       direction. Background orb groups slide in horizontally on
+       every transition (forward = from right, backward = from
+       left) so the colour wash feels like it's wiping into place.
+       Content animations differ per-slide:
+         step→1 (slide 2): inner content scrolls up from below
+         step→2 (slide 3): left + right halves of the producers
+                            grid fly in from opposite sides
+         step→3 (slide 4): SURPRISE — orbs pop with overshoot,
+                            "YOU MADE IT" stamps in, headline
+                            bounces, subtitle fades, form fields
+                            cascade, submit button pops at the end. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
     }
+
+    /* Default fallback animation for slide 1 returning + any
+       unhandled transition. Keep the original subtle slide-in. */
     .bp-welcome-stage > section {
       animation: bp-slide-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -352,6 +367,109 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-slide-in-back {
       from { transform: translateX(-40px); opacity: 0; }
       to   { transform: translateX(0);     opacity: 1; }
+    }
+
+    /* Background orbs wipe in. SVG <g> defaults to transform-
+       origin 0,0; transform-box: fill-box snaps it to the group's
+       own bounding box so percentage translates work like HTML. */
+    .bp-welcome-stage .bp-svg-bg > g {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: bp-orbs-wipe-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-welcome-stage.backward .bp-svg-bg > g {
+      animation: bp-orbs-wipe-in-back 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-orbs-wipe-in {
+      from { transform: translateX(120%); }
+      to   { transform: translateX(0); }
+    }
+    @keyframes bp-orbs-wipe-in-back {
+      from { transform: translateX(-120%); }
+      to   { transform: translateX(0); }
+    }
+
+    /* ── Forward transition: 1 → 2 (text scrolls up) ── */
+    .bp-welcome-stage.forward[data-step="1"] .bp-slide-2-inner {
+      animation: bp-scroll-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-welcome-stage.forward[data-step="1"] .bp-marquee-wrap {
+      animation: bp-scroll-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    @keyframes bp-scroll-up {
+      from { transform: translateY(80px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ── Forward transition: 2 → 3 (split — left from left,
+         right from right) ── */
+    .bp-welcome-stage.forward[data-step="2"] .bp-producers-grid > div:first-child {
+      animation: bp-from-left 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-welcome-stage.forward[data-step="2"] .bp-producers-grid > div:last-child {
+      animation: bp-from-right 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+    }
+    @keyframes bp-from-left {
+      from { transform: translateX(-120px); opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+    @keyframes bp-from-right {
+      from { transform: translateX(120px);  opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+
+    /* ── Forward transition: 3 → 4 — SURPRISE ──
+       Orbs pop in with overshoot, eyebrow stamps with a tilt,
+       headline bounces, subtitle fades, form fields cascade,
+       submit button pops at the very end. */
+    .bp-welcome-stage.forward[data-step="3"] .bp-svg-bg > g {
+      animation: bp-orbs-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes bp-orbs-pop {
+      0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
+      60%  { opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-slide-4-inner .bp-eyebrow {
+      animation: bp-stamp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+    }
+    @keyframes bp-stamp {
+      0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
+      70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-headline {
+      animation: bp-bounce-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+    }
+    @keyframes bp-bounce-in {
+      0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-subtitle {
+      animation: bp-fade-up 0.5s ease-out 0.55s both;
+    }
+    @keyframes bp-fade-up {
+      from { transform: translateY(12px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div,
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-block {
+      animation: bp-cascade 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div:nth-child(1) { animation-delay: 0.7s; }
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div:nth-child(2) { animation-delay: 0.8s; }
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-block:nth-of-type(1)  { animation-delay: 0.9s; }
+    .bp-welcome-stage.forward[data-step="3"] .bp-form-block:nth-of-type(2)  { animation-delay: 1.0s; }
+    @keyframes bp-cascade {
+      from { transform: translateY(20px) scale(0.97); opacity: 0; }
+      to   { transform: translateY(0)    scale(1);    opacity: 1; }
+    }
+    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-submit {
+      animation: bp-button-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.15s both;
+    }
+    @keyframes bp-button-pop {
+      0%   { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
     }
 
     .bp-slide {
