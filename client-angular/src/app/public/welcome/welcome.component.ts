@@ -805,20 +805,23 @@ const DEFAULT_CONTENT: Content = {
       max-width: 880px;
       margin: 0 auto;
     }
+    /* v1.65gZ2 — name/email inputs render on a solid white pill,
+       with dark-green text. APPLY button stays glass so the action
+       reads as the accent. */
     .bp-form-input {
       box-sizing: border-box;
       padding: 11px 18px;
-      background: rgba(220,240,235,0.10);
-      border: 1px solid rgba(220,240,235,0.20);
+      background: #FFFFFF;
+      border: 1px solid #FFFFFF;
       border-radius: 999px;
-      color: #DCF0EB;
+      color: #133C23;
       font-size: 14px;
       font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
       text-align: center;
     }
-    .bp-form-input::placeholder { color: rgba(220,240,235,0.55); }
-    .bp-form-input:focus { border-color: rgba(220,240,235,0.55); }
+    .bp-form-input::placeholder { color: rgba(19,60,35,0.45); }
+    .bp-form-input:focus { border-color: rgba(19,60,35,0.25); }
     .bp-form-error {
       margin: 14px 0 0;
       font-family: 'Fraunces', Georgia, serif;
@@ -892,15 +895,19 @@ const DEFAULT_CONTENT: Content = {
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
-    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─ */
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─
+       v1.65gZ2 — switched from flex space-between to a 3-column grid
+       so the © line sits in the centre of the PAGE (the middle 1fr
+       column), not just between the left/right blocks. Left & right
+       blocks justify-self to keep their edges aligned. */
     .bp-welcome-footer {
       position: absolute;
       left: 0; right: 0; bottom: 0;
       z-index: 6;
       padding: 18px 32px 22px;
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: space-between;
       gap: 24px;
       font-family: 'Fraunces', Georgia, serif;
       font-size: 12px;
@@ -908,6 +915,7 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-footer-links {
       display: flex; gap: 24px; align-items: center;
+      justify-self: start;
     }
     .bp-footer-link {
       color: #DCF0EB;
@@ -915,17 +923,23 @@ const DEFAULT_CONTENT: Content = {
       transition: opacity 0.2s;
     }
     .bp-footer-link:hover { opacity: 0.7; }
+    .bp-footer-link--right {
+      justify-self: end;
+    }
     .bp-footer-copy {
+      text-align: center;
       opacity: 0.6;
       letter-spacing: 0.02em;
     }
     @media (max-width: 720px) {
       .bp-welcome-footer {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        justify-items: center;
         gap: 8px;
         font-size: 11px;
         padding-bottom: 16px;
       }
+      .bp-footer-links { justify-self: center; }
       .bp-footer-link--right { display: none; }
     }
 
