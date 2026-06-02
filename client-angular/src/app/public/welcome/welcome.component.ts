@@ -381,13 +381,32 @@ const DEFAULT_CONTENT: Content = {
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
        already scrolling, so the orbs "scroll in" naturally as the
-       slide enters the viewport — no separate CSS wipe animation
-       needed (and any transform/clip-path on an ancestor of the
-       filtered SVG breaks the Gaussian blur compositing). */
+       slide enters the viewport. The wrapper exists for layering
+       only; we do NOT transform it (transforming the SVG or any
+       ancestor breaks the Gaussian blur). */
     .bp-bg-layer {
       position: absolute; inset: 0;
       z-index: 1;
       pointer-events: none;
+    }
+
+    /* v1.65gW — orb wipe-in restored by animating the individual
+       <circle> elements INSIDE the filtered group instead of the
+       SVG / group / wrapper. CSS transforms on SVG children render
+       inside the SVG's own coordinate space — the filter recomputes
+       over the moved circles natively, no HTML compositing layer is
+       created, and the Gaussian blur survives. */
+    .bp-svg-bg circle {
+      transform-box: view-box;
+      transform-origin: center;
+      transform: translateX(-100%);
+    }
+    .bp-slide.in-view .bp-svg-bg circle {
+      animation: bp-orb-wipe-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-orb-wipe-in {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(0); }
     }
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
