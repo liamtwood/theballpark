@@ -37,20 +37,30 @@ interface Content {
 }
 
 const DEFAULT_CONTENT: Content = {
+  // v1.65gY — client design review pass:
+  //   · slide 1 headline: drop the comma + trailing period
+  //   · slide 2 headline: prepend "AI " and add a subtitle line
+  //   · slide 3 tagline: drop the comma, drop the "s" off producers
+  //   · slide 4 headline: store as UPPERCASE (CSS uses sans-serif),
+  //     drop eyebrow + subtitle in favour of a footer text line below
+  //     the form
   'hero.eyebrow':           'Coming soon · Event production reimagined',
-  'hero.headline':          'REAL COSTS,\nREAL FAST.',
-  'hero.subtitle':          'Turn your event brief into an accurate estimate in moments.',
+  'hero.headline':          'REAL COSTS\nREAL FAST',
+  'hero.subtitle':          'Turn your event into an accurate estimate in moments.',
+  'hero.cta':               'Get on the guestlist',
   'suppliers.eyebrow':      'The network',
-  'suppliers.headline':     'Powered by real costs from our network of incredible suppliers.',
+  'suppliers.headline':     'AI Powered by real costs from our network of incredible suppliers.',
+  'suppliers.subtitle':     'The best suppliers in the UK with quotes in minutes.',
   'suppliers.categories':   ['DESIGN', 'BUILD', 'VENUES', 'FURNITURE', 'AV', 'GRAPHICS', 'CATERING'],
-  'producers.headline':     "A PRODUCER'S BEST FRIEND.",
-  'producers.tagline':      'By producers, for creators.',
+  'producers.headline':     "A PRODUCERS BEST FRIEND.",
+  'producers.tagline':      'By producers for creators',
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
-  'guestlist.headline':        'Those who get in early, get ahead.',
+  'guestlist.headline':        'THOSE WHO GET IN EARLY, GET AHEAD',
   'guestlist.subtitle':        "Get on the guestlist",
-  'guestlist.cta_label':       'Add me to the guestlist',
+  'guestlist.cta_label':       'APPLY',
+  'guestlist.footer_text':     "Get on the guestlist and the moment we're live you'll be the first to know.",
   'guestlist.success_headline': "You're on the guestlist.",
   'guestlist.success_body':    "We'll be in touch the moment Ballpark goes live, {{firstName}}."
 };
@@ -66,15 +76,20 @@ const DEFAULT_CONTENT: Content = {
       <!-- Persistent header. v1.65g9 — logo is now an image when the
            agency's marketplace-logo has been uploaded (loaded from
            /api/org on init), with the text wordmark as a fallback so
-           first paint never blocks on the network. -->
+           first paint never blocks on the network.
+           v1.65gY — counter dropped per client review; top-right CTA
+           pill appears on slides 2 & 3, jumps the user to slide 4. -->
       <header class="bp-welcome-header">
         <button class="bp-welcome-logo" (click)="goTo(0)" [class.bp-welcome-logo--img]="logoUrl">
           <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
           <span *ngIf="!logoUrl">BALLPARK</span>
         </button>
-        <div class="bp-welcome-counter">
-          {{ stepLabel }} / {{ totalLabel }}
-        </div>
+        <button
+          *ngIf="step > 0 && step < TOTAL_STEPS - 1"
+          class="bp-welcome-header-cta"
+          (click)="goTo(TOTAL_STEPS - 1)">
+          Get on the guestlist
+        </button>
       </header>
 
       <!-- Slide stage. v1.65gL — restructured as a scroll-snap
@@ -88,6 +103,8 @@ const DEFAULT_CONTENT: Content = {
       <div class="bp-welcome-stage" #stage>
 
         <!-- ── Slide 1: Hero ────────────────────────────── -->
+        <!-- v1.65gY — orbs zoomed in (r 280 → 460) per client review;
+             centred CTA pill sits below the subtitle. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -100,8 +117,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle cx="100" cy="250" r="460" fill="url(#s1-pink)"/>
+              <circle cx="700" cy="250" r="460" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -117,10 +134,16 @@ const DEFAULT_CONTENT: Content = {
             </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
+            <button class="bp-hero-cta" (click)="goTo(TOTAL_STEPS - 1)">
+              {{ text('hero.cta') }}
+            </button>
           </div>
         </section>
 
         <!-- ── Slide 2: Suppliers ───────────────────────── -->
+        <!-- v1.65gY — eyebrow dropped, subtitle line added below the
+             headline ("The best suppliers in the UK with quotes in
+             minutes."), orbs zoomed. -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
@@ -133,14 +156,14 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
+              <circle cx="700" cy="0"   r="460" fill="url(#s2-blue)"/>
+              <circle cx="100" cy="500" r="460" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-2-inner">
-            <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
+            <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
           <div class="bp-marquee-wrap">
             <div class="bp-marquee-track">
@@ -168,8 +191,8 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
+              <circle cx="400" cy="0"   r="500" fill="url(#s3-dark)"/>
+              <circle cx="400" cy="500" r="500" fill="url(#s3-light)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -188,11 +211,25 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 4: Guestlist ───────────────────────── -->
+        <!-- v1.65gY — redesigned per client review:
+              · eyebrow + subtitle dropped
+              · headline rendered uppercase + sans-serif (Inter 900)
+              · narrow vertical card replaced by a wide glassmorphism
+                panel filling most of the viewport width
+              · form collapsed to one horizontal row:
+                First Name | Surname | Email | APPLY (role + company
+                removed; backend still receives a single "name" field
+                composed from First + Surname)
+              · footer line below the form + Contact/Instagram/TikTok/
+                Legal/copyright row pinned to the bottom of the slide
+              · orbs repositioned cx=400 top + bottom (was 100/700
+                middle) so the slide reads green top + bottom with a
+                teal band through the middle, matching the target. -->
         <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
-              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%"   stop-color="#33A25F"/>
+              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#2D8E53"/>
                 <stop offset="100%" stop-color="#133C23"/>
               </linearGradient>
               <filter id="s4-blur" x="-50%" y="-50%" width="200%" height="200%">
@@ -200,49 +237,29 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s4-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle cx="400" cy="0"   r="500" fill="url(#s4-darkgreen)"/>
+              <circle cx="400" cy="500" r="500" fill="url(#s4-darkgreen)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
-            <div class="bp-eyebrow">{{ text('guestlist.eyebrow') }}</div>
             <h2 class="bp-guestlist-headline">{{ text('guestlist.headline') }}</h2>
 
-            <!-- v1.65gS — final form layout per design review:
-                  · each field on its own row (Name → I am a… →
-                    Email → Company), full-width inputs
-                  · subtitle removed (the headline is enough; the
-                    form card has its own "guestlist" feel)
-                  · whole .bp-guestlist-form glass card animates in
-                    as ONE unit (no per-field cascade). -->
             <div *ngIf="!submitted" class="bp-guestlist-form">
-              <div class="bp-form-block">
-                <label class="bp-form-label">Name</label>
-                <input class="bp-form-input" type="text" [(ngModel)]="form.name" placeholder="Jane Doe" />
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">I am a…</label>
-                <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
-                  <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
-                </select>
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">Email</label>
-                <input class="bp-form-input" type="email" [(ngModel)]="form.email" placeholder="jane@studio.com" />
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">Company</label>
-                <input class="bp-form-input" type="text" [(ngModel)]="form.company" placeholder="Studio name (optional)" />
-              </div>
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name" />
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.surname"   placeholder="Surname" />
+              <input class="bp-form-input" type="email" [(ngModel)]="form.email"     placeholder="Email Address" />
               <button
                 class="bp-guestlist-submit"
                 [disabled]="!canSubmit() || submitting"
                 (click)="submit()">
-                {{ submitting ? 'Adding…' : text('guestlist.cta_label') }}
+                {{ submitting ? '…' : text('guestlist.cta_label') }}
               </button>
-              <p *ngIf="errorMessage" class="bp-form-error">{{ errorMessage }}</p>
             </div>
+            <p *ngIf="!submitted && errorMessage" class="bp-form-error">{{ errorMessage }}</p>
+            <p *ngIf="!submitted" class="bp-guestlist-footer-text">
+              {{ text('guestlist.footer_text') }}
+            </p>
 
             <div *ngIf="submitted" class="bp-guestlist-success">
               <div class="bp-success-tick">✓</div>
@@ -250,42 +267,24 @@ const DEFAULT_CONTENT: Content = {
               <p class="bp-success-body">{{ successBody }}</p>
             </div>
           </div>
+
+          <div class="bp-welcome-footer">
+            <div class="bp-footer-links">
+              <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
+              <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
+              <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+            </div>
+            <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
+            <a href="#" class="bp-footer-link bp-footer-link--right">Legal</a>
+          </div>
         </section>
 
       </div>
 
-      <!-- v1.65gE — slide indicator "train" is now a vertical pill
-           strip on the LEFT edge (per design review mockup). The
-           Back / Next CTAs stay in the bottom nav. -->
-      <div class="bp-welcome-dots bp-welcome-dots--vertical">
-        <button
-          *ngFor="let _ of dots; let i = index"
-          class="bp-welcome-dot"
-          [class.active]="i === step"
-          [attr.aria-label]="'Go to slide ' + (i + 1)"
-          (click)="goTo(i)">
-        </button>
-      </div>
-
-      <!-- Persistent bottom nav -->
-      <div class="bp-welcome-bottom">
-        <button
-          class="bp-welcome-back"
-          (click)="prev()"
-          [class.hidden]="step === 0"
-          aria-label="Back">
-          <span aria-hidden="true">←</span> Back
-        </button>
-
-        <button
-          class="bp-welcome-next"
-          (click)="next()"
-          [class.hidden]="step === TOTAL_STEPS - 1"
-          aria-label="Get on the guestlist">
-          Get on the guestlist
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
+      <!-- v1.65gY — pagination train + bottom nav (Back / Next pills)
+           removed per client review. Navigation is now exclusively
+           scroll-driven (wheel, trackpad, swipe, arrow keys) with the
+           header CTA jumping straight to the form on slides 2 & 3. -->
 
     </div>
   `,
@@ -295,8 +294,10 @@ const DEFAULT_CONTENT: Content = {
        pack is bought and dropped in. Closest free-for-commercial
        match: variable serif, high contrast, full weight range,
        italics. Swap back to Sharpe by replacing this @import and
-       changing 'Fraunces' → 'Sharpe' across the rules below. */
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
+       changing 'Fraunces' → 'Sharpe' across the rules below.
+       v1.65gY — Inter (OFL) added for the slide-4 headline, per
+       client review ("bold uppercase sans-serif"). */
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;700;900&display=swap');
 
     :host {
       display: block;
@@ -341,10 +342,28 @@ const DEFAULT_CONTENT: Content = {
       object-fit: contain;
       filter: brightness(0) invert(1);
     }
-    .bp-welcome-counter {
-      font-size: 11px; font-weight: 500; letter-spacing: 0.2em;
-      color: rgba(220,240,235,0.7);
-      font-variant-numeric: tabular-nums;
+    /* v1.65gY — top-right header CTA. Shown on slides 2 + 3 only
+       (slide 1 has its own centred CTA, slide 4 IS the form).
+       Subtle glass pill matching the slide-1 hero CTA so the
+       branding stays consistent as you scroll. */
+    .bp-welcome-header-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 9px 20px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-welcome-header-cta:hover {
+      background: rgba(220, 240, 235, 0.22);
+      transform: translateY(-1px);
     }
 
     /* ── Slide stage ──────────────────────────── */
@@ -606,20 +625,42 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 900;
       letter-spacing: 0.02em;
     }
+    /* v1.65gY — headline shrunk + comma/period dropped (REAL COSTS /
+       REAL FAST as two clean lines), more breathing room before the
+       subtitle, centred CTA pill below. Per client review. */
     .bp-hero-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(56px, 11vw, 144px);
+      font-size: clamp(48px, 8.5vw, 116px);
       font-weight: 900;
-      line-height: 0.95;
+      line-height: 1.0;
       letter-spacing: -0.04em;
-      margin: 0 0 28px 0;
+      margin: 0 0 48px 0;
     }
     .bp-hero-subtitle {
       font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(17px, 2vw, 21px);
       font-weight: 500; line-height: 1.5;
-      max-width: 560px; margin: 0 auto;
+      max-width: 560px; margin: 0 auto 40px;
       opacity: 0.95;
+    }
+    .bp-hero-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 11px 26px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-hero-cta:hover {
+      background: rgba(220, 240, 235, 0.24);
+      transform: translateY(-1px);
     }
 
     /* ── Slide 2 typography + marquee ─────────── */
@@ -632,14 +673,26 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-suppliers-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(40px, 6.5vw, 88px);
-      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
+      /* v1.65gY — headline trimmed (was clamp 40-88) so the AI
+         prefix fits on the same compact 3-line block. */
+      font-size: clamp(32px, 4.8vw, 60px);
+      font-weight: 900; line-height: 1.1; letter-spacing: -0.02em;
       /* v1.65gQ — centre the headline block. text-align: center is
          inherited from .bp-slide-inner, but the block itself was
          left-aligned because of max-width: 1000px without auto
          margins. */
+      margin: 0 auto 28px;
+      max-width: 900px;
+    }
+    /* v1.65gY — subtitle below the suppliers headline. */
+    .bp-suppliers-subtitle {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
+      max-width: 620px;
       margin: 0 auto;
-      max-width: 1000px;
     }
     .bp-marquee-wrap {
       width: 100%; overflow: hidden;
@@ -679,29 +732,33 @@ const DEFAULT_CONTENT: Content = {
        and breaking the headline centring on phone. */
 
     /* ── Slide 3 ──────────────────────────────── */
-    .bp-slide-3-inner { max-width: 1400px; }
+    /* v1.65gY — headline shrunk + pulled centre-left, body tightened.
+       Per client review the headline shouldn't span the full left
+       column at maximum size; the new clamp keeps it compact and the
+       grid columns are more balanced. */
+    .bp-slide-3-inner { max-width: 1100px; }
     .bp-producers-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 96px; align-items: center; text-align: left;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 64px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(48px, 8vw, 112px);
-      font-weight: 900; line-height: 0.95;
-      letter-spacing: -0.03em;
-      margin: 0 0 24px 0;
+      font-size: clamp(36px, 5.5vw, 64px);
+      font-weight: 900; line-height: 1.0;
+      letter-spacing: -0.02em;
+      margin: 0 0 14px 0;
     }
     .bp-producers-tagline {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(20px, 2.4vw, 28px);
+      font-size: clamp(15px, 1.6vw, 19px);
       font-weight: 500;
-      opacity: 0.9; margin: 0;
+      opacity: 0.85; margin: 0;
     }
     .bp-producers-body {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 20px; font-weight: 500;
-      line-height: 1.6; opacity: 0.95; margin: 0 0 20px 0;
+      font-size: 16px; font-weight: 500;
+      line-height: 1.45; opacity: 0.95; margin: 0 0 14px 0;
     }
     .bp-producers-body:last-of-type { margin-bottom: 0; }
 
@@ -710,82 +767,110 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* ── Slide 4 ──────────────────────────────── */
-    .bp-slide-4-inner { max-width: 560px; width: 100%; }
-    .bp-guestlist-headline {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(36px, 5.5vw, 64px);
-      font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
-      margin: 0 0 16px 0;
+    /* v1.65gY — full redesign per client review:
+        · wide centred glass panel (was a narrow 560px card)
+        · uppercase sans-serif headline (was serif title-case)
+        · single horizontal row of inputs + APPLY button
+        · explanatory footer text below the form
+        · contact/instagram/tiktok/copyright/legal pinned to slide
+          bottom */
+    .bp-slide-4-inner {
+      max-width: 1100px;
+      width: 100%;
+      padding: 0 32px;
     }
-    .bp-guestlist-subtitle {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px; font-weight: 500;
-      line-height: 1.6;
-      opacity: 0.9; margin: 0 0 36px 0;
+    .bp-guestlist-headline {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(28px, 4.2vw, 52px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin: 0 0 32px 0;
     }
     .bp-guestlist-form {
-      background: rgba(220,240,235,0.08);
-      border: 1px solid rgba(220,240,235,0.2);
-      border-radius: 16px;
-      padding: 28px;
-      backdrop-filter: blur(12px);
-      text-align: left;
-    }
-    .bp-form-row {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 12px; margin-bottom: 12px;
-    }
-    .bp-form-block { margin-bottom: 12px; }
-    .bp-form-block:has(.bp-form-select) { margin-bottom: 20px; }
-    .bp-form-label {
-      display: block;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      opacity: 0.75; margin-bottom: 6px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 12px;
+      align-items: stretch;
+      background: rgba(220,240,235,0.06);
+      border: 1px solid rgba(220,240,235,0.18);
+      border-radius: 999px;
+      padding: 10px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      max-width: 880px;
+      margin: 0 auto;
     }
     .bp-form-input {
-      width: 100%; box-sizing: border-box;
-      padding: 11px 14px;
-      background: rgba(220,240,235,0.1);
-      border: 1px solid rgba(220,240,235,0.25);
-      border-radius: 8px;
-      color: #DCF0EB; font-size: 14px;
+      box-sizing: border-box;
+      padding: 11px 18px;
+      background: rgba(220,240,235,0.10);
+      border: 1px solid rgba(220,240,235,0.20);
+      border-radius: 999px;
+      color: #DCF0EB;
+      font-size: 14px;
       font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
+      text-align: center;
     }
-    .bp-form-input::placeholder { color: rgba(220,240,235,0.45); }
+    .bp-form-input::placeholder { color: rgba(220,240,235,0.55); }
     .bp-form-input:focus { border-color: rgba(220,240,235,0.55); }
-    .bp-form-select { cursor: pointer; appearance: none; }
-    .bp-form-select option { color: #133C23; }
     .bp-form-error {
-      margin: 10px 0 0;
+      margin: 14px 0 0;
       font-family: 'Fraunces', Georgia, serif;
       font-size: 13px; font-weight: 500;
       color: #FFD3DD;
     }
     .bp-guestlist-submit {
-      width: 100%;
-      margin-top: 4px;
-      padding: 14px 24px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 15px; font-weight: 700;
-      background: #DCF0EB; color: #133C23;
-      border: none; border-radius: 999px;
+      padding: 11px 28px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(220,240,235,0.18);
+      color: #DCF0EB;
+      border: 1px solid rgba(220,240,235,0.25);
+      border-radius: 999px;
       cursor: pointer;
       transition: all 0.2s;
     }
+    .bp-guestlist-submit:hover:not(:disabled) {
+      background: rgba(220,240,235,0.30);
+    }
     .bp-guestlist-submit:disabled {
-      background: rgba(220,240,235,0.3);
-      color: rgba(220,240,235,0.6);
+      opacity: 0.5;
       cursor: not-allowed;
     }
+    .bp-guestlist-footer-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(14px, 1.4vw, 17px);
+      font-weight: 500;
+      line-height: 1.5;
+      opacity: 0.85;
+      max-width: 720px;
+      margin: 36px auto 0;
+    }
+
+    /* Slide 4 form responsive collapse — on narrow viewports the
+       horizontal row would otherwise crush the inputs unreadably
+       small. Stack them at <720px. */
+    @media (max-width: 720px) {
+      .bp-guestlist-form {
+        grid-template-columns: 1fr;
+        border-radius: 24px;
+        padding: 16px;
+      }
+    }
+
     .bp-guestlist-success {
       background: rgba(220,240,235,0.1);
       border: 1px solid rgba(220,240,235,0.3);
       border-radius: 16px;
       padding: 40px;
       backdrop-filter: blur(12px);
+      max-width: 560px;
+      margin: 0 auto;
     }
     .bp-success-tick {
       width: 56px; height: 56px; border-radius: 50%;
@@ -804,68 +889,48 @@ const DEFAULT_CONTENT: Content = {
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
-    /* ── Bottom nav ───────────────────────────── */
-    .bp-welcome-bottom {
-      position: absolute; bottom: 0; left: 0; right: 0; z-index: 50;
-      padding: 20px 32px 28px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; pointer-events: none;
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─ */
+    .bp-welcome-footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 6;
+      padding: 18px 32px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 12px;
+      opacity: 0.85;
     }
-    .bp-welcome-back, .bp-welcome-next, .bp-welcome-dots { pointer-events: auto; }
-    .bp-welcome-back {
-      background: rgba(220,240,235,0.14);
-      border: 1px solid rgba(220,240,235,0.3);
+    .bp-footer-links {
+      display: flex; gap: 24px; align-items: center;
+    }
+    .bp-footer-link {
       color: #DCF0EB;
-      padding: 10px 18px; border-radius: 999px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 13px; font-weight: 500;
-      cursor: pointer; backdrop-filter: blur(8px);
-      display: inline-flex; align-items: center; gap: 8px;
-      transition: all 0.2s;
+      text-decoration: none;
+      transition: opacity 0.2s;
     }
-    .bp-welcome-back:hover { background: rgba(220,240,235,0.22); }
-    .bp-welcome-back.hidden { opacity: 0; visibility: hidden; }
-    .bp-welcome-next {
-      background: #DCF0EB; color: #133C23;
-      border: none;
-      padding: 12px 24px; border-radius: 999px;
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 14px; font-weight: 700;
-      cursor: pointer;
-      display: inline-flex; align-items: center; gap: 8px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-      transition: all 0.2s;
+    .bp-footer-link:hover { opacity: 0.7; }
+    .bp-footer-copy {
+      opacity: 0.6;
+      letter-spacing: 0.02em;
     }
-    .bp-welcome-next:hover { transform: translateY(-1px); }
-    .bp-welcome-next.hidden { opacity: 0; visibility: hidden; }
-    .bp-welcome-dots { display: flex; gap: 8px; }
-    .bp-welcome-dot {
-      width: 8px; height: 8px;
-      border-radius: 999px; border: none;
-      background: rgba(220,240,235,0.45);
-      cursor: pointer; padding: 0;
-      transition: width 0.3s, height 0.3s, background 0.3s;
+    @media (max-width: 720px) {
+      .bp-welcome-footer {
+        flex-direction: column;
+        gap: 8px;
+        font-size: 11px;
+        padding-bottom: 16px;
+      }
+      .bp-footer-link--right { display: none; }
     }
-    .bp-welcome-dot.active { width: 28px; background: #DCF0EB; }
-    /* v1.65gE → v1.65gF — vertical train variant for the slide
-       indicator. Fixed to the RIGHT edge of the viewport, vertically
-       centred. Each dot stacks; the active dot becomes a tall pill
-       (height grows, width stays slim) so the indicator reads
-       top→bottom like the mockup (active migrates top→bottom as
-       you move slide 1 → 4). */
-    .bp-welcome-dots--vertical {
-      position: fixed;
-      right: 28px;
-      top: 50%;
-      transform: translateY(-50%);
-      flex-direction: column;
-      gap: 10px;
-      z-index: 60;
-      pointer-events: auto;
-    }
-    .bp-welcome-dots--vertical .bp-welcome-dot.active {
-      width: 8px; height: 32px;
-    }
+
+    /* v1.65gY — Bottom-nav (Back / Next pills) + vertical pagination
+       train styles removed alongside their template markup. Scroll-
+       snap + header CTA + slide-1 centred CTA cover every nav need;
+       any leftover .bp-welcome-bottom / .bp-welcome-dot rules would
+       be unreferenced dead code. */
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
@@ -896,11 +961,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       never feels broken. */
   logoUrl = '';
 
+  // v1.65gY — form simplified to First Name / Surname / Email per
+  // the client review. The submit() call still posts a single "name"
+  // field (firstName + " " + surname) so the existing backend route
+  // stays unchanged; role + company are sent as null.
   form = {
-    name:    '',
-    email:   '',
-    company: '',
-    role:    ROLE_OPTIONS[0]
+    firstName: '',
+    surname:   '',
+    email:     ''
   };
   submitting = false;
   submitted  = false;
@@ -1058,7 +1126,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // ── Submit ────────────────────────────────────────────────────
   canSubmit(): boolean {
-    return this.form.name.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
+    return this.form.firstName.trim().length > 0
+        && this.form.surname.trim().length > 0
+        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
   }
 
   submit() {
@@ -1067,11 +1137,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.errorMessage = null;
     this.cdr.markForCheck();
 
+    const fullName = `${this.form.firstName.trim()} ${this.form.surname.trim()}`.trim();
     const body = {
-      name:    this.form.name.trim(),
+      name:    fullName,
       email:   this.form.email.trim(),
-      company: this.form.company.trim() || null,
-      role:    this.form.role
+      company: null,
+      role:    null
     };
     this.http.post<{ success: boolean; alreadyRegistered?: boolean }>(
       `${environment.apiUrl}/guestlist/signup`, body
@@ -1099,7 +1170,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   get successBody(): string {
     const tpl = this.text('guestlist.success_body');
-    const firstName = this.form.name.trim().split(' ')[0] || this.form.name.trim();
+    const firstName = this.form.firstName.trim() || 'friend';
     return tpl.replace(/\{\{firstName\}\}/g, firstName);
   }
 }
