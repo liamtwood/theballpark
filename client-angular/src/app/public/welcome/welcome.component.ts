@@ -313,6 +313,11 @@ const DEFAULT_CONTENT: Content = {
            scroll-driven (wheel, trackpad, swipe, arrow keys) with the
            header CTA jumping straight to the form on slides 2 & 3. -->
 
+      <!-- v1.65gZ24 — custom scroll progress pill (per client mockup).
+           Position is driven by --scroll-progress on .bp-welcome-root,
+           updated by the scroll listener in ngAfterViewInit. -->
+      <div class="bp-scroll-pill" aria-hidden="true"></div>
+
       <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
            slide-4 footer. Backdrop click + close button + ESC all
            dismiss. -->
@@ -434,37 +439,47 @@ const DEFAULT_CONTENT: Content = {
        /touch/keyboard scroll natively. IntersectionObserver in TS
        adds .in-view to the current slide (one-shot) which fires the
        per-slide entry animations. */
-    /* v1.65gZ23 — scrollbar re-enabled per client mockup (their
-       reference shows a slim right-edge scrollbar). Replaces the
-       v1.65gL hide rules. Custom-styled as a glass pill so it
-       reads as part of the welcome aesthetic rather than the OS
-       default chrome. */
+    /* v1.65gZ24 — native scrollbar hidden again; replaced with a
+       custom fixed-size pill (.bp-scroll-pill) that just slides
+       down the right edge as scroll progresses. The client's idea
+       is "just a pill, no bar" — no track, no growing/shrinking
+       thumb that tracks content ratio, just a constant-size
+       indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
-      scrollbar-width: thin;                                     /* Firefox */
-      scrollbar-color: rgba(220, 240, 235, 0.45) transparent;    /* Firefox */
-      overscroll-behavior: contain;                              /* iOS rubber-band suppression */
+      scrollbar-width: none;                       /* Firefox */
+      -ms-overflow-style: none;                    /* Edge legacy */
+      overscroll-behavior: contain;                /* iOS rubber-band suppression */
     }
     .bp-welcome-stage::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      display: none;
+      width: 0;
+      height: 0;
       background: transparent;
     }
-    .bp-welcome-stage::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .bp-welcome-stage::-webkit-scrollbar-thumb {
-      background: rgba(220, 240, 235, 0.45);
-      border-radius: 999px;
-    }
-    .bp-welcome-stage::-webkit-scrollbar-thumb:hover {
-      background: rgba(220, 240, 235, 0.65);
-    }
+    .bp-welcome-stage::-webkit-scrollbar-track,
+    .bp-welcome-stage::-webkit-scrollbar-thumb,
     .bp-welcome-stage::-webkit-scrollbar-corner {
       background: transparent;
+    }
+
+    /* The custom scroll pill. Position is driven by the
+       --scroll-progress CSS variable (0 to 1) set on .bp-welcome-root
+       by the scroll listener in ngAfterViewInit. */
+    .bp-scroll-pill {
+      position: fixed;
+      right: 14px;
+      top: calc(96px + var(--scroll-progress, 0) * (100vh - 96px - 96px - 56px));
+      width: 4px;
+      height: 56px;
+      background: rgba(220, 240, 235, 0.55);
+      border-radius: 999px;
+      z-index: 50;
+      pointer-events: none;
+      transition: top 0.18s ease-out, background 0.2s;
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
@@ -1346,6 +1361,19 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       });
     };
 
+    // v1.65gZ24 — also publish a 0-to-1 --scroll-progress CSS var
+    // on the welcome root so the .bp-scroll-pill can slide along the
+    // right edge as the user moves through the deck. Setting it on
+    // .bp-welcome-root (the host's child) keeps the var inheritable
+    // by everything inside without polluting :root.
+    const root = stage.parentElement; // .bp-welcome-root
+    const setProgress = () => {
+      if (!root) return;
+      const max = stage.scrollHeight - stage.clientHeight;
+      const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
+      root.style.setProperty('--scroll-progress', String(p));
+    };
+
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
       const idx = Math.max(0, Math.min(TOTAL_STEPS - 1,
@@ -1355,6 +1383,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.step = idx;
         this.cdr.markForCheck();
       }
+
+      setProgress();
 
       clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
@@ -1373,6 +1403,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Slide 0 is in view on load — mark immediately so first paint
     // doesn't sit in the from-pose for 150ms.
     setCurrentInView(0);
+    // Initialise the scroll-progress var so the pill paints at top.
+    setProgress();
   }
 
   ngOnDestroy() {
