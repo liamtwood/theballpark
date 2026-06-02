@@ -785,10 +785,11 @@ const DEFAULT_CONTENT: Content = {
        column at maximum size; the new clamp keeps it compact and the
        grid columns are more balanced. */
     .bp-slide-3-inner { max-width: 1100px; }
+    /* v1.65gZ14 — horizontal gap widened 64 -> 140 per client review. */
     .bp-producers-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 64px; align-items: center; text-align: left;
+      gap: 140px; align-items: center; text-align: left;
     }
     .bp-producers-headline {
       font-family: 'Fraunces', Georgia, serif;
