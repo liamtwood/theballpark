@@ -168,11 +168,13 @@ const DEFAULT_CONTENT: Content = {
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
             <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
+          <!-- v1.65gZ8 — ✦ separator between items removed and the
+               top/bottom border rules on .bp-marquee-wrap dropped
+               per client review (let the marquee run freely without
+               visual frames around it). -->
           <div class="bp-marquee-wrap">
             <div class="bp-marquee-track">
-              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">
-                {{ cat }}<span class="bp-marquee-sep">✦</span>
-              </div>
+              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
           </div>
         </section>
@@ -697,20 +699,34 @@ const DEFAULT_CONTENT: Content = {
       margin: 0 auto 28px;
       max-width: 900px;
     }
-    /* v1.65gY — subtitle below the suppliers headline. */
+    /* v1.65gY — subtitle below the suppliers headline.
+       v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
+       line either side of the text, sized to match the headline
+       max-width (900px) so the lines extend just beyond the text
+       and span roughly the headline's footprint. */
     .bp-suppliers-subtitle {
       font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(15px, 1.5vw, 18px);
       font-weight: 500;
       line-height: 1.55;
       opacity: 0.9;
-      max-width: 620px;
+      max-width: 900px;
       margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
     }
+    .bp-suppliers-subtitle::before,
+    .bp-suppliers-subtitle::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(220, 240, 235, 0.4);
+    }
+    /* v1.65gZ8 — top + bottom 1px separators dropped. */
     .bp-marquee-wrap {
       width: 100%; overflow: hidden;
-      border-top: 1px solid rgba(220,240,235,0.2);
-      border-bottom: 1px solid rgba(220,240,235,0.2);
       padding: 24px 0;
       position: relative; z-index: 5;
     }
@@ -726,7 +742,10 @@ const DEFAULT_CONTENT: Content = {
       padding: 0 48px;
       flex-shrink: 0;
     }
-    .bp-marquee-sep { margin-left: 48px; opacity: 0.4; font-size: 0.6em; }
+    /* v1.65gZ8 — .bp-marquee-sep rule kept for safety in case any
+       admin-injected content still contains the glyph; the template
+       no longer emits one. */
+    .bp-marquee-sep { display: none; }
     @keyframes bp-scroll-x {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
