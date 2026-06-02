@@ -1,6 +1,7 @@
 import {
   Component, ChangeDetectionStrategy, ChangeDetectorRef,
-  HostListener, OnInit, OnDestroy
+  HostListener, OnInit, OnDestroy, AfterViewInit,
+  ViewChildren, QueryList, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -76,12 +77,19 @@ const DEFAULT_CONTENT: Content = {
         </div>
       </header>
 
-      <!-- Slide stage -->
-      <div class="bp-welcome-stage" [class.forward]="direction === 'forward'" [class.backward]="direction === 'backward'" [attr.data-step]="step">
+      <!-- Slide stage. v1.65gL — restructured as a scroll-snap
+           container. All four slides render simultaneously stacked
+           vertically; CSS scroll-snap handles mouse wheel, trackpad,
+           touch swipe, and the browser's native keyboard scroll.
+           IntersectionObserver in TS tracks which slide is in view
+           and adds .in-view to its section (one-shot — animations
+           don't replay on scroll back). Step state is derived from
+           scroll position; pagination + counter still bind to it. -->
+      <div class="bp-welcome-stage" #stage>
 
         <!-- ── Slide 1: Hero ────────────────────────────── -->
-        <section *ngIf="step === 0" class="bp-slide bp-slide-1">
-          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -95,7 +103,7 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
               <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
-          </svg>
+          </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-1-inner">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
@@ -113,8 +121,8 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 2: Suppliers ───────────────────────── -->
-        <section *ngIf="step === 1" class="bp-slide bp-slide-2">
-          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#79A8BA"/>
@@ -128,7 +136,7 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
               <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
-          </svg>
+          </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-2-inner">
             <div class="bp-eyebrow">{{ text('suppliers.eyebrow') }}</div>
@@ -144,8 +152,8 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
-        <section *ngIf="step === 2" class="bp-slide bp-slide-3">
-          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%"   stop-color="#2D8E53"/>
@@ -163,7 +171,7 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="400" cy="0"   r="280" fill="url(#s3-dark)"/>
               <circle cx="400" cy="500" r="280" fill="url(#s3-light)"/>
             </g>
-          </svg>
+          </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-3-inner">
             <div class="bp-producers-grid">
@@ -180,8 +188,8 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 4: Guestlist ───────────────────────── -->
-        <section *ngIf="step === 3" class="bp-slide bp-slide-4">
-          <svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#33A25F"/>
@@ -195,7 +203,7 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
               <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
             </g>
-          </svg>
+          </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
             <div class="bp-eyebrow">{{ text('guestlist.eyebrow') }}</div>
@@ -336,64 +344,37 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* ── Slide stage ──────────────────────────── */
-    /* v1.65gI — choreographed per-slide transitions per design
-       direction. Background orb groups slide in horizontally on
-       every transition (forward = from right, backward = from
-       left) so the colour wash feels like it's wiping into place.
-       Content animations differ per-slide:
-         step→1 (slide 2): inner content scrolls up from below
-         step→2 (slide 3): left + right halves of the producers
-                            grid fly in from opposite sides
-         step→3 (slide 4): SURPRISE — orbs pop with overshoot,
-                            "YOU MADE IT" stamps in, headline
-                            bounces, subtitle fades, form fields
-                            cascade, submit button pops at the end. */
+    /* v1.65gL — scroll-snap container. All four slides stack
+       vertically at 100vh each; the browser handles wheel/trackpad
+       /touch/keyboard scroll natively. IntersectionObserver in TS
+       adds .in-view to the current slide (one-shot) which fires the
+       per-slide entry animations. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      scrollbar-width: none;             /* Firefox */
+      -ms-overflow-style: none;          /* Edge legacy */
+    }
+    .bp-welcome-stage::-webkit-scrollbar { display: none; }
+
+    /* v1.65gL — bg layer wrapper. With scroll-snap the user is
+       already scrolling, so the orbs "scroll in" naturally as the
+       slide enters the viewport — no separate CSS wipe animation
+       needed (and any transform/clip-path on an ancestor of the
+       filtered SVG breaks the Gaussian blur compositing). */
+    .bp-bg-layer {
+      position: absolute; inset: 0;
+      z-index: 1;
+      pointer-events: none;
     }
 
-    /* Default fallback animation for slide 1 returning + any
-       unhandled transition. Keep the original subtle slide-in. */
-    .bp-welcome-stage > section {
-      animation: bp-slide-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .bp-welcome-stage.backward > section {
-      animation: bp-slide-in-back 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    @keyframes bp-slide-in {
-      from { transform: translateX(40px);  opacity: 0; }
-      to   { transform: translateX(0);     opacity: 1; }
-    }
-    @keyframes bp-slide-in-back {
-      from { transform: translateX(-40px); opacity: 0; }
-      to   { transform: translateX(0);     opacity: 1; }
-    }
-
-    /* Background orbs wipe in. SVG <g> defaults to transform-
-       origin 0,0; transform-box: fill-box snaps it to the group's
-       own bounding box so percentage translates work like HTML. */
-    .bp-welcome-stage .bp-svg-bg > g {
-      transform-box: fill-box;
-      transform-origin: center;
-      animation: bp-orbs-wipe-in 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    .bp-welcome-stage.backward .bp-svg-bg > g {
-      animation: bp-orbs-wipe-in-back 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    @keyframes bp-orbs-wipe-in {
-      from { transform: translateX(120%); }
-      to   { transform: translateX(0); }
-    }
-    @keyframes bp-orbs-wipe-in-back {
-      from { transform: translateX(-120%); }
-      to   { transform: translateX(0); }
-    }
-
-    /* ── Forward transition: 1 → 2 (text scrolls up) ── */
-    .bp-welcome-stage.forward[data-step="1"] .bp-slide-2-inner {
+    /* ── Slide 2 enters: text scrolls up ── */
+    .bp-slide-2.in-view .bp-slide-2-inner {
       animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-welcome-stage.forward[data-step="1"] .bp-marquee-wrap {
+    .bp-slide-2.in-view .bp-marquee-wrap {
       animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
     }
     @keyframes bp-scroll-up {
@@ -401,12 +382,11 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateY(0);    opacity: 1; }
     }
 
-    /* ── Forward transition: 2 → 3 (split — left from left,
-         right from right) ── */
-    .bp-welcome-stage.forward[data-step="2"] .bp-producers-grid > div:first-child {
+    /* ── Slide 3 enters: left from left, right (delayed 1.1s) from right ── */
+    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
       animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-welcome-stage.forward[data-step="2"] .bp-producers-grid > div:last-child {
+    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
       animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
     }
     @keyframes bp-from-left {
@@ -418,19 +398,8 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateX(0);      opacity: 1; }
     }
 
-    /* ── Forward transition: 3 → 4 — SURPRISE ──
-       Orbs pop in with overshoot, eyebrow stamps with a tilt,
-       headline bounces, subtitle fades, form fields cascade,
-       submit button pops at the very end. */
-    .bp-welcome-stage.forward[data-step="3"] .bp-svg-bg > g {
-      animation: bp-orbs-pop 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    }
-    @keyframes bp-orbs-pop {
-      0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
-      60%  { opacity: 1; }
-      100% { transform: scale(1) rotate(0); opacity: 1; }
-    }
-    .bp-welcome-stage.forward[data-step="3"] .bp-slide-4-inner .bp-eyebrow {
+    /* ── Slide 4 enters — SURPRISE ── */
+    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow {
       animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
     }
     @keyframes bp-stamp {
@@ -438,33 +407,33 @@ const DEFAULT_CONTENT: Content = {
       70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
       100% { transform: scale(1) rotate(0); opacity: 1; }
     }
-    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-headline {
+    .bp-slide-4.in-view .bp-guestlist-headline {
       animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
     }
     @keyframes bp-bounce-in {
       0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
       100% { transform: scale(1) translateY(0); opacity: 1; }
     }
-    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-subtitle {
+    .bp-slide-4.in-view .bp-guestlist-subtitle {
       animation: bp-fade-up 0.75s ease-out 0.8s both;
     }
     @keyframes bp-fade-up {
       from { transform: translateY(12px); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
     }
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div,
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-block {
+    .bp-slide-4.in-view .bp-form-row > div,
+    .bp-slide-4.in-view .bp-form-block {
       animation: bp-cascade 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div:nth-child(1) { animation-delay: 1.0s; }
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-row > div:nth-child(2) { animation-delay: 1.15s; }
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-block:nth-of-type(1)  { animation-delay: 1.3s; }
-    .bp-welcome-stage.forward[data-step="3"] .bp-form-block:nth-of-type(2)  { animation-delay: 1.45s; }
+    .bp-slide-4.in-view .bp-form-row > div:nth-child(1) { animation-delay: 1.0s; }
+    .bp-slide-4.in-view .bp-form-row > div:nth-child(2) { animation-delay: 1.15s; }
+    .bp-slide-4.in-view .bp-form-block:nth-of-type(1)  { animation-delay: 1.3s; }
+    .bp-slide-4.in-view .bp-form-block:nth-of-type(2)  { animation-delay: 1.45s; }
     @keyframes bp-cascade {
       from { transform: translateY(20px) scale(0.97); opacity: 0; }
       to   { transform: translateY(0)    scale(1);    opacity: 1; }
     }
-    .bp-welcome-stage.forward[data-step="3"] .bp-guestlist-submit {
+    .bp-slide-4.in-view .bp-guestlist-submit {
       animation: bp-button-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) 1.7s both;
     }
     @keyframes bp-button-pop {
@@ -473,7 +442,11 @@ const DEFAULT_CONTENT: Content = {
     }
 
     .bp-slide {
-      position: absolute; inset: 0;
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
       display: flex; align-items: center; justify-content: center;
       color: #DCF0EB;
       overflow: hidden;
@@ -866,13 +839,22 @@ const DEFAULT_CONTENT: Content = {
     }
   `]
 })
-export class WelcomeComponent implements OnInit, OnDestroy {
+export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly TOTAL_STEPS = TOTAL_STEPS;
   readonly roleOptions = ROLE_OPTIONS;
   readonly dots = Array.from({ length: TOTAL_STEPS });
 
+  /** v1.65gL — references to the four <section #slideRef> elements
+      so we can scroll a target slide into view and attach an
+      IntersectionObserver. */
+  @ViewChildren('slideRef') slideRefs!: QueryList<ElementRef<HTMLElement>>;
+
   step = 0;
+  /** Kept for legacy bindings (template still references it). Now
+      always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
+  /** v1.65gL — IntersectionObserver instance for cleanup on destroy. */
+  private slideObserver?: IntersectionObserver;
   content: Content = { ...DEFAULT_CONTENT };
   /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
       Empty string until the fetch lands; the template falls back to
@@ -920,7 +902,53 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() {}
+  ngAfterViewInit() {
+    // v1.65gL — IntersectionObserver tracks which slide is in view.
+    // Each entry gets .in-view added (one-shot — never removed) so
+    // the per-slide entry animations fire when the slide becomes
+    // visible and stay settled if the user scrolls back.
+    // The most-visible slide drives `step` for the pagination train
+    // + counter + Back / Get on the guestlist visibility.
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    let mostVisible: { idx: number; ratio: number } = { idx: 0, ratio: 0 };
+    this.slideObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const idx = Number((e.target as HTMLElement).dataset['slide'] || '0');
+        if (e.isIntersecting) {
+          (e.target as HTMLElement).classList.add('in-view');
+        }
+        if (e.intersectionRatio > mostVisible.ratio) {
+          mostVisible = { idx, ratio: e.intersectionRatio };
+        }
+      }
+      // Snapshot the current best across this callback batch.
+      const best = entries
+        .filter(en => en.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (best) {
+        const idx = Number((best.target as HTMLElement).dataset['slide'] || '0');
+        if (idx !== this.step) {
+          this.step = idx;
+          this.cdr.markForCheck();
+        }
+      }
+    }, {
+      // Fire at multiple thresholds so the active-slide handoff is
+      // responsive (don't wait for 50% before switching the dot
+      // train; update as the next slide takes over).
+      threshold: [0.25, 0.5, 0.75]
+    });
+
+    this.slideRefs.forEach(ref => this.slideObserver!.observe(ref.nativeElement));
+
+    // Slide 1 is in view on first paint — observer fires for it
+    // immediately, so animations there get .in-view straight away.
+  }
+
+  ngOnDestroy() {
+    this.slideObserver?.disconnect();
+  }
 
   // ── Content access ────────────────────────────────────────────
   text(key: string): string {
@@ -947,25 +975,17 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   get totalLabel(): string { return String(TOTAL_STEPS).padStart(2, '0'); }
 
   // ── Navigation ────────────────────────────────────────────────
-  next() {
-    if (this.step < TOTAL_STEPS - 1) {
-      this.direction = 'forward';
-      this.step++;
-      this.cdr.markForCheck();
-    }
-  }
-  prev() {
-    if (this.step > 0) {
-      this.direction = 'backward';
-      this.step--;
-      this.cdr.markForCheck();
-    }
-  }
-  goTo(i: number) {
-    if (i === this.step) return;
-    this.direction = i > this.step ? 'forward' : 'backward';
-    this.step = i;
-    this.cdr.markForCheck();
+  // v1.65gL — buttons + keyboard arrows now scroll the target slide
+  // into view; the IntersectionObserver picks it up and updates step
+  // + adds .in-view (which triggers the per-slide animations).
+  next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
+  prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
+  goTo(i: number) { this.scrollToSlide(i); }
+
+  private scrollToSlide(i: number) {
+    const el = this.slideRefs?.toArray()[i]?.nativeElement;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   @HostListener('window:keydown', ['$event'])
