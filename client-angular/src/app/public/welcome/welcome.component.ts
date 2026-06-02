@@ -1557,15 +1557,30 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
+        // v1.65gZ28 — surface real failures instead of showing a fake
+        // success state. The previous "show success anyway" path masked
+        // CORS / 500 / network errors and meant users (and us) had no
+        // signal that their signup hadn't landed. Now every non-200
+        // shows a user-readable message and is logged with full
+        // diagnostic context to the console.
         this.submitting = false;
+        console.error('[welcome] Signup request failed', {
+          status: err.status,
+          statusText: err.statusText,
+          url: err.url,
+          error: err.error,
+          message: err.message
+        });
         if (err.status === 429) {
           this.errorMessage = 'Slow down — too many signups from this connection. Try again in a minute.';
         } else if (err.status === 400 && err.error?.error) {
           this.errorMessage = err.error.error;
+        } else if (err.status === 0) {
+          this.errorMessage = "Couldn't reach the server. Check your connection and try again.";
+        } else if (err.status >= 500) {
+          this.errorMessage = `Server hiccup (HTTP ${err.status}). Please try again in a moment.`;
         } else {
-          // Network or 500 — show success anyway, log under the hood
-          console.warn('[welcome] Signup request failed, showing success:', err);
-          this.submitted = true;
+          this.errorMessage = `Something went wrong (HTTP ${err.status || '?'}). Please try again.`;
         }
         this.cdr.markForCheck();
       }
