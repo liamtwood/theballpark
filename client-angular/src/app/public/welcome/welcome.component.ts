@@ -407,7 +407,7 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     .bp-welcome-stage.forward[data-step="2"] .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
     }
     @keyframes bp-from-left {
       from { transform: translateX(-120px); opacity: 0; }
