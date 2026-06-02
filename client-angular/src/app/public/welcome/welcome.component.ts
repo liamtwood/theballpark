@@ -313,6 +313,20 @@ const DEFAULT_CONTENT: Content = {
            scroll-driven (wheel, trackpad, swipe, arrow keys) with the
            header CTA jumping straight to the form on slides 2 & 3. -->
 
+      <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
+           Position is driven by --scroll-progress on .bp-welcome-root,
+           updated by the scroll listener in ngAfterViewInit.
+           v1.65gZ25 — pill wrapped in an invisible clickable track.
+           Clicking above the pill moves to the previous slide;
+           clicking below moves to the next. The pill itself has
+           pointer-events: none so the track always owns the click. -->
+      <div class="bp-scroll-track"
+           (click)="onScrollTrackClick($event)"
+           role="button"
+           aria-label="Previous or next slide">
+        <div #scrollPill class="bp-scroll-pill" aria-hidden="true"></div>
+      </div>
+
       <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
            slide-4 footer. Backdrop click + close button + ESC all
            dismiss. -->
@@ -434,19 +448,20 @@ const DEFAULT_CONTENT: Content = {
        /touch/keyboard scroll natively. IntersectionObserver in TS
        adds .in-view to the current slide (one-shot) which fires the
        per-slide entry animations. */
+    /* v1.65gZ24 — native scrollbar hidden again; replaced with a
+       custom fixed-size pill (.bp-scroll-pill) that just slides
+       down the right edge as scroll progresses. The client's idea
+       is "just a pill, no bar" — no track, no growing/shrinking
+       thumb that tracks content ratio, just a constant-size
+       indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
-      /* Hide scrollbar across browsers. Safari (desktop + iOS)
-         ignores plain display:none on ::-webkit-scrollbar under
-         scroll-snap — the track stays as a faint coloured strip on
-         the right edge of the welcome page (client-reported v1.65gL).
-         Forcing width: 0 + transparent track/thumb removes it. */
-      scrollbar-width: none;             /* Firefox */
-      -ms-overflow-style: none;          /* Edge legacy */
-      overscroll-behavior: contain;      /* iOS rubber-band suppression */
+      scrollbar-width: none;                       /* Firefox */
+      -ms-overflow-style: none;                    /* Edge legacy */
+      overscroll-behavior: contain;                /* iOS rubber-band suppression */
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -458,6 +473,40 @@ const DEFAULT_CONTENT: Content = {
     .bp-welcome-stage::-webkit-scrollbar-thumb,
     .bp-welcome-stage::-webkit-scrollbar-corner {
       background: transparent;
+    }
+
+    /* v1.65gZ25 — invisible clickable track that owns the right-edge
+       hit area. The visible pill sits inside it, positioned by the
+       --scroll-progress CSS variable (0 to 1) set on .bp-welcome-root
+       by the scroll listener in ngAfterViewInit. */
+    .bp-scroll-track {
+      position: fixed;
+      right: 8px;
+      top: 96px;
+      bottom: 96px;
+      width: 20px;
+      z-index: 50;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    /* v1.65gZ26 — width nudged 6 -> 8 (just a little fatter, per
+       client review). Height unchanged at 40. */
+    .bp-scroll-pill {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(var(--scroll-progress, 0) * (100% - 40px));
+      width: 8px;
+      height: 40px;
+      background: rgba(220, 240, 235, 0.55);
+      border-radius: 999px;
+      pointer-events: none;
+      transition: top 0.18s ease-out, background 0.2s;
+    }
+    .bp-scroll-track:hover .bp-scroll-pill {
+      background: rgba(220, 240, 235, 0.75);
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
@@ -1235,6 +1284,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       on scroll position. */
   @ViewChildren('slideRef') slideRefs!: QueryList<ElementRef<HTMLElement>>;
   @ViewChild('stage') stageRef!: ElementRef<HTMLElement>;
+  /** v1.65gZ25 — pill ref used by the track click handler so we can
+      compare the click Y to the pill's current centre and route
+      to prev() vs next(). */
+  @ViewChild('scrollPill') scrollPillRef?: ElementRef<HTMLElement>;
 
   step = 0;
   /** Kept for legacy bindings (template still references it). Now
@@ -1339,6 +1392,19 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       });
     };
 
+    // v1.65gZ24 — also publish a 0-to-1 --scroll-progress CSS var
+    // on the welcome root so the .bp-scroll-pill can slide along the
+    // right edge as the user moves through the deck. Setting it on
+    // .bp-welcome-root (the host's child) keeps the var inheritable
+    // by everything inside without polluting :root.
+    const root = stage.parentElement; // .bp-welcome-root
+    const setProgress = () => {
+      if (!root) return;
+      const max = stage.scrollHeight - stage.clientHeight;
+      const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
+      root.style.setProperty('--scroll-progress', String(p));
+    };
+
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
       const idx = Math.max(0, Math.min(TOTAL_STEPS - 1,
@@ -1348,6 +1414,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.step = idx;
         this.cdr.markForCheck();
       }
+
+      setProgress();
 
       clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
@@ -1366,6 +1434,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Slide 0 is in view on load — mark immediately so first paint
     // doesn't sit in the from-pose for 150ms.
     setCurrentInView(0);
+    // Initialise the scroll-progress var so the pill paints at top.
+    setProgress();
   }
 
   ngOnDestroy() {
@@ -1428,6 +1498,23 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (e.key === 'ArrowRight') this.next();
     if (e.key === 'ArrowLeft' && !isFormField) this.prev();
     if (e.key === 'Enter' && this.step < TOTAL_STEPS - 1 && !isFormField) this.next();
+  }
+
+  // ── Scroll-track click ────────────────────────────────────────
+  // v1.65gZ25 — clicking the right-edge track above the pill goes
+  // to the previous slide; clicking below the pill advances to the
+  // next. Pill itself has pointer-events: none so the track is
+  // always the click target.
+  onScrollTrackClick(e: MouseEvent) {
+    const pill = this.scrollPillRef?.nativeElement;
+    if (!pill) return;
+    const rect = pill.getBoundingClientRect();
+    const pillCentreY = rect.top + rect.height / 2;
+    if (e.clientY < pillCentreY) {
+      this.prev();
+    } else {
+      this.next();
+    }
   }
 
   // ── Legal modal ───────────────────────────────────────────────
