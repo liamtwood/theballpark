@@ -650,59 +650,12 @@ const DEFAULT_CONTENT: Content = {
        track scrolls upward; the ✦ separator sits centred BELOW
        each label, not to its right. Categories are repeated 3×
        in marqueeCategories so the loop is seamless. */
-    .bp-slide-2-grid {
-      position: relative; z-index: 5;
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 96px;
-      align-items: center;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 64px;
-    }
-    .bp-slide-2-inner { padding: 0; text-align: left; align-items: flex-start; }
-    .bp-marquee-wrap--vertical {
-      width: auto;
-      max-height: 70vh;
-      overflow: hidden;
-      border-top: none;
-      border-bottom: none;
-      padding: 0;
-      mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
-    }
-    .bp-marquee-track--vertical {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: auto;
-      white-space: normal;
-      animation: bp-scroll-y 28s linear infinite;
-    }
-    .bp-marquee-item--vertical {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 24px 0;
-      text-align: center;
-      font-size: clamp(40px, 6.5vw, 96px);
-      line-height: 1;
-    }
-    .bp-marquee-sep--vertical {
-      margin-left: 0;
-      margin-top: 18px;
-      font-size: 0.4em;
-    }
-    @keyframes bp-scroll-y {
-      0%   { transform: translateY(0); }
-      100% { transform: translateY(-33.333%); }
-    }
-
-    @media (max-width: 768px) {
-      .bp-slide-2-grid { grid-template-columns: 1fr; gap: 40px; padding: 0 32px; }
-      .bp-marquee-wrap--vertical { max-height: 40vh; }
-    }
+    /* v1.65gR — vertical-marquee experiment styles removed.
+       The block here previously left the .bp-slide-2-inner with
+       text-align: left + align-items: flex-start (intended for the
+       abandoned 2-column vertical-train layout), which was
+       overriding the default .bp-slide-inner text-align: center
+       and breaking the headline centring on phone. */
 
     /* ── Slide 3 ──────────────────────────────── */
     .bp-slide-3-inner { max-width: 1400px; }
