@@ -140,7 +140,10 @@ const DEFAULT_CONTENT: Content = {
             </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
-            <button class="bp-hero-cta" (click)="goTo(TOTAL_STEPS - 1)">
+            <!-- v1.65gZ22 — slide-1 centred CTA acts as a "next"
+                 button (advances one slide) for consistency with the
+                 top-right header CTA. Same label, same behaviour. -->
+            <button class="bp-hero-cta" (click)="next()">
               {{ text('hero.cta') }}
             </button>
           </div>
