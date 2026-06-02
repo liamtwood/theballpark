@@ -313,18 +313,34 @@ const DEFAULT_CONTENT: Content = {
       <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
            slide-4 footer. Backdrop click + close button + ESC all
            dismiss. -->
+      <!-- v1.65gZ21 — replaced the generic 6-bullet placeholder with
+           the actual Ballpark welcome-page privacy + cookie statement
+           drafted from the client's notes. -->
       <div *ngIf="legalOpen" class="bp-legal-overlay" (click)="closeLegal()">
         <div class="bp-legal-modal" (click)="$event.stopPropagation()">
           <button type="button" class="bp-legal-close" (click)="closeLegal()" aria-label="Close">×</button>
           <h2 class="bp-legal-title">Legal</h2>
-          <ul class="bp-legal-list">
-            <li>Include a clear Privacy Policy outlining data collection and usage practices.</li>
-            <li>Provide Terms of Service that define user rights and responsibilities.</li>
-            <li>Add a Disclaimer to limit liability for content accuracy and external links.</li>
-            <li>Ensure compliance with copyright laws by crediting third-party content.</li>
-            <li>Implement a Cookie Policy if your site uses tracking technologies.</li>
-            <li>Include an Accessibility Statement to promote inclusivity for all users.</li>
-          </ul>
+
+          <h3 class="bp-legal-section">Your privacy</h3>
+          <p class="bp-legal-body">
+            Information about our customers is an important part of our business, and we are not in the business of selling our customers' personal information to others.
+          </p>
+
+          <h3 class="bp-legal-section">What we collect, and why</h3>
+          <p class="bp-legal-body">
+            We collect your contact information on this site for one reason only: so we can invite you to Ballpark when it becomes available. Your name and email address are stored securely and never shared with third parties.
+          </p>
+
+          <h3 class="bp-legal-section">Cookies</h3>
+          <p class="bp-legal-body">
+            There are no cookies in use on the Ballpark welcome page. None are currently set. If tracking technologies are introduced in the future, a full Cookie Policy will be added here and a banner will appear before any cookies are set.
+          </p>
+
+          <h3 class="bp-legal-section">Changes</h3>
+          <p class="bp-legal-body">
+            This statement may be updated as Ballpark evolves. Material changes will be communicated to anyone on the guestlist before they take effect.
+          </p>
+
           <button type="button" class="bp-legal-dismiss" (click)="closeLegal()">Close</button>
         </div>
       </div>
@@ -1156,7 +1172,28 @@ const DEFAULT_CONTENT: Content = {
       opacity: 0.92;
     }
     .bp-legal-list li:last-child { margin-bottom: 0; }
+
+    /* v1.65gZ21 — section headings + body paragraphs for the new
+       privacy / cookies / changes content. */
+    .bp-legal-section {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin: 22px 0 8px 0;
+    }
+    .bp-legal-section:first-of-type { margin-top: 4px; }
+    .bp-legal-body {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
+      margin: 0 0 6px 0;
+      opacity: 0.92;
+    }
     .bp-legal-dismiss {
+      margin-top: 24px;
       font-family: 'Inter', system-ui, sans-serif;
       font-size: 12px;
       font-weight: 700;
