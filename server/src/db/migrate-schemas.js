@@ -1659,6 +1659,121 @@ const migrate = async () => {
     );
     console.log('  Marketing seed complete.');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v1.65 back-port section — schema work that was originally
+    // landed via standalone migrate-vX.Y.js files (one per change)
+    // is consolidated here so a single `node migrate-schemas.js` run
+    // brings public + preview + master all the way up to current dev.
+    //
+    // RULE: any ALTER/CREATE shipped via a versioned migration file
+    // MUST be mirrored here, applied to ALL THREE schemas. The
+    // standalone files stay in tree as the documented history of
+    // when the change landed, but they are NOT the source of truth.
+    // ─────────────────────────────────────────────────────────────────
+    await client.query(`
+      -- v1.65f2: project_items.quantity (mirror of migrate-v1.65f2)
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1;
+
+      -- v1.65fA: project_items snapshot columns (mirror of migrate-v1.65fA)
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS name        VARCHAR(255);
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS name        VARCHAR(255);
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS name        VARCHAR(255);
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS base_price  NUMERIC(12,2);
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS unit        VARCHAR(50);
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS description TEXT;
+
+      -- v1.65fJ: project_items.image_url. Was only ever applied via
+      -- the older migrate.js (public only), which is why preview +
+      -- master Railway both 500'd on the listing query until the
+      -- preview-sync caught it. Adding here so the canonical runner
+      -- now covers all three schemas.
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    console.log('  v1.65f* project_items column back-port ensured.');
+
+    // v1.65fH: project_item_suppliers per-cart-item roster
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.project_item_suppliers (
+        project_item_id UUID NOT NULL REFERENCES public.project_items(id) ON DELETE CASCADE,
+        supplier_org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (project_item_id, supplier_org_id)
+      );
+      CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
+        ON public.project_item_suppliers(project_item_id);
+
+      CREATE TABLE IF NOT EXISTS preview.project_item_suppliers (
+        project_item_id UUID NOT NULL REFERENCES preview.project_items(id) ON DELETE CASCADE,
+        supplier_org_id UUID NOT NULL REFERENCES preview.orgs(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (project_item_id, supplier_org_id)
+      );
+      CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
+        ON preview.project_item_suppliers(project_item_id);
+
+      CREATE TABLE IF NOT EXISTS master.project_item_suppliers (
+        project_item_id UUID NOT NULL REFERENCES master.project_items(id) ON DELETE CASCADE,
+        supplier_org_id UUID NOT NULL REFERENCES master.orgs(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (project_item_id, supplier_org_id)
+      );
+      CREATE INDEX IF NOT EXISTS ix_project_item_suppliers_pi
+        ON master.project_item_suppliers(project_item_id);
+    `);
+    console.log('  v1.65fH project_item_suppliers table ensured.');
+
+    // v1.65fW: message_item_decisions satellite. Uses gen_random_uuid()
+    // (PG13+ built-in) instead of uuid_generate_v4() so we don't
+    // depend on the uuid-ossp extension being in the active schema.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.message_item_decisions (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_item_id UUID NOT NULL REFERENCES public.message_items(id) ON DELETE CASCADE,
+        side            VARCHAR(20) NOT NULL,
+        decision        VARCHAR(20) NOT NULL,
+        user_id         UUID REFERENCES public.users(id),
+        note            TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ix_mid_latest
+        ON public.message_item_decisions(message_item_id, side, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS preview.message_item_decisions (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_item_id UUID NOT NULL REFERENCES preview.message_items(id) ON DELETE CASCADE,
+        side            VARCHAR(20) NOT NULL,
+        decision        VARCHAR(20) NOT NULL,
+        user_id         UUID REFERENCES preview.users(id),
+        note            TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ix_mid_latest
+        ON preview.message_item_decisions(message_item_id, side, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS master.message_item_decisions (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_item_id UUID NOT NULL REFERENCES master.message_items(id) ON DELETE CASCADE,
+        side            VARCHAR(20) NOT NULL,
+        decision        VARCHAR(20) NOT NULL,
+        user_id         UUID REFERENCES master.users(id),
+        note            TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ix_mid_latest
+        ON master.message_item_decisions(message_item_id, side, created_at DESC);
+    `);
+    console.log('  v1.65fW message_item_decisions table ensured.');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
