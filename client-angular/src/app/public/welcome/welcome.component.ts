@@ -653,11 +653,13 @@ const DEFAULT_CONTENT: Content = {
       letter-spacing: -0.04em;
       margin: 0 0 48px 0;
     }
+    /* v1.65gZ11 — subtitle font bumped + max-width tightened so the
+       copy wraps to multiple lines per client review. */
     .bp-hero-subtitle {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(17px, 2vw, 21px);
-      font-weight: 500; line-height: 1.5;
-      max-width: 560px; margin: 0 auto 40px;
+      font-size: clamp(22px, 2.6vw, 30px);
+      font-weight: 500; line-height: 1.4;
+      max-width: 380px; margin: 0 auto 40px;
       opacity: 0.95;
     }
     .bp-hero-cta {
