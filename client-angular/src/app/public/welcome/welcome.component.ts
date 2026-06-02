@@ -49,7 +49,7 @@ const DEFAULT_CONTENT: Content = {
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
   'guestlist.headline':        'Those who get in early, get ahead.',
-  'guestlist.subtitle':        "Get on the guestlist and the moment we're live you'll be the first to know.",
+  'guestlist.subtitle':        "Get on the guestlist",
   'guestlist.cta_label':       'Add me to the guestlist',
   'guestlist.success_headline': "You're on the guestlist.",
   'guestlist.success_body':    "We'll be in touch the moment Ballpark goes live, {{firstName}}."
@@ -210,6 +210,14 @@ const DEFAULT_CONTENT: Content = {
             <h2 class="bp-guestlist-headline">{{ text('guestlist.headline') }}</h2>
             <p class="bp-guestlist-subtitle">{{ text('guestlist.subtitle') }}</p>
 
+            <!-- v1.65gQ — form layout per design review:
+                  · NAME + I AM A… share row 1 (was NAME + EMAIL)
+                  · EMAIL gets its own full-width row so longer
+                    addresses have room (was the cramped half-width)
+                  · COMPANY full-width below
+                  · Submit at the bottom
+                 .bp-guestlist-form is already a glass-card container
+                 so the form reads as one unit. -->
             <div *ngIf="!submitted" class="bp-guestlist-form">
               <div class="bp-form-row">
                 <div>
@@ -217,19 +225,19 @@ const DEFAULT_CONTENT: Content = {
                   <input class="bp-form-input" type="text" [(ngModel)]="form.name" placeholder="Jane Doe" />
                 </div>
                 <div>
-                  <label class="bp-form-label">Email</label>
-                  <input class="bp-form-input" type="email" [(ngModel)]="form.email" placeholder="jane@studio.com" />
+                  <label class="bp-form-label">I am a…</label>
+                  <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
+                    <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
+                  </select>
                 </div>
+              </div>
+              <div class="bp-form-block">
+                <label class="bp-form-label">Email</label>
+                <input class="bp-form-input" type="email" [(ngModel)]="form.email" placeholder="jane@studio.com" />
               </div>
               <div class="bp-form-block">
                 <label class="bp-form-label">Company</label>
                 <input class="bp-form-input" type="text" [(ngModel)]="form.company" placeholder="Studio name (optional)" />
-              </div>
-              <div class="bp-form-block">
-                <label class="bp-form-label">I am a…</label>
-                <select class="bp-form-input bp-form-select" [(ngModel)]="form.role">
-                  <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
-                </select>
               </div>
               <button
                 class="bp-guestlist-submit"
@@ -605,7 +613,11 @@ const DEFAULT_CONTENT: Content = {
       font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(40px, 6.5vw, 88px);
       font-weight: 900; line-height: 1.05; letter-spacing: -0.02em;
-      margin: 0;
+      /* v1.65gQ — centre the headline block. text-align: center is
+         inherited from .bp-slide-inner, but the block itself was
+         left-aligned because of max-width: 1000px without auto
+         margins. */
+      margin: 0 auto;
       max-width: 1000px;
     }
     .bp-marquee-wrap {
