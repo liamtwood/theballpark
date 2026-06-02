@@ -94,6 +94,49 @@ function isValidEmail(s) {
   return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 320;
 }
 
+/**
+ * v1.65gZ29 — Cloudflare Turnstile verification.
+ *
+ * Posts the user-supplied token to the Cloudflare siteverify
+ * endpoint along with the server's secret. Returns { ok, reason }.
+ *
+ * Graceful fallback: if TURNSTILE_SECRET_KEY isn't configured in
+ * the env (local dev, or before the secret is added to Railway),
+ * verification is SKIPPED with a one-time warning. Production with
+ * the secret set = enforced.
+ */
+async function verifyTurnstile(token, remoteIp) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    if (!verifyTurnstile._warned) {
+      console.warn('[turnstile] TURNSTILE_SECRET_KEY not set — bot-check skipped (dev mode).');
+      verifyTurnstile._warned = true;
+    }
+    return { ok: true, skipped: true };
+  }
+  if (!token || typeof token !== 'string') {
+    return { ok: false, reason: 'missing-token' };
+  }
+  try {
+    const params = new URLSearchParams();
+    params.append('secret', secret);
+    params.append('response', token);
+    if (remoteIp) params.append('remoteip', String(remoteIp));
+
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: params
+    });
+    const data = await res.json();
+    if (data && data.success) return { ok: true };
+    return { ok: false, reason: 'cf-rejected', codes: data?.['error-codes'] || [] };
+  } catch (err) {
+    console.error('[turnstile] siteverify call failed:', err.message);
+    // Fail closed — if we can't verify, don't accept the signup.
+    return { ok: false, reason: 'siteverify-unreachable' };
+  }
+}
+
 function validateSignupInput(body) {
   const name    = (body?.name    || '').trim();
   const email   = (body?.email   || '').trim().toLowerCase();
@@ -134,6 +177,14 @@ function formatTimestamp(d) {
 async function createSignup({ body, ip, userAgent }) {
   const errMsg = validateSignupInput(body);
   if (errMsg) return { ok: false, status: 400, error: errMsg };
+
+  // v1.65gZ29 — Turnstile bot-check. Run BEFORE the INSERT (and
+  // before the unique-violation catch) so attackers can't probe
+  // which emails already exist by spamming the form.
+  const ts = await verifyTurnstile(body.turnstileToken, ip);
+  if (!ts.ok) {
+    return { ok: false, status: 400, error: 'Bot check failed. Please refresh and try again.' };
+  }
 
   const name    = body.name.trim();
   const email   = body.email.trim().toLowerCase();

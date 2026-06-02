@@ -279,6 +279,11 @@ const DEFAULT_CONTENT: Content = {
                 {{ submitting ? '…' : text('guestlist.cta_label') }}
               </button>
             </div>
+            <!-- v1.65gZ29 — Cloudflare Turnstile widget. Renders via
+                 explicit window.turnstile.render() after the script
+                 loads (see ngAfterViewInit). Managed mode is usually
+                 invisible; occasional checkbox for suspicious traffic. -->
+            <div *ngIf="!submitted" #turnstileEl class="bp-turnstile-wrap"></div>
             <p *ngIf="!submitted && errorMessage" class="bp-form-error">{{ errorMessage }}</p>
             <p *ngIf="!submitted" class="bp-guestlist-footer-text">
               {{ text('guestlist.footer_text') }}
@@ -1272,6 +1277,16 @@ const DEFAULT_CONTENT: Content = {
       font: inherit;
       letter-spacing: inherit;
     }
+
+    /* v1.65gZ29 — Turnstile widget wrapper. Centred under the form;
+       Cloudflare renders an iframe roughly 65px tall in compact mode.
+       The widget is theme: dark to match the welcome page. */
+    .bp-turnstile-wrap {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      min-height: 65px;
+    }
   `]
 })
 export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
@@ -1288,6 +1303,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       compare the click Y to the pill's current centre and route
       to prev() vs next(). */
   @ViewChild('scrollPill') scrollPillRef?: ElementRef<HTMLElement>;
+  /** v1.65gZ29 — Turnstile widget host. Rendered into via the
+      explicit window.turnstile.render() API after the api.js script
+      finishes loading. */
+  @ViewChild('turnstileEl') turnstileEl?: ElementRef<HTMLElement>;
 
   step = 0;
   /** Kept for legacy bindings (template still references it). Now
@@ -1322,6 +1341,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v1.65gZ20 — Legal modal open state. Backdrop click + Close
       button + ESC keydown all flip this back to false. */
   legalOpen = false;
+
+  /** v1.65gZ29 — Cloudflare Turnstile token. Captured on widget
+      success callback, sent with the signup payload, cleared on
+      expiry / error / submit-completion. canSubmit() now also
+      requires a non-empty token. */
+  turnstileToken: string | null = null;
+  private turnstileWidgetId: string | null = null;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
@@ -1436,6 +1462,54 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     setCurrentInView(0);
     // Initialise the scroll-progress var so the pill paints at top.
     setProgress();
+
+    // v1.65gZ29 — load Cloudflare Turnstile and render the widget
+    // into #turnstileEl. The script is loaded once; subsequent
+    // welcome-page visits within the same SPA session reuse the
+    // already-loaded global.
+    this.loadAndRenderTurnstile();
+  }
+
+  /** v1.65gZ29 — load Turnstile api.js (once) and render the widget. */
+  private loadAndRenderTurnstile() {
+    const w = window as any;
+    const render = () => {
+      if (!w.turnstile || !this.turnstileEl) return;
+      // Don't double-render.
+      if (this.turnstileWidgetId) return;
+      this.turnstileWidgetId = w.turnstile.render(this.turnstileEl.nativeElement, {
+        sitekey: environment.turnstileSiteKey,
+        theme: 'dark',
+        size: 'flexible',
+        callback: (token: string) => {
+          this.turnstileToken = token;
+          this.cdr.markForCheck();
+        },
+        'error-callback': () => {
+          this.turnstileToken = null;
+          this.cdr.markForCheck();
+        },
+        'expired-callback': () => {
+          this.turnstileToken = null;
+          this.cdr.markForCheck();
+        }
+      });
+    };
+
+    if (w.turnstile) {
+      render();
+      return;
+    }
+    // Hook onload before injecting the script.
+    w.__bpTurnstileOnLoad = render;
+    const existing = document.getElementById('cf-turnstile-script');
+    if (existing) return; // another tab in the same page already loading
+    const s = document.createElement('script');
+    s.id = 'cf-turnstile-script';
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__bpTurnstileOnLoad&render=explicit';
+    s.async = true;
+    s.defer = true;
+    document.head.appendChild(s);
   }
 
   ngOnDestroy() {
@@ -1517,6 +1591,16 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  /** v1.65gZ29 — reset the Turnstile widget so the user gets a
+      fresh token after a submit error (tokens are single-use). */
+  private resetTurnstile() {
+    const w = window as any;
+    this.turnstileToken = null;
+    if (w.turnstile && this.turnstileWidgetId) {
+      try { w.turnstile.reset(this.turnstileWidgetId); } catch { /* ignore */ }
+    }
+  }
+
   // ── Legal modal ───────────────────────────────────────────────
   openLegal(e?: Event) {
     if (e) e.preventDefault();
@@ -1532,7 +1616,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   canSubmit(): boolean {
     return this.form.firstName.trim().length > 0
         && this.form.surname.trim().length > 0
-        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
+        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim())
+        // v1.65gZ29 — require a Turnstile token before APPLY enables.
+        // Managed mode usually completes automatically; on suspicious
+        // traffic the user gets a checkbox to click.
+        && !!this.turnstileToken;
   }
 
   submit() {
@@ -1546,7 +1634,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       name:    fullName,
       email:   this.form.email.trim(),
       company: null,
-      role:    null
+      role:    null,
+      // v1.65gZ29 — Cloudflare Turnstile token; server verifies via
+      // siteverify. Tokens are single-use, so we let Cloudflare
+      // re-issue one if the user re-submits after an error (the
+      // widget auto-resets on submit failure).
+      turnstileToken: this.turnstileToken
     };
     this.http.post<{ success: boolean; alreadyRegistered?: boolean }>(
       `${environment.apiUrl}/guestlist/signup`, body
@@ -1571,6 +1664,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           error: err.error,
           message: err.message
         });
+        // v1.65gZ29 — Turnstile tokens are single-use. On any error,
+        // reset the widget so the user gets a fresh token before
+        // their next submit attempt.
+        this.resetTurnstile();
         if (err.status === 429) {
           this.errorMessage = 'Slow down — too many signups from this connection. Try again in a minute.';
         } else if (err.status === 400 && err.error?.error) {

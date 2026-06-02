@@ -11,4 +11,5 @@ export const environment = {
   supabaseAnonKey: '',
   storageBucketProjects: 'project-assets',
   storageBucketSuppliers: 'supplier-assets',
+  turnstileSiteKey: '0x4AAAAAADdwdzIjm6NbpAXD',
 };
