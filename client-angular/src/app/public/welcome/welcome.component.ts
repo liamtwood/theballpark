@@ -491,12 +491,14 @@ const DEFAULT_CONTENT: Content = {
       border: none;
       padding: 0;
     }
+    /* v1.65gZ26 — width nudged 6 -> 8 (just a little fatter, per
+       client review). Height unchanged at 40. */
     .bp-scroll-pill {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
       top: calc(var(--scroll-progress, 0) * (100% - 40px));
-      width: 6px;
+      width: 8px;
       height: 40px;
       background: rgba(220, 240, 235, 0.55);
       border-radius: 999px;
