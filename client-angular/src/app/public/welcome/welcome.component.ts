@@ -923,42 +923,56 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // v1.65gN — scroll-position handler replaces the
-    // IntersectionObserver. The previous IO approach didn't fire
-    // entries reliably inside the scroll-snap container in Angular's
-    // lifecycle (verified: equivalent JS-injected IO fires fine,
-    // suggests slideRefs ordering / change-detection timing edge).
-    // Deterministic math is simpler anyway: each slide is exactly
-    // 100vh tall, so currentSlide = round(scrollTop / vh).
+    // v1.65gN → v1.65gO — scroll-position handler.
+    // Two responsibilities, decoupled:
+    //   1. step state — updated on EVERY scroll frame so the
+    //      pagination train + counter respond in real time as the
+    //      user scrolls.
+    //   2. .in-view class — added ONLY once scroll has settled (no
+    //      scroll events for 150ms). Otherwise the entry animations
+    //      fire while the slide is still off-screen during the snap
+    //      transition and finish before the user looks at it
+    //      (client-reported v1.65gN regression: "animations stop
+    //      working again, works on page 4" — slide 4 was the only
+    //      one where landing = settle so animations were visible).
     const stage = this.stageRef?.nativeElement;
     if (!stage) return;
+
+    let settleTimer: any = null;
+    const markInView = (idx: number) => {
+      if (this.inViewSet.has(idx)) return;
+      this.inViewSet.add(idx);
+      const el = this.slideRefs?.toArray()[idx]?.nativeElement;
+      el?.classList.add('in-view');
+    };
 
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
       const idx = Math.max(0, Math.min(TOTAL_STEPS - 1,
         Math.round(stage.scrollTop / vh)));
 
-      // Mark this slide (and every prior slide) as .in-view so its
-      // entry animations fire. Prior slides are tagged too so
-      // backwards-scrolling the page never shows a slide in its
-      // "from" pose. One-shot per slide via inViewSet.
-      for (let i = 0; i <= idx; i++) {
-        if (this.inViewSet.has(i)) continue;
-        this.inViewSet.add(i);
-        const el = this.slideRefs?.toArray()[i]?.nativeElement;
-        el?.classList.add('in-view');
-      }
-
       if (idx !== this.step) {
         this.step = idx;
         this.cdr.markForCheck();
       }
+
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const settledIdx = Math.max(0, Math.min(TOTAL_STEPS - 1,
+          Math.round(stage.scrollTop / vh)));
+        markInView(settledIdx);
+      }, 150);
     };
 
     stage.addEventListener('scroll', onScroll, { passive: true });
-    this.scrollListener = () => stage.removeEventListener('scroll', onScroll);
-    // Fire once for the initial state (slide 1 visible on load).
-    onScroll();
+    this.scrollListener = () => {
+      clearTimeout(settleTimer);
+      stage.removeEventListener('scroll', onScroll);
+    };
+
+    // Slide 0 is in view on load — mark immediately, don't wait
+    // for the settle (avoids a 150ms blank pose on first paint).
+    markInView(0);
   }
 
   ngOnDestroy() {
