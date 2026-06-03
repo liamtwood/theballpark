@@ -92,11 +92,15 @@ const DEFAULT_CONTENT: Content = {
              previously hidden on step 0 because slide 1 had its own
              centred CTA below the subtitle; that has been removed
              so all three "Get on the guestlist" pills live in the
-             same top-right spot for consistency. -->
+             same top-right spot for consistency.
+             v1.65gZ43 — fast-track: clicking the CTA now jumps
+             straight to slide 4 (the form) instead of advancing one
+             slide at a time. Scroll + arrow keys still do the slow
+             walk; the button is the shortcut. -->
         <button
           *ngIf="step < TOTAL_STEPS - 1"
           class="bp-welcome-header-cta"
-          (click)="next()">
+          (click)="goTo(TOTAL_STEPS - 1)">
           Get on the guestlist
         </button>
       </header>
