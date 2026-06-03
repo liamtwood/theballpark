@@ -5,13 +5,14 @@
  * data, see app.routes.ts) with a personalised welcome title pulled
  * from the active persona. Body is empty pending future content.
  */
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ViewChild, TemplateRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subject, takeUntil } from 'rxjs';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
+import { ConfigStripService } from '../../core/services/config-strip.service';
 
 @Component({
   selector: 'app-agent-dashboard',
@@ -19,6 +20,17 @@ import { CreateProjectService } from '../../core/services/create-project.service
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, LucideAngularModule],
   template: `
+    <!-- v1.65hC — config strip template passed to ConfigStripService
+         in ngAfterViewInit so the top-nav cog renders on the agent
+         page. Placeholder content for now; replace with real
+         agent-specific controls when known. -->
+    <ng-template #agentConfigStrip>
+      <div class="bp-agent-config-strip">
+        <div class="bp-agent-config-title">Agent settings</div>
+        <p class="bp-agent-config-empty">No settings to configure yet.</p>
+      </div>
+    </ng-template>
+
     <div class="bp-agent-page">
       <div class="bp-agent-cards">
         <!-- v1.65h3  — first scaffolded card. Rectangle with rounded
@@ -144,15 +156,42 @@ import { CreateProjectService } from '../../core/services/create-project.service
       color: var(--color-text-secondary);
       line-height: 1.4;
     }
+
+    /* v1.65hC — config strip placeholder. Sits in app-shell's lifted
+       slot between hero and body when the cog is toggled open. */
+    .bp-agent-config-strip {
+      padding: 16px var(--section-pad, 28px);
+      background: var(--color-surface);
+      border-bottom: var(--border-hairline);
+    }
+    .bp-agent-config-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      margin-bottom: 4px;
+    }
+    .bp-agent-config-empty {
+      margin: 0;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
   `]
 })
-export class AgentDashboardComponent implements OnInit, OnDestroy {
+export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroy$ = new Subject<void>();
+
+  /** v1.65hC — template handed to ConfigStripService so the top-nav
+      cog enables on this page. AppShell renders this in its lifted
+      slot when the user toggles the cog open. */
+  @ViewChild('agentConfigStrip') configStripTpl?: TemplateRef<any>;
 
   constructor(
     private shellCtx: ShellContextService,
     private personaSvc: PersonaService,
     private createProjectSvc: CreateProjectService,
+    private configStrip: ConfigStripService,
   ) {}
 
   /** v1.65h5 — opens the shared "+ New project" intake modal that's
@@ -160,6 +199,15 @@ export class AgentDashboardComponent implements OnInit, OnDestroy {
       point as the +button in top-nav. */
   openNewProject() {
     this.createProjectSvc.open();
+  }
+
+  ngAfterViewInit() {
+    // Register the template AFTER the view inits so @ViewChild is
+    // bound. ConfigStripService.setTemplate() also flips hasConfig$
+    // true, which is what the top-nav cog watches.
+    if (this.configStripTpl) {
+      this.configStrip.setTemplate(this.configStripTpl);
+    }
   }
 
   ngOnInit() {
@@ -177,6 +225,10 @@ export class AgentDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    // Clear the config-strip template so the cog disappears when the
+    // user navigates off /agent. AppShell's lifted slot reads from
+    // ConfigStripService.template$ so this fully unmounts.
+    this.configStrip.setTemplate(null);
     this.destroy$.next();
     this.destroy$.complete();
   }
