@@ -11,6 +11,7 @@
     "db:seed": "cd server && node src/db/seed.js"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "docx": "^9.7.1"
   }
 }
