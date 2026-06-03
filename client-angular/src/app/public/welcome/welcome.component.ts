@@ -779,8 +779,18 @@ const DEFAULT_CONTENT: Content = {
        instantly (orbs, grain overlay, eyebrow/headline/subtitle
        block) and the page jumps to slide 2, where the existing
        .in-view fade-up animations reveal slide-2 content. No smooth
-       scroll, no compositor handoff to flash artifacts during. */
-    .bp-slide-1.bp-slide-1-exiting .bp-bg-layer,
+       scroll, no compositor handoff to flash artifacts during.
+       v1.65i4 — bp-bg-layer hidden via display:none instead of
+       opacity:0. The SVG orbs sit inside a <filter url(#blur)> group;
+       on iOS Safari, parent opacity:0 leaves the compositor to
+       recompute the filter region for the children separately, so
+       the two pink orbs would stagger out instead of vanishing
+       together. display:none removes the SVG from the render tree
+       in one go — no filter recompute, both orbs disappear in the
+       same frame. */
+    .bp-slide-1.bp-slide-1-exiting .bp-bg-layer {
+      display: none !important;
+    }
     .bp-slide-1.bp-slide-1-exiting .bp-grain,
     .bp-slide-1.bp-slide-1-exiting .bp-slide-inner {
       opacity: 0 !important;
