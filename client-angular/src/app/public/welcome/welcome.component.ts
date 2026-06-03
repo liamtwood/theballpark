@@ -88,8 +88,13 @@ const DEFAULT_CONTENT: Content = {
              rather than jumping straight to slide 4, per client
              review. Label keeps reading "Get on the guestlist" since
              that's still the eventual destination. -->
+        <!-- v1.65gZ42 — header CTA now shows on slide 1 too. Was
+             previously hidden on step 0 because slide 1 had its own
+             centred CTA below the subtitle; that has been removed
+             so all three "Get on the guestlist" pills live in the
+             same top-right spot for consistency. -->
         <button
-          *ngIf="step > 0 && step < TOTAL_STEPS - 1"
+          *ngIf="step < TOTAL_STEPS - 1"
           class="bp-welcome-header-cta"
           (click)="next()">
           Get on the guestlist
@@ -140,12 +145,11 @@ const DEFAULT_CONTENT: Content = {
             </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
-            <!-- v1.65gZ22 — slide-1 centred CTA acts as a "next"
-                 button (advances one slide) for consistency with the
-                 top-right header CTA. Same label, same behaviour. -->
-            <button class="bp-hero-cta" (click)="next()">
-              {{ text('hero.cta') }}
-            </button>
+            <!-- v1.65gZ42 — centred "Get on the guestlist" CTA removed.
+                 Moved to the top-right header so it sits in the same
+                 spot on every slide. .bp-hero-cta CSS rules kept
+                 (unused) in case we want to restore it later. -->
+
           </div>
         </section>
 
