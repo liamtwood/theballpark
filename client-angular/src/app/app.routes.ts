@@ -86,12 +86,14 @@ const FULL_ROUTES: Routes = [
       },
 
       // ── AGENT DASHBOARD ──
-      // Initial scaffold — empty page, just the app-shell hero with an
-      // "Agent" title. Future work will fill in agent-specific surfaces.
+      // Initial scaffold — empty page. heroVariant 'none' suppresses
+      // the accent band so only the hero title text shows over the
+      // body background. Future work will fill in agent-specific
+      // surfaces.
       {
         path: 'agent',
         loadComponent: () => import('./features/agent/agent.component').then(m => m.AgentDashboardComponent),
-        data: { pageLabel: 'Agent', tabs: [] }
+        data: { pageLabel: 'Agent', tabs: [], heroVariant: 'none' }
       },
 
       // ── PROJECTS ──

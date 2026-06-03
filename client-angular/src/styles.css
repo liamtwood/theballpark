@@ -1548,6 +1548,28 @@ input.bp-cfg-page-label.p-inputtext:focus {
   border-bottom: var(--border-hairline) !important;
   padding-top: 24px !important;
 }
+
+/* v1.65h1 — 'none' hero variant. Used by the Agent dashboard:
+   no accent fill, no orbs/grain, no border. The hero band visually
+   disappears; only the title text remains, against the body bg. */
+.bp-hero.bp-hero--none {
+  background: transparent !important;
+  border-bottom: none !important;
+  padding-top: 24px !important;
+}
+.bp-hero.bp-hero--none .bp-hero-orbs,
+.bp-hero.bp-hero--none .bp-hero-grain { display: none !important; }
+.bp-hero.bp-hero--none .bp-hero-org-name {
+  color: var(--color-text-primary) !important;
+}
+.bp-hero.bp-hero--none .bp-hero-page-label {
+  color: var(--color-text-muted) !important;
+}
+[data-mode="dark"] .bp-hero.bp-hero--none,
+[data-mode="bold"] .bp-hero.bp-hero--none {
+  background: transparent !important;
+  border-bottom: none !important;
+}
 .bp-hero.bp-hero--calm .bp-hero-orbs,
 .bp-hero.bp-hero--calm .bp-hero-grain { display: none !important; }
 .bp-hero.bp-hero--calm .bp-hero-org-name {

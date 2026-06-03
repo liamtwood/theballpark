@@ -46,7 +46,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--calm]="heroVariant === 'calm'">
+         [class.bp-hero--calm]="heroVariant === 'calm'"
+         [class.bp-hero--none]="heroVariant === 'none'">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
@@ -442,7 +443,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       (used by the dashboard + settings surfaces per p0013-followup).
       'calm' = light parchment fill, no orbs/grain even in Bold mode,
       calm-underline tabs. Default = the existing Bold-aware hero. */
-  heroVariant: 'default' | 'calm' = 'default';
+  heroVariant: 'default' | 'calm' | 'none' = 'default';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -738,7 +739,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
         // v1.65dh — heroVariant flag plumbed through route data.
-        this.heroVariant = (data['heroVariant'] === 'calm') ? 'calm' : 'default';
+        // v1.65h1 — 'none' added for the Agent dashboard: hero text
+        // still renders but the accent background, orbs and grain are
+        // suppressed so the band visually merges with the body.
+        this.heroVariant =
+          data['heroVariant'] === 'calm' ? 'calm' :
+          data['heroVariant'] === 'none' ? 'none' : 'default';
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero
