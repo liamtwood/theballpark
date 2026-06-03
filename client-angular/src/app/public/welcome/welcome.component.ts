@@ -337,11 +337,13 @@ const DEFAULT_CONTENT: Content = {
         class="bp-next-icon"
         (click)="next()"
         aria-label="Next slide">
+        <!-- v1.65hU — chevrons-right → chevrons-down to match the
+             slide-stack vertical scroll direction. -->
         <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m6 17 5-5-5-5"/>
-          <path d="m13 17 5-5-5-5"/>
+          <path d="m7 6 5 5 5-5"/>
+          <path d="m7 13 5 5 5-5"/>
         </svg>
       </button>
 
