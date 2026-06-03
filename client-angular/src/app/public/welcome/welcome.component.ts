@@ -97,12 +97,16 @@ const DEFAULT_CONTENT: Content = {
              straight to slide 4 (the form) instead of advancing one
              slide at a time. Scroll + arrow keys still do the slow
              walk; the button is the shortcut. -->
+        <!-- v1.65hZ — "Get on the guestlist" CTA removed per client
+             review (chevron + scroll already cover navigation to
+             slide 4). Markup kept commented in case we restore.
         <button
           *ngIf="step < TOTAL_STEPS - 1"
           class="bp-welcome-header-cta"
           (click)="goTo(TOTAL_STEPS - 1)">
           Get on the guestlist
         </button>
+        -->
       </header>
 
       <!-- Slide stage. v1.65gL — restructured as a scroll-snap
@@ -803,17 +807,19 @@ const DEFAULT_CONTENT: Content = {
        frame as the orb's radius grows, and at mid-flight (r around
        1000px) it briefly renders the unblurred orb as a solid pink
        or blue rectangle — the "pink box during 1->2 transition" on
-       phone. The orb-bridge effect was a visual polish for desktop;
-       on mobile the stage gradient (v1.65hW, scrolls with the
-       content) already provides continuous slide-to-slide colour
-       beneath the slide backgrounds, so the bridge is redundant.
-       Pin orbs at their base r=280px on mobile — they sit well
-       inside their own slide's overflow:hidden, never trigger the
-       filter recompute, and the gradient handles the colour bridge. */
+       phone. v1.65hZ — pinning the orb radius wasn't enough; even
+       the static blurred orb on a fresh slide entry seems to cause
+       a one-frame filter rectangle artifact on iOS during the
+       compositor handoff. Going aggressive: hide the SVG bg layer
+       entirely on slides 1 + 2 at mobile widths. The orb decoration
+       is a desktop visual polish; the stage gradient (v1.65hW)
+       already provides continuous slide-to-slide colour underneath.
+       Slide 3 + 4 keep their orbs on mobile since they're observably
+       fine (teal-on-teal, no filter recompute around boundaries). */
     @media (max-width: 720px) {
-      .bp-slide-1 .bp-svg-bg circle,
-      .bp-slide-2 .bp-svg-bg circle {
-        r: 280px;
+      .bp-slide-1 .bp-svg-bg,
+      .bp-slide-2 .bp-svg-bg {
+        display: none;
       }
     }
     /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
@@ -1117,17 +1123,14 @@ const DEFAULT_CONTENT: Content = {
       padding: 96px 60px 96px;
 
       /* v1.65hV — panel made more transparent per client review.
-         Fill dropped 0.08 → 0.03, border 0.20 → 0.12, backdrop blur
-         softened 20 → 12. The headline / form / footer are unchanged
-         (form input pills + APPLY button keep their existing opacity).
-         Reads as a barely-there glass card so the slide-4 background
-         is more present behind the form. */
-      background: rgba(220, 240, 235, 0.03);
-      border: 1px solid rgba(220, 240, 235, 0.12);
+         v1.65hZ — bumped a touch further: fill 0.03 → 0.02, border
+         0.12 → 0.09, blur 12 → 10. Reads even more as just-a-shape. */
+      background: rgba(220, 240, 235, 0.02);
+      border: 1px solid rgba(220, 240, 235, 0.09);
       border-bottom: none;
       border-radius: 56px 56px 0 0;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
 
       display: flex;
       flex-direction: column;
@@ -1145,14 +1148,10 @@ const DEFAULT_CONTENT: Content = {
         padding: 48px 24px 80px;
         border-radius: 36px 36px 0 0;
         /* v1.65hY — on phone, make the panel near-invisible.
-           backdrop-filter:blur(...) on iOS reads as a bright
-           frosted-glass area regardless of how low the bg alpha
-           goes; killing it (plus dropping bg to 0.005 / border to
-           0.06) reveals the slide-4 teal background almost
-           completely behind the form. Form pills, headline, footer
-           text are unaffected — they have their own opacity stack. */
+           v1.65hZ — border softened 0.06 → 0.03 so the outline is
+           barely traceable; bg already at 0.005 (effectively none). */
         background: rgba(220, 240, 235, 0.005);
-        border-color: rgba(220, 240, 235, 0.06);
+        border-color: rgba(220, 240, 235, 0.03);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
       }
