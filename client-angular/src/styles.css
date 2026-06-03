@@ -1551,14 +1551,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
 
 /* v1.65h1 — 'none' hero variant. Used by the Agent dashboard:
    no accent fill, no orbs/grain, no border. The hero band visually
-   disappears; only the title text remains, against the body bg. */
+   disappears; only the title + sub text remain, against the body bg.
+   v1.65h2 — also hides the pill band (user/location/upcoming) and
+   the tab band so the hero is JUST the title/subtitle. */
 .bp-hero.bp-hero--none {
   background: transparent !important;
   border-bottom: none !important;
   padding-top: 24px !important;
 }
 .bp-hero.bp-hero--none .bp-hero-orbs,
-.bp-hero.bp-hero--none .bp-hero-grain { display: none !important; }
+.bp-hero.bp-hero--none .bp-hero-grain,
+.bp-hero.bp-hero--none .bp-hero-meta,
+.bp-hero.bp-hero--none .bp-hero-tab-band { display: none !important; }
 .bp-hero.bp-hero--none .bp-hero-org-name {
   color: var(--color-text-primary) !important;
 }
