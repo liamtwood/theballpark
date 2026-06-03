@@ -33,7 +33,6 @@ export interface PlatformConfig {
       true (everything visible); toggled from the page-config drawer's
       SECTIONS group. Single-user / flat — no per-persona storage yet. */
   showQuickActions?: boolean;
-  showActiveProjects?: boolean;
   showCredits?: boolean;
   showSavedSuppliers?: boolean;
   showRecentActivity?: boolean;

@@ -39,8 +39,9 @@ export class ConfigService {
     showUpcoming: true,
     showStats: true,
     // p0018 — dashboard body sections, all visible by default.
+    // (showActiveProjects removed in p0019 — the Active grid moved to
+    // its own /projects page, so the flag had nothing left to gate.)
     showQuickActions: true,
-    showActiveProjects: true,
     showCredits: true,
     showSavedSuppliers: true,
     showRecentActivity: true,
@@ -72,7 +73,6 @@ export class ConfigService {
   get showStats(): boolean { return this.config.showStats !== false; }
   // p0018 — dashboard body section getters (default true when unset).
   get showQuickActions(): boolean { return this.config.showQuickActions !== false; }
-  get showActiveProjects(): boolean { return this.config.showActiveProjects !== false; }
   get showCredits(): boolean { return this.config.showCredits !== false; }
   get showSavedSuppliers(): boolean { return this.config.showSavedSuppliers !== false; }
   get showRecentActivity(): boolean { return this.config.showRecentActivity !== false; }

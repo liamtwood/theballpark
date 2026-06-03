@@ -1,19 +1,15 @@
 // v1.65hG (p0016 Step 2): ViewChild + TemplateRef dropped from imports
 // — the strip template's ViewChild now lives in
 // <app-page-config-drawer>'s class, not here.
-import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { LucideAngularModule, Plus, Folder, Building2, ChevronRight, Calendar, MapPin, Heart, MessageCircle } from 'lucide-angular';
-import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmationService, MessageService } from 'primeng/api';
 import { ProjectService } from '../../core/services/project.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
@@ -23,16 +19,15 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 // lifecycle owned by <app-page-config-drawer>.
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
-import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CodelistService } from '../../core/services/codelist.service';
 import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
+import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
 // v1.65g2 — Inbox tab added next to Home/Projects. The label of the
 // "projects" tab reads from pageCfg.homePageLabel (so orgs that
@@ -47,14 +42,12 @@ type DashTab = 'projects' | 'inbox';
   imports: [
     CommonModule, FormsModule, RouterModule,
     LucideAngularModule,
-    CardModule, ButtonModule, CheckboxModule, InputTextModule,
-    ConfirmDialogModule, ToastModule,
-    LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
+    ButtonModule, CheckboxModule, InputTextModule,
+    LoadingSpinnerComponent, StatusBadgeComponent,
     MessagesInboxComponent,
-    PageConfigDrawerComponent,
+    PageConfigDrawerComponent, ActionTileComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
-  providers: [ConfirmationService, MessageService],
   template: `
     <!-- v1.65g2 — when the Inbox hero tab is active, render the
          shared MessagesInboxComponent at the org level. No new
@@ -106,9 +99,10 @@ type DashTab = 'projects' | 'inbox';
            DESKTOP — three column layout
            MOBILE — hidden, replaced by tab panels below
       ══════════════════════════════════════════════════ -->
-      <!-- p0018 — grid-template-columns is bound so a fully-hidden
-           column drops its track (no empty gap). hasLeftColumn /
-           showActiveProjects / hasRightColumn gate each column div. -->
+      <!-- p0018 / p0019 — grid-template-columns is bound so a fully-
+           hidden SIDE column drops its track (no empty gap). hasLeftColumn
+           / hasRightColumn gate the side columns; the centre launcher is
+           always present. -->
       <div class="bp-body bp-desktop-only" [style.grid-template-columns]="bodyGridColumns">
 
         <!-- LEFT PANEL — v1.65dh: each section is now its own
@@ -154,9 +148,8 @@ type DashTab = 'projects' | 'inbox';
                  v1.35: Marketplace nav link removed — Browse
                  Marketplace lives here now. Settings link removed —
                  lives behind the cog icon in the header. -->
-            <a [routerLink]="['/suppliers']"
-               [queryParams]="{ view: 'items' }"
-               class="bp-quick-action">Browse Marketplace</a>
+            <!-- v1.65hQ (p0019 §2): Browse Marketplace dropped — it's now
+                 the Marketplace launcher tile in the centre column. -->
             <a [routerLink]="['/suppliers']"
                [queryParams]="{ view: 'suppliers' }"
                class="bp-quick-action">Browse Suppliers</a>
@@ -164,193 +157,49 @@ type DashTab = 'projects' | 'inbox';
           </div>
         </div>
 
-        <!-- CENTRE — v1.65dh: Active / Inactive / Past each get
-             their own elevated card. Inactive + Past start collapsed
-             so the eye lands on Active.
-             p0018: the whole events column hides when Active is
-             unticked (Inactive / Past ride along — they're part of the
-             events column). -->
-        <div class="bp-body-left" *ngIf="pageCfg.showActiveProjects">
-          <div class="bp-dash-card">
-          <div class="bp-section-header">
-            <lucide-icon name="folder" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-section-title">Active {{ projectLabel }}s</span>
-            <!-- v1.22: in-header "+ New project" CTA. The Quick Actions
-                 link stays — this position is more discoverable.
-                 v1.23d: label cascades from ConfigService.projectLabel.
-                 v1.65dh: filled accent pill (was outlined chip). -->
-            <button type="button" class="bp-section-new-btn" (click)="createProject()">
-              + New {{ projectLabel }}
-            </button>
-          </div>
-          <p *ngIf="activeProjects.length === 0" class="bp-empty">No active {{ projectLabel.toLowerCase() }}s yet.</p>
-          <div class="bp-project-grid">
-            <div *ngFor="let p of activeProjects"
-                 class="bp-project-card-wrap"
-                 [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
-              <p-card styleClass="bp-project-card" [routerLink]="['/projects', p.id]">
-                <ng-template pTemplate="header">
-                  <div class="bp-card-header"
-                    [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
-                    [class.bp-card-header-active]="!p.cover_image_url && projectStatus(p).key !== 'draft'"
-                    [class.bp-card-header-draft]="!p.cover_image_url && projectStatus(p).key === 'draft'">
-                    <!-- v1.31 status pill — colour comes from the
-                         project_status codelist meta JSONB so any future
-                         status code (incl. user-added ones) renders
-                         consistently across surfaces. -->
-                    <span class="bp-card-status-pill"
-                          [style.background-color]="projectStatus(p).color">
-                      {{ projectStatus(p).label }}
-                    </span>
-                    <!-- Client chip moved bottom-left per v1.22. -->
-                    <span *ngIf="p.client_name" class="bp-card-client-chip">{{ p.client_name }}</span>
-                    <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
-                  </div>
-                </ng-template>
-                <div class="bp-card-content">
-                  <div class="bp-card-name-row">
-                    <div class="bp-card-name">
-                      <span *ngIf="p.ref" class="bp-card-ref-chip">{{ p.ref }}</span>
-                      {{ p.event_name || p.name }}
-                    </div>
-                    <button type="button" class="bp-card-menu-btn"
-                            (click)="toggleMenu($event, p)"
-                            title="More actions">⋯</button>
-                  </div>
-                  <div class="bp-card-meta">{{ p.event_date | eventDate }}</div>
-                  <div class="bp-card-cost">Est. {{ p.total_client_cost | compactCurrency }}</div>
-                  <!-- "..." dropdown menu. Click-outside closes via the
-                       host listener; stopPropagation on the menu itself
-                       so clicks inside don't bubble to the card-link. -->
-                  <div *ngIf="openMenuProjectId === p.id"
-                       class="bp-card-menu"
-                       (click)="$event.stopPropagation(); $event.preventDefault()">
-                    <button type="button" class="bp-card-menu-item"
-                            (click)="onMenuAction('estimate', p, $event)">
-                      Estimate
-                    </button>
-                    <div class="bp-card-menu-sep"></div>
-                    <button type="button" class="bp-card-menu-item"
-                            (click)="onMenuAction('edit-image', p, $event)">
-                      Edit image
-                    </button>
-                    <button type="button" class="bp-card-menu-item"
-                            (click)="onMenuAction('copy', p, $event)">
-                      Copy
-                    </button>
-                    <div class="bp-card-menu-sep"></div>
-                    <button type="button" class="bp-card-menu-item bp-card-menu-item--danger"
-                            (click)="onMenuAction('delete', p, $event)">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </p-card>
-              <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
-            </div>
-          </div>
-          </div><!-- /Active card -->
+        <!-- CENTRE — v1.65hQ (p0019 §2): the Active / Inactive / Past
+             events grid moved to its own /projects page (built in
+             p0020). The centre column is now a launcher — a 5-tile grid
+             routing to the app's main surfaces. Always visible (no
+             per-section flag); tiles are their own elevated surfaces,
+             not wrapped in a bp-dash-card. -->
+        <div class="bp-body-left">
+          <div class="bp-launcher-grid">
+            <app-action-tile
+              icon="folder-plus"
+              title="Add {{ projectLabel }}"
+              [subtitle]="'Start a new ' + projectLabel.toLowerCase()"
+              (action)="openNewProject()">
+            </app-action-tile>
 
-          <!-- ── v1.31 INACTIVE EVENTS ─────────────────────────────────
-               Mirrors the Active Events grid above — same card, same
-               menu, same hover. No "+ New" button. Hidden entirely when
-               there are no completed / archived projects.
-               v1.65dh: own elevated card, collapsed by default. -->
-          <div class="bp-dash-card bp-dash-card--collapsible"
-               *ngIf="completedProjects.length > 0"
-               [class.bp-dash-card--open]="inactiveOpen">
-            <button type="button" class="bp-section-header bp-section-header--toggle"
-                    (click)="inactiveOpen = !inactiveOpen">
-              <lucide-icon name="folder-minus" [size]="13" class="bp-section-icon"></lucide-icon>
-              <span class="bp-section-title">Inactive {{ projectLabel }}s</span>
-              <span class="bp-section-count">{{ completedProjects.length }}</span>
-              <lucide-icon class="bp-section-chev"
-                           [name]="inactiveOpen ? 'chevron-up' : 'chevron-down'"
-                           [size]="14"></lucide-icon>
-            </button>
-            <div *ngIf="inactiveOpen" class="bp-project-grid">
-              <div *ngFor="let p of completedProjects"
-                   class="bp-project-card-wrap"
-                   [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
-                <p-card styleClass="bp-project-card" [routerLink]="['/projects', p.id]">
-                  <ng-template pTemplate="header">
-                    <div class="bp-card-header"
-                      [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
-                      [class.bp-card-header-active]="!p.cover_image_url">
-                      <span class="bp-card-status-pill"
-                            [style.background-color]="projectStatus(p).color">
-                        {{ projectStatus(p).label }}
-                      </span>
-                      <span *ngIf="p.client_name" class="bp-card-client-chip">{{ p.client_name }}</span>
-                      <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
-                    </div>
-                  </ng-template>
-                  <div class="bp-card-content">
-                    <div class="bp-card-name-row">
-                      <div class="bp-card-name">{{ p.event_name || p.name }}</div>
-                      <button type="button" class="bp-card-menu-btn"
-                              (click)="toggleMenu($event, p)"
-                              title="More actions">⋯</button>
-                    </div>
-                    <div class="bp-card-meta">{{ p.event_date | eventDate }}</div>
-                    <div class="bp-card-cost">Est. {{ p.total_client_cost | compactCurrency }}</div>
-                    <div *ngIf="openMenuProjectId === p.id"
-                         class="bp-card-menu"
-                         (click)="$event.stopPropagation(); $event.preventDefault()">
-                      <button type="button" class="bp-card-menu-item"
-                              (click)="onMenuAction('estimate', p, $event)">Estimate</button>
-                      <div class="bp-card-menu-sep"></div>
-                      <button type="button" class="bp-card-menu-item"
-                              (click)="onMenuAction('edit-image', p, $event)">Edit image</button>
-                      <button type="button" class="bp-card-menu-item"
-                              (click)="onMenuAction('copy', p, $event)">Copy</button>
-                      <div class="bp-card-menu-sep"></div>
-                      <button type="button" class="bp-card-menu-item bp-card-menu-item--danger"
-                              (click)="onMenuAction('delete', p, $event)">Delete</button>
-                    </div>
-                  </div>
-                </p-card>
-                <app-image-upload-panel *ngIf="uploadPanelProjectId === p.id" [projectId]="p.id" [existingCoverUrl]="p.cover_image_url || ''" [existingLogoUrl]="p.client_logo_url || ''" [existingCardColor]="p.card_color || ''" (imagesUpdated)="onImagesUpdated(p, $event)" (closed)="uploadPanelProjectId = ''"></app-image-upload-panel>
-              </div>
-            </div>
-          </div><!-- /Inactive card -->
+            <app-action-tile
+              icon="folder-open"
+              title="View {{ projectLabel }}s"
+              [subtitle]="'Browse all your ' + projectLabel.toLowerCase() + 's'"
+              (action)="goToProjects()">
+            </app-action-tile>
 
-          <!-- ── v1.22 PAST EVENTS CAROUSEL ──────────────────────────
-               Horizontal scrolling list of closed projects.
-               v1.65dh: own elevated card, collapsed by default. -->
-          <div class="bp-dash-card bp-dash-card--collapsible"
-               *ngIf="completedProjects.length > 0"
-               [class.bp-dash-card--open]="pastOpen">
-            <button type="button" class="bp-section-header bp-section-header--toggle"
-                    (click)="pastOpen = !pastOpen">
-              <lucide-icon name="archive" [size]="13" class="bp-section-icon"></lucide-icon>
-              <span class="bp-section-title">Past {{ projectLabel }}s</span>
-              <span class="bp-section-count">{{ completedProjects.length }}</span>
-              <lucide-icon class="bp-section-chev"
-                           [name]="pastOpen ? 'chevron-up' : 'chevron-down'"
-                           [size]="14"></lucide-icon>
-            </button>
-          <div *ngIf="pastOpen" class="bp-past-carousel">
-            <a *ngFor="let p of completedProjects.slice(0, 10); let i = index"
-               class="bp-past-card"
-               [class.bp-past-card--fade]="i === 9 && completedProjects.length > 10"
-               [routerLink]="['/projects', p.id]">
-              <div class="bp-past-cover"
-                   [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
-                   [class.bp-past-cover--empty]="!p.cover_image_url">
-                <span class="bp-past-year">{{ extractYear(p.event_date) || '—' }}</span>
-                <span class="bp-past-status-pill">Closed</span>
-              </div>
-              <div class="bp-past-body">
-                <div class="bp-past-name">{{ p.event_name || p.name }}</div>
-                <div class="bp-past-sub">
-                  <ng-container *ngIf="p.client_name">{{ p.client_name }} · </ng-container>
-                  Est. {{ p.total_client_cost | compactCurrency }}
-                </div>
-              </div>
-            </a>
+            <app-action-tile
+              icon="inbox"
+              title="Inbox"
+              subtitle="Supplier replies and threads"
+              (action)="goToInbox()">
+            </app-action-tile>
+
+            <app-action-tile
+              icon="store"
+              title="Marketplace"
+              subtitle="Browse items and suppliers"
+              (action)="goToMarketplace()">
+            </app-action-tile>
+
+            <app-action-tile
+              icon="circle-user"
+              title="Profile"
+              subtitle="Your account and settings"
+              (action)="goToProfile()">
+            </app-action-tile>
           </div>
-          </div><!-- /Past card -->
         </div>
 
         <!-- RIGHT — v1.65dh: each section is its own elevated card
@@ -454,9 +303,6 @@ type DashTab = 'projects' | 'inbox';
 
     </ng-container>
     </div>
-
-    <p-confirmDialog styleClass="bp-confirm"></p-confirmDialog>
-    <p-toast></p-toast>
   `,
   styles: [`
     /* v1.65dh — Dashboard styling: panels float as elevated cards on a
@@ -517,6 +363,14 @@ type DashTab = 'projects' | 'inbox';
     .bp-body-panel { display: flex; flex-direction: column; gap: 14px; }
     .bp-body-left  { display: flex; flex-direction: column; gap: 14px; }
     .bp-body-right { display: flex; flex-direction: column; gap: 14px; }
+    /* v1.65hQ (p0019 §2) — centre-column launcher. auto-fit wraps 2 per
+       row at typical centre widths, 3 at wider viewports. Tiles bring
+       their own elevated chrome (<app-action-tile>) — no panel wrapper. */
+    .bp-launcher-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
     /* Make each .bp-panel-section in the left column inherit the
        shared card chrome. (.bp-dash-card on the element does it; this
        is just the layout/gap reset.) */
@@ -566,6 +420,13 @@ type DashTab = 'projects' | 'inbox';
     .bp-section-spacer { margin-top:24px; }
 
     /* P-CARD GRID */
+    /* TODO(p0019-§2 / p0020): the project-card styles below
+       (.bp-project-grid / .bp-project-card* / .bp-card-* / .bp-past-* /
+       .bp-section-new-btn / collapsible header bits) are retained but
+       no longer rendered here — the Active/Inactive/Past grid moved out
+       of the centre column. They come back when the dedicated /projects
+       page is built (p0020); lift them to that component or a shared
+       stylesheet then rather than deleting now (per p0019 spec). */
     .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
     .bp-project-card-wrap { display:block; }
     /* v1.22 elevation: Level 1 at rest (shadow-xs + hairline), Level 2
@@ -1080,15 +941,11 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   creditLabel  = 'Ball';
   daysUntilReset = 0;
   activeTab: DashTab = 'projects';
-  uploadPanelProjectId = '';
-  /** v1.22: id of the project whose "..." dropdown is open. Empty
-      string = no menu open. Click-outside closes via HostListener. */
-  openMenuProjectId = '';
-  /** v1.65dh — collapse state for the Inactive + Past project cards.
-      Active stays expanded; the other two start collapsed so the eye
-      lands on the live work first. Chevron in each header toggles. */
-  inactiveOpen = false;
-  pastOpen = false;
+  // v1.65hQ (p0019 §2): the Active/Inactive/Past project-card grid +
+  // its "..." menu / image-upload / collapse state moved out of the
+  // dashboard with the centre column. activeProjects / completedProjects
+  // are still loaded below — the stats bar + Upcoming + mobile list read
+  // them. The card machinery returns with the /projects page (p0020).
 
   // ── v1.65hG (p0016 Step 2) — page-settings strip extracted ─────────
   // The full strip (template + draft + handlers + options + lifecycle)
@@ -1103,7 +960,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // p0018 — body section visibility, mirrored read-only from
     // ConfigService.config$ (the drawer owns the writes).
     showQuickActions: boolean;
-    showActiveProjects: boolean;
     showCredits: boolean;
     showSavedSuppliers: boolean;
     showRecentActivity: boolean;
@@ -1112,7 +968,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     showUpcoming: true,
     showStats: true,
     showQuickActions: true,
-    showActiveProjects: true,
     showCredits: true,
     showSavedSuppliers: true,
     showRecentActivity: true,
@@ -1128,17 +983,17 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.pageCfg.showCredits || this.pageCfg.showSavedSuppliers;
   }
   /** Dynamic grid-template-columns — only present columns get a track,
-      so a hidden column leaves no empty gap. Centre keeps the greedy
-      1fr; the fixed 320px sides centre in the row when the centre is
-      gone (see .bp-body justify-content). */
+      so a hidden side column leaves no empty gap. The centre column is
+      the launcher grid and is always present (greedy 1fr); the fixed
+      320px sides centre in the row when a side is gone (see .bp-body
+      justify-content). */
   get bodyGridColumns(): string {
     const cols: string[] = [];
     if (this.hasLeftColumn) cols.push('320px');
-    if (this.pageCfg.showActiveProjects) cols.push('minmax(400px, 1fr)');
+    cols.push('minmax(400px, 1fr)');   // centre launcher — always shown
     if (this.hasRightColumn) cols.push('320px');
     return cols.join(' ');
   }
-  uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
   favItems: Favourite[] = [];
@@ -1155,10 +1010,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private shellCtx: ShellContextService,
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
-    private estimateDrawer: EstimateDrawerService,
     private codelistSvc: CodelistService,
-    private confirm: ConfirmationService,
-    private msg: MessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1169,13 +1021,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   ngAfterViewInit() { /* intentionally empty */ }
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
-
-  openUploadPanel(event: MouseEvent, p: Project) {
-    event.stopPropagation(); event.preventDefault();
-    this.uploadPanelProjectId = this.uploadPanelProjectId === p.id ? '' : p.id;
-  }
-
-  // ── v1.22 project-card menu ────────────────────────────────────────
 
   /** v1.31: codelist-driven status bucketing.
       Resolves the project's `status_name` (joined from the statuses
@@ -1191,125 +1036,26 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     return { key: code, label, color: meta?.['color'] || '#F59E0B' };
   }
 
-  toggleMenu(event: MouseEvent, p: Project) {
-    event.stopPropagation();
-    event.preventDefault();
-    this.openMenuProjectId = this.openMenuProjectId === p.id ? '' : p.id;
-    this.cdr.detectChanges();
-  }
+  // ── v1.65hQ (p0019 §2) — launcher-tile action wiring ───────────────
+  // The project-card "..." menu (estimate / edit-image / copy / delete)
+  // + the past-events year helper + image-update handler moved out with
+  // the centre column; they return with the /projects page (p0020).
 
-  /** Click anywhere outside the open menu closes it. Card clicks
-      (route navigation) are bubble events that hit document too, so
-      this catches both the "click another card" and "click empty
-      space" cases. The menu-button's stopPropagation prevents this
-      from firing when the user is just toggling. */
-  @HostListener('document:click')
-  onDocumentClick() {
-    if (this.openMenuProjectId) {
-      this.openMenuProjectId = '';
-      this.cdr.detectChanges();
-    }
-  }
-
-  onMenuAction(action: 'estimate' | 'edit-image' | 'copy' | 'delete', p: Project, event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-    this.openMenuProjectId = '';
-    if (action === 'estimate') {
-      this.estimateDrawer.open(p.id);
-    } else if (action === 'edit-image') {
-      this.uploadPanelProjectId = p.id;
-    } else if (action === 'copy') {
-      this.duplicateProject(p);
-    } else if (action === 'delete') {
-      this.confirmDelete(p);
-    }
-    this.cdr.detectChanges();
-  }
-
-  duplicateProject(p: Project) {
-    this.projectService.duplicate(p.id).subscribe({
-      next: (created: Project) => {
-        this.msg.add({
-          severity: 'success',
-          summary: 'Project copied',
-          detail: created.name,
-          life: 2500
-        });
-        // Land the user on the new project's Brief tab so they can
-        // immediately scope categories — that's the natural next step
-        // after a copy.
-        this.router.navigate(['/projects', created.id, 'brief']);
-      },
-      error: () => {
-        this.msg.add({
-          severity: 'error',
-          summary: 'Copy failed',
-          detail: 'Could not duplicate the project.',
-          life: 3500
-        });
-      }
-    });
-  }
-
-  confirmDelete(p: Project) {
-    this.confirm.confirm({
-      header: `Delete ${p.event_name || p.name}?`,
-      message: 'This will permanently remove the project and all its categories, items, and estimates.',
-      acceptLabel: 'Delete',
-      rejectLabel: 'Cancel',
-      acceptButtonStyleClass: 'p-button-danger',
-      rejectButtonStyleClass: 'p-button-text',
-      accept: () => {
-        this.projectService.delete(p.id).subscribe({
-          next: () => {
-            // Drop the row from both lists optimistically so the UI
-            // settles immediately; the real refresh fires from the
-            // projectService.refresh$ subscription too.
-            this.activeProjects    = this.activeProjects.filter(x => x.id !== p.id);
-            this.completedProjects = this.completedProjects.filter(x => x.id !== p.id);
-            this.msg.add({
-              severity: 'success',
-              summary: 'Project deleted',
-              life: 2500
-            });
-            this.cdr.detectChanges();
-          },
-          error: () => {
-            this.msg.add({
-              severity: 'error',
-              summary: 'Delete failed',
-              life: 3500
-            });
-          }
-        });
-      }
-    });
-  }
-
-  createProject() {
-    // v1.30: opens the intake modal mounted at the app-shell level
-    // (replaces the standalone /projects/new page).
+  /** Opens the shared create-project intake modal mounted in app-shell
+      (same entry point as the top-nav + button). */
+  openNewProject() {
     this.createProjectSvc.open();
   }
 
-  /** Extract the year from an event_date for the past-events carousel
-      year overlay. Returns null when the date can't be parsed — caller
-      shows "—" in that case. */
-  extractYear(dateStr?: string): string | null {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    return String(d.getFullYear());
-  }
-
-  onImagesUpdated(project: Project, urls: { coverUrl: string; logoUrl: string; cardColor?: string }) {
-    project.cover_image_url = urls.coverUrl;
-    project.client_logo_url = urls.logoUrl;
-    if (urls.cardColor) project.card_color = urls.cardColor;
-    this.uploadPanelProjectId = '';
-    this.cdr.detectChanges();
-  }
+  // /projects has no list route yet (removed in v1.33); the dedicated
+  // page is built in p0020, so until then the wildcard sends it home.
+  // The tile is wired to the real path now so it lights up when p0020
+  // lands.
+  goToProjects()    { this.router.navigate(['/projects']); }
+  goToInbox()       { this.router.navigate(['/messages']); }
+  goToMarketplace() { this.router.navigate(['/suppliers']); }
+  // No dedicated /profile route — Settings is the account surface today.
+  goToProfile()     { this.router.navigate(['/settings']); }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = { 'set build': 'setbuild', 'av': 'av', 'audio visual': 'av' };
@@ -1346,7 +1092,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
         showUpcoming:       cfg.showUpcoming       !== false,
         showStats:          cfg.showStats          !== false,
         showQuickActions:   cfg.showQuickActions   !== false,
-        showActiveProjects: cfg.showActiveProjects !== false,
         showCredits:        cfg.showCredits        !== false,
         showSavedSuppliers: cfg.showSavedSuppliers !== false,
         showRecentActivity: cfg.showRecentActivity !== false,

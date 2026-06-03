@@ -197,12 +197,6 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             <span class="bp-pcd-check-label">Quick Actions</span>
           </label>
           <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showActiveProjects"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Active {{ settingsDraft.projectLabel }}s</span>
-          </label>
-          <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showCredits"
                         [binary]="true"
                         (ngModelChange)="saveToggles()"></p-checkbox>
@@ -389,7 +383,6 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     showStats: boolean;
     // p0018 — dashboard body sections.
     showQuickActions: boolean;
-    showActiveProjects: boolean;
     showCredits: boolean;
     showSavedSuppliers: boolean;
     showRecentActivity: boolean;
@@ -405,7 +398,6 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     showUpcoming: true,
     showStats: true,
     showQuickActions: true,
-    showActiveProjects: true,
     showCredits: true,
     showSavedSuppliers: true,
     showRecentActivity: true,
@@ -464,7 +456,6 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           showUpcoming:       cfg.showUpcoming       !== false,
           showStats:          cfg.showStats          !== false,
           showQuickActions:   cfg.showQuickActions   !== false,
-          showActiveProjects: cfg.showActiveProjects !== false,
           showCredits:        cfg.showCredits        !== false,
           showSavedSuppliers: cfg.showSavedSuppliers !== false,
           showRecentActivity: cfg.showRecentActivity !== false,
@@ -544,7 +535,6 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       showUpcoming:       this.settingsDraft.showUpcoming,
       showStats:          this.settingsDraft.showStats,
       showQuickActions:   this.settingsDraft.showQuickActions,
-      showActiveProjects: this.settingsDraft.showActiveProjects,
       showCredits:        this.settingsDraft.showCredits,
       showSavedSuppliers: this.settingsDraft.showSavedSuppliers,
       showRecentActivity: this.settingsDraft.showRecentActivity,
