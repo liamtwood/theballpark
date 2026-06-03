@@ -47,28 +47,32 @@ import { PersonaService } from '../../core/services/persona.service';
       max-width: 1100px;
     }
 
-    /* The card itself: white surface, 12px corners (--radius-card),
-       --shadow-md drop, icon top-left + text column to its right. */
+    /* v1.65h4 — aligned with WORKING_STANDARDS conventions:
+        · --color-surface fill + var(--border-hairline) + --radius-card
+        · --shadow-md drop kept as the agent-page deviation per the
+          client's call ("we may change the standard"). The canonical
+          two-tier rule uses --shadow-xs; this page is the one place
+          the heavier drop is intentional.
+        · title: Playfair Display, --color-text-primary
+        · subtitle: Libre Franklin (--font-body) explicit
+        · icon bg: --theme-soft token instead of inline color-mix */
     .bp-agent-card {
       display: flex;
       align-items: flex-start;
       gap: 14px;
       padding: 18px;
       background: var(--color-surface);
+      border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-md);
     }
 
-    /* Icon container — 40x40 square, slightly less-rounded corners
-       than the card so the nesting reads correctly. Tint comes from
-       the active theme so admin / agency / supplier each get their
-       own accent. */
     .bp-agent-card-icon {
       flex-shrink: 0;
       width: 40px; height: 40px;
       display: inline-flex; align-items: center; justify-content: center;
       border-radius: 8px;
-      background: color-mix(in srgb, var(--theme-accent) 14%, transparent);
+      background: var(--theme-soft);
       color: var(--theme-accent);
     }
 
@@ -78,14 +82,15 @@ import { PersonaService } from '../../core/services/persona.service';
     }
     .bp-agent-card-title {
       margin: 0 0 4px 0;
-      font-family: var(--font-display, inherit);
-      font-size: 15px;
-      font-weight: 600;
+      font-family: var(--font-display);   /* Playfair Display */
+      font-size: 18px;
+      font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.2;
     }
     .bp-agent-card-sub {
       margin: 0;
+      font-family: var(--font-body);      /* Libre Franklin */
       font-size: 13px;
       color: var(--color-text-secondary);
       line-height: 1.4;
