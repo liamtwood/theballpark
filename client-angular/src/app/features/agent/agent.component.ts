@@ -3,116 +3,40 @@
  *
  * Renders inside the app-shell hero (heroVariant='none' via route
  * data, see app.routes.ts) with a personalised welcome title pulled
- * from the active persona. Body is empty pending future content.
+ * from the active persona. Body shows a "New {event}" card that opens
+ * the shared create-project modal; more cards will land here as the
+ * agent surface grows.
+ *
+ * v1.65hG (p0016 Step 2): the page-config strip is no longer
+ * duplicated here. Mounting <app-page-config-strip /> registers the
+ * shared strip template + cog with ConfigStripService for the life
+ * of the page, then tears it down on ngOnDestroy automatically.
  */
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ViewChild, TemplateRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import {
+  Component, ChangeDetectionStrategy, OnInit, OnDestroy,
+  AfterViewInit, ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { InputTextModule } from 'primeng/inputtext';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subject, takeUntil } from 'rxjs';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
-import { ConfigStripService } from '../../core/services/config-strip.service';
 import { ConfigService } from '../../core/services/config.service';
+import { PageConfigStripComponent } from '../../shared/components/page-config-strip/page-config-strip.component';
 
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, LucideAngularModule, InputTextModule],
+  imports: [CommonModule, LucideAngularModule, PageConfigStripComponent],
   template: `
-    <!-- v1.65hC  — config-strip template registered with
-         ConfigStripService so the cog renders on agent.
-         v1.65hD — mirrors the dashboard's strip exactly (per client
-         request: "same as home exactly"). Both pages bind to the
-         shared ConfigService singleton, so changes on either page
-         propagate to the other and to the rest of the app. -->
-    <ng-template #agentConfigStrip>
-      <div class="bp-cfg-row">
-
-        <!-- Labels -->
-        <span class="bp-cfg-lab">PAGE LABEL</span>
-        <input pInputText
-               class="bp-cfg-page-label"
-               [(ngModel)]="settingsDraft.homePageLabel"
-               (blur)="saveLabels()"
-               placeholder="Projects"/>
-        <span class="bp-cfg-divider"></span>
-
-        <span class="bp-cfg-lab">CREDITS</span>
-        <input pInputText
-               class="bp-cfg-page-label"
-               [(ngModel)]="settingsDraft.creditLabel"
-               (blur)="saveLabels()"
-               placeholder="Balls"/>
-        <span class="bp-cfg-divider"></span>
-
-        <span class="bp-cfg-lab">EVENTS</span>
-        <input pInputText
-               class="bp-cfg-page-label"
-               [(ngModel)]="settingsDraft.projectLabel"
-               (blur)="saveLabels()"
-               placeholder="Events"/>
-        <span class="bp-cfg-divider"></span>
-
-        <!-- Theme dot swatches -->
-        <span class="bp-cfg-lab">THEME</span>
-        <div class="bp-cfg-swatches-row">
-          <button *ngFor="let t of themeOptions"
-                  type="button"
-                  class="bp-cfg-swatch-btn"
-                  [class.active]="settingsDraft.themeName === t.value"
-                  [style.background]="t.color"
-                  [title]="t.label"
-                  (click)="onThemeChange(t.value)">
-          </button>
-        </div>
-        <span class="bp-cfg-divider"></span>
-
-        <!-- Components — multi-toggle pills -->
-        <span class="bp-cfg-lab">COMPONENTS</span>
-        <div class="bp-cfg-seg bp-cfg-seg--multi">
-          <button *ngFor="let opt of componentOptions"
-                  type="button"
-                  class="bp-cfg-seg-btn"
-                  [class.p-highlight]="isComponentActive(opt.value)"
-                  [disabled]="opt.disabled"
-                  [title]="opt.disabled ? opt.label + ' — always on' : opt.label"
-                  (click)="toggleComponent(opt.value)">
-            {{ opt.label }}
-          </button>
-        </div>
-        <span class="bp-cfg-divider"></span>
-
-        <!-- Align — left vs centre -->
-        <span class="bp-cfg-lab">ALIGN</span>
-        <div class="bp-cfg-seg">
-          <button *ngFor="let opt of alignOptions"
-                  type="button"
-                  class="bp-cfg-seg-btn"
-                  [class.p-highlight]="settingsDraft.heroAlign === opt.value"
-                  (click)="selectHeroAlign(opt.value)">
-            {{ opt.label }}
-          </button>
-        </div>
-        <span class="bp-cfg-divider"></span>
-
-        <!-- Nav — tabs vs menu -->
-        <span class="bp-cfg-lab">NAV</span>
-        <div class="bp-cfg-seg">
-          <button *ngFor="let opt of navOptions"
-                  type="button"
-                  class="bp-cfg-seg-btn"
-                  [class.p-highlight]="settingsDraft.navMode === opt.value"
-                  (click)="selectNavMode(opt.value)">
-            {{ opt.label }}
-          </button>
-        </div>
-
-      </div>
-    </ng-template>
+    <!-- v1.65hG (p0016 Step 2) — shared page-settings strip. Mounting
+         this component registers the strip template with
+         ConfigStripService for the lifetime of the page (and clears
+         it on destroy), so the top-nav cog appears on agent with
+         identical behaviour to home. -->
+    <app-page-config-strip></app-page-config-strip>
 
     <div class="bp-agent-page">
       <div class="bp-agent-cards">
@@ -133,9 +57,12 @@ import { ConfigService } from '../../core/services/config.service';
           <div class="bp-agent-card-body">
             <!-- v1.65hE — title binds to ConfigService.projectLabel
                  ("Event" / "Project" / whatever the strip's EVENTS
-                 label is set to), so "New Event" or "New Project". -->
-            <h3 class="bp-agent-card-title">New {{ settingsDraft.projectLabel }}</h3>
-            <p class="bp-agent-card-sub">Start a new {{ settingsDraft.projectLabel.toLowerCase() }} from scratch</p>
+                 label is set to), so "New Event" or "New Project".
+                 v1.65hG (p0016 Step 2): reads from the local
+                 projectLabel mirror (one-way from ConfigService) now
+                 that settingsDraft has been removed. -->
+            <h3 class="bp-agent-card-title">New {{ projectLabel }}</h3>
+            <p class="bp-agent-card-sub">Start a new {{ projectLabel.toLowerCase() }} from scratch</p>
           </div>
         </button>
       </div>
@@ -177,8 +104,8 @@ import { ConfigService } from '../../core/services/config.service';
        v1.65h5 — card is now a <button> so it's keyboard-focusable +
        fires on Enter/Space. text-align: left so the title/sub still
        read left-aligned despite the default button center-align;
-       width: 100% so the button fills its grid cell. */
-    /* v1.65h6  — icon stacked ABOVE the title (flex-direction:
+       width: 100% so the button fills its grid cell.
+       v1.65h6  — icon stacked ABOVE the title (flex-direction:
        column) and min-height doubled to ~160px per client review.
        v1.65h9 — min-height + padding bumped ~25%; border-radius
        overridden from --radius-card (12) to 20px for a softer,
@@ -242,138 +169,34 @@ import { ConfigService } from '../../core/services/config.service';
       color: var(--color-text-secondary);
       line-height: 1.4;
     }
-
-    /* v1.65hE — strip-specific styles copied from dashboard.component.ts.
-       Plain selectors (not :host scoped) so the encapsulation
-       attribute set on the ng-template's elements at declaration
-       time still matches when AppShell renders the template in its
-       lifted slot. Same approach the dashboard uses. */
-    .bp-cfg-swatches-row { display: inline-flex; gap: 8px; }
-    .bp-cfg-swatch-btn {
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .bp-cfg-swatch-btn:hover { transform: scale(1.1); }
-    .bp-cfg-swatch-btn.active {
-      box-shadow:
-        0 0 0 2px var(--color-surface),
-        0 0 0 3.5px var(--color-text-primary);
-    }
-    .bp-cfg-seg.bp-cfg-seg--multi {
-      display: inline-flex;
-      border: 0.5px solid var(--color-border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .bp-cfg-seg-btn {
-      padding: 4px 12px;
-      height: 28px;
-      font-size: 12px;
-      font-weight: 500;
-      background: var(--color-surface);
-      color: var(--color-text-secondary);
-      border: none;
-      border-left: 0.5px solid var(--color-border);
-      cursor: pointer;
-      font-family: var(--font-body);
-      transition: background 0.15s, color 0.15s;
-    }
-    .bp-cfg-seg-btn:first-child { border-left: none; }
-    .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
-      background: var(--theme-bg);
-      color: var(--theme-accent);
-    }
-    .bp-cfg-seg-btn.p-highlight {
-      background: var(--theme-accent);
-      color: var(--color-surface);
-      font-weight: 600;
-    }
-    .bp-cfg-seg-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.85;
-    }
-    .bp-cfg-seg-btn:disabled.p-highlight {
-      opacity: 1;
-    }
-  `]
+  `],
 })
 export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
-  /** v1.65hC — template handed to ConfigStripService so the top-nav
-      cog enables on this page. AppShell renders this in its lifted
-      slot when the user toggles the cog open. */
-  @ViewChild('agentConfigStrip') configStripTpl?: TemplateRef<any>;
-
-  /** v1.65hD — duplicated from dashboard.component.ts so the strip
-      mirrors home exactly. State syncs both directions with
-      ConfigService (singleton), so toggling on either page is
-      reflected on the other and across the whole app. */
-  settingsDraft = {
-    homePageLabel: 'Projects',
-    creditLabel: 'Ball',
-    projectLabel: 'Event',
-    themeName: 'amber',
-    heroAlign: 'center' as 'left' | 'center',
-    navMode: 'tabs' as 'tabs' | 'sidenav',
-    showUserName: true,
-    showLocation: true,
-    showUpcoming: false,
-    showStats: true,
-  };
-
-  readonly themeOptions = [
-    { value: 'amber',   label: 'Amber',   color: '#D97706' },
-    { value: 'emerald', label: 'Emerald', color: '#00B84A' },
-    { value: 'pink',    label: 'Pink',    color: '#FF0066' },
-    { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
-    { value: 'slate',   label: 'Slate',   color: '#64748B' },
-  ];
-
-  readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
-    { value: 'user',     label: 'User' },
-    { value: 'location', label: 'Location' },
-    { value: 'upcoming', label: 'Upcoming' },
-    { value: 'stats',    label: 'Stats' },
-  ];
-
-  readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
-    { value: 'left',   label: 'Left' },
-    { value: 'center', label: 'Centre' },
-  ];
-
-  readonly navOptions: Array<{ value: 'tabs' | 'sidenav'; label: string }> = [
-    { value: 'tabs',    label: 'Tabs' },
-    { value: 'sidenav', label: 'Menu' },
-  ];
+  /** v1.65hG (p0016 Step 2): slim read-only mirror of just the
+      ConfigService field this page reads (card title binding). The
+      full strip draft + handlers live in <app-page-config-strip>. */
+  projectLabel = 'Event';
 
   constructor(
     private shellCtx: ShellContextService,
     private personaSvc: PersonaService,
     private createProjectSvc: CreateProjectService,
-    private configStrip: ConfigStripService,
     private configService: ConfigService,
     private cdr: ChangeDetectorRef,
   ) {}
 
   /** v1.65h5 — opens the shared "+ New project" intake modal that's
       mounted in app-shell (see app-create-project-modal). Same entry
-      point as the +button in top-nav. */
+      point as the + button in top-nav. */
   openNewProject() {
     this.createProjectSvc.open();
   }
 
   ngAfterViewInit() {
-    // Register the template AFTER the view inits so @ViewChild is
-    // bound. ConfigStripService.setTemplate() also flips hasConfig$
-    // true, which is what the top-nav cog watches.
-    if (this.configStripTpl) {
-      this.configStrip.setTemplate(this.configStripTpl);
-    }
+    // v1.65hG (p0016 Step 2): no more ViewChild registration here —
+    // <app-page-config-strip> handles its own template lifecycle.
   }
 
   ngOnInit() {
@@ -389,85 +212,19 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyHero());
 
-    // v1.65hD — sync the settings-strip draft with ConfigService. Pages
-    // share the singleton so toggling on agent updates dashboard and
-    // vice-versa.
+    // v1.65hG (p0016 Step 2): keep a one-way mirror of projectLabel
+    // for the card title. Writes happen in <app-page-config-strip>;
+    // we just listen so the card relabels when the user types into
+    // the strip's EVENTS field.
     this.configService.config$
       .pipe(takeUntil(this.destroy$))
       .subscribe(cfg => {
-        this.settingsDraft = {
-          homePageLabel: cfg.homePageLabel || 'Projects',
-          creditLabel:   cfg.creditLabel   || 'Ball',
-          projectLabel:  cfg.projectLabel  || 'Event',
-          themeName:     cfg.themeName     || 'amber',
-          heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
-          navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
-          showUserName:  cfg.showUserName  !== false,
-          showLocation:  cfg.showLocation  !== false,
-          showUpcoming:  cfg.showUpcoming  === true,
-          showStats:     cfg.showStats     !== false,
-        };
-        this.cdr.detectChanges();
+        this.projectLabel = cfg.projectLabel || 'Event';
+        this.cdr.markForCheck();
       });
   }
 
-  // ── Settings-strip handlers ────────────────────────────────────
-  // Duplicated from dashboard.component.ts. Each writes to
-  // ConfigService which re-emits config$; the subscription above
-  // syncs settingsDraft back so the strip reflects the new value.
-
-  saveLabels() {
-    this.configService.update({
-      homePageLabel: this.settingsDraft.homePageLabel || 'Projects',
-      creditLabel:   this.settingsDraft.creditLabel   || 'Ball',
-      projectLabel:  this.settingsDraft.projectLabel  || 'Event',
-    });
-  }
-  onThemeChange(theme: string) {
-    this.settingsDraft.themeName = theme;
-    this.configService.update({ themeName: theme });
-  }
-  selectNavMode(mode: 'tabs' | 'sidenav') {
-    this.settingsDraft.navMode = mode;
-    this.configService.update({ navMode: mode });
-  }
-  selectHeroAlign(align: 'left' | 'center') {
-    this.settingsDraft.heroAlign = align;
-    this.configService.update({ heroAlign: align });
-  }
-  saveToggles() {
-    this.configService.update({
-      showUserName: this.settingsDraft.showUserName,
-      showLocation: this.settingsDraft.showLocation,
-      showUpcoming: this.settingsDraft.showUpcoming,
-      showStats:    this.settingsDraft.showStats,
-    });
-  }
-  isComponentActive(key: string): boolean {
-    switch (key) {
-      case 'user':     return this.settingsDraft.showUserName;
-      case 'location': return this.settingsDraft.showLocation;
-      case 'upcoming': return this.settingsDraft.showUpcoming;
-      case 'stats':    return this.settingsDraft.showStats;
-      default:         return false;
-    }
-  }
-  toggleComponent(key: string) {
-    switch (key) {
-      case 'user':     this.settingsDraft.showUserName = !this.settingsDraft.showUserName; break;
-      case 'location': this.settingsDraft.showLocation = !this.settingsDraft.showLocation; break;
-      case 'upcoming': this.settingsDraft.showUpcoming = !this.settingsDraft.showUpcoming; break;
-      case 'stats':    this.settingsDraft.showStats    = !this.settingsDraft.showStats;    break;
-      default: return;
-    }
-    this.saveToggles();
-  }
-
   ngOnDestroy() {
-    // Clear the config-strip template so the cog disappears when the
-    // user navigates off /agent. AppShell's lifted slot reads from
-    // ConfigStripService.template$ so this fully unmounts.
-    this.configStrip.setTemplate(null);
     this.destroy$.next();
     this.destroy$.complete();
   }

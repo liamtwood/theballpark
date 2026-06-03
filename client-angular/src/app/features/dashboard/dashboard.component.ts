@@ -1,4 +1,7 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, TemplateRef, ChangeDetectorRef, HostListener } from '@angular/core';
+// v1.65hG (p0016 Step 2): ViewChild + TemplateRef dropped from imports
+// — the strip template's ViewChild now lives in
+// <app-page-config-strip>'s class, not here.
+import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -16,7 +19,8 @@ import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
-import { ConfigStripService } from '../../core/services/config-strip.service';
+// v1.65hG (p0016 Step 2): ConfigStripService import removed — strip
+// lifecycle owned by <app-page-config-strip>.
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -28,11 +32,12 @@ import { FavouriteService, Favourite } from '../../core/services/favourite.servi
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CodelistService } from '../../core/services/codelist.service';
+import { PageConfigStripComponent } from '../../shared/components/page-config-strip/page-config-strip.component';
 
 // v1.65g2 — Inbox tab added next to Home/Projects. The label of the
-// "projects" tab still reads from settingsDraft.homePageLabel (so
-// orgs that renamed it to "Events" keep their label); Inbox is
-// fixed. activeTab='projects' = the dashboard home content;
+// "projects" tab reads from pageCfg.homePageLabel (so orgs that
+// renamed it to "Events" keep their label); Inbox is fixed.
+// activeTab='projects' = the dashboard home content;
 // activeTab='inbox' renders the embedded MessagesInboxComponent.
 type DashTab = 'projects' | 'inbox';
 
@@ -46,6 +51,7 @@ type DashTab = 'projects' | 'inbox';
     ConfirmDialogModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
     MessagesInboxComponent,
+    PageConfigStripComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   providers: [ConfirmationService, MessageService],
@@ -61,125 +67,17 @@ type DashTab = 'projects' | 'inbox';
     </app-messages-inbox>
 
     <div class="bp-page" *ngIf="activeTab === 'projects'">
-    <!-- ── v1.23 ADMIN SETTINGS STRIP ────────────────────────────
-         v1.23f: the strip's body is now a <ng-template> captured
-         by ViewChild and pushed to ConfigStripService.setTemplate
-         in ngAfterViewInit, so AppShell renders it in its lifted
-         slot — above bp-shell-body. This way the strip spans the
-         full viewport width even when navMode='sidenav' (i.e. the
-         left menu starts BELOW the strip rather than beside it).
-         The cog in the top-nav still toggles open/closed via
-         ConfigStripService.toggle().
-         Lives OUTSIDE the *ngIf="!loading" wrapper so the ViewChild
-         resolves with { static: true } before ngAfterViewInit — if
-         it were inside the gate, the template wouldn't be in the
-         view yet on first render and setTemplate would be a no-op,
-         which means the cog button wouldn't appear. -->
-    <ng-template #cfgStripTpl>
-        <!-- v1.23b: reuse the global .bp-cfg-* classes so the strip
-             reads identically to the marketplace ConfigStrip (same
-             label sizing, segmented buttons, theme swatches). -->
-        <div class="bp-cfg-row">
-
-          <!-- Labels -->
-          <span class="bp-cfg-lab">PAGE LABEL</span>
-          <input pInputText
-                 class="bp-cfg-page-label"
-                 [(ngModel)]="settingsDraft.homePageLabel"
-                 (blur)="saveLabels()"
-                 placeholder="Projects"/>
-          <span class="bp-cfg-divider"></span>
-
-          <span class="bp-cfg-lab">CREDITS</span>
-          <input pInputText
-                 class="bp-cfg-page-label"
-                 [(ngModel)]="settingsDraft.creditLabel"
-                 (blur)="saveLabels()"
-                 placeholder="Balls"/>
-          <span class="bp-cfg-divider"></span>
-
-          <span class="bp-cfg-lab">EVENTS</span>
-          <input pInputText
-                 class="bp-cfg-page-label"
-                 [(ngModel)]="settingsDraft.projectLabel"
-                 (blur)="saveLabels()"
-                 placeholder="Events"/>
-          <span class="bp-cfg-divider"></span>
-
-          <!-- Theme — round dot swatches, identical to marketplace. -->
-          <span class="bp-cfg-lab">THEME</span>
-          <div class="bp-cfg-swatches-row">
-            <button *ngFor="let t of themeOptions"
-                    type="button"
-                    class="bp-cfg-swatch-btn"
-                    [class.active]="settingsDraft.themeName === t.value"
-                    [style.background]="t.color"
-                    [title]="t.label"
-                    (click)="onThemeChange(t.value)">
-            </button>
-          </div>
-          <span class="bp-cfg-divider"></span>
-
-          <!-- Components — segmented button group, each pill is an
-               independent toggle. Active pill fills theme accent;
-               inactive renders flush in the shared rounded outline.
-               Organisation is disabled (always on). -->
-          <span class="bp-cfg-lab">COMPONENTS</span>
-          <div class="bp-cfg-seg bp-cfg-seg--multi">
-            <button *ngFor="let opt of componentOptions"
-                    type="button"
-                    class="bp-cfg-seg-btn"
-                    [class.p-highlight]="isComponentActive(opt.value)"
-                    [disabled]="opt.disabled"
-                    [title]="opt.disabled ? opt.label + ' — always on' : opt.label"
-                    (click)="toggleComponent(opt.value)">
-              {{ opt.label }}
-            </button>
-          </div>
-          <span class="bp-cfg-divider"></span>
-
-          <!-- v1.23f: ALIGN — Left vs Centre. Mirrors the Marketplace
-               settings page's HERO BANNER → Alignment picker. Writes
-               ConfigService.heroAlign; AppShell picks it up via the
-               --hero-align-flex CSS var so the hero meta + content
-               re-align without a reload. -->
-          <span class="bp-cfg-lab">ALIGN</span>
-          <div class="bp-cfg-seg">
-            <button *ngFor="let opt of alignOptions"
-                    type="button"
-                    class="bp-cfg-seg-btn"
-                    [class.p-highlight]="settingsDraft.heroAlign === opt.value"
-                    (click)="selectHeroAlign(opt.value)">
-              {{ opt.label }}
-            </button>
-          </div>
-          <span class="bp-cfg-divider"></span>
-
-          <!-- v1.23e: NAV — Tabs vs Menu (sidenav). Mirrors the
-               Marketplace settings page's "Navigation" picker but
-               rendered inline in the strip. Single-pick segmented
-               group; writes ConfigService.navMode. AppShell picks
-               it up via config$ and re-renders. -->
-          <span class="bp-cfg-lab">NAV</span>
-          <div class="bp-cfg-seg">
-            <button *ngFor="let opt of navOptions"
-                    type="button"
-                    class="bp-cfg-seg-btn"
-                    [class.p-highlight]="settingsDraft.navMode === opt.value"
-                    (click)="selectNavMode(opt.value)">
-              {{ opt.label }}
-            </button>
-          </div>
-
-        </div>
-    </ng-template>
+    <!-- v1.65hG (p0016 Step 2) — page-settings strip extracted into
+         shared <app-page-config-strip>. Owns the template + draft +
+         handlers + ConfigStripService lifecycle. Mount-and-forget. -->
+    <app-page-config-strip></app-page-config-strip>
 
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
       <!-- v1.65dh — Stats bar is now 4 floating cards (shadow-only,
            no hairline). The label/value/sub triplets are unchanged. -->
-      <div class="bp-dash-stats" *ngIf="settingsDraft.showStats !== false">
+      <div class="bp-dash-stats" *ngIf="pageCfg.showStats !== false">
         <div class="bp-dash-stat">
           <span class="bp-dash-stat-label">{{ creditLabel }}s remaining</span>
           <span class="bp-dash-stat-value">{{ org?.balls_balance ?? 0 }}</span>
@@ -1149,16 +1047,9 @@ type DashTab = 'projects' | 'inbox';
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
-  /** v1.23f: TemplateRef capturing the admin settings strip body.
-      Pushed to ConfigStripService so the AppShell renders it in its
-      lifted slot above bp-shell-body.
-      v1.65hG (p0016): dropped `{ static: true }`. The ng-template lives
-      inside *ngIf="activeTab === 'projects'", so the query cannot resolve
-      before the first change-detection cycle — static:true returned
-      undefined and setTemplate(undefined) silently no-op'd, hiding the
-      settings cog on home. Default (static:false) resolves AFTER the
-      first CD pass, by which time *ngIf has run. */
-  @ViewChild('cfgStripTpl') cfgStripTpl?: TemplateRef<any>;
+  // v1.65hG (p0016 Step 2): cfgStripTpl ViewChild removed — the strip
+  // is now an <app-page-config-strip> child component that owns its
+  // own ViewChild + setTemplate lifecycle.
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
@@ -1181,72 +1072,21 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   inactiveOpen = false;
   pastOpen = false;
 
-  // ── v1.23 admin settings strip ────────────────────────────────────
-  /** Draft copy of the configurable fields; bound to the inputs +
-      checkboxes in the settings strip. Saved back to ConfigService on
-      blur / change. Defaults populated from configService.current in
-      ngOnInit, then kept in sync via the config$ subscription. */
-  settingsDraft: {
+  // ── v1.65hG (p0016 Step 2) — page-settings strip extracted ─────────
+  // The full strip (template + draft + handlers + options + lifecycle)
+  // moved to <app-page-config-strip>. The dashboard keeps a slim,
+  // read-only mirror of just the fields its own templates / methods
+  // read (stats bar visibility, hero context labels). The strip owns
+  // writes; this mirror is one-way from ConfigService.config$.
+  pageCfg: {
     homePageLabel: string;
-    creditLabel: string;
-    projectLabel: string;
-    themeName: string;
-    heroAlign: 'left' | 'center';
-    navMode: 'tabs' | 'sidenav';
-    showUserName: boolean;
-    showLocation: boolean;
     showUpcoming: boolean;
     showStats: boolean;
   } = {
     homePageLabel: 'Projects',
-    creditLabel: 'Ball',
-    projectLabel: 'Event',
-    themeName: 'amber',
-    heroAlign: 'center',
-    navMode: 'tabs',
-    showUserName: true,
-    showLocation: true,
     showUpcoming: false,
-    showStats: true
+    showStats: true,
   };
-
-  /** Theme dot swatches — values match ConfigService.THEME_PRESETS keys. */
-  readonly themeOptions = [
-    { value: 'amber',   label: 'Amber',   color: '#D97706' },
-    { value: 'emerald', label: 'Emerald', color: '#00B84A' },
-    { value: 'pink',    label: 'Pink',    color: '#FF0066' },
-    { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
-    { value: 'slate',   label: 'Slate',   color: '#64748B' }
-  ];
-
-  /** v1.23b: COMPONENTS row — segmented buttons, each pill an
-      independent toggle. v1.23g: dropped the disabled 'Organisation'
-      pill — it can't be turned off so it added no value, just visual
-      noise. The org name is still always rendered in the hero. */
-  readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
-    { value: 'user',     label: 'User' },
-    { value: 'location', label: 'Location' },
-    { value: 'upcoming', label: 'Upcoming' },
-    { value: 'stats',    label: 'Stats' }
-  ];
-
-  /** v1.23f: ALIGN row — single-pick segmented group. Values map to
-      ConfigService.heroAlign. Matches the Marketplace settings page's
-      HERO BANNER → Alignment control ("Centre" spelt the British way
-      to match the rest of that page). */
-  readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
-    { value: 'left',   label: 'Left' },
-    { value: 'center', label: 'Centre' }
-  ];
-
-  /** v1.23e: NAV row — single-pick segmented group. Values map to
-      ConfigService.navMode; 'sidenav' is labelled 'Menu' in the
-      strip (shorter than 'Side navigation') to match the dashboard's
-      compact label voice. */
-  readonly navOptions: Array<{ value: 'tabs' | 'sidenav'; label: string }> = [
-    { value: 'tabs',    label: 'Tabs' },
-    { value: 'sidenav', label: 'Menu' }
-  ];
   uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
@@ -1262,7 +1102,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private supplierService: SupplierService,
     private configService: ConfigService,
     private shellCtx: ShellContextService,
-    private configStripSvc: ConfigStripService,
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
     private estimateDrawer: EstimateDrawerService,
@@ -1273,17 +1112,10 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private cdr: ChangeDetectorRef
   ) {}
 
-  /** v1.23f: register the strip template with the global service so
-      AppShell renders it in the lifted slot.
-      v1.65hG (p0016): ViewChild is now default (static:false) because
-      the template lives inside *ngIf. Guard against undefined in case
-      activeTab is something other than 'projects' on mount (future-
-      proof — not currently reachable by URL). */
-  ngAfterViewInit() {
-    if (this.cfgStripTpl) {
-      this.configStripSvc.setTemplate(this.cfgStripTpl);
-    }
-  }
+  /** v1.65hG (p0016 Step 2): ngAfterViewInit no longer registers the
+      strip template — that's owned by <app-page-config-strip>. Kept as
+      an empty hook for future view-init needs. */
+  ngAfterViewInit() { /* intentionally empty */ }
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
 
@@ -1454,21 +1286,13 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.sub = this.configService.config$.subscribe(cfg => {
       this.projectLabel = cfg.projectLabel || 'Event';
       this.creditLabel  = cfg.creditLabel  || 'Ball';
-      // v1.23: keep the local draft bound to the inputs in sync with
-      // the canonical config — other tabs (or settings pages) can
-      // mutate ConfigService and the dashboard's strip should reflect
-      // it without a reload.
-      this.settingsDraft = {
+      // v1.65hG (p0016 Step 2): only the fields the dashboard's own
+      // template / pushShellContext read are mirrored locally. The
+      // full draft + writeback lives in <app-page-config-strip>.
+      this.pageCfg = {
         homePageLabel: cfg.homePageLabel || 'Projects',
-        creditLabel:   cfg.creditLabel   || 'Ball',
-        projectLabel:  cfg.projectLabel  || 'Event',
-        themeName:     cfg.themeName     || 'amber',
-        heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
-        navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
-        showUserName:  cfg.showUserName  !== false,
-        showLocation:  cfg.showLocation  !== false,
         showUpcoming:  cfg.showUpcoming  === true,
-        showStats:     cfg.showStats     !== false
+        showStats:     cfg.showStats     !== false,
       };
       this.pushShellContext();
       this.cdr.detectChanges();
@@ -1501,10 +1325,13 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   private pushShellContext() {
     if (!this.org) return;
     // v1.65g2 — two-tab hero: home (the existing dashboard content,
-    // labelled by settingsDraft.homePageLabel) + Inbox. Tab click
-    // routes through setTab so activeTab + activeTabPath stay in
-    // sync with the AppShell's hero highlight.
-    const homeLabel = this.settingsDraft.homePageLabel || 'Projects';
+    // labelled by pageCfg.homePageLabel) + Inbox. Tab click routes
+    // through setTab so activeTab + activeTabPath stay in sync with
+    // the AppShell's hero highlight.
+    // v1.65hG (p0016 Step 2): reads from pageCfg now — the local
+    // read-only mirror of the bits the dashboard needs. The full
+    // strip draft lives in <app-page-config-strip>.
+    const homeLabel = this.pageCfg.homePageLabel || 'Projects';
     const ctx: any = {
       heroTitle: this.org.name,
       heroSub: homeLabel.toUpperCase(),
@@ -1517,7 +1344,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       onTabClick: (t: any) => this.setTab(t.path as DashTab),
     };
     // Upcoming pill — when enabled AND we've got a future project.
-    if (this.settingsDraft.showUpcoming && this.nextProject) {
+    if (this.pageCfg.showUpcoming && this.nextProject) {
       const dateLine = new EventDatePipe().transform(this.nextProject.event_date);
       // EventDatePipe returns "02-Jun-2026 · in 20 days" — split on the
       // first " · " so the pill reads "{event name} · in 20 days".
@@ -1530,77 +1357,10 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.shellCtx.set(ctx);
   }
 
-  /** Persist label changes (page / credits / events) on blur. Each
-      input is two-way bound to settingsDraft; pushing to ConfigService
-      re-emits config$ which re-runs pushShellContext above. */
-  saveLabels() {
-    this.configService.update({
-      homePageLabel: this.settingsDraft.homePageLabel || 'Projects',
-      creditLabel:   this.settingsDraft.creditLabel   || 'Ball',
-      projectLabel:  this.settingsDraft.projectLabel  || 'Event'
-    });
-  }
-
-  /** Theme dot click. Updates config + the local draft; the
-      ConfigService applies the CSS variables immediately. */
-  onThemeChange(theme: string) {
-    this.settingsDraft.themeName = theme;
-    this.configService.update({ themeName: theme });
-  }
-
-  /** v1.23e: persist NAV choice. Writes ConfigService.navMode; the
-      AppShell subscribes to config$ and re-renders the hero/body
-      with either the tab strip or the sidenav. */
-  selectNavMode(mode: 'tabs' | 'sidenav') {
-    this.settingsDraft.navMode = mode;
-    this.configService.update({ navMode: mode });
-  }
-
-  /** v1.23f: persist hero ALIGN choice. Writes ConfigService.heroAlign;
-      AppShell reflects via the --hero-align-flex CSS var binding. */
-  selectHeroAlign(align: 'left' | 'center') {
-    this.settingsDraft.heroAlign = align;
-    this.configService.update({ heroAlign: align });
-  }
-
-  /** Component visibility toggles. Single handler — re-reads every
-      flag from the draft and pushes the whole bag to ConfigService. */
-  saveToggles() {
-    this.configService.update({
-      showUserName: this.settingsDraft.showUserName,
-      showLocation: this.settingsDraft.showLocation,
-      showUpcoming: this.settingsDraft.showUpcoming,
-      showStats:    this.settingsDraft.showStats
-    });
-  }
-
-  /** v1.23b: segmented-button mapping. componentOptions uses opaque
-      string keys; we translate to the ConfigService flags here.
-      'org' is always active (always-on Organisation pill). */
-  isComponentActive(key: string): boolean {
-    switch (key) {
-      case 'org':      return true;
-      case 'user':     return this.settingsDraft.showUserName;
-      case 'location': return this.settingsDraft.showLocation;
-      case 'upcoming': return this.settingsDraft.showUpcoming;
-      case 'stats':    return this.settingsDraft.showStats;
-      default:         return false;
-    }
-  }
-
-  toggleComponent(key: string) {
-    // 'org' is permanent — disabled in the template so this is just
-    // defensive. Same for unknown keys.
-    if (key === 'org') return;
-    switch (key) {
-      case 'user':     this.settingsDraft.showUserName = !this.settingsDraft.showUserName; break;
-      case 'location': this.settingsDraft.showLocation = !this.settingsDraft.showLocation; break;
-      case 'upcoming': this.settingsDraft.showUpcoming = !this.settingsDraft.showUpcoming; break;
-      case 'stats':    this.settingsDraft.showStats    = !this.settingsDraft.showStats;    break;
-      default: return;
-    }
-    this.saveToggles();
-  }
+  // v1.65hG (p0016 Step 2): saveLabels / onThemeChange / selectNavMode
+  // / selectHeroAlign / saveToggles / isComponentActive / toggleComponent
+  // all moved to <app-page-config-strip>. The dashboard no longer owns
+  // any of the strip's writes.
 
   loadProjects() {
     this.projectService.getAll().subscribe({
@@ -1663,9 +1423,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.shellCtx.reset();
-    // v1.23f: clear the lifted strip slot so it doesn't bleed onto
-    // the next page (also auto-closes the strip via the service).
-    this.configStripSvc.setTemplate(null);
+    // v1.65hG (p0016 Step 2): <app-page-config-strip> owns the
+    // setTemplate(null) cleanup now. The dashboard no longer touches
+    // ConfigStripService directly.
     this.sub?.unsubscribe();
   }
 }
