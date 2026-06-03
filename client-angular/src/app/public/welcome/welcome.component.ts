@@ -1821,7 +1821,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.slide1Exiting = true;
       this.cdr.markForCheck();
       requestAnimationFrame(() => {
-        stage.scrollTo({ top: i * vh, behavior: 'auto' });
+        // v1.65i6 — 'instant' (not 'auto') so the scroll truly jumps,
+        // overriding the .bp-welcome-stage `scroll-behavior: smooth`
+        // CSS. With 'auto' the smooth CSS won, the scroll animated,
+        // and the viewport painted intermediate frames during the
+        // slide-1 → slide-2 transit — the "pink rolling up the top of
+        // the screen" reported on Chrome.
+        stage.scrollTo({ top: i * vh, behavior: 'instant' });
         setTimeout(() => {
           this.slide1Exiting = false;
           this.cdr.markForCheck();
