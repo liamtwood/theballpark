@@ -39,6 +39,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SidebarModule } from 'primeng/sidebar';
+import { CheckboxModule } from 'primeng/checkbox';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -49,7 +50,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
   selector: 'app-page-config-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule],
+  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule, CheckboxModule],
   template: `
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
@@ -149,22 +150,76 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
           </div>
         </section>
 
+        <!-- ── HERO ────────────────────────────────────────────── -->
+        <!-- p0018 — User / Location now live as checkboxes (were pills
+             in the old SECTIONS row). They gate the AppShell hero meta
+             chips, which already read showUserName / showLocation. -->
+        <section class="bp-pcd-group">
+          <div class="bp-drawer-label bp-pcd-sub-eyebrow">HERO</div>
+
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showUserName"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">User name</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showLocation"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Location</span>
+          </label>
+        </section>
+
         <!-- ── SECTIONS ────────────────────────────────────────── -->
+        <!-- p0018 — per-section show/hide for the dashboard body. Labels
+             interpolate the configurable tokens (projectLabel /
+             creditLabel) so they read with whatever the user set above. -->
         <section class="bp-pcd-group">
           <div class="bp-drawer-label bp-pcd-sub-eyebrow">SECTIONS</div>
-          <p class="bp-pcd-help">Show or hide hero meta + dashboard sections.</p>
 
-          <div class="bp-cfg-seg bp-cfg-seg--multi bp-pcd-multi-wrap">
-            <button *ngFor="let opt of componentOptions"
-                    type="button"
-                    class="bp-cfg-seg-btn"
-                    [class.p-highlight]="isComponentActive(opt.value)"
-                    [disabled]="opt.disabled"
-                    [title]="opt.disabled ? opt.label + ' — always on' : opt.label"
-                    (click)="toggleComponent(opt.value)">
-              {{ opt.label }}
-            </button>
-          </div>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Upcoming</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showStats"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Stats</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showQuickActions"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Quick Actions</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showActiveProjects"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Active {{ settingsDraft.projectLabel }}s</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showCredits"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">{{ settingsDraft.creditLabel }}s card</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showSavedSuppliers"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Saved Suppliers</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showRecentActivity"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Recent Activity</span>
+          </label>
         </section>
 
       </div>
@@ -205,13 +260,6 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       color: var(--color-text-secondary);
       letter-spacing: 0.02em;
     }
-    .bp-pcd-help {
-      margin: 0 0 4px 0;
-      font-family: var(--font-body);
-      font-size: 12px;
-      color: var(--color-text-muted);
-      line-height: 1.4;
-    }
 
     /* Drawer body input — wider than the strip's compact inline input.
        Heights + radii follow the canonical .bp-input-edit metric so it
@@ -234,11 +282,23 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       outline: none;
     }
 
-    /* Multi-button row gets its own wrap context inside the drawer so
-       longer label sets (the next prompt will add ~5 more options)
-       flow gracefully into multiple lines. */
-    .bp-pcd-multi-wrap {
-      flex-wrap: wrap;
+    /* p0018 — checkbox list (HERO + SECTIONS groups). Each row is a
+       32px-high <label> wrapping a p-checkbox + text, so clicking
+       anywhere on the row toggles the box (the input lives inside the
+       label). The accent fill on check comes from the global
+       --primary-color → --theme-accent mapping in styles.css. */
+    .bp-pcd-check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 32px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .bp-pcd-check-label {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-text-primary);
     }
 
     /* Strip control primitives — copied verbatim from
@@ -267,9 +327,6 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       border: 0.5px solid var(--color-border);
       border-radius: 6px;
       overflow: hidden;
-    }
-    .bp-cfg-seg.bp-cfg-seg--multi {
-      display: inline-flex;
     }
     .bp-cfg-seg-btn {
       padding: 4px 12px;
@@ -330,6 +387,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     showLocation: boolean;
     showUpcoming: boolean;
     showStats: boolean;
+    // p0018 — dashboard body sections.
+    showQuickActions: boolean;
+    showActiveProjects: boolean;
+    showCredits: boolean;
+    showSavedSuppliers: boolean;
+    showRecentActivity: boolean;
   } = {
     homePageLabel: 'Projects',
     creditLabel: 'Ball',
@@ -339,8 +402,13 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     navMode: 'tabs',
     showUserName: true,
     showLocation: true,
-    showUpcoming: false,
+    showUpcoming: true,
     showStats: true,
+    showQuickActions: true,
+    showActiveProjects: true,
+    showCredits: true,
+    showSavedSuppliers: true,
+    showRecentActivity: true,
   };
 
   /** Theme dot swatches — values match ConfigService.THEME_PRESETS keys. */
@@ -350,18 +418,6 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'pink',    label: 'Pink',    color: '#FF0066' },
     { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
     { value: 'slate',   label: 'Slate',   color: '#64748B' },
-  ];
-
-  /** Component visibility toggles. Each pill is independent. The org
-      pill was dropped (always-on, added visual noise). The next prompt
-      adds Quick Actions / Active Events / Credits / Saved Suppliers /
-      Recent Activity to this list — that's why the drawer migration
-      happens FIRST. */
-  readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
-    { value: 'user',     label: 'User' },
-    { value: 'location', label: 'Location' },
-    { value: 'upcoming', label: 'Upcoming' },
-    { value: 'stats',    label: 'Stats' },
   ];
 
   /** Hero alignment — single-pick segmented group. */
@@ -403,8 +459,15 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
-          showUpcoming:  cfg.showUpcoming  === true,
-          showStats:     cfg.showStats     !== false,
+          // p0018 — all section flags default visible (!== false) so a
+          // saved config missing the key reads as ticked.
+          showUpcoming:       cfg.showUpcoming       !== false,
+          showStats:          cfg.showStats          !== false,
+          showQuickActions:   cfg.showQuickActions   !== false,
+          showActiveProjects: cfg.showActiveProjects !== false,
+          showCredits:        cfg.showCredits        !== false,
+          showSavedSuppliers: cfg.showSavedSuppliers !== false,
+          showRecentActivity: cfg.showRecentActivity !== false,
         };
         this.cdr.markForCheck();
       });
@@ -470,35 +533,21 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     this.configService.update({ heroAlign: align });
   }
 
+  /** p0018 — persist all hero-meta + section visibility flags. Fired by
+      every checkbox's (ngModelChange); the two-way [(ngModel)] has
+      already mutated settingsDraft, so we just push the whole set to
+      ConfigService (which spreads + saves + re-emits). */
   saveToggles() {
     this.configService.update({
-      showUserName: this.settingsDraft.showUserName,
-      showLocation: this.settingsDraft.showLocation,
-      showUpcoming: this.settingsDraft.showUpcoming,
-      showStats:    this.settingsDraft.showStats,
+      showUserName:       this.settingsDraft.showUserName,
+      showLocation:       this.settingsDraft.showLocation,
+      showUpcoming:       this.settingsDraft.showUpcoming,
+      showStats:          this.settingsDraft.showStats,
+      showQuickActions:   this.settingsDraft.showQuickActions,
+      showActiveProjects: this.settingsDraft.showActiveProjects,
+      showCredits:        this.settingsDraft.showCredits,
+      showSavedSuppliers: this.settingsDraft.showSavedSuppliers,
+      showRecentActivity: this.settingsDraft.showRecentActivity,
     });
-  }
-
-  isComponentActive(key: string): boolean {
-    switch (key) {
-      case 'org':      return true;
-      case 'user':     return this.settingsDraft.showUserName;
-      case 'location': return this.settingsDraft.showLocation;
-      case 'upcoming': return this.settingsDraft.showUpcoming;
-      case 'stats':    return this.settingsDraft.showStats;
-      default:         return false;
-    }
-  }
-
-  toggleComponent(key: string) {
-    if (key === 'org') return;
-    switch (key) {
-      case 'user':     this.settingsDraft.showUserName = !this.settingsDraft.showUserName; break;
-      case 'location': this.settingsDraft.showLocation = !this.settingsDraft.showLocation; break;
-      case 'upcoming': this.settingsDraft.showUpcoming = !this.settingsDraft.showUpcoming; break;
-      case 'stats':    this.settingsDraft.showStats    = !this.settingsDraft.showStats;    break;
-      default: return;
-    }
-    this.saveToggles();
   }
 }

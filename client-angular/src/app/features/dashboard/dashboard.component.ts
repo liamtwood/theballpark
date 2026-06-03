@@ -106,14 +106,19 @@ type DashTab = 'projects' | 'inbox';
            DESKTOP — three column layout
            MOBILE — hidden, replaced by tab panels below
       ══════════════════════════════════════════════════ -->
-      <div class="bp-body bp-desktop-only">
+      <!-- p0018 — grid-template-columns is bound so a fully-hidden
+           column drops its track (no empty gap). hasLeftColumn /
+           showActiveProjects / hasRightColumn gate each column div. -->
+      <div class="bp-body bp-desktop-only" [style.grid-template-columns]="bodyGridColumns">
 
         <!-- LEFT PANEL — v1.65dh: each section is now its own
              elevated card (shadow-only, no border) instead of all
              three sharing one panel. Section eyebrows gain a Lucide
-             icon next to the label. -->
-        <div class="bp-body-panel">
-          <div class="bp-panel-section bp-dash-card">
+             icon next to the label.
+             p0018: column collapses when Upcoming + Recent Activity +
+             Quick Actions are all hidden. -->
+        <div class="bp-body-panel" *ngIf="hasLeftColumn">
+          <div class="bp-panel-section bp-dash-card" *ngIf="pageCfg.showUpcoming">
             <div class="bp-section-header">
               <lucide-icon name="calendar-days" [size]="13" class="bp-section-icon"></lucide-icon>
               <span class="bp-section-title">Upcoming</span>
@@ -126,7 +131,7 @@ type DashTab = 'projects' | 'inbox';
             </ng-container>
             <p *ngIf="!nextProject" class="bp-empty">No upcoming events.</p>
           </div>
-          <div class="bp-panel-section bp-dash-card">
+          <div class="bp-panel-section bp-dash-card" *ngIf="pageCfg.showRecentActivity">
             <div class="bp-section-header">
               <lucide-icon name="clock" [size]="13" class="bp-section-icon"></lucide-icon>
               <span class="bp-section-title">Recent Activity</span>
@@ -135,7 +140,7 @@ type DashTab = 'projects' | 'inbox';
             <div class="bp-activity-item"><div class="bp-activity-dot"></div><span>Project created — Food &amp; Drink Expo</span><span class="bp-activity-time">1d ago</span></div>
             <div class="bp-activity-item"><div class="bp-activity-dot"></div><span>Supplier saved — Construct &amp; Co.</span><span class="bp-activity-time">2d ago</span></div>
           </div>
-          <div class="bp-panel-section bp-dash-card">
+          <div class="bp-panel-section bp-dash-card" *ngIf="pageCfg.showQuickActions">
             <div class="bp-section-header">
               <lucide-icon name="zap" [size]="13" class="bp-section-icon"></lucide-icon>
               <span class="bp-section-title">Quick Actions</span>
@@ -161,8 +166,11 @@ type DashTab = 'projects' | 'inbox';
 
         <!-- CENTRE — v1.65dh: Active / Inactive / Past each get
              their own elevated card. Inactive + Past start collapsed
-             so the eye lands on Active. -->
-        <div class="bp-body-left">
+             so the eye lands on Active.
+             p0018: the whole events column hides when Active is
+             unticked (Inactive / Past ride along — they're part of the
+             events column). -->
+        <div class="bp-body-left" *ngIf="pageCfg.showActiveProjects">
           <div class="bp-dash-card">
           <div class="bp-section-header">
             <lucide-icon name="folder" [size]="13" class="bp-section-icon"></lucide-icon>
@@ -346,9 +354,11 @@ type DashTab = 'projects' | 'inbox';
         </div>
 
         <!-- RIGHT — v1.65dh: each section is its own elevated card
-             (shadow-only, no border) so it floats on the parchment. -->
-        <div class="bp-body-right">
-          <div class="bp-credits-card bp-dash-card">
+             (shadow-only, no border) so it floats on the parchment.
+             p0018: column collapses when Credits + Saved Suppliers are
+             both hidden. -->
+        <div class="bp-body-right" *ngIf="hasRightColumn">
+          <div class="bp-credits-card bp-dash-card" *ngIf="pageCfg.showCredits">
             <div class="bp-credits-number">{{ org?.balls_balance ?? 0 }}</div>
             <div class="bp-credits-label">{{ creditLabel }}s remaining this month</div>
             <div class="bp-credits-dots">
@@ -356,7 +366,7 @@ type DashTab = 'projects' | 'inbox';
             </div>
             <p class="bp-credits-desc">Build and estimate for free — only spend a {{ creditLabel }} when ready to engage.</p>
           </div>
-          <div class="bp-dash-card">
+          <div class="bp-dash-card" *ngIf="pageCfg.showSavedSuppliers">
           <!-- v1.65dl — use the shared .bp-section-title eyebrow so the
                header matches every other section's typography + spacing
                (was .bp-saved-hd which carried a stray margin-bottom). -->
@@ -490,9 +500,15 @@ type DashTab = 'projects' | 'inbox';
     /* DESKTOP 3-COL — parchment ground, 16px gap between columns
        and a matching 16px top padding above the row so the stats
        and the 3-col body share the same rhythm. */
+    /* p0018 — grid-template-columns is set inline (bodyGridColumns) so
+       a hidden column drops its track. The static value here is the
+       all-visible fallback. justify-content:center balances the row
+       when the greedy centre 1fr track is gone (only fixed side
+       columns remain) so they don't left-pack against a big gap. */
     .bp-body {
       display: grid;
       grid-template-columns: 320px minmax(400px, 1fr) 320px;
+      justify-content: center;
       gap: 16px;
       background: var(--theme-bg);
       padding: 16px 20px 24px;
@@ -1084,11 +1100,44 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     homePageLabel: string;
     showUpcoming: boolean;
     showStats: boolean;
+    // p0018 — body section visibility, mirrored read-only from
+    // ConfigService.config$ (the drawer owns the writes).
+    showQuickActions: boolean;
+    showActiveProjects: boolean;
+    showCredits: boolean;
+    showSavedSuppliers: boolean;
+    showRecentActivity: boolean;
   } = {
     homePageLabel: 'Projects',
-    showUpcoming: false,
+    showUpcoming: true,
     showStats: true,
+    showQuickActions: true,
+    showActiveProjects: true,
+    showCredits: true,
+    showSavedSuppliers: true,
+    showRecentActivity: true,
   };
+
+  /** p0018 — column presence for the 3-col body. A column collapses
+      (its grid track is dropped via bodyGridColumns) when all its
+      sections are hidden. */
+  get hasLeftColumn(): boolean {
+    return this.pageCfg.showUpcoming || this.pageCfg.showRecentActivity || this.pageCfg.showQuickActions;
+  }
+  get hasRightColumn(): boolean {
+    return this.pageCfg.showCredits || this.pageCfg.showSavedSuppliers;
+  }
+  /** Dynamic grid-template-columns — only present columns get a track,
+      so a hidden column leaves no empty gap. Centre keeps the greedy
+      1fr; the fixed 320px sides centre in the row when the centre is
+      gone (see .bp-body justify-content). */
+  get bodyGridColumns(): string {
+    const cols: string[] = [];
+    if (this.hasLeftColumn) cols.push('320px');
+    if (this.pageCfg.showActiveProjects) cols.push('minmax(400px, 1fr)');
+    if (this.hasRightColumn) cols.push('320px');
+    return cols.join(' ');
+  }
   uploadSupplierPanelId = '';
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
@@ -1293,8 +1342,14 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       // full draft + writeback lives in <app-page-config-drawer>.
       this.pageCfg = {
         homePageLabel: cfg.homePageLabel || 'Projects',
-        showUpcoming:  cfg.showUpcoming  === true,
-        showStats:     cfg.showStats     !== false,
+        // p0018 — all section flags default visible (!== false).
+        showUpcoming:       cfg.showUpcoming       !== false,
+        showStats:          cfg.showStats          !== false,
+        showQuickActions:   cfg.showQuickActions   !== false,
+        showActiveProjects: cfg.showActiveProjects !== false,
+        showCredits:        cfg.showCredits        !== false,
+        showSavedSuppliers: cfg.showSavedSuppliers !== false,
+        showRecentActivity: cfg.showRecentActivity !== false,
       };
       this.pushShellContext();
       this.cdr.detectChanges();
