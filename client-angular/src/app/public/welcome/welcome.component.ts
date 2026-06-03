@@ -764,17 +764,19 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
-    /* v1.65gZ38 — slide 3 -> 4 boundary uses the same recipe. Note
-       slide 3's circles start at r=240 (smaller than slides 1/2/4's
-       r=280; reduced in v1.65gZ17 to fix the centre overlap), so the
-       base in the calc is 240px. Slide 3's green orbs grow as the
-       user scrolls toward slide 4. Both slides share the same teal
-       background so there's no colour boundary to bridge, but the
-       expansion gives the 3->4 transition the same kinetic feel as
-       the other two boundaries. */
-    .bp-slide-3 .bp-svg-bg circle {
-      r: calc(240px + var(--s3-leaving, 0) * 1500px);
-    }
+    /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
+       slides 1 + 2, on the grounds of kinetic consistency.
+       v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
+       #6391A4 teal background, so an expanding green orb on slide 3
+       actively CREATED a transient green-vs-teal split during the
+       scroll that wouldn't exist if we just left the orbs at their
+       normal size. Per client review: "we need the green orbs to
+       disappear leaving the page the blue [teal] before showing the
+       objects on page 4". Letting slide 3's orbs ride off-screen
+       with the slide (no expansion) leaves slide 4's teal bg clean
+       when it arrives; the 450ms settle delay then gives a beat of
+       just-teal before slide 4's content fades in. --s3-leaving is
+       still published from the scroll handler but currently unused. */
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
