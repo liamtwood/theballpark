@@ -1541,14 +1541,29 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
       // blue orbs on slide 2 expand to bridge into slide 3's teal.
       // v1.65gZ38 — slide-3 leaving added for the 3->4 transition.
+      // v1.65hT — collapse each leaving fraction BACK to 0 once the
+      // user is settled past the transition window. Previously these
+      // saturated at 1 forever, so slide-N's orbs stayed at r=1780px
+      // while parked on slide N+1. iOS Safari has a known bug where
+      // SVG content under a Gaussian-blur filter is composited on a
+      // separate layer and can leak past the parent's overflow:hidden,
+      // producing a pink "ghost box" on slide 2 from slide 1's
+      // expanded orb. Triangle wave: ramps up 0→1 during the
+      // transition then ramps back to 0 over a short settle window
+      // so the orbs return to r=280 (well inside their own slide)
+      // and can't visually escape. Desktop is unaffected.
       const vh = stage.clientHeight || window.innerHeight;
       const slideF = stage.scrollTop / vh;
-      const s1Leaving = Math.max(0, Math.min(1, slideF));
-      const s2Leaving = Math.max(0, Math.min(1, slideF - 1));
-      const s3Leaving = Math.max(0, Math.min(1, slideF - 2));
-      root.style.setProperty('--s1-leaving', String(s1Leaving));
-      root.style.setProperty('--s2-leaving', String(s2Leaving));
-      root.style.setProperty('--s3-leaving', String(s3Leaving));
+      const SETTLE = 0.15; // slide-units over which the leaving fraction collapses back
+      const leaving = (i: number) => {
+        const rel = slideF - i;
+        if (rel <= 0) return 0;
+        if (rel <= 1) return rel;                        // 0 → 1 during transition
+        return Math.max(0, 1 - (rel - 1) / SETTLE);      // 1 → 0 over SETTLE window
+      };
+      root.style.setProperty('--s1-leaving', String(leaving(0)));
+      root.style.setProperty('--s2-leaving', String(leaving(1)));
+      root.style.setProperty('--s3-leaving', String(leaving(2)));
     };
 
     const onScroll = () => {
