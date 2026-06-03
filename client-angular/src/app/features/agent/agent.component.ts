@@ -67,11 +67,15 @@ import { CreateProjectService } from '../../core/services/create-project.service
        fires on Enter/Space. text-align: left so the title/sub still
        read left-aligned despite the default button center-align;
        width: 100% so the button fills its grid cell. */
+    /* v1.65h6 — icon stacked ABOVE the title (flex-direction:
+       column) and min-height doubled to ~160px per client review. */
     .bp-agent-card {
       display: flex;
+      flex-direction: column;
       align-items: flex-start;
       gap: 14px;
-      padding: 18px;
+      padding: 20px;
+      min-height: 160px;
       width: 100%;
       text-align: left;
       font: inherit;
