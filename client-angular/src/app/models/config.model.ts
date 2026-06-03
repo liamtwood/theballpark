@@ -29,6 +29,13 @@ export interface PlatformConfig {
   showLocation?: boolean;
   showUpcoming?: boolean;
   showStats?: boolean;
+  /** p0018 — per-section visibility for the dashboard body. All default
+      true (everything visible); toggled from the page-config drawer's
+      SECTIONS group. Single-user / flat — no per-persona storage yet. */
+  showQuickActions?: boolean;
+  showCredits?: boolean;
+  showSavedSuppliers?: boolean;
+  showRecentActivity?: boolean;
   logoUrl?: string;
   navMode?: 'tabs' | 'sidenav';
   fontPairing?: string;

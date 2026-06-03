@@ -12,7 +12,7 @@ import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
 import { PersonaService } from '../../../core/services/persona.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
-import { TemplateRef } from '@angular/core';
+// v1.65hJ (p0017): TemplateRef import dropped — lifted strip slot gone.
 import {
   CreateProjectModalComponent
 } from '../../../features/projects/components/create-project-modal/create-project-modal.component';
@@ -46,7 +46,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--calm]="heroVariant === 'calm'">
+         [class.bp-hero--calm]="heroVariant === 'calm'"
+         [class.bp-hero--none]="heroVariant === 'none'">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
@@ -149,17 +150,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       </div>
     </div>
 
-    <!-- v1.23f: lifted config-strip slot. When a page pushes a
-         TemplateRef via ConfigStripService.setTemplate() (e.g. the
-         dashboard's Home settings strip), the strip renders here —
-         between hero and body — so it spans full width even when
-         navMode='sidenav'. The cog in the top-nav still toggles
-         open/closed via ConfigStripService.toggle(). Pages that use
-         the inline <app-config-strip> wrapper instead don't push a
-         template, so this slot stays hidden. -->
-    <div *ngIf="stripTpl && stripOpen" class="bp-shell-config-strip">
-      <ng-container *ngTemplateOutlet="stripTpl"></ng-container>
-    </div>
+    <!-- v1.65hJ (p0017): the lifted config-strip slot is gone. Pages
+         that want a settings surface now mount <app-page-config-drawer>
+         (a right-side p-sidebar) directly. The old inline
+         <app-config-strip> content-projection wrapper (used by
+         catalogue-grid) is unaffected — it still renders at its own
+         host position via mountedCount/open$. -->
 
     <!-- BODY -->
     <div class="bp-shell-body" [class.bp-shell-sidenav-mode]="navMode === 'sidenav'">
@@ -385,22 +381,9 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       vertical-align: middle;
     }
 
-    /* v1.23f: lifted config-strip slot. Pages provide the inner
-       controls via TemplateRef + ConfigStripService.setTemplate.
-       Chrome (background, padding, hairline) lives here so the
-       strip always renders the same regardless of which page
-       lit it up. flex-shrink:0 keeps the row from collapsing. */
-    .bp-shell-config-strip {
-      flex-shrink: 0;
-      display: flex; align-items: center; gap: 18px;
-      padding: 10px 28px;
-      background: var(--color-surface);
-      border-bottom: 0.5px solid var(--color-border);
-      flex-wrap: wrap;
-      font-family: var(--font-body);
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
+    /* v1.65hJ (p0017): .bp-shell-config-strip chrome removed — the
+       lifted slot it framed is gone now that the strip migrated into
+       a right-side drawer. */
 
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -442,7 +425,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       (used by the dashboard + settings surfaces per p0013-followup).
       'calm' = light parchment fill, no orbs/grain even in Bold mode,
       calm-underline tabs. Default = the existing Bold-aware hero. */
-  heroVariant: 'default' | 'calm' = 'default';
+  heroVariant: 'default' | 'calm' | 'none' = 'default';
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -564,12 +547,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
   /** v1.22: open/close state for the user-pill dropdown. */
   userMenuOpen = false;
 
-  /** v1.23f: lifted config-strip slot. Both fields are mirrored from
-      ConfigStripService observables so we can drive the *ngIf without
-      async-piping a TemplateRef (which Angular's template type-check
-      doesn't unwrap cleanly). */
-  stripTpl: TemplateRef<any> | null = null;
-  stripOpen = false;
+  // v1.65hJ (p0017): stripTpl + stripOpen fields removed — the
+  // lifted-slot pattern they served is gone now that the strip
+  // migrated to a right-side drawer. ConfigStripService still drives
+  // the cog visibility via hasConfig$ / open$.
 
   constructor(
     private router: Router,
@@ -671,18 +652,8 @@ export class AppShellComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
-    // v1.23f: track the lifted config-strip slot. Pages that pushed
-    // a TemplateRef render their strip here (above bp-shell-body);
-    // pages still on the inline <app-config-strip> pattern leave
-    // stripTpl null and this slot stays hidden.
-    this.configStripSvc.template$.pipe(takeUntil(this.destroy$)).subscribe(tpl => {
-      this.stripTpl = tpl;
-      this.cdr.detectChanges();
-    });
-    this.configStripSvc.open$.pipe(takeUntil(this.destroy$)).subscribe(open => {
-      this.stripOpen = open;
-      this.cdr.detectChanges();
-    });
+    // v1.65hJ (p0017): template$/open$ subscriptions removed — the
+    // drawer owns its own visibility binding now.
 
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
@@ -738,7 +709,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
         // v1.65dh — heroVariant flag plumbed through route data.
-        this.heroVariant = (data['heroVariant'] === 'calm') ? 'calm' : 'default';
+        // v1.65h1 — 'none' added for the Agent dashboard: hero text
+        // still renders but the accent background, orbs and grain are
+        // suppressed so the band visually merges with the body.
+        this.heroVariant =
+          data['heroVariant'] === 'calm' ? 'calm' :
+          data['heroVariant'] === 'none' ? 'none' : 'default';
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero
