@@ -8,7 +8,7 @@
  * agent surface grows.
  *
  * v1.65hG (p0016 Step 2): the page-config strip is no longer
- * duplicated here. Mounting <app-page-config-strip /> registers the
+ * duplicated here. Mounting <app-page-config-drawer /> registers the
  * shared strip template + cog with ConfigStripService for the life
  * of the page, then tears it down on ngOnDestroy automatically.
  */
@@ -23,20 +23,19 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { ConfigService } from '../../core/services/config.service';
-import { PageConfigStripComponent } from '../../shared/components/page-config-strip/page-config-strip.component';
+import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
 
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, LucideAngularModule, PageConfigStripComponent],
+  imports: [CommonModule, LucideAngularModule, PageConfigDrawerComponent],
   template: `
-    <!-- v1.65hG (p0016 Step 2) — shared page-settings strip. Mounting
-         this component registers the strip template with
-         ConfigStripService for the lifetime of the page (and clears
-         it on destroy), so the top-nav cog appears on agent with
-         identical behaviour to home. -->
-    <app-page-config-strip></app-page-config-strip>
+    <!-- v1.65hJ (p0017) — shared page-settings drawer. Mounting this
+         component registers with ConfigStripService for the lifetime
+         of the page so the top-nav cog appears; the drawer itself is
+         a right-side p-sidebar, not a horizontal strip. -->
+    <app-page-config-drawer></app-page-config-drawer>
 
     <div class="bp-agent-page">
       <div class="bp-agent-cards">
@@ -176,7 +175,7 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
 
   /** v1.65hG (p0016 Step 2): slim read-only mirror of just the
       ConfigService field this page reads (card title binding). The
-      full strip draft + handlers live in <app-page-config-strip>. */
+      full strip draft + handlers live in <app-page-config-drawer>. */
   projectLabel = 'Event';
 
   constructor(
@@ -196,7 +195,7 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
 
   ngAfterViewInit() {
     // v1.65hG (p0016 Step 2): no more ViewChild registration here —
-    // <app-page-config-strip> handles its own template lifecycle.
+    // <app-page-config-drawer> handles its own template lifecycle.
   }
 
   ngOnInit() {
@@ -213,7 +212,7 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
       .subscribe(() => this.applyHero());
 
     // v1.65hG (p0016 Step 2): keep a one-way mirror of projectLabel
-    // for the card title. Writes happen in <app-page-config-strip>;
+    // for the card title. Writes happen in <app-page-config-drawer>;
     // we just listen so the card relabels when the user types into
     // the strip's EVENTS field.
     this.configService.config$

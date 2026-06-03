@@ -1,6 +1,6 @@
 // v1.65hG (p0016 Step 2): ViewChild + TemplateRef dropped from imports
 // — the strip template's ViewChild now lives in
-// <app-page-config-strip>'s class, not here.
+// <app-page-config-drawer>'s class, not here.
 import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +20,7 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 // v1.65hG (p0016 Step 2): ConfigStripService import removed — strip
-// lifecycle owned by <app-page-config-strip>.
+// lifecycle owned by <app-page-config-drawer>.
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -32,7 +32,7 @@ import { FavouriteService, Favourite } from '../../core/services/favourite.servi
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CodelistService } from '../../core/services/codelist.service';
-import { PageConfigStripComponent } from '../../shared/components/page-config-strip/page-config-strip.component';
+import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
 
 // v1.65g2 — Inbox tab added next to Home/Projects. The label of the
 // "projects" tab reads from pageCfg.homePageLabel (so orgs that
@@ -51,7 +51,7 @@ type DashTab = 'projects' | 'inbox';
     ConfirmDialogModule, ToastModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, StatusBadgeComponent,
     MessagesInboxComponent,
-    PageConfigStripComponent,
+    PageConfigDrawerComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   providers: [ConfirmationService, MessageService],
@@ -67,10 +67,12 @@ type DashTab = 'projects' | 'inbox';
     </app-messages-inbox>
 
     <div class="bp-page" *ngIf="activeTab === 'projects'">
-    <!-- v1.65hG (p0016 Step 2) — page-settings strip extracted into
-         shared <app-page-config-strip>. Owns the template + draft +
-         handlers + ConfigStripService lifecycle. Mount-and-forget. -->
-    <app-page-config-strip></app-page-config-strip>
+    <!-- v1.65hJ (p0017) — page-settings drawer. Migrated from the
+         horizontal strip; same handlers/draft/sync, but rendered as a
+         right-side p-sidebar so it can scroll and accommodate the
+         next round of section-visibility toggles. The cog in the
+         top-nav still toggles it via ConfigStripService.toggle(). -->
+    <app-page-config-drawer></app-page-config-drawer>
 
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -1048,7 +1050,7 @@ type DashTab = 'projects' | 'inbox';
 })
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   // v1.65hG (p0016 Step 2): cfgStripTpl ViewChild removed — the strip
-  // is now an <app-page-config-strip> child component that owns its
+  // is now an <app-page-config-drawer> child component that owns its
   // own ViewChild + setTemplate lifecycle.
   loading = true;
   org: Org | null = null;
@@ -1074,7 +1076,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // ── v1.65hG (p0016 Step 2) — page-settings strip extracted ─────────
   // The full strip (template + draft + handlers + options + lifecycle)
-  // moved to <app-page-config-strip>. The dashboard keeps a slim,
+  // moved to <app-page-config-drawer>. The dashboard keeps a slim,
   // read-only mirror of just the fields its own templates / methods
   // read (stats bar visibility, hero context labels). The strip owns
   // writes; this mirror is one-way from ConfigService.config$.
@@ -1113,7 +1115,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   ) {}
 
   /** v1.65hG (p0016 Step 2): ngAfterViewInit no longer registers the
-      strip template — that's owned by <app-page-config-strip>. Kept as
+      strip template — that's owned by <app-page-config-drawer>. Kept as
       an empty hook for future view-init needs. */
   ngAfterViewInit() { /* intentionally empty */ }
 
@@ -1288,7 +1290,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       this.creditLabel  = cfg.creditLabel  || 'Ball';
       // v1.65hG (p0016 Step 2): only the fields the dashboard's own
       // template / pushShellContext read are mirrored locally. The
-      // full draft + writeback lives in <app-page-config-strip>.
+      // full draft + writeback lives in <app-page-config-drawer>.
       this.pageCfg = {
         homePageLabel: cfg.homePageLabel || 'Projects',
         showUpcoming:  cfg.showUpcoming  === true,
@@ -1330,7 +1332,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // the AppShell's hero highlight.
     // v1.65hG (p0016 Step 2): reads from pageCfg now — the local
     // read-only mirror of the bits the dashboard needs. The full
-    // strip draft lives in <app-page-config-strip>.
+    // strip draft lives in <app-page-config-drawer>.
     const homeLabel = this.pageCfg.homePageLabel || 'Projects';
     const ctx: any = {
       heroTitle: this.org.name,
@@ -1359,7 +1361,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // v1.65hG (p0016 Step 2): saveLabels / onThemeChange / selectNavMode
   // / selectHeroAlign / saveToggles / isComponentActive / toggleComponent
-  // all moved to <app-page-config-strip>. The dashboard no longer owns
+  // all moved to <app-page-config-drawer>. The dashboard no longer owns
   // any of the strip's writes.
 
   loadProjects() {
@@ -1423,7 +1425,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.shellCtx.reset();
-    // v1.65hG (p0016 Step 2): <app-page-config-strip> owns the
+    // v1.65hG (p0016 Step 2): <app-page-config-drawer> owns the
     // setTemplate(null) cleanup now. The dashboard no longer touches
     // ConfigStripService directly.
     this.sub?.unsubscribe();
