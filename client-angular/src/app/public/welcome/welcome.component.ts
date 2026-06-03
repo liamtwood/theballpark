@@ -337,7 +337,7 @@ const DEFAULT_CONTENT: Content = {
         class="bp-next-icon"
         (click)="next()"
         aria-label="Next slide">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m6 17 5-5-5-5"/>
@@ -541,34 +541,35 @@ const DEFAULT_CONTENT: Content = {
       background: rgba(220, 240, 235, 0.75);
     }
 
-    /* v1.65gZ44 — bottom-right next-slide icon button. Sits above the
-       slide-2 marquee (z-index 50 > marquee's 5) so it stays visible
-       across all slides. Hidden on slide 4 via the *ngIf in the
-       template. */
+    /* v1.65gZ44  — chevrons-right next-slide icon button.
+       v1.65gZ45 — chrome stripped (no glass pill / border / blur),
+       icon bumped 24 -> 40, centred horizontally and dropped to
+       ~85vh — roughly halfway between slide-1's subtitle and the
+       bottom of the viewport. Hidden on slide 4 via the *ngIf in
+       the template. */
     .bp-next-icon {
       position: fixed;
-      right: 36px;
-      bottom: 28px;
-      width: 44px;
-      height: 44px;
+      left: 50%;
+      bottom: 15vh;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 56px;
       display: inline-flex; align-items: center; justify-content: center;
       padding: 0;
-      background: rgba(220, 240, 235, 0.14);
-      border: 1px solid rgba(220, 240, 235, 0.32);
-      border-radius: 999px;
+      background: transparent;
+      border: none;
       color: #DCF0EB;
       cursor: pointer;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       z-index: 50;
-      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+      opacity: 0.85;
+      transition: opacity 0.2s, transform 0.2s;
     }
     .bp-next-icon:hover {
-      background: rgba(220, 240, 235, 0.26);
-      transform: translateX(2px);
+      opacity: 1;
+      transform: translateX(-50%) translateY(2px);
     }
     .bp-next-icon:active {
-      transform: translateX(2px) scale(0.96);
+      transform: translateX(-50%) translateY(2px) scale(0.96);
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
