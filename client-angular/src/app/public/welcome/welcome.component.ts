@@ -337,7 +337,7 @@ const DEFAULT_CONTENT: Content = {
         class="bp-next-icon"
         (click)="next()"
         aria-label="Next slide">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m6 17 5-5-5-5"/>
@@ -1010,12 +1010,15 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 500;
       opacity: 0.85; margin: 0;
     }
+    /* v1.65gZ46 — body font specs aligned with slide 2's subtitle
+       (Inter 500 clamp(15-18)/1.55 at 0.9 opacity) per client review.
+       Keeps the max-width 380px column from v1.65gZ7. */
     .bp-producers-body {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(18px, 1.6vw, 22px);
-      font-weight: 700;
-      line-height: 1.5;
-      opacity: 0.95;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
       margin: 0;
       max-width: 380px;
     }
