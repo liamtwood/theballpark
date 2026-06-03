@@ -17,6 +17,7 @@ import {
   AfterViewInit, ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
@@ -39,16 +40,42 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
 
     <div class="bp-agent-page">
       <div class="bp-agent-cards">
-        <!-- v1.65hP (p0019 §1) — the agent card shape is now the shared
-             <app-action-tile>. Title binds to ConfigService.projectLabel
-             ("New Event" / "New Project") via the projectLabel mirror.
-             p0019 §3 expands this to the full 5-tile launcher set. -->
+        <!-- v1.65hR (p0019 §3) — agent mirrors the home centre column:
+             the same 5-tile launcher set, shared <app-action-tile>,
+             identical icons / titles / subtitles / action wiring. -->
         <app-action-tile
-          icon="folder"
-          title="New {{ projectLabel }}"
-          [subtitle]="'Start a new ' + projectLabel.toLowerCase() + ' from scratch'"
-          ariaLabel="Start a new project"
+          icon="folder-plus"
+          title="Add {{ projectLabel }}"
+          [subtitle]="'Start a new ' + projectLabel.toLowerCase()"
           (action)="openNewProject()">
+        </app-action-tile>
+
+        <app-action-tile
+          icon="folder-open"
+          title="View {{ projectLabel }}s"
+          [subtitle]="'Browse all your ' + projectLabel.toLowerCase() + 's'"
+          (action)="goToProjects()">
+        </app-action-tile>
+
+        <app-action-tile
+          icon="inbox"
+          title="Inbox"
+          subtitle="Supplier replies and threads"
+          (action)="goToInbox()">
+        </app-action-tile>
+
+        <app-action-tile
+          icon="store"
+          title="Marketplace"
+          subtitle="Browse items and suppliers"
+          (action)="goToMarketplace()">
+        </app-action-tile>
+
+        <app-action-tile
+          icon="circle-user"
+          title="Profile"
+          subtitle="Your account and settings"
+          (action)="goToProfile()">
         </app-action-tile>
       </div>
     </div>
@@ -93,6 +120,7 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
     private personaSvc: PersonaService,
     private createProjectSvc: CreateProjectService,
     private configService: ConfigService,
+    private router: Router,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -102,6 +130,15 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
   openNewProject() {
     this.createProjectSvc.open();
   }
+
+  // v1.65hR (p0019 §3) — launcher-tile nav, identical to the home
+  // centre column. /projects has no list route yet (p0020 builds it;
+  // wildcard sends it home until then); /profile isn't a route, so
+  // Settings is the account surface today.
+  goToProjects()    { this.router.navigate(['/projects']); }
+  goToInbox()       { this.router.navigate(['/messages']); }
+  goToMarketplace() { this.router.navigate(['/suppliers']); }
+  goToProfile()     { this.router.navigate(['/settings']); }
 
   ngAfterViewInit() {
     // v1.65hG (p0016 Step 2): no more ViewChild registration here —
