@@ -701,12 +701,16 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
+    /* v1.65gZ35 — bleed height 14vh -> 30vh for a softer, longer
+       transition. The longer fade reads as a more deliberate colour
+       crossover rather than a quick band, and the .in-view opacity
+       transition still hides it once the user has settled. */
     .bp-slide-2::before,
     .bp-slide-3::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 14vh;
+      height: 30vh;
       pointer-events: none;
       z-index: 0;       /* below bg-layer (z=1), orbs render on top */
       opacity: 1;
