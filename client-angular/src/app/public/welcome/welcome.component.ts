@@ -798,6 +798,24 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
+    /* v1.65hX — disable orb expansion on mobile. iOS Safari's
+       compositor recomputes the Gaussian-blur filter region per
+       frame as the orb's radius grows, and at mid-flight (r around
+       1000px) it briefly renders the unblurred orb as a solid pink
+       or blue rectangle — the "pink box during 1->2 transition" on
+       phone. The orb-bridge effect was a visual polish for desktop;
+       on mobile the stage gradient (v1.65hW, scrolls with the
+       content) already provides continuous slide-to-slide colour
+       beneath the slide backgrounds, so the bridge is redundant.
+       Pin orbs at their base r=280px on mobile — they sit well
+       inside their own slide's overflow:hidden, never trigger the
+       filter recompute, and the gradient handles the colour bridge. */
+    @media (max-width: 720px) {
+      .bp-slide-1 .bp-svg-bg circle,
+      .bp-slide-2 .bp-svg-bg circle {
+        r: 280px;
+      }
+    }
     /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
        slides 1 + 2, on the grounds of kinetic consistency.
        v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
