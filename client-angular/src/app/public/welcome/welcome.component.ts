@@ -701,37 +701,26 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
-    /* v1.65gZ36 — slide-1->2 boundary now handled by EXPANDING the
-       pink orbs on slide 1 as the user scrolls toward slide 2. The
-       pink fills slide 1, bridging into slide 2's pink background.
-       The static slide-2::before bleed is no longer needed.
-       Slide-2->3 still uses the gradient bleed since slide-2's pink
-       and slide-3's teal don't share an orb colour. */
-    .bp-slide-3::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 30vh;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 1;
-      transition: opacity 0.6s ease-out;
-      background: linear-gradient(to bottom, #EB7396, transparent);
-    }
-    .bp-slide-3.in-view::before {
-      opacity: 0;
-    }
-
-    /* v1.65gZ36 — pink orbs on slide 1 grow as the user scrolls toward
-       slide 2. By the time --s1-leaving reaches 1, the orbs radius
-       is huge enough to fill the slide and the green background is
-       hidden. CSS r on SVG circles is supported in modern browsers
-       (Chromium 99+, Firefox 73+, Safari 16+); JS sets --s1-leaving
+    /* v1.65gZ36 / v1.65gZ37 — both inter-slide colour transitions
+       now handled by EXPANDING the leaving slide's orbs to fill the
+       viewport with their colour, bridging into the next slide's
+       background. The static ::before gradient bleed is no longer
+       needed for either boundary; the orb expansion supersedes it.
+         · slide 1 -> 2: pink orbs grow, page reads pink, into pink slide 2
+         · slide 2 -> 3: blue orbs grow, page reads blue, into teal slide 3
+           (slide-2's blue gradient #79A8BA->#457187 sits in the same
+           teal family as slide-3's #6391A4, so the cross-over is
+           perceptually smooth)
+       CSS r on SVG circles is supported in modern browsers (Chromium
+       99+, Firefox 73+, Safari 16+); JS sets --s1-leaving + --s2-leaving
        on .bp-welcome-root in the scroll handler. We layer it on the
-       existing translateX wipe-in animation by setting r rather
-       than transform, so the two do not fight. */
+       existing translateX wipe-in animation by setting r rather than
+       transform, so the two do not fight. */
     .bp-slide-1 .bp-svg-bg circle {
       r: calc(280px + var(--s1-leaving, 0) * 1500px);
+    }
+    .bp-slide-2 .bp-svg-bg circle {
+      r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
@@ -1477,10 +1466,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Per-slide leaving fractions. stage.scrollTop / clientHeight =
       // float position in slide-units (0 = slide 1, 1 = slide 2, ...).
+      // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
+      // blue orbs on slide 2 expand to bridge into slide 3's teal.
       const vh = stage.clientHeight || window.innerHeight;
       const slideF = stage.scrollTop / vh;
       const s1Leaving = Math.max(0, Math.min(1, slideF));
+      const s2Leaving = Math.max(0, Math.min(1, slideF - 1));
       root.style.setProperty('--s1-leaving', String(s1Leaving));
+      root.style.setProperty('--s2-leaving', String(s2Leaving));
     };
 
     const onScroll = () => {
