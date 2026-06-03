@@ -528,9 +528,23 @@ const DEFAULT_CONTENT: Content = {
          flash mid-transition between 3 and 4). Hard colour stops at
          25/50/75% match the slide boundaries exactly so the gradient
          is visually identical to the slides themselves. */
-      /* v1.65i2 — gradient collapsed to a single green band now that
-         all four slide backgrounds are uniformly green. */
-      background-color: #287F4D;
+      /* v1.65hW — scroll-height-tall gradient mirroring each slide's
+         bg so any compositor gap during scroll-snap reveals the
+         CORRECT colour at that scroll position.
+         v1.65i7 — restored after the v1.65i2 unified-green debug
+         control was rolled back. */
+      background-image: linear-gradient(
+        to bottom,
+        #287F4D 0%,
+        #287F4D 25%,
+        #EB7396 25%,
+        #EB7396 50%,
+        #6391A4 50%,
+        #6391A4 100%
+      );
+      background-size: 100% 400vh;
+      background-attachment: local;
+      background-repeat: no-repeat;
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -774,10 +788,11 @@ const DEFAULT_CONTENT: Content = {
        scroll, fades out once the scroll settles, fades back in when the
        user scrolls away. Slide 1 has no previous slide; slides 3 + 4
        share the same teal so the slide-4 boundary needs no bleed. */
-    /* v1.65i2 — all slide backgrounds unified to slide-1 green per
-       client request ("make the background 1 color, lets go for
-       green"). Orbs untouched — they keep their original pink /
-       blue / teal gradients on top of the green base. */
+    /* v1.65i2 — all slide backgrounds unified to slide-1 green as
+       a debug control to isolate the 1→2 transition artifact.
+       v1.65i7 — original per-slide colours restored now that the
+       1→2 fade-out + instant jump (v1.65i3..i6) has fixed the
+       artifact properly. */
     .bp-slide-1 { background: #287F4D; }
 
     /* v1.65i3 — slide-1 exiting state. When the user clicks Next on
@@ -804,7 +819,7 @@ const DEFAULT_CONTENT: Content = {
       animation: none !important;
     }
     .bp-slide-2 {
-      background: #287F4D;
+      background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
     }
@@ -865,8 +880,8 @@ const DEFAULT_CONTENT: Content = {
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    .bp-slide-3 { background: #287F4D; }
-    .bp-slide-4 { background: #287F4D; }
+    .bp-slide-3 { background: #6391A4; }
+    .bp-slide-4 { background: #6391A4; }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
        Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
