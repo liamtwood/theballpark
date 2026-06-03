@@ -544,32 +544,34 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateX(0); }
     }
 
-    /* v1.65gX  — slide 3's two orbs both sit at cx=400 (vertically
+    /* v1.65gX   — slide 3's two orbs both sit at cx=400 (vertically
        stacked, not side-by-side), so a horizontal wipe leaves the
        right half of the viewport showing the bare blue background
-       during the transition. Override to a scale-bloom from the
-       viewport centre instead — the orbs expand outward into their
-       final positions, no exposed corner.
-       v1.65gZ18 — scale-bloom produced a rectangular filter-region
-       artifact mid-transition (when scale 0 collapses the <g>'s
-       bbox to a point, the blur filter's relative region
-       degenerates and Chrome briefly paints a rectangle in that
-       area). Swapped to a pure opacity fade: orbs stay at their
-       final geometric position the whole time, only their alpha
-       animates 0 -> 1, so the bbox never collapses and the filter
-       region stays stable. The translateX(-100%) base rule for
-       circles is OVERRIDDEN to transform:none here so the global
-       wipe doesn't also fire on slide 3. */
+       during the transition. Original fix: scale-bloom from viewport
+       centre.
+       v1.65gZ18 — scale-bloom from scale(0) produced a rectangular
+       filter-region artifact mid-transition (when scale 0 collapses
+       the <g>'s bbox to a point, the blur filter's relative region
+       degenerates and Chrome briefly paints a rectangle there).
+       Swapped to pure opacity fade.
+       v1.65gZ39 — opacity-only fade read as "spheres just appear"
+       per client review. Re-introduced a scale animation, but
+       starting at scale(0.5) instead of scale(0) so the bbox never
+       collapses to a point — the filter region stays well-defined
+       and the rectangle artifact doesn't return. The orbs grow
+       outward from the viewport centre into their top + bottom
+       positions, giving the entry the same kinetic feel as the
+       wipe-in on slides 1/2/4. */
     .bp-slide-3 .bp-svg-bg circle {
-      transform: none;
-      opacity: 0;
+      transform: scale(0.5);
+      opacity: 1;
     }
     .bp-slide-3.in-view .bp-svg-bg circle {
-      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: bp-orb-grow-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    @keyframes bp-orb-fade-in {
-      from { opacity: 0; }
-      to   { opacity: 1; }
+    @keyframes bp-orb-grow-in {
+      from { transform: scale(0.5); }
+      to   { transform: scale(1); }
     }
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
