@@ -504,6 +504,30 @@ const DEFAULT_CONTENT: Content = {
       scrollbar-width: none;                       /* Firefox */
       -ms-overflow-style: none;                    /* Edge legacy */
       overscroll-behavior: contain;                /* iOS rubber-band suppression */
+      /* v1.65hW — paint a scroll-height-tall gradient on the stage
+         that mirrors each slide's background colour. With background-
+         attachment:local on a scroll container, the bg scrolls with
+         the content, so the visible band at any scroll position
+         matches the slide that should be there. Any one-frame gap
+         iOS Safari's scroll-snap compositor leaves during a hand-off
+         now reveals the CORRECT slide colour for that position
+         (e.g. teal between slide-3 and slide-4) instead of the
+         welcome-root's green floor (which was visible as a green
+         flash mid-transition between 3 and 4). Hard colour stops at
+         25/50/75% match the slide boundaries exactly so the gradient
+         is visually identical to the slides themselves. */
+      background-image: linear-gradient(
+        to bottom,
+        #287F4D 0%,
+        #287F4D 25%,
+        #EB7396 25%,
+        #EB7396 50%,
+        #6391A4 50%,
+        #6391A4 100%
+      );
+      background-size: 100% 400vh;
+      background-attachment: local;
+      background-repeat: no-repeat;
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
