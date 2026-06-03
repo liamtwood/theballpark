@@ -5,29 +5,112 @@
  * data, see app.routes.ts) with a personalised welcome title pulled
  * from the active persona. Body is empty pending future content.
  */
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ViewChild, TemplateRef, AfterViewInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ViewChild, TemplateRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { InputTextModule } from 'primeng/inputtext';
 import { LucideAngularModule } from 'lucide-angular';
 import { Subject, takeUntil } from 'rxjs';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { ConfigStripService } from '../../core/services/config-strip.service';
+import { ConfigService } from '../../core/services/config.service';
 
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, InputTextModule],
   template: `
-    <!-- v1.65hC — config strip template passed to ConfigStripService
-         in ngAfterViewInit so the top-nav cog renders on the agent
-         page. Placeholder content for now; replace with real
-         agent-specific controls when known. -->
+    <!-- v1.65hC  — config-strip template registered with
+         ConfigStripService so the cog renders on agent.
+         v1.65hD — mirrors the dashboard's strip exactly (per client
+         request: "same as home exactly"). Both pages bind to the
+         shared ConfigService singleton, so changes on either page
+         propagate to the other and to the rest of the app. -->
     <ng-template #agentConfigStrip>
-      <div class="bp-agent-config-strip">
-        <div class="bp-agent-config-title">Agent settings</div>
-        <p class="bp-agent-config-empty">No settings to configure yet.</p>
+      <div class="bp-cfg-row">
+
+        <!-- Labels -->
+        <span class="bp-cfg-lab">PAGE LABEL</span>
+        <input pInputText
+               class="bp-cfg-page-label"
+               [(ngModel)]="settingsDraft.homePageLabel"
+               (blur)="saveLabels()"
+               placeholder="Projects"/>
+        <span class="bp-cfg-divider"></span>
+
+        <span class="bp-cfg-lab">CREDITS</span>
+        <input pInputText
+               class="bp-cfg-page-label"
+               [(ngModel)]="settingsDraft.creditLabel"
+               (blur)="saveLabels()"
+               placeholder="Balls"/>
+        <span class="bp-cfg-divider"></span>
+
+        <span class="bp-cfg-lab">EVENTS</span>
+        <input pInputText
+               class="bp-cfg-page-label"
+               [(ngModel)]="settingsDraft.projectLabel"
+               (blur)="saveLabels()"
+               placeholder="Events"/>
+        <span class="bp-cfg-divider"></span>
+
+        <!-- Theme dot swatches -->
+        <span class="bp-cfg-lab">THEME</span>
+        <div class="bp-cfg-swatches-row">
+          <button *ngFor="let t of themeOptions"
+                  type="button"
+                  class="bp-cfg-swatch-btn"
+                  [class.active]="settingsDraft.themeName === t.value"
+                  [style.background]="t.color"
+                  [title]="t.label"
+                  (click)="onThemeChange(t.value)">
+          </button>
+        </div>
+        <span class="bp-cfg-divider"></span>
+
+        <!-- Components — multi-toggle pills -->
+        <span class="bp-cfg-lab">COMPONENTS</span>
+        <div class="bp-cfg-seg bp-cfg-seg--multi">
+          <button *ngFor="let opt of componentOptions"
+                  type="button"
+                  class="bp-cfg-seg-btn"
+                  [class.p-highlight]="isComponentActive(opt.value)"
+                  [disabled]="opt.disabled"
+                  [title]="opt.disabled ? opt.label + ' — always on' : opt.label"
+                  (click)="toggleComponent(opt.value)">
+            {{ opt.label }}
+          </button>
+        </div>
+        <span class="bp-cfg-divider"></span>
+
+        <!-- Align — left vs centre -->
+        <span class="bp-cfg-lab">ALIGN</span>
+        <div class="bp-cfg-seg">
+          <button *ngFor="let opt of alignOptions"
+                  type="button"
+                  class="bp-cfg-seg-btn"
+                  [class.p-highlight]="settingsDraft.heroAlign === opt.value"
+                  (click)="selectHeroAlign(opt.value)">
+            {{ opt.label }}
+          </button>
+        </div>
+        <span class="bp-cfg-divider"></span>
+
+        <!-- Nav — tabs vs menu -->
+        <span class="bp-cfg-lab">NAV</span>
+        <div class="bp-cfg-seg">
+          <button *ngFor="let opt of navOptions"
+                  type="button"
+                  class="bp-cfg-seg-btn"
+                  [class.p-highlight]="settingsDraft.navMode === opt.value"
+                  (click)="selectNavMode(opt.value)">
+            {{ opt.label }}
+          </button>
+        </div>
+
       </div>
     </ng-template>
 
@@ -157,26 +240,10 @@ import { ConfigStripService } from '../../core/services/config-strip.service';
       line-height: 1.4;
     }
 
-    /* v1.65hC — config strip placeholder. Sits in app-shell's lifted
-       slot between hero and body when the cog is toggled open. */
-    .bp-agent-config-strip {
-      padding: 16px var(--section-pad, 28px);
-      background: var(--color-surface);
-      border-bottom: var(--border-hairline);
-    }
-    .bp-agent-config-title {
-      font-family: var(--font-display);
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--color-text-primary);
-      margin-bottom: 4px;
-    }
-    .bp-agent-config-empty {
-      margin: 0;
-      font-family: var(--font-body);
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
+    /* v1.65hD — strip placeholder styles removed; the .bp-cfg-row /
+       .bp-cfg-lab / .bp-cfg-seg / .bp-cfg-swatch-btn classes come
+       from global styles.css and are shared with the dashboard
+       strip, so the agent strip renders identically. */
   `]
 })
 export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -187,11 +254,55 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
       slot when the user toggles the cog open. */
   @ViewChild('agentConfigStrip') configStripTpl?: TemplateRef<any>;
 
+  /** v1.65hD — duplicated from dashboard.component.ts so the strip
+      mirrors home exactly. State syncs both directions with
+      ConfigService (singleton), so toggling on either page is
+      reflected on the other and across the whole app. */
+  settingsDraft = {
+    homePageLabel: 'Projects',
+    creditLabel: 'Ball',
+    projectLabel: 'Event',
+    themeName: 'amber',
+    heroAlign: 'center' as 'left' | 'center',
+    navMode: 'tabs' as 'tabs' | 'sidenav',
+    showUserName: true,
+    showLocation: true,
+    showUpcoming: false,
+    showStats: true,
+  };
+
+  readonly themeOptions = [
+    { value: 'amber',   label: 'Amber',   color: '#D97706' },
+    { value: 'emerald', label: 'Emerald', color: '#00B84A' },
+    { value: 'pink',    label: 'Pink',    color: '#FF0066' },
+    { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
+    { value: 'slate',   label: 'Slate',   color: '#64748B' },
+  ];
+
+  readonly componentOptions: Array<{ value: string; label: string; disabled?: boolean }> = [
+    { value: 'user',     label: 'User' },
+    { value: 'location', label: 'Location' },
+    { value: 'upcoming', label: 'Upcoming' },
+    { value: 'stats',    label: 'Stats' },
+  ];
+
+  readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
+    { value: 'left',   label: 'Left' },
+    { value: 'center', label: 'Centre' },
+  ];
+
+  readonly navOptions: Array<{ value: 'tabs' | 'sidenav'; label: string }> = [
+    { value: 'tabs',    label: 'Tabs' },
+    { value: 'sidenav', label: 'Menu' },
+  ];
+
   constructor(
     private shellCtx: ShellContextService,
     private personaSvc: PersonaService,
     private createProjectSvc: CreateProjectService,
     private configStrip: ConfigStripService,
+    private configService: ConfigService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   /** v1.65h5 — opens the shared "+ New project" intake modal that's
@@ -222,6 +333,79 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
     this.personaSvc.active$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyHero());
+
+    // v1.65hD — sync the settings-strip draft with ConfigService. Pages
+    // share the singleton so toggling on agent updates dashboard and
+    // vice-versa.
+    this.configService.config$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(cfg => {
+        this.settingsDraft = {
+          homePageLabel: cfg.homePageLabel || 'Projects',
+          creditLabel:   cfg.creditLabel   || 'Ball',
+          projectLabel:  cfg.projectLabel  || 'Event',
+          themeName:     cfg.themeName     || 'amber',
+          heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
+          navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
+          showUserName:  cfg.showUserName  !== false,
+          showLocation:  cfg.showLocation  !== false,
+          showUpcoming:  cfg.showUpcoming  === true,
+          showStats:     cfg.showStats     !== false,
+        };
+        this.cdr.detectChanges();
+      });
+  }
+
+  // ── Settings-strip handlers ────────────────────────────────────
+  // Duplicated from dashboard.component.ts. Each writes to
+  // ConfigService which re-emits config$; the subscription above
+  // syncs settingsDraft back so the strip reflects the new value.
+
+  saveLabels() {
+    this.configService.update({
+      homePageLabel: this.settingsDraft.homePageLabel || 'Projects',
+      creditLabel:   this.settingsDraft.creditLabel   || 'Ball',
+      projectLabel:  this.settingsDraft.projectLabel  || 'Event',
+    });
+  }
+  onThemeChange(theme: string) {
+    this.settingsDraft.themeName = theme;
+    this.configService.update({ themeName: theme });
+  }
+  selectNavMode(mode: 'tabs' | 'sidenav') {
+    this.settingsDraft.navMode = mode;
+    this.configService.update({ navMode: mode });
+  }
+  selectHeroAlign(align: 'left' | 'center') {
+    this.settingsDraft.heroAlign = align;
+    this.configService.update({ heroAlign: align });
+  }
+  saveToggles() {
+    this.configService.update({
+      showUserName: this.settingsDraft.showUserName,
+      showLocation: this.settingsDraft.showLocation,
+      showUpcoming: this.settingsDraft.showUpcoming,
+      showStats:    this.settingsDraft.showStats,
+    });
+  }
+  isComponentActive(key: string): boolean {
+    switch (key) {
+      case 'user':     return this.settingsDraft.showUserName;
+      case 'location': return this.settingsDraft.showLocation;
+      case 'upcoming': return this.settingsDraft.showUpcoming;
+      case 'stats':    return this.settingsDraft.showStats;
+      default:         return false;
+    }
+  }
+  toggleComponent(key: string) {
+    switch (key) {
+      case 'user':     this.settingsDraft.showUserName = !this.settingsDraft.showUserName; break;
+      case 'location': this.settingsDraft.showLocation = !this.settingsDraft.showLocation; break;
+      case 'upcoming': this.settingsDraft.showUpcoming = !this.settingsDraft.showUpcoming; break;
+      case 'stats':    this.settingsDraft.showStats    = !this.settingsDraft.showStats;    break;
+      default: return;
+    }
+    this.saveToggles();
   }
 
   ngOnDestroy() {
