@@ -1508,12 +1508,25 @@ const migrate = async () => {
         ip_address  TEXT,
         user_agent  TEXT,
         notified_at TIMESTAMPTZ,
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        -- v1.65gZ32 — soft-delete column. NULL = active. Soft-deleted
+        -- rows are filtered out of listSignups + stats; partial unique
+        -- index below means the same email can sign up again.
+        deleted_at  TIMESTAMPTZ
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS guestlist_signup_email_uniq
-        ON marketing.guestlist_signup (lower(email));
+      ALTER TABLE marketing.guestlist_signup
+        ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      -- v1.65gZ32 — replace the unconditional unique index with a
+      -- partial one that only enforces uniqueness on active rows.
+      DROP INDEX IF EXISTS marketing.guestlist_signup_email_uniq;
+      CREATE UNIQUE INDEX IF NOT EXISTS guestlist_signup_email_active_uniq
+        ON marketing.guestlist_signup (lower(email))
+        WHERE deleted_at IS NULL;
       CREATE INDEX IF NOT EXISTS guestlist_signup_created_idx
         ON marketing.guestlist_signup (created_at DESC);
+      CREATE INDEX IF NOT EXISTS guestlist_signup_active_created_idx
+        ON marketing.guestlist_signup (created_at DESC)
+        WHERE deleted_at IS NULL;
 
       -- Editable copy on the welcome page
       CREATE TABLE IF NOT EXISTS marketing.welcome_content (

@@ -130,6 +130,20 @@ export class MarketingService {
     });
   }
 
+  // v1.65gZ32 — soft-delete a signup. Returns the affected id/email.
+  deleteSignup(id: string): Observable<{ id: string; email: string; deleted: boolean }> {
+    return new Observable(subscriber => {
+      this.adminHeaders().subscribe(headers => {
+        this.http.delete<{ id: string; email: string; deleted: boolean }>(
+          `${this.baseUrl}/admin/signups/${id}`, { headers }
+        ).subscribe({
+          next: r => { subscriber.next(r); subscriber.complete(); },
+          error: e => subscriber.error(e)
+        });
+      });
+    });
+  }
+
   sendTestEmail(body: { recipients: string[]; subject: string; body_template: string }): Observable<{ ok: boolean }> {
     return new Observable(subscriber => {
       this.adminHeaders().subscribe(headers => {

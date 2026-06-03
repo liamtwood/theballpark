@@ -131,6 +131,18 @@ const ROLE_OPTIONS = [
             <div class="bp-ea-row-time" [title]="row.created_at | date:'medium'">
               {{ relativeTime(row.created_at) }}
             </div>
+            <!-- v1.65gZ32 — soft-delete signup. Confirmation prompt
+                 inline so we don't pull in a modal dependency just for
+                 this. Lets us reseed test signups without hand-running
+                 SQL. -->
+            <button class="bp-ea-row-delete"
+                    type="button"
+                    [disabled]="deletingId === row.id"
+                    [attr.aria-label]="'Remove ' + row.email"
+                    [title]="'Remove ' + row.email"
+                    (click)="deleteSignup(row)">
+              <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+            </button>
           </div>
         </div>
       </ng-container>
@@ -384,7 +396,8 @@ const ROLE_OPTIONS = [
     }
     .bp-ea-row {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      /* v1.65gZ32 — extra column for the soft-delete trash button. */
+      grid-template-columns: 1fr auto auto auto;
       gap: 16px; align-items: center;
       padding: 14px 18px;
     }
@@ -414,6 +427,28 @@ const ROLE_OPTIONS = [
       font-size: 12px;
       color: var(--color-text-muted);
       white-space: nowrap;
+    }
+    /* v1.65gZ32 — soft-delete row button. Subtle by default, hover
+       surfaces a destructive accent so accidental clicks aren't easy. */
+    .bp-ea-row-delete {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px;
+      padding: 0;
+      background: transparent;
+      border: 0.5px solid transparent;
+      border-radius: 6px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .bp-ea-row-delete:hover {
+      color: var(--color-danger, #B33A3A);
+      background: var(--color-danger-bg, rgba(179, 58, 58, 0.08));
+      border-color: var(--color-danger-border, rgba(179, 58, 58, 0.25));
+    }
+    .bp-ea-row-delete:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
     /* ── Content tab ──────────────── */
@@ -534,6 +569,10 @@ export class EarlyAccessComponent implements OnInit {
   searchTerm = '';
   roleFilters = new Set<string>();
   sort: 'newest' | 'oldest' = 'newest';
+  /** v1.65gZ32 — id of the row currently being soft-deleted (UI gates
+      the trash button to prevent double-clicks while the request is
+      in flight). */
+  deletingId: string | null = null;
   private searchTimer?: any;
 
   // Content
@@ -601,6 +640,35 @@ export class EarlyAccessComponent implements OnInit {
   toggleSort() {
     this.sort = this.sort === 'newest' ? 'oldest' : 'newest';
     this.loadSignups();
+  }
+
+  // v1.65gZ32 — soft-delete a signup row. Confirms inline, hits the
+  // admin DELETE endpoint, removes the row from the local list on
+  // success. Row stays in the DB with deleted_at set; the partial
+  // unique index lets the same email sign up again afterwards.
+  deleteSignup(row: SignupRow) {
+    if (this.deletingId) return;
+    const ok = window.confirm(`Remove ${row.email} from the guestlist?\n\n` +
+      `The record stays in the database (soft-delete) but is hidden from this list. ` +
+      `The same email address can sign up again.`);
+    if (!ok) return;
+
+    this.deletingId = row.id;
+    this.cdr.markForCheck();
+    this.marketing.deleteSignup(row.id).subscribe({
+      next: () => {
+        this.rows = this.rows.filter(r => r.id !== row.id);
+        this.stats = { ...this.stats, total: Math.max(0, this.stats.total - 1) };
+        this.deletingId = null;
+        this.toast.add({ severity: 'success', summary: 'Removed', detail: row.email });
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.deletingId = null;
+        this.toast.add({ severity: 'error', summary: 'Failed to remove', detail: err?.error?.error || err?.message || 'Try again.' });
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   get filteredRows(): SignupRow[] {

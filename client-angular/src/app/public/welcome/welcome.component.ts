@@ -88,10 +88,19 @@ const DEFAULT_CONTENT: Content = {
              rather than jumping straight to slide 4, per client
              review. Label keeps reading "Get on the guestlist" since
              that's still the eventual destination. -->
+        <!-- v1.65gZ42 — header CTA now shows on slide 1 too. Was
+             previously hidden on step 0 because slide 1 had its own
+             centred CTA below the subtitle; that has been removed
+             so all three "Get on the guestlist" pills live in the
+             same top-right spot for consistency.
+             v1.65gZ43 — fast-track: clicking the CTA now jumps
+             straight to slide 4 (the form) instead of advancing one
+             slide at a time. Scroll + arrow keys still do the slow
+             walk; the button is the shortcut. -->
         <button
-          *ngIf="step > 0 && step < TOTAL_STEPS - 1"
+          *ngIf="step < TOTAL_STEPS - 1"
           class="bp-welcome-header-cta"
-          (click)="next()">
+          (click)="goTo(TOTAL_STEPS - 1)">
           Get on the guestlist
         </button>
       </header>
@@ -140,12 +149,11 @@ const DEFAULT_CONTENT: Content = {
             </div>
             <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
-            <!-- v1.65gZ22 — slide-1 centred CTA acts as a "next"
-                 button (advances one slide) for consistency with the
-                 top-right header CTA. Same label, same behaviour. -->
-            <button class="bp-hero-cta" (click)="next()">
-              {{ text('hero.cta') }}
-            </button>
+            <!-- v1.65gZ42 — centred "Get on the guestlist" CTA removed.
+                 Moved to the top-right header so it sits in the same
+                 spot on every slide. .bp-hero-cta CSS rules kept
+                 (unused) in case we want to restore it later. -->
+
           </div>
         </section>
 
@@ -317,6 +325,25 @@ const DEFAULT_CONTENT: Content = {
            removed per client review. Navigation is now exclusively
            scroll-driven (wheel, trackpad, swipe, arrow keys) with the
            header CTA jumping straight to the form on slides 2 & 3. -->
+
+      <!-- v1.65gZ44 — chevrons-right next-button. Bottom-right of the
+           viewport on slides 1, 2 and 3; hidden on slide 4 where the
+           user is already at the form. One click advances one slide
+           via next() (slide-by-slide); contrast with the header CTA
+           which fast-tracks straight to slide 4. -->
+      <button
+        *ngIf="step < TOTAL_STEPS - 1"
+        type="button"
+        class="bp-next-icon"
+        (click)="next()"
+        aria-label="Next slide">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m6 17 5-5-5-5"/>
+          <path d="m13 17 5-5-5-5"/>
+        </svg>
+      </button>
 
       <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
            Position is driven by --scroll-progress on .bp-welcome-root,
@@ -514,6 +541,37 @@ const DEFAULT_CONTENT: Content = {
       background: rgba(220, 240, 235, 0.75);
     }
 
+    /* v1.65gZ44  — chevrons-right next-slide icon button.
+       v1.65gZ45 — chrome stripped (no glass pill / border / blur),
+       icon bumped 24 -> 40, centred horizontally and dropped to
+       ~85vh — roughly halfway between slide-1's subtitle and the
+       bottom of the viewport. Hidden on slide 4 via the *ngIf in
+       the template. */
+    .bp-next-icon {
+      position: fixed;
+      left: 50%;
+      bottom: 15vh;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 56px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #DCF0EB;
+      cursor: pointer;
+      z-index: 50;
+      opacity: 0.85;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .bp-next-icon:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(2px);
+    }
+    .bp-next-icon:active {
+      transform: translateX(-50%) translateY(2px) scale(0.96);
+    }
+
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
        already scrolling, so the orbs "scroll in" naturally as the
        slide enters the viewport. The wrapper exists for layering
@@ -525,52 +583,36 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* v1.65gW — orb wipe-in restored by animating the individual
-       <circle> elements INSIDE the filtered group instead of the
-       SVG / group / wrapper. CSS transforms on SVG children render
+    /* v1.65gW  — orb entry animated by animating the individual
+       <circle> elements INSIDE the filtered group rather than the
+       SVG / group / wrapper. CSS animations on SVG children render
        inside the SVG's own coordinate space — the filter recomputes
-       over the moved circles natively, no HTML compositing layer is
-       created, and the Gaussian blur survives. */
+       over the children natively, no HTML compositing layer is
+       created, and the Gaussian blur survives.
+       v1.65gZ40 — all slides now share the same opacity fade-in
+       (per client review — "liked slide 3 animation and wanted the
+       same approach on all the pages"). Earlier the global animation
+       was a translateX wipe-in; that's retired here, slide 3's
+       override is removed below, and every slide's orbs fade in
+       cleanly together. */
     .bp-svg-bg circle {
-      transform-box: view-box;
-      transform-origin: center;
-      transform: translateX(-100%);
-    }
-    .bp-slide.in-view .bp-svg-bg circle {
-      animation: bp-orb-wipe-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    @keyframes bp-orb-wipe-in {
-      from { transform: translateX(-100%); }
-      to   { transform: translateX(0); }
-    }
-
-    /* v1.65gX  — slide 3's two orbs both sit at cx=400 (vertically
-       stacked, not side-by-side), so a horizontal wipe leaves the
-       right half of the viewport showing the bare blue background
-       during the transition. Override to a scale-bloom from the
-       viewport centre instead — the orbs expand outward into their
-       final positions, no exposed corner.
-       v1.65gZ18 — scale-bloom produced a rectangular filter-region
-       artifact mid-transition (when scale 0 collapses the <g>'s
-       bbox to a point, the blur filter's relative region
-       degenerates and Chrome briefly paints a rectangle in that
-       area). Swapped to a pure opacity fade: orbs stay at their
-       final geometric position the whole time, only their alpha
-       animates 0 -> 1, so the bbox never collapses and the filter
-       region stays stable. The translateX(-100%) base rule for
-       circles is OVERRIDDEN to transform:none here so the global
-       wipe doesn't also fire on slide 3. */
-    .bp-slide-3 .bp-svg-bg circle {
-      transform: none;
       opacity: 0;
     }
-    .bp-slide-3.in-view .bp-svg-bg circle {
+    .bp-slide.in-view .bp-svg-bg circle {
       animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     @keyframes bp-orb-fade-in {
       from { opacity: 0; }
       to   { opacity: 1; }
     }
+
+    /* v1.65gZ40 — slide-3 orb-entry override removed. Was previously
+       a custom path (scale-bloom -> opacity-fade -> scale 0.5->1 over
+       v1.65gX / v1.65gZ18 / v1.65gZ39) to work around slide-3-specific
+       issues (cx=400 centred orbs exposed the bg during a horizontal
+       wipe; scale(0) collapsed the filter bbox). The global rule now
+       does opacity fade for every slide, so slide 3 inherits it
+       without a custom override. */
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
        "from" pose as the element's direct (no-class) state. When
@@ -685,12 +727,53 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* Per-slide bases (circle gradients live in template <linearGradient> defs) */
+    /* Per-slide bases (circle gradients live in template <linearGradient> defs).
+       v1.65gZ33  — bleed the previous slide's colour into the top ~14vh of
+       each slide so the boundary between scroll-snap stops reads as a
+       soft gradient rather than a hard horizontal line.
+       v1.65gZ34 — moved the bleed off the background property (which kept
+       it visible after the transition settled) onto a ::before pseudo-
+       element with opacity tied to .in-view. The bleed shows during
+       scroll, fades out once the scroll settles, fades back in when the
+       user scrolls away. Slide 1 has no previous slide; slides 3 + 4
+       share the same teal so the slide-4 boundary needs no bleed. */
     .bp-slide-1 { background: #287F4D; }
     .bp-slide-2 {
       background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
+    }
+    /* v1.65gZ36 / v1.65gZ37 — both inter-slide colour transitions
+       now handled by EXPANDING the leaving slide's orbs to fill the
+       viewport with their colour, bridging into the next slide's
+       background. The static ::before gradient bleed is no longer
+       needed for either boundary; the orb expansion supersedes it.
+         · slide 1 -> 2: pink orbs grow, page reads pink, into pink slide 2
+         · slide 2 -> 3: blue orbs grow, page reads blue, into teal slide 3
+           (slide-2's blue gradient #79A8BA->#457187 sits in the same
+           teal family as slide-3's #6391A4, so the cross-over is
+           perceptually smooth)
+       CSS r on SVG circles is supported in modern browsers (Chromium
+       99+, Firefox 73+, Safari 16+); JS sets --s1-leaving + --s2-leaving
+       on .bp-welcome-root in the scroll handler. We layer it on the
+       existing translateX wipe-in animation by setting r rather than
+       transform, so the two do not fight. */
+    .bp-slide-1 .bp-svg-bg circle {
+      r: calc(280px + var(--s1-leaving, 0) * 1500px);
+    }
+    .bp-slide-2 .bp-svg-bg circle {
+      r: calc(280px + var(--s2-leaving, 0) * 1500px);
+    }
+    /* v1.65gZ38 — slide 3 -> 4 boundary uses the same recipe. Note
+       slide 3's circles start at r=240 (smaller than slides 1/2/4's
+       r=280; reduced in v1.65gZ17 to fix the centre overlap), so the
+       base in the calc is 240px. Slide 3's green orbs grow as the
+       user scrolls toward slide 4. Both slides share the same teal
+       background so there's no colour boundary to bridge, but the
+       expansion gives the 3->4 transition the same kinetic feel as
+       the other two boundaries. */
+    .bp-slide-3 .bp-svg-bg circle {
+      r: calc(240px + var(--s3-leaving, 0) * 1500px);
     }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
@@ -763,6 +846,12 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 900;
       line-height: 1.0;
       letter-spacing: -0.04em;
+      /* v1.65gZ41 — bump word-spacing so the gaps between REAL/COSTS
+         and REAL/FAST read clearly. The headline uses -0.04em letter-
+         spacing which tightens everything including the inter-word
+         spaces; word-spacing pushes JUST the gaps without splaying
+         the letters within each word. */
+      word-spacing: 0.25em;
       margin: 0 0 48px 0;
     }
     /* v1.65gZ11  — subtitle font bumped + max-width tightened so the
@@ -921,12 +1010,15 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 500;
       opacity: 0.85; margin: 0;
     }
+    /* v1.65gZ46 — body font specs aligned with slide 2's subtitle
+       (Inter 500 clamp(15-18)/1.55 at 0.9 opacity) per client review.
+       Keeps the max-width 380px column from v1.65gZ7. */
     .bp-producers-body {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: clamp(18px, 1.6vw, 22px);
-      font-weight: 700;
-      line-height: 1.5;
-      opacity: 0.95;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
       margin: 0;
       max-width: 380px;
     }
@@ -1418,17 +1510,35 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       });
     };
 
-    // v1.65gZ24 — also publish a 0-to-1 --scroll-progress CSS var
-    // on the welcome root so the .bp-scroll-pill can slide along the
-    // right edge as the user moves through the deck. Setting it on
+    // v1.65gZ24  — publish a 0-to-1 --scroll-progress CSS var on the
+    // welcome root so the .bp-scroll-pill can slide along the right
+    // edge as the user moves through the deck. Setting it on
     // .bp-welcome-root (the host's child) keeps the var inheritable
     // by everything inside without polluting :root.
+    // v1.65gZ36 — also publish --s1-leaving (0 = parked on slide 1,
+    // 1 = parked on slide 2). Drives slide-1's pink orb expansion so
+    // the page bridges to slide 2's pink background as the user
+    // scrolls into the transition.
     const root = stage.parentElement; // .bp-welcome-root
     const setProgress = () => {
       if (!root) return;
       const max = stage.scrollHeight - stage.clientHeight;
       const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
       root.style.setProperty('--scroll-progress', String(p));
+
+      // Per-slide leaving fractions. stage.scrollTop / clientHeight =
+      // float position in slide-units (0 = slide 1, 1 = slide 2, ...).
+      // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
+      // blue orbs on slide 2 expand to bridge into slide 3's teal.
+      // v1.65gZ38 — slide-3 leaving added for the 3->4 transition.
+      const vh = stage.clientHeight || window.innerHeight;
+      const slideF = stage.scrollTop / vh;
+      const s1Leaving = Math.max(0, Math.min(1, slideF));
+      const s2Leaving = Math.max(0, Math.min(1, slideF - 1));
+      const s3Leaving = Math.max(0, Math.min(1, slideF - 2));
+      root.style.setProperty('--s1-leaving', String(s1Leaving));
+      root.style.setProperty('--s2-leaving', String(s2Leaving));
+      root.style.setProperty('--s3-leaving', String(s3Leaving));
     };
 
     const onScroll = () => {
