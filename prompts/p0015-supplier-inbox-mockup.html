@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>p0015 — Supplier Inbox + persona switcher</title>
+<style>
+  :root {
+    --theme-accent: #ec1f6d;
+    --theme-soft: #fbeef3;
+    --theme-bg: #faf6f7;
+    --theme-text: #6f3550;
+
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #4a4a4a;
+    --color-text-muted: #8b8b8b;
+    --color-border: rgba(0,0,0,0.06);
+    --color-surface: #ffffff;
+
+    --color-action: #ec1f6d;
+    --color-action-soft: rgba(236,31,109,0.10);
+    --color-waiting: #d97706;
+    --color-waiting-soft: rgba(217,119,6,0.10);
+    --color-quoted: #2563eb;
+    --color-quoted-soft: rgba(37,99,235,0.10);
+    --color-booked: #059669;
+    --color-booked-soft: rgba(5,150,105,0.10);
+
+    --radius-card: 16px;
+    --radius-button: 8px;
+    --radius-pill: 999px;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm: 0 2px 6px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --border-hairline: 1px solid var(--color-border);
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-serif: "Source Serif Pro", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--theme-bg);
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  /* ─── Shell + hero ───────────────────────────────────── */
+  .topnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 28px;
+    background: white;
+    border-bottom: var(--border-hairline);
+  }
+  .topnav-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--theme-accent);
+  }
+  .topnav-brand small {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--theme-text);
+    text-transform: uppercase;
+  }
+  .topnav-right { display: flex; align-items: center; gap: 14px; }
+  .topnav-link {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .topnav-link.active { color: var(--theme-accent); font-weight: 600; }
+  .topnav-balls {
+    font-size: 11px;
+    color: var(--theme-accent);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .topnav-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--theme-accent);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  /* ─── Persona switcher dropdown ──────────────────────── */
+  .persona-dropdown {
+    position: absolute;
+    top: 56px; right: 20px;
+    width: 280px;
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-md);
+    padding: 8px;
+    z-index: 100;
+  }
+  .persona-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -6px; right: 14px;
+    width: 12px; height: 12px;
+    background: white;
+    transform: rotate(45deg);
+    box-shadow: -1px -1px 0 var(--color-border);
+  }
+  .persona-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .persona-row:hover { background: var(--theme-soft); }
+  .persona-row.active { background: var(--theme-soft); }
+  .persona-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px;
+    flex-shrink: 0;
+    color: white;
+  }
+  .persona-avatar-sm { background: #ec1f6d; }
+  .persona-avatar-bp { background: #6366f1; }
+  .persona-avatar-rf { background: #1e293b; }
+  .persona-main { flex: 1; min-width: 0; }
+  .persona-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+  .persona-role { font-size: 11px; color: var(--color-text-muted); }
+  .persona-tick {
+    color: var(--theme-accent);
+    font-size: 14px;
+  }
+  .persona-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 6px 8px;
+  }
+  .persona-label {
+    padding: 8px 12px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  /* ─── Hero ────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(120deg, #34d399 0%, #ec1f6d 50%, #34d399 100%);
+    padding: 28px 28px 0;
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-chips {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .hero-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.85);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .hero-title {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    color: white;
+  }
+  .hero-sub {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: rgba(255,255,255,0.92);
+    margin-bottom: 24px;
+  }
+
+  /* ─── Folder tabs ────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    padding: 0 16px;
+    margin-bottom: -1px;
+  }
+  .tab {
+    background: rgba(255,255,255,0.50);
+    color: rgba(255,255,255,0.85);
+    padding: 12px 28px;
+    border-radius: 14px 14px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .tab:hover { background: rgba(255,255,255,0.72); color: white; }
+  .tab.active {
+    background: var(--theme-bg);
+    color: var(--theme-accent);
+  }
+
+  /* ─── Inbox surface ──────────────────────────────────── */
+  .inbox {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+    padding: 24px 28px;
+  }
+
+  .panel {
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: var(--border-hairline);
+  }
+  .panel-header-icon { width: 16px; height: 16px; color: var(--theme-accent); }
+  .panel-header-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--theme-text);
+  }
+  .panel-header-meta {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  /* ─── Thread list rail ───────────────────────────────── */
+  .filter-rail {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: var(--border-hairline);
+    overflow-x: auto;
+  }
+  .filter-chip {
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: var(--border-hairline);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-chip.active {
+    background: var(--theme-accent);
+    color: white;
+    border-color: var(--theme-accent);
+  }
+  .filter-chip-count {
+    opacity: 0.7;
+    margin-left: 4px;
+  }
+
+  .thread-list { padding: 8px 8px; }
+  .thread-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 10px;
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .thread-row:hover { background: var(--theme-bg); }
+  .thread-row.selected { background: var(--theme-soft); border-left: 2px solid var(--theme-accent); padding-left: 8px; }
+  .thread-row + .thread-row { border-top: var(--border-hairline); border-radius: 0; margin-top: -1px; }
+  .thread-logo {
+    width: 38px; height: 38px;
+    border-radius: var(--radius-button);
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .thread-logo-1 { background: linear-gradient(135deg, #fbb6c5 0%, #ec1f6d 100%); }
+  .thread-logo-2 { background: linear-gradient(135deg, #fbcfe8 0%, #a855f7 100%); }
+  .thread-logo-3 { background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%); }
+  .thread-logo-4 { background: linear-gradient(135deg, #bae6fd 0%, #2563eb 100%); }
+  .thread-main { flex: 1; min-width: 0; }
+  .thread-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 1px;
+  }
+  .thread-from {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .thread-time {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .thread-subject {
+    font-size: 12px;
+    color: var(--color-text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .thread-subject.unread { font-weight: 600; }
+  .thread-meta {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+  .thread-project { color: var(--theme-accent); font-weight: 500; }
+  .pill-status {
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .pill-status-action { background: var(--color-action-soft); color: var(--color-action); }
+  .pill-status-waiting { background: var(--color-waiting-soft); color: var(--color-waiting); }
+  .pill-status-quoted { background: var(--color-quoted-soft); color: var(--color-quoted); }
+  .pill-status-booked { background: var(--color-booked-soft); color: var(--color-booked); }
+  .thread-unread-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--theme-accent);
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ─── Conversation panel ─────────────────────────────── */
+  .conv {
+    display: flex;
+    flex-direction: column;
+    min-height: 540px;
+  }
+  .conv-meta {
+    padding: 16px 20px;
+    border-bottom: var(--border-hairline);
+    display: grid;
+    grid-template-columns: max-content 1fr max-content 1fr;
+    gap: 4px 18px;
+    font-size: 12px;
+  }
+  .conv-meta-label {
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+  .conv-meta-value { color: var(--color-text-primary); }
+  .conv-meta-value-subject { font-weight: 600; }
+
+  .conv-section { border-bottom: var(--border-hairline); }
+  .conv-section-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 20px;
+    cursor: pointer;
+    background: var(--theme-soft);
+  }
+  .conv-section-icon { width: 15px; height: 15px; color: var(--theme-accent); }
+  .conv-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--theme-accent);
+  }
+  .conv-section-count {
+    margin-left: 6px;
+    padding: 1px 7px;
+    background: var(--theme-accent);
+    color: white;
+    border-radius: var(--radius-pill);
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .conv-section-chevron {
+    margin-left: auto;
+    color: var(--theme-accent);
+    font-size: 14px;
+    transition: transform 0.15s ease;
+  }
+  .conv-section-chevron.collapsed { transform: rotate(-90deg); }
+
+  /* Event details body */
+  .conv-event-body {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 24px;
+  }
+  .event-cell-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 2px;
+  }
+  .event-cell-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .event-cell-sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  /* Items section */
+  .items-body { padding: 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .item-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px;
+    border-radius: var(--radius-button);
+    border: var(--border-hairline);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .item-row:hover { border-color: var(--theme-accent); }
+  .item-row-img {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-button);
+    background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .item-row-main { flex: 1; min-width: 0; }
+  .item-row-name { font-size: 13px; font-weight: 600; }
+  .item-row-sub { font-size: 11px; color: var(--color-text-muted); }
+  .item-row-price { font-size: 13px; font-weight: 600; }
+
+  /* Conversation stream */
+  .conv-stream-body {
+    padding: 16px 20px;
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.85'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>"),
+      var(--theme-bg);
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .conv-date {
+    align-self: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    padding: 2px 10px;
+    background: rgba(255,255,255,0.6);
+    border-radius: var(--radius-pill);
+  }
+  .stream-lane {
+    display: flex;
+    max-width: 75%;
+  }
+  .stream-lane-them { justify-content: flex-start; }
+  .stream-lane-me { justify-content: flex-end; margin-left: auto; }
+
+  .stream-bubble {
+    background: white;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 13px;
+    box-shadow: var(--shadow-xs);
+    line-height: 1.4;
+    max-width: 100%;
+  }
+  .stream-lane-me .stream-bubble {
+    background: var(--theme-soft);
+  }
+  .stream-bubble-time {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* Item card in stream — grid layout */
+  .stream-item-card {
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+    width: 240px;
+  }
+  .stream-item-img {
+    width: 100%;
+    height: 130px;
+    background-size: cover;
+    background-position: center;
+    background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%);
+    position: relative;
+  }
+  .stream-item-status {
+    position: absolute;
+    bottom: 8px; left: 8px;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.95);
+    color: var(--color-action);
+  }
+  .stream-item-body { padding: 10px 12px; }
+  .stream-item-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .stream-item-price { font-size: 13px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 8px; }
+  .stream-item-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .item-action {
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    border: var(--border-hairline);
+    font-size: 11px;
+    font-weight: 600;
+    background: white;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .item-action:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+  .item-action-accept { color: var(--theme-accent); }
+
+  /* Compose */
+  .compose {
+    padding: 12px 20px;
+    border-top: var(--border-hairline);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+  }
+  .compose-chip {
+    padding: 6px 12px;
+    border: var(--border-hairline);
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+    background: white;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .compose-chip:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+  .compose-icon {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-button);
+  }
+  .compose-icon:hover { background: var(--theme-soft); color: var(--theme-accent); }
+  .compose-add-note {
+    padding: 8px 16px;
+    background: var(--theme-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="topnav-brand">
+    B<span style="color:#0f172a">A</span>LLPARK
+    <small>SUPPLIER VIEW</small>
+  </div>
+  <div class="topnav-right">
+    <div class="topnav-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</div>
+    <div class="topnav-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Front</div>
+    <div class="topnav-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-6h16l1 6"/><rect x="3" y="9" width="18" height="12" rx="2"/></svg>Store</div>
+    <div class="topnav-link active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Inbox</div>
+    <div class="topnav-balls">16 Balls left</div>
+    <div class="topnav-avatar">RF</div>
+  </div>
+
+  <!-- PERSONA DROPDOWN — shown OPEN to demo the switcher -->
+  <div class="persona-dropdown">
+    <div class="persona-label">Active persona</div>
+    <div class="persona-row active">
+      <div class="persona-avatar persona-avatar-rf">RF</div>
+      <div class="persona-main">
+        <div class="persona-name">Rocket Food</div>
+        <div class="persona-role">Supplier · London</div>
+      </div>
+      <div class="persona-tick">✓</div>
+    </div>
+    <div class="persona-divider"></div>
+    <div class="persona-label">Switch to</div>
+    <div class="persona-row">
+      <div class="persona-avatar persona-avatar-sm">SM</div>
+      <div class="persona-main">
+        <div class="persona-name">Sarah Mitchell</div>
+        <div class="persona-role">Woodland Agency · Admin</div>
+      </div>
+    </div>
+    <div class="persona-row">
+      <div class="persona-avatar persona-avatar-bp">BP</div>
+      <div class="persona-main">
+        <div class="persona-name">Beth Pizey</div>
+        <div class="persona-role">Ballpark · Admin</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-chips">
+    <span class="hero-chip">James Chen · Sales</span>
+    <span class="hero-chip">📍 London</span>
+  </div>
+  <h1 class="hero-title">Rocket Food</h1>
+  <div class="hero-sub">LONDON</div>
+  <div class="tabs">
+    <div class="tab">Home</div>
+    <div class="tab">Front</div>
+    <div class="tab">Store</div>
+    <div class="tab active">Inbox</div>
+  </div>
+</div>
+
+<!-- INBOX -->
+<div class="inbox">
+
+  <!-- LEFT: thread list -->
+  <div class="panel">
+    <div class="panel-header">
+      <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+      <div class="panel-header-label">Inbox</div>
+      <div class="panel-header-meta">4 threads</div>
+    </div>
+
+    <div class="filter-rail">
+      <div class="filter-chip active">All<span class="filter-chip-count">4</span></div>
+      <div class="filter-chip">Action<span class="filter-chip-count">2</span></div>
+      <div class="filter-chip">Waiting<span class="filter-chip-count">1</span></div>
+      <div class="filter-chip">Quoted<span class="filter-chip-count">1</span></div>
+      <div class="filter-chip">Booked</div>
+    </div>
+
+    <div class="thread-list">
+
+      <div class="thread-row selected">
+        <div class="thread-logo thread-logo-1">WA</div>
+        <div class="thread-main">
+          <div class="thread-top">
+            <div class="thread-from">Woodland Agency</div>
+            <div class="thread-time">2h</div>
+          </div>
+          <div class="thread-subject unread">Bowl Food for 80</div>
+          <div class="thread-meta">
+            <span class="thread-project">Pop-Up Activation</span>
+            <span class="pill-status pill-status-action">Action</span>
+          </div>
+        </div>
+        <div class="thread-unread-dot"></div>
+      </div>
+
+      <div class="thread-row">
+        <div class="thread-logo thread-logo-2">EA</div>
+        <div class="thread-main">
+          <div class="thread-top">
+            <div class="thread-from">Elite Agency</div>
+            <div class="thread-time">Yesterday</div>
+          </div>
+          <div class="thread-subject unread">Canapés &amp; Reception · 120 guests</div>
+          <div class="thread-meta">
+            <span class="thread-project">Q4 Launch Event</span>
+            <span class="pill-status pill-status-action">Action</span>
+          </div>
+        </div>
+        <div class="thread-unread-dot"></div>
+      </div>
+
+      <div class="thread-row">
+        <div class="thread-logo thread-logo-3">EP</div>
+        <div class="thread-main">
+          <div class="thread-top">
+            <div class="thread-from">Event Partners Ltd</div>
+            <div class="thread-time">Mon</div>
+          </div>
+          <div class="thread-subject">Sit-Down Dining (60 covers)</div>
+          <div class="thread-meta">
+            <span class="thread-project">Awards Ceremony</span>
+            <span class="pill-status pill-status-waiting">Waiting</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="thread-row">
+        <div class="thread-logo thread-logo-4">BP</div>
+        <div class="thread-main">
+          <div class="thread-top">
+            <div class="thread-from">Bright Productions</div>
+            <div class="thread-time">22 May</div>
+          </div>
+          <div class="thread-subject">Bar Service · all-day</div>
+          <div class="thread-meta">
+            <span class="thread-project">Summer Sessions</span>
+            <span class="pill-status pill-status-quoted">Quoted</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: conversation panel -->
+  <div class="panel conv">
+
+    <!-- Email-style metadata -->
+    <div class="conv-meta">
+      <div class="conv-meta-label">From</div>
+      <div class="conv-meta-value">Woodland Agency</div>
+      <div class="conv-meta-label">First</div>
+      <div class="conv-meta-value">Wed 27 May · 14:32</div>
+
+      <div class="conv-meta-label">To</div>
+      <div class="conv-meta-value">Rocket Food</div>
+      <div class="conv-meta-label">Last</div>
+      <div class="conv-meta-value">Wed 27 May · 14:32</div>
+
+      <div class="conv-meta-label">CC</div>
+      <div class="conv-meta-value">—</div>
+      <div class="conv-meta-label">Status</div>
+      <div class="conv-meta-value"><span class="pill-status pill-status-action" style="margin: 0;">Action</span></div>
+
+      <div class="conv-meta-label">Subject</div>
+      <div class="conv-meta-value conv-meta-value-subject" style="grid-column: span 3;">Bowl Food for 80</div>
+    </div>
+
+    <!-- Event details — expanded -->
+    <div class="conv-section">
+      <div class="conv-section-header">
+        <svg class="conv-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="conv-section-label">Event Details</div>
+        <span class="conv-section-count">REF WA-016</span>
+        <div class="conv-section-chevron">▾</div>
+      </div>
+      <div class="conv-event-body">
+        <div>
+          <div class="event-cell-label">Client</div>
+          <div class="event-cell-value">Angel Delight</div>
+        </div>
+        <div>
+          <div class="event-cell-label">Event Name</div>
+          <div class="event-cell-value">Pop-Up Activation</div>
+        </div>
+        <div>
+          <div class="event-cell-label">Guests</div>
+          <div class="event-cell-value">80</div>
+          <div class="event-cell-sub">expected</div>
+        </div>
+        <div>
+          <div class="event-cell-label">Date</div>
+          <div class="event-cell-value">25–30 May 2026</div>
+          <div class="event-cell-sub">3 days</div>
+        </div>
+        <div>
+          <div class="event-cell-label">Venue</div>
+          <div class="event-cell-value">Family-friendly venue</div>
+          <div class="event-cell-sub">London</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items — expanded -->
+    <div class="conv-section">
+      <div class="conv-section-header">
+        <svg class="conv-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <div class="conv-section-label">Items</div>
+        <span class="conv-section-count">1</span>
+        <div class="conv-section-chevron">▾</div>
+      </div>
+      <div class="items-body">
+        <div class="item-row">
+          <div class="item-row-img">🥣</div>
+          <div class="item-row-main">
+            <div class="item-row-name">Bowl Food for 80</div>
+            <div class="item-row-sub">Mixed bowl menu · 3 hot 2 cold · Bowl Food &amp; Sharing</div>
+          </div>
+          <div class="item-row-price">£2,400 ref</div>
+          <span class="pill-status pill-status-action">Brief Sent</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversation — expanded -->
+    <div class="conv-section" style="border-bottom: none;">
+      <div class="conv-section-header">
+        <svg class="conv-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <div class="conv-section-label">Conversation</div>
+        <span class="conv-section-count">1</span>
+        <div class="conv-section-chevron">▾</div>
+      </div>
+
+      <div class="conv-stream-body">
+
+        <div class="conv-date">27 May 2026</div>
+
+        <!-- Agent's opening: brief-sent event with item card + caption -->
+        <div class="stream-lane stream-lane-them">
+          <div class="stream-item-card">
+            <div class="stream-item-img">
+              <div class="stream-item-status">Brief Sent</div>
+            </div>
+            <div class="stream-item-body">
+              <div class="stream-item-name">Bowl Food for 80</div>
+              <div class="stream-item-price">£2,400 ref</div>
+              <div class="stream-item-actions">
+                <button class="item-action item-action-accept">Accept</button>
+                <button class="item-action">Think</button>
+                <button class="item-action">Decline</button>
+                <button class="item-action">Adjust</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agent's note caption -->
+        <div class="stream-lane stream-lane-them">
+          <div class="stream-bubble">
+            hey james, liam again — got a pop-up with Angel Delight, would love your bowls. let me know if those dates work ;)
+            <div class="stream-bubble-time">14:32</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Compose strip (supplier side) -->
+      <div class="compose">
+        <div class="compose-icon" title="Attach">📎</div>
+        <div class="compose-icon" title="Tag item">🏷️</div>
+        <div class="compose-icon" title="Next action by">🕐</div>
+        <div class="compose-chip">Dates work</div>
+        <div class="compose-chip">Sending quote shortly</div>
+        <div class="compose-chip">Need more info</div>
+        <button class="compose-add-note">+ Add note</button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

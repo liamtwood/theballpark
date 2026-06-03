@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>p0014 — Agent Home (Home / Settings tabs, marketplace-style chrome)</title>
+<style>
+  :root {
+    --theme-accent: #ec1f6d;
+    --theme-soft: #fbeef3;
+    --theme-bg: #faf6f7;
+    --theme-text: #6f3550;
+
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #4a4a4a;
+    --color-text-muted: #8b8b8b;
+    --color-border: rgba(0,0,0,0.06);
+    --color-surface: #ffffff;
+
+    --radius-card: 16px;
+    --radius-button: 8px;
+    --radius-pill: 999px;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm: 0 2px 6px rgba(0,0,0,0.06);
+    --border-hairline: 1px solid var(--color-border);
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-serif: "Source Serif Pro", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--theme-bg);
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .shell {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px 24px 48px;
+  }
+
+  /* ─── Top nav ─────────────────────────────────────────── */
+  .topnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 16px;
+  }
+  .topnav-brand { display: flex; align-items: center; gap: 12px; }
+  .topnav-logo {
+    width: 28px; height: 28px;
+    background: var(--theme-accent);
+    border-radius: var(--radius-button);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 13px;
+  }
+  .topnav-agency { font-family: var(--font-serif); font-size: 18px; }
+  .topnav-right { display: flex; align-items: center; gap: 12px; }
+  .topnav-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--theme-soft);
+    color: var(--theme-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px; cursor: pointer;
+  }
+
+  /* ─── Tabs ───────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: var(--border-hairline);
+    margin-bottom: 20px;
+  }
+  .tab {
+    background: transparent;
+    color: var(--color-text-muted);
+    padding: 12px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+  }
+  .tab:hover { color: var(--color-text-secondary); }
+  .tab.active {
+    color: var(--theme-accent);
+    border-bottom-color: var(--theme-accent);
+  }
+
+  /* ─── Stats bar — same 4 stats as today ──────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    padding: 16px 18px;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.1;
+  }
+  .stat-sub {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  /* ─── Three-column body ──────────────────────────────── */
+  .body {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 1100px) {
+    .body { grid-template-columns: 1fr; }
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ─── Panel chrome (marketplace style) ────────────────── */
+  .panel {
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: var(--border-hairline);
+  }
+  .panel-header-icon { width: 16px; height: 16px; color: var(--theme-accent); }
+  .panel-header-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--theme-text);
+  }
+  .panel-header-action {
+    margin-left: auto;
+    background: var(--theme-accent);
+    border: none;
+    color: white;
+    padding: 8px 18px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: var(--shadow-xs);
+  }
+  .panel-header-action:hover { opacity: 0.92; transform: translateY(-1px); }
+  .panel-header-action:active { transform: translateY(0); }
+  .panel-body { padding: 16px 18px; }
+
+  /* ─── Upcoming ─────────────────────────────────────── */
+  .upcoming-name { font-family: var(--font-serif); font-size: 18px; font-weight: 500; margin: 0 0 4px; }
+  .upcoming-meta { font-size: 13px; color: var(--color-text-muted); margin: 0 0 2px; }
+  .upcoming-date { font-size: 13px; color: var(--color-text-primary); margin: 6px 0 0; font-weight: 500; }
+
+  /* ─── Recent Activity ────────────────────────────────── */
+  .activity-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+  }
+  .activity-item + .activity-item { border-top: var(--border-hairline); }
+  .activity-item:first-child { padding-top: 0; }
+  .activity-item:last-child { padding-bottom: 0; }
+  .activity-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--theme-accent);
+    flex-shrink: 0;
+  }
+  .activity-text { flex: 1; min-width: 0; }
+  .activity-time { font-size: 11px; color: var(--color-text-muted); }
+
+  /* ─── Quick Actions ─────────────────────────────────── */
+  .quick-action {
+    display: block;
+    padding: 10px 14px;
+    border: var(--border-hairline);
+    border-radius: var(--radius-button);
+    font-size: 13px;
+    color: var(--color-text-primary);
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+  .quick-action + .quick-action { margin-top: 8px; }
+  .quick-action:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+
+  /* ─── Active Events centre column ───────────────────── */
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .project-card {
+    border-radius: var(--radius-button);
+    border: var(--border-hairline);
+    background: white;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .project-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .project-card-header {
+    position: relative;
+    height: 130px;
+    background-size: cover;
+    background-position: center;
+  }
+  .project-card-header-1 { background: linear-gradient(135deg, #fbb6c5 0%, #ec1f6d 100%); }
+  .project-card-header-2 { background: linear-gradient(135deg, #fbcfe8 0%, #a855f7 100%); }
+  .project-card-header-3 { background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%); }
+  .project-card-header-4 { background: linear-gradient(135deg, #bae6fd 0%, #2563eb 100%); }
+  .project-card-status-pill {
+    position: absolute; top: 10px; right: 10px;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(255,255,255,0.95);
+    color: var(--color-text-primary);
+  }
+  .project-card-client-chip {
+    position: absolute; bottom: 10px; left: 10px;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    background: rgba(0,0,0,0.45);
+    color: white;
+  }
+  .project-card-body { padding: 12px 14px; }
+  .project-card-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:6px; }
+  .project-card-ref {
+    font-size: 10px;
+    background: var(--theme-soft);
+    color: var(--theme-accent);
+    padding: 1px 6px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+  }
+  .project-card-meta { font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
+  .project-card-cost { font-size: 13px; font-weight: 600; }
+
+  /* ─── Credits card ───────────────────────────────────── */
+  .credits-body {
+    padding: 20px 18px;
+    text-align: center;
+  }
+  .credits-number {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    font-weight: 600;
+    color: var(--theme-accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .credits-label {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+  .credits-dots {
+    display: flex; gap: 4px; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .credit-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid var(--theme-accent);
+  }
+  .credit-dot.filled { background: var(--theme-accent); }
+  .credits-desc {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  /* ─── Saved Suppliers grid ───────────────────────────── */
+  .sup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .sup-card {
+    border-radius: var(--radius-button);
+    border: var(--border-hairline);
+    overflow: hidden;
+    background: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sup-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-xs); }
+  .sup-img {
+    height: 100px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+  .sup-img-1 { background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%); }
+  .sup-img-2 { background: linear-gradient(135deg, #bae6fd 0%, #2563eb 100%); }
+  .sup-heart {
+    position: absolute; top: 8px; right: 8px;
+    width: 20px; height: 20px;
+    background: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--theme-accent);
+    font-size: 11px;
+  }
+  .sup-body { padding: 8px 10px; }
+  .sup-name { font-size: 12px; font-weight: 600; }
+  .sup-meta { font-size: 10px; color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div class="topnav-brand">
+      <div class="topnav-logo">B</div>
+      <div class="topnav-agency">Woodland Agency</div>
+    </div>
+    <div class="topnav-right">
+      <div class="topnav-avatar">LW</div>
+    </div>
+  </div>
+
+  <!-- TABS — new -->
+  <div class="tabs">
+    <div class="tab active">Home</div>
+    <div class="tab">Settings</div>
+  </div>
+
+  <!-- STATS BAR — same 4 stats as today -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Balls remaining</div>
+      <div class="stat-value">8</div>
+      <div class="stat-sub">resets in 12 days</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Active Events</div>
+      <div class="stat-value">4</div>
+      <div class="stat-sub">Pop-Up Activation</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Saved suppliers</div>
+      <div class="stat-value">12</div>
+      <div class="stat-sub">across categories</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Quotes in progress</div>
+      <div class="stat-value">3</div>
+      <div class="stat-sub">awaiting response</div>
+    </div>
+  </div>
+
+  <!-- THREE-COLUMN BODY — same layout as today -->
+  <div class="body">
+
+    <!-- LEFT — Upcoming + Recent Activity + Quick Actions -->
+    <div class="col">
+
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div class="panel-header-label">Upcoming</div>
+        </div>
+        <div class="panel-body">
+          <p class="upcoming-name">Pop-Up Activation</p>
+          <p class="upcoming-meta">Angel Delight</p>
+          <p class="upcoming-meta">Family-friendly venue</p>
+          <p class="upcoming-date">25–30 May 2026</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div class="panel-header-label">Recent Activity</div>
+        </div>
+        <div class="panel-body">
+          <div class="activity-item">
+            <div class="activity-dot"></div>
+            <div class="activity-text">Brief updated — TechVista London</div>
+            <div class="activity-time">2h ago</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot"></div>
+            <div class="activity-text">Project created — Food &amp; Drink Expo</div>
+            <div class="activity-time">1d ago</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot"></div>
+            <div class="activity-text">Supplier saved — Construct &amp; Co.</div>
+            <div class="activity-time">2d ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <div class="panel-header-label">Quick Actions</div>
+        </div>
+        <div class="panel-body">
+          <a class="quick-action">Browse Marketplace</a>
+          <a class="quick-action">Browse Suppliers</a>
+          <a class="quick-action">Invite Member</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CENTRE — Active Events -->
+    <div class="col">
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <div class="panel-header-label">Active Events</div>
+          <button class="panel-header-action">+ New Event</button>
+        </div>
+        <div class="panel-body">
+          <div class="project-grid">
+
+            <div class="project-card">
+              <div class="project-card-header project-card-header-1">
+                <span class="project-card-status-pill">In Quotes</span>
+                <span class="project-card-client-chip">Angel Delight</span>
+              </div>
+              <div class="project-card-body">
+                <div class="project-card-name"><span class="project-card-ref">WA-016</span> Pop-Up Activation</div>
+                <div class="project-card-meta">25–30 May 2026</div>
+                <div class="project-card-cost">Est. £24k</div>
+              </div>
+            </div>
+
+            <div class="project-card">
+              <div class="project-card-header project-card-header-2">
+                <span class="project-card-status-pill">Planning</span>
+                <span class="project-card-client-chip">TechVista</span>
+              </div>
+              <div class="project-card-body">
+                <div class="project-card-name"><span class="project-card-ref">WA-017</span> TechVista London</div>
+                <div class="project-card-meta">12–14 Jun 2026</div>
+                <div class="project-card-cost">Est. £18k</div>
+              </div>
+            </div>
+
+            <div class="project-card">
+              <div class="project-card-header project-card-header-3">
+                <span class="project-card-status-pill">In Quotes</span>
+                <span class="project-card-client-chip">FDX Group</span>
+              </div>
+              <div class="project-card-body">
+                <div class="project-card-name"><span class="project-card-ref">WA-018</span> Food &amp; Drink Expo</div>
+                <div class="project-card-meta">2–4 Jul 2026</div>
+                <div class="project-card-cost">Est. £42k</div>
+              </div>
+            </div>
+
+            <div class="project-card">
+              <div class="project-card-header project-card-header-4">
+                <span class="project-card-status-pill">Booked</span>
+                <span class="project-card-client-chip">Loftwood</span>
+              </div>
+              <div class="project-card-body">
+                <div class="project-card-name"><span class="project-card-ref">WA-019</span> Summer Sessions</div>
+                <div class="project-card-meta">15–18 Aug 2026</div>
+                <div class="project-card-cost">Est. £31k</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Credits + Saved Suppliers -->
+    <div class="col">
+
+      <div class="panel">
+        <div class="credits-body">
+          <div class="credits-number">8</div>
+          <div class="credits-label">Balls remaining this month</div>
+          <div class="credits-dots">
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot filled"></div>
+            <div class="credit-dot"></div>
+            <div class="credit-dot"></div>
+          </div>
+          <p class="credits-desc">Build and estimate for free — only spend a Ball when ready to engage.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <div class="panel-header-label">Saved Suppliers</div>
+        </div>
+        <div class="panel-body">
+          <div class="sup-grid">
+            <a class="sup-card">
+              <div class="sup-img sup-img-1">
+                <div class="sup-heart">♥</div>
+              </div>
+              <div class="sup-body">
+                <div class="sup-name">Construct &amp; Co.</div>
+                <div class="sup-meta">Saved</div>
+              </div>
+            </a>
+            <a class="sup-card">
+              <div class="sup-img sup-img-2">
+                <div class="sup-heart">♥</div>
+              </div>
+              <div class="sup-body">
+                <div class="sup-name">DAR Hire London</div>
+                <div class="sup-meta">Saved</div>
+              </div>
+            </a>
+          </div>
+          <a class="quick-action">My Suppliers</a>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>
