@@ -426,18 +426,15 @@ const DEFAULT_CONTENT: Content = {
       height: 100vh;
       overflow: hidden;
       /* v1.65hS — opaque coloured floor on the root so iOS Safari's
-         scroll-snap handoff can't reveal body parchment for a frame
-         (the original "white flash").
-         v1.65i1 — colour swapped slide-1 green → slide-2 pink
-         (#EB7396). The pink-box artifact on the 1→2 transition was
-         actually the green root floor showing through during the
-         compositor gap; against slide-2's pink it read as a sharp
-         green→pink boundary. Painting the floor pink means any gap
-         reveals pink, which blends with slide 2 and is barely
-         visible against slide 1's green (just a small green→pink
-         crossover during the transition, which is the intended
-         visual). */
-      background: #EB7396;
+         scroll-snap handoff can't reveal body parchment for a frame.
+         v1.65i2 — unified green per client request ("make the
+         background 1 color, lets go for green leave the animation
+         the same"). Slides 2/3/4 backgrounds + stage gradient all
+         changed to the same green so there's nothing for a
+         compositor gap to expose as a mismatch. The orb / fade
+         animations are untouched — orbs still paint their own pink
+         / blue / etc. gradient fills on top of the green base. */
+      background: #287F4D;
     }
 
     /* ── Header ───────────────────────────────── */
@@ -525,18 +522,9 @@ const DEFAULT_CONTENT: Content = {
          flash mid-transition between 3 and 4). Hard colour stops at
          25/50/75% match the slide boundaries exactly so the gradient
          is visually identical to the slides themselves. */
-      background-image: linear-gradient(
-        to bottom,
-        #287F4D 0%,
-        #287F4D 25%,
-        #EB7396 25%,
-        #EB7396 50%,
-        #6391A4 50%,
-        #6391A4 100%
-      );
-      background-size: 100% 400vh;
-      background-attachment: local;
-      background-repeat: no-repeat;
+      /* v1.65i2 — gradient collapsed to a single green band now that
+         all four slide backgrounds are uniformly green. */
+      background-color: #287F4D;
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -780,9 +768,13 @@ const DEFAULT_CONTENT: Content = {
        scroll, fades out once the scroll settles, fades back in when the
        user scrolls away. Slide 1 has no previous slide; slides 3 + 4
        share the same teal so the slide-4 boundary needs no bleed. */
+    /* v1.65i2 — all slide backgrounds unified to slide-1 green per
+       client request ("make the background 1 color, lets go for
+       green"). Orbs untouched — they keep their original pink /
+       blue / teal gradients on top of the green base. */
     .bp-slide-1 { background: #287F4D; }
     .bp-slide-2 {
-      background: #EB7396;
+      background: #287F4D;
       flex-direction: column;
       padding: 80px 0 100px;
     }
@@ -843,8 +835,8 @@ const DEFAULT_CONTENT: Content = {
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    .bp-slide-3 { background: #6391A4; }
-    .bp-slide-4 { background: #6391A4; }
+    .bp-slide-3 { background: #287F4D; }
+    .bp-slide-4 { background: #287F4D; }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
        Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
