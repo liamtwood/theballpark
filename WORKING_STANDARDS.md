@@ -710,6 +710,67 @@ When to use: Catalogue items, team members, categories, send lead
 
 ---
 
+## Extract Before Duplicate
+
+When adding a UI block to a second page, if it would mean copying:
+
+- more than ~30 lines of template, OR
+- more than ~3 handler methods, OR
+- any state that needs to sync via a service,
+
+**stop and extract first.** Run
+`ng generate component shared/components/<name>` (or hand-author the
+standalone component) BEFORE the duplicate exists. Two or more of the
+above criteria triggering means extraction is mandatory, not optional.
+
+Symptom of skipping this rule: when you later need to change the shared
+behaviour, you'll change it in one place and silently leave the other
+broken. That's exactly the bug class v1.65hC/hD introduced — the
+settings cog disappeared on home after agent's strip was copy-pasted
+from dashboard, and the underlying ViewChild lifecycle issue (see
+below) only bit once the duplication existed.
+
+Resolved in p0016 (v1.65hG / v1.65hH) by extracting
+`<app-page-config-strip>` as the single source of truth for the page
+settings strip; dashboard + agent now mount it with a single tag.
+
+---
+
+## Angular ViewChild
+
+**`@ViewChild('ref', { static: true })` is forbidden when the target
+lives inside any structural directive** — `*ngIf`, `*ngFor`,
+`<ng-template>`, or a conditional `<ng-container *ngIf>`.
+
+`static: true` resolves the query BEFORE the first change-detection
+cycle, which is before structural directives have run. The query
+returns `undefined` and any code in `ngOnInit` / `ngAfterViewInit`
+that depends on it silently fails (no error, no warning — just a
+no-op call with an undefined argument).
+
+Default behaviour (`static: false`, resolves AFTER the first CD cycle)
+is correct for these cases. Just omit the second argument:
+
+```typescript
+// ❌ Wrong — template is inside *ngIf="someFlag"
+@ViewChild('tpl', { static: true }) tpl!: TemplateRef<any>;
+
+// ✅ Correct — resolves after CD, when *ngIf has run
+@ViewChild('tpl') tpl?: TemplateRef<any>;
+```
+
+`static: true` is appropriate ONLY when the target element is
+unconditionally in the DOM at component creation (no structural
+directive above it). In that narrow case, add a comment explaining
+why static is safe.
+
+This rule was added after the dashboard settings cog disappeared on
+home (p0016): dashboard's `cfgStripTpl` was inside
+`*ngIf="activeTab === 'projects'"` but queried with `static: true`,
+so `setTemplate(undefined)` ran on every navigation back to home.
+
+---
+
 ## Lucide Icons Standard
 
 ```
