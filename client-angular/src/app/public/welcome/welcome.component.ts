@@ -788,6 +788,12 @@ const DEFAULT_CONTENT: Content = {
       font-weight: 900;
       line-height: 1.0;
       letter-spacing: -0.04em;
+      /* v1.65gZ41 — bump word-spacing so the gaps between REAL/COSTS
+         and REAL/FAST read clearly. The headline uses -0.04em letter-
+         spacing which tightens everything including the inter-word
+         spaces; word-spacing pushes JUST the gaps without splaying
+         the letters within each word. */
+      word-spacing: 0.25em;
       margin: 0 0 48px 0;
     }
     /* v1.65gZ11  — subtitle font bumped + max-width tightened so the
