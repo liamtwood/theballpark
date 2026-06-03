@@ -419,6 +419,14 @@ const DEFAULT_CONTENT: Content = {
       position: relative;
       height: 100vh;
       overflow: hidden;
+      /* v1.65hS — opaque slide-1 green floor on the root. On iOS Safari
+         a JS-driven slide change can briefly let the body parchment
+         show through during the scroll-snap handoff, which read as a
+         "white flash" mid-transition on phone. Painting the welcome's
+         own colour underneath means any one-frame gap reveals welcome
+         green, not body bg. The slides themselves still paint their
+         own backgrounds over the top. */
+      background: #287F4D;
     }
 
     /* ── Header ───────────────────────────────── */
@@ -1671,9 +1679,23 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   goTo(i: number) { this.scrollToSlide(i); }
 
   private scrollToSlide(i: number) {
-    const el = this.slideRefs?.toArray()[i]?.nativeElement;
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // v1.65hS — scroll the STAGE container directly instead of calling
+    // scrollIntoView on the slide element. On iOS Safari, scrollIntoView
+    // walks up the scroll-chain and can briefly scroll the document
+    // (not the snap container), which exposes the body background for
+    // a frame — the "white flash" reported on mobile. Targeting the
+    // stage keeps the scroll entirely within the snap container and
+    // sidesteps that whole class of bug.
+    const stage = this.stageRef?.nativeElement;
+    if (!stage) {
+      // Defensive fallback for the (impossible) case where the stage
+      // ref isn't bound yet — preserve the legacy behaviour.
+      const el = this.slideRefs?.toArray()[i]?.nativeElement;
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const vh = stage.clientHeight || window.innerHeight;
+    stage.scrollTo({ top: i * vh, behavior: 'smooth' });
   }
 
   @HostListener('window:keydown', ['$event'])
