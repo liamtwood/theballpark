@@ -44,8 +44,14 @@ import { CreateProjectService } from '../../core/services/create-project.service
     </div>
   `,
   styles: [`
+    /* v1.65hA — page background uses the theme's light parchment
+       (--theme-bg) so the page picks up whichever theme preset is
+       active (amber / etc.). min-height covers the visible content
+       area so the colour fills below short content. */
     .bp-agent-page {
       padding: 24px var(--section-pad, 28px) 48px;
+      background: var(--theme-bg);
+      min-height: 100%;
     }
     /* v1.65h7 — cards capped at 280px wide and the grid centres
        horizontally on the page. As more cards land they'll wrap into
