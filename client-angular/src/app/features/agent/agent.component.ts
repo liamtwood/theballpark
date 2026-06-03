@@ -151,10 +151,14 @@ export class AgentDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // v1.65h2 — title pulls the active persona's first name. Also
+    // v1.65h2  — title pulls the active persona's first name. Also
     // re-renders when the persona switches (dev/admin sessions can
     // swap via the avatar dropdown) so the welcome stays current.
-    this.applyHero();
+    // v1.65h8 — defer the initial applyHero() via setTimeout(0) so
+    // it lands AFTER app-shell's NavigationEnd handler calls
+    // shellCtx.reset(). Without this, the reset clobbers our
+    // heroTitle and the hero falls back to the org name.
+    setTimeout(() => this.applyHero(), 0);
     this.personaSvc.active$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyHero());
