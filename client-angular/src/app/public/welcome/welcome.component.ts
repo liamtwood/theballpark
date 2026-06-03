@@ -125,7 +125,13 @@ const DEFAULT_CONTENT: Content = {
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-1-exiting]="slide1Exiting">
-          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
+               caching the Gaussian-blur filter texture and momentarily
+               redrawing it during the scroll-jump even when the parent
+               was display:none. Removing the SVG (and grain) from the
+               DOM entirely on exit forces a clean teardown — no
+               compositor cache to leak. -->
+          <div class="bp-bg-layer" *ngIf="!slide1Exiting"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -140,8 +146,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
-          <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-1-inner">
+          <div class="bp-grain" *ngIf="!slide1Exiting"></div>
+          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="!slide1Exiting">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
