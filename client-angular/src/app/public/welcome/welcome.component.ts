@@ -722,6 +722,17 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
+    /* v1.65gZ38 — slide 3 -> 4 boundary uses the same recipe. Note
+       slide 3's circles start at r=240 (smaller than slides 1/2/4's
+       r=280; reduced in v1.65gZ17 to fix the centre overlap), so the
+       base in the calc is 240px. Slide 3's green orbs grow as the
+       user scrolls toward slide 4. Both slides share the same teal
+       background so there's no colour boundary to bridge, but the
+       expansion gives the 3->4 transition the same kinetic feel as
+       the other two boundaries. */
+    .bp-slide-3 .bp-svg-bg circle {
+      r: calc(240px + var(--s3-leaving, 0) * 1500px);
+    }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
@@ -1468,12 +1479,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // float position in slide-units (0 = slide 1, 1 = slide 2, ...).
       // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
       // blue orbs on slide 2 expand to bridge into slide 3's teal.
+      // v1.65gZ38 — slide-3 leaving added for the 3->4 transition.
       const vh = stage.clientHeight || window.innerHeight;
       const slideF = stage.scrollTop / vh;
       const s1Leaving = Math.max(0, Math.min(1, slideF));
       const s2Leaving = Math.max(0, Math.min(1, slideF - 1));
+      const s3Leaving = Math.max(0, Math.min(1, slideF - 2));
       root.style.setProperty('--s1-leaving', String(s1Leaving));
       root.style.setProperty('--s2-leaving', String(s2Leaving));
+      root.style.setProperty('--s3-leaving', String(s3Leaving));
     };
 
     const onScroll = () => {
