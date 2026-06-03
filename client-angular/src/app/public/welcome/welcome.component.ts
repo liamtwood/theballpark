@@ -425,14 +425,19 @@ const DEFAULT_CONTENT: Content = {
       position: relative;
       height: 100vh;
       overflow: hidden;
-      /* v1.65hS — opaque slide-1 green floor on the root. On iOS Safari
-         a JS-driven slide change can briefly let the body parchment
-         show through during the scroll-snap handoff, which read as a
-         "white flash" mid-transition on phone. Painting the welcome's
-         own colour underneath means any one-frame gap reveals welcome
-         green, not body bg. The slides themselves still paint their
-         own backgrounds over the top. */
-      background: #287F4D;
+      /* v1.65hS — opaque coloured floor on the root so iOS Safari's
+         scroll-snap handoff can't reveal body parchment for a frame
+         (the original "white flash").
+         v1.65i1 — colour swapped slide-1 green → slide-2 pink
+         (#EB7396). The pink-box artifact on the 1→2 transition was
+         actually the green root floor showing through during the
+         compositor gap; against slide-2's pink it read as a sharp
+         green→pink boundary. Painting the floor pink means any gap
+         reveals pink, which blends with slide 2 and is barely
+         visible against slide 1's green (just a small green→pink
+         crossover during the transition, which is the intended
+         visual). */
+      background: #EB7396;
     }
 
     /* ── Header ───────────────────────────────── */
