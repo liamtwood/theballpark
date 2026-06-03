@@ -686,23 +686,50 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
-       v1.65gZ33 — bleed the previous slide's colour into the top ~14vh of
+       v1.65gZ33  — bleed the previous slide's colour into the top ~14vh of
        each slide so the boundary between scroll-snap stops reads as a
-       soft gradient rather than a hard horizontal line. Slide 1 has no
-       previous slide so it stays solid; slides 3 + 4 share the same
-       teal so the boundary between them was already invisible. */
+       soft gradient rather than a hard horizontal line.
+       v1.65gZ34 — moved the bleed off the background property (which kept
+       it visible after the transition settled) onto a ::before pseudo-
+       element with opacity tied to .in-view. The bleed shows during
+       scroll, fades out once the scroll settles, fades back in when the
+       user scrolls away. Slide 1 has no previous slide; slides 3 + 4
+       share the same teal so the slide-4 boundary needs no bleed. */
     .bp-slide-1 { background: #287F4D; }
     .bp-slide-2 {
-      background: linear-gradient(to bottom, #287F4D 0, #EB7396 14vh, #EB7396);
+      background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
+    }
+    .bp-slide-2::before,
+    .bp-slide-3::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 14vh;
+      pointer-events: none;
+      z-index: 0;       /* below bg-layer (z=1), orbs render on top */
+      opacity: 1;
+      transition: opacity 0.6s ease-out;
+    }
+    .bp-slide-2::before {
+      background: linear-gradient(to bottom, #287F4D, transparent);
+    }
+    .bp-slide-3::before {
+      background: linear-gradient(to bottom, #EB7396, transparent);
+    }
+    /* When the slide has settled (.in-view added 150ms post-snap), fade
+       the bleed out so the user sees a clean solid background. While
+       transitioning to or from a slide, .in-view is absent and the
+       bleed is visible at full opacity, blending the boundary. */
+    .bp-slide-2.in-view::before,
+    .bp-slide-3.in-view::before {
+      opacity: 0;
     }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    .bp-slide-3 {
-      background: linear-gradient(to bottom, #EB7396 0, #6391A4 14vh, #6391A4);
-    }
+    .bp-slide-3 { background: #6391A4; }
     .bp-slide-4 { background: #6391A4; }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
