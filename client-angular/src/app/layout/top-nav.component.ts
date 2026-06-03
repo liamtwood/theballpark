@@ -66,7 +66,12 @@ import { environment } from '../../environments/environment';
         </a>
 
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
-        <button *ngIf="hasConfig && isAdmin" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
+        <!-- v1.65hF — isAdmin gate dropped. Page settings cog now
+             renders whenever the active page has registered a
+             config-strip via ConfigStripService (hasConfig). Was
+             admin-only previously; surfacing it on every persona so
+             the dashboard + agent strips are reachable for everyone. -->
+        <button *ngIf="hasConfig" class="bp-mode-btn" (click)="toggleConfigStrip()" title="Page settings">
           <lucide-icon name="settings" [size]="14"></lucide-icon>
         </button>
         <button class="bp-mode-btn" (click)="toggleMode()" [title]="modeTitle">
