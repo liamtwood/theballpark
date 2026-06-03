@@ -1074,12 +1074,18 @@ const DEFAULT_CONTENT: Content = {
          room to breathe below the panel's rounded edge. */
       padding: 96px 60px 96px;
 
-      background: rgba(220, 240, 235, 0.08);
-      border: 1px solid rgba(220, 240, 235, 0.20);
+      /* v1.65hV — panel made more transparent per client review.
+         Fill dropped 0.08 → 0.03, border 0.20 → 0.12, backdrop blur
+         softened 20 → 12. The headline / form / footer are unchanged
+         (form input pills + APPLY button keep their existing opacity).
+         Reads as a barely-there glass card so the slide-4 background
+         is more present behind the form. */
+      background: rgba(220, 240, 235, 0.03);
+      border: 1px solid rgba(220, 240, 235, 0.12);
       border-bottom: none;
       border-radius: 56px 56px 0 0;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
 
       display: flex;
       flex-direction: column;
