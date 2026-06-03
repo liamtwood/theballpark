@@ -11,6 +11,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { Subject, takeUntil } from 'rxjs';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { PersonaService } from '../../core/services/persona.service';
+import { CreateProjectService } from '../../core/services/create-project.service';
 
 @Component({
   selector: 'app-agent-dashboard',
@@ -20,19 +21,25 @@ import { PersonaService } from '../../core/services/persona.service';
   template: `
     <div class="bp-agent-page">
       <div class="bp-agent-cards">
-        <!-- v1.65h3 — first scaffolded card. Rectangle with rounded
+        <!-- v1.65h3  — first scaffolded card. Rectangle with rounded
              corners + drop shadow; icon in a small rounded square at
              the top-left; title + subtitle stacked beside it. Will
-             clone this layout for the rest of the agent surfaces. -->
-        <div class="bp-agent-card">
+             clone this layout for the rest of the agent surfaces.
+             v1.65h5 — wired to CreateProjectService.open() so clicking
+             the card opens the shared "+ New project" intake modal
+             that's already mounted in the app-shell. -->
+        <button type="button"
+                class="bp-agent-card"
+                (click)="openNewProject()"
+                aria-label="Start a new project">
           <div class="bp-agent-card-icon">
             <lucide-icon name="folder" [size]="20"></lucide-icon>
           </div>
           <div class="bp-agent-card-body">
-            <h3 class="bp-agent-card-title">Folder</h3>
-            <p class="bp-agent-card-sub">A description of this folder</p>
+            <h3 class="bp-agent-card-title">New Project</h3>
+            <p class="bp-agent-card-sub">Start a new event from scratch</p>
           </div>
-        </div>
+        </button>
       </div>
     </div>
   `,
@@ -47,7 +54,7 @@ import { PersonaService } from '../../core/services/persona.service';
       max-width: 1100px;
     }
 
-    /* v1.65h4 — aligned with WORKING_STANDARDS conventions:
+    /* v1.65h4  — aligned with WORKING_STANDARDS conventions:
         · --color-surface fill + var(--border-hairline) + --radius-card
         · --shadow-md drop kept as the agent-page deviation per the
           client's call ("we may change the standard"). The canonical
@@ -55,16 +62,36 @@ import { PersonaService } from '../../core/services/persona.service';
           the heavier drop is intentional.
         · title: Playfair Display, --color-text-primary
         · subtitle: Libre Franklin (--font-body) explicit
-        · icon bg: --theme-soft token instead of inline color-mix */
+        · icon bg: --theme-soft token instead of inline color-mix
+       v1.65h5 — card is now a <button> so it's keyboard-focusable +
+       fires on Enter/Space. text-align: left so the title/sub still
+       read left-aligned despite the default button center-align;
+       width: 100% so the button fills its grid cell. */
     .bp-agent-card {
       display: flex;
       align-items: flex-start;
       gap: 14px;
       padding: 18px;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
       background: var(--color-surface);
       border: var(--border-hairline);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-md);
+      transition: box-shadow 0.18s, transform 0.18s;
+    }
+    .bp-agent-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
+    }
+    .bp-agent-card:active {
+      transform: translateY(0);
+    }
+    .bp-agent-card:focus-visible {
+      outline: 2px solid var(--theme-accent);
+      outline-offset: 2px;
     }
 
     .bp-agent-card-icon {
@@ -103,7 +130,15 @@ export class AgentDashboardComponent implements OnInit, OnDestroy {
   constructor(
     private shellCtx: ShellContextService,
     private personaSvc: PersonaService,
+    private createProjectSvc: CreateProjectService,
   ) {}
+
+  /** v1.65h5 — opens the shared "+ New project" intake modal that's
+      mounted in app-shell (see app-create-project-modal). Same entry
+      point as the +button in top-nav. */
+  openNewProject() {
+    this.createProjectSvc.open();
+  }
 
   ngOnInit() {
     // v1.65h2 — title pulls the active persona's first name. Also
