@@ -131,8 +131,11 @@ import { ConfigService } from '../../core/services/config.service';
             <lucide-icon name="folder" [size]="20"></lucide-icon>
           </div>
           <div class="bp-agent-card-body">
-            <h3 class="bp-agent-card-title">New Project</h3>
-            <p class="bp-agent-card-sub">Start a new event from scratch</p>
+            <!-- v1.65hE — title binds to ConfigService.projectLabel
+                 ("Event" / "Project" / whatever the strip's EVENTS
+                 label is set to), so "New Event" or "New Project". -->
+            <h3 class="bp-agent-card-title">New {{ settingsDraft.projectLabel }}</h3>
+            <p class="bp-agent-card-sub">Start a new {{ settingsDraft.projectLabel.toLowerCase() }} from scratch</p>
           </div>
         </button>
       </div>
@@ -240,10 +243,62 @@ import { ConfigService } from '../../core/services/config.service';
       line-height: 1.4;
     }
 
-    /* v1.65hD — strip placeholder styles removed; the .bp-cfg-row /
-       .bp-cfg-lab / .bp-cfg-seg / .bp-cfg-swatch-btn classes come
-       from global styles.css and are shared with the dashboard
-       strip, so the agent strip renders identically. */
+    /* v1.65hE — strip-specific styles copied from dashboard.component.ts.
+       Plain selectors (not :host scoped) so the encapsulation
+       attribute set on the ng-template's elements at declaration
+       time still matches when AppShell renders the template in its
+       lifted slot. Same approach the dashboard uses. */
+    .bp-cfg-swatches-row { display: inline-flex; gap: 8px; }
+    .bp-cfg-swatch-btn {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .bp-cfg-swatch-btn:hover { transform: scale(1.1); }
+    .bp-cfg-swatch-btn.active {
+      box-shadow:
+        0 0 0 2px var(--color-surface),
+        0 0 0 3.5px var(--color-text-primary);
+    }
+    .bp-cfg-seg.bp-cfg-seg--multi {
+      display: inline-flex;
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bp-cfg-seg-btn {
+      padding: 4px 12px;
+      height: 28px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      border: none;
+      border-left: 0.5px solid var(--color-border);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: background 0.15s, color 0.15s;
+    }
+    .bp-cfg-seg-btn:first-child { border-left: none; }
+    .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
+      background: var(--theme-bg);
+      color: var(--theme-accent);
+    }
+    .bp-cfg-seg-btn.p-highlight {
+      background: var(--theme-accent);
+      color: var(--color-surface);
+      font-weight: 600;
+    }
+    .bp-cfg-seg-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+    .bp-cfg-seg-btn:disabled.p-highlight {
+      opacity: 1;
+    }
   `]
 })
 export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
