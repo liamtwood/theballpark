@@ -337,11 +337,13 @@ const DEFAULT_CONTENT: Content = {
         class="bp-next-icon"
         (click)="next()"
         aria-label="Next slide">
+        <!-- v1.65hU — chevrons-right → chevrons-down to match the
+             slide-stack vertical scroll direction. -->
         <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m6 17 5-5-5-5"/>
-          <path d="m13 17 5-5-5-5"/>
+          <path d="m7 6 5 5 5-5"/>
+          <path d="m7 13 5 5 5-5"/>
         </svg>
       </button>
 
@@ -502,6 +504,30 @@ const DEFAULT_CONTENT: Content = {
       scrollbar-width: none;                       /* Firefox */
       -ms-overflow-style: none;                    /* Edge legacy */
       overscroll-behavior: contain;                /* iOS rubber-band suppression */
+      /* v1.65hW — paint a scroll-height-tall gradient on the stage
+         that mirrors each slide's background colour. With background-
+         attachment:local on a scroll container, the bg scrolls with
+         the content, so the visible band at any scroll position
+         matches the slide that should be there. Any one-frame gap
+         iOS Safari's scroll-snap compositor leaves during a hand-off
+         now reveals the CORRECT slide colour for that position
+         (e.g. teal between slide-3 and slide-4) instead of the
+         welcome-root's green floor (which was visible as a green
+         flash mid-transition between 3 and 4). Hard colour stops at
+         25/50/75% match the slide boundaries exactly so the gradient
+         is visually identical to the slides themselves. */
+      background-image: linear-gradient(
+        to bottom,
+        #287F4D 0%,
+        #287F4D 25%,
+        #EB7396 25%,
+        #EB7396 50%,
+        #6391A4 50%,
+        #6391A4 100%
+      );
+      background-size: 100% 400vh;
+      background-attachment: local;
+      background-repeat: no-repeat;
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -1072,12 +1098,18 @@ const DEFAULT_CONTENT: Content = {
          room to breathe below the panel's rounded edge. */
       padding: 96px 60px 96px;
 
-      background: rgba(220, 240, 235, 0.08);
-      border: 1px solid rgba(220, 240, 235, 0.20);
+      /* v1.65hV — panel made more transparent per client review.
+         Fill dropped 0.08 → 0.03, border 0.20 → 0.12, backdrop blur
+         softened 20 → 12. The headline / form / footer are unchanged
+         (form input pills + APPLY button keep their existing opacity).
+         Reads as a barely-there glass card so the slide-4 background
+         is more present behind the form. */
+      background: rgba(220, 240, 235, 0.03);
+      border: 1px solid rgba(220, 240, 235, 0.12);
       border-bottom: none;
       border-radius: 56px 56px 0 0;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
 
       display: flex;
       flex-direction: column;
@@ -1541,14 +1573,29 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
       // blue orbs on slide 2 expand to bridge into slide 3's teal.
       // v1.65gZ38 — slide-3 leaving added for the 3->4 transition.
+      // v1.65hT — collapse each leaving fraction BACK to 0 once the
+      // user is settled past the transition window. Previously these
+      // saturated at 1 forever, so slide-N's orbs stayed at r=1780px
+      // while parked on slide N+1. iOS Safari has a known bug where
+      // SVG content under a Gaussian-blur filter is composited on a
+      // separate layer and can leak past the parent's overflow:hidden,
+      // producing a pink "ghost box" on slide 2 from slide 1's
+      // expanded orb. Triangle wave: ramps up 0→1 during the
+      // transition then ramps back to 0 over a short settle window
+      // so the orbs return to r=280 (well inside their own slide)
+      // and can't visually escape. Desktop is unaffected.
       const vh = stage.clientHeight || window.innerHeight;
       const slideF = stage.scrollTop / vh;
-      const s1Leaving = Math.max(0, Math.min(1, slideF));
-      const s2Leaving = Math.max(0, Math.min(1, slideF - 1));
-      const s3Leaving = Math.max(0, Math.min(1, slideF - 2));
-      root.style.setProperty('--s1-leaving', String(s1Leaving));
-      root.style.setProperty('--s2-leaving', String(s2Leaving));
-      root.style.setProperty('--s3-leaving', String(s3Leaving));
+      const SETTLE = 0.15; // slide-units over which the leaving fraction collapses back
+      const leaving = (i: number) => {
+        const rel = slideF - i;
+        if (rel <= 0) return 0;
+        if (rel <= 1) return rel;                        // 0 → 1 during transition
+        return Math.max(0, 1 - (rel - 1) / SETTLE);      // 1 → 0 over SETTLE window
+      };
+      root.style.setProperty('--s1-leaving', String(leaving(0)));
+      root.style.setProperty('--s2-leaving', String(leaving(1)));
+      root.style.setProperty('--s3-leaving', String(leaving(2)));
     };
 
     const onScroll = () => {
