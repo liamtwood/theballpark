@@ -54,6 +54,11 @@ import { environment } from '../../environments/environment';
            class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
+        <a routerLink="/agent"
+           routerLinkActive="active"
+           class="bp-nav-link">
+          <lucide-icon name="user" [size]="14"></lucide-icon> Agent
+        </a>
         <a routerLink="/settings"
            routerLinkActive="active"
            class="bp-nav-link">
