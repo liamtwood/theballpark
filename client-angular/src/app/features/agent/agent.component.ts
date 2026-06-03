@@ -47,10 +47,16 @@ import { CreateProjectService } from '../../core/services/create-project.service
     .bp-agent-page {
       padding: 24px var(--section-pad, 28px) 48px;
     }
+    /* v1.65h7 — cards capped at 280px wide and the grid centres
+       horizontally on the page. As more cards land they'll wrap into
+       further centred columns; with a single card the result is one
+       narrow card in the middle of the page. */
     .bp-agent-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 280px));
       gap: 16px;
+      justify-content: center;
+      margin: 0 auto;
       max-width: 1100px;
     }
 
