@@ -685,17 +685,24 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* Per-slide bases (circle gradients live in template <linearGradient> defs) */
+    /* Per-slide bases (circle gradients live in template <linearGradient> defs).
+       v1.65gZ33 — bleed the previous slide's colour into the top ~14vh of
+       each slide so the boundary between scroll-snap stops reads as a
+       soft gradient rather than a hard horizontal line. Slide 1 has no
+       previous slide so it stays solid; slides 3 + 4 share the same
+       teal so the boundary between them was already invisible. */
     .bp-slide-1 { background: #287F4D; }
     .bp-slide-2 {
-      background: #EB7396;
+      background: linear-gradient(to bottom, #287F4D 0, #EB7396 14vh, #EB7396);
       flex-direction: column;
       padding: 80px 0 100px;
     }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    .bp-slide-3 { background: #6391A4; }
+    .bp-slide-3 {
+      background: linear-gradient(to bottom, #EB7396 0, #6391A4 14vh, #6391A4);
+    }
     .bp-slide-4 { background: #6391A4; }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
