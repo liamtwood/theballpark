@@ -124,14 +124,14 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-1-exiting]="slide1Exiting">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0">
           <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
                caching the Gaussian-blur filter texture and momentarily
                redrawing it during the scroll-jump even when the parent
                was display:none. Removing the SVG (and grain) from the
                DOM entirely on exit forces a clean teardown — no
                compositor cache to leak. -->
-          <div class="bp-bg-layer" *ngIf="!slide1Exiting"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 0"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -146,8 +146,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
-          <div class="bp-grain" *ngIf="!slide1Exiting"></div>
-          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="!slide1Exiting">
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 0"></div>
+          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="exitingFromSlide !== 0">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -172,8 +172,8 @@ const DEFAULT_CONTENT: Content = {
              headline ("The best suppliers in the UK with quotes in
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
-        <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
-          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1">
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 1"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#79A8BA"/>
@@ -188,8 +188,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
-          <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-2-inner">
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 1"></div>
+          <div class="bp-slide-inner bp-slide-2-inner" *ngIf="exitingFromSlide !== 1">
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
             <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
@@ -197,7 +197,7 @@ const DEFAULT_CONTENT: Content = {
                top/bottom border rules on .bp-marquee-wrap dropped
                per client review (let the marquee run freely without
                visual frames around it). -->
-          <div class="bp-marquee-wrap">
+          <div class="bp-marquee-wrap" *ngIf="exitingFromSlide !== 1">
             <div class="bp-marquee-track">
               <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
@@ -205,8 +205,8 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
-        <section #slideRef data-slide="2" class="bp-slide bp-slide-3">
-          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2">
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 2"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%"   stop-color="#2D8E53"/>
@@ -230,8 +230,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
             </g>
           </svg></div>
-          <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-3-inner">
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 2"></div>
+          <div class="bp-slide-inner bp-slide-3-inner" *ngIf="exitingFromSlide !== 2">
             <div class="bp-producers-grid">
               <div>
                 <h2 class="bp-producers-headline">{{ text('producers.headline') }}</h2>
@@ -795,25 +795,25 @@ const DEFAULT_CONTENT: Content = {
        artifact properly. */
     .bp-slide-1 { background: #287F4D; }
 
-    /* v1.65i3 — slide-1 exiting state. When the user clicks Next on
-       slide 1, everything except the green background disappears
-       instantly (orbs, grain overlay, eyebrow/headline/subtitle
-       block) and the page jumps to slide 2, where the existing
-       .in-view fade-up animations reveal slide-2 content. No smooth
-       scroll, no compositor handoff to flash artifacts during.
-       v1.65i4 — bp-bg-layer hidden via display:none instead of
-       opacity:0. The SVG orbs sit inside a <filter url(#blur)> group;
-       on iOS Safari, parent opacity:0 leaves the compositor to
-       recompute the filter region for the children separately, so
-       the two pink orbs would stagger out instead of vanishing
-       together. display:none removes the SVG from the render tree
-       in one go — no filter recompute, both orbs disappear in the
-       same frame. */
-    .bp-slide-1.bp-slide-1-exiting .bp-bg-layer {
+    /* v1.65i3 — exiting state for any slide that's transitioning
+       out via the fade-out + instant-jump handoff. When the user
+       clicks Next, the leaving slide's orbs / grain / inner are
+       removed from the DOM (*ngIf on exitingFromSlide), the page
+       jumps to the next slide, and the destination's .in-view
+       fade-up reveals it normally.
+       v1.65i4 — bp-bg-layer hide via display:none (the *ngIf does
+       the same job now, but kept as defensive CSS). The orbs sit
+       inside a <filter url(#blur)> group; opacity:0 on the parent
+       leaves the iOS Safari compositor to recompute the filter
+       region for children separately, which staggers the orbs out.
+       display:none / *ngIf removal sidesteps that entirely.
+       v1.65i8 — generalized from .bp-slide-1.bp-slide-1-exiting to
+       any .bp-slide.bp-slide-exiting. */
+    .bp-slide.bp-slide-exiting .bp-bg-layer {
       display: none !important;
     }
-    .bp-slide-1.bp-slide-1-exiting .bp-grain,
-    .bp-slide-1.bp-slide-1-exiting .bp-slide-inner {
+    .bp-slide.bp-slide-exiting .bp-grain,
+    .bp-slide.bp-slide-exiting .bp-slide-inner {
       opacity: 0 !important;
       transition: none !important;
       animation: none !important;
@@ -1516,12 +1516,18 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
-  /** v1.65i3 — slide-1 → slide-2 transition state. When true, slide
-      1's orbs / grain / inner content all snap to opacity:0 (no
-      animation) and the page jumps instantly to slide 2 so the
-      compositor never gets a chance to flash any artifact during
-      the handoff. Slide 2's .in-view fade-up reveals it normally. */
-  slide1Exiting = false;
+  /** v1.65i3 — slide exit transition state.
+      v1.65i8 — generalized from slide-1-only to ALL forward
+      transitions (1→2, 2→3, 3→4). Holds the index of the slide
+      currently being exited; its orbs / grain / inner content are
+      removed from the DOM via *ngIf, the page jumps instantly to
+      the next slide, then the destination slide's .in-view fade-up
+      animations reveal it. null = no exit in progress. */
+  exitingFromSlide: number | null = null;
+  /** Legacy alias retained because the slide-1 template binding
+      still reads slide1Exiting. v1.65i8 keeps it in sync with
+      exitingFromSlide for backward compat. */
+  get slide1Exiting(): boolean { return this.exitingFromSlide === 0; }
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
   /** v1.65gT — last settled slide index. Used to gate the class
@@ -1819,32 +1825,27 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     const vh = stage.clientHeight || window.innerHeight;
 
-    // v1.65i3 — slide 1 → slide 2 special-case. Per client review the
-    // smooth scroll-snap from 1→2 was leaving a brief "pink box"
-    // artifact on iOS Safari mid-transition. Replace with a clean
-    // "fade out + jump" handoff:
-    //   1. Flag slide1Exiting=true → CSS instantly hides slide-1's
-    //      orbs, grain, and inner content (no transition). Background
-    //      stays (uniform green across all slides since v1.65i2).
-    //   2. Wait one frame so the opacity:0 paint commits.
-    //   3. Jump (behavior:'auto', not 'smooth') to slide-2's position.
-    //      No scroll animation means no compositor handoff to flash.
-    //   4. Slide-2's .in-view fade-up reveals content normally.
-    //   5. Reset the flag after settle so scrolling back to slide 1
-    //      shows its content again.
-    if (this.step === 0 && i === 1) {
-      this.slide1Exiting = true;
+    // v1.65i3 — fade-out + instant-jump handoff for forward
+    // transitions. Started as a slide-1 → 2 special-case after the
+    // smooth scroll-snap was leaving a pink-rolling artifact mid-
+    // transit on iOS + Chrome.
+    // v1.65i8 — generalized to ALL forward transitions (1→2, 2→3,
+    // 3→4). The leaving slide's orbs / grain / inner are stripped
+    // from the DOM via *ngIf bindings on exitingFromSlide, then we
+    // jump to the destination using behavior:'instant' (which
+    // bypasses the .bp-welcome-stage `scroll-behavior: smooth`
+    // CSS). The destination slide's .in-view fade-up reveals its
+    // content normally.
+    // Backward navigation (prev / scrolling up) keeps the smooth
+    // scroll — those transitions weren't reported as having the
+    // artifact.
+    if (i > this.step) {
+      this.exitingFromSlide = this.step;
       this.cdr.markForCheck();
       requestAnimationFrame(() => {
-        // v1.65i6 — 'instant' (not 'auto') so the scroll truly jumps,
-        // overriding the .bp-welcome-stage `scroll-behavior: smooth`
-        // CSS. With 'auto' the smooth CSS won, the scroll animated,
-        // and the viewport painted intermediate frames during the
-        // slide-1 → slide-2 transit — the "pink rolling up the top of
-        // the screen" reported on Chrome.
         stage.scrollTo({ top: i * vh, behavior: 'instant' });
         setTimeout(() => {
-          this.slide1Exiting = false;
+          this.exitingFromSlide = null;
           this.cdr.markForCheck();
         }, 200);
       });
