@@ -1553,12 +1553,22 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       setProgress();
 
+      // v1.65gZ47 — settle delay 150ms -> 450ms. The .in-view class
+      // triggers every entry animation on a slide (orb fade-in,
+      // headline/body slide-up, form rise, etc.). Holding it longer
+      // gives the user's eye time to absorb the orb-expansion colour
+      // bridge before the next slide's content starts revealing —
+      // per client review the previous timing felt too eager,
+      // especially on slide 2 -> 3 and 3 -> 4 where the orb colour
+      // doesn't perfectly match the next slide's background.
+      // Slide 1's initial paint still bypasses this timer (direct
+      // setCurrentInView(0) call below), so first-paint isn't delayed.
       clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
         const settledIdx = Math.max(0, Math.min(TOTAL_STEPS - 1,
           Math.round(stage.scrollTop / vh)));
         setCurrentInView(settledIdx);
-      }, 150);
+      }, 450);
     };
 
     stage.addEventListener('scroll', onScroll, { passive: true });
