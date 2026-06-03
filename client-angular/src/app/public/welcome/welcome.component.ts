@@ -124,7 +124,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-1-exiting]="slide1Exiting">
           <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -773,6 +773,20 @@ const DEFAULT_CONTENT: Content = {
        green"). Orbs untouched — they keep their original pink /
        blue / teal gradients on top of the green base. */
     .bp-slide-1 { background: #287F4D; }
+
+    /* v1.65i3 — slide-1 exiting state. When the user clicks Next on
+       slide 1, everything except the green background disappears
+       instantly (orbs, grain overlay, eyebrow/headline/subtitle
+       block) and the page jumps to slide 2, where the existing
+       .in-view fade-up animations reveal slide-2 content. No smooth
+       scroll, no compositor handoff to flash artifacts during. */
+    .bp-slide-1.bp-slide-1-exiting .bp-bg-layer,
+    .bp-slide-1.bp-slide-1-exiting .bp-grain,
+    .bp-slide-1.bp-slide-1-exiting .bp-slide-inner {
+      opacity: 0 !important;
+      transition: none !important;
+      animation: none !important;
+    }
     .bp-slide-2 {
       background: #287F4D;
       flex-direction: column;
@@ -1471,6 +1485,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
+  /** v1.65i3 — slide-1 → slide-2 transition state. When true, slide
+      1's orbs / grain / inner content all snap to opacity:0 (no
+      animation) and the page jumps instantly to slide 2 so the
+      compositor never gets a chance to flash any artifact during
+      the handoff. Slide 2's .in-view fade-up reveals it normally. */
+  slide1Exiting = false;
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
   /** v1.65gT — last settled slide index. Used to gate the class
@@ -1767,6 +1787,33 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
     const vh = stage.clientHeight || window.innerHeight;
+
+    // v1.65i3 — slide 1 → slide 2 special-case. Per client review the
+    // smooth scroll-snap from 1→2 was leaving a brief "pink box"
+    // artifact on iOS Safari mid-transition. Replace with a clean
+    // "fade out + jump" handoff:
+    //   1. Flag slide1Exiting=true → CSS instantly hides slide-1's
+    //      orbs, grain, and inner content (no transition). Background
+    //      stays (uniform green across all slides since v1.65i2).
+    //   2. Wait one frame so the opacity:0 paint commits.
+    //   3. Jump (behavior:'auto', not 'smooth') to slide-2's position.
+    //      No scroll animation means no compositor handoff to flash.
+    //   4. Slide-2's .in-view fade-up reveals content normally.
+    //   5. Reset the flag after settle so scrolling back to slide 1
+    //      shows its content again.
+    if (this.step === 0 && i === 1) {
+      this.slide1Exiting = true;
+      this.cdr.markForCheck();
+      requestAnimationFrame(() => {
+        stage.scrollTo({ top: i * vh, behavior: 'auto' });
+        setTimeout(() => {
+          this.slide1Exiting = false;
+          this.cdr.markForCheck();
+        }, 200);
+      });
+      return;
+    }
+
     stage.scrollTo({ top: i * vh, behavior: 'smooth' });
   }
 
