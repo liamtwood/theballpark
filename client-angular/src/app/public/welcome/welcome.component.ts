@@ -701,34 +701,37 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
-    /* v1.65gZ35 — bleed height 14vh -> 30vh for a softer, longer
-       transition. The longer fade reads as a more deliberate colour
-       crossover rather than a quick band, and the .in-view opacity
-       transition still hides it once the user has settled. */
-    .bp-slide-2::before,
+    /* v1.65gZ36 — slide-1->2 boundary now handled by EXPANDING the
+       pink orbs on slide 1 as the user scrolls toward slide 2. The
+       pink fills slide 1, bridging into slide 2's pink background.
+       The static slide-2::before bleed is no longer needed.
+       Slide-2->3 still uses the gradient bleed since slide-2's pink
+       and slide-3's teal don't share an orb colour. */
     .bp-slide-3::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 30vh;
       pointer-events: none;
-      z-index: 0;       /* below bg-layer (z=1), orbs render on top */
+      z-index: 0;
       opacity: 1;
       transition: opacity 0.6s ease-out;
-    }
-    .bp-slide-2::before {
-      background: linear-gradient(to bottom, #287F4D, transparent);
-    }
-    .bp-slide-3::before {
       background: linear-gradient(to bottom, #EB7396, transparent);
     }
-    /* When the slide has settled (.in-view added 150ms post-snap), fade
-       the bleed out so the user sees a clean solid background. While
-       transitioning to or from a slide, .in-view is absent and the
-       bleed is visible at full opacity, blending the boundary. */
-    .bp-slide-2.in-view::before,
     .bp-slide-3.in-view::before {
       opacity: 0;
+    }
+
+    /* v1.65gZ36 — pink orbs on slide 1 grow as the user scrolls toward
+       slide 2. By the time --s1-leaving reaches 1, the orbs radius
+       is huge enough to fill the slide and the green background is
+       hidden. CSS r on SVG circles is supported in modern browsers
+       (Chromium 99+, Firefox 73+, Safari 16+); JS sets --s1-leaving
+       on .bp-welcome-root in the scroll handler. We layer it on the
+       existing translateX wipe-in animation by setting r rather
+       than transform, so the two do not fight. */
+    .bp-slide-1 .bp-svg-bg circle {
+      r: calc(280px + var(--s1-leaving, 0) * 1500px);
     }
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
@@ -1456,17 +1459,28 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       });
     };
 
-    // v1.65gZ24 — also publish a 0-to-1 --scroll-progress CSS var
-    // on the welcome root so the .bp-scroll-pill can slide along the
-    // right edge as the user moves through the deck. Setting it on
+    // v1.65gZ24  — publish a 0-to-1 --scroll-progress CSS var on the
+    // welcome root so the .bp-scroll-pill can slide along the right
+    // edge as the user moves through the deck. Setting it on
     // .bp-welcome-root (the host's child) keeps the var inheritable
     // by everything inside without polluting :root.
+    // v1.65gZ36 — also publish --s1-leaving (0 = parked on slide 1,
+    // 1 = parked on slide 2). Drives slide-1's pink orb expansion so
+    // the page bridges to slide 2's pink background as the user
+    // scrolls into the transition.
     const root = stage.parentElement; // .bp-welcome-root
     const setProgress = () => {
       if (!root) return;
       const max = stage.scrollHeight - stage.clientHeight;
       const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
       root.style.setProperty('--scroll-progress', String(p));
+
+      // Per-slide leaving fractions. stage.scrollTop / clientHeight =
+      // float position in slide-units (0 = slide 1, 1 = slide 2, ...).
+      const vh = stage.clientHeight || window.innerHeight;
+      const slideF = stage.scrollTop / vh;
+      const s1Leaving = Math.max(0, Math.min(1, slideF));
+      root.style.setProperty('--s1-leaving', String(s1Leaving));
     };
 
     const onScroll = () => {
