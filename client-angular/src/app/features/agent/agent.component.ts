@@ -50,10 +50,11 @@ import { CreateProjectService } from '../../core/services/create-project.service
     /* v1.65h7 — cards capped at 280px wide and the grid centres
        horizontally on the page. As more cards land they'll wrap into
        further centred columns; with a single card the result is one
-       narrow card in the middle of the page. */
+       narrow card in the middle of the page.
+       v1.65h9 — card width bumped 280 -> 350 (~25%). */
     .bp-agent-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 280px));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 350px));
       gap: 16px;
       justify-content: center;
       margin: 0 auto;
@@ -73,22 +74,25 @@ import { CreateProjectService } from '../../core/services/create-project.service
        fires on Enter/Space. text-align: left so the title/sub still
        read left-aligned despite the default button center-align;
        width: 100% so the button fills its grid cell. */
-    /* v1.65h6 — icon stacked ABOVE the title (flex-direction:
-       column) and min-height doubled to ~160px per client review. */
+    /* v1.65h6  — icon stacked ABOVE the title (flex-direction:
+       column) and min-height doubled to ~160px per client review.
+       v1.65h9 — min-height + padding bumped ~25%; border-radius
+       overridden from --radius-card (12) to 20px for a softer,
+       more rounded card silhouette. */
     .bp-agent-card {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 14px;
-      padding: 20px;
-      min-height: 160px;
+      padding: 26px;
+      min-height: 200px;
       width: 100%;
       text-align: left;
       font: inherit;
       cursor: pointer;
       background: var(--color-surface);
       border: var(--border-hairline);
-      border-radius: var(--radius-card);
+      border-radius: 20px;
       box-shadow: var(--shadow-md);
       transition: box-shadow 0.18s, transform 0.18s;
     }
@@ -104,11 +108,13 @@ import { CreateProjectService } from '../../core/services/create-project.service
       outline-offset: 2px;
     }
 
+    /* v1.65h9 — icon container softened too: corners 8 -> 14px to
+       echo the card's larger 20px corners. */
     .bp-agent-card-icon {
       flex-shrink: 0;
       width: 40px; height: 40px;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 8px;
+      border-radius: 14px;
       background: var(--theme-soft);
       color: var(--theme-accent);
     }
