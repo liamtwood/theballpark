@@ -1144,6 +1144,17 @@ const DEFAULT_CONTENT: Content = {
         width: calc(100% - 24px);
         padding: 48px 24px 80px;
         border-radius: 36px 36px 0 0;
+        /* v1.65hY — on phone, make the panel near-invisible.
+           backdrop-filter:blur(...) on iOS reads as a bright
+           frosted-glass area regardless of how low the bg alpha
+           goes; killing it (plus dropping bg to 0.005 / border to
+           0.06) reveals the slide-4 teal background almost
+           completely behind the form. Form pills, headline, footer
+           text are unaffected — they have their own opacity stack. */
+        background: rgba(220, 240, 235, 0.005);
+        border-color: rgba(220, 240, 235, 0.06);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
     }
     .bp-guestlist-headline {
