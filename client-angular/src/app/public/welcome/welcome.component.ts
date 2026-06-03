@@ -798,6 +798,24 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
+    /* v1.65hX — disable orb expansion on mobile. iOS Safari's
+       compositor recomputes the Gaussian-blur filter region per
+       frame as the orb's radius grows, and at mid-flight (r around
+       1000px) it briefly renders the unblurred orb as a solid pink
+       or blue rectangle — the "pink box during 1->2 transition" on
+       phone. The orb-bridge effect was a visual polish for desktop;
+       on mobile the stage gradient (v1.65hW, scrolls with the
+       content) already provides continuous slide-to-slide colour
+       beneath the slide backgrounds, so the bridge is redundant.
+       Pin orbs at their base r=280px on mobile — they sit well
+       inside their own slide's overflow:hidden, never trigger the
+       filter recompute, and the gradient handles the colour bridge. */
+    @media (max-width: 720px) {
+      .bp-slide-1 .bp-svg-bg circle,
+      .bp-slide-2 .bp-svg-bg circle {
+        r: 280px;
+      }
+    }
     /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
        slides 1 + 2, on the grounds of kinetic consistency.
        v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
@@ -1126,6 +1144,17 @@ const DEFAULT_CONTENT: Content = {
         width: calc(100% - 24px);
         padding: 48px 24px 80px;
         border-radius: 36px 36px 0 0;
+        /* v1.65hY — on phone, make the panel near-invisible.
+           backdrop-filter:blur(...) on iOS reads as a bright
+           frosted-glass area regardless of how low the bg alpha
+           goes; killing it (plus dropping bg to 0.005 / border to
+           0.06) reveals the slide-4 teal background almost
+           completely behind the form. Form pills, headline, footer
+           text are unaffected — they have their own opacity stack. */
+        background: rgba(220, 240, 235, 0.005);
+        border-color: rgba(220, 240, 235, 0.06);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
     }
     .bp-guestlist-headline {
