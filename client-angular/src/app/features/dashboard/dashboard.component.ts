@@ -1151,8 +1151,14 @@ type DashTab = 'projects' | 'inbox';
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v1.23f: TemplateRef capturing the admin settings strip body.
       Pushed to ConfigStripService so the AppShell renders it in its
-      lifted slot above bp-shell-body. */
-  @ViewChild('cfgStripTpl', { static: true }) cfgStripTpl!: TemplateRef<any>;
+      lifted slot above bp-shell-body.
+      v1.65hG (p0016): dropped `{ static: true }`. The ng-template lives
+      inside *ngIf="activeTab === 'projects'", so the query cannot resolve
+      before the first change-detection cycle — static:true returned
+      undefined and setTemplate(undefined) silently no-op'd, hiding the
+      settings cog on home. Default (static:false) resolves AFTER the
+      first CD pass, by which time *ngIf has run. */
+  @ViewChild('cfgStripTpl') cfgStripTpl?: TemplateRef<any>;
   loading = true;
   org: Org | null = null;
   projects: Project[] = [];
@@ -1268,11 +1274,15 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   ) {}
 
   /** v1.23f: register the strip template with the global service so
-      AppShell renders it in the lifted slot. Using ngAfterViewInit
-      isn't strictly needed (the ViewChild is { static: true } so it
-      resolves before ngOnInit), but it's the conventional spot. */
+      AppShell renders it in the lifted slot.
+      v1.65hG (p0016): ViewChild is now default (static:false) because
+      the template lives inside *ngIf. Guard against undefined in case
+      activeTab is something other than 'projects' on mount (future-
+      proof — not currently reachable by URL). */
   ngAfterViewInit() {
-    this.configStripSvc.setTemplate(this.cfgStripTpl);
+    if (this.cfgStripTpl) {
+      this.configStripSvc.setTemplate(this.cfgStripTpl);
+    }
   }
 
   fmtCurrency(v: any): string { return ConfigService.formatCurrency(v); }
