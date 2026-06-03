@@ -525,54 +525,36 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* v1.65gW — orb wipe-in restored by animating the individual
-       <circle> elements INSIDE the filtered group instead of the
-       SVG / group / wrapper. CSS transforms on SVG children render
+    /* v1.65gW  — orb entry animated by animating the individual
+       <circle> elements INSIDE the filtered group rather than the
+       SVG / group / wrapper. CSS animations on SVG children render
        inside the SVG's own coordinate space — the filter recomputes
-       over the moved circles natively, no HTML compositing layer is
-       created, and the Gaussian blur survives. */
+       over the children natively, no HTML compositing layer is
+       created, and the Gaussian blur survives.
+       v1.65gZ40 — all slides now share the same opacity fade-in
+       (per client review — "liked slide 3 animation and wanted the
+       same approach on all the pages"). Earlier the global animation
+       was a translateX wipe-in; that's retired here, slide 3's
+       override is removed below, and every slide's orbs fade in
+       cleanly together. */
     .bp-svg-bg circle {
-      transform-box: view-box;
-      transform-origin: center;
-      transform: translateX(-100%);
+      opacity: 0;
     }
     .bp-slide.in-view .bp-svg-bg circle {
-      animation: bp-orb-wipe-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    @keyframes bp-orb-wipe-in {
-      from { transform: translateX(-100%); }
-      to   { transform: translateX(0); }
+    @keyframes bp-orb-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
-    /* v1.65gX   — slide 3's two orbs both sit at cx=400 (vertically
-       stacked, not side-by-side), so a horizontal wipe leaves the
-       right half of the viewport showing the bare blue background
-       during the transition. Original fix: scale-bloom from viewport
-       centre.
-       v1.65gZ18 — scale-bloom from scale(0) produced a rectangular
-       filter-region artifact mid-transition (when scale 0 collapses
-       the <g>'s bbox to a point, the blur filter's relative region
-       degenerates and Chrome briefly paints a rectangle there).
-       Swapped to pure opacity fade.
-       v1.65gZ39 — opacity-only fade read as "spheres just appear"
-       per client review. Re-introduced a scale animation, but
-       starting at scale(0.5) instead of scale(0) so the bbox never
-       collapses to a point — the filter region stays well-defined
-       and the rectangle artifact doesn't return. The orbs grow
-       outward from the viewport centre into their top + bottom
-       positions, giving the entry the same kinetic feel as the
-       wipe-in on slides 1/2/4. */
-    .bp-slide-3 .bp-svg-bg circle {
-      transform: scale(0.5);
-      opacity: 1;
-    }
-    .bp-slide-3.in-view .bp-svg-bg circle {
-      animation: bp-orb-grow-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    @keyframes bp-orb-grow-in {
-      from { transform: scale(0.5); }
-      to   { transform: scale(1); }
-    }
+    /* v1.65gZ40 — slide-3 orb-entry override removed. Was previously
+       a custom path (scale-bloom -> opacity-fade -> scale 0.5->1 over
+       v1.65gX / v1.65gZ18 / v1.65gZ39) to work around slide-3-specific
+       issues (cx=400 centred orbs exposed the bg during a horizontal
+       wipe; scale(0) collapsed the filter bbox). The global rule now
+       does opacity fade for every slide, so slide 3 inherits it
+       without a custom override. */
 
     /* v1.65gT — animation declared ONLY under .in-view, with the
        "from" pose as the element's direct (no-class) state. When
