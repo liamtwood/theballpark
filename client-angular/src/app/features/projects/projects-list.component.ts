@@ -394,8 +394,10 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     // ConfigService), so /projects no longer pushes heroColor; it just
     // sets its eyebrow. Title falls back to the org name (not a "home"
     // surface, so no useConfiguredTitle).
+    // Eyebrow = the Events label (projectLabel), pluralised + uppercased:
+    // "EVENTS" / "PROJECTS" / "SHOWS" — follows whatever the org renamed it to.
     this.shellCtx.set({
-      heroSub: (this.configService.homePageLabel || 'Projects').toUpperCase(),
+      heroSub: ((this.configService.projectLabel || 'Project') + 's').toUpperCase(),
       pills: [],
       tabs: [],
     });
