@@ -1772,17 +1772,43 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // only.
 
   next() {
-    // v1.65iR — slide 1 → slide 2 has a special exit animation:
-    // text scrolls up like movie credits, pink orbs grow to fill
-    // the viewport, slide bg fades green → pink. After ~800ms (CSS
-    // animation duration) we scroll to slide 2 which is already
-    // pink, so the handoff reads as one continuous pink page.
-    // Other slides use the existing direct scroll.
+    // v1.65iR — slide 1 → slide 2 special exit animation. Text scrolls
+    // up like movie credits, pink orbs grow to fill the viewport,
+    // slide bg fades green → pink. After ~800ms we scroll to slide 2
+    // (already pink) so the handoff reads as one continuous pink page.
+    //
+    // v1.65iS — replay fix. The first exit worked; subsequent exits
+    // (click home → back to slide 1 → click Next again) wouldn't fire
+    // the animation. Two reasons:
+    //   (1) slide1Exiting wasn't being cleared reliably after the
+    //       exit — relied on the scroll handler hitting idx===0,
+    //       which can no-op if the user was already at the top.
+    //   (2) Even if the flag did clear, the CSS animation engine
+    //       won't replay an animation when the same class toggles
+    //       off → on without a reflow between, so the keyframes
+    //       just sit at their last filled state.
+    // Fixes here: force-replay via remove + offsetWidth read + add,
+    // and an explicit reset 1300ms after the scroll completes so
+    // slide 1 reverts to its normal composition off-screen.
     if (this.step === 0 && !this.slide1Exiting) {
+      const slide1El = this.slideRefs?.toArray()[0]?.nativeElement;
+      if (slide1El) {
+        slide1El.classList.remove('bp-slide-1-exiting');
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        slide1El.offsetWidth;  // force reflow — CSS animation replay trick
+      }
       this.slide1Exiting = true;
       this.cdr.markForCheck();
       setTimeout(() => {
         this.scrollToSlide(1);
+        // 500ms after starting the scroll (smooth scroll covers
+        // ~300-500ms), reset the flag so the user can return to
+        // slide 1 and click Next again without the click being
+        // swallowed by the `!slide1Exiting` guard.
+        setTimeout(() => {
+          this.slide1Exiting = false;
+          this.cdr.markForCheck();
+        }, 500);
       }, 800);
       return;
     }
