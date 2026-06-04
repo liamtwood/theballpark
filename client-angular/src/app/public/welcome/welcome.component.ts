@@ -935,16 +935,24 @@ const DEFAULT_CONTENT: Content = {
        bp-form-rise) are retired. Sphere fade-in is intentionally
        NOT overridden here — slide 4 keeps the global 1.4s ease-
        out orb-fade so the dark-green orbs come up on their own
-       timing as the container arrives. */
+       timing as the container arrives.
+       v1.65jB — animation now composes translateX(-50%) WITH the
+       translateY rise. .bp-slide-4-inner uses position:absolute +
+       left:50% + transform:translateX(-50%) for its horizontal
+       centering; the jA animation replaced the entire transform
+       with translateY alone, knocking the panel half a viewport-
+       width to the left. Always include translateX(-50%) on both
+       keyframes (and the from-pose) so the panel stays centred
+       throughout the rise. */
     .bp-slide-4 .bp-slide-4-inner {
-      transform: translateY(100vh); opacity: 0;
+      transform: translate(-50%, 100vh); opacity: 0;
     }
     .bp-slide-4.in-view .bp-slide-4-inner {
       animation: bp-slide4-rise 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     @keyframes bp-slide4-rise {
-      from { transform: translateY(100vh); opacity: 0; }
-      to   { transform: translateY(0);     opacity: 1; }
+      from { transform: translate(-50%, 100vh); opacity: 0; }
+      to   { transform: translate(-50%, 0);     opacity: 1; }
     }
 
     .bp-slide {
