@@ -710,20 +710,36 @@ const DEFAULT_CONTENT: Content = {
        paused→running on a completed animation holds the end frame
        and never replays. */
 
-    /* ── Slide 2 from-pose + reveal ── */
-    .bp-slide-2 .bp-slide-2-inner,
+    /* ── Slide 2 from-pose + reveal ──
+       v1.65j2 — animation split per element. The headline scrolls
+       up from below the visible area (starts at translateY(70vh),
+       i.e. just below the slide bottom, and travels to its final
+       resting position over 1.05s). The subtitle ("The best
+       suppliers in the UK with quotes in minutes.") and the
+       marquee both stay hidden until the headline lands, then
+       snap in (steps(1, end) gives a hard pop — no fade — exactly
+       as the headline finishes). */
+    .bp-slide-2 .bp-suppliers-headline {
+      transform: translateY(70vh); opacity: 0;
+    }
+    .bp-slide-2 .bp-suppliers-subtitle,
     .bp-slide-2 .bp-marquee-wrap {
-      transform: translateY(80px); opacity: 0;
+      opacity: 0;
     }
-    .bp-slide-2.in-view .bp-slide-2-inner {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    .bp-slide-2.in-view .bp-suppliers-headline {
+      animation: bp-headline-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
+    .bp-slide-2.in-view .bp-suppliers-subtitle,
     .bp-slide-2.in-view .bp-marquee-wrap {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+      animation: bp-snap-in 1.05s steps(1, end) both;
     }
-    @keyframes bp-scroll-up {
-      from { transform: translateY(80px); opacity: 0; }
+    @keyframes bp-headline-rise {
+      from { transform: translateY(70vh); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes bp-snap-in {
+      0%   { opacity: 0; }
+      100% { opacity: 1; }
     }
 
     /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
