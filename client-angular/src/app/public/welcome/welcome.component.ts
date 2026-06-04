@@ -142,10 +142,8 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#FA91B0"/>
                 <stop offset="100%" stop-color="#DF5980"/>
               </linearGradient>
-              <filter id="s1-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
-                <feComposite in="blur" in2="bg" operator="over"/>
+              <filter id="s1-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
             <g filter="url(#s1-blur)">
@@ -188,10 +186,8 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#79A8BA"/>
                 <stop offset="100%" stop-color="#457187"/>
               </linearGradient>
-              <filter id="s2-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
-                <feComposite in="blur" in2="bg" operator="over"/>
+              <filter id="s2-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
             <g filter="url(#s2-blur)">
@@ -227,10 +223,8 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#33A25F"/>
                 <stop offset="100%" stop-color="#2D8E53"/>
               </linearGradient>
-              <filter id="s3-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
-                <feComposite in="blur" in2="bg" operator="over"/>
+              <filter id="s3-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
             <!-- v1.65gZ17 — r=280 had the top + bottom orbs
@@ -282,10 +276,8 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#33A25F"/>
                 <stop offset="100%" stop-color="#133C23"/>
               </linearGradient>
-              <filter id="s4-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
-                <feComposite in="blur" in2="bg" operator="over"/>
+              <filter id="s4-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
             <g filter="url(#s4-blur)">
