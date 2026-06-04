@@ -124,7 +124,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-1-exiting]="slide1Exiting">
           <!-- v1.65iG (p0026) — bg-layer + grain + slide-inner always
                mounted. Static baseline; p0027 reinstates the iOS
                Safari unmount via scroll-position predicate. -->
@@ -713,6 +713,47 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-orb-slide-from-right {
       from { cx: 1100; opacity: 0; }
       to   { cx: 700;  opacity: 1; }
+    }
+
+    /* v1.65iR — slide-1 EXIT animation. Fires when the user clicks
+       Next while on slide 1. Three things happen in parallel over
+       800ms:
+
+         (a) The inner content (.bp-slide-1-inner: eyebrow, headline,
+             subtitle) translates upward off the viewport, like movie
+             credits scrolling off the top.
+         (b) The pink orbs grow r 280 → 1200, expanding to fill the
+             viewport with pink under the Gaussian blur.
+         (c) The slide bg fades green → pink.
+
+       At the end of the 800ms the slide is a pink page (with the
+       grown orbs blending into the bg). next() then calls
+       scrollToSlide(1) — slide 2 is already pink, so the handoff
+       reads as one continuous pink page rather than a colour jump.
+
+       Easing matches the other slide animations. fill-mode forwards
+       keeps the end state until the class is removed (which the
+       scroll handler does when the user scrolls back to slide 1). */
+    .bp-slide-1.bp-slide-1-exiting {
+      animation: bp-slide-1-bg-to-pink 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .bp-slide-1.bp-slide-1-exiting .bp-slide-1-inner {
+      animation: bp-slide-1-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .bp-slide-1.bp-slide-1-exiting .bp-svg-bg circle {
+      animation: bp-slide-1-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes bp-slide-1-bg-to-pink {
+      from { background: #287F4D; }
+      to   { background: #EB7396; }
+    }
+    @keyframes bp-slide-1-text-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 0; }
+    }
+    @keyframes bp-slide-1-orb-grow {
+      from { r: 280;  opacity: 1; }
+      to   { r: 1200; opacity: 1; }
     }
 
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
@@ -1488,6 +1529,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
+  /** v1.65iR — slide-1 exit animation flag. Set true when the user
+      clicks Next while on slide 1; CSS keyframes animate the text
+      upward (movie-credits style), the pink orbs grow to fill the
+      viewport, and the slide bg fades green → pink. After the
+      animation completes (~800ms), scrollToSlide(1) takes the user
+      to slide 2 (already pink → seamless handoff). Auto-resets if
+      the user scrolls back to slide 1. */
+  slide1Exiting = false;
   /* v1.65iG (p0026) — slideF + scroll-position predicates removed.
      Static baseline; p0027 will introduce a fresh scroll-progress
      mechanism scoped to slide 1 ↔ 2 only. */
@@ -1585,6 +1634,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       if (idx !== this.step) {
         this.step = idx;
+        // v1.65iR — clear the slide-1 exit state when the user
+        // scrolls back to slide 1, so the slide returns to its
+        // normal green / cx=100,700 / r=280 composition. Without
+        // this the .bp-slide-1-exiting class would persist and
+        // slide 1 would render as a pink-filled page.
+        if (idx === 0 && this.slide1Exiting) {
+          this.slide1Exiting = false;
+        }
         this.cdr.markForCheck();
       }
 
@@ -1714,7 +1771,23 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // reintroduces a fresh scroll-progress mechanism for slide 1 ↔ 2
   // only.
 
-  next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
+  next() {
+    // v1.65iR — slide 1 → slide 2 has a special exit animation:
+    // text scrolls up like movie credits, pink orbs grow to fill
+    // the viewport, slide bg fades green → pink. After ~800ms (CSS
+    // animation duration) we scroll to slide 2 which is already
+    // pink, so the handoff reads as one continuous pink page.
+    // Other slides use the existing direct scroll.
+    if (this.step === 0 && !this.slide1Exiting) {
+      this.slide1Exiting = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.scrollToSlide(1);
+      }, 800);
+      return;
+    }
+    this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1));
+  }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
   goTo(i: number) { this.scrollToSlide(i); }
 
