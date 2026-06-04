@@ -6,6 +6,7 @@ import { MessageService } from 'primeng/api';
 import { OrgService } from '../../../core/services/org.service';
 import { Org } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
 
 interface Plan {
   id: string;
@@ -21,13 +22,14 @@ interface Plan {
 @Component({
   selector: 'app-subscription',
   standalone: true,
-  imports: [CommonModule, ButtonModule, ToastModule, LoadingSpinnerComponent],
+  imports: [CommonModule, ButtonModule, ToastModule, LoadingSpinnerComponent, UpdateMeComponent],
   providers: [MessageService],
   template: `
     <app-loading *ngIf="loading"></app-loading>
 
     <ng-container *ngIf="!loading">
       <div class="bp-settings-body">
+        <app-update-me reason="app-page-header"></app-update-me>
         <h2 class="bp-page-title">Subscription</h2>
         <div class="bp-page-divider"></div>
 

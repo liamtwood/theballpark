@@ -13,6 +13,7 @@ import { User } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
 
 interface InviteCode {
   code: string;
@@ -27,7 +28,7 @@ interface InviteCode {
     CommonModule, FormsModule, TitleCasePipe,
     LucideAngularModule,
     ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
+    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, UpdateMeComponent
   ],
   providers: [MessageService],
   template: `
@@ -35,6 +36,8 @@ interface InviteCode {
 
     <ng-container *ngIf="!loading">
       <div class="bp-team-page">
+
+        <app-update-me reason="app-page-header"></app-update-me>
 
         <div class="bp-team-title-bar">
           <h2 class="bp-page-title">Team</h2>

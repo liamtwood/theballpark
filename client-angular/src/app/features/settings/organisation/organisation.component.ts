@@ -11,6 +11,7 @@ import { OrgService } from '../../../core/services/org.service';
 import { PersonaService } from '../../../core/services/persona.service';
 import { Org } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
 
 @Component({
   selector: 'app-organisation',
@@ -19,7 +20,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, ToastModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent, UpdateMeComponent
   ],
   providers: [MessageService],
   template: `
@@ -27,10 +28,12 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 
     <ng-container *ngIf="!loading">
       <div class="bp-settings-body">
+        <app-update-me reason="app-page-header"></app-update-me>
         <h2 class="bp-page-title">Organisation</h2>
         <div class="bp-page-divider"></div>
 
         <!-- ORGANISATION DETAILS -->
+        <app-update-me reason="app-edit-section" note="has inline edit pencil"></app-update-me>
         <div class="bp-section">
           <div class="bp-section-header">
             <span class="bp-section-title">ORGANISATION DETAILS</span>
@@ -139,6 +142,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
         </div>
 
         <!-- FINANCIAL DEFAULTS -->
+        <app-update-me reason="app-edit-section" note="has inline edit pencil"></app-update-me>
         <div class="bp-section">
           <div class="bp-section-header">
             <span class="bp-section-title">FINANCIAL DEFAULTS</span>
