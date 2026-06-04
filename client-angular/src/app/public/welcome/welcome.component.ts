@@ -73,6 +73,19 @@ const DEFAULT_CONTENT: Content = {
   template: `
     <div class="bp-welcome-root">
 
+      <!-- v1.65iH (p0027) — fixed bg-stack. Two layers, both
+           position:fixed inset:0, one per slide colour. Opacity is
+           a linear function of scrollProgress (see bgOpacity()).
+           Adjacent layers always sum to 1 so the viewport renders
+           a clean alpha-blend at any scroll position — no seam, no
+           listener lag. Slides 3 + 4 stay at p0026's static baseline
+           (no bg layer for them yet); a follow-up extends the
+           pattern. -->
+      <div class="bp-bg-stack" aria-hidden="true">
+        <div class="bp-slide-bg bp-slide-bg-1" [style.opacity]="bgOpacity(0)"></div>
+        <div class="bp-slide-bg bp-slide-bg-2" [style.opacity]="bgOpacity(1)"></div>
+      </div>
+
       <!-- Persistent header. v1.65g9 — logo is now an image when the
            agency's marketplace-logo has been uploaded (loaded from
            /api/org on init), with the text wordmark as a fallback so
@@ -125,10 +138,11 @@ const DEFAULT_CONTENT: Content = {
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
-          <!-- v1.65iG (p0026) — bg-layer + grain + slide-inner always
-               mounted. Static baseline; p0027 reinstates the iOS
-               Safari unmount via scroll-position predicate. -->
-          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <!-- v1.65iH (p0027) — iOS Safari SVG unmount reinstated via
+               isCurrentSlide() scroll-position predicate. Generous
+               0.75-stops mount window so the SVG is present during
+               the crossfade and unmounted only when clearly off-slide. -->
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(0)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -143,8 +157,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
-          <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-1-inner">
+          <div class="bp-grain" *ngIf="isCurrentSlide(0)"></div>
+          <div class="bp-slide-inner bp-slide-1-inner" [style.opacity]="contentOpacity(0)">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -170,7 +184,7 @@ const DEFAULT_CONTENT: Content = {
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
-          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(1)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#79A8BA"/>
@@ -185,8 +199,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
-          <div class="bp-grain"></div>
-          <div class="bp-slide-inner bp-slide-2-inner">
+          <div class="bp-grain" *ngIf="isCurrentSlide(1)"></div>
+          <div class="bp-slide-inner bp-slide-2-inner" [style.opacity]="contentOpacity(1)">
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
             <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
@@ -194,7 +208,7 @@ const DEFAULT_CONTENT: Content = {
                top/bottom border rules on .bp-marquee-wrap dropped
                per client review (let the marquee run freely without
                visual frames around it). -->
-          <div class="bp-marquee-wrap">
+          <div class="bp-marquee-wrap" [style.opacity]="contentOpacity(1)">
             <div class="bp-marquee-track">
               <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
@@ -432,18 +446,40 @@ const DEFAULT_CONTENT: Content = {
       position: relative;
       height: 100vh;
       overflow: hidden;
-      /* v1.65hS — opaque coloured floor on the root so iOS Safari's
-         scroll-snap handoff can't reveal body parchment for a frame.
-         v1.65iG (p0026) — green retained as the static baseline bg
-         under all slides (slide sections are transparent). p0027
-         will introduce the bg-crossfade pattern on top of this. */
+      /* v1.65iH (p0027) — bg colour now comes from the fixed
+         .bp-bg-stack layers above this element in the DOM, opacities
+         driven by bgOpacity(). The static green floor (v1.65hS,
+         v1.65iG) is gone — slide 3 / 4 still inherit nothing here
+         and will render against whatever the bg-stack settles at the
+         scroll-progress for their position (slide 2's pink at the
+         right edge of the curve, since slide 3+4 aren't crossfading
+         yet — that's the follow-up's job). */
       /* v1.65i2 — historical: slide 2/3/4 backgrounds were unified
          to green as a debug control, then per-slide colours were
          restored. The orb / fade animations are untouched — orbs
          still paint their own pink
          / blue / etc. gradient fills on top of the green base. */
-      background: #287F4D;
+      /* v1.65iH (p0027) — green floor removed. .bp-bg-stack owns it. */
     }
+
+    /* ── v1.65iH (p0027) bg-stack ──────────────────────────────────
+       Two fixed-position bg layers covering the entire viewport,
+       opacity = bgOpacity(i). z-index:0 puts them at the bottom of
+       the stacking order; .bp-welcome-stage at z-index:1 stacks the
+       slides + their orbs / grain / content on top. */
+    .bp-bg-stack {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bp-slide-bg {
+      position: absolute;
+      inset: 0;
+      will-change: opacity;
+    }
+    .bp-slide-bg-1 { background: #287F4D; } /* slide 1 — green */
+    .bp-slide-bg-2 { background: #EB7396; } /* slide 2 — pink */
 
     /* ── Header ───────────────────────────────── */
     .bp-welcome-header {
@@ -513,6 +549,10 @@ const DEFAULT_CONTENT: Content = {
        indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
+      /* v1.65iH (p0027) — stage stacks on top of the fixed bg-stack
+         (z-index:0), so slides + their orbs / grain / content render
+         above the crossfading bg layers. */
+      z-index: 1;
       overflow-y: scroll;
       /* v1.65iG (p0026) — back to mandatory for the static baseline.
          No transition machinery left for proximity to coddle. */
@@ -1339,9 +1379,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
-  /* v1.65iG (p0026) — slideF + scroll-position predicates removed.
-     Static baseline; p0027 will introduce a fresh scroll-progress
-     mechanism scoped to slide 1 ↔ 2 only. */
+  /** v1.65iH (p0027) — single source of truth for scroll position.
+      Range 0..1, normalised across the full welcome scroll height.
+      Updated on every scroll tick in setProgress() below. Drives
+      bgOpacity / contentOpacity / isCurrentSlide. Same value is
+      mirrored to the --scroll-progress CSS var for the right-edge
+      scroll pill, so there's one source for both. */
+  scrollProgress: number = 0;
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
   // v1.65iG (p0026) — lastSettledIdx removed with the .in-view class
@@ -1423,10 +1467,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const root = stage.parentElement; // .bp-welcome-root
     const setProgress = () => {
-      if (!root) return;
       const max = stage.scrollHeight - stage.clientHeight;
       const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
-      root.style.setProperty('--scroll-progress', String(p));
+      // v1.65iH (p0027) — publish to instance prop AND CSS var.
+      // The instance prop drives bgOpacity / contentOpacity /
+      // isCurrentSlide; the CSS var drives the right-edge scroll
+      // pill. One source, two consumers.
+      this.scrollProgress = p;
+      if (root) root.style.setProperty('--scroll-progress', String(p));
     };
 
     const onScroll = () => {
@@ -1436,10 +1484,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       if (idx !== this.step) {
         this.step = idx;
-        this.cdr.markForCheck();
       }
 
       setProgress();
+
+      // v1.65iH (p0027) — markForCheck every tick so OnPush
+      // re-evaluates bgOpacity / contentOpacity / isCurrentSlide
+      // as the user scrolls within a slide. Cheap — ~7 predicate
+      // calls per CD pass.
+      this.cdr.markForCheck();
     };
 
     stage.addEventListener('scroll', onScroll, { passive: true });
@@ -1531,10 +1584,55 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // v1.65gL — buttons + keyboard arrows now scroll the target slide
   // into view; the IntersectionObserver picks it up and updates step
   // + adds .in-view (which triggers the per-slide animations).
-  // v1.65iG (p0026) — isCurrentSlide / slideProgress / contentOpacity /
-  // tierOpacity predicates all removed. Static baseline; p0027
-  // reintroduces a fresh scroll-progress mechanism for slide 1 ↔ 2
-  // only.
+  // ── v1.65iH (p0027) — scroll-position-driven reveal (slide 1 ↔ 2) ──
+  //
+  // Three pure functions of `scrollProgress`. Symmetric forward /
+  // backward by construction; reverse-scroll inherits the same fade
+  // curves automatically.
+  //
+  // For 4 slides over scroll-progress 0..1, each slide's "centre"
+  // sits at i / (TOTAL_STEPS - 1):
+  //   slide 0 centre = 0.0     slide 1 centre = 0.333
+  //   slide 2 centre = 0.667   slide 3 centre = 1.0
+  //
+  //   bgOpacity(i):
+  //     linear ramp from 1 at slide i's centre to 0 by the next
+  //     slide's centre. Adjacent bg layers always sum to 1 at any
+  //     scroll position — no seam possible. Used on the fixed
+  //     bg-stack layers behind everything.
+  //
+  //   contentOpacity(i):
+  //     tighter curve (range = stops * 0.6) so content fades faster
+  //     than bg. Gives the "bg floods first, content reveals second"
+  //     pattern as a numerical offset between the two curves.
+  //
+  //   isCurrentSlide(i):
+  //     mount window for the SVG bg-layer (orbs) and grain. Generous
+  //     halfRange (0.75 stops) so the SVG is present during the
+  //     crossfade and unmounted only when clearly off-slide. Defeats
+  //     iOS Safari's Gaussian-blur compositor cache.
+  //
+  // All three currently apply to slides 1 + 2 only per p0027's scope
+  // boundary. Slides 3 + 4 stay at p0026's static baseline.
+  bgOpacity(i: number): number {
+    const stops = 1 / (TOTAL_STEPS - 1);
+    const centre = i * stops;
+    const distance = Math.abs(this.scrollProgress - centre);
+    return Math.max(0, 1 - distance / stops);
+  }
+  contentOpacity(i: number): number {
+    const stops = 1 / (TOTAL_STEPS - 1);
+    const centre = i * stops;
+    const distance = Math.abs(this.scrollProgress - centre);
+    const range = stops * 0.6;
+    return Math.max(0, 1 - distance / range);
+  }
+  isCurrentSlide(i: number): boolean {
+    const stops = 1 / (TOTAL_STEPS - 1);
+    const centre = i * stops;
+    const halfRange = stops * 0.75;
+    return Math.abs(this.scrollProgress - centre) <= halfRange;
+  }
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
