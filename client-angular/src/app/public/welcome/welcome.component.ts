@@ -179,7 +179,7 @@ const DEFAULT_CONTENT: Content = {
              headline ("The best suppliers in the UK with quotes in
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
-        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" [class.bp-credits-rolling]="slide2CreditsRolling" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 1"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -805,6 +805,48 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-fade-in-circles {
       from { opacity: 0; }
       to   { opacity: 1; }
+    }
+
+    /* ── Slide 2 → 3 credits-roll exit ──
+       v1.65j6 — same movie-credits treatment we apply to slide 1
+       on its way to slide 2, now on slide 2 on its way to slide 3.
+       Triggered by .bp-credits-rolling on the slide-2 section
+       (bound to slide2CreditsRolling in the component). During
+       the 1s roll:
+         · .bp-slide-2-inner + .bp-marquee-wrap translate up off
+           the top of the viewport (bp-credits-up, reused from
+           the slide-1 exit — same keyframe drives both).
+         · The section's background-color transitions from slide-2
+           pink (#EB7396) to slide-3 teal (#6391A4), so the bg
+           matches slide-3 exactly by the time the jump fires.
+         · The blue orbs grow from r=280 to r=1780 (bp-orb-grow
+           reused from slide 1) so the page reads solid teal-ish
+           at the end of the roll.
+       Slide 3's existing entry animation (left + right producer
+       columns sliding in horizontally) plays after the jump.
+       Slide-3 circles get their own fade-in (1s linear) below to
+       match the credits-roll cadence. */
+    .bp-slide-2.bp-credits-rolling .bp-slide-2-inner,
+    .bp-slide-2.bp-credits-rolling .bp-marquee-wrap {
+      animation: bp-credits-up 1s linear forwards;
+    }
+    .bp-slide-2.bp-credits-rolling {
+      animation: bp-slide2-bg-to-teal 1s linear forwards;
+    }
+    .bp-slide-2.bp-credits-rolling .bp-svg-bg circle {
+      animation: bp-orb-grow 1s linear forwards;
+    }
+    @keyframes bp-slide2-bg-to-teal {
+      from { background-color: #EB7396; }
+      to   { background-color: #6391A4; }
+    }
+
+    /* ── Slide 3 sphere fade-in ──
+       v1.65j6 — overrides the global 1.4s ease-out for this
+       slide so the orb fade-in matches the credits-roll pacing
+       (1s linear). Same pattern as slide-2's fade-in override. */
+    .bp-slide-3.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.0s linear both;
     }
 
     /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
@@ -1641,9 +1683,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v1.65j3 — slide 1 → 2 credits-roll exit state. True while
       slide 1's inner is animating up off the top of the viewport.
       Drives the .bp-credits-exit class on .bp-slide-1-inner.
-      Held for 1.5s before the actual scroll-jump fires, so the
+      Held for 1s before the actual scroll-jump fires, so the
       text has time to lift off above the fold. */
   slide1CreditsRolling = false;
+  /** v1.65j6 — slide 2 → 3 credits-roll exit state. Same scheme
+      as slide1CreditsRolling: drives .bp-credits-rolling on the
+      slide-2 section so the inner + marquee lift off, the bg
+      shifts pink -> teal, and the blue orbs grow to fill. */
+  slide2CreditsRolling = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -2034,6 +2081,30 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
             setTimeout(() => {
               this.exitingFromSlide = null;
               this.slide1CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1000);
+        return;
+      }
+      // v1.65j6 — slide 2 → 3 mirrors the slide 1 → 2 credits-roll.
+      // .bp-credits-rolling on slide-2 drives the 1s exit: inner +
+      // marquee lift off the top, bg shifts pink -> teal, blue orbs
+      // grow. Then exitingFromSlide=1 strips the DOM via *ngIf and
+      // we jump to slide 3, force-triggering its .in-view so the
+      // producers-column entry plays immediately.
+      if (this.step === 1 && i === 2 && !this.slide2CreditsRolling) {
+        this.slide2CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 1;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: 2 * vh, behavior: 'instant' });
+            this.forceInView(2);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide2CreditsRolling = false;
               this.cdr.markForCheck();
             }, 200);
           });
