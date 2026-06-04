@@ -124,7 +124,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" (click)="next()" style="cursor: pointer;">
           <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
                caching the Gaussian-blur filter texture and momentarily
                redrawing it during the scroll-jump even when the parent
@@ -172,7 +172,7 @@ const DEFAULT_CONTENT: Content = {
              headline ("The best suppliers in the UK with quotes in
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
-        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1">
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 1"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -205,7 +205,7 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
-        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2">
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 2"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -515,7 +515,12 @@ const DEFAULT_CONTENT: Content = {
        indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
-      overflow-y: scroll;
+      /* v1.65j0 — overflow scroll → hidden. Disables user-initiated
+         wheel + touch scrolling so the only nav path is clicking the
+         chevron or the slide content. Programmatic scrollTo() still
+         works (overflow:hidden only blocks USER scrolling, not JS-
+         driven). scroll-snap stays for the programmatic scrolls. */
+      overflow-y: hidden;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
       scrollbar-width: none;                       /* Firefox */
@@ -1815,7 +1820,24 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // + adds .in-view (which triggers the per-slide animations).
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
-  goTo(i: number) { this.scrollToSlide(i); }
+  goTo(i: number) {
+    // v1.65j0 — when navigating to slide 1 (e.g. via the BALLPARK
+    // logo click), explicitly reset the orb-expansion bridge vars
+    // BEFORE the smooth scroll begins. The scroll handler updates
+    // these on every scroll tick, so the journey-back naturally
+    // resets them — but resetting up front means the bg starts
+    // moving toward slide-1 green immediately, not only when the
+    // scroll reaches scrollTop=0.
+    if (i === 0) {
+      const root = this.stageRef?.nativeElement?.parentElement as HTMLElement | null;
+      if (root) {
+        root.style.setProperty('--s1-leaving', '0');
+        root.style.setProperty('--s2-leaving', '0');
+        root.style.setProperty('--s3-leaving', '0');
+      }
+    }
+    this.scrollToSlide(i);
+  }
 
   private scrollToSlide(i: number) {
     // v1.65hS — scroll the STAGE container directly instead of calling
