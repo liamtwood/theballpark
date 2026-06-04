@@ -756,6 +756,60 @@ const DEFAULT_CONTENT: Content = {
       to   { r: 1200; opacity: 1; }
     }
 
+    /* v1.65iW — slide 2 EXIT animation. Same pattern as slide 1 exit:
+       text scrolls up, blue orbs grow to fill the viewport, bg fades
+       pink → blue. After 800ms next() scrolls to slide 3 (already
+       blue) so the handoff is seamless. Class .bp-slide-2-exiting
+       is added/removed by next() in TS — classList-driven, no
+       Angular binding diff to fight. */
+    .bp-slide-2.bp-slide-2-exiting {
+      animation: bp-slide-2-bg-to-blue 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .bp-slide-2.bp-slide-2-exiting .bp-slide-2-inner,
+    .bp-slide-2.bp-slide-2-exiting .bp-marquee-wrap {
+      animation: bp-slide-2-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    /* Exit selectors target the same .bp-orb-* classes as the entry
+       so specificity matches (4 classes each); source order puts
+       exit AFTER entry so exit wins via the cascade tiebreaker. */
+    .bp-slide-2.bp-slide-2-exiting .bp-svg-bg .bp-orb-bottom-left,
+    .bp-slide-2.bp-slide-2-exiting .bp-svg-bg .bp-orb-top-right {
+      animation: bp-slide-2-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes bp-slide-2-bg-to-blue {
+      from { background: #EB7396; }
+      to   { background: #6391A4; }
+    }
+    @keyframes bp-slide-2-text-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 0; }
+    }
+    @keyframes bp-slide-2-orb-grow {
+      from { r: 280;  opacity: 1; }
+      to   { r: 1200; opacity: 1; }
+    }
+
+    /* v1.65iW — slide 3 EXIT animation. Slide 3 bg is already blue
+       (matches slide 4's blue), so no bg fade — just text up + orb
+       grow. The green orbs grow to large size; the snap to slide 4
+       (blue + dark-green orbs sweeping in via the entry animation)
+       is the user's continuity moment. */
+    .bp-slide-3.bp-slide-3-exiting .bp-slide-3-inner {
+      animation: bp-slide-3-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-top,
+    .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-bottom {
+      animation: bp-slide-3-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes bp-slide-3-text-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 0; }
+    }
+    @keyframes bp-slide-3-orb-grow {
+      from { r: 240;  opacity: 1; }
+      to   { r: 1200; opacity: 1; }
+    }
+
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
        v1.65gZ33  — bleed the previous slide's colour into the top ~14vh of
        each slide so the boundary between scroll-snap stops reads as a
@@ -1777,45 +1831,44 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // only.
 
   next() {
-    // v1.65iT — slide 1 → slide 2 exit animation, classList-driven.
+    // v1.65iT/iW — per-slide exit animations. Each slide N → N+1
+    // transition fires an exit animation on slide N (text scrolls
+    // up, orbs grow, bg fades toward slide N+1's colour), runs for
+    // 800ms, then scrolls to slide N+1 which is already at the
+    // matching colour for a seamless handoff.
     //
-    // The animation: text scrolls up (movie credits), pink orbs grow
-    // to fill the viewport, slide bg fades green → pink. After ~800ms
-    // (CSS animation duration) we scroll to slide 2 (already pink) so
-    // the handoff reads as one continuous pink page.
+    // Replay reliability: every click runs classList.remove → read
+    // offsetWidth (reflow) → classList.add. Without the reflow,
+    // CSS animations don't restart on a same-class re-application.
+    // The class is removed again 500ms after the scroll starts so
+    // the slide reverts to its normal composition off-screen,
+    // ready for the next click.
     //
-    // Replay reliability — fixed via direct classList management:
-    //   - remove the class
-    //   - force a reflow (read offsetWidth) — without this, the CSS
-    //     animation engine treats a same-class re-add as a no-op and
-    //     the keyframes never play
-    //   - re-add the class
-    // This sequence runs every time, regardless of state-tracking,
-    // so the second / third / Nth click all replay identically.
-    //
-    // Bypasses Angular's [class.X] binding diff (which previously
-    // got out of sync with the manual classList ops). Class cleanup
-    // is also handled here + in the scroll handler when the user
-    // returns to slide 1.
-    const slide1El = this.slideRefs?.toArray()[0]?.nativeElement;
-    if (this.step === 0 && slide1El) {
+    // Bypasses Angular's [class.X] binding to avoid diff-tracking
+    // mismatches with the manual classList ops.
+    const slides = this.slideRefs?.toArray() || [];
+    const runExit = (idx: number, exitCls: string) => {
+      const el = slides[idx]?.nativeElement;
+      if (!el) return false;
       // Guard against double-clicks while the animation is in flight.
-      if (slide1El.classList.contains('bp-slide-1-exiting')) return;
-      slide1El.classList.remove('bp-slide-1-exiting');
+      if (el.classList.contains(exitCls)) return true;
+      el.classList.remove(exitCls);
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      slide1El.offsetWidth;  // force reflow — CSS animation replay trick
-      slide1El.classList.add('bp-slide-1-exiting');
+      el.offsetWidth;  // force reflow — CSS animation replay trick
+      el.classList.add(exitCls);
       setTimeout(() => {
-        this.scrollToSlide(1);
-        // 500ms after the scroll starts, remove the class so slide 1
-        // reverts to its normal green / r=280 composition off-screen,
-        // ready for the next click when the user returns.
+        this.scrollToSlide(idx + 1);
         setTimeout(() => {
-          slide1El.classList.remove('bp-slide-1-exiting');
+          el.classList.remove(exitCls);
         }, 500);
       }, 800);
-      return;
-    }
+      return true;
+    };
+
+    if (this.step === 0 && runExit(0, 'bp-slide-1-exiting')) return;
+    if (this.step === 1 && runExit(1, 'bp-slide-2-exiting')) return;
+    if (this.step === 2 && runExit(2, 'bp-slide-3-exiting')) return;
+
     this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1));
   }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
