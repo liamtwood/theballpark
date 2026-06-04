@@ -190,8 +190,15 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
+              <!-- v1.65iO — slide 2 entry animation: blue orbs slide
+                   in diagonally from off-screen corners (left orb
+                   from bottom-left, right orb from top-right) over
+                   slide 2's pink bg (which matches slide 1's orb
+                   colour, so the handoff reads as "pink stays, blue
+                   arrives"). Triggered by IntersectionObserver via
+                   the .bp-slide-2-entered class — one-shot. -->
+              <circle class="bp-orb-top-right"    cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
+              <circle class="bp-orb-bottom-left"  cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -714,9 +721,43 @@ const DEFAULT_CONTENT: Content = {
        contentRevealed) now handle mount/unmount directly via the
        DOM, no CSS hide needed. */
     .bp-slide-2 {
-      /* v1.65iF — bg removed, lives on .bp-bg-tier--pink now. */
+      /* v1.65iO — bg restored to pink (#EB7396), the same family
+         as slide 1's pink orb gradient. Reads as "slide 1's orbs
+         became slide 2's background". */
+      background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
+    }
+
+    /* v1.65iO — slide 2 orb entry animation. Same structure as slide
+       1 (CSS-animates SVG cx + cy on the <circle> elements inside
+       the filtered group), but TRIGGERED by an IntersectionObserver
+       adding the .bp-slide-2-entered class when slide 2 first enters
+       the viewport. Without the trigger, both orbs sit at opacity:0
+       so the slide arrives clean-pink before the sweep starts.
+
+       Orbs animate from their respective off-screen corners to the
+       resting cx / cy positions in the markup:
+         bottom-left orb:  cx -300 → 100,  cy 800  → 500
+         top-right orb:    cx 1100 → 700,  cy -300 → 0
+
+       Easing / timing matches slide 1 (1.2s, cubic-bezier slow-out,
+       150ms delay). One-shot — observer disconnects after first
+       intersection so the animation doesn't replay on scroll-back. */
+    .bp-slide-2 .bp-svg-bg circle { opacity: 0; }
+    .bp-slide-2.bp-slide-2-entered .bp-svg-bg .bp-orb-bottom-left {
+      animation: bp-orb-slide-from-bottom-left 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    .bp-slide-2.bp-slide-2-entered .bp-svg-bg .bp-orb-top-right {
+      animation: bp-orb-slide-from-top-right 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    @keyframes bp-orb-slide-from-bottom-left {
+      from { cx: -300; cy: 800;  opacity: 0; }
+      to   { cx: 100;  cy: 500;  opacity: 1; }
+    }
+    @keyframes bp-orb-slide-from-top-right {
+      from { cx: 1100; cy: -300; opacity: 0; }
+      to   { cx: 700;  cy: 0;    opacity: 1; }
     }
     /* v1.65iG (p0026) — orb expansion (r: calc(280px + var(--s*-leaving)
        * 1500px) on .bp-slide-1/2 circles) removed. Orbs render at
@@ -1490,6 +1531,29 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Initialise the scroll-progress var so the pill paints at top.
     setProgress();
+
+    // v1.65iO — slide-2 entry-animation trigger. Watches when slide
+    // 2 first enters the viewport; on the first intersection, adds
+    // the .bp-slide-2-entered class which kicks off the CSS keyframe
+    // sweep on slide 2's blue orbs. Observer disconnects after the
+    // first hit so the animation doesn't replay if the user scrolls
+    // back to slide 2 later — matches slide 1's one-shot-on-mount
+    // behaviour. Threshold 0.5 = "half the slide is visible".
+    if ('IntersectionObserver' in window) {
+      const slide2 = this.slideRefs?.toArray()[1]?.nativeElement;
+      if (slide2) {
+        const obs = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+              slide2.classList.add('bp-slide-2-entered');
+              obs.disconnect();
+              break;
+            }
+          }
+        }, { root: stage, threshold: 0.5 });
+        obs.observe(slide2);
+      }
+    }
 
     // v1.65gZ29 — load Cloudflare Turnstile and render the widget
     // into #turnstileEl. The script is loaded once; subsequent
