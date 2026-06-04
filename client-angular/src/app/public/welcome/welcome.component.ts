@@ -1654,12 +1654,19 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // v1.65iO / iP — per-slide entry-animation triggers via
     // IntersectionObserver. Each watched slide gets a .bp-slide-N-
-    // entered class added on first ≥50% intersection, which kicks
-    // its CSS keyframe sweep. Observer disconnects after the first
-    // hit so the animation doesn't replay on scroll-back — matches
-    // slide 1's one-shot-on-mount behaviour for slides 2 / 3 / etc.
-    // Slide 1 doesn't need an observer since it's visible on first
-    // paint and animates from mount via CSS auto-start.
+    // entered class added when it crosses 50% visibility, which
+    // kicks its CSS keyframe sweep.
+    //
+    // v1.65iV — observer is NO LONGER one-shot. Originally we
+    // disconnected after the first hit, which matched slide 1's
+    // "play once on mount" feel. But now that slide 1 has its own
+    // re-clickable exit animation, the user can navigate slide 1 →
+    // slide 2 → home → slide 1 → next many times — and each
+    // arrival at slide 2 should re-play the sphere sweep. So we
+    // keep the observer alive AND force-replay the animation on
+    // every threshold crossing via remove → reflow → re-add (CSS
+    // animations don't replay on a no-change class re-application).
+    // Same pattern for slides 3 + 4.
     if ('IntersectionObserver' in window) {
       const slides = this.slideRefs?.toArray() || [];
       const watchSlide = (idx: number, cls: string) => {
@@ -1668,8 +1675,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const obs = new IntersectionObserver((entries) => {
           for (const entry of entries) {
             if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+              el.classList.remove(cls);
+              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+              el.offsetWidth;  // force reflow — CSS animation replay
               el.classList.add(cls);
-              obs.disconnect();
               break;
             }
           }
