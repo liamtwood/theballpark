@@ -152,7 +152,9 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="exitingFromSlide !== 0"></div>
-          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="exitingFromSlide !== 0">
+          <div class="bp-slide-inner bp-slide-1-inner"
+               [class.bp-credits-exit]="slide1CreditsRolling"
+               *ngIf="exitingFromSlide !== 0">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -714,11 +716,16 @@ const DEFAULT_CONTENT: Content = {
        v1.65j2 — animation split per element. The headline scrolls
        up from below the visible area (starts at translateY(70vh),
        i.e. just below the slide bottom, and travels to its final
-       resting position over 1.05s). The subtitle ("The best
-       suppliers in the UK with quotes in minutes.") and the
-       marquee both stay hidden until the headline lands, then
-       snap in (steps(1, end) gives a hard pop — no fade — exactly
-       as the headline finishes). */
+       resting position). The subtitle ("The best suppliers in the
+       UK with quotes in minutes.") and the marquee stay hidden
+       until the headline lands, then snap in (steps(1, end) gives
+       a hard pop — no fade — exactly as the headline finishes).
+       v1.65j3 — duration bumped 1.05s -> 1.5s and curve switched
+       to linear so the rise matches the slide-1 credits-roll
+       exit. The two animations run end-to-end (slide-1 inner
+       rolls up off the top over 1.5s, then a 1-frame jump, then
+       slide-2 inner rolls up from below over 1.5s) and read as a
+       single continuous movie-credits crawl across the cut. */
     .bp-slide-2 .bp-suppliers-headline {
       transform: translateY(70vh); opacity: 0;
     }
@@ -727,11 +734,11 @@ const DEFAULT_CONTENT: Content = {
       opacity: 0;
     }
     .bp-slide-2.in-view .bp-suppliers-headline {
-      animation: bp-headline-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: bp-headline-rise 1.5s linear both;
     }
     .bp-slide-2.in-view .bp-suppliers-subtitle,
     .bp-slide-2.in-view .bp-marquee-wrap {
-      animation: bp-snap-in 1.05s steps(1, end) both;
+      animation: bp-snap-in 1.5s steps(1, end) both;
     }
     @keyframes bp-headline-rise {
       from { transform: translateY(70vh); opacity: 0; }
@@ -740,6 +747,22 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-snap-in {
       0%   { opacity: 0; }
       100% { opacity: 1; }
+    }
+
+    /* ── Slide 1 credits-roll exit ──
+       v1.65j3 — when the user clicks to leave slide 1, the inner
+       lifts up off the top of the viewport at a constant speed,
+       like the credits at the end of a film. Pairs with slide 2's
+       headline rising from below for a continuous credits feel.
+       Animation lasts 1.5s; the scroll-jump to slide 2 fires once
+       the animation completes (orchestrated in scrollToSlide).
+       opacity stays 1 — credits don't fade, they leave. */
+    .bp-slide-1-inner.bp-credits-exit {
+      animation: bp-credits-up 1.5s linear forwards;
+    }
+    @keyframes bp-credits-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 1; }
     }
 
     /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
@@ -1573,6 +1596,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       curtain is covering the page during goTo(0). Drives the
       .bp-ballpark-fade overlay's .active class. */
   ballparkFading = false;
+  /** v1.65j3 — slide 1 → 2 credits-roll exit state. True while
+      slide 1's inner is animating up off the top of the viewport.
+      Drives the .bp-credits-exit class on .bp-slide-1-inner.
+      Held for 1.5s before the actual scroll-jump fires, so the
+      text has time to lift off above the fold. */
+  slide1CreditsRolling = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -1935,6 +1964,38 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // scroll — those transitions weren't reported as having the
     // artifact.
     if (i > this.step) {
+      // v1.65j3 — slide 1 → 2 gets a 1.5s credits-roll exit. The
+      // inner of slide-1 lifts up off the top of the viewport
+      // (CSS animation, see .bp-slide-1-inner.bp-credits-exit),
+      // and only after the animation completes do we strip the
+      // bg/grain via the *ngIf and jump to slide 2. As soon as
+      // the jump lands we force-trigger .in-view on slide 2 so
+      // its headline starts rising from below without the usual
+      // 450ms settle delay — that delay would otherwise leave a
+      // visible bg-only beat between credits ending and rising,
+      // breaking the continuous feel. Other forward transitions
+      // (2→3, 3→4) stay snappy on the original fast path.
+      if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
+        this.slide1CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 0;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: vh, behavior: 'instant' });
+            // Force slide-2's .in-view immediately, bypassing the
+            // scroll-handler's 450ms settle delay so the headline
+            // rise starts the instant the credits clear the top.
+            this.forceInView(1);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide1CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1500);
+        return;
+      }
       this.exitingFromSlide = this.step;
       this.cdr.markForCheck();
       requestAnimationFrame(() => {
@@ -1948,6 +2009,30 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     stage.scrollTo({ top: i * vh, behavior: 'smooth' });
+  }
+
+  /** v1.65j3 — manually move .in-view to slide index `i`, bypassing
+      the scroll-handler's 450ms settle delay. Used by the slide-1
+      credits-roll exit so slide-2's entry animation fires the
+      instant the scroll-jump lands — keeping the credits-roll
+      continuity. Mirrors the remove → reflow → add cycle in
+      setCurrentInView (so the animation REPLAYS, not just sticks),
+      and updates lastSettledIdx so the settle timer no-ops when it
+      fires 450ms later. */
+  private forceInView(i: number) {
+    const refs = this.slideRefs?.toArray() || [];
+    refs.forEach((ref, idx) => {
+      const el = ref.nativeElement as HTMLElement;
+      if (idx === i) {
+        el.classList.remove('in-view');
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        el.offsetWidth;  // force reflow so the animation declaration is fresh
+        el.classList.add('in-view');
+      } else {
+        el.classList.remove('in-view');
+      }
+    });
+    this.lastSettledIdx = i;
   }
 
   @HostListener('window:keydown', ['$event'])
