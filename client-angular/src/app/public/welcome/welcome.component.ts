@@ -146,9 +146,9 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
+            <g>
+              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)" filter="url(#s1-blur)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)" filter="url(#s1-blur)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="exitingFromSlide !== 0"></div>
@@ -190,9 +190,9 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
+            <g>
+              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)" filter="url(#s2-blur)"/>
+              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)" filter="url(#s2-blur)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="exitingFromSlide !== 1"></div>
@@ -232,9 +232,9 @@ const DEFAULT_CONTENT: Content = {
                  > viewBox height 500). Dropped to r=240 so they leave
                  a 20-unit gap and the two colours read as separate
                  blobs. -->
-            <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
+            <g>
+              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"  filter="url(#s3-blur)"/>
+              <circle cx="400" cy="500" r="240" fill="url(#s3-light)" filter="url(#s3-blur)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="exitingFromSlide !== 2"></div>
@@ -280,9 +280,9 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <g filter="url(#s4-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+            <g>
+              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)" filter="url(#s4-blur)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)" filter="url(#s4-blur)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
