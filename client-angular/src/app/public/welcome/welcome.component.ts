@@ -793,24 +793,34 @@ const DEFAULT_CONTENT: Content = {
     }
 
     /* v1.65iW — slide 3 EXIT animation. Slide 3 bg is already blue
-       (matches slide 4's blue), so no bg fade — just text up + orb
-       grow. The green orbs grow to large size; the snap to slide 4
-       (blue + dark-green orbs sweeping in via the entry animation)
-       is the user's continuity moment. */
+       (matches slide 4's blue), so no bg fade.
+       v1.65iY — orbs no longer grow on slide 3 exit. Instead they
+       slide back out the way they came in (reversal of slide 3's
+       entry animation): top orb goes up off-top (cy 0 → -300),
+       bottom orb goes down off-bottom (cy 500 → 800), both fade
+       opacity 1 → 0. End state: clean blue bg, no orbs — slide 4
+       (also blue) snaps in seamless, no green mid-transit.
+       Slides 1, 2, 4 left alone per client direction. */
     .bp-slide-3.bp-slide-3-exiting .bp-slide-3-inner {
       animation: bp-slide-3-text-up 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
-    .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-top,
+    .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-top {
+      animation: bp-slide-3-orb-out-top 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
     .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-bottom {
-      animation: bp-slide-3-orb-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-3-orb-out-bottom 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     @keyframes bp-slide-3-text-up {
       from { transform: translateY(0);      opacity: 1; }
       to   { transform: translateY(-110vh); opacity: 0; }
     }
-    @keyframes bp-slide-3-orb-grow {
-      from { r: 240;  opacity: 1; }
-      to   { r: 1200; opacity: 1; }
+    @keyframes bp-slide-3-orb-out-top {
+      from { cy: 0;    opacity: 1; }
+      to   { cy: -300; opacity: 0; }
+    }
+    @keyframes bp-slide-3-orb-out-bottom {
+      from { cy: 500; opacity: 1; }
+      to   { cy: 800; opacity: 0; }
     }
 
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
