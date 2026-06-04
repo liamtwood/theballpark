@@ -138,9 +138,18 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65iN — slide-1 entry animation: each orb slides
+                 in from its respective edge of the viewBox (left orb
+                 from off-screen left, right orb from off-screen
+                 right) to its resting cx position. CSS animates cx
+                 directly on the SVG circles; they're children of the
+                 filtered group so the Gaussian blur survives the
+                 animation per the locked recipe at the top of the
+                 styles block. One-shot on mount; doesn't replay on
+                 scroll back. -->
             <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle class="bp-orb-left"  cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle class="bp-orb-right" cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -648,6 +657,38 @@ const DEFAULT_CONTENT: Content = {
       display: block;
       z-index: 1;
       pointer-events: none;
+    }
+
+    /* v1.65iN — slide-1 orb entry animation. Both orbs slide in from
+       their respective edges of the viewBox (left orb from cx=-300,
+       right orb from cx=1100) to their resting cx positions (100,
+       700). One-shot on page mount; does NOT replay on scroll back
+       (animation runs once with fill-mode:both, then stays at the
+       end state forever).
+
+       Animating cx directly via CSS is supported on Chromium 99+,
+       Firefox 73+, Safari 16+. The circles are children of the
+       filtered group, so per the locked Gaussian-blur recipe
+       (animations on SVG children render inside the SVG's own
+       coordinate space) the blur recomputes natively through the
+       animation without losing its calibration.
+
+       Easing: cubic-bezier(0.22, 1, 0.36, 1) — the slow-out curve
+       the codebase used pre-rollback. Duration 1.2s, delay 150ms so
+       first paint is briefly green-only before the sweep starts. */
+    .bp-slide-1 .bp-svg-bg .bp-orb-left {
+      animation: bp-orb-slide-from-left 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    .bp-slide-1 .bp-svg-bg .bp-orb-right {
+      animation: bp-orb-slide-from-right 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    @keyframes bp-orb-slide-from-left {
+      from { cx: -300; }
+      to   { cx: 100; }
+    }
+    @keyframes bp-orb-slide-from-right {
+      from { cx: 1100; }
+      to   { cx: 700; }
     }
 
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
