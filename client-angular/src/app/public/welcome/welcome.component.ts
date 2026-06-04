@@ -73,18 +73,6 @@ const DEFAULT_CONTENT: Content = {
   template: `
     <div class="bp-welcome-root">
 
-      <!-- v1.65iF (designer Fix 4) — fixed bg crossfade tiers. Two
-           position:fixed layers stack on top of the welcome-root's
-           green floor (slide 1's colour). Each tier's opacity is a
-           continuous function of slideF (see tierOpacity()), so the
-           visible bg colour is the literal alpha-blend of the floor
-           + tiers — no JS-listener lag, no seam, works identically
-           at any scroll speed including slow / accessibility scroll.
-           The orbs stay inside their slide sections (z-index above
-           the tiers via stage > tier in document order). -->
-      <div class="bp-bg-tier bp-bg-tier--pink" [style.opacity]="tierOpacity(0)" aria-hidden="true"></div>
-      <div class="bp-bg-tier bp-bg-tier--teal" [style.opacity]="tierOpacity(1)" aria-hidden="true"></div>
-
       <!-- Persistent header. v1.65g9 — logo is now an image when the
            agency's marketplace-logo has been uploaded (loaded from
            /api/org on init), with the text wordmark as a fallback so
@@ -137,13 +125,10 @@ const DEFAULT_CONTENT: Content = {
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
-          <!-- v1.65iC (p0025) — *ngIf gates moved from
-               exitingFromSlide event flag to scroll-position
-               predicates. iOS Safari blur-cache defeat is unchanged
-               — the SVG still unmounts on slide exit; the trigger is
-               just scroll-position-driven now, so reverse scroll
-               works symmetrically. -->
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(0)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <!-- v1.65iG (p0026) — bg-layer + grain + slide-inner always
+               mounted. Static baseline; p0027 reinstates the iOS
+               Safari unmount via scroll-position predicate. -->
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -158,8 +143,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
-          <div class="bp-grain" *ngIf="isCurrentSlide(0)"></div>
-          <div class="bp-slide-inner bp-slide-1-inner" [style.opacity]="contentOpacity(0)">
+          <div class="bp-grain"></div>
+          <div class="bp-slide-inner bp-slide-1-inner">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -185,7 +170,7 @@ const DEFAULT_CONTENT: Content = {
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(1)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#79A8BA"/>
@@ -200,8 +185,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
-          <div class="bp-grain" *ngIf="isCurrentSlide(1)"></div>
-          <div class="bp-slide-inner bp-slide-2-inner" [style.opacity]="contentOpacity(1)">
+          <div class="bp-grain"></div>
+          <div class="bp-slide-inner bp-slide-2-inner">
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
             <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
@@ -209,7 +194,7 @@ const DEFAULT_CONTENT: Content = {
                top/bottom border rules on .bp-marquee-wrap dropped
                per client review (let the marquee run freely without
                visual frames around it). -->
-          <div class="bp-marquee-wrap" [style.opacity]="contentOpacity(1)">
+          <div class="bp-marquee-wrap">
             <div class="bp-marquee-track">
               <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
@@ -218,7 +203,7 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
         <section #slideRef data-slide="2" class="bp-slide bp-slide-3">
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(2)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%"   stop-color="#2D8E53"/>
@@ -242,8 +227,8 @@ const DEFAULT_CONTENT: Content = {
               <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
             </g>
           </svg></div>
-          <div class="bp-grain" *ngIf="isCurrentSlide(2)"></div>
-          <div class="bp-slide-inner bp-slide-3-inner" [style.opacity]="contentOpacity(2)">
+          <div class="bp-grain"></div>
+          <div class="bp-slide-inner bp-slide-3-inner">
             <div class="bp-producers-grid">
               <div>
                 <h2 class="bp-producers-headline">{{ text('producers.headline') }}</h2>
@@ -443,34 +428,19 @@ const DEFAULT_CONTENT: Content = {
       overflow: hidden;
     }
 
-    /* v1.65iF (designer Fix 4) — fixed bg crossfade tiers. Two
-       position:fixed layers stack above the welcome-root green floor;
-       opacity is a function of slideF (see tierOpacity()). pink fades
-       in over slideF 0..1 (covering green on slide 2). teal fades in
-       over slideF 1..2 (covering pink on slide 3+4). No motion, only
-       opacity — runs cheap on the compositor. */
-    .bp-bg-tier {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      will-change: opacity;
-    }
-    .bp-bg-tier--pink { background: #EB7396; }
-    .bp-bg-tier--teal { background: #6391A4; }
-
     .bp-welcome-root {
       position: relative;
       height: 100vh;
       overflow: hidden;
       /* v1.65hS — opaque coloured floor on the root so iOS Safari's
          scroll-snap handoff can't reveal body parchment for a frame.
-         v1.65i2 — unified green per client request ("make the
-         background 1 color, lets go for green leave the animation
-         the same"). Slides 2/3/4 backgrounds + stage gradient all
-         changed to the same green so there's nothing for a
-         compositor gap to expose as a mismatch. The orb / fade
-         animations are untouched — orbs still paint their own pink
+         v1.65iG (p0026) — green retained as the static baseline bg
+         under all slides (slide sections are transparent). p0027
+         will introduce the bg-crossfade pattern on top of this. */
+      /* v1.65i2 — historical: slide 2/3/4 backgrounds were unified
+         to green as a debug control, then per-slide colours were
+         restored. The orb / fade animations are untouched — orbs
+         still paint their own pink
          / blue / etc. gradient fills on top of the green base. */
       background: #287F4D;
     }
@@ -543,41 +513,17 @@ const DEFAULT_CONTENT: Content = {
        indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
-      /* v1.65iF — stage needs an explicit z-index above the fixed
-         bg tiers (z-index:0) so the slides + their orbs render on
-         top of the crossfading bg layers. */
-      z-index: 2;
       overflow-y: scroll;
-      /* v1.65iE — mandatory -> proximity per designer Fix 2.
-         Mandatory yanked the user to the next snap aggressively which
-         compounded the "too sharp" feel of the transitions. Proximity
-         still pulls toward the next stop but doesn't force it,
-         giving the bg colour + opacity-fade-in more time to play
-         out naturally. One-token softening. */
-      scroll-snap-type: y proximity;
+      /* v1.65iG (p0026) — back to mandatory for the static baseline.
+         No transition machinery left for proximity to coddle. */
+      scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
       scrollbar-width: none;                       /* Firefox */
       -ms-overflow-style: none;                    /* Edge legacy */
       overscroll-behavior: contain;                /* iOS rubber-band suppression */
-      /* v1.65hW — paint a scroll-height-tall gradient on the stage
-         that mirrors each slide's background colour. With background-
-         attachment:local on a scroll container, the bg scrolls with
-         the content, so the visible band at any scroll position
-         matches the slide that should be there. Any one-frame gap
-         iOS Safari's scroll-snap compositor leaves during a hand-off
-         now reveals the CORRECT slide colour for that position
-         (e.g. teal between slide-3 and slide-4) instead of the
-         welcome-root's green floor (which was visible as a green
-         flash mid-transition between 3 and 4). Hard colour stops at
-         25/50/75% match the slide boundaries exactly so the gradient
-         is visually identical to the slides themselves. */
-      /* v1.65hW had a scroll-height-tall gradient mirroring each
-         slide's bg as a compositor-gap fallback.
-         v1.65iF — dropped. The fixed bg crossfade tiers (defined
-         above .bp-welcome-root) are now the canonical source of
-         the bg colour at any scroll position. The stage stays
-         transparent so the tiers show through; slide sections also
-         stay transparent (their bg colours moved to the tiers). */
+      /* v1.65iG (p0026) — stage is plain. No gradient, no z-index
+         override. Slides scroll inside it; the welcome-root green
+         floor is the only bg layer in the static baseline. */
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -667,117 +613,10 @@ const DEFAULT_CONTENT: Content = {
       pointer-events: none;
     }
 
-    /* v1.65gW  — orb entry animated by animating the individual
-       <circle> elements INSIDE the filtered group rather than the
-       SVG / group / wrapper. CSS animations on SVG children render
-       inside the SVG's own coordinate space — the filter recomputes
-       over the children natively, no HTML compositing layer is
-       created, and the Gaussian blur survives.
-       v1.65gZ40 — all slides now share the same opacity fade-in
-       (per client review — "liked slide 3 animation and wanted the
-       same approach on all the pages"). Earlier the global animation
-       was a translateX wipe-in; that's retired here, slide 3's
-       override is removed below, and every slide's orbs fade in
-       cleanly together. */
-    .bp-svg-bg circle {
-      opacity: 0;
-    }
-    .bp-slide.in-view .bp-svg-bg circle {
-      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    @keyframes bp-orb-fade-in {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-
-    /* v1.65gZ40 — slide-3 orb-entry override removed. Was previously
-       a custom path (scale-bloom -> opacity-fade -> scale 0.5->1 over
-       v1.65gX / v1.65gZ18 / v1.65gZ39) to work around slide-3-specific
-       issues (cx=400 centred orbs exposed the bg during a horizontal
-       wipe; scale(0) collapsed the filter bbox). The global rule now
-       does opacity fade for every slide, so slide 3 inherits it
-       without a custom override. */
-
-    /* v1.65gT — animation declared ONLY under .in-view, with the
-       "from" pose as the element's direct (no-class) state. When
-       the scroll handler removes .in-view (user navigates away)
-       the element snaps back to the from-pose; when .in-view is
-       added again on return, the animation declaration is freshly
-       applied and the reveal replays from scratch. Adding/removing
-       a class that ALSO toggles animation-play-state was no good —
-       paused→running on a completed animation holds the end frame
-       and never replays. */
-
-    /* ── Slide 2 from-pose + reveal ── */
-    .bp-slide-2 .bp-slide-2-inner,
-    .bp-slide-2 .bp-marquee-wrap {
-      transform: translateY(80px); opacity: 0;
-    }
-    .bp-slide-2.in-view .bp-slide-2-inner {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    .bp-slide-2.in-view .bp-marquee-wrap {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
-    }
-    @keyframes bp-scroll-up {
-      from { transform: translateY(80px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-
-    /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
-    .bp-slide-3 .bp-producers-grid > div:first-child {
-      transform: translateX(-120px); opacity: 0;
-    }
-    .bp-slide-3 .bp-producers-grid > div:last-child {
-      transform: translateX(120px); opacity: 0;
-    }
-    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
-      animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
-    }
-    @keyframes bp-from-left {
-      from { transform: translateX(-120px); opacity: 0; }
-      to   { transform: translateX(0);      opacity: 1; }
-    }
-    @keyframes bp-from-right {
-      from { transform: translateX(120px);  opacity: 0; }
-      to   { transform: translateX(0);      opacity: 1; }
-    }
-
-    /* ── Slide 4 from-pose + reveal ── */
-    .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
-      transform: scale(0) rotate(-12deg); opacity: 0;
-    }
-    .bp-slide-4 .bp-guestlist-headline {
-      transform: scale(0.7) translateY(30px); opacity: 0;
-    }
-    .bp-slide-4 .bp-guestlist-form {
-      transform: translateY(28px) scale(0.96); opacity: 0;
-    }
-    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow {
-      animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-headline {
-      animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-form {
-      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both;
-    }
-    @keyframes bp-stamp {
-      0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
-      70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
-      100% { transform: scale(1) rotate(0); opacity: 1; }
-    }
-    @keyframes bp-bounce-in {
-      0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
-    }
-    @keyframes bp-form-rise {
-      from { transform: translateY(28px) scale(0.96); opacity: 0; }
-      to   { transform: translateY(0)    scale(1);    opacity: 1; }
-    }
+    /* v1.65iG (p0026) — all .in-view triggered animations removed
+       (orb fade-in, slide-2 content lift, slide-3 from-left/right,
+       slide-4 stamp/bounce/rise). Static baseline. p0027 will
+       reintroduce scroll-position-driven reveals on top of this. */
 
     .bp-slide {
       position: relative;
@@ -838,47 +677,10 @@ const DEFAULT_CONTENT: Content = {
       flex-direction: column;
       padding: 80px 0 100px;
     }
-    /* v1.65gZ36 / v1.65gZ37 — both inter-slide colour transitions
-       now handled by EXPANDING the leaving slide's orbs to fill the
-       viewport with their colour, bridging into the next slide's
-       background. The static ::before gradient bleed is no longer
-       needed for either boundary; the orb expansion supersedes it.
-         · slide 1 -> 2: pink orbs grow, page reads pink, into pink slide 2
-         · slide 2 -> 3: blue orbs grow, page reads blue, into teal slide 3
-           (slide-2's blue gradient #79A8BA->#457187 sits in the same
-           teal family as slide-3's #6391A4, so the cross-over is
-           perceptually smooth)
-       CSS r on SVG circles is supported in modern browsers (Chromium
-       99+, Firefox 73+, Safari 16+); JS sets --s1-leaving + --s2-leaving
-       on .bp-welcome-root in the scroll handler. We layer it on the
-       existing translateX wipe-in animation by setting r rather than
-       transform, so the two do not fight. */
-    .bp-slide-1 .bp-svg-bg circle {
-      r: calc(280px + var(--s1-leaving, 0) * 1500px);
-    }
-    .bp-slide-2 .bp-svg-bg circle {
-      r: calc(280px + var(--s2-leaving, 0) * 1500px);
-    }
-    /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
-       to dodge the pink-box compositor artifact. v1.65i9 — restored
-       on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
-       now removes the leaving slide's SVG from the DOM entirely
-       before the scroll, so the iOS Safari filter compositor never
-       gets a chance to flash the unblurred orb. Mobile sees the
-       spheres again on slides 1 + 2. */
-    /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
-       slides 1 + 2, on the grounds of kinetic consistency.
-       v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
-       #6391A4 teal background, so an expanding green orb on slide 3
-       actively CREATED a transient green-vs-teal split during the
-       scroll that wouldn't exist if we just left the orbs at their
-       normal size. Per client review: "we need the green orbs to
-       disappear leaving the page the blue [teal] before showing the
-       objects on page 4". Letting slide 3's orbs ride off-screen
-       with the slide (no expansion) leaves slide 4's teal bg clean
-       when it arrives; the 450ms settle delay then gives a beat of
-       just-teal before slide 4's content fades in. --s3-leaving is
-       still published from the scroll handler but currently unused. */
+    /* v1.65iG (p0026) — orb expansion (r: calc(280px + var(--s*-leaving)
+       * 1500px) on .bp-slide-1/2 circles) removed. Orbs render at
+       their default r="280" baked into the SVG markup. p0027 will
+       reinstate per-slide scroll-position-driven orb effects. */
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
@@ -1537,25 +1339,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
-  /** v1.65iC (p0025) — scroll-position-driven reveal state. Replaced
-      the event-driven `exitingFromSlide` flag with a continuous
-      `slideF` (current scroll position in slide-units, 0..TOTAL_STEPS-1)
-      that the template *ngIf predicates derive from. Same scroll
-      position always produces the same visuals, regardless of whether
-      the user got there by scrolling down, scrolling up, clicking
-      Next, or pressing arrow keys.
-
-      Roll-back: if this regresses, `git revert <v1.65iC commit>`
-      restores the event-driven mechanism cleanly — none of the
-      transition-fix logic in scrollToSlide (instant jump on click)
-      depends on this. */
-  slideF: number = 0;
+  /* v1.65iG (p0026) — slideF + scroll-position predicates removed.
+     Static baseline; p0027 will introduce a fresh scroll-progress
+     mechanism scoped to slide 1 ↔ 2 only. */
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
-  /** v1.65gT — last settled slide index. Used to gate the class
-      toggle so animations only replay when the user actually
-      changes slide (not on every scroll event). */
-  private lastSettledIdx = -1;
+  // v1.65iG (p0026) — lastSettledIdx removed with the .in-view class
+  // machinery. p0027 will track scroll position via its own state.
   content: Content = { ...DEFAULT_CONTENT };
   /** v1.65g9 — marketplace logo URL, hydrated from /api/org on init.
       Empty string until the fetch lands; the template falls back to
@@ -1618,98 +1408,25 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // v1.65gT — scroll-position handler.
-    // Two responsibilities, decoupled:
-    //   1. step state — updated on EVERY scroll frame so the
-    //      pagination train + counter respond in real time as the
-    //      user scrolls.
-    //   2. .in-view class — moved to the settled slide ONLY after
-    //      150ms of scroll silence (so the animation runs once
-    //      the snap has landed and the user is looking at the
-    //      slide). Class is REMOVED from non-current slides so
-    //      backwards-scrolling re-triggers the animation: each
-    //      time you arrive at a slide, the reveal plays again.
+    // v1.65iG (p0026) — scroll handler reduced to two responsibilities:
+    //   1. publish --scroll-progress on .bp-welcome-root so the
+    //      right-edge scroll pill tracks position.
+    //   2. update this.step so the chevron button + counter reflect
+    //      which slide is current (used by *ngIf="step < TOTAL_STEPS-1"
+    //      on the chevron and the step / total label getters).
+    // The .in-view class + settle timer + --s*-leaving variables that
+    // drove the original entry animations + orb-bridge are all gone.
+    // p0027 will reintroduce a fresh scroll-progress mechanism for
+    // slide 1 ↔ 2 only.
     const stage = this.stageRef?.nativeElement;
     if (!stage) return;
 
-    let settleTimer: any = null;
-    const setCurrentInView = (idx: number) => {
-      if (idx === this.lastSettledIdx) return;
-      this.lastSettledIdx = idx;
-      const refs = this.slideRefs?.toArray() || [];
-      refs.forEach((ref, i) => {
-        const el = ref.nativeElement;
-        if (i === idx) {
-          // v1.65gU — force-restart the CSS animation. classList.add
-          // on an element that ALREADY has the class is a no-op and
-          // doesn't replay the animation, so backward-nav to a slide
-          // we previously visited wouldn't trigger its entry reveal.
-          // The remove + reflow + add cycle makes the browser treat
-          // the animation declaration as a fresh application.
-          el.classList.remove('in-view');
-          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-          el.offsetWidth;  // force reflow
-          el.classList.add('in-view');
-        } else {
-          el.classList.remove('in-view');
-        }
-      });
-    };
-
-    // v1.65gZ24  — publish a 0-to-1 --scroll-progress CSS var on the
-    // welcome root so the .bp-scroll-pill can slide along the right
-    // edge as the user moves through the deck. Setting it on
-    // .bp-welcome-root (the host's child) keeps the var inheritable
-    // by everything inside without polluting :root.
-    // v1.65gZ36 — also publish --s1-leaving (0 = parked on slide 1,
-    // 1 = parked on slide 2). Drives slide-1's pink orb expansion so
-    // the page bridges to slide 2's pink background as the user
-    // scrolls into the transition.
     const root = stage.parentElement; // .bp-welcome-root
     const setProgress = () => {
       if (!root) return;
       const max = stage.scrollHeight - stage.clientHeight;
       const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
       root.style.setProperty('--scroll-progress', String(p));
-
-      // Per-slide leaving fractions. stage.scrollTop / clientHeight =
-      // float position in slide-units (0 = slide 1, 1 = slide 2, ...).
-      // v1.65gZ37 — slide-2 leaving added alongside slide-1 so the
-      // blue orbs on slide 2 expand to bridge into slide 3's teal.
-      // v1.65gZ38 — slide-3 leaving added for the 3->4 transition.
-      // v1.65hT — collapse each leaving fraction BACK to 0 once the
-      // user is settled past the transition window. Previously these
-      // saturated at 1 forever, so slide-N's orbs stayed at r=1780px
-      // while parked on slide N+1. iOS Safari has a known bug where
-      // SVG content under a Gaussian-blur filter is composited on a
-      // separate layer and can leak past the parent's overflow:hidden,
-      // producing a pink "ghost box" on slide 2 from slide 1's
-      // expanded orb. Triangle wave: ramps up 0→1 during the
-      // transition then ramps back to 0 over a short settle window
-      // so the orbs return to r=280 (well inside their own slide)
-      // and can't visually escape. Desktop is unaffected.
-      const vh = stage.clientHeight || window.innerHeight;
-      const slideF = stage.scrollTop / vh;
-      // v1.65iC (p0025) — publish slideF to the instance so the
-      // template's *ngIf predicates (isCurrentSlide / contentRevealed)
-      // re-evaluate as the user scrolls. Must markForCheck on the next
-      // tick — the scroll handler doesn't normally trigger CD on its
-      // own under OnPush. We piggy-back on the existing onScroll
-      // markForCheck below (idx !== this.step branch) for the common
-      // case; for the "scrolled within the same slide" case, the
-      // assignment alone is fine because *ngIf only flips at the
-      // round-up boundary which IS a step change.
-      this.slideF = slideF;
-      const SETTLE = 0.15; // slide-units over which the leaving fraction collapses back
-      const leaving = (i: number) => {
-        const rel = slideF - i;
-        if (rel <= 0) return 0;
-        if (rel <= 1) return rel;                        // 0 → 1 during transition
-        return Math.max(0, 1 - (rel - 1) / SETTLE);      // 1 → 0 over SETTLE window
-      };
-      root.style.setProperty('--s1-leaving', String(leaving(0)));
-      root.style.setProperty('--s2-leaving', String(leaving(1)));
-      root.style.setProperty('--s3-leaving', String(leaving(2)));
     };
 
     const onScroll = () => {
@@ -1719,44 +1436,17 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       if (idx !== this.step) {
         this.step = idx;
+        this.cdr.markForCheck();
       }
 
       setProgress();
-
-      // v1.65iC (p0025) — markForCheck every scroll tick so the
-      // template's slideF-derived predicates (contentRevealed, etc.)
-      // re-evaluate as the user scrolls within a slide. CD with
-      // OnPush is cheap; overhead is checking ~10 *ngIf predicates
-      // at 60fps. Trivial.
-      this.cdr.markForCheck();
-
-      // v1.65gZ47 — settle delay 150ms -> 450ms. The .in-view class
-      // triggers every entry animation on a slide (orb fade-in,
-      // headline/body slide-up, form rise, etc.). Holding it longer
-      // gives the user's eye time to absorb the orb-expansion colour
-      // bridge before the next slide's content starts revealing —
-      // per client review the previous timing felt too eager,
-      // especially on slide 2 -> 3 and 3 -> 4 where the orb colour
-      // doesn't perfectly match the next slide's background.
-      // Slide 1's initial paint still bypasses this timer (direct
-      // setCurrentInView(0) call below), so first-paint isn't delayed.
-      clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => {
-        const settledIdx = Math.max(0, Math.min(TOTAL_STEPS - 1,
-          Math.round(stage.scrollTop / vh)));
-        setCurrentInView(settledIdx);
-      }, 450);
     };
 
     stage.addEventListener('scroll', onScroll, { passive: true });
     this.scrollListener = () => {
-      clearTimeout(settleTimer);
       stage.removeEventListener('scroll', onScroll);
     };
 
-    // Slide 0 is in view on load — mark immediately so first paint
-    // doesn't sit in the from-pose for 150ms.
-    setCurrentInView(0);
     // Initialise the scroll-progress var so the pill paints at top.
     setProgress();
 
@@ -1841,56 +1531,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // v1.65gL — buttons + keyboard arrows now scroll the target slide
   // into view; the IntersectionObserver picks it up and updates step
   // + adds .in-view (which triggers the per-slide animations).
-  // ── v1.65iC (p0025) — scroll-position predicates ────────────────
-  // Pure functions of slideF used by *ngIf in the template. Symmetric
-  // by construction so backward scroll (slide 3 → 2 → 1) produces the
-  // same visual sequence as forward.
-  //
-  //   slideF = stage.scrollTop / clientHeight, range 0..TOTAL_STEPS-1.
-  //
-  //   isCurrentSlide(i): slide i is the active snap target (nearest
-  //     to slideF). Gates the bg-layer (SVG orbs), grain overlay, and
-  //     marquee wrap — mount on entry, unmount on exit. The unmount
-  //     defeats the iOS Safari Gaussian-blur filter cache that was
-  //     leaking pink ghost-boxes through overflow:hidden.
-  //
-  //   slideProgress(i): 1 when fully on slide i, 0 when fully on an
-  //     adjacent slide. Linear interpolation in between.
-  //
-  //   contentOpacity(i): v1.65iE — continuous opacity replaces the
-  //     v1.65iC/iD threshold-based contentRevealed predicate. The
-  //     threshold was a binary switch (invisible → visible in one
-  //     frame) — that abrupt mount/unmount was the "flutter" reported
-  //     during backward scroll. Now content stays mounted in the
-  //     DOM and fades opacity across the back half of the slide's
-  //     territory (slideProgress 0.5..0.9 maps to opacity 0..1).
-  //     Reverse direction gets the same gentle fade-out for free
-  //     since opacity is a pure function of scroll position.
-  isCurrentSlide(i: number): boolean {
-    return Math.round(this.slideF) === i;
-  }
-  slideProgress(i: number): number {
-    const d = Math.abs(this.slideF - i);
-    return d >= 1 ? 0 : 1 - d;
-  }
-  contentOpacity(i: number): number {
-    const p = this.slideProgress(i);
-    return Math.max(0, Math.min(1, (p - 0.5) / 0.4));
-  }
-  /** v1.65iF — cumulative crossfade for the fixed bg tiers (designer's
-      structural fix for the seam visible at any scroll speed). The
-      welcome-root has a green floor (slide 1). Two fixed tiers stack
-      on top:
-        i=0 (pink, slide 2): fades in over slideF 0..1
-        i=1 (teal, slide 3+4): fades in over slideF 1..2
-      Each tier is `position: fixed` so it doesn't move with the
-      scroll — only its opacity changes. At any slideF the visible
-      background is a literal sum of the floor + adjacent tier
-      opacities, weighted by scroll position. No JS-listener lag,
-      no repaint, no seam. */
-  tierOpacity(i: number): number {
-    return Math.max(0, Math.min(1, this.slideF - i));
-  }
+  // v1.65iG (p0026) — isCurrentSlide / slideProgress / contentOpacity /
+  // tierOpacity predicates all removed. Static baseline; p0027
+  // reintroduces a fresh scroll-progress mechanism for slide 1 ↔ 2
+  // only.
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
@@ -1914,25 +1558,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     const vh = stage.clientHeight || window.innerHeight;
 
-    // v1.65i3..i8 — instant-jump handoff for forward transitions.
-    // Bypasses the .bp-welcome-stage scroll-behavior:smooth CSS so
-    // the compositor has no smooth-scroll animation window to paint
-    // any transit artifact (the original "pink rolling up the
-    // screen" bug). The slide unmount/remount now happens via
-    // scroll-position predicates (isCurrentSlide / contentRevealed)
-    // in the template — see v1.65iC (p0025).
-    if (i > this.step) {
-      requestAnimationFrame(() => {
-        stage.scrollTo({ top: i * vh, behavior: 'instant' });
-      });
-      return;
-    }
-
-    // v1.65iC (p0025) — backward navigation also uses instant jump
-    // so the scroll-position predicates flip in the same single-
-    // frame way and reverse scrolling matches forward (same threshold,
-    // same delay, same symmetric behaviour).
-    stage.scrollTo({ top: i * vh, behavior: 'instant' });
+    // v1.65iG (p0026) — simple smooth scroll. Static baseline has no
+    // transition machinery to coordinate with, so the smooth scroll
+    // can take its natural duration without painting any artifact.
+    stage.scrollTo({ top: i * vh, behavior: 'smooth' });
   }
 
   @HostListener('window:keydown', ['$event'])
