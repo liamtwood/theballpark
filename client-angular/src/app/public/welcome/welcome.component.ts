@@ -129,7 +129,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" [class.bp-credits-rolling]="slide1CreditsRolling" (click)="next()" style="cursor: pointer;">
           <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
                caching the Gaussian-blur filter texture and momentarily
                redrawing it during the scroll-jump even when the parent
@@ -756,13 +756,55 @@ const DEFAULT_CONTENT: Content = {
        headline rising from below for a continuous credits feel.
        Animation lasts 1.5s; the scroll-jump to slide 2 fires once
        the animation completes (orchestrated in scrollToSlide).
-       opacity stays 1 — credits don't fade, they leave. */
+       opacity stays 1 — credits don't fade, they leave.
+       v1.65j4 — during the 1.5s credits roll we ALSO transition
+       slide-1's background from welcome green to slide-2's pink
+       (#287F4D -> #EB7396) AND grow the pink orbs from r=280 to
+       r=1780 so they fill the viewport. By the moment the
+       scroll-jump fires (T=1.5s), the on-screen colour matches
+       slide-2's bg exactly, hiding the cut. Slide 2 then animates
+       its blue orbs from opacity 0 -> 1 over the same 1.5s as the
+       headline rise, so "spheres appear" as the new text crawls
+       up — reading as one continuous credits moment instead of
+       two separate slide animations. */
     .bp-slide-1-inner.bp-credits-exit {
       animation: bp-credits-up 1.5s linear forwards;
+    }
+    .bp-slide-1.bp-credits-rolling {
+      animation: bp-slide1-bg-to-pink 1.5s linear forwards;
+    }
+    .bp-slide-1.bp-credits-rolling .bp-svg-bg circle {
+      animation: bp-orb-grow 1.5s linear forwards;
     }
     @keyframes bp-credits-up {
       from { transform: translateY(0);      opacity: 1; }
       to   { transform: translateY(-110vh); opacity: 1; }
+    }
+    @keyframes bp-slide1-bg-to-pink {
+      from { background-color: #287F4D; }
+      to   { background-color: #EB7396; }
+    }
+    @keyframes bp-orb-grow {
+      from { r: 280px; }
+      to   { r: 1780px; }
+    }
+
+    /* ── Slide 2 sphere fade-in ──
+       v1.65j4 — slide-2 circles get their own fade-in tuned to
+       match the headline-rise timing (1.5s linear), overriding
+       the global .bp-slide.in-view .bp-svg-bg circle rule
+       (1.4s ease-out) for this slide only. Higher specificity
+       (.bp-slide-2 vs .bp-slide) makes this rule win. Pairs
+       with the credits-roll exit on slide 1: as the new
+       headline crawls up from below, the blue spheres "appear"
+       alongside it. Initial opacity:0 is inherited from the
+       global .bp-svg-bg circle { opacity: 0 } rule above. */
+    .bp-slide-2.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.5s linear both;
+    }
+    @keyframes bp-fade-in-circles {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
     /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
