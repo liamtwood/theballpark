@@ -844,26 +844,13 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
-    /* v1.65hX — disable orb expansion on mobile. iOS Safari's
-       compositor recomputes the Gaussian-blur filter region per
-       frame as the orb's radius grows, and at mid-flight (r around
-       1000px) it briefly renders the unblurred orb as a solid pink
-       or blue rectangle — the "pink box during 1->2 transition" on
-       phone. v1.65hZ — pinning the orb radius wasn't enough; even
-       the static blurred orb on a fresh slide entry seems to cause
-       a one-frame filter rectangle artifact on iOS during the
-       compositor handoff. Going aggressive: hide the SVG bg layer
-       entirely on slides 1 + 2 at mobile widths. The orb decoration
-       is a desktop visual polish; the stage gradient (v1.65hW)
-       already provides continuous slide-to-slide colour underneath.
-       Slide 3 + 4 keep their orbs on mobile since they're observably
-       fine (teal-on-teal, no filter recompute around boundaries). */
-    @media (max-width: 720px) {
-      .bp-slide-1 .bp-svg-bg,
-      .bp-slide-2 .bp-svg-bg {
-        display: none;
-      }
-    }
+    /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
+       to dodge the pink-box compositor artifact. v1.65i9 — restored
+       on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
+       now removes the leaving slide's SVG from the DOM entirely
+       before the scroll, so the iOS Safari filter compositor never
+       gets a chance to flash the unblurred orb. Mobile sees the
+       spheres again on slides 1 + 2. */
     /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
        slides 1 + 2, on the grounds of kinetic consistency.
        v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
