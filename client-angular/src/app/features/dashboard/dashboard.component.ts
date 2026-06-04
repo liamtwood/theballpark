@@ -807,14 +807,11 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       heroColor: this.configService.heroColor,
       heroSub: homeLabel.toUpperCase(),
       pills: [],
-      // v1.66l — Home is this page (always active); Inbox now navigates
-      // to the canonical /inbox route rather than an embedded tab.
-      tabs: [
-        { label: 'Home',  path: 'projects' },
-        { label: 'Inbox', path: 'inbox'    },
-      ],
-      activeTabPath: 'projects',
-      onTabClick: (t: any) => { if (t.path === 'inbox') this.router.navigate(['/inbox']); },
+      // v1.66m — no hero tab band on the dashboard. Home / Inbox /
+      // Projects / Marketplace are top-level objects reached from the
+      // top-nav, not sub-tabs of this screen. The dashboard is the Org
+      // home; its body is the launcher.
+      tabs: [],
     };
     // Upcoming pill — when enabled AND we've got a future project.
     if (this.pageCfg.showUpcoming && this.nextProject) {

@@ -54,6 +54,14 @@ import { environment } from '../../environments/environment';
            class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
+        <!-- v1.66m — Inbox is a top-level object (Org / Projects / Inbox /
+             Marketplace); canonical nav lives here, routes to /inbox.
+             (Order/role-gating finalised in p0033.) -->
+        <a routerLink="/inbox"
+           routerLinkActive="active"
+           class="bp-nav-link">
+          <lucide-icon name="inbox" [size]="14"></lucide-icon> Inbox
+        </a>
         <!-- v1.66e (p0024): Projects landing page. Label tracks the
              configurable projectLabel token (Events / Shows / etc.).
              Universal for now — per-persona gating is a p0020 concern. -->
