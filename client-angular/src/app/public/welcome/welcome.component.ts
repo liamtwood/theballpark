@@ -129,7 +129,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" [class.bp-credits-rolling]="slide1CreditsRolling" (click)="next()" style="cursor: pointer;">
           <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
                caching the Gaussian-blur filter texture and momentarily
                redrawing it during the scroll-jump even when the parent
@@ -152,7 +152,9 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="exitingFromSlide !== 0"></div>
-          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="exitingFromSlide !== 0">
+          <div class="bp-slide-inner bp-slide-1-inner"
+               [class.bp-credits-exit]="slide1CreditsRolling"
+               *ngIf="exitingFromSlide !== 0">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -177,7 +179,7 @@ const DEFAULT_CONTENT: Content = {
              headline ("The best suppliers in the UK with quotes in
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
-        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" [class.bp-credits-rolling]="slide2CreditsRolling" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 1"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -210,7 +212,7 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
-        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" [class.bp-credits-rolling]="slide3CreditsRolling" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 2"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -710,75 +712,255 @@ const DEFAULT_CONTENT: Content = {
        paused→running on a completed animation holds the end frame
        and never replays. */
 
-    /* ── Slide 2 from-pose + reveal ── */
-    .bp-slide-2 .bp-slide-2-inner,
+    /* ── Slide 2 from-pose + reveal ──
+       v1.65j2 — animation split per element. The headline scrolls
+       up from below the visible area (starts at translateY(70vh),
+       i.e. just below the slide bottom, and travels to its final
+       resting position). The subtitle ("The best suppliers in the
+       UK with quotes in minutes.") and the marquee stay hidden
+       until the headline lands, then snap in (steps(1, end) gives
+       a hard pop — no fade — exactly as the headline finishes).
+       v1.65j3 — duration bumped 1.05s -> 1.5s and curve switched
+       to linear so the rise matches the slide-1 credits-roll
+       exit. The two animations run end-to-end (slide-1 inner
+       rolls up off the top over 1.5s, then a 1-frame jump, then
+       slide-2 inner rolls up from below over 1.5s) and read as a
+       single continuous movie-credits crawl across the cut. */
+    .bp-slide-2 .bp-suppliers-headline {
+      transform: translateY(70vh); opacity: 0;
+    }
+    .bp-slide-2 .bp-suppliers-subtitle,
     .bp-slide-2 .bp-marquee-wrap {
-      transform: translateY(80px); opacity: 0;
+      opacity: 0;
     }
-    .bp-slide-2.in-view .bp-slide-2-inner {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    .bp-slide-2.in-view .bp-suppliers-headline {
+      animation: bp-headline-rise 1.0s linear both;
     }
+    .bp-slide-2.in-view .bp-suppliers-subtitle,
     .bp-slide-2.in-view .bp-marquee-wrap {
-      animation: bp-scroll-up 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+      animation: bp-snap-in 1.0s steps(1, end) both;
     }
-    @keyframes bp-scroll-up {
-      from { transform: translateY(80px); opacity: 0; }
+    @keyframes bp-headline-rise {
+      from { transform: translateY(70vh); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
     }
+    @keyframes bp-snap-in {
+      0%   { opacity: 0; }
+      100% { opacity: 1; }
+    }
 
-    /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
-    .bp-slide-3 .bp-producers-grid > div:first-child {
-      transform: translateX(-120px); opacity: 0;
+    /* ── Slide 1 credits-roll exit ──
+       v1.65j3 — when the user clicks to leave slide 1, the inner
+       lifts up off the top of the viewport at a constant speed,
+       like the credits at the end of a film. Pairs with slide 2's
+       headline rising from below for a continuous credits feel.
+       Animation lasts 1.5s; the scroll-jump to slide 2 fires once
+       the animation completes (orchestrated in scrollToSlide).
+       opacity stays 1 — credits don't fade, they leave.
+       v1.65j4 — during the 1.5s credits roll we ALSO transition
+       slide-1's background from welcome green to slide-2's pink
+       (#287F4D -> #EB7396) AND grow the pink orbs from r=280 to
+       r=1780 so they fill the viewport. By the moment the
+       scroll-jump fires (T=1.5s), the on-screen colour matches
+       slide-2's bg exactly, hiding the cut. Slide 2 then animates
+       its blue orbs from opacity 0 -> 1 over the same 1.5s as the
+       headline rise, so "spheres appear" as the new text crawls
+       up — reading as one continuous credits moment instead of
+       two separate slide animations. */
+    .bp-slide-1-inner.bp-credits-exit {
+      animation: bp-credits-up 1s linear forwards;
     }
-    .bp-slide-3 .bp-producers-grid > div:last-child {
-      transform: translateX(120px); opacity: 0;
+    .bp-slide-1.bp-credits-rolling {
+      animation: bp-slide1-bg-to-pink 1s linear forwards;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
-      animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    .bp-slide-1.bp-credits-rolling .bp-svg-bg circle {
+      animation: bp-orb-grow 1s linear forwards;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
+    @keyframes bp-credits-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 1; }
+    }
+    @keyframes bp-slide1-bg-to-pink {
+      from { background-color: #287F4D; }
+      to   { background-color: #EB7396; }
+    }
+    @keyframes bp-orb-grow {
+      from { r: 280px; }
+      to   { r: 1780px; }
+    }
+
+    /* ── Slide 2 sphere fade-in ──
+       v1.65j4 — slide-2 circles get their own fade-in tuned to
+       match the headline-rise timing (1.0s linear), overriding
+       the global .bp-slide.in-view .bp-svg-bg circle rule
+       (1.4s ease-out) for this slide only. Higher specificity
+       (.bp-slide-2 vs .bp-slide) makes this rule win. Pairs
+       with the credits-roll exit on slide 1: as the new
+       headline crawls up from below, the blue spheres "appear"
+       alongside it. Initial opacity:0 is inherited from the
+       global .bp-svg-bg circle { opacity: 0 } rule above. */
+    .bp-slide-2.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.0s linear both;
+    }
+    @keyframes bp-fade-in-circles {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Slide 2 → 3 credits-roll exit ──
+       v1.65j6 — same movie-credits treatment we apply to slide 1
+       on its way to slide 2, now on slide 2 on its way to slide 3.
+       Triggered by .bp-credits-rolling on the slide-2 section
+       (bound to slide2CreditsRolling in the component). During
+       the roll:
+         · .bp-slide-2-inner + .bp-marquee-wrap translate up off
+           the top of the viewport (bp-credits-up, reused from
+           the slide-1 exit — same keyframe drives both).
+         · The section's background-color transitions from slide-2
+           pink (#EB7396) to slide-3 teal (#6391A4), so the bg
+           matches slide-3 exactly by the time the jump fires.
+         · The blue orbs grow from r=280 to r=1780 (bp-orb-grow
+           reused from slide 1) so the page reads solid teal-ish
+           at the end of the roll.
+       v1.65j7 — duration 1s -> 1.2s. Slide 2 has more elements
+       moving at once (inner + marquee + orbs + bg) so the same
+       1s as slide 1 read as "quicker" per client feedback. The
+       JS scroll-jump delay is bumped to match (see scrollToSlide). */
+    .bp-slide-2.bp-credits-rolling .bp-slide-2-inner,
+    .bp-slide-2.bp-credits-rolling .bp-marquee-wrap {
+      animation: bp-credits-up 1.2s linear forwards;
+    }
+    .bp-slide-2.bp-credits-rolling {
+      animation: bp-slide2-bg-to-teal 1.2s linear forwards;
+    }
+    .bp-slide-2.bp-credits-rolling .bp-svg-bg circle {
+      animation: bp-orb-grow 1.2s linear forwards;
+    }
+    @keyframes bp-slide2-bg-to-teal {
+      from { background-color: #EB7396; }
+      to   { background-color: #6391A4; }
+    }
+
+    /* ── Slide 3 sphere fade-in ──
+       v1.65j6 — overrides the global 1.4s ease-out for this
+       slide so the orb fade-in matches the credits-roll pacing
+       (1s linear). Same pattern as slide-2's fade-in override. */
+    .bp-slide-3.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.0s linear both;
+    }
+
+    /* ── Slide 3 exit (three elements, sequential) ──
+       v1.65j9 — exit mirrors the entry order and direction:
+         T=0:    .bp-producers-headline exits to the left
+         T=0.3s: .bp-producers-tagline exits to the left
+         T=0.6s: .bp-producers-body exits to the right
+       Each animation 0.6s ease-out, same curve as entry. Total
+       1.2s — JS timer in scrollToSlide() matches.
+       both fill-mode is critical here: without it, each element
+       snaps to the bp-to-* "from" pose at the moment its
+       animation is declared (delay or no delay), instantly
+       hiding it before any motion is visible. That manifested
+       as "feels like it pauses and then shows slide 4" in
+       v1.65j8 — the columns disappeared the moment .bp-credits-
+       rolling was added, then the timer ran out with no visible
+       motion, then the jump happened. both fills BACKWARDS too,
+       so each element holds its at-rest pose (translateX 0,
+       opacity 1) during the stagger delay, then animates out
+       cleanly. */
+    .bp-slide-3.bp-credits-rolling .bp-producers-headline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-slide-3.bp-credits-rolling .bp-producers-tagline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+    }
+    .bp-slide-3.bp-credits-rolling .bp-producers-body {
+      animation: bp-to-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+    }
+    @keyframes bp-to-left {
+      from { transform: translateX(0);      opacity: 1; }
+      to   { transform: translateX(-100vw); opacity: 0; }
+    }
+    @keyframes bp-to-right {
+      from { transform: translateX(0);     opacity: 1; }
+      to   { transform: translateX(100vw); opacity: 0; }
+    }
+
+    /* ── Slide 3 entry (three elements, sequential) ──
+       v1.65j9 — animation targets the three text elements
+       individually rather than the two grid columns. Sequence:
+         T=0:    .bp-producers-headline ("A PRODUCERS BEST FRIEND")
+                 slides in from translateX(-100vw) -> 0
+         T=0.3s: .bp-producers-tagline ("By producers for creators")
+                 slides in from translateX(-100vw) -> 0
+         T=0.6s: .bp-producers-body ("Costing events can be a
+                 grind...") slides in from translateX(100vw) -> 0
+       0.6s each, 0.3s stagger -> total 1.2s. Same cubic ease-out
+       across all three so each line settles smoothly.
+       both fill-mode preserves the from-pose during the stagger
+       delay (so a tagline at translateX(-100vw) stays off-screen-
+       left while the headline is still arriving — no early flash
+       of the tagline at its resting position). */
+    .bp-slide-3 .bp-producers-headline,
+    .bp-slide-3 .bp-producers-tagline {
+      transform: translateX(-100vw); opacity: 0;
+    }
+    .bp-slide-3 .bp-producers-body {
+      transform: translateX(100vw); opacity: 0;
+    }
+    /* v1.65jC — :not(.bp-credits-rolling) added so the entry
+       rule doesn't fight the exit rule. The exit rules above
+       were source-ordered BEFORE the entry rules, which (with
+       equal specificity 0-3-0) meant the entry rule won the
+       cascade and its both-fill held the at-rest pose,
+       silently clobbering the exit animation. Now when
+       .bp-credits-rolling is on the section, only the exit
+       rules apply. */
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-headline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-tagline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+    }
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-body {
+      animation: bp-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
     }
     @keyframes bp-from-left {
-      from { transform: translateX(-120px); opacity: 0; }
+      from { transform: translateX(-100vw); opacity: 0; }
       to   { transform: translateX(0);      opacity: 1; }
     }
     @keyframes bp-from-right {
-      from { transform: translateX(120px);  opacity: 0; }
+      from { transform: translateX(100vw);  opacity: 0; }
       to   { transform: translateX(0);      opacity: 1; }
     }
 
-    /* ── Slide 4 from-pose + reveal ── */
-    .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
-      transform: scale(0) rotate(-12deg); opacity: 0;
+    /* ── Slide 4 from-pose + reveal ──
+       v1.65jA — the headline / form / footer block (the whole
+       .bp-slide-4-inner glass panel) now rises up from the
+       bottom of the viewport as one unit. Replaces the previous
+       per-element entry (.bp-eyebrow stamp + .bp-guestlist-
+       headline bounce-in + .bp-guestlist-form rise); those
+       declarations and their keyframes (bp-stamp, bp-bounce-in,
+       bp-form-rise) are retired. Sphere fade-in is intentionally
+       NOT overridden here — slide 4 keeps the global 1.4s ease-
+       out orb-fade so the dark-green orbs come up on their own
+       timing as the container arrives.
+       v1.65jB — animation now composes translateX(-50%) WITH the
+       translateY rise. .bp-slide-4-inner uses position:absolute +
+       left:50% + transform:translateX(-50%) for its horizontal
+       centering; the jA animation replaced the entire transform
+       with translateY alone, knocking the panel half a viewport-
+       width to the left. Always include translateX(-50%) on both
+       keyframes (and the from-pose) so the panel stays centred
+       throughout the rise. */
+    .bp-slide-4 .bp-slide-4-inner {
+      transform: translate(-50%, 100vh); opacity: 0;
     }
-    .bp-slide-4 .bp-guestlist-headline {
-      transform: scale(0.7) translateY(30px); opacity: 0;
+    .bp-slide-4.in-view .bp-slide-4-inner {
+      animation: bp-slide4-rise 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-slide-4 .bp-guestlist-form {
-      transform: translateY(28px) scale(0.96); opacity: 0;
-    }
-    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow {
-      animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-headline {
-      animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-form {
-      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both;
-    }
-    @keyframes bp-stamp {
-      0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
-      70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
-      100% { transform: scale(1) rotate(0); opacity: 1; }
-    }
-    @keyframes bp-bounce-in {
-      0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
-    }
-    @keyframes bp-form-rise {
-      from { transform: translateY(28px) scale(0.96); opacity: 0; }
-      to   { transform: translateY(0)    scale(1);    opacity: 1; }
+    @keyframes bp-slide4-rise {
+      from { transform: translate(-50%, 100vh); opacity: 0; }
+      to   { transform: translate(-50%, 0);     opacity: 1; }
     }
 
     .bp-slide {
@@ -1557,6 +1739,23 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       curtain is covering the page during goTo(0). Drives the
       .bp-ballpark-fade overlay's .active class. */
   ballparkFading = false;
+  /** v1.65j3 — slide 1 → 2 credits-roll exit state. True while
+      slide 1's inner is animating up off the top of the viewport.
+      Drives the .bp-credits-exit class on .bp-slide-1-inner.
+      Held for 1s before the actual scroll-jump fires, so the
+      text has time to lift off above the fold. */
+  slide1CreditsRolling = false;
+  /** v1.65j6 — slide 2 → 3 credits-roll exit state. Same scheme
+      as slide1CreditsRolling: drives .bp-credits-rolling on the
+      slide-2 section so the inner + marquee lift off, the bg
+      shifts pink -> teal, and the blue orbs grow to fill. */
+  slide2CreditsRolling = false;
+  /** v1.65j7 — slide 3 → 4 exit state. Slide 3's inner rises
+      from below on entry and falls back below on exit (the
+      "reverse of how it entered" — purely vertical container
+      motion, no orb-grow, no bg shift since slide 3 and slide 4
+      share the same #6391A4 teal bg). */
+  slide3CreditsRolling = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -1919,6 +2118,97 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // scroll — those transitions weren't reported as having the
     // artifact.
     if (i > this.step) {
+      // v1.65j3 — slide 1 → 2 gets a credits-roll exit. The
+      // inner of slide-1 lifts up off the top of the viewport
+      // (CSS animation, see .bp-slide-1-inner.bp-credits-exit),
+      // and only after the animation completes do we strip the
+      // bg/grain via the *ngIf and jump to slide 2. As soon as
+      // the jump lands we force-trigger .in-view on slide 2 so
+      // its headline starts rising from below without the usual
+      // 450ms settle delay — that delay would otherwise leave a
+      // visible bg-only beat between credits ending and rising,
+      // breaking the continuous feel. Other forward transitions
+      // (2→3, 3→4) stay snappy on the original fast path.
+      // v1.65j5 — duration tightened 1500ms -> 1000ms (matches
+      // the CSS animation durations) per client review feedback. */
+      if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
+        this.slide1CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 0;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: vh, behavior: 'instant' });
+            // Force slide-2's .in-view immediately, bypassing the
+            // scroll-handler's 450ms settle delay so the headline
+            // rise starts the instant the credits clear the top.
+            this.forceInView(1);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide1CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1000);
+        return;
+      }
+      // v1.65j6 — slide 2 → 3 mirrors the slide 1 → 2 credits-roll.
+      // .bp-credits-rolling on slide-2 drives the exit: inner +
+      // marquee lift off the top, bg shifts pink -> teal, blue orbs
+      // grow. Then exitingFromSlide=1 strips the DOM via *ngIf and
+      // we jump to slide 3, force-triggering its .in-view so the
+      // producers-container rise plays immediately.
+      // v1.65j7 — duration 1000ms -> 1200ms to match the CSS,
+      // which was bumped because slide 2 has more elements moving
+      // at once and read as quicker than slide 1 at parity timing.
+      if (this.step === 1 && i === 2 && !this.slide2CreditsRolling) {
+        this.slide2CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 1;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: 2 * vh, behavior: 'instant' });
+            this.forceInView(2);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide2CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1200);
+        return;
+      }
+      // v1.65j9 — slide 3 → 4 exit. Three lines leave sequentially:
+      // headline exits left (t=0), tagline exits left (t=0.3s),
+      // body exits right (t=0.6s); each 0.6s. Total 1.2s — JS
+      // timer matches so the scroll-jump fires the instant the
+      // body clears. No bg shift (slide 3 and 4 share #6391A4
+      // teal); no orb-grow (orbs stay put as text leaves).
+      // Previous v1.65j8 1.6s timing felt like a pause because
+      // the CSS used `forwards` fill-mode, which left the
+      // delayed-start columns at their from-pose (off-screen)
+      // for the duration of the delay rather than at rest. j9
+      // switches to `both` so each element holds its resting
+      // position during its stagger delay.
+      if (this.step === 2 && i === 3 && !this.slide3CreditsRolling) {
+        this.slide3CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 2;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: 3 * vh, behavior: 'instant' });
+            this.forceInView(3);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide3CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1200);
+        return;
+      }
       this.exitingFromSlide = this.step;
       this.cdr.markForCheck();
       requestAnimationFrame(() => {
@@ -1932,6 +2222,30 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     stage.scrollTo({ top: i * vh, behavior: 'smooth' });
+  }
+
+  /** v1.65j3 — manually move .in-view to slide index `i`, bypassing
+      the scroll-handler's 450ms settle delay. Used by the slide-1
+      credits-roll exit so slide-2's entry animation fires the
+      instant the scroll-jump lands — keeping the credits-roll
+      continuity. Mirrors the remove → reflow → add cycle in
+      setCurrentInView (so the animation REPLAYS, not just sticks),
+      and updates lastSettledIdx so the settle timer no-ops when it
+      fires 450ms later. */
+  private forceInView(i: number) {
+    const refs = this.slideRefs?.toArray() || [];
+    refs.forEach((ref, idx) => {
+      const el = ref.nativeElement as HTMLElement;
+      if (idx === i) {
+        el.classList.remove('in-view');
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        el.offsetWidth;  // force reflow so the animation declaration is fresh
+        el.classList.add('in-view');
+      } else {
+        el.classList.remove('in-view');
+      }
+    });
+    this.lastSettledIdx = i;
   }
 
   @HostListener('window:keydown', ['$event'])
