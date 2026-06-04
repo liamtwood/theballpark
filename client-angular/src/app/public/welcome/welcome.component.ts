@@ -849,38 +849,66 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-fade-in-circles 1.0s linear both;
     }
 
-    /* ── Slide 3 container rise + fall ──
-       v1.65j7 — replaces the previous left + right column slide-in
-       (.bp-from-left / .bp-from-right). The whole .bp-slide-3-inner
-       block now rises up from below on entry (initially translateY
-       100vh, off the bottom) and falls back to translateY 100vh on
-       exit (the literal reverse of entry). Pairs with the slide-2
-       credits-roll above for one continuous upward motion on the
-       way in, and a downward "credits closing" motion on the way
-       out. 1.2s linear matches the slide-2 exit cadence. */
-    .bp-slide-3 .bp-slide-3-inner {
-      transform: translateY(100vh);
+    /* ── Slide 3 exit (reverse of entry) ──
+       v1.65j8 — exit mirrors entry exactly: right column ("By
+       producers, for producers...") slides out to the right
+       first; the left column ("A producer's best friend") follows
+       out to the left after a 0.6s stagger. The order is the
+       reverse of entry (left-then-right on the way in, right-then-
+       left on the way out), so playing the slide forwards then
+       backwards reads as a clean reversal. Same 1.0s ease-out
+       curve as entry; both columns travel a full 100vw so they
+       fully clear the viewport before the scroll-jump to slide 4.
+       Triggered by .bp-credits-rolling (bound to
+       slide3CreditsRolling). */
+    .bp-slide-3.bp-credits-rolling .bp-producers-grid > div:last-child {
+      animation: bp-to-right 1.0s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
-    .bp-slide-3.in-view .bp-slide-3-inner {
-      animation: bp-container-rise 1.2s linear both;
+    .bp-slide-3.bp-credits-rolling .bp-producers-grid > div:first-child {
+      animation: bp-to-left 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards;
     }
-    .bp-slide-3.bp-credits-rolling .bp-slide-3-inner {
-      animation: bp-container-fall 1.2s linear forwards;
+    @keyframes bp-to-right {
+      from { transform: translateX(0);     opacity: 1; }
+      to   { transform: translateX(100vw); opacity: 0; }
     }
-    @keyframes bp-container-rise {
-      from { transform: translateY(100vh); }
-      to   { transform: translateY(0); }
-    }
-    @keyframes bp-container-fall {
-      from { transform: translateY(0); }
-      to   { transform: translateY(100vh); }
+    @keyframes bp-to-left {
+      from { transform: translateX(0);      opacity: 1; }
+      to   { transform: translateX(-100vw); opacity: 0; }
     }
 
     /* ── Slide 3 from-pose + reveal ──
-       v1.65j7 — left/right column slide-in (bp-from-left /
-       bp-from-right) retired. The whole .bp-slide-3-inner now
-       rises from below as one unit; see "Slide 3 container rise
-       + fall" block below. */
+       v1.65j8 — restored. The left column ("A producer's best
+       friend") slides in from off-screen-left first; the right
+       column ("By producers, for producers...") follows from
+       off-screen-right after a 0.6s stagger. Both ease out so the
+       columns settle into their final positions instead of
+       coasting past them. Distances bumped from the original
+       v1.65gZ40 -120px to -100vw so the columns travel a full
+       viewport width — the motion now reads as the text being
+       carried in from off-page rather than nudged from just
+       outside its layout slot. The exit (below) reverses the
+       direction and order: right column slides out to the right
+       first, left column follows out to the left. */
+    .bp-slide-3 .bp-producers-grid > div:first-child {
+      transform: translateX(-100vw); opacity: 0;
+    }
+    .bp-slide-3 .bp-producers-grid > div:last-child {
+      transform: translateX(100vw); opacity: 0;
+    }
+    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
+      animation: bp-from-left 1.0s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
+      animation: bp-from-right 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+    }
+    @keyframes bp-from-left {
+      from { transform: translateX(-100vw); opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+    @keyframes bp-from-right {
+      from { transform: translateX(100vw);  opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
 
     /* ── Slide 4 from-pose + reveal ── */
     .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
@@ -2131,13 +2159,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }, 1200);
         return;
       }
-      // v1.65j7 — slide 3 → 4 exit. Pure vertical drop: the
-      // .bp-slide-3-inner falls from translateY(0) down to
-      // translateY(100vh) over 1.2s (bp-container-fall, the
-      // literal reverse of the entry's bp-container-rise). No bg
-      // shift — slide 3 and slide 4 share the same teal bg, so
-      // the jump is invisible. The orbs also share family (green
-      // on teal) so no orb-grow needed.
+      // v1.65j8 — slide 3 → 4 exit. Mirrors the entry: right
+      // column slides out to the right (1.0s, starts at t=0),
+      // then left column slides out to the left (1.0s, starts at
+      // t=0.6s). Total 1.6s — JS timer matches so the scroll-
+      // jump fires the instant both columns clear. No bg shift
+      // (slide 3 and 4 share #6391A4 teal); no orb-grow (orbs
+      // stay put as the columns leave).
       if (this.step === 2 && i === 3 && !this.slide3CreditsRolling) {
         this.slide3CreditsRolling = true;
         this.cdr.markForCheck();
@@ -2153,7 +2181,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
               this.cdr.markForCheck();
             }, 200);
           });
-        }, 1200);
+        }, 1600);
         return;
       }
       this.exitingFromSlide = this.step;
