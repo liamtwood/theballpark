@@ -2,7 +2,7 @@ export const environment = {
   production: false,
   marketingOnly: false,
   apiUrl: 'http://localhost:3001/api',
-  version: '[Dev] v1.65jF',
+  version: '[Dev] v1.65jG',
   supabaseUrl: '',
   supabaseAnonKey: '',
   storageBucketProjects: 'dev-project-assets',

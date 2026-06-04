@@ -553,35 +553,23 @@ const DEFAULT_CONTENT: Content = {
       scrollbar-width: none;                       /* Firefox */
       -ms-overflow-style: none;                    /* Edge legacy */
       overscroll-behavior: contain;                /* iOS rubber-band suppression */
-      /* v1.65hW — paint a scroll-height-tall gradient on the stage
-         that mirrors each slide's background colour. With background-
-         attachment:local on a scroll container, the bg scrolls with
-         the content, so the visible band at any scroll position
-         matches the slide that should be there. Any one-frame gap
-         iOS Safari's scroll-snap compositor leaves during a hand-off
-         now reveals the CORRECT slide colour for that position
-         (e.g. teal between slide-3 and slide-4) instead of the
-         welcome-root's green floor (which was visible as a green
-         flash mid-transition between 3 and 4). Hard colour stops at
-         25/50/75% match the slide boundaries exactly so the gradient
-         is visually identical to the slides themselves. */
-      /* v1.65hW — scroll-height-tall gradient mirroring each slide's
-         bg so any compositor gap during scroll-snap reveals the
-         CORRECT colour at that scroll position.
-         v1.65i7 — restored after the v1.65i2 unified-green debug
-         control was rolled back. */
-      background-image: linear-gradient(
-        to bottom,
-        #287F4D 0%,
-        #287F4D 25%,
-        #EB7396 25%,
-        #EB7396 50%,
-        #6391A4 50%,
-        #6391A4 100%
-      );
-      background-size: 100% 400vh;
-      background-attachment: local;
-      background-repeat: no-repeat;
+      /* v1.65jG — scroll-height-tall gradient (v1.65hW) removed.
+         The gradient existed to paint the CORRECT slide colour
+         behind any one-frame compositor gap iOS Safari left
+         during a smooth scroll-snap handoff. With v1.65j0's
+         click-only nav, all forward transitions use
+         scrollTo({ behavior: 'instant' }) — there's no smooth
+         scroll-snap that could expose a gap, so the gradient is
+         no longer needed.
+         Suspected source of the bright-pink rectangle the
+         client saw on slide 2 in Safari: background-attachment:
+         local on a scroll container creates an oversized
+         compositor layer that WebKit clips erratically. Removing
+         the gradient removes that layer entirely. If a green
+         flash reappears between any two slides, the gradient
+         (or per-slide overlay) needs to come back in a form
+         that doesn't trip Safari. */
+      background: transparent;
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
