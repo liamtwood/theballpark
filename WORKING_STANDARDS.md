@@ -734,6 +734,49 @@ Resolved in p0016 (v1.65hG / v1.65hH) by extracting
 `<app-page-config-strip>` as the single source of truth for the page
 settings strip; dashboard + agent now mount it with a single tag.
 
+### Page chrome — separate rule, same spirit
+
+The Extract Before Duplicate rule above catches markup copy-paste. Page
+chrome (title + subtitle blocks, section cards, edit-form scaffolding)
+tends to be hand-rolled per page from scratch rather than copied, so
+the headline rule silently skips it. Add this as a complementary check:
+
+When introducing a new page or sub-page that has a title, subtitle, or
+section-card structure: check `client-angular/src/app/shared/components/`
+for an existing component before hand-rolling the markup.
+
+Examples of page chrome that should be shared:
+- Page header: large serif title + smaller muted subtitle on parchment
+  → use `<app-page-header>` (when introduced)
+- Summary card: titled card with label/value pairs + optional footer
+  action → use `<app-section-card>` (when introduced)
+- Edit-form section: colored eyebrow + edit pencil + form field grid
+  → use `<app-edit-section>` (when introduced)
+
+If a needed component doesn't exist yet and the chrome is non-trivial
+(>20 lines of markup, multiple labels/states, or appears in a second
+location), extract it as part of the prompt that introduces the page.
+
+Page chrome that's hand-rolled in three or more pages becomes a
+mandatory-extraction backlog item before the fourth surface is built.
+
+### Marking debt with `<app-update-me>`
+
+When you encounter hand-rolled page chrome on an existing page and
+don't have time to refactor it in the current commit, mark it with
+the `<app-update-me reason="...">` banner component (introduced in
+p0035). The banner renders only in dev (never production) and shows
+in the dev environment as a constant nag — `UPDATE ME — adopt
+<app-page-header> when next refactoring this page`.
+
+This makes the debt visible to whoever next opens the page, and
+greppable via `grep -rn "<app-update-me" client-angular/src/app` for
+a live list of remaining work. The banner is removed when the page
+adopts the real shared component.
+
+Use sparingly — the banner is a "saw it, leaving for next pass"
+marker, not a "this should stay hand-rolled" comment.
+
 ---
 
 ## Angular ViewChild
