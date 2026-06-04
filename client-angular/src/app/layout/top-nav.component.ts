@@ -348,26 +348,30 @@ export class TopNavComponent implements OnInit, OnDestroy {
     return this.personaSvc.isSupplier() ? { tab: 'home' } : {};
   }
 
-  /** v1.66n (p0033) — role-keyed top-nav set. Recomputed reactively
-      (the active$ subscription triggers CD on persona switch), so the
-      bar + the org-name label swap with the persona. Supplier nav set
-      is p0021's scope. */
-  get navItems(): Array<{ label: string; icon: string; route: string }> {
+  /** v1.66n (p0033) — role-keyed top-nav set. Held as a STABLE field
+      (not a getter) and recomputed only on persona switch. A getter that
+      returns a fresh array every change-detection cycle drove a runaway
+      CD loop with the *ngFor + routerLinkActive — froze the page.
+      (v1.66o fix.) Supplier nav set is p0021's scope. */
+  navItems: Array<{ label: string; icon: string; route: string }> = [];
+
+  private buildNavItems() {
     const persona = this.personaSvc.active;
     const orgName = persona?.orgName || 'Settings';
 
     if (persona?.kind === 'admin') {
       // Platform admin (Beth). Cross-org admin tooling is a later
       // prompt; Config Home renders the existing dashboard for now.
-      return [
+      this.navItems = [
         { label: 'Config Home', icon: 'house',      route: '/' },
         { label: orgName,       icon: 'building-2', route: '/settings' },
       ];
+      return;
     }
 
     // Agency role (Sarah). 'Agent' is the agency dashboard (the rich
     // launcher at /, after /agent collapsed into it).
-    return [
+    this.navItems = [
       { label: 'Agent',       icon: 'house',       route: '/' },
       { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
       { label: 'Projects',    icon: 'folder-open', route: '/projects' },
@@ -467,8 +471,12 @@ export class TopNavComponent implements OnInit, OnDestroy {
     /* v1.65dz (p0015) — re-render the avatar + nav whenever the active
        persona flips so the initials reflect the current persona. */
     this.personaSub = this.personaSvc.active$.subscribe(() => {
+      this.buildNavItems();
       this.cdr.detectChanges();
     });
+
+    // Initial paint (covers the case where active$ isn't replayed).
+    this.buildNavItems();
   }
 
   /* p0003 — three-way cycle: light → dark → bold → light. */
