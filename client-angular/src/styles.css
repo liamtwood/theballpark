@@ -1561,10 +1561,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
   border-bottom: none !important;
   padding-top: 24px !important;
 }
+/* v1.66k — keep the tab band visible on the transparent ('none') hero.
+   The default .bp-hero-tab styling is already parchment-ready (white
+   folder-chips, v1.65br), so the Home/Inbox tabs render correctly here.
+   The pill band (.bp-hero-meta) stays hidden — preserves the clean look. */
 .bp-hero.bp-hero--none .bp-hero-orbs,
 .bp-hero.bp-hero--none .bp-hero-grain,
-.bp-hero.bp-hero--none .bp-hero-meta,
-.bp-hero.bp-hero--none .bp-hero-tab-band { display: none !important; }
+.bp-hero.bp-hero--none .bp-hero-meta { display: none !important; }
 .bp-hero.bp-hero--none .bp-hero-org-name {
   color: var(--color-text-primary) !important;
 }
