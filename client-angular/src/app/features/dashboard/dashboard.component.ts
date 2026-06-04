@@ -317,10 +317,6 @@ type DashTab = 'projects' | 'inbox';
       box-shadow: var(--shadow-xs);
       padding: 16px 18px;
     }
-    .bp-dash-card--collapsible { padding: 0; }
-    .bp-dash-card--collapsible .bp-section-header { padding: 14px 18px; margin: 0; }
-    .bp-dash-card--collapsible .bp-project-grid,
-    .bp-dash-card--collapsible .bp-past-carousel { padding: 0 18px 16px; margin: 0; }
 
     /* v1.65di — STATS row sits on the parchment ground (same as the
        body below). 24px gap from the hero divider above; wider 16px
@@ -424,214 +420,14 @@ type DashTab = 'projects' | 'inbox';
     .bp-section-action:hover { color:var(--color-text-primary); }
     .bp-section-spacer { margin-top:24px; }
 
-    /* P-CARD GRID */
-    /* TODO(p0019-§2 / p0020): the project-card styles below
-       (.bp-project-grid / .bp-project-card* / .bp-card-* / .bp-past-* /
-       .bp-section-new-btn / collapsible header bits) are retained but
-       no longer rendered here — the Active/Inactive/Past grid moved out
-       of the centre column. They come back when the dedicated /projects
-       page is built (p0020); lift them to that component or a shared
-       stylesheet then rather than deleting now (per p0019 spec). */
-    .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
-    .bp-project-card-wrap { display:block; }
-    /* v1.22 elevation: Level 1 at rest (shadow-xs + hairline), Level 2
-       on hover (shadow-sm + stronger hairline + translateY(-1px)).
-       overflow:visible kept from v1.22g so the "..." dropdown can
-       extend past the card edge; the cover image's rounded top is
-       clipped by .bp-card-header below. */
-    :host ::ng-deep .bp-project-card.p-card {
-      border: var(--border-hairline) !important;
-      border-radius: var(--radius-card) !important;
-      box-shadow: var(--shadow-xs) !important;
-      overflow: visible !important;
-      margin: 0;
-      cursor: pointer;
-      position: relative;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    :host ::ng-deep .bp-project-card-wrap:hover .bp-project-card.p-card {
-      border: var(--border-hairline-strong) !important;
-      box-shadow: var(--shadow-sm) !important;
-      transform: translateY(-1px);
-    }
-    :host ::ng-deep .bp-project-card .p-card-body, :host ::ng-deep .bp-project-card .p-card-content, :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
-    .bp-card-header {
-      height:110px; position:relative;
-      display:flex; align-items:flex-end; justify-content:space-between;
-      padding:8px 10px;
-      background-size:cover; background-position:center;
-      /* Top-corner clip lives on the header, not the parent card —
-         keeps the cover image from spilling out of the rounded
-         corners now that the p-card itself is overflow:visible. */
-      border-top-left-radius: var(--radius-card);
-      border-top-right-radius: var(--radius-card);
-      overflow:hidden;
-    }
-    .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
-    .bp-card-header-draft  { background-image:linear-gradient(160deg,#374151,#4B5563); }
-    .bp-card-header-closed { background-image:linear-gradient(160deg,#374151,#6B7280); }
-    /* v1.22: client chip moved to bottom-left of cover. Lighter
-       white-translucent treatment so it doesn't fight the cover image. */
-    .bp-card-client-chip {
-      position:absolute; bottom:8px; left:8px;
-      background:rgba(255,255,255,0.92); color:var(--color-text-primary);
-      border-radius: var(--radius-pill); padding:3px 10px;
-      font-size:10px; font-weight:500;
-      font-family: var(--font-body);
-    }
-
-    /* v1.22: solid-fill status pill in top-right. Sentence case, white
-       text, themed colours. Replaces the previous app-status-badge in
-       this slot — kept smaller and quieter so it reads as a chip not a
-       full label. */
-    .bp-card-status-pill {
-      position:absolute; top:8px; right:8px;
-      font-size:10px; font-weight:500;
-      padding:3px 10px;
-      border-radius: var(--radius-pill);
-      color:var(--color-surface);
-      background:var(--color-text-secondary);
-      font-family: var(--font-body);
-      letter-spacing: 0.01em;
-    }
-    .bp-card-status-pill--draft  { background: var(--theme-accent); }
-    .bp-card-status-pill--active { background: var(--color-booked-text); }
-    .bp-card-status-pill--closed { background: var(--color-text-muted); }
-    .bp-card-logo          { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); max-width:70%; max-height:70%; object-fit:contain; pointer-events:none; }
-    .bp-card-edit-overlay  { position:absolute; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s; cursor:pointer; }
-    .bp-card-header:hover .bp-card-edit-overlay { opacity:1; }
-    .bp-card-content { padding:12px 14px 14px; position: relative; }
-    /* v1.22: name + "..." menu sit on the same row so the menu trigger
-       is reachable without overlapping the cover image. */
-    .bp-card-name-row {
-      display:flex; align-items:flex-start; gap:6px;
-      margin-bottom:4px;
-    }
-    .bp-card-name { font-size:13px; font-weight:600; color:var(--color-text-primary); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    /* v1.39h — auto-ref chip on dashboard card name row. */
-    .bp-card-ref-chip {
-      display:inline-block; margin-right:6px;
-      padding:1px 7px; border-radius:999px;
-      background:var(--theme-bg);
-      border:0.5px solid var(--color-border);
-      font-size:10px; font-weight:500; letter-spacing:0.04em;
-      color:var(--color-text-secondary);
-      vertical-align:middle;
-    }
-    .bp-card-menu-btn {
-      width:24px; height:24px;
-      border-radius:50%;
-      border:none; background:none;
-      color:var(--color-text-muted);
-      cursor:pointer;
-      flex-shrink:0;
-      font-size:16px; line-height:1;
-      display:flex; align-items:center; justify-content:center;
-      transition: background 0.15s, color 0.15s;
-    }
-    .bp-card-menu-btn:hover {
-      background:var(--theme-bg);
-      color:var(--theme-accent);
-    }
-    /* Dropdown — anchored bottom-right of the name row. v1.22
-       elevation: Level 3 (shadow-md) + hairline + button radius.
-       z-index + card overflow:visible let it overlay siblings. */
-    .bp-card-menu {
-      position:absolute;
-      top:32px; right:12px;
-      width:150px;
-      background:var(--color-surface);
-      border: var(--border-hairline);
-      border-radius: var(--radius-button);
-      padding:4px 0;
-      z-index:50;
-      box-shadow: var(--shadow-md);
-    }
-    /* Lift the wrap (and therefore its dropdown menu) above sibling
-       cards when the menu is open, so the dropdown isn't covered by
-       the next card's border / hero image. The wrap is always
-       position:relative so z-index applies; the --menu-open modifier
-       is added by the template via [class.…] when openMenuProjectId
-       matches this card. */
-    .bp-project-card-wrap { position:relative; }
-    .bp-project-card-wrap--menu-open { z-index:30; }
-    .bp-card-menu-item {
-      display:block;
-      width:100%;
-      padding:8px 12px;
-      font-size:12px;
-      font-weight:500;
-      text-align:left;
-      background:none;
-      border:none;
-      cursor:pointer;
-      color:var(--color-text-primary);
-      font-family: var(--font-body);
-      transition: background 0.1s;
-    }
-    .bp-card-menu-item:hover { background:var(--theme-bg); }
-    .bp-card-menu-item--danger { color:var(--color-danger); }
-    .bp-card-menu-item--danger:hover {
-      background:rgba(225, 29, 72, 0.06);
-    }
-    .bp-card-menu-sep {
-      height:0.5px;
-      background:var(--color-border);
-      margin:4px 0;
-    }
-    .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
-    .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
-
-    /* v1.65dh — "+ New Event" is the one primary CTA. Filled accent
-       PILL (was an outlined chip), white text, --radius-pill,
-       12px bold weight, subtle shadow-xs, slight lift on hover. */
-    .bp-section-new-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 18px;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: var(--font-body);
-      color: var(--color-surface);
-      background: var(--theme-accent);
-      border: none;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      box-shadow: var(--shadow-xs);
-      transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
-    }
-    .bp-section-new-btn:hover {
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-    .bp-section-new-btn:active { transform: scale(0.98); }
+    /* v1.66e (p0024): the project-card grid, "+ New" pill, collapsible
+       headers and past-events carousel CSS that lived here (retained
+       dead since p0019) moved to projects-list.component.ts with the
+       /projects page. Shared section-header / icon / title primitives
+       below stay — the left column still uses them. */
 
     /* Section header icon — small, theme-accent, fixed size. */
     .bp-section-icon { color: var(--theme-accent); flex-shrink: 0; }
-    /* Count badge after the section title (Inactive / Past). */
-    .bp-section-count {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.04em;
-      padding: 1px 7px;
-      border-radius: var(--radius-pill);
-      background: var(--theme-soft);
-      color: var(--theme-accent);
-    }
-    .bp-section-chev {
-      margin-left: auto;
-      color: var(--color-text-muted);
-    }
-    /* Collapsible section header — clickable; gives the whole strip
-       the affordance of a button. */
-    .bp-section-header--toggle {
-      width: 100%;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: var(--font-body);
-      text-align: left;
-    }
-    .bp-section-header--toggle:hover .bp-section-title { color: var(--color-text-primary); }
     /* v1.65dj — section header: left-justified flow (icon → title →
        trailing actions) with a hairline divider underneath that spans
        the card's full width. Negative side margins pull the divider
@@ -649,22 +445,6 @@ type DashTab = 'projects' | 'inbox';
       padding-left: 18px;
       padding-right: 18px;
       border-bottom: var(--border-hairline);
-    }
-    .bp-section-header > .bp-section-new-btn,
-    .bp-section-header > .bp-section-chev {
-      margin-left: auto;
-    }
-    /* Collapsible variant — header IS the card content when closed,
-       so the divider becomes the card's bottom edge naturally. Same
-       hairline; the negative side margin lines up with the card's
-       zero padding. */
-    .bp-dash-card--collapsible .bp-section-header {
-      margin: 0;
-      padding: 14px 18px;
-      border-bottom: var(--border-hairline);
-    }
-    .bp-dash-card--collapsible:not(.bp-dash-card--open) .bp-section-header {
-      border-bottom: none;
     }
     /* v1.22d: section-header CTA — same font / padding as
        .bp-quick-action (13px / 8px 12px). The whole CTA family now
@@ -688,86 +468,6 @@ type DashTab = 'projects' | 'inbox';
       color:var(--color-surface);
     }
 
-    /* ── PAST EVENTS CAROUSEL ──────────────────────────────────────
-       Horizontal scroll, snap-to-card, hidden scrollbar. Compact
-       cards (130px) replace the previous full-grid "Completed
-       Events" section. */
-    .bp-past-carousel {
-      display:flex;
-      gap:8px;
-      overflow-x:auto;
-      padding:0 0 8px;
-      scroll-snap-type: x mandatory;
-      scrollbar-width:none;
-      -ms-overflow-style:none;
-    }
-    .bp-past-carousel::-webkit-scrollbar { display:none; }
-    .bp-past-card {
-      flex-shrink:0;
-      width:130px;
-      scroll-snap-align:start;
-      border: var(--border-hairline);
-      border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs);
-      overflow:hidden;
-      background:var(--color-surface);
-      text-decoration:none;
-      color:inherit;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    .bp-past-card:hover {
-      border: var(--border-hairline-strong);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
-    .bp-past-card--fade { opacity: 0.6; }
-    .bp-past-cover {
-      position:relative;
-      height:72px;
-      background-size:cover;
-      background-position:center;
-      background-color: var(--theme-bg);
-    }
-    .bp-past-cover--empty {
-      background-image: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
-    }
-    .bp-past-year {
-      position:absolute;
-      bottom:6px; left:8px;
-      font-family: var(--font-display);
-      font-size:14px;
-      color:var(--color-surface);
-      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-      letter-spacing: 0.02em;
-    }
-    .bp-past-status-pill {
-      position:absolute;
-      top:6px; right:6px;
-      font-size:9px;
-      font-weight:500;
-      padding:2px 8px;
-      border-radius: var(--radius-pill);
-      color:var(--color-surface);
-      background: var(--color-text-muted);
-      font-family: var(--font-body);
-    }
-    .bp-past-body { padding:6px 8px 8px; }
-    .bp-past-name {
-      font-size:10px;
-      font-weight:500;
-      color:var(--color-text-primary);
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      margin-bottom:2px;
-    }
-    .bp-past-sub {
-      font-size:9px;
-      color:var(--color-text-muted);
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
 
     /* RIGHT PANEL */
     /* v1.65dh — right-column padding now lives on each .bp-dash-card;

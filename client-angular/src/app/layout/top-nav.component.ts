@@ -54,6 +54,14 @@ import { environment } from '../../environments/environment';
            class="bp-nav-link">
           <lucide-icon name="house" [size]="14"></lucide-icon> Home
         </a>
+        <!-- v1.66e (p0024): Projects landing page. Label tracks the
+             configurable projectLabel token (Events / Shows / etc.).
+             Universal for now — per-persona gating is a p0020 concern. -->
+        <a routerLink="/projects"
+           routerLinkActive="active"
+           class="bp-nav-link">
+          <lucide-icon name="folder-open" [size]="14"></lucide-icon> {{ projectLabel }}s
+        </a>
         <a routerLink="/agent"
            routerLinkActive="active"
            class="bp-nav-link">
@@ -274,6 +282,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   creditLabel  = 'Ball';
   catalogueLabel = 'Catalogue';
   feedbackLabel  = 'Feedback';
+  projectLabel = 'Event';
   ballsBalance = 0;
   orgName      = '';
   /** v1.22: avatar in the top-right now shows USER initials, not org.
@@ -376,6 +385,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (cfg.creditLabel) this.creditLabel = cfg.creditLabel;
       if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
       if (cfg.feedbackLabel)  this.feedbackLabel  = cfg.feedbackLabel;
+      if (cfg.projectLabel)   this.projectLabel   = cfg.projectLabel;
       this.cdr.detectChanges();
     });
 

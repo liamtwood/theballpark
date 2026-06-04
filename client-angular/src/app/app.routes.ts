@@ -99,7 +99,15 @@ const FULL_ROUTES: Routes = [
       // ── PROJECTS ──
       // v1.30: /projects/new removed — replaced by the intake modal
       // mounted in app-shell and opened via CreateProjectService.
-      // v1.33: /projects list removed — dashboard is the entry point.
+      // v1.33: /projects list removed — dashboard was the entry point.
+      // v1.66e (p0024): /projects list re-added as a dedicated landing
+      // page (the launcher "View Projects" tile + top-nav button land
+      // here). Hero pushed via ShellContextService like dashboard/agent.
+      {
+        path: 'projects',
+        loadComponent: () => import('./features/projects/projects-list.component').then(m => m.ProjectsListComponent),
+        data: { pageLabel: '', tabs: [] }
+      },
       {
         path: 'projects/:id',
         loadComponent: () => import('./features/projects/pages/project-detail/project-detail.component').then(m => m.ProjectDetailComponent),
