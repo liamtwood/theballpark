@@ -318,13 +318,17 @@ const DEFAULT_CONTENT: Content = {
                  review. It absolute-positions to the bottom of the
                  panel rather than to the viewport. -->
             <div class="bp-welcome-footer">
+              <!-- v1.65iB — Legal moved INTO the links row next to
+                   TikTok (was an isolated right-aligned button). Reads
+                   as part of the same group and stays visible on
+                   mobile where the old right column was display:none. -->
               <div class="bp-footer-links">
                 <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
                 <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
                 <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+                <button type="button" class="bp-footer-link bp-footer-link--button" (click)="openLegal($event)">Legal</button>
               </div>
               <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
-              <button type="button" class="bp-footer-link bp-footer-link--right bp-footer-link--button" (click)="openLegal($event)">Legal</button>
             </div>
           </div>
         </section>
@@ -1223,7 +1227,9 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid #FFFFFF;
       border-radius: 999px;
       color: #133C23;
-      font-size: 14px;
+      /* v1.65iB — entered text 14 → 12 per client review so longer
+         email addresses fit comfortably without overflowing the pill. */
+      font-size: 12px;
       font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
       text-align: center;
@@ -1303,18 +1309,19 @@ const DEFAULT_CONTENT: Content = {
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
-    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─
-       v1.65gZ2 — switched from flex space-between to a 3-column grid
-       so the © line sits in the centre of the PAGE (the middle 1fr
-       column), not just between the left/right blocks. Left & right
-       blocks justify-self to keep their edges aligned. */
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / Legal | ©) ─
+       v1.65gZ2 — 3-column grid with © centred.
+       v1.65iB — Legal moved into the links row so the footer is now
+       a 2-column grid (links | ©). The .bp-footer-link--right
+       isolated slot is gone; .bp-footer-link--button retains its
+       button-as-link reset. */
     .bp-welcome-footer {
       position: absolute;
       left: 0; right: 0; bottom: 0;
       z-index: 6;
       padding: 18px 32px 22px;
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: 1fr auto;
       align-items: center;
       gap: 24px;
       font-family: 'Fraunces', Georgia, serif;
@@ -1331,11 +1338,17 @@ const DEFAULT_CONTENT: Content = {
       transition: opacity 0.2s;
     }
     .bp-footer-link:hover { opacity: 0.7; }
-    .bp-footer-link--right {
-      justify-self: end;
+    .bp-footer-link--button {
+      /* Reset button defaults so Legal renders identically to the
+         anchor links beside it. */
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
     }
     .bp-footer-copy {
-      text-align: center;
+      justify-self: end;
       opacity: 0.6;
       letter-spacing: 0.02em;
     }
@@ -1347,8 +1360,13 @@ const DEFAULT_CONTENT: Content = {
         font-size: 11px;
         padding-bottom: 16px;
       }
-      .bp-footer-links { justify-self: center; }
-      .bp-footer-link--right { display: none; }
+      .bp-footer-links {
+        justify-self: center;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
+      .bp-footer-copy { justify-self: center; }
     }
 
     /* v1.65gY — Bottom-nav (Back / Next pills) + vertical pagination
