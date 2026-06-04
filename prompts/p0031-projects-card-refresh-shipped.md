@@ -22,9 +22,10 @@ shipped). No new components, no model/backend changes, no new flags.
   driven by the `project_status` codelist colour (white text).
 - **Stats row:** `{N} Suppliers` (left) + relative time (right, via a
   small inline `relativeTime()` helper — date-fns isn't installed).
-- **Big gradient Ballpark cost** at the bottom (28px, `--theme-accent →
-  --color-action-text` `background-clip:text`) from `total_ballpark_cost`
-  via `CompactCurrencyPipe`, with a muted `Ballpark` label.
+- **Big gradient Client total** at the bottom (28px, `--theme-accent →
+  --color-action-text` `background-clip:text`) from `total_client_cost`
+  (the estimate-page figure) via `CompactCurrencyPipe`, with a muted
+  `Client total` label. (v1.66h — was `total_ballpark_cost` / "Ballpark".)
 
 ### 2. REF chip — done as part of the card (above the name).
 

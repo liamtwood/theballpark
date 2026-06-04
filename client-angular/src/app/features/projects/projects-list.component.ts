@@ -125,10 +125,10 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
               <span>{{ supplierCount(p) }} Suppliers</span>
               <span>{{ relativeTime(p.updated_at) }}</span>
             </div>
-            <!-- Big gradient Ballpark cost. -->
-            <div class="bp-card-ballpark-row">
-              <span class="bp-card-ballpark">{{ p.total_ballpark_cost | compactCurrency }}</span>
-              <span class="bp-card-ballpark-label">Ballpark</span>
+            <!-- Big gradient Client total (matches the estimate page). -->
+            <div class="bp-card-total-row">
+              <span class="bp-card-total">{{ p.total_client_cost | compactCurrency }}</span>
+              <span class="bp-card-total-label">Client total</span>
             </div>
             <div *ngIf="openMenuProjectId === p.id"
                  class="bp-card-menu"
@@ -313,15 +313,15 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       display:flex; align-items:center; justify-content:space-between;
       font-size:13px; color:var(--color-text-muted); font-family: var(--font-body);
     }
-    /* Big gradient Ballpark cost + muted label. */
-    .bp-card-ballpark-row { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
-    .bp-card-ballpark {
+    /* Big gradient Client total + muted label. */
+    .bp-card-total-row { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
+    .bp-card-total {
       font-size:28px; font-weight:600; line-height:1; font-family: var(--font-body);
       background: linear-gradient(90deg, var(--theme-accent), var(--color-action-text));
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent; color: transparent;
     }
-    .bp-card-ballpark-label { font-size:12px; color:var(--color-text-muted); font-weight:500; }
+    .bp-card-total-label { font-size:12px; color:var(--color-text-muted); font-weight:500; }
 
     /* p0031: "+ New" dashed tile — last item in the Active grid. Grid
        stretch matches it to the card height; min-height covers the
