@@ -34,7 +34,6 @@ import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { Project } from '../../models';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
-import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 
 @Component({
@@ -44,30 +43,25 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
   imports: [
     CommonModule, RouterModule, LucideAngularModule,
     CardModule, ConfirmDialogModule, ToastModule,
-    ImageUploadPanelComponent, EventDatePipe, CompactCurrencyPipe,
+    ImageUploadPanelComponent, CompactCurrencyPipe,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
     <div class="bp-projects-page">
       <div class="bp-projects-inner">
 
-        <!-- ACTIVE — expanded, project-card grid -->
-        <div class="bp-dash-card">
-          <div class="bp-section-header">
-            <lucide-icon name="folder-open" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-section-title">Active {{ projectLabel }}s</span>
-            <button type="button" class="bp-section-new-btn" (click)="openNewProject()">
-              + New {{ projectLabel }}
-            </button>
-          </div>
-          <p *ngIf="!loading && activeProjects.length === 0" class="bp-empty">
-            No active {{ projectLabel.toLowerCase() }}s yet.
-          </p>
-          <div class="bp-project-grid">
-            <ng-container *ngFor="let p of activeProjects">
-              <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
-            </ng-container>
-          </div>
+        <!-- ACTIVE — p0031: full-width grid, no panel header/chrome. The
+             "+ New" dashed tile is the last item in this grid only. -->
+        <div class="bp-project-grid bp-active-grid">
+          <ng-container *ngFor="let p of activeProjects">
+            <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
+          </ng-container>
+          <button type="button" class="bp-new-tile"
+                  (click)="openNewProject()"
+                  [attr.aria-label]="'Create new ' + projectLabel.toLowerCase()">
+            <lucide-icon name="plus" [size]="38" class="bp-new-tile-icon"></lucide-icon>
+            <span class="bp-new-tile-label">New {{ projectLabel }}</span>
+          </button>
         </div>
 
         <!-- COMPLETED — collapsed by default, same card grid -->
@@ -93,7 +87,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       </div>
     </div>
 
-    <!-- Shared project card — reused by Active + Inactive grids. -->
+    <!-- Shared project card — reused by Active + Completed grids. -->
     <ng-template #cardTpl let-p>
       <div class="bp-project-card-wrap"
            [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
@@ -103,26 +97,39 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
               [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
               [class.bp-card-header-active]="!p.cover_image_url && projectStatus(p).key !== 'draft'"
               [class.bp-card-header-draft]="!p.cover_image_url && projectStatus(p).key === 'draft'">
-              <span class="bp-card-status-pill"
-                    [style.background-color]="projectStatus(p).color">
-                {{ projectStatus(p).label }}
+              <!-- p0031: notification badge top-right, only when the
+                   project has action-needed items (>0). -->
+              <span *ngIf="actionNeeded(p) > 0" class="bp-card-notif">
+                <lucide-icon name="message-circle" [size]="12"></lucide-icon>
+                {{ actionNeeded(p) }} New
               </span>
               <span *ngIf="p.client_name" class="bp-card-client-chip">{{ p.client_name }}</span>
               <img *ngIf="p.client_logo_url" [src]="p.client_logo_url" class="bp-card-logo" alt="client logo"/>
             </div>
           </ng-template>
           <div class="bp-card-content">
+            <!-- p0031: REF chip above the name (no fallback when null). -->
+            <span *ngIf="p.ref" class="bp-card-ref-chip">{{ p.ref }}</span>
             <div class="bp-card-name-row">
-              <div class="bp-card-name">
-                <span *ngIf="p.ref" class="bp-card-ref-chip">{{ p.ref }}</span>
-                {{ p.event_name || p.name }}
-              </div>
+              <div class="bp-card-name">{{ p.event_name || p.name }}</div>
               <button type="button" class="bp-card-menu-btn"
                       (click)="toggleMenu($event, p)"
                       title="More actions">⋯</button>
             </div>
-            <div class="bp-card-meta">{{ p.event_date | eventDate }}</div>
-            <div class="bp-card-cost">Est. {{ p.total_client_cost | compactCurrency }}</div>
+            <!-- Status pill below the title (codelist colour). -->
+            <span class="bp-card-status" [style.background-color]="projectStatus(p).color">
+              {{ projectStatus(p).label }}
+            </span>
+            <!-- Suppliers count (left) + relative time (right). -->
+            <div class="bp-card-stats">
+              <span>{{ supplierCount(p) }} Suppliers</span>
+              <span>{{ relativeTime(p.updated_at) }}</span>
+            </div>
+            <!-- Big gradient Ballpark cost. -->
+            <div class="bp-card-ballpark-row">
+              <span class="bp-card-ballpark">{{ p.total_ballpark_cost | compactCurrency }}</span>
+              <span class="bp-card-ballpark-label">Ballpark</span>
+            </div>
             <div *ngIf="openMenuProjectId === p.id"
                  class="bp-card-menu"
                  (click)="$event.stopPropagation(); $event.preventDefault()">
@@ -161,7 +168,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       padding: 24px 20px 48px;
     }
     .bp-projects-inner {
-      max-width: 960px;
+      max-width: 1400px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
@@ -190,7 +197,6 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       padding-right: 18px;
       border-bottom: var(--border-hairline);
     }
-    .bp-section-header > .bp-section-new-btn,
     .bp-section-header > .bp-section-chev { margin-left: auto; }
     .bp-section-title { font-size:11px; font-weight:500; color:var(--theme-accent); text-transform:uppercase; letter-spacing:0.06em; }
     .bp-section-icon { color: var(--theme-accent); flex-shrink: 0; }
@@ -212,23 +218,8 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       border-bottom: none;
     }
 
-    /* "+ New" primary pill (recovered). */
-    .bp-section-new-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 18px;
-      font-size: 12px; font-weight: 600; font-family: var(--font-body);
-      color: var(--color-surface); background: var(--theme-accent);
-      border: none; border-radius: var(--radius-pill);
-      cursor: pointer; box-shadow: var(--shadow-xs);
-      transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
-    }
-    .bp-section-new-btn:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); filter: brightness(1.05); }
-    .bp-section-new-btn:active { transform: scale(0.98); }
-
-    .bp-empty { font-size:var(--text-sm); color:var(--color-text-muted); padding:16px 0; }
-
-    /* ── PROJECT CARD GRID (recovered verbatim from pre-p0019) ── */
-    .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
+    /* ── PROJECT CARD GRID ── */
+    .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-bottom:8px; }
     .bp-project-card-wrap { display:block; position:relative; }
     .bp-project-card-wrap--menu-open { z-index:30; }
     :host ::ng-deep .bp-project-card.p-card {
@@ -248,7 +239,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     :host ::ng-deep .bp-project-card .p-card-content,
     :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
     .bp-card-header {
-      height:110px; position:relative;
+      height:200px; position:relative;
       display:flex; align-items:flex-end; justify-content:space-between;
       padding:8px 10px;
       background-size:cover; background-position:center;
@@ -264,22 +255,27 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       border-radius: var(--radius-pill); padding:3px 10px;
       font-size:10px; font-weight:500; font-family: var(--font-body);
     }
-    .bp-card-status-pill {
+    /* p0031: notification badge — message-circle + count + "New", a
+       gradient action→accent pill top-right of the cover. */
+    .bp-card-notif {
       position:absolute; top:8px; right:8px;
-      font-size:10px; font-weight:500; padding:3px 10px;
-      border-radius: var(--radius-pill);
-      color:var(--color-surface); background:var(--color-text-secondary);
-      font-family: var(--font-body); letter-spacing: 0.01em;
+      display:inline-flex; align-items:center; gap:4px;
+      padding:4px 10px; border-radius: var(--radius-pill);
+      background: linear-gradient(90deg, var(--color-action-text), var(--theme-accent));
+      color:#fff; font-size:11px; font-weight:600;
+      font-family: var(--font-body); box-shadow: var(--shadow-xs);
     }
     .bp-card-logo { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); max-width:70%; max-height:70%; object-fit:contain; pointer-events:none; }
-    .bp-card-content { padding:12px 14px 14px; position: relative; }
-    .bp-card-name-row { display:flex; align-items:flex-start; gap:6px; margin-bottom:4px; }
-    .bp-card-name { font-size:13px; font-weight:600; color:var(--color-text-primary); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bp-card-content { padding:14px 16px 16px; position: relative; display:flex; flex-direction:column; gap:8px; }
+    .bp-card-name-row { display:flex; align-items:flex-start; gap:6px; }
+    .bp-card-name { font-size:16px; font-weight:600; color:var(--color-text-primary); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* p0031: REF eyebrow chip above the name (inbox Ref XX-NNN style). */
     .bp-card-ref-chip {
-      display:inline-block; margin-right:6px; padding:1px 7px; border-radius:999px;
-      background:var(--theme-bg); border:0.5px solid var(--color-border);
-      font-size:10px; font-weight:500; letter-spacing:0.04em;
-      color:var(--color-text-secondary); vertical-align:middle;
+      display:inline-flex; align-self:flex-start; padding:2px 9px;
+      border-radius: var(--radius-pill);
+      background:var(--theme-soft); color:var(--theme-accent);
+      font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+      font-family: var(--font-body);
     }
     .bp-card-menu-btn {
       width:24px; height:24px; border-radius:50%;
@@ -306,8 +302,45 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     .bp-card-menu-item--danger { color:var(--color-danger); }
     .bp-card-menu-item--danger:hover { background:rgba(225, 29, 72, 0.06); }
     .bp-card-menu-sep { height:0.5px; background:var(--color-border); margin:4px 0; }
-    .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
-    .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
+    /* p0031: status pill below the title (codelist colour, white text). */
+    .bp-card-status {
+      display:inline-flex; align-self:flex-start;
+      padding:4px 12px; border-radius: var(--radius-pill);
+      font-size:11px; font-weight:600; color:#fff; font-family: var(--font-body);
+    }
+    /* Suppliers (left) + relative time (right). */
+    .bp-card-stats {
+      display:flex; align-items:center; justify-content:space-between;
+      font-size:13px; color:var(--color-text-muted); font-family: var(--font-body);
+    }
+    /* Big gradient Ballpark cost + muted label. */
+    .bp-card-ballpark-row { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
+    .bp-card-ballpark {
+      font-size:28px; font-weight:600; line-height:1; font-family: var(--font-body);
+      background: linear-gradient(90deg, var(--theme-accent), var(--color-action-text));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .bp-card-ballpark-label { font-size:12px; color:var(--color-text-muted); font-weight:500; }
+
+    /* p0031: "+ New" dashed tile — last item in the Active grid. Grid
+       stretch matches it to the card height; min-height covers the
+       empty-grid case. */
+    .bp-new-tile {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:10px; min-height:340px;
+      border:2px dashed var(--color-border); border-radius: var(--radius-card);
+      background: transparent; cursor:pointer;
+      color:var(--color-text-muted); font-family: var(--font-body);
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .bp-new-tile:hover {
+      border-color: var(--theme-accent);
+      color: var(--theme-accent);
+      background: var(--theme-soft);
+    }
+    .bp-new-tile-icon { color: inherit; }
+    .bp-new-tile-label { font-size:14px; font-weight:600; }
   `],
 })
 export class ProjectsListComponent implements OnInit, OnDestroy {
@@ -392,6 +425,36 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
 
   openNewProject() {
     this.createProjectSvc.open();
+  }
+
+  /** p0031: unread / action-needed item count for the cover badge.
+      No field on the project list payload today — plumbed as a computed
+      property defaulting to 0, so the badge stays hidden until the
+      backend supplies it (no model change per the prompt). */
+  actionNeeded(p: Project): number {
+    return (p as any).action_needed_count ?? 0;
+  }
+
+  /** p0031: supplier count for the stats row. Same story — no field on
+      the list payload yet; defaults to 0 until plumbed. */
+  supplierCount(p: Project): number {
+    return (p as any).supplier_count ?? 0;
+  }
+
+  /** p0031: coarse relative time (date-fns isn't installed). Reads
+      updated_at — "Today" / "3 Days Ago" / "5 Months Ago". */
+  relativeTime(dateStr?: string): string {
+    if (!dateStr) return '';
+    const then = new Date(dateStr).getTime();
+    if (isNaN(then)) return '';
+    const days = Math.floor(Math.max(0, Date.now() - then) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 30) return `${days} Days Ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return months === 1 ? '1 Month Ago' : `${months} Months Ago`;
+    const years = Math.floor(days / 365);
+    return years === 1 ? '1 Year Ago' : `${years} Years Ago`;
   }
 
   toggleMenu(event: MouseEvent, p: Project) {
