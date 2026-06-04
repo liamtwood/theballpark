@@ -70,58 +70,23 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
           </div>
         </div>
 
-        <!-- INACTIVE — collapsed by default, same card grid -->
+        <!-- COMPLETED — collapsed by default, same card grid -->
         <div class="bp-dash-card bp-dash-card--collapsible"
              *ngIf="completedProjects.length > 0"
-             [class.bp-dash-card--open]="inactiveOpen">
+             [class.bp-dash-card--open]="completedOpen">
           <button type="button" class="bp-section-header bp-section-header--toggle"
-                  (click)="inactiveOpen = !inactiveOpen">
+                  (click)="completedOpen = !completedOpen">
             <lucide-icon name="folder-open" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-section-title">Inactive {{ projectLabel }}s</span>
+            <span class="bp-section-title">Completed {{ projectLabel }}s</span>
             <span class="bp-section-count">{{ completedProjects.length }}</span>
             <lucide-icon class="bp-section-chev"
-                         [name]="inactiveOpen ? 'chevron-up' : 'chevron-down'"
+                         [name]="completedOpen ? 'chevron-up' : 'chevron-down'"
                          [size]="14"></lucide-icon>
           </button>
-          <div *ngIf="inactiveOpen" class="bp-project-grid">
+          <div *ngIf="completedOpen" class="bp-project-grid">
             <ng-container *ngFor="let p of completedProjects">
               <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
             </ng-container>
-          </div>
-        </div>
-
-        <!-- PAST — collapsed by default, compact carousel -->
-        <div class="bp-dash-card bp-dash-card--collapsible"
-             *ngIf="completedProjects.length > 0"
-             [class.bp-dash-card--open]="pastOpen">
-          <button type="button" class="bp-section-header bp-section-header--toggle"
-                  (click)="pastOpen = !pastOpen">
-            <lucide-icon name="folder-open" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-section-title">Past {{ projectLabel }}s</span>
-            <span class="bp-section-count">{{ completedProjects.length }}</span>
-            <lucide-icon class="bp-section-chev"
-                         [name]="pastOpen ? 'chevron-up' : 'chevron-down'"
-                         [size]="14"></lucide-icon>
-          </button>
-          <div *ngIf="pastOpen" class="bp-past-carousel">
-            <a *ngFor="let p of completedProjects.slice(0, 10); let i = index"
-               class="bp-past-card"
-               [class.bp-past-card--fade]="i === 9 && completedProjects.length > 10"
-               [routerLink]="['/projects', p.id]">
-              <div class="bp-past-cover"
-                   [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
-                   [class.bp-past-cover--empty]="!p.cover_image_url">
-                <span class="bp-past-year">{{ extractYear(p.event_date) || '—' }}</span>
-                <span class="bp-past-status-pill">Closed</span>
-              </div>
-              <div class="bp-past-body">
-                <div class="bp-past-name">{{ p.event_name || p.name }}</div>
-                <div class="bp-past-sub">
-                  <ng-container *ngIf="p.client_name">{{ p.client_name }} · </ng-container>
-                  Est. {{ p.total_client_cost | compactCurrency }}
-                </div>
-              </div>
-            </a>
           </div>
         </div>
 
@@ -214,8 +179,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     }
     .bp-dash-card--collapsible { padding: 0; }
     .bp-dash-card--collapsible .bp-section-header { padding: 14px 18px; margin: 0; }
-    .bp-dash-card--collapsible .bp-project-grid,
-    .bp-dash-card--collapsible .bp-past-carousel { padding: 0 18px 16px; margin: 0; }
+    .bp-dash-card--collapsible .bp-project-grid { padding: 0 18px 16px; margin: 0; }
 
     .bp-section-header {
       display: flex; align-items: center; gap: 8px;
@@ -344,38 +308,6 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     .bp-card-menu-sep { height:0.5px; background:var(--color-border); margin:4px 0; }
     .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
     .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
-
-    /* ── PAST EVENTS CAROUSEL (recovered) ── */
-    .bp-past-carousel {
-      display:flex; gap:8px; overflow-x:auto; padding:0 0 8px;
-      scroll-snap-type: x mandatory; scrollbar-width:none; -ms-overflow-style:none;
-    }
-    .bp-past-carousel::-webkit-scrollbar { display:none; }
-    .bp-past-card {
-      flex-shrink:0; width:130px; scroll-snap-align:start;
-      border: var(--border-hairline); border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs); overflow:hidden;
-      background:var(--color-surface); text-decoration:none; color:inherit;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    .bp-past-card:hover { border: var(--border-hairline-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
-    .bp-past-card--fade { opacity: 0.6; }
-    .bp-past-cover { position:relative; height:72px; background-size:cover; background-position:center; background-color: var(--theme-bg); }
-    .bp-past-cover--empty { background-image: linear-gradient(160deg, var(--theme-bg), var(--theme-border)); }
-    .bp-past-year {
-      position:absolute; bottom:6px; left:8px;
-      font-family: var(--font-display); font-size:14px;
-      color:var(--color-surface); text-shadow: 0 1px 3px rgba(0,0,0,0.4); letter-spacing: 0.02em;
-    }
-    .bp-past-status-pill {
-      position:absolute; top:6px; right:6px;
-      font-size:9px; font-weight:500; padding:2px 8px;
-      border-radius: var(--radius-pill); color:var(--color-surface);
-      background: var(--color-text-muted); font-family: var(--font-body);
-    }
-    .bp-past-body { padding:6px 8px 8px; }
-    .bp-past-name { font-size:10px; font-weight:500; color:var(--color-text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:2px; }
-    .bp-past-sub { font-size:9px; color:var(--color-text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   `],
 })
 export class ProjectsListComponent implements OnInit, OnDestroy {
@@ -387,8 +319,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   /** id of the project whose "..." dropdown is open ('' = none). */
   openMenuProjectId = '';
   uploadPanelProjectId = '';
-  inactiveOpen = false;
-  pastOpen = false;
+  completedOpen = false;
   private sub?: Subscription;
 
   constructor(
@@ -536,13 +467,5 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     if (urls.cardColor) project.card_color = urls.cardColor;
     this.uploadPanelProjectId = '';
     this.cdr.detectChanges();
-  }
-
-  /** Year overlay for the past-events carousel; null → caller shows "—". */
-  extractYear(dateStr?: string): string | null {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    return String(d.getFullYear());
   }
 }

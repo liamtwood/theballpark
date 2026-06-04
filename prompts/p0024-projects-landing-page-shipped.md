@@ -10,9 +10,10 @@ page, and a `Projects` button in the top-nav reaches it directly.
 
 ## 1. `/projects` page (new `ProjectsListComponent`)
 - New `features/projects/projects-list.component.ts` — standalone, OnPush.
-- Three sections, vertical stack: **Active** (expanded) / **Inactive**
-  (collapsed) / **Past** (collapsed, compact carousel), accordion headers
-  with `folder-open` icon + count badge + chevron.
+- Two sections, vertical stack: **Active** (expanded) / **Completed**
+  (collapsed), accordion headers with `folder-open` icon + count badge +
+  chevron. (Shipped as Active/Inactive/Past; v1.66f renamed Inactive →
+  Completed and dropped the duplicate Past carousel per Liam.)
 - Projects pulled from `ProjectService`, bucketed via `projectStatus()`
   (codelist-driven, same logic the dashboard used).
 - Hero pushed via `ShellContextService` (`heroColor` + `heroSub` from
