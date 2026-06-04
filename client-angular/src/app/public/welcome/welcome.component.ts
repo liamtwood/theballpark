@@ -73,6 +73,18 @@ const DEFAULT_CONTENT: Content = {
   template: `
     <div class="bp-welcome-root">
 
+      <!-- v1.65iF (designer Fix 4) — fixed bg crossfade tiers. Two
+           position:fixed layers stack on top of the welcome-root's
+           green floor (slide 1's colour). Each tier's opacity is a
+           continuous function of slideF (see tierOpacity()), so the
+           visible bg colour is the literal alpha-blend of the floor
+           + tiers — no JS-listener lag, no seam, works identically
+           at any scroll speed including slow / accessibility scroll.
+           The orbs stay inside their slide sections (z-index above
+           the tiers via stage > tier in document order). -->
+      <div class="bp-bg-tier bp-bg-tier--pink" [style.opacity]="tierOpacity(0)" aria-hidden="true"></div>
+      <div class="bp-bg-tier bp-bg-tier--teal" [style.opacity]="tierOpacity(1)" aria-hidden="true"></div>
+
       <!-- Persistent header. v1.65g9 — logo is now an image when the
            agency's marketplace-logo has been uploaded (loaded from
            /api/org on init), with the text wordmark as a fallback so
@@ -431,6 +443,22 @@ const DEFAULT_CONTENT: Content = {
       overflow: hidden;
     }
 
+    /* v1.65iF (designer Fix 4) — fixed bg crossfade tiers. Two
+       position:fixed layers stack above the welcome-root green floor;
+       opacity is a function of slideF (see tierOpacity()). pink fades
+       in over slideF 0..1 (covering green on slide 2). teal fades in
+       over slideF 1..2 (covering pink on slide 3+4). No motion, only
+       opacity — runs cheap on the compositor. */
+    .bp-bg-tier {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      will-change: opacity;
+    }
+    .bp-bg-tier--pink { background: #EB7396; }
+    .bp-bg-tier--teal { background: #6391A4; }
+
     .bp-welcome-root {
       position: relative;
       height: 100vh;
@@ -515,6 +543,10 @@ const DEFAULT_CONTENT: Content = {
        indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
+      /* v1.65iF — stage needs an explicit z-index above the fixed
+         bg tiers (z-index:0) so the slides + their orbs render on
+         top of the crossfading bg layers. */
+      z-index: 2;
       overflow-y: scroll;
       /* v1.65iE — mandatory -> proximity per designer Fix 2.
          Mandatory yanked the user to the next snap aggressively which
@@ -539,23 +571,13 @@ const DEFAULT_CONTENT: Content = {
          flash mid-transition between 3 and 4). Hard colour stops at
          25/50/75% match the slide boundaries exactly so the gradient
          is visually identical to the slides themselves. */
-      /* v1.65hW — scroll-height-tall gradient mirroring each slide's
-         bg so any compositor gap during scroll-snap reveals the
-         CORRECT colour at that scroll position.
-         v1.65i7 — restored after the v1.65i2 unified-green debug
-         control was rolled back. */
-      background-image: linear-gradient(
-        to bottom,
-        #287F4D 0%,
-        #287F4D 25%,
-        #EB7396 25%,
-        #EB7396 50%,
-        #6391A4 50%,
-        #6391A4 100%
-      );
-      background-size: 100% 400vh;
-      background-attachment: local;
-      background-repeat: no-repeat;
+      /* v1.65hW had a scroll-height-tall gradient mirroring each
+         slide's bg as a compositor-gap fallback.
+         v1.65iF — dropped. The fixed bg crossfade tiers (defined
+         above .bp-welcome-root) are now the canonical source of
+         the bg colour at any scroll position. The stage stays
+         transparent so the tiers show through; slide sections also
+         stay transparent (their bg colours moved to the tiers). */
     }
     .bp-welcome-stage::-webkit-scrollbar {
       display: none;
@@ -799,12 +821,12 @@ const DEFAULT_CONTENT: Content = {
        scroll, fades out once the scroll settles, fades back in when the
        user scrolls away. Slide 1 has no previous slide; slides 3 + 4
        share the same teal so the slide-4 boundary needs no bleed. */
-    /* v1.65i2 — all slide backgrounds unified to slide-1 green as
-       a debug control to isolate the 1→2 transition artifact.
-       v1.65i7 — original per-slide colours restored now that the
-       1→2 fade-out + instant jump (v1.65i3..i6) has fixed the
-       artifact properly. */
-    .bp-slide-1 { background: #287F4D; }
+    /* v1.65iF — slide section backgrounds removed. The fixed bg
+       crossfade tiers (.bp-bg-tier--pink / --teal) above the
+       welcome-stage now own the bg colour at every scroll position,
+       so slide sections must stay transparent for the tiers to show
+       through. Slide 2's flex layout + padding stays here. */
+    .bp-slide-1 { /* transparent — bg lives on .bp-bg-tier */ }
 
     /* v1.65iC (p0025) — .bp-slide-exiting class + its defensive
        opacity:0/display:none rules removed. The *ngIf bindings
@@ -812,7 +834,7 @@ const DEFAULT_CONTENT: Content = {
        contentRevealed) now handle mount/unmount directly via the
        DOM, no CSS hide needed. */
     .bp-slide-2 {
-      background: #EB7396;
+      /* v1.65iF — bg removed, lives on .bp-bg-tier--pink now. */
       flex-direction: column;
       padding: 80px 0 100px;
     }
@@ -860,8 +882,9 @@ const DEFAULT_CONTENT: Content = {
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    .bp-slide-3 { background: #6391A4; }
-    .bp-slide-4 { background: #6391A4; }
+    /* v1.65iF — slides 3 + 4 bg lives on .bp-bg-tier--teal now. */
+    .bp-slide-3 { /* transparent */ }
+    .bp-slide-4 { /* transparent */ }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
        Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
@@ -1853,6 +1876,20 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   contentOpacity(i: number): number {
     const p = this.slideProgress(i);
     return Math.max(0, Math.min(1, (p - 0.5) / 0.4));
+  }
+  /** v1.65iF — cumulative crossfade for the fixed bg tiers (designer's
+      structural fix for the seam visible at any scroll speed). The
+      welcome-root has a green floor (slide 1). Two fixed tiers stack
+      on top:
+        i=0 (pink, slide 2): fades in over slideF 0..1
+        i=1 (teal, slide 3+4): fades in over slideF 1..2
+      Each tier is `position: fixed` so it doesn't move with the
+      scroll — only its opacity changes. At any slideF the visible
+      background is a literal sum of the floor + adjacent tier
+      opacities, weighted by scroll position. No JS-listener lag,
+      no repaint, no seam. */
+  tierOpacity(i: number): number {
+    return Math.max(0, Math.min(1, this.slideF - i));
   }
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
