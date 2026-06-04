@@ -142,8 +142,10 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#FA91B0"/>
                 <stop offset="100%" stop-color="#DF5980"/>
               </linearGradient>
-              <filter id="s1-blur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="20"/>
+              <filter id="s1-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
+                <feComposite in="blur" in2="bg" operator="over"/>
               </filter>
             </defs>
             <g filter="url(#s1-blur)">
@@ -186,8 +188,10 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#79A8BA"/>
                 <stop offset="100%" stop-color="#457187"/>
               </linearGradient>
-              <filter id="s2-blur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="20"/>
+              <filter id="s2-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
+                <feComposite in="blur" in2="bg" operator="over"/>
               </filter>
             </defs>
             <g filter="url(#s2-blur)">
@@ -223,8 +227,10 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#33A25F"/>
                 <stop offset="100%" stop-color="#2D8E53"/>
               </linearGradient>
-              <filter id="s3-blur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="20"/>
+              <filter id="s3-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
+                <feComposite in="blur" in2="bg" operator="over"/>
               </filter>
             </defs>
             <!-- v1.65gZ17 — r=280 had the top + bottom orbs
@@ -276,8 +282,10 @@ const DEFAULT_CONTENT: Content = {
                 <stop offset="0%"   stop-color="#33A25F"/>
                 <stop offset="100%" stop-color="#133C23"/>
               </linearGradient>
-              <filter id="s4-blur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="20"/>
+              <filter id="s4-blur" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+                <feFlood flood-color="rgba(0,0,0,0)" result="bg"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
+                <feComposite in="blur" in2="bg" operator="over"/>
               </filter>
             </defs>
             <g filter="url(#s4-blur)">
@@ -1046,14 +1054,7 @@ const DEFAULT_CONTENT: Content = {
       animation: none !important;
     }
     .bp-slide-2 {
-      /* v1.65jH DEBUG — slide-2 bg temporarily ORANGE so we can
-         tell where the "pink rectangle" on iOS Safari is coming
-         from. If the rectangle becomes orange in this build,
-         it's the slide-2 section bg painted twice (likely by a
-         compositor layer). If it stays pink, it's slide-1's
-         pink orbs (or the slide1-bg-to-pink animation) leaking
-         from above. REVERT to #EB7396 once diagnosed. */
-      background: #FFA500;
+      background: #EB7396;
       flex-direction: column;
       padding: 80px 0 100px;
     }
