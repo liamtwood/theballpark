@@ -147,7 +147,7 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(0)"></div>
-          <div class="bp-slide-inner bp-slide-1-inner" *ngIf="contentRevealed(0)">
+          <div class="bp-slide-inner bp-slide-1-inner" [style.opacity]="contentOpacity(0)">
             <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
                  the BALLPARK wordmark, per the design review. Falls
                  back to the original eyebrow text when the logo
@@ -189,7 +189,7 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(1)"></div>
-          <div class="bp-slide-inner bp-slide-2-inner" *ngIf="contentRevealed(1)">
+          <div class="bp-slide-inner bp-slide-2-inner" [style.opacity]="contentOpacity(1)">
             <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
             <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
           </div>
@@ -197,7 +197,7 @@ const DEFAULT_CONTENT: Content = {
                top/bottom border rules on .bp-marquee-wrap dropped
                per client review (let the marquee run freely without
                visual frames around it). -->
-          <div class="bp-marquee-wrap" *ngIf="contentRevealed(1)">
+          <div class="bp-marquee-wrap" [style.opacity]="contentOpacity(1)">
             <div class="bp-marquee-track">
               <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
             </div>
@@ -231,7 +231,7 @@ const DEFAULT_CONTENT: Content = {
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(2)"></div>
-          <div class="bp-slide-inner bp-slide-3-inner" *ngIf="contentRevealed(2)">
+          <div class="bp-slide-inner bp-slide-3-inner" [style.opacity]="contentOpacity(2)">
             <div class="bp-producers-grid">
               <div>
                 <h2 class="bp-producers-headline">{{ text('producers.headline') }}</h2>
@@ -516,7 +516,13 @@ const DEFAULT_CONTENT: Content = {
     .bp-welcome-stage {
       position: absolute; inset: 0;
       overflow-y: scroll;
-      scroll-snap-type: y mandatory;
+      /* v1.65iE — mandatory -> proximity per designer Fix 2.
+         Mandatory yanked the user to the next snap aggressively which
+         compounded the "too sharp" feel of the transitions. Proximity
+         still pulls toward the next stop but doesn't force it,
+         giving the bg colour + opacity-fade-in more time to play
+         out naturally. One-token softening. */
+      scroll-snap-type: y proximity;
       scroll-behavior: smooth;
       scrollbar-width: none;                       /* Firefox */
       -ms-overflow-style: none;                    /* Edge legacy */
@@ -1828,17 +1834,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   //   slideProgress(i): 1 when fully on slide i, 0 when fully on an
   //     adjacent slide. Linear interpolation in between.
   //
-  //   contentRevealed(i): bg has flooded AND the snap is mostly
-  //     settled. v1.65iD — threshold 0.7 → 0.8 per designer review.
-  //     The principle (everything from scroll position) is sound;
-  //     the band-of-wrong-colour on backward scroll was timing, not
-  //     asymmetry — bg colour was a frame or two behind the eye's
-  //     leading edge (which is the TOP of the viewport going up,
-  //     where the eye is less forgiving than the bottom going down).
-  //     Pushing the threshold to 0.8 gives the bg an extra frame or
-  //     two to catch up before content arrives, so the eye never
-  //     sees content on the wrong-colour bg. Symmetric by
-  //     construction — same threshold both directions.
+  //   contentOpacity(i): v1.65iE — continuous opacity replaces the
+  //     v1.65iC/iD threshold-based contentRevealed predicate. The
+  //     threshold was a binary switch (invisible → visible in one
+  //     frame) — that abrupt mount/unmount was the "flutter" reported
+  //     during backward scroll. Now content stays mounted in the
+  //     DOM and fades opacity across the back half of the slide's
+  //     territory (slideProgress 0.5..0.9 maps to opacity 0..1).
+  //     Reverse direction gets the same gentle fade-out for free
+  //     since opacity is a pure function of scroll position.
   isCurrentSlide(i: number): boolean {
     return Math.round(this.slideF) === i;
   }
@@ -1846,8 +1850,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const d = Math.abs(this.slideF - i);
     return d >= 1 ? 0 : 1 - d;
   }
-  contentRevealed(i: number): boolean {
-    return this.isCurrentSlide(i) && this.slideProgress(i) > 0.8;
+  contentOpacity(i: number): number {
+    const p = this.slideProgress(i);
+    return Math.max(0, Math.min(1, (p - 0.5) / 0.4));
   }
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
