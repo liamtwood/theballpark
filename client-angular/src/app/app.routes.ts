@@ -144,19 +144,18 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
         data: { pageLabel: 'FAVOURITES', tabs: [] }
       },
-      {
-        path: 'messages',
-        loadComponent: () => import('./features/messages/global-messages.component').then(m => m.GlobalMessagesComponent),
-        data: { pageLabel: 'MESSAGES', tabs: [] }
-      },
+      // v1.66l (p0015 close-out) — /messages redirects to the canonical
+      // /inbox (object naming: Org / Projects / Inbox / Marketplace).
+      { path: 'messages', redirectTo: 'inbox', pathMatch: 'full' },
 
-      // ── SUPPLIER PERSONA INBOX ──
-      // v1.65dz (p0015) — supplier-side mount of the shared
-      // MessagesInboxComponent with viewer='supplier'. Reached from
-      // the supplier persona's top-nav (PersonaService gating).
+      // ── INBOX ──
+      // One canonical route + one viewer-aware component (InboxComponent)
+      // for both agency and supplier — the viewer is chosen from the
+      // active persona. Supersedes the GlobalMessages (/messages) +
+      // SupplierInbox split.
       {
         path: 'inbox',
-        loadComponent: () => import('./features/messages/supplier-inbox.component').then(m => m.SupplierInboxComponent),
+        loadComponent: () => import('./features/messages/inbox.component').then(m => m.InboxComponent),
         data: { pageLabel: 'INBOX', tabs: [] }
       },
 

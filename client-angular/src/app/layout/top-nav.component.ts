@@ -124,7 +124,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="heart" [size]="20"></lucide-icon>
           <span>Favourites</span>
         </a>
-        <a routerLink="/messages" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/inbox" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="inbox" [size]="20"></lucide-icon>
           <span>Inbox</span>
         </a>

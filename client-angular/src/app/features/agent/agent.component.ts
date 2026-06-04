@@ -136,7 +136,7 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
   // wildcard sends it home until then); /profile isn't a route, so
   // Settings is the account surface today.
   goToProjects()    { this.router.navigate(['/projects']); }
-  goToInbox()       { this.router.navigate(['/messages']); }
+  goToInbox()       { this.router.navigate(['/inbox']); }
   goToMarketplace() { this.router.navigate(['/suppliers']); }
   goToProfile()     { this.router.navigate(['/settings']); }
 

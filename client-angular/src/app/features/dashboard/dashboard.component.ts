@@ -20,7 +20,6 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
@@ -28,13 +27,6 @@ import { CreateProjectService } from '../../core/services/create-project.service
 import { CodelistService } from '../../core/services/codelist.service';
 import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
-
-// v1.65g2 — Inbox tab added next to Home/Projects. The label of the
-// "projects" tab reads from pageCfg.homePageLabel (so orgs that
-// renamed it to "Events" keep their label); Inbox is fixed.
-// activeTab='projects' = the dashboard home content;
-// activeTab='inbox' renders the embedded MessagesInboxComponent.
-type DashTab = 'projects' | 'inbox';
 
 @Component({
   selector: 'app-dashboard',
@@ -44,22 +36,14 @@ type DashTab = 'projects' | 'inbox';
     LucideAngularModule,
     ButtonModule, CheckboxModule, InputTextModule,
     LoadingSpinnerComponent, StatusBadgeComponent,
-    MessagesInboxComponent,
     PageConfigDrawerComponent, ActionTileComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   template: `
-    <!-- v1.65g2 — when the Inbox hero tab is active, render the
-         shared MessagesInboxComponent at the org level. No new
-         component or route — the same inbox the supplier uses
-         (and the existing /messages route mounts) flips on inside
-         the dashboard so users don't have to leave home. -->
-    <app-messages-inbox *ngIf="activeTab === 'inbox'"
-                        [showProjectSelector]="true"
-                        viewer="agency">
-    </app-messages-inbox>
-
-    <div class="bp-page" *ngIf="activeTab === 'projects'">
+    <!-- v1.66l (p0015 close-out) — the dashboard no longer embeds the
+         inbox. Inbox is its own canonical /inbox route; the hero Inbox
+         tab + the launcher Inbox tile both navigate there. -->
+    <div class="bp-page">
     <!-- v1.65hJ (p0017) — page-settings drawer. Migrated from the
          horizontal strip; same handlers/draft/sync, but rendered as a
          right-side p-sidebar so it can scroll and accommodate the
@@ -273,8 +257,9 @@ type DashTab = 'projects' | 'inbox';
            MOBILE TAB PANELS — hidden on desktop
       ══════════════════════════════════════════════════ -->
 
-      <!-- PROJECTS TAB -->
-      <div class="bp-mobile-panel" [class.active]="activeTab === 'projects'">
+      <!-- PROJECTS TAB — v1.66l: the dashboard has a single view now
+           (inbox moved to /inbox), so this mobile panel is always on. -->
+      <div class="bp-mobile-panel active">
         <div class="bp-section-header">
           <span class="bp-section-title">Active {{ projectLabel }}s</span>
           <!-- <a routerLink="/projects/new" class="bp-section-action">+ New</a> -->
@@ -645,7 +630,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   projectLabel = 'Event';
   creditLabel  = 'Ball';
   daysUntilReset = 0;
-  activeTab: DashTab = 'projects';
   // v1.65hQ (p0019 §2): the Active/Inactive/Past project-card grid +
   // its "..." menu / image-upload / collapse state moved out of the
   // dashboard with the centre column. activeProjects / completedProjects
@@ -747,7 +731,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   // The tile is wired to the real path now so it lights up when p0020
   // lands.
   goToProjects()    { this.router.navigate(['/projects']); }
-  goToInbox()       { this.router.navigate(['/messages']); }
+  goToInbox()       { this.router.navigate(['/inbox']); }
   goToMarketplace() { this.router.navigate(['/suppliers']); }
   // No dedicated /profile route — Settings is the account surface today.
   goToProfile()     { this.router.navigate(['/settings']); }
@@ -757,17 +741,6 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     return map[(cat || '').toLowerCase()] || 'default';
   }
 
-  /** v1.65g2 — public (was private) so the hero tab band's
-      onTabClick can call it. Sync activeTab + re-push the
-      activeTabPath so the hero highlight matches. */
-  setTab(tab: DashTab) {
-    this.activeTab = tab;
-    this.shellCtx.set({
-      ...this.shellCtx.current,
-      activeTabPath: tab,
-    });
-    this.cdr.detectChanges();
-  }
 
   ngOnInit() {
     // v1.31: warm the project_status codelist cache so the project
@@ -821,10 +794,8 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       with the settings draft. */
   private pushShellContext() {
     if (!this.org) return;
-    // v1.65g2 — two-tab hero: home (the existing dashboard content,
-    // labelled by pageCfg.homePageLabel) + Inbox. Tab click routes
-    // through setTab so activeTab + activeTabPath stay in sync with
-    // the AppShell's hero highlight.
+    // v1.66l — two hero tabs: Home (this page) + Inbox (routes to the
+    // canonical /inbox). Home is always the active tab here.
     // v1.65hG (p0016 Step 2): reads from pageCfg now — the local
     // read-only mirror of the bits the dashboard needs. The full
     // strip draft lives in <app-page-config-drawer>.
@@ -836,12 +807,14 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       heroColor: this.configService.heroColor,
       heroSub: homeLabel.toUpperCase(),
       pills: [],
+      // v1.66l — Home is this page (always active); Inbox now navigates
+      // to the canonical /inbox route rather than an embedded tab.
       tabs: [
         { label: 'Home',  path: 'projects' },
         { label: 'Inbox', path: 'inbox'    },
       ],
-      activeTabPath: this.activeTab,
-      onTabClick: (t: any) => this.setTab(t.path as DashTab),
+      activeTabPath: 'projects',
+      onTabClick: (t: any) => { if (t.path === 'inbox') this.router.navigate(['/inbox']); },
     };
     // Upcoming pill — when enabled AND we've got a future project.
     if (this.pageCfg.showUpcoming && this.nextProject) {
