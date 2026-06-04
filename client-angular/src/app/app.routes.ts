@@ -85,16 +85,11 @@ const FULL_ROUTES: Routes = [
         }
       },
 
-      // ── AGENT DASHBOARD ──
-      // Initial scaffold — empty page. heroVariant 'none' suppresses
-      // the accent band so only the hero title text shows over the
-      // body background. Future work will fill in agent-specific
-      // surfaces.
-      {
-        path: 'agent',
-        loadComponent: () => import('./features/agent/agent.component').then(m => m.AgentDashboardComponent),
-        data: { pageLabel: 'Agent', tabs: [], heroVariant: 'none' }
-      },
+      // ── AGENT → HOME ──
+      // v1.66n (p0033): /agent collapsed into the canonical dashboard at
+      // '' (the rich launcher IS the agent dashboard). Redirect keeps old
+      // links / bookmarks working; agent.component.ts deleted.
+      { path: 'agent', redirectTo: '', pathMatch: 'full' },
 
       // ── PROJECTS ──
       // v1.30: /projects/new removed — replaced by the intake modal

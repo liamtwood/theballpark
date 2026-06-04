@@ -37,48 +37,17 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
-        <!-- v1.65e4 (p0015) — top-nav unified across personas: just
-             Home + Settings as text links. The supplier's Front /
-             Store / Inbox tabs live INSIDE the home page (hero tab
-             band on /suppliers/:id); Beth's Categories / Marketplace
-             / Orgs / Early Access / Feedback tabs live inside her
-             home (/ballpark-settings hero tab band).
-             Home routes per persona:
-               agency   → /
-               admin    → /ballpark-settings
-               supplier → /suppliers/{supplierOrgId}?tab=home -->
-        <a [routerLink]="personaHomeRoute"
-           [queryParams]="personaHomeQueryParams"
+        <!-- v1.66n (p0033) — role-keyed top-nav. Each persona's nav set
+             is the objects that role works with (computed in navItems).
+             Agency: Agent / Inbox / Projects / Marketplace / {orgName}.
+             Platform admin: Config Home / {orgName}. Supplier nav set is
+             p0021's scope. Home objects route to / (exact-active). -->
+        <a *ngFor="let item of navItems"
+           [routerLink]="item.route"
            routerLinkActive="active"
-           [routerLinkActiveOptions]="{exact:true}"
+           [routerLinkActiveOptions]="{ exact: item.route === '/' }"
            class="bp-nav-link">
-          <lucide-icon name="house" [size]="14"></lucide-icon> Home
-        </a>
-        <!-- v1.66m — Inbox is a top-level object (Org / Projects / Inbox /
-             Marketplace); canonical nav lives here, routes to /inbox.
-             (Order/role-gating finalised in p0033.) -->
-        <a routerLink="/inbox"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="inbox" [size]="14"></lucide-icon> Inbox
-        </a>
-        <!-- v1.66e (p0024): Projects landing page. Label tracks the
-             configurable projectLabel token (Events / Shows / etc.).
-             Universal for now — per-persona gating is a p0020 concern. -->
-        <a routerLink="/projects"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="folder-open" [size]="14"></lucide-icon> {{ projectLabel }}s
-        </a>
-        <a routerLink="/agent"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="user" [size]="14"></lucide-icon> Agent
-        </a>
-        <a routerLink="/settings"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+          <lucide-icon [name]="item.icon" [size]="14"></lucide-icon> {{ item.label }}
         </a>
 
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
@@ -377,6 +346,34 @@ export class TopNavComponent implements OnInit, OnDestroy {
       supplier persona needs a tab= param to land on the Home tab. */
   get personaHomeQueryParams(): any {
     return this.personaSvc.isSupplier() ? { tab: 'home' } : {};
+  }
+
+  /** v1.66n (p0033) — role-keyed top-nav set. Recomputed reactively
+      (the active$ subscription triggers CD on persona switch), so the
+      bar + the org-name label swap with the persona. Supplier nav set
+      is p0021's scope. */
+  get navItems(): Array<{ label: string; icon: string; route: string }> {
+    const persona = this.personaSvc.active;
+    const orgName = persona?.orgName || 'Settings';
+
+    if (persona?.kind === 'admin') {
+      // Platform admin (Beth). Cross-org admin tooling is a later
+      // prompt; Config Home renders the existing dashboard for now.
+      return [
+        { label: 'Config Home', icon: 'house',      route: '/' },
+        { label: orgName,       icon: 'building-2', route: '/settings' },
+      ];
+    }
+
+    // Agency role (Sarah). 'Agent' is the agency dashboard (the rich
+    // launcher at /, after /agent collapsed into it).
+    return [
+      { label: 'Agent',       icon: 'house',       route: '/' },
+      { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
+      { label: 'Projects',    icon: 'folder-open', route: '/projects' },
+      { label: 'Marketplace', icon: 'store',       route: '/suppliers' },
+      { label: orgName,       icon: 'building-2',  route: '/settings' },
+    ];
   }
 
   toggleConfigStrip() { this.configStrip.toggle(); }
