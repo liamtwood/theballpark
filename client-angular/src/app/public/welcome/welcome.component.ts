@@ -734,11 +734,11 @@ const DEFAULT_CONTENT: Content = {
       opacity: 0;
     }
     .bp-slide-2.in-view .bp-suppliers-headline {
-      animation: bp-headline-rise 1.5s linear both;
+      animation: bp-headline-rise 1.0s linear both;
     }
     .bp-slide-2.in-view .bp-suppliers-subtitle,
     .bp-slide-2.in-view .bp-marquee-wrap {
-      animation: bp-snap-in 1.5s steps(1, end) both;
+      animation: bp-snap-in 1.0s steps(1, end) both;
     }
     @keyframes bp-headline-rise {
       from { transform: translateY(70vh); opacity: 0; }
@@ -768,13 +768,13 @@ const DEFAULT_CONTENT: Content = {
        up — reading as one continuous credits moment instead of
        two separate slide animations. */
     .bp-slide-1-inner.bp-credits-exit {
-      animation: bp-credits-up 1.5s linear forwards;
+      animation: bp-credits-up 1s linear forwards;
     }
     .bp-slide-1.bp-credits-rolling {
-      animation: bp-slide1-bg-to-pink 1.5s linear forwards;
+      animation: bp-slide1-bg-to-pink 1s linear forwards;
     }
     .bp-slide-1.bp-credits-rolling .bp-svg-bg circle {
-      animation: bp-orb-grow 1.5s linear forwards;
+      animation: bp-orb-grow 1s linear forwards;
     }
     @keyframes bp-credits-up {
       from { transform: translateY(0);      opacity: 1; }
@@ -791,7 +791,7 @@ const DEFAULT_CONTENT: Content = {
 
     /* ── Slide 2 sphere fade-in ──
        v1.65j4 — slide-2 circles get their own fade-in tuned to
-       match the headline-rise timing (1.5s linear), overriding
+       match the headline-rise timing (1.0s linear), overriding
        the global .bp-slide.in-view .bp-svg-bg circle rule
        (1.4s ease-out) for this slide only. Higher specificity
        (.bp-slide-2 vs .bp-slide) makes this rule win. Pairs
@@ -800,7 +800,7 @@ const DEFAULT_CONTENT: Content = {
        alongside it. Initial opacity:0 is inherited from the
        global .bp-svg-bg circle { opacity: 0 } rule above. */
     .bp-slide-2.in-view .bp-svg-bg circle {
-      animation: bp-fade-in-circles 1.5s linear both;
+      animation: bp-fade-in-circles 1.0s linear both;
     }
     @keyframes bp-fade-in-circles {
       from { opacity: 0; }
@@ -2006,7 +2006,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // scroll — those transitions weren't reported as having the
     // artifact.
     if (i > this.step) {
-      // v1.65j3 — slide 1 → 2 gets a 1.5s credits-roll exit. The
+      // v1.65j3 — slide 1 → 2 gets a credits-roll exit. The
       // inner of slide-1 lifts up off the top of the viewport
       // (CSS animation, see .bp-slide-1-inner.bp-credits-exit),
       // and only after the animation completes do we strip the
@@ -2017,6 +2017,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // visible bg-only beat between credits ending and rising,
       // breaking the continuous feel. Other forward transitions
       // (2→3, 3→4) stay snappy on the original fast path.
+      // v1.65j5 — duration tightened 1500ms -> 1000ms (matches
+      // the CSS animation durations) per client review feedback. */
       if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
         this.slide1CreditsRolling = true;
         this.cdr.markForCheck();
@@ -2035,7 +2037,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
               this.cdr.markForCheck();
             }, 200);
           });
-        }, 1500);
+        }, 1000);
         return;
       }
       this.exitingFromSlide = this.step;
