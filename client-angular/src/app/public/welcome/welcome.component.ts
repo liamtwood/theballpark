@@ -1829,11 +1829,16 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   //     adjacent slide. Linear interpolation in between.
   //
   //   contentRevealed(i): bg has flooded AND the snap is mostly
-  //     settled. Threshold 0.7 — content reveals only when the user
-  //     has scrolled ~70% of the way to slide i. Going forward this
-  //     gives the "bg first, content second" reveal; going backward
-  //     content unmounts first (when slideProgress drops below 0.7)
-  //     then the bg unmounts (when isCurrentSlide flips false).
+  //     settled. v1.65iD — threshold 0.7 → 0.8 per designer review.
+  //     The principle (everything from scroll position) is sound;
+  //     the band-of-wrong-colour on backward scroll was timing, not
+  //     asymmetry — bg colour was a frame or two behind the eye's
+  //     leading edge (which is the TOP of the viewport going up,
+  //     where the eye is less forgiving than the bottom going down).
+  //     Pushing the threshold to 0.8 gives the bg an extra frame or
+  //     two to catch up before content arrives, so the eye never
+  //     sees content on the wrong-colour bg. Symmetric by
+  //     construction — same threshold both directions.
   isCurrentSlide(i: number): boolean {
     return Math.round(this.slideF) === i;
   }
@@ -1842,7 +1847,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return d >= 1 ? 0 : 1 - d;
   }
   contentRevealed(i: number): boolean {
-    return this.isCurrentSlide(i) && this.slideProgress(i) > 0.7;
+    return this.isCurrentSlide(i) && this.slideProgress(i) > 0.8;
   }
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
