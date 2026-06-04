@@ -1632,18 +1632,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.step = idx;
         this.cdr.markForCheck();
       }
-      // v1.65iT — when the user returns to slide 1 (e.g. via the
-      // home logo), make sure the exit-animation class is gone so
-      // the slide renders in its normal green / r=280 state. The
-      // class is also cleared 1300ms after the exit completes, but
-      // this is the safety net for cases where the user navigates
-      // back before the timer fires.
-      if (idx === 0) {
-        const s1 = this.slideRefs?.toArray()[0]?.nativeElement;
-        if (s1?.classList.contains('bp-slide-1-exiting')) {
-          s1.classList.remove('bp-slide-1-exiting');
-        }
-      }
+      // v1.65iU — scroll-handler-driven class removal dropped. It
+      // was firing DURING the slide-1 → 2 smooth scroll (idx === 0
+      // for the first half of the scroll), tearing the
+      // .bp-slide-1-exiting class off while the animation's end
+      // state should have been holding. Result: green flash mid-
+      // transit. The 500ms cleanup timer inside next() handles
+      // class removal cleanly off-screen — no scroll-handler help
+      // needed.
 
       setProgress();
     };
