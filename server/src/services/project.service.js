@@ -1,10 +1,29 @@
 const pool = require('../db/pool');
 
 async function getAll(orgId) {
-  let query = `SELECT p.*, s.name as status_name, s.color as status_color, c.name as client_name
+  // v1.66i — compute the cost totals LIVE from project_categories rather
+  // than trusting the stored projects.total_* columns, which are only
+  // refreshed by recalcTotals() and go stale/null when categories are
+  // saved off that path (e.g. WA-26 showed null while the estimate page
+  // computed the real Client total from categories). The aggregated
+  // aliases come AFTER p.* so they override the stored columns of the
+  // same name in the returned row (last-key-wins in node-postgres).
+  let query = `SELECT p.*, s.name as status_name, s.color as status_color, c.name as client_name,
+      COALESCE(t.total_ballpark_cost, 0) AS total_ballpark_cost,
+      COALESCE(t.total_base_cost, 0)     AS total_base_cost,
+      COALESCE(t.total_client_cost, 0)   AS total_client_cost
     FROM projects p
     LEFT JOIN statuses s ON p.status_id = s.id
     LEFT JOIN clients c ON p.client_id = c.id
+    LEFT JOIN (
+      SELECT project_id,
+             SUM(subtotal)    AS total_ballpark_cost,
+             SUM(base_cost)   AS total_base_cost,
+             SUM(client_cost) AS total_client_cost
+      FROM project_categories
+      WHERE is_active = true
+      GROUP BY project_id
+    ) t ON t.project_id = p.id
     WHERE p.is_active = true`;
   const params = [];
   if (orgId) {
