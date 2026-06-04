@@ -239,8 +239,13 @@ const DEFAULT_CONTENT: Content = {
                  a 20-unit gap and the two colours read as separate
                  blobs. -->
             <g filter="url(#s3-blur)">
-              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
-              <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
+              <!-- v1.65iP — slide 3 entry animation: green orbs
+                   slide in vertically (top orb from off-top, bottom
+                   orb from off-bottom) over slide 3's blue bg.
+                   Triggered by IntersectionObserver via the
+                   .bp-slide-3-entered class — one-shot. -->
+              <circle class="bp-orb-top"    cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
+              <circle class="bp-orb-bottom" cx="400" cy="500" r="240" fill="url(#s3-light)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -767,8 +772,39 @@ const DEFAULT_CONTENT: Content = {
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
     /* v1.65iF — slides 3 + 4 bg lives on .bp-bg-tier--teal now. */
-    .bp-slide-3 { /* transparent */ }
+    /* v1.65iP — slide 3 bg restored to blue (#6391A4), matches
+       slide 2's blue orb gradient so the slide-2 → slide-3 handoff
+       reads as continuity (the blue orbs that swept onto slide 2
+       "become" slide 3's bg). */
+    .bp-slide-3 { background: #6391A4; }
     .bp-slide-4 { /* transparent */ }
+
+    /* v1.65iP — slide 3 orb entry animation. Same pattern as slide 2:
+       opacity 0 by default; .bp-slide-3-entered class (added by the
+       IntersectionObserver) kicks the keyframes. One-shot.
+
+       Vertical entry — top orb from off-top, bottom orb from
+       off-bottom (cy stays at 400 / x-axis):
+         top orb:    cy -300 → 0
+         bottom orb: cy 800  → 500
+       cx unchanged (both at 400, viewBox-centre horizontally).
+
+       Same easing / duration as slides 1 + 2. */
+    .bp-slide-3 .bp-svg-bg circle { opacity: 0; }
+    .bp-slide-3.bp-slide-3-entered .bp-svg-bg .bp-orb-top {
+      animation: bp-orb-slide-from-top 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    .bp-slide-3.bp-slide-3-entered .bp-svg-bg .bp-orb-bottom {
+      animation: bp-orb-slide-from-bottom 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    @keyframes bp-orb-slide-from-top {
+      from { cy: -300; opacity: 0; }
+      to   { cy: 0;    opacity: 1; }
+    }
+    @keyframes bp-orb-slide-from-bottom {
+      from { cy: 800;  opacity: 0; }
+      to   { cy: 500;  opacity: 1; }
+    }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
        Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
@@ -1532,27 +1568,32 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Initialise the scroll-progress var so the pill paints at top.
     setProgress();
 
-    // v1.65iO — slide-2 entry-animation trigger. Watches when slide
-    // 2 first enters the viewport; on the first intersection, adds
-    // the .bp-slide-2-entered class which kicks off the CSS keyframe
-    // sweep on slide 2's blue orbs. Observer disconnects after the
-    // first hit so the animation doesn't replay if the user scrolls
-    // back to slide 2 later — matches slide 1's one-shot-on-mount
-    // behaviour. Threshold 0.5 = "half the slide is visible".
+    // v1.65iO / iP — per-slide entry-animation triggers via
+    // IntersectionObserver. Each watched slide gets a .bp-slide-N-
+    // entered class added on first ≥50% intersection, which kicks
+    // its CSS keyframe sweep. Observer disconnects after the first
+    // hit so the animation doesn't replay on scroll-back — matches
+    // slide 1's one-shot-on-mount behaviour for slides 2 / 3 / etc.
+    // Slide 1 doesn't need an observer since it's visible on first
+    // paint and animates from mount via CSS auto-start.
     if ('IntersectionObserver' in window) {
-      const slide2 = this.slideRefs?.toArray()[1]?.nativeElement;
-      if (slide2) {
+      const slides = this.slideRefs?.toArray() || [];
+      const watchSlide = (idx: number, cls: string) => {
+        const el = slides[idx]?.nativeElement;
+        if (!el) return;
         const obs = new IntersectionObserver((entries) => {
           for (const entry of entries) {
             if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-              slide2.classList.add('bp-slide-2-entered');
+              el.classList.add(cls);
               obs.disconnect();
               break;
             }
           }
         }, { root: stage, threshold: 0.5 });
-        obs.observe(slide2);
-      }
+        obs.observe(el);
+      };
+      watchSlide(1, 'bp-slide-2-entered');
+      watchSlide(2, 'bp-slide-3-entered');
     }
 
     // v1.65gZ29 — load Cloudflare Turnstile and render the widget
