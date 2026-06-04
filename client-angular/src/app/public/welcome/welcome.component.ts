@@ -466,7 +466,8 @@ const DEFAULT_CONTENT: Content = {
        background" checkbox enabled. A magenta-on-white JPG would
        end up as a white rectangle blocking the gradient. */
     .bp-welcome-logo-img {
-      height: 32px;
+      /* v1.65iA — header wordmark trimmed 32 → 26 per client review. */
+      height: 26px;
       width: auto;
       display: block;
       object-fit: contain;
@@ -903,7 +904,9 @@ const DEFAULT_CONTENT: Content = {
     .bp-eyebrow-welcome {
       display: inline-flex;
       align-items: center;
-      gap: 14px;
+      /* v1.65iA — gap tightened 14 → 6 so "Welcome to" sits closer
+         to the BALLPARK wordmark per client review. */
+      gap: 6px;
       margin-bottom: 32px;
       color: #DCF0EB;
     }
@@ -914,7 +917,9 @@ const DEFAULT_CONTENT: Content = {
       letter-spacing: -0.01em;
     }
     .bp-eyebrow-welcome-logo {
-      height: 28px;
+      /* v1.65iA — slide-1 eyebrow wordmark trimmed 28 → 22 per
+         client review. */
+      height: 22px;
       width: auto;
       display: block;
       object-fit: contain;
