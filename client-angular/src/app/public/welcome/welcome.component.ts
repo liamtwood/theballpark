@@ -71,6 +71,11 @@ const DEFAULT_CONTENT: Content = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
+    <!-- v1.65j1 — fixed green overlay used for the BALLPARK-click
+         dissolve. Sits above everything; fades in to fully cover
+         the page green, the scroll jumps to slide 1 underneath,
+         then it fades out revealing slide 1. -->
+    <div class="bp-ballpark-fade" [class.active]="ballparkFading" aria-hidden="true"></div>
     <div class="bp-welcome-root">
 
       <!-- Persistent header. v1.65g9 — logo is now an image when the
@@ -429,6 +434,26 @@ const DEFAULT_CONTENT: Content = {
       color: #DCF0EB;
       height: 100vh;
       overflow: hidden;
+    }
+
+    /* v1.65j1 — BALLPARK-click dissolve overlay. Sits above the
+       welcome-root via z-index:100, opacity 0 by default. When the
+       user clicks the BALLPARK logo from a non-home slide, goTo(0)
+       toggles .active → opacity 1 (fade to green), an instant
+       scroll resets to slide 1 underneath, then .active is removed
+       → opacity 0 reveals slide 1 with its existing .in-view orb
+       fade-in playing through the curtain. */
+    .bp-ballpark-fade {
+      position: fixed;
+      inset: 0;
+      background: #287F4D;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 400ms ease-in-out;
+    }
+    .bp-ballpark-fade.active {
+      opacity: 1;
     }
 
     .bp-welcome-root {
@@ -1528,6 +1553,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('turnstileEl') turnstileEl?: ElementRef<HTMLElement>;
 
   step = 0;
+  /** v1.65j1 — BALLPARK-click dissolve state. True while the green
+      curtain is covering the page during goTo(0). Drives the
+      .bp-ballpark-fade overlay's .active class. */
+  ballparkFading = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -1821,20 +1850,38 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
   goTo(i: number) {
-    // v1.65j0 — when navigating to slide 1 (e.g. via the BALLPARK
-    // logo click), explicitly reset the orb-expansion bridge vars
-    // BEFORE the smooth scroll begins. The scroll handler updates
-    // these on every scroll tick, so the journey-back naturally
-    // resets them — but resetting up front means the bg starts
-    // moving toward slide-1 green immediately, not only when the
-    // scroll reaches scrollTop=0.
+    // v1.65j1 — BALLPARK-click dissolve. When the user clicks the
+    // BALLPARK logo from any non-home slide, fade the page to green
+    // via a fixed-position overlay BEFORE jumping back to slide 1.
+    // Sequence:
+    //   T=0:    ballparkFading=true → .bp-ballpark-fade.active →
+    //           overlay opacity 0 → 1 over 400ms (covers page green).
+    //   T=400:  reset --s*-leaving vars, instant-jump to slide 1.
+    //   T=500:  ballparkFading=false → overlay opacity 1 → 0 over
+    //           400ms (reveals slide 1, with slide 1's existing
+    //           .in-view orb fade-in playing through the curtain).
+    // If user is already on slide 1, no dissolve — just no-op.
     if (i === 0) {
-      const root = this.stageRef?.nativeElement?.parentElement as HTMLElement | null;
-      if (root) {
-        root.style.setProperty('--s1-leaving', '0');
-        root.style.setProperty('--s2-leaving', '0');
-        root.style.setProperty('--s3-leaving', '0');
-      }
+      if (this.step === 0) return;  // already home
+      this.ballparkFading = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        const root = this.stageRef?.nativeElement?.parentElement as HTMLElement | null;
+        if (root) {
+          root.style.setProperty('--s1-leaving', '0');
+          root.style.setProperty('--s2-leaving', '0');
+          root.style.setProperty('--s3-leaving', '0');
+        }
+        const stage = this.stageRef?.nativeElement;
+        if (stage) {
+          stage.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+        }
+        setTimeout(() => {
+          this.ballparkFading = false;
+          this.cdr.markForCheck();
+        }, 100);
+      }, 400);
+      return;
     }
     this.scrollToSlide(i);
   }
