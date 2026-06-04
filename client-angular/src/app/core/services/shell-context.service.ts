@@ -37,6 +37,12 @@ export interface ShellContext {
       when ConfigService.showUpcoming is true and a future project
       exists; app-shell renders a calendar-iconned pill in the hero. */
   upcomingPill?: { text: string };
+  /** p0023: home / agent surfaces push this so the AppShell knows to
+      (a) drive the hero title from ConfigService.heroTitleMode and
+      (b) apply the heroColor strip treatment ('theme' accent / 'none'
+      parchment). Its presence also marks the ctx as a home/agent
+      surface. Absent on every other page. */
+  heroColor?: 'theme' | 'none';
 }
 
 const DEFAULT_CONTEXT: ShellContext = {

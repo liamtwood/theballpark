@@ -166,6 +166,9 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
       .pipe(takeUntil(this.destroy$))
       .subscribe(cfg => {
         this.projectLabel = cfg.projectLabel || 'Event';
+        // p0023 — re-push so a heroColor change in the drawer flips the
+        // hero strip treatment live.
+        this.applyHero();
         this.cdr.markForCheck();
       });
   }
@@ -176,10 +179,12 @@ export class AgentDashboardComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private applyHero() {
-    const fullName = this.personaSvc.active?.name?.trim() || '';
-    const firstName = fullName.split(/\s+/)[0] || 'there';
+    // p0023 — the hero title is computed by the AppShell from
+    // config.heroTitleMode (greeting / org / user); we just push
+    // heroColor so the shell knows this is a home surface + which strip
+    // treatment to render. heroSub stays the agent prompt line.
     this.shellCtx.set({
-      heroTitle: `Welcome back, ${firstName}`,
+      heroColor: this.configService.heroColor,
       heroSub: 'What event are we working on today?',
       pills: [],
       tabs: [],

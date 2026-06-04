@@ -46,8 +46,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--calm]="heroVariant === 'calm'"
-         [class.bp-hero--none]="heroVariant === 'none'">
+         [class.bp-hero--calm]="heroIsCalm"
+         [class.bp-hero--none]="heroIsNone">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
@@ -432,7 +432,30 @@ export class AppShellComponent implements OnInit, OnDestroy {
   ctx: ShellContext | null = null;
 
   get hasContext(): boolean   { return !!this.ctx?.heroTitle; }
-  get heroTitle(): string     { return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName); }
+  /** p0023 — on the home / agent surfaces (which push ctx.heroColor) the
+      title is driven by ConfigService.heroTitleMode; everywhere else it's
+      the page-pushed heroTitle or the org / platform fallback. */
+  get heroTitle(): string {
+    if (this.ctx?.heroColor) return this.configuredHeroTitle();
+    return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName);
+  }
+  private configuredHeroTitle(): string {
+    if (this.heroTitleMode === 'org')  return this.orgName || this.platformName;
+    if (this.heroTitleMode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
+    // greeting
+    const name  = this.personaSvc.active?.name?.trim() || '';
+    const first = name.split(/\s+/)[0] || 'there';
+    return `Welcome back, ${first}`;
+  }
+  /** p0023 — heroColor (when present) overrides the route's heroVariant:
+      'none' = the existing stripped parchment treatment, 'theme' = the
+      default accent fill. heroColor surfaces are never the 'calm' variant. */
+  get heroIsNone(): boolean {
+    return this.ctx?.heroColor ? this.ctx.heroColor === 'none' : this.heroVariant === 'none';
+  }
+  get heroIsCalm(): boolean {
+    return this.ctx?.heroColor ? false : this.heroVariant === 'calm';
+  }
   get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
@@ -499,6 +522,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   heroAlign    = 'center';
   navMode: 'tabs' | 'sidenav' = 'tabs';
+  /** p0023 — hero title source, synced from ConfigService. Read by the
+      heroTitle getter on home / agent surfaces. */
+  heroTitleMode: 'org' | 'user' | 'greeting' = 'greeting';
   showUserName = true;
   showLocation = true;
   showUpcoming = true;
@@ -640,7 +666,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // v1.35a: keep ctx alive when only `back` is set so pages that just
       // need a Back button (e.g. /settings via data.back) don't have to
       // also push a heroTitle. Title/sub still fall back to route data.
-      this.ctx = (ctx.heroTitle || ctx.back) ? ctx : null;
+      // p0023 — also keep ctx alive when only heroColor is set (home /
+      // agent push heroColor without a heroTitle now — the title is
+      // computed from heroTitleMode).
+      this.ctx = (ctx.heroTitle || ctx.back || ctx.heroColor) ? ctx : null;
       this.cdr.detectChanges();
     });
 
@@ -680,6 +709,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.showStats    = config?.showStats    !== false;
     this.creditLabel  = config?.creditLabel  || 'Ball';
     this.platformName = config?.platformName || 'The Ballpark';
+    this.heroTitleMode = config?.heroTitleMode || 'greeting';
 
     const pairing = config?.fontPairing || 'playfair-franklin';
     const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];

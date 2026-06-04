@@ -40,6 +40,7 @@ import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SidebarModule } from 'primeng/sidebar';
 import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -50,7 +51,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
   selector: 'app-page-config-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule, CheckboxModule],
+  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule, CheckboxModule, DropdownModule],
   template: `
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
@@ -77,13 +78,29 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
         <section class="bp-pcd-group">
           <div class="bp-drawer-label bp-pcd-sub-eyebrow">GENERAL</div>
 
+          <!-- p0023 §2 — "Page label" renamed to "Subtitle" (the field
+               still writes homePageLabel; only the visible label changed,
+               since it drives the small-caps eyebrow, not the title). -->
           <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Page label</label>
+            <label class="bp-pcd-field-label">Subtitle</label>
             <input pInputText
                    class="bp-pcd-input"
                    [(ngModel)]="settingsDraft.homePageLabel"
                    (blur)="saveLabels()"
                    placeholder="Projects"/>
+          </div>
+
+          <!-- p0023 §1 — Title source for the home / agent hero. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Title</label>
+            <p-dropdown styleClass="bp-pcd-dropdown"
+                        [options]="heroTitleOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        [appendTo]="'body'"
+                        [(ngModel)]="settingsDraft.heroTitleMode"
+                        (onChange)="onHeroTitleModeChange($event.value)">
+            </p-dropdown>
           </div>
 
           <div class="bp-pcd-field">
@@ -119,6 +136,21 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                       [style.background]="t.color"
                       [title]="t.label"
                       (click)="onThemeChange(t.value)">
+              </button>
+            </div>
+          </div>
+
+          <!-- p0023 §3 — Hero color: Theme = accent fill, None = calm
+               parchment (the stripped agent look). Default None. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Hero color</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let opt of heroColorOptions"
+                      type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="settingsDraft.heroColor === opt.value"
+                      (click)="selectHeroColor(opt.value)">
+                {{ opt.label }}
               </button>
             </div>
           </div>
@@ -276,6 +308,39 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       outline: none;
     }
 
+    /* p0023 — Title dropdown. Matches the .bp-pcd-input metric (full
+       width, 34px, 6px radius) so it sits in the field list like the
+       text inputs. Panel is appendTo body — PrimeNG's themed panel
+       styling applies there; --primary-color (= --theme-accent) drives
+       the highlighted option. */
+    :host ::ng-deep .bp-pcd-dropdown.p-dropdown {
+      width: 100%;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      box-shadow: none;
+    }
+    :host ::ng-deep .bp-pcd-dropdown.p-dropdown:not(.p-disabled).p-focus {
+      border-color: var(--theme-accent);
+      box-shadow: 0 0 0 1px var(--theme-accent);
+      outline: none;
+    }
+    :host ::ng-deep .bp-pcd-dropdown .p-dropdown-label {
+      padding: 0 10px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+    }
+    :host ::ng-deep .bp-pcd-dropdown .p-dropdown-trigger {
+      width: 32px;
+      color: var(--color-text-muted);
+    }
+
     /* p0018 — checkbox list (HERO + SECTIONS groups). Each row is a
        32px-high <label> wrapping a p-checkbox + text, so clicking
        anywhere on the row toggles the box (the input lives inside the
@@ -377,6 +442,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     themeName: string;
     heroAlign: 'left' | 'center';
     navMode: 'tabs' | 'sidenav';
+    // p0023 — hero customisation.
+    heroTitleMode: 'org' | 'user' | 'greeting';
+    heroColor: 'theme' | 'none';
     showUserName: boolean;
     showLocation: boolean;
     showUpcoming: boolean;
@@ -393,6 +461,8 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     themeName: 'amber',
     heroAlign: 'center',
     navMode: 'tabs',
+    heroTitleMode: 'greeting',
+    heroColor: 'none',
     showUserName: true,
     showLocation: true,
     showUpcoming: true,
@@ -410,6 +480,19 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'pink',    label: 'Pink',    color: '#FF0066' },
     { value: 'ocean',   label: 'Ocean',   color: '#2563EB' },
     { value: 'slate',   label: 'Slate',   color: '#64748B' },
+  ];
+
+  /** p0023 — hero title source (GENERAL dropdown). */
+  readonly heroTitleOptions: Array<{ value: 'org' | 'user' | 'greeting'; label: string }> = [
+    { value: 'org',      label: 'Org Name' },
+    { value: 'user',     label: 'Username' },
+    { value: 'greeting', label: 'Greeting' },
+  ];
+
+  /** p0023 — hero strip treatment (APPEARANCE segmented). */
+  readonly heroColorOptions: Array<{ value: 'theme' | 'none'; label: string }> = [
+    { value: 'theme', label: 'Theme' },
+    { value: 'none',  label: 'None' },
   ];
 
   /** Hero alignment — single-pick segmented group. */
@@ -449,6 +532,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           themeName:     cfg.themeName     || 'amber',
           heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
           navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
+          // p0023 — hero customisation (default greeting / none).
+          heroTitleMode: (cfg.heroTitleMode === 'org' || cfg.heroTitleMode === 'user' ? cfg.heroTitleMode : 'greeting'),
+          heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
           // p0018 — all section flags default visible (!== false) so a
@@ -507,6 +593,18 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       creditLabel:   this.settingsDraft.creditLabel   || 'Ball',
       projectLabel:  this.settingsDraft.projectLabel  || 'Event',
     });
+  }
+
+  /** p0023 — hero title source (GENERAL dropdown). Save on change. */
+  onHeroTitleModeChange(mode: 'org' | 'user' | 'greeting') {
+    this.settingsDraft.heroTitleMode = mode;
+    this.configService.update({ heroTitleMode: mode });
+  }
+
+  /** p0023 — hero strip treatment (APPEARANCE segmented). Save on change. */
+  selectHeroColor(value: 'theme' | 'none') {
+    this.settingsDraft.heroColor = value;
+    this.configService.update({ heroColor: value });
   }
 
   onThemeChange(theme: string) {

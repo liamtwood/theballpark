@@ -34,6 +34,9 @@ export class ConfigService {
     themeName: 'amber',
     mode: 'system',
     heroAlign: 'center',
+    // p0023 — hero title source + strip treatment (home / agent).
+    heroTitleMode: 'greeting',
+    heroColor: 'none',
     showUserName: true,
     showLocation: true,
     showUpcoming: true,
@@ -67,6 +70,9 @@ export class ConfigService {
   get homePageLabel(): string { return this.config.homePageLabel || 'Projects'; }
   get logoUrl(): string { return this.config.logoUrl || ''; }
   get heroAlign(): string { return this.config.heroAlign || 'center'; }
+  // p0023 — hero customisation (home / agent surfaces).
+  get heroTitleMode(): 'org' | 'user' | 'greeting' { return this.config.heroTitleMode || 'greeting'; }
+  get heroColor(): 'theme' | 'none' { return this.config.heroColor || 'none'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }
   get showLocation(): boolean { return this.config.showLocation !== false; }
   get showUpcoming(): boolean { return this.config.showUpcoming !== false; }

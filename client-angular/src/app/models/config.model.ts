@@ -38,6 +38,14 @@ export interface PlatformConfig {
   showRecentActivity?: boolean;
   logoUrl?: string;
   navMode?: 'tabs' | 'sidenav';
+  /** p0023 — hero title source on the home / agent surfaces.
+      'org' = org name, 'user' = active persona name,
+      'greeting' = "Welcome back, {firstName}". Default 'greeting'. */
+  heroTitleMode?: 'org' | 'user' | 'greeting';
+  /** p0023 — home / agent hero strip treatment. 'theme' = accent fill
+      (--theme-accent), 'none' = calm parchment (--theme-bg, the stripped
+      agent look). Default 'none'. */
+  heroColor?: 'theme' | 'none';
   fontPairing?: string;
   catalogueLabel?: string;
   feedbackLabel?: string;
