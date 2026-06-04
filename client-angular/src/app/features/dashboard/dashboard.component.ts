@@ -801,10 +801,11 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // strip draft lives in <app-page-config-drawer>.
     const homeLabel = this.pageCfg.homePageLabel || 'Projects';
     const ctx: any = {
-      // p0023 — no heroTitle: the AppShell computes it from
-      // config.heroTitleMode (org / user / greeting). heroColor marks
-      // this as a home surface + drives the hero strip treatment.
-      heroColor: this.configService.heroColor,
+      // p0023 / p0032 — no heroTitle: the AppShell computes it from
+      // config.heroTitleMode (org / user / greeting). Hero colour is now
+      // global (read from ConfigService by the AppShell), so we just flag
+      // that this surface uses the configured title.
+      useConfiguredTitle: true,
       heroSub: homeLabel.toUpperCase(),
       pills: [],
       // v1.66m — no hero tab band on the dashboard. Home / Inbox /

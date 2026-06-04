@@ -432,11 +432,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
   ctx: ShellContext | null = null;
 
   get hasContext(): boolean   { return !!this.ctx?.heroTitle; }
-  /** p0023 — on the home / agent surfaces (which push ctx.heroColor) the
-      title is driven by ConfigService.heroTitleMode; everywhere else it's
-      the page-pushed heroTitle or the org / platform fallback. */
+  /** p0023 / p0032 — surfaces that opt in via ctx.useConfiguredTitle (the
+      dashboard) drive the title from ConfigService.heroTitleMode;
+      everywhere else it's the page-pushed heroTitle or the org / platform
+      fallback. */
   get heroTitle(): string {
-    if (this.ctx?.heroColor) return this.configuredHeroTitle();
+    if (this.ctx?.useConfiguredTitle) return this.configuredHeroTitle();
     return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName);
   }
   private configuredHeroTitle(): string {
@@ -447,14 +448,15 @@ export class AppShellComponent implements OnInit, OnDestroy {
     const first = name.split(/\s+/)[0] || 'there';
     return `Welcome back, ${first}`;
   }
-  /** p0023 — heroColor (when present) overrides the route's heroVariant:
-      'none' = the existing stripped parchment treatment, 'theme' = the
-      default accent fill. heroColor surfaces are never the 'calm' variant. */
+  /** p0032 — Hero color is now a GLOBAL ConfigService setting applied to
+      every hero: 'none' = stripped parchment, 'theme' = accent fill. A
+      route may still force the stripped treatment via heroVariant='none'
+      (e.g. auth pages); the global 'none' no longer fights it. */
   get heroIsNone(): boolean {
-    return this.ctx?.heroColor ? this.ctx.heroColor === 'none' : this.heroVariant === 'none';
+    return this.heroColor === 'none' || this.heroVariant === 'none';
   }
   get heroIsCalm(): boolean {
-    return this.ctx?.heroColor ? false : this.heroVariant === 'calm';
+    return this.heroVariant === 'calm';
   }
   get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
   get heroPills(): string[]   {
@@ -525,6 +527,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
   /** p0023 — hero title source, synced from ConfigService. Read by the
       heroTitle getter on home / agent surfaces. */
   heroTitleMode: 'org' | 'user' | 'greeting' = 'greeting';
+  /** p0032 — global hero strip treatment, synced from ConfigService.
+      Drives heroIsNone for every hero in the app. */
+  heroColor: 'theme' | 'none' = 'none';
   showUserName = true;
   showLocation = true;
   showUpcoming = true;
@@ -666,10 +671,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // v1.35a: keep ctx alive when only `back` is set so pages that just
       // need a Back button (e.g. /settings via data.back) don't have to
       // also push a heroTitle. Title/sub still fall back to route data.
-      // p0023 — also keep ctx alive when only heroColor is set (home /
-      // agent push heroColor without a heroTitle now — the title is
-      // computed from heroTitleMode).
-      this.ctx = (ctx.heroTitle || ctx.back || ctx.heroColor) ? ctx : null;
+      // p0032 — keep ctx alive when the surface opts into the configured
+      // title (the dashboard pushes useConfiguredTitle without a heroTitle).
+      this.ctx = (ctx.heroTitle || ctx.back || ctx.useConfiguredTitle) ? ctx : null;
       this.cdr.detectChanges();
     });
 
@@ -710,6 +714,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.creditLabel  = config?.creditLabel  || 'Ball';
     this.platformName = config?.platformName || 'The Ballpark';
     this.heroTitleMode = config?.heroTitleMode || 'greeting';
+    this.heroColor     = config?.heroColor     === 'theme' ? 'theme' : 'none';
 
     const pairing = config?.fontPairing || 'playfair-franklin';
     const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];

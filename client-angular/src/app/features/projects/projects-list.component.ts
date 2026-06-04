@@ -387,12 +387,14 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
   }
 
-  /** Push hero context so the AppShell computes the title from
-      config.heroTitleMode and applies the heroColor strip treatment —
-      same pattern as dashboard / agent, so the p0023 drawer applies. */
+  /** Push the /projects hero eyebrow. Hero colour is applied globally by
+      the AppShell (p0032); the title is the org-name fallback. */
   private pushHero() {
+    // p0032 — hero colour is global now (read by the AppShell from
+    // ConfigService), so /projects no longer pushes heroColor; it just
+    // sets its eyebrow. Title falls back to the org name (not a "home"
+    // surface, so no useConfiguredTitle).
     this.shellCtx.set({
-      heroColor: this.configService.heroColor,
       heroSub: (this.configService.homePageLabel || 'Projects').toUpperCase(),
       pills: [],
       tabs: [],

@@ -74,23 +74,21 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
 
       <div class="bp-drawer-body bp-pcd-body">
 
-        <!-- ── GENERAL ─────────────────────────────────────────── -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">GENERAL</div>
+        <!-- p0032 — two tabs replace the four legacy sub-eyebrow groups.
+             Dashboard = settings for THIS page; General = app-wide hero /
+             site preferences. Default Dashboard; remembered in state. -->
+        <div class="bp-cfg-seg bp-pcd-tabs">
+          <button type="button" class="bp-cfg-seg-btn"
+                  [class.p-highlight]="activeDrawerTab === 'dashboard'"
+                  (click)="activeDrawerTab = 'dashboard'">Dashboard</button>
+          <button type="button" class="bp-cfg-seg-btn"
+                  [class.p-highlight]="activeDrawerTab === 'general'"
+                  (click)="activeDrawerTab = 'general'">General</button>
+        </div>
 
-          <!-- p0023 §2 — "Page label" renamed to "Subtitle" (the field
-               still writes homePageLabel; only the visible label changed,
-               since it drives the small-caps eyebrow, not the title). -->
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Subtitle</label>
-            <input pInputText
-                   class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.homePageLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Projects"/>
-          </div>
-
-          <!-- p0023 §1 — Title source for the home / agent hero. -->
+        <!-- ── DASHBOARD TAB — customises this page only ── -->
+        <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'dashboard'">
+          <!-- Title source for the dashboard hero (p0023 heroTitleMode). -->
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Title</label>
             <p-dropdown styleClass="bp-pcd-dropdown"
@@ -103,29 +101,57 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             </p-dropdown>
           </div>
 
+          <!-- Subtitle — the small-caps eyebrow (writes homePageLabel). -->
           <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Credits</label>
+            <label class="bp-pcd-field-label">Subtitle</label>
             <input pInputText
                    class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.creditLabel"
+                   [(ngModel)]="settingsDraft.homePageLabel"
                    (blur)="saveLabels()"
-                   placeholder="Balls"/>
+                   placeholder="Projects"/>
           </div>
 
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Events</label>
-            <input pInputText
-                   class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.projectLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Events"/>
-          </div>
-        </section>
+          <!-- Section visibility for the dashboard body. -->
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Upcoming</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showStats"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Stats</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showQuickActions"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Quick Actions</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showCredits"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">{{ settingsDraft.creditLabel }}s card</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showSavedSuppliers"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Saved Suppliers</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showRecentActivity"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Recent Activity</span>
+          </label>
+        </div>
 
-        <!-- ── APPEARANCE ──────────────────────────────────────── -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">APPEARANCE</div>
-
+        <!-- ── GENERAL TAB — app-wide hero / site preferences ── -->
+        <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'general'">
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Theme</label>
             <div class="bp-cfg-swatches-row">
@@ -140,8 +166,9 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             </div>
           </div>
 
-          <!-- p0023 §3 — Hero color: Theme = accent fill, None = calm
-               parchment (the stripped agent look). Default None. -->
+          <!-- p0032 — Hero color now applies to EVERY hero in the app
+               (global ConfigService read). Theme = accent fill, None =
+               calm parchment. -->
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Hero color</label>
             <div class="bp-cfg-seg">
@@ -180,15 +207,8 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
               </button>
             </div>
           </div>
-        </section>
 
-        <!-- ── HERO ────────────────────────────────────────────── -->
-        <!-- p0018 — User / Location now live as checkboxes (were pills
-             in the old SECTIONS row). They gate the AppShell hero meta
-             chips, which already read showUserName / showLocation. -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">HERO</div>
-
+          <!-- Hero meta chips (gate the AppShell user / location pills). -->
           <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showUserName"
                         [binary]="true"
@@ -201,75 +221,47 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                         (ngModelChange)="saveToggles()"></p-checkbox>
             <span class="bp-pcd-check-label">Location</span>
           </label>
-        </section>
 
-        <!-- ── SECTIONS ────────────────────────────────────────── -->
-        <!-- p0018 — per-section show/hide for the dashboard body. Labels
-             interpolate the configurable tokens (projectLabel /
-             creditLabel) so they read with whatever the user set above. -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">SECTIONS</div>
+          <!-- App-wide object labels. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Credits label</label>
+            <input pInputText
+                   class="bp-pcd-input"
+                   [(ngModel)]="settingsDraft.creditLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Balls"/>
+          </div>
 
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Upcoming</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showStats"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Stats</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showQuickActions"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Quick Actions</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showCredits"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">{{ settingsDraft.creditLabel }}s card</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showSavedSuppliers"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Saved Suppliers</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showRecentActivity"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Recent Activity</span>
-          </label>
-        </section>
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Events label</label>
+            <input pInputText
+                   class="bp-pcd-input"
+                   [(ngModel)]="settingsDraft.projectLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Events"/>
+          </div>
+        </div>
 
       </div>
     </p-sidebar>
   `,
   styles: [`
-    /* Drawer body grouping — stacked sections with a sub-eyebrow at the
-       top of each. Sub-eyebrow uses the existing .bp-drawer-label small-
-       caps treatment; we just add bottom spacing so the controls below
-       breathe. */
+    /* p0032 — drawer body = the tab strip + the one active panel. */
     .bp-pcd-body {
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 18px;
     }
     .bp-pcd-group {
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
-    .bp-pcd-sub-eyebrow {
-      /* Inherits .bp-drawer-label styling; only spacing override here. */
-      margin-bottom: 2px;
-    }
+    /* Two-tab segmented control — full width, equal halves, a touch
+       taller than the inline bp-cfg-seg controls so it reads as a tab
+       strip at the top of the drawer. */
+    .bp-pcd-tabs { display: flex; width: 100%; }
+    .bp-pcd-tabs .bp-cfg-seg-btn { flex: 1; height: 34px; font-size: 13px; }
 
     /* Field row — label sits above the control so the drawer reads as
        a vertical list (the strip's inline label-then-input pattern
@@ -428,6 +420,10 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       authoritative — every other consumer of open$ (top-nav cog
       animation, for instance) sees the same value. */
   visible = false;
+
+  /** p0032 — active drawer tab. Default Dashboard; persists across
+      open/close within the session (the drawer mounts once per page). */
+  activeDrawerTab: 'dashboard' | 'general' = 'dashboard';
 
   private destroy$ = new Subject<void>();
 
