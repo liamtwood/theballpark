@@ -459,7 +459,13 @@ const DEFAULT_CONTENT: Content = {
          restored. The orb / fade animations are untouched — orbs
          still paint their own pink
          / blue / etc. gradient fills on top of the green base. */
-      /* v1.65iH (p0027) — green floor removed. .bp-bg-stack owns it. */
+      /* v1.65iI — green floor RESTORED. v1.65iH dropped it on the
+         assumption .bp-bg-stack would replace it, but the bg-stack
+         only covers slides 1 + 2 currently — slides 3 + 4 were left
+         with no bg at all (spec violation: p0027 said "slides 3 + 4
+         untouched"). Floor stays until a follow-up adds bg-layers
+         3 + 4 to extend the crossfade pattern. */
+      background: #287F4D;
     }
 
     /* ── v1.65iH (p0027) bg-stack ──────────────────────────────────
@@ -477,6 +483,12 @@ const DEFAULT_CONTENT: Content = {
       position: absolute;
       inset: 0;
       will-change: opacity;
+      /* v1.65iI — opacity transition so the bg actually crossfades
+         instead of cutting instantly when scrollProgress jumps
+         (mandatory snap can land the user at the next snap point in
+         one frame, taking scrollProgress with it). 200ms ease-out
+         feels natural without lagging behind the user. */
+      transition: opacity 200ms ease-out;
     }
     .bp-slide-bg-1 { background: #287F4D; } /* slide 1 — green */
     .bp-slide-bg-2 { background: #EB7396; } /* slide 2 — pink */
