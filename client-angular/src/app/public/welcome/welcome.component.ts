@@ -849,57 +849,72 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-fade-in-circles 1.0s linear both;
     }
 
-    /* ── Slide 3 exit (reverse of entry) ──
-       v1.65j8 — exit mirrors entry exactly: right column ("By
-       producers, for producers...") slides out to the right
-       first; the left column ("A producer's best friend") follows
-       out to the left after a 0.6s stagger. The order is the
-       reverse of entry (left-then-right on the way in, right-then-
-       left on the way out), so playing the slide forwards then
-       backwards reads as a clean reversal. Same 1.0s ease-out
-       curve as entry; both columns travel a full 100vw so they
-       fully clear the viewport before the scroll-jump to slide 4.
-       Triggered by .bp-credits-rolling (bound to
-       slide3CreditsRolling). */
-    .bp-slide-3.bp-credits-rolling .bp-producers-grid > div:last-child {
-      animation: bp-to-right 1.0s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    /* ── Slide 3 exit (three elements, sequential) ──
+       v1.65j9 — exit mirrors the entry order and direction:
+         T=0:    .bp-producers-headline exits to the left
+         T=0.3s: .bp-producers-tagline exits to the left
+         T=0.6s: .bp-producers-body exits to the right
+       Each animation 0.6s ease-out, same curve as entry. Total
+       1.2s — JS timer in scrollToSlide() matches.
+       both fill-mode is critical here: without it, each element
+       snaps to the bp-to-* "from" pose at the moment its
+       animation is declared (delay or no delay), instantly
+       hiding it before any motion is visible. That manifested
+       as "feels like it pauses and then shows slide 4" in
+       v1.65j8 — the columns disappeared the moment .bp-credits-
+       rolling was added, then the timer ran out with no visible
+       motion, then the jump happened. both fills BACKWARDS too,
+       so each element holds its at-rest pose (translateX 0,
+       opacity 1) during the stagger delay, then animates out
+       cleanly. */
+    .bp-slide-3.bp-credits-rolling .bp-producers-headline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-slide-3.bp-credits-rolling .bp-producers-grid > div:first-child {
-      animation: bp-to-left 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards;
+    .bp-slide-3.bp-credits-rolling .bp-producers-tagline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
     }
-    @keyframes bp-to-right {
-      from { transform: translateX(0);     opacity: 1; }
-      to   { transform: translateX(100vw); opacity: 0; }
+    .bp-slide-3.bp-credits-rolling .bp-producers-body {
+      animation: bp-to-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
     }
     @keyframes bp-to-left {
       from { transform: translateX(0);      opacity: 1; }
       to   { transform: translateX(-100vw); opacity: 0; }
     }
+    @keyframes bp-to-right {
+      from { transform: translateX(0);     opacity: 1; }
+      to   { transform: translateX(100vw); opacity: 0; }
+    }
 
-    /* ── Slide 3 from-pose + reveal ──
-       v1.65j8 — restored. The left column ("A producer's best
-       friend") slides in from off-screen-left first; the right
-       column ("By producers, for producers...") follows from
-       off-screen-right after a 0.6s stagger. Both ease out so the
-       columns settle into their final positions instead of
-       coasting past them. Distances bumped from the original
-       v1.65gZ40 -120px to -100vw so the columns travel a full
-       viewport width — the motion now reads as the text being
-       carried in from off-page rather than nudged from just
-       outside its layout slot. The exit (below) reverses the
-       direction and order: right column slides out to the right
-       first, left column follows out to the left. */
-    .bp-slide-3 .bp-producers-grid > div:first-child {
+    /* ── Slide 3 entry (three elements, sequential) ──
+       v1.65j9 — animation targets the three text elements
+       individually rather than the two grid columns. Sequence:
+         T=0:    .bp-producers-headline ("A PRODUCERS BEST FRIEND")
+                 slides in from translateX(-100vw) -> 0
+         T=0.3s: .bp-producers-tagline ("By producers for creators")
+                 slides in from translateX(-100vw) -> 0
+         T=0.6s: .bp-producers-body ("Costing events can be a
+                 grind...") slides in from translateX(100vw) -> 0
+       0.6s each, 0.3s stagger -> total 1.2s. Same cubic ease-out
+       across all three so each line settles smoothly.
+       both fill-mode preserves the from-pose during the stagger
+       delay (so a tagline at translateX(-100vw) stays off-screen-
+       left while the headline is still arriving — no early flash
+       of the tagline at its resting position). */
+    .bp-slide-3 .bp-producers-headline,
+    .bp-slide-3 .bp-producers-tagline {
       transform: translateX(-100vw); opacity: 0;
     }
-    .bp-slide-3 .bp-producers-grid > div:last-child {
+    .bp-slide-3 .bp-producers-body {
       transform: translateX(100vw); opacity: 0;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
-      animation: bp-from-left 1.0s cubic-bezier(0.22, 1, 0.36, 1) both;
+    .bp-slide-3.in-view .bp-producers-headline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+    .bp-slide-3.in-view .bp-producers-tagline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+    }
+    .bp-slide-3.in-view .bp-producers-body {
+      animation: bp-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
     }
     @keyframes bp-from-left {
       from { transform: translateX(-100vw); opacity: 0; }
@@ -2159,13 +2174,18 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }, 1200);
         return;
       }
-      // v1.65j8 — slide 3 → 4 exit. Mirrors the entry: right
-      // column slides out to the right (1.0s, starts at t=0),
-      // then left column slides out to the left (1.0s, starts at
-      // t=0.6s). Total 1.6s — JS timer matches so the scroll-
-      // jump fires the instant both columns clear. No bg shift
-      // (slide 3 and 4 share #6391A4 teal); no orb-grow (orbs
-      // stay put as the columns leave).
+      // v1.65j9 — slide 3 → 4 exit. Three lines leave sequentially:
+      // headline exits left (t=0), tagline exits left (t=0.3s),
+      // body exits right (t=0.6s); each 0.6s. Total 1.2s — JS
+      // timer matches so the scroll-jump fires the instant the
+      // body clears. No bg shift (slide 3 and 4 share #6391A4
+      // teal); no orb-grow (orbs stay put as text leaves).
+      // Previous v1.65j8 1.6s timing felt like a pause because
+      // the CSS used `forwards` fill-mode, which left the
+      // delayed-start columns at their from-pose (off-screen)
+      // for the duration of the delay rather than at rest. j9
+      // switches to `both` so each element holds its resting
+      // position during its stagger delay.
       if (this.step === 2 && i === 3 && !this.slide3CreditsRolling) {
         this.slide3CreditsRolling = true;
         this.cdr.markForCheck();
@@ -2181,7 +2201,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
               this.cdr.markForCheck();
             }, 200);
           });
-        }, 1600);
+        }, 1200);
         return;
       }
       this.exitingFromSlide = this.step;
