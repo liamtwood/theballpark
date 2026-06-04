@@ -212,7 +212,7 @@ const DEFAULT_CONTENT: Content = {
         </section>
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
-        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" (click)="next()" style="cursor: pointer;">
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" [class.bp-credits-rolling]="slide3CreditsRolling" (click)="next()" style="cursor: pointer;">
           <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 2"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -812,7 +812,7 @@ const DEFAULT_CONTENT: Content = {
        on its way to slide 2, now on slide 2 on its way to slide 3.
        Triggered by .bp-credits-rolling on the slide-2 section
        (bound to slide2CreditsRolling in the component). During
-       the 1s roll:
+       the roll:
          · .bp-slide-2-inner + .bp-marquee-wrap translate up off
            the top of the viewport (bp-credits-up, reused from
            the slide-1 exit — same keyframe drives both).
@@ -822,19 +822,19 @@ const DEFAULT_CONTENT: Content = {
          · The blue orbs grow from r=280 to r=1780 (bp-orb-grow
            reused from slide 1) so the page reads solid teal-ish
            at the end of the roll.
-       Slide 3's existing entry animation (left + right producer
-       columns sliding in horizontally) plays after the jump.
-       Slide-3 circles get their own fade-in (1s linear) below to
-       match the credits-roll cadence. */
+       v1.65j7 — duration 1s -> 1.2s. Slide 2 has more elements
+       moving at once (inner + marquee + orbs + bg) so the same
+       1s as slide 1 read as "quicker" per client feedback. The
+       JS scroll-jump delay is bumped to match (see scrollToSlide). */
     .bp-slide-2.bp-credits-rolling .bp-slide-2-inner,
     .bp-slide-2.bp-credits-rolling .bp-marquee-wrap {
-      animation: bp-credits-up 1s linear forwards;
+      animation: bp-credits-up 1.2s linear forwards;
     }
     .bp-slide-2.bp-credits-rolling {
-      animation: bp-slide2-bg-to-teal 1s linear forwards;
+      animation: bp-slide2-bg-to-teal 1.2s linear forwards;
     }
     .bp-slide-2.bp-credits-rolling .bp-svg-bg circle {
-      animation: bp-orb-grow 1s linear forwards;
+      animation: bp-orb-grow 1.2s linear forwards;
     }
     @keyframes bp-slide2-bg-to-teal {
       from { background-color: #EB7396; }
@@ -849,27 +849,38 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-fade-in-circles 1.0s linear both;
     }
 
-    /* ── Slide 3 from-pose + reveal (right column delayed 1.1s) ── */
-    .bp-slide-3 .bp-producers-grid > div:first-child {
-      transform: translateX(-120px); opacity: 0;
+    /* ── Slide 3 container rise + fall ──
+       v1.65j7 — replaces the previous left + right column slide-in
+       (.bp-from-left / .bp-from-right). The whole .bp-slide-3-inner
+       block now rises up from below on entry (initially translateY
+       100vh, off the bottom) and falls back to translateY 100vh on
+       exit (the literal reverse of entry). Pairs with the slide-2
+       credits-roll above for one continuous upward motion on the
+       way in, and a downward "credits closing" motion on the way
+       out. 1.2s linear matches the slide-2 exit cadence. */
+    .bp-slide-3 .bp-slide-3-inner {
+      transform: translateY(100vh);
     }
-    .bp-slide-3 .bp-producers-grid > div:last-child {
-      transform: translateX(120px); opacity: 0;
+    .bp-slide-3.in-view .bp-slide-3-inner {
+      animation: bp-container-rise 1.2s linear both;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:first-child {
-      animation: bp-from-left 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+    .bp-slide-3.bp-credits-rolling .bp-slide-3-inner {
+      animation: bp-container-fall 1.2s linear forwards;
     }
-    .bp-slide-3.in-view .bp-producers-grid > div:last-child {
-      animation: bp-from-right 1.05s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both;
+    @keyframes bp-container-rise {
+      from { transform: translateY(100vh); }
+      to   { transform: translateY(0); }
     }
-    @keyframes bp-from-left {
-      from { transform: translateX(-120px); opacity: 0; }
-      to   { transform: translateX(0);      opacity: 1; }
+    @keyframes bp-container-fall {
+      from { transform: translateY(0); }
+      to   { transform: translateY(100vh); }
     }
-    @keyframes bp-from-right {
-      from { transform: translateX(120px);  opacity: 0; }
-      to   { transform: translateX(0);      opacity: 1; }
-    }
+
+    /* ── Slide 3 from-pose + reveal ──
+       v1.65j7 — left/right column slide-in (bp-from-left /
+       bp-from-right) retired. The whole .bp-slide-3-inner now
+       rises from below as one unit; see "Slide 3 container rise
+       + fall" block below. */
 
     /* ── Slide 4 from-pose + reveal ── */
     .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
@@ -1691,6 +1702,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       slide-2 section so the inner + marquee lift off, the bg
       shifts pink -> teal, and the blue orbs grow to fill. */
   slide2CreditsRolling = false;
+  /** v1.65j7 — slide 3 → 4 exit state. Slide 3's inner rises
+      from below on entry and falls back below on exit (the
+      "reverse of how it entered" — purely vertical container
+      motion, no orb-grow, no bg shift since slide 3 and slide 4
+      share the same #6391A4 teal bg). */
+  slide3CreditsRolling = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -2088,11 +2105,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
       // v1.65j6 — slide 2 → 3 mirrors the slide 1 → 2 credits-roll.
-      // .bp-credits-rolling on slide-2 drives the 1s exit: inner +
+      // .bp-credits-rolling on slide-2 drives the exit: inner +
       // marquee lift off the top, bg shifts pink -> teal, blue orbs
       // grow. Then exitingFromSlide=1 strips the DOM via *ngIf and
       // we jump to slide 3, force-triggering its .in-view so the
-      // producers-column entry plays immediately.
+      // producers-container rise plays immediately.
+      // v1.65j7 — duration 1000ms -> 1200ms to match the CSS,
+      // which was bumped because slide 2 has more elements moving
+      // at once and read as quicker than slide 1 at parity timing.
       if (this.step === 1 && i === 2 && !this.slide2CreditsRolling) {
         this.slide2CreditsRolling = true;
         this.cdr.markForCheck();
@@ -2108,7 +2128,32 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
               this.cdr.markForCheck();
             }, 200);
           });
-        }, 1000);
+        }, 1200);
+        return;
+      }
+      // v1.65j7 — slide 3 → 4 exit. Pure vertical drop: the
+      // .bp-slide-3-inner falls from translateY(0) down to
+      // translateY(100vh) over 1.2s (bp-container-fall, the
+      // literal reverse of the entry's bp-container-rise). No bg
+      // shift — slide 3 and slide 4 share the same teal bg, so
+      // the jump is invisible. The orbs also share family (green
+      // on teal) so no orb-grow needed.
+      if (this.step === 2 && i === 3 && !this.slide3CreditsRolling) {
+        this.slide3CreditsRolling = true;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.exitingFromSlide = 2;
+          this.cdr.markForCheck();
+          requestAnimationFrame(() => {
+            stage.scrollTo({ top: 3 * vh, behavior: 'instant' });
+            this.forceInView(3);
+            setTimeout(() => {
+              this.exitingFromSlide = null;
+              this.slide3CreditsRolling = false;
+              this.cdr.markForCheck();
+            }, 200);
+          });
+        }, 1200);
         return;
       }
       this.exitingFromSlide = this.step;
