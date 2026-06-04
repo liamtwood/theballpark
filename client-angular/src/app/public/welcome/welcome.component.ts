@@ -734,14 +734,17 @@ const DEFAULT_CONTENT: Content = {
        Easing matches the other slide animations. fill-mode forwards
        keeps the end state until the class is removed (which the
        scroll handler does when the user scrolls back to slide 1). */
+    /* v1.65iX — exit animations bumped 0.8s → 2.4s (3× slowdown)
+       so the slide 3 → 4 green-flash mid-transit can be screenshot
+       and diagnosed. REVERT to 0.8s once root cause is identified. */
     .bp-slide-1.bp-slide-1-exiting {
-      animation: bp-slide-1-bg-to-pink 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-1-bg-to-pink 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     .bp-slide-1.bp-slide-1-exiting .bp-slide-1-inner {
-      animation: bp-slide-1-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-1-text-up 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     .bp-slide-1.bp-slide-1-exiting .bp-svg-bg circle {
-      animation: bp-slide-1-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-1-orb-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     @keyframes bp-slide-1-bg-to-pink {
       from { background: #287F4D; }
@@ -763,18 +766,18 @@ const DEFAULT_CONTENT: Content = {
        is added/removed by next() in TS — classList-driven, no
        Angular binding diff to fight. */
     .bp-slide-2.bp-slide-2-exiting {
-      animation: bp-slide-2-bg-to-blue 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-2-bg-to-blue 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     .bp-slide-2.bp-slide-2-exiting .bp-slide-2-inner,
     .bp-slide-2.bp-slide-2-exiting .bp-marquee-wrap {
-      animation: bp-slide-2-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-2-text-up 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     /* Exit selectors target the same .bp-orb-* classes as the entry
        so specificity matches (4 classes each); source order puts
        exit AFTER entry so exit wins via the cascade tiebreaker. */
     .bp-slide-2.bp-slide-2-exiting .bp-svg-bg .bp-orb-bottom-left,
     .bp-slide-2.bp-slide-2-exiting .bp-svg-bg .bp-orb-top-right {
-      animation: bp-slide-2-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-2-orb-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     @keyframes bp-slide-2-bg-to-blue {
       from { background: #EB7396; }
@@ -795,11 +798,11 @@ const DEFAULT_CONTENT: Content = {
        (blue + dark-green orbs sweeping in via the entry animation)
        is the user's continuity moment. */
     .bp-slide-3.bp-slide-3-exiting .bp-slide-3-inner {
-      animation: bp-slide-3-text-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-3-text-up 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-top,
     .bp-slide-3.bp-slide-3-exiting .bp-svg-bg .bp-orb-bottom {
-      animation: bp-slide-3-orb-grow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: bp-slide-3-orb-grow 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     @keyframes bp-slide-3-text-up {
       from { transform: translateY(0);      opacity: 1; }
@@ -1861,7 +1864,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         setTimeout(() => {
           el.classList.remove(exitCls);
         }, 500);
-      }, 800);
+      }, 2400);  // v1.65iX — bumped 800 → 2400 to match the slowed exit animation; revert to 800 when done diagnosing.
       return true;
     };
 
