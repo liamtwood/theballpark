@@ -124,7 +124,7 @@ const DEFAULT_CONTENT: Content = {
              undone per the next-day review: "the orbs should not
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
-        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-1-exiting]="slide1Exiting">
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
           <!-- v1.65iG (p0026) — bg-layer + grain + slide-inner always
                mounted. Static baseline; p0027 reinstates the iOS
                Safari unmount via scroll-position predicate. -->
@@ -1529,14 +1529,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
-  /** v1.65iR — slide-1 exit animation flag. Set true when the user
-      clicks Next while on slide 1; CSS keyframes animate the text
-      upward (movie-credits style), the pink orbs grow to fill the
-      viewport, and the slide bg fades green → pink. After the
-      animation completes (~800ms), scrollToSlide(1) takes the user
-      to slide 2 (already pink → seamless handoff). Auto-resets if
-      the user scrolls back to slide 1. */
-  slide1Exiting = false;
+  // v1.65iT — slide1Exiting flag dropped. The exit-animation class
+  // (.bp-slide-1-exiting) is now managed directly via classList in
+  // next() and the scroll handler. No Angular binding diff to fight
+  // with, no stale-state mismatches; works on every click.
   /* v1.65iG (p0026) — slideF + scroll-position predicates removed.
      Static baseline; p0027 will introduce a fresh scroll-progress
      mechanism scoped to slide 1 ↔ 2 only. */
@@ -1634,15 +1630,19 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       if (idx !== this.step) {
         this.step = idx;
-        // v1.65iR — clear the slide-1 exit state when the user
-        // scrolls back to slide 1, so the slide returns to its
-        // normal green / cx=100,700 / r=280 composition. Without
-        // this the .bp-slide-1-exiting class would persist and
-        // slide 1 would render as a pink-filled page.
-        if (idx === 0 && this.slide1Exiting) {
-          this.slide1Exiting = false;
-        }
         this.cdr.markForCheck();
+      }
+      // v1.65iT — when the user returns to slide 1 (e.g. via the
+      // home logo), make sure the exit-animation class is gone so
+      // the slide renders in its normal green / r=280 state. The
+      // class is also cleared 1300ms after the exit completes, but
+      // this is the safety net for cases where the user navigates
+      // back before the timer fires.
+      if (idx === 0) {
+        const s1 = this.slideRefs?.toArray()[0]?.nativeElement;
+        if (s1?.classList.contains('bp-slide-1-exiting')) {
+          s1.classList.remove('bp-slide-1-exiting');
+        }
       }
 
       setProgress();
@@ -1772,42 +1772,41 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // only.
 
   next() {
-    // v1.65iR — slide 1 → slide 2 special exit animation. Text scrolls
-    // up like movie credits, pink orbs grow to fill the viewport,
-    // slide bg fades green → pink. After ~800ms we scroll to slide 2
-    // (already pink) so the handoff reads as one continuous pink page.
+    // v1.65iT — slide 1 → slide 2 exit animation, classList-driven.
     //
-    // v1.65iS — replay fix. The first exit worked; subsequent exits
-    // (click home → back to slide 1 → click Next again) wouldn't fire
-    // the animation. Two reasons:
-    //   (1) slide1Exiting wasn't being cleared reliably after the
-    //       exit — relied on the scroll handler hitting idx===0,
-    //       which can no-op if the user was already at the top.
-    //   (2) Even if the flag did clear, the CSS animation engine
-    //       won't replay an animation when the same class toggles
-    //       off → on without a reflow between, so the keyframes
-    //       just sit at their last filled state.
-    // Fixes here: force-replay via remove + offsetWidth read + add,
-    // and an explicit reset 1300ms after the scroll completes so
-    // slide 1 reverts to its normal composition off-screen.
-    if (this.step === 0 && !this.slide1Exiting) {
-      const slide1El = this.slideRefs?.toArray()[0]?.nativeElement;
-      if (slide1El) {
-        slide1El.classList.remove('bp-slide-1-exiting');
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        slide1El.offsetWidth;  // force reflow — CSS animation replay trick
-      }
-      this.slide1Exiting = true;
-      this.cdr.markForCheck();
+    // The animation: text scrolls up (movie credits), pink orbs grow
+    // to fill the viewport, slide bg fades green → pink. After ~800ms
+    // (CSS animation duration) we scroll to slide 2 (already pink) so
+    // the handoff reads as one continuous pink page.
+    //
+    // Replay reliability — fixed via direct classList management:
+    //   - remove the class
+    //   - force a reflow (read offsetWidth) — without this, the CSS
+    //     animation engine treats a same-class re-add as a no-op and
+    //     the keyframes never play
+    //   - re-add the class
+    // This sequence runs every time, regardless of state-tracking,
+    // so the second / third / Nth click all replay identically.
+    //
+    // Bypasses Angular's [class.X] binding diff (which previously
+    // got out of sync with the manual classList ops). Class cleanup
+    // is also handled here + in the scroll handler when the user
+    // returns to slide 1.
+    const slide1El = this.slideRefs?.toArray()[0]?.nativeElement;
+    if (this.step === 0 && slide1El) {
+      // Guard against double-clicks while the animation is in flight.
+      if (slide1El.classList.contains('bp-slide-1-exiting')) return;
+      slide1El.classList.remove('bp-slide-1-exiting');
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      slide1El.offsetWidth;  // force reflow — CSS animation replay trick
+      slide1El.classList.add('bp-slide-1-exiting');
       setTimeout(() => {
         this.scrollToSlide(1);
-        // 500ms after starting the scroll (smooth scroll covers
-        // ~300-500ms), reset the flag so the user can return to
-        // slide 1 and click Next again without the click being
-        // swallowed by the `!slide1Exiting` guard.
+        // 500ms after the scroll starts, remove the class so slide 1
+        // reverts to its normal green / r=280 composition off-screen,
+        // ready for the next click when the user returns.
         setTimeout(() => {
-          this.slide1Exiting = false;
-          this.cdr.markForCheck();
+          slide1El.classList.remove('bp-slide-1-exiting');
         }, 500);
       }, 800);
       return;
