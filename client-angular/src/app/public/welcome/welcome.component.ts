@@ -907,13 +907,21 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-3 .bp-producers-body {
       transform: translateX(100vw); opacity: 0;
     }
-    .bp-slide-3.in-view .bp-producers-headline {
+    /* v1.65jC — :not(.bp-credits-rolling) added so the entry
+       rule doesn't fight the exit rule. The exit rules above
+       were source-ordered BEFORE the entry rules, which (with
+       equal specificity 0-3-0) meant the entry rule won the
+       cascade and its both-fill held the at-rest pose,
+       silently clobbering the exit animation. Now when
+       .bp-credits-rolling is on the section, only the exit
+       rules apply. */
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-headline {
       animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-slide-3.in-view .bp-producers-tagline {
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-tagline {
       animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
     }
-    .bp-slide-3.in-view .bp-producers-body {
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-body {
       animation: bp-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
     }
     @keyframes bp-from-left {
