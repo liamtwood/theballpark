@@ -669,22 +669,26 @@ const DEFAULT_CONTENT: Content = {
       position: absolute; inset: 0;
       z-index: 1;
       pointer-events: none;
-      /* v1.65jE — iOS Safari (and Mac Safari) was leaking the
-         SVG Gaussian-blur filter region past the slide's
+      /* v1.65jE / jF — Safari (Mac + iOS) leaks the SVG
+         Gaussian-blur filter region past the slide's
          overflow:hidden boundary, rendering a bright pink (or
          blue) rectangle on the right side of slide 2 where the
-         upper-right orb's filter region extends. The clip-path
-         here forces the bg-layer into its own paint-clipped
-         region, so any compositor layer created for the SVG
-         filter stays inside this box. contain:paint adds a
-         second guardrail (Chromium honours both; Safari mostly
-         honours clip-path).
-         Note: we still avoid transforming the bg-layer or SVG
-         itself (per the earlier recipe — transforms on the
-         filter ancestor break the blur visually). clip-path +
-         contain:paint are paint-only hints, no transform. */
+         upper-right orb's filter region extends.
+         jE tried HTML-level clip-path + contain:paint here —
+         Chromium honoured it, Safari did not. The SVG filter
+         appears to be composited on a GPU layer that bypasses
+         HTML clip-path on the parent wrapper.
+         jF adds -webkit-backface-visibility: hidden to coerce
+         THIS wrapper into its own GPU compositor layer (no
+         visible transform, blur quality preserved). GPU layers
+         respect their parent's overflow rules, so the inner
+         SVG filter layer now gets clipped at this wrapper's
+         box. clip-path + contain:paint kept as defence in depth
+         for Chromium. */
       clip-path: inset(0);
       contain: paint;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
 
     /* v1.65gW  — orb entry animated by animating the individual
