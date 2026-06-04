@@ -99,11 +99,11 @@ type DashTab = 'projects' | 'inbox';
            DESKTOP — three column layout
            MOBILE — hidden, replaced by tab panels below
       ══════════════════════════════════════════════════ -->
-      <!-- p0018 / p0019 — grid-template-columns is bound so a fully-
-           hidden SIDE column drops its track (no empty gap). hasLeftColumn
-           / hasRightColumn gate the side columns; the centre launcher is
-           always present. -->
-      <div class="bp-body bp-desktop-only" [style.grid-template-columns]="bodyGridColumns">
+      <!-- v1.66b — fixed 3-track grid (320 / 1fr / 320); each column is
+           pinned to its track via grid-column, so hiding a side column's
+           sections leaves its track reserved (empty) and the centre
+           launcher stays dead-centre rather than sliding over. -->
+      <div class="bp-body bp-desktop-only">
 
         <!-- LEFT PANEL — v1.65dh: each section is now its own
              elevated card (shadow-only, no border) instead of all
@@ -346,23 +346,23 @@ type DashTab = 'projects' | 'inbox';
     /* DESKTOP 3-COL — parchment ground, 16px gap between columns
        and a matching 16px top padding above the row so the stats
        and the 3-col body share the same rhythm. */
-    /* p0018 — grid-template-columns is set inline (bodyGridColumns) so
-       a hidden column drops its track. The static value here is the
-       all-visible fallback. justify-content:center balances the row
-       when the greedy centre 1fr track is gone (only fixed side
-       columns remain) so they don't left-pack against a big gap. */
+    /* v1.66b — fixed 3-track grid; columns are pinned to their tracks
+       (grid-column below) so hiding a side column reserves its track
+       and the centre launcher stays put. */
     .bp-body {
       display: grid;
       grid-template-columns: 320px minmax(400px, 1fr) 320px;
-      justify-content: center;
       gap: 16px;
       background: var(--theme-bg);
       padding: 16px 20px 24px;
       min-height: calc(100vh - var(--nav-height) - 64px);
     }
-    .bp-body-panel { display: flex; flex-direction: column; gap: 14px; }
-    .bp-body-left  { display: flex; flex-direction: column; gap: 14px; }
-    .bp-body-right { display: flex; flex-direction: column; gap: 14px; }
+    /* v1.66b — pin each column to its grid track so a hidden side
+       column leaves its 320px track reserved (empty) and the centre
+       launcher stays centred instead of sliding into the freed space. */
+    .bp-body-panel { grid-column: 1; display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-left  { grid-column: 2; display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-right { grid-column: 3; display: flex; flex-direction: column; gap: 14px; }
     /* v1.65hQ (p0019 §2) — centre-column launcher. auto-fit wraps 2 per
        row at typical centre widths, 3 at wider viewports. Tiles bring
        their own elevated chrome (<app-action-tile>) — no panel wrapper. */
@@ -973,26 +973,16 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     showRecentActivity: true,
   };
 
-  /** p0018 — column presence for the 3-col body. A column collapses
-      (its grid track is dropped via bodyGridColumns) when all its
-      sections are hidden. */
+  /** p0018 — column presence for the 3-col body. When all of a side
+      column's sections are hidden, the column div is omitted (no empty
+      card chrome). v1.66b: its grid track is still reserved (each column
+      is pinned via grid-column in CSS) so the centre launcher stays
+      centred. */
   get hasLeftColumn(): boolean {
     return this.pageCfg.showUpcoming || this.pageCfg.showRecentActivity || this.pageCfg.showQuickActions;
   }
   get hasRightColumn(): boolean {
     return this.pageCfg.showCredits || this.pageCfg.showSavedSuppliers;
-  }
-  /** Dynamic grid-template-columns — only present columns get a track,
-      so a hidden side column leaves no empty gap. The centre column is
-      the launcher grid and is always present (greedy 1fr); the fixed
-      320px sides centre in the row when a side is gone (see .bp-body
-      justify-content). */
-  get bodyGridColumns(): string {
-    const cols: string[] = [];
-    if (this.hasLeftColumn) cols.push('320px');
-    cols.push('minmax(400px, 1fr)');   // centre launcher — always shown
-    if (this.hasRightColumn) cols.push('320px');
-    return cols.join(' ');
   }
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
