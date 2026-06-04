@@ -143,9 +143,12 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65iK (p0028 fix) — orb radius 280 → 500 so the
+                 orbs dominate the viewport when centred (designer's
+                 "expanding to become the background" effect). -->
             <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)"/>
+              <circle cx="100" cy="250" r="500" fill="url(#s1-pink)"/>
+              <circle cx="700" cy="250" r="500" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(0)"></div>
@@ -185,9 +188,10 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65iK — orb radius 280 → 500 for dominance. -->
             <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
+              <circle cx="700" cy="0"   r="500" fill="url(#s2-blue)"/>
+              <circle cx="100" cy="500" r="500" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(1)"></div>
@@ -226,7 +230,14 @@ const DEFAULT_CONTENT: Content = {
                  overlapping in the middle band (combined diameter 560
                  > viewBox height 500). Dropped to r=240 so they leave
                  a 20-unit gap and the two colours read as separate
-                 blobs. -->
+                 blobs.
+                 v1.65iK — slides 1/2/4 bumped to r=500 for sweep
+                 dominance, but slide 3 STAYS at r=240. The cx=400
+                 cy=0/cy=500 layout is only 500 units apart vertically;
+                 anything above r=250 overlaps, anything ≥ r=350
+                 swallows the two-orb separation entirely. The
+                 designer's sweep effect needs distinct orbs to be
+                 visible, so we keep the gap math here. -->
             <g filter="url(#s3-blur)">
               <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"/>
               <circle cx="400" cy="500" r="240" fill="url(#s3-light)"/>
@@ -275,9 +286,10 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
+            <!-- v1.65iK — orb radius 280 → 500 for dominance. -->
             <g filter="url(#s4-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle cx="100" cy="250" r="500" fill="url(#s4-darkgreen)"/>
+              <circle cx="700" cy="250" r="500" fill="url(#s4-darkgreen)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(3)"></div>
@@ -1594,7 +1606,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   isCurrentSlide(i: number): boolean {
     const stops = 1 / (TOTAL_STEPS - 1);
     const centre = i * stops;
-    const halfRange = stops * 0.75;
+    // v1.65iK — halfRange 0.75 → 1.0 so the orb stays mounted for
+    // its FULL sweep range. The sweep maps slideProgress 0..1 to
+    // translateX -90vw..+90vw, and slideProgress is normalised so
+    // that 0 = one stop below centre, 1 = one stop above. So the
+    // sweep spans exactly ±stops from centre — anything tighter
+    // than that pops the orb out mid-animation. iOS Safari blur-
+    // cache defeat still holds: ±stops puts the unmount well
+    // outside any individual slide's viewport scroll range.
+    const halfRange = stops * 1.0;
     return Math.abs(this.scrollProgress - centre) <= halfRange;
   }
   /** 0 = one slide below viewport, 0.5 = centred, 1 = one slide above. */
