@@ -1046,7 +1046,14 @@ const DEFAULT_CONTENT: Content = {
       animation: none !important;
     }
     .bp-slide-2 {
-      background: #EB7396;
+      /* v1.65jH DEBUG — slide-2 bg temporarily ORANGE so we can
+         tell where the "pink rectangle" on iOS Safari is coming
+         from. If the rectangle becomes orange in this build,
+         it's the slide-2 section bg painted twice (likely by a
+         compositor layer). If it stays pink, it's slide-1's
+         pink orbs (or the slide1-bg-to-pink animation) leaking
+         from above. REVERT to #EB7396 once diagnosed. */
+      background: #FFA500;
       flex-direction: column;
       padding: 80px 0 100px;
     }
