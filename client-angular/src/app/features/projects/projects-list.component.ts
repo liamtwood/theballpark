@@ -435,10 +435,10 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     return (p as any).action_needed_count ?? 0;
   }
 
-  /** p0031: supplier count for the stats row. Same story — no field on
-      the list payload yet; defaults to 0 until plumbed. */
+  /** p0031 / v1.66j: distinct suppliers with items added to the project.
+      Computed live by the projects list endpoint. */
   supplierCount(p: Project): number {
-    return (p as any).supplier_count ?? 0;
+    return p.supplier_count ?? 0;
   }
 
   /** p0031: coarse relative time (date-fns isn't installed). Reads

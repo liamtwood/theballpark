@@ -11,7 +11,8 @@ async function getAll(orgId) {
   let query = `SELECT p.*, s.name as status_name, s.color as status_color, c.name as client_name,
       COALESCE(t.total_ballpark_cost, 0) AS total_ballpark_cost,
       COALESCE(t.total_base_cost, 0)     AS total_base_cost,
-      COALESCE(t.total_client_cost, 0)   AS total_client_cost
+      COALESCE(t.total_client_cost, 0)   AS total_client_cost,
+      COALESCE(sc.supplier_count, 0)     AS supplier_count
     FROM projects p
     LEFT JOIN statuses s ON p.status_id = s.id
     LEFT JOIN clients c ON p.client_id = c.id
@@ -24,6 +25,15 @@ async function getAll(orgId) {
       WHERE is_active = true
       GROUP BY project_id
     ) t ON t.project_id = p.id
+    LEFT JOIN (
+      -- v1.66j — supplier count = distinct supplier orgs with items
+      -- added to the project (project_items.item_id -> items.org_id).
+      -- COUNT(DISTINCT) ignores items with a null org_id.
+      SELECT pi.project_id, COUNT(DISTINCT i.org_id)::int AS supplier_count
+      FROM project_items pi
+      JOIN items i ON i.id = pi.item_id
+      GROUP BY pi.project_id
+    ) sc ON sc.project_id = p.id
     WHERE p.is_active = true`;
   const params = [];
   if (orgId) {
