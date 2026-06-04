@@ -366,9 +366,14 @@ type DashTab = 'projects' | 'inbox';
     /* v1.65hQ (p0019 §2) — centre-column launcher. auto-fit wraps 2 per
        row at typical centre widths, 3 at wider viewports. Tiles bring
        their own elevated chrome (<app-action-tile>) — no panel wrapper. */
+    /* v1.66c — auto-fill + a capped track (200–240px, not 1fr) so the
+       tiles hold a fixed rectangular footprint instead of stretching to
+       fill the row; justify-content centres them and they wrap onto new
+       rows as the centre column narrows. */
     .bp-launcher-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
+      justify-content: center;
       gap: 16px;
     }
     /* Make each .bp-panel-section in the left column inherit the
