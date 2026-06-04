@@ -318,13 +318,17 @@ const DEFAULT_CONTENT: Content = {
                  review. It absolute-positions to the bottom of the
                  panel rather than to the viewport. -->
             <div class="bp-welcome-footer">
+              <!-- v1.65iB — Legal moved INTO the links row next to
+                   TikTok (was an isolated right-aligned button). Reads
+                   as part of the same group and stays visible on
+                   mobile where the old right column was display:none. -->
               <div class="bp-footer-links">
                 <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
                 <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
                 <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
+                <button type="button" class="bp-footer-link bp-footer-link--button" (click)="openLegal($event)">Legal</button>
               </div>
               <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
-              <button type="button" class="bp-footer-link bp-footer-link--right bp-footer-link--button" (click)="openLegal($event)">Legal</button>
             </div>
           </div>
         </section>
@@ -466,7 +470,8 @@ const DEFAULT_CONTENT: Content = {
        background" checkbox enabled. A magenta-on-white JPG would
        end up as a white rectangle blocking the gradient. */
     .bp-welcome-logo-img {
-      height: 32px;
+      /* v1.65iA — header wordmark trimmed 32 → 26 per client review. */
+      height: 26px;
       width: auto;
       display: block;
       object-fit: contain;
@@ -844,26 +849,13 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2 .bp-svg-bg circle {
       r: calc(280px + var(--s2-leaving, 0) * 1500px);
     }
-    /* v1.65hX — disable orb expansion on mobile. iOS Safari's
-       compositor recomputes the Gaussian-blur filter region per
-       frame as the orb's radius grows, and at mid-flight (r around
-       1000px) it briefly renders the unblurred orb as a solid pink
-       or blue rectangle — the "pink box during 1->2 transition" on
-       phone. v1.65hZ — pinning the orb radius wasn't enough; even
-       the static blurred orb on a fresh slide entry seems to cause
-       a one-frame filter rectangle artifact on iOS during the
-       compositor handoff. Going aggressive: hide the SVG bg layer
-       entirely on slides 1 + 2 at mobile widths. The orb decoration
-       is a desktop visual polish; the stage gradient (v1.65hW)
-       already provides continuous slide-to-slide colour underneath.
-       Slide 3 + 4 keep their orbs on mobile since they're observably
-       fine (teal-on-teal, no filter recompute around boundaries). */
-    @media (max-width: 720px) {
-      .bp-slide-1 .bp-svg-bg,
-      .bp-slide-2 .bp-svg-bg {
-        display: none;
-      }
-    }
+    /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
+       to dodge the pink-box compositor artifact. v1.65i9 — restored
+       on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
+       now removes the leaving slide's SVG from the DOM entirely
+       before the scroll, so the iOS Safari filter compositor never
+       gets a chance to flash the unblurred orb. Mobile sees the
+       spheres again on slides 1 + 2. */
     /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
        slides 1 + 2, on the grounds of kinetic consistency.
        v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
@@ -916,7 +908,9 @@ const DEFAULT_CONTENT: Content = {
     .bp-eyebrow-welcome {
       display: inline-flex;
       align-items: center;
-      gap: 14px;
+      /* v1.65iA — gap tightened 14 → 6 so "Welcome to" sits closer
+         to the BALLPARK wordmark per client review. */
+      gap: 6px;
       margin-bottom: 32px;
       color: #DCF0EB;
     }
@@ -927,7 +921,9 @@ const DEFAULT_CONTENT: Content = {
       letter-spacing: -0.01em;
     }
     .bp-eyebrow-welcome-logo {
-      height: 28px;
+      /* v1.65iA — slide-1 eyebrow wordmark trimmed 28 → 22 per
+         client review. */
+      height: 22px;
       width: auto;
       display: block;
       object-fit: contain;
@@ -1231,7 +1227,9 @@ const DEFAULT_CONTENT: Content = {
       border: 1px solid #FFFFFF;
       border-radius: 999px;
       color: #133C23;
-      font-size: 14px;
+      /* v1.65iB — entered text 14 → 12 per client review so longer
+         email addresses fit comfortably without overflowing the pill. */
+      font-size: 12px;
       font-family: 'Fraunces', Georgia, serif; font-weight: 500;
       outline: none;
       text-align: center;
@@ -1311,18 +1309,19 @@ const DEFAULT_CONTENT: Content = {
       line-height: 1.6; opacity: 0.9; margin: 0;
     }
 
-    /* ── Slide 4 footer (Contact / Instagram / TikTok / © / Legal) ─
-       v1.65gZ2 — switched from flex space-between to a 3-column grid
-       so the © line sits in the centre of the PAGE (the middle 1fr
-       column), not just between the left/right blocks. Left & right
-       blocks justify-self to keep their edges aligned. */
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / Legal | ©) ─
+       v1.65gZ2 — 3-column grid with © centred.
+       v1.65iB — Legal moved into the links row so the footer is now
+       a 2-column grid (links | ©). The .bp-footer-link--right
+       isolated slot is gone; .bp-footer-link--button retains its
+       button-as-link reset. */
     .bp-welcome-footer {
       position: absolute;
       left: 0; right: 0; bottom: 0;
       z-index: 6;
       padding: 18px 32px 22px;
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: 1fr auto;
       align-items: center;
       gap: 24px;
       font-family: 'Fraunces', Georgia, serif;
@@ -1339,11 +1338,17 @@ const DEFAULT_CONTENT: Content = {
       transition: opacity 0.2s;
     }
     .bp-footer-link:hover { opacity: 0.7; }
-    .bp-footer-link--right {
-      justify-self: end;
+    .bp-footer-link--button {
+      /* Reset button defaults so Legal renders identically to the
+         anchor links beside it. */
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
     }
     .bp-footer-copy {
-      text-align: center;
+      justify-self: end;
       opacity: 0.6;
       letter-spacing: 0.02em;
     }
@@ -1355,8 +1360,13 @@ const DEFAULT_CONTENT: Content = {
         font-size: 11px;
         padding-bottom: 16px;
       }
-      .bp-footer-links { justify-self: center; }
-      .bp-footer-link--right { display: none; }
+      .bp-footer-links {
+        justify-self: center;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
+      .bp-footer-copy { justify-self: center; }
     }
 
     /* v1.65gY — Bottom-nav (Back / Next pills) + vertical pagination
