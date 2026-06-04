@@ -292,8 +292,14 @@ const DEFAULT_CONTENT: Content = {
               </filter>
             </defs>
             <g filter="url(#s4-blur)">
-              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
-              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <!-- v1.65iQ — slide 4 entry animation: dark-green orbs
+                   slide in horizontally (same mechanic as slide 1)
+                   over slide 4's blue bg. Triggered by Intersection
+                   Observer via .bp-slide-4-entered. Reuses slide 1's
+                   bp-orb-slide-from-left / from-right keyframes
+                   since resting positions match (cx=100 / cx=700). -->
+              <circle class="bp-orb-left"  cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle class="bp-orb-right" cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
             </g>
           </svg></div>
           <div class="bp-grain"></div>
@@ -694,13 +700,19 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-1 .bp-svg-bg .bp-orb-right {
       animation: bp-orb-slide-from-right 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
     }
+    /* v1.65iQ — opacity 0→1 added so these keyframes can be reused
+       on slide 4 (which sets opacity: 0 baseline on its circles so
+       the entry doesn't fire until the user reaches the slide).
+       Slide 1's orbs start at opacity 1 in markup but fill-mode:both
+       sets them to the from-state (opacity 0, cx off-viewBox) during
+       the 150ms delay — same end result, cleaner first paint. */
     @keyframes bp-orb-slide-from-left {
-      from { cx: -300; }
-      to   { cx: 100; }
+      from { cx: -300; opacity: 0; }
+      to   { cx: 100;  opacity: 1; }
     }
     @keyframes bp-orb-slide-from-right {
-      from { cx: 1100; }
-      to   { cx: 700; }
+      from { cx: 1100; opacity: 0; }
+      to   { cx: 700;  opacity: 1; }
     }
 
     /* Per-slide bases (circle gradients live in template <linearGradient> defs).
@@ -775,9 +787,13 @@ const DEFAULT_CONTENT: Content = {
     /* v1.65iP — slide 3 bg restored to blue (#6391A4), matches
        slide 2's blue orb gradient so the slide-2 → slide-3 handoff
        reads as continuity (the blue orbs that swept onto slide 2
-       "become" slide 3's bg). */
+       "become" slide 3's bg).
+       v1.65iQ — slide 4 also blue (#6391A4), matches slide 3's
+       blue bg so the slide-3 → slide-4 handoff is seamless. The
+       dark-green orbs that arrive on slide 3 stay green going into
+       slide 4. */
     .bp-slide-3 { background: #6391A4; }
-    .bp-slide-4 { /* transparent */ }
+    .bp-slide-4 { background: #6391A4; }
 
     /* v1.65iP — slide 3 orb entry animation. Same pattern as slide 2:
        opacity 0 by default; .bp-slide-3-entered class (added by the
@@ -804,6 +820,21 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-orb-slide-from-bottom {
       from { cy: 800;  opacity: 0; }
       to   { cy: 500;  opacity: 1; }
+    }
+
+    /* v1.65iQ — slide 4 orb entry animation. Same horizontal sweep
+       as slide 1 (cx -300 → 100 / cx 1100 → 700) over slide 4's
+       blue bg. Reuses slide 1's bp-orb-slide-from-left /
+       from-right keyframes since resting positions match. Default
+       opacity:0 on slide-4 circles + IntersectionObserver-set
+       .bp-slide-4-entered class kicks the animation when the
+       user reaches slide 4. */
+    .bp-slide-4 .bp-svg-bg circle { opacity: 0; }
+    .bp-slide-4.bp-slide-4-entered .bp-svg-bg .bp-orb-left {
+      animation: bp-orb-slide-from-left 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+    .bp-slide-4.bp-slide-4-entered .bp-svg-bg .bp-orb-right {
+      animation: bp-orb-slide-from-right 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
     }
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
@@ -1594,6 +1625,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       };
       watchSlide(1, 'bp-slide-2-entered');
       watchSlide(2, 'bp-slide-3-entered');
+      watchSlide(3, 'bp-slide-4-entered');
     }
 
     // v1.65gZ29 — load Cloudflare Turnstile and render the widget
