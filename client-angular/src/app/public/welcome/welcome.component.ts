@@ -925,37 +925,26 @@ const DEFAULT_CONTENT: Content = {
       to   { transform: translateX(0);      opacity: 1; }
     }
 
-    /* ── Slide 4 from-pose + reveal ── */
-    .bp-slide-4 .bp-slide-4-inner .bp-eyebrow {
-      transform: scale(0) rotate(-12deg); opacity: 0;
+    /* ── Slide 4 from-pose + reveal ──
+       v1.65jA — the headline / form / footer block (the whole
+       .bp-slide-4-inner glass panel) now rises up from the
+       bottom of the viewport as one unit. Replaces the previous
+       per-element entry (.bp-eyebrow stamp + .bp-guestlist-
+       headline bounce-in + .bp-guestlist-form rise); those
+       declarations and their keyframes (bp-stamp, bp-bounce-in,
+       bp-form-rise) are retired. Sphere fade-in is intentionally
+       NOT overridden here — slide 4 keeps the global 1.4s ease-
+       out orb-fade so the dark-green orbs come up on their own
+       timing as the container arrives. */
+    .bp-slide-4 .bp-slide-4-inner {
+      transform: translateY(100vh); opacity: 0;
     }
-    .bp-slide-4 .bp-guestlist-headline {
-      transform: scale(0.7) translateY(30px); opacity: 0;
+    .bp-slide-4.in-view .bp-slide-4-inner {
+      animation: bp-slide4-rise 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .bp-slide-4 .bp-guestlist-form {
-      transform: translateY(28px) scale(0.96); opacity: 0;
-    }
-    .bp-slide-4.in-view .bp-slide-4-inner .bp-eyebrow {
-      animation: bp-stamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-headline {
-      animation: bp-bounce-in 1.05s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
-    }
-    .bp-slide-4.in-view .bp-guestlist-form {
-      animation: bp-form-rise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both;
-    }
-    @keyframes bp-stamp {
-      0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
-      70%  { transform: scale(1.15) rotate(2deg); opacity: 1; }
-      100% { transform: scale(1) rotate(0); opacity: 1; }
-    }
-    @keyframes bp-bounce-in {
-      0%   { transform: scale(0.7) translateY(30px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
-    }
-    @keyframes bp-form-rise {
-      from { transform: translateY(28px) scale(0.96); opacity: 0; }
-      to   { transform: translateY(0)    scale(1);    opacity: 1; }
+    @keyframes bp-slide4-rise {
+      from { transform: translateY(100vh); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
     }
 
     .bp-slide {
