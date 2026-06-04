@@ -773,9 +773,16 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-1.bp-credits-rolling {
       animation: bp-slide1-bg-to-pink 1s linear forwards;
     }
-    .bp-slide-1.bp-credits-rolling .bp-svg-bg circle {
-      animation: bp-orb-grow 1s linear forwards;
-    }
+    /* v1.65jD — bp-orb-grow on slide-1 + slide-2 credits-roll
+       removed. Growing the circles to r=1780 expanded the SVG
+       Gaussian-blur filter region to a ~7000px-wide bounding box
+       that iOS Safari (and Mac Safari) composited on its own
+       layer, leaking a bright-pink rectangle past the parent's
+       overflow:hidden onto slide 2. Same family of bug as the
+       v1.65hT pink ghost-box. The bg-color shift alone (green ->
+       pink for slide 1, pink -> teal for slide 2) is enough to
+       bridge the colour into the next slide; the orb-grow was
+       only adding the filter-region trap. */
     @keyframes bp-credits-up {
       from { transform: translateY(0);      opacity: 1; }
       to   { transform: translateY(-110vh); opacity: 1; }
@@ -783,10 +790,6 @@ const DEFAULT_CONTENT: Content = {
     @keyframes bp-slide1-bg-to-pink {
       from { background-color: #287F4D; }
       to   { background-color: #EB7396; }
-    }
-    @keyframes bp-orb-grow {
-      from { r: 280px; }
-      to   { r: 1780px; }
     }
 
     /* ── Slide 2 sphere fade-in ──
@@ -833,9 +836,8 @@ const DEFAULT_CONTENT: Content = {
     .bp-slide-2.bp-credits-rolling {
       animation: bp-slide2-bg-to-teal 1.2s linear forwards;
     }
-    .bp-slide-2.bp-credits-rolling .bp-svg-bg circle {
-      animation: bp-orb-grow 1.2s linear forwards;
-    }
+    /* v1.65jD — bp-orb-grow on slide 2 dropped for the same iOS
+       Safari compositor reason as slide 1. See note above. */
     @keyframes bp-slide2-bg-to-teal {
       from { background-color: #EB7396; }
       to   { background-color: #6391A4; }
