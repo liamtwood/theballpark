@@ -130,10 +130,12 @@ const DEFAULT_CONTENT: Content = {
              have been changed, only the text styling"). Centred CTA
              pill below the subtitle stays. -->
         <section #slideRef data-slide="0" class="bp-slide bp-slide-1">
-          <!-- v1.65iJ (p0028) — wrapper transform sweeps the orbs
-               across the viewport per slideProgress. iOS Safari SVG
-               unmount stays via isCurrentSlide() predicate. -->
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(0)" [style.transform]="orbTransform(0)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <!-- v1.65iL (p0029) — orb FADE-IN replaces the sweep.
+               Opacity ramps 0 → 1 over the back half of the slide's
+               territory so the orbs (in the NEXT slide's colour)
+               fill the viewport just before the snap, making the
+               handoff seamless. -->
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(0)" [style.opacity]="orbOpacity(0)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#FA91B0"/>
@@ -143,12 +145,15 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <!-- v1.65iK (p0028 fix) — orb radius 280 → 500 so the
-                 orbs dominate the viewport when centred (designer's
-                 "expanding to become the background" effect). -->
+            <!-- v1.65iL (p0029) — slide 1 orbs at DIAGONAL corners
+                 (top-left + bottom-right) per designer's Figma. The
+                 horizontal-middle positions from before created a
+                 wide bar when blurred; diagonals produce the X-fill
+                 the designer wants. Radius 500 → 400 (the orb
+                 fade-in now does the dominance work, not raw size). -->
             <g filter="url(#s1-blur)">
-              <circle cx="100" cy="250" r="500" fill="url(#s1-pink)"/>
-              <circle cx="700" cy="250" r="500" fill="url(#s1-pink)"/>
+              <circle cx="0"   cy="0"   r="400" fill="url(#s1-pink)"/>
+              <circle cx="800" cy="500" r="400" fill="url(#s1-pink)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(0)"></div>
@@ -178,7 +183,7 @@ const DEFAULT_CONTENT: Content = {
              minutes.").
              v1.65gZ — orbs reverted to r=280 (no zoom). -->
         <section #slideRef data-slide="1" class="bp-slide bp-slide-2">
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(1)" [style.transform]="orbTransform(1)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(1)" [style.opacity]="orbOpacity(1)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#79A8BA"/>
@@ -188,10 +193,14 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <!-- v1.65iK — orb radius 280 → 500 for dominance. -->
+            <!-- v1.65iL (p0029) — radius reverted 500 → 280. Opacity
+                 fade-in does the dominance work; positions already
+                 diagonal. NOTE: orb colour is BLUE (s2-blue) but
+                 slide 3's bg is GREEN — slide 2 → 3 snap is an
+                 acknowledged colour jump pending follow-up fix. -->
             <g filter="url(#s2-blur)">
-              <circle cx="700" cy="0"   r="500" fill="url(#s2-blue)"/>
-              <circle cx="100" cy="500" r="500" fill="url(#s2-blue)"/>
+              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)"/>
+              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(1)"></div>
@@ -212,7 +221,7 @@ const DEFAULT_CONTENT: Content = {
 
         <!-- ── Slide 3: Producers ───────────────────────── -->
         <section #slideRef data-slide="2" class="bp-slide bp-slide-3">
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(2)" [style.transform]="orbTransform(2)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(2)" [style.opacity]="orbOpacity(2)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%"   stop-color="#2D8E53"/>
@@ -276,7 +285,7 @@ const DEFAULT_CONTENT: Content = {
              pre-v1.65gY values (cx=100/700 cy=250, diagonal gradient)
              per "the orbs should not have been changed". -->
         <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
-          <div class="bp-bg-layer" *ngIf="isCurrentSlide(3)" [style.transform]="orbTransform(3)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <div class="bp-bg-layer" *ngIf="isCurrentSlide(3)" [style.opacity]="orbOpacity(3)"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%"   stop-color="#33A25F"/>
@@ -286,10 +295,11 @@ const DEFAULT_CONTENT: Content = {
                 <feGaussianBlur stdDeviation="20"/>
               </filter>
             </defs>
-            <!-- v1.65iK — orb radius 280 → 500 for dominance. -->
+            <!-- v1.65iL (p0029) — radius reverted 500 → 280. Opacity
+                 fade-in does the dominance work. -->
             <g filter="url(#s4-blur)">
-              <circle cx="100" cy="250" r="500" fill="url(#s4-darkgreen)"/>
-              <circle cx="700" cy="250" r="500" fill="url(#s4-darkgreen)"/>
+              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)"/>
             </g>
           </svg></div>
           <div class="bp-grain" *ngIf="isCurrentSlide(3)"></div>
@@ -683,12 +693,12 @@ const DEFAULT_CONTENT: Content = {
        scroll, fades out once the scroll settles, fades back in when the
        user scrolls away. Slide 1 has no previous slide; slides 3 + 4
        share the same teal so the slide-4 boundary needs no bleed. */
-    /* v1.65iF — slide section backgrounds removed. The fixed bg
-       crossfade tiers (.bp-bg-tier--pink / --teal) above the
-       welcome-stage now own the bg colour at every scroll position,
-       so slide sections must stay transparent for the tiers to show
-       through. Slide 2's flex layout + padding stays here. */
-    .bp-slide-1 { /* transparent — bg lives on .bp-bg-tier */ }
+    /* v1.65iL (p0029) — per-slide solid bg colours restored. Each
+       slide owns its own colour via CSS; the orb fade-in (bp-bg-
+       layer opacity = orbOpacity(i)) previews the NEXT slide's
+       colour to seam the snap handoff. Slides 3 + 4 are GREEN per
+       designer Figma (the v1.65i7 blue #6391A4 was wrong). */
+    .bp-slide-1 { background: #287F4D; }  /* green */
 
     /* v1.65iC (p0025) — .bp-slide-exiting class + its defensive
        opacity:0/display:none rules removed. The *ngIf bindings
@@ -696,7 +706,7 @@ const DEFAULT_CONTENT: Content = {
        contentRevealed) now handle mount/unmount directly via the
        DOM, no CSS hide needed. */
     .bp-slide-2 {
-      /* v1.65iF — bg removed, lives on .bp-bg-tier--pink now. */
+      background: #EB7396;  /* pink */
       flex-direction: column;
       padding: 80px 0 100px;
     }
@@ -707,9 +717,10 @@ const DEFAULT_CONTENT: Content = {
     /* v1.65gZ10 — gap between headline/subtitle block and the marquee
        trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
     .bp-slide-2-inner { margin-bottom: 16px; }
-    /* v1.65iF — slides 3 + 4 bg lives on .bp-bg-tier--teal now. */
-    .bp-slide-3 { /* transparent */ }
-    .bp-slide-4 { /* transparent */ }
+    /* v1.65iL (p0029) — slides 3 + 4 = GREEN per designer Figma
+       (v1.65i7 had them as #6391A4 blue, which was wrong). */
+    .bp-slide-3 { background: #287F4D; }  /* green */
+    .bp-slide-4 { background: #287F4D; }  /* green */
 
     /* ── Grain overlay (identical on every slide) ───────────────────────
        Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
@@ -1449,15 +1460,16 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!stage) return;
 
     const root = stage.parentElement as HTMLElement | null; // .bp-welcome-root
+    // v1.65iL (p0029) — clear any inline bg residue left from p0028's
+    // setBg() mutations. Each slide now owns its own bg via CSS;
+    // root.style.background needs to be empty so a slide's bg shows
+    // through where the user is parked.
+    if (root) root.style.background = '';
     const setProgress = () => {
       const max = stage.scrollHeight - stage.clientHeight;
       const p = max > 0 ? Math.max(0, Math.min(1, stage.scrollTop / max)) : 0;
       this.scrollProgress = p;
       if (root) root.style.setProperty('--scroll-progress', String(p));
-      // v1.65iJ (p0028) — JS-driven body bg interpolation. One
-      // continuously-blended colour at any scroll position, applied
-      // directly via root.style.background. No CSS class, no layers.
-      this.setBg(root, p);
     };
 
     const onScroll = () => {
@@ -1625,43 +1637,22 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const raw = 0.5 + (this.scrollProgress - centre) / (2 * halfWindow);
     return Math.max(0, Math.min(1, raw));
   }
-  /** Horizontal sweep — alternates direction per slide so the motion
-      doesn't read as mechanical. */
-  orbTransform(i: number): string {
+  /** v1.65iL (p0029) — orb opacity. Replaces p0028's orbTransform.
+      The designer's actual mechanic: orbs FADE IN as the user
+      scrolls through their slide. At parked (slideProgress = 0.5),
+      orb opacity = 0. At full exit (slideProgress = 1), orb
+      opacity = 1 — and since the orb colour previews the next
+      slide's bg, the viewport reads as the next slide's colour
+      just before the snap, making the handoff seamless. */
+  orbOpacity(i: number): number {
     const p = this.slideProgress(i);
-    const direction = i % 2 === 0 ? -1 : 1;
-    const x = direction * (-90 + 180 * p);
-    return `translateX(${x}vw)`;
+    return Math.max(0, Math.min(1, (p - 0.5) * 2));
   }
-
-  // ── v1.65iJ (p0028) — body bg colour interpolation ─────────────
-  //
-  // SLIDE_COLORS aligns with .bp-slide-N's original baseline:
-  //   slide 1 green, slide 2 pink, slide 3 blue, slide 4 blue
-  // (per v1.65i7's per-slide colours, before p0026 stripped them).
-  private readonly SLIDE_COLORS = [
-    '#287F4D',  // slide 1
-    '#EB7396',  // slide 2
-    '#6391A4',  // slide 3
-    '#6391A4',  // slide 4
-  ];
-  private setBg(rootEl: HTMLElement | null, p: number) {
-    if (!rootEl) return;
-    const intervals = this.SLIDE_COLORS.length - 1;     // 3
-    const scaled = p * intervals;
-    const i = Math.min(Math.floor(scaled), intervals - 1);
-    const t = scaled - i;
-    const c1 = this.hexToRgb(this.SLIDE_COLORS[i]);
-    const c2 = this.hexToRgb(this.SLIDE_COLORS[i + 1]);
-    const r = Math.round(c1.r + (c2.r - c1.r) * t);
-    const g = Math.round(c1.g + (c2.g - c1.g) * t);
-    const b = Math.round(c1.b + (c2.b - c1.b) * t);
-    rootEl.style.background = `rgb(${r}, ${g}, ${b})`;
-  }
-  private hexToRgb(hex: string): { r: number; g: number; b: number } {
-    const v = parseInt(hex.slice(1), 16);
-    return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
-  }
+  // v1.65iL (p0029) — body-bg interpolation removed.
+  //   SLIDE_COLORS, setBg(), hexToRgb() all deleted.
+  // Each slide now owns its own solid bg via CSS (.bp-slide-N
+  // selectors below). The orb fade-in is the only colour-transit
+  // mechanic; no JS-driven root.style.background.
 
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
