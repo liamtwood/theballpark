@@ -129,7 +129,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
 
       <!-- SUB -->
-      <p class="bp-hero-page-label">{{ heroSub }}</p>
+      <p class="bp-hero-page-label" [class.bp-hero-subtitle]="heroSubIsSentence">{{ heroSub }}</p>
 
       <!-- v1.65bh — TAB BAND moved BACK inside .bp-hero so it
            shares the hero's parchment (or accent in bold) fill. The
@@ -467,6 +467,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return this.heroVariant === 'calm';
   }
   get heroSub(): string       { return this.ctx?.heroSub   || this.routeHeroSub || this.pageLabel; }
+  /** v1.66ad — a page-pushed / route subtitle is a real sentence (render
+      sentence-case); a bare pageLabel is the legacy uppercase eyebrow. */
+  get heroSubIsSentence(): boolean { return !!(this.ctx?.heroSub || this.routeHeroSub); }
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];

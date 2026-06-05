@@ -1366,6 +1366,15 @@ input.bp-cfg-page-label.p-inputtext:focus {
   margin-bottom: 20px;
   display: block;
 }
+/* v1.66ad — a real subtitle sentence (route/ctx heroSub) renders
+   sentence-case + normal spacing; the legacy bare pageLabel keeps the
+   small uppercase eyebrow treatment above. */
+.bp-hero-page-label.bp-hero-subtitle {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 13px;
+  font-weight: 400;
+}
 /* v1.65bd — hairline along the bottom of the tab row. Inactive tabs
    sit on it (their bottom edge appears bordered because the band's
    hairline shows below them). The active tab "punches through" via
