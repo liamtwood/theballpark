@@ -1350,7 +1350,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
-  font-size: 36px;
+  font-size: 42px;          /* v1.66ae — up one step (was 36) */
   font-weight: 400;
   color: var(--color-surface);
   letter-spacing: -0.02em;
@@ -1372,8 +1372,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-page-label.bp-hero-subtitle {
   text-transform: none;
   letter-spacing: 0.01em;
-  font-size: 13px;
+  font-size: 15px;                       /* v1.66ae — up one step (was 13) */
   font-weight: 400;
+  color: #475569 !important;             /* v1.66ae — darker slate, per mock */
 }
 /* v1.65bd — hairline along the bottom of the tab row. Inactive tabs
    sit on it (their bottom edge appears bordered because the band's
@@ -1413,76 +1414,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
    inactive tabs also read as folder-tab shapes, matching the Adobe
    reference. The tab band's own bottom hairline handles the row
    bottom so individual tabs don't need a border-bottom. */
-/* v1.66t — flat text tabs with a 3-colour gradient underline on the
-   active tab (her Projects design), replacing the folder-chip look.
-   The hero's bottom hairline (.bp-hero border-bottom) is the full-width
-   baseline; the active tab's gradient bar sits on it. */
-.bp-hero-tab {
-  padding: 10px 2px;
-  min-width: 0;
-  text-align: center;
-  font-size: var(--text-base);
-  font-weight: 400;
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: color 0.15s;
-  font-family: var(--font-body);
-  text-transform: none;
-  letter-spacing: 0;
-}
-.bp-hero-tab:hover { color: var(--color-text-primary); }
-.bp-hero-tab.active {
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-.bp-hero-tab.active::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -1px;   /* overlay the 1px gray separator */
-  height: 2px;
-  background: var(--grad-tab);
-  border-radius: 2px 2px 0 0;
-  z-index: 1;
-}
-/* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
-   surface, so inactive tabs drop their hairline outline (which
-   reads as faint frame on coloured bg) and the band's bottom
-   hairline is suppressed. `!important` is necessary because
-   the duplicate .bp-hero-tab rule lower in styles.css carries
-   its own !important.
-   v1.65ca — Dark stays bare white-ish text on transparent.
-   Bold now gets white-filled inactive tabs (matching light mode)
-   so they read as defined folder chips on the accent hero. */
-[data-mode="dark"] .bp-hero-tab {
-  color: rgba(255, 255, 255, 0.82) !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-[data-mode="dark"] .bp-hero-tab:hover {
-  color: #fff !important;
-}
-[data-mode="bold"] .bp-hero-tab {
-  color: var(--color-text-secondary) !important;
-  background: transparent !important;   /* v1.66ab — no chip fill/border in bold mode either */
-  border: none !important;
-}
-[data-mode="bold"] .bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-}
+/* v1.66ae — hero tabs now have ONE canonical definition (search
+   "HERO TAB — SINGLE CANONICAL" below). All the per-mode and per-variant
+   tab overrides that used to live here were removed so every hero tab
+   band renders identically. Only the hero's own bottom border stays
+   mode-tweaked. */
 [data-mode="dark"] .bp-hero,
 [data-mode="bold"] .bp-hero {
   border-bottom: none;
-}
-[data-mode="dark"] .bp-hero-tab.active,
-[data-mode="bold"] .bp-hero-tab.active {
-  background: transparent !important;   /* v1.66ab — bare active tab; rainbow underline marks it */
-  color: var(--color-text-primary) !important;
-  border: none !important;
-  margin-bottom: 0 !important;
 }
 
 /* ─── p0003 — BOLD MODE HERO ──────────────────────────────────────
@@ -1602,57 +1541,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
   color: var(--color-text-muted) !important;
 }
 /* Tab band — strip-style flat bar with a hairline divider. */
-.bp-hero.bp-hero--calm .bp-hero-tab-band {
-  background: transparent !important;
-  padding-bottom: 0 !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tabs {
-  border-bottom: var(--border-hairline) !important;
-  gap: 4px;
-}
-/* Calm underline tab — bare text, no fill, no border-radius. */
-.bp-hero.bp-hero--calm .bp-hero-tab {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  min-width: 0 !important;
-  padding: 10px 16px !important;
-  color: var(--color-text-muted) !important;
-  font-weight: 500 !important;
-  margin-bottom: 0 !important;
-  transition: color 0.15s, border-color 0.15s !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-  background: transparent !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tab.active {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border-bottom-color: var(--theme-accent) !important;
-  font-weight: 600 !important;
-}
+/* v1.66ae — calm-variant tab overrides removed; calm pages now use the
+   single canonical hero-tab style like everything else. */
 /* Override Bold-mode rules so this variant looks identical regardless
    of the global data-mode setting. */
 [data-mode="dark"] .bp-hero.bp-hero--calm,
 [data-mode="bold"] .bp-hero.bp-hero--calm {
   background: var(--theme-bg) !important;
-}
-[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab,
-[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab {
-  background: transparent !important;
-  color: var(--color-text-muted) !important;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  box-shadow: none !important;
-}
-[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab.active,
-[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab.active {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border-bottom-color: var(--theme-accent) !important;
 }
 
 /* ── PAGE LAYOUT ── */
@@ -2273,34 +2168,44 @@ app-top-nav { flex-shrink: 0; }
    parchment.
    v1.65ca — soft folder-tab drop shadow added (top + sides only,
    bottom flush against the band hairline). */
-/* v1.66w — flat underline tabs (was the folder-chip override). No
-   chip border / fill / shadow; just text + the gradient underline on
-   the active tab. min-width keeps every tab an even, roomy footprint. */
-/* v1.66aa — inactive tabs are bare text (no fill, no border); only the
-   active tab is marked, via the rainbow underline. Grey separator line
-   runs full-width beneath the row. */
+/* ════════════════════════════════════════════════════════════════
+   HERO TAB — SINGLE CANONICAL DEFINITION (v1.66ae).
+   The ONLY place hero tabs are styled. Flat text + a 3-colour gradient
+   underline on the active tab, identical in every theme mode
+   (light / dark / bold) and hero variant. Change it here → every hero
+   tab band updates. Do NOT reintroduce mode/variant tab overrides. */
 .bp-hero-tab {
+  padding: 10px 2px !important;
+  min-width: 25ch !important;
+  text-align: center !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--text-base) !important;
+  font-weight: 400 !important;
   color: var(--color-text-secondary) !important;
   background: transparent !important;
-  font-weight: 400 !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-size: var(--text-base) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  min-width: 25ch !important;
+  cursor: pointer !important;
+  position: relative !important;
+  transition: color 0.15s !important;
 }
-.bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-}
+.bp-hero-tab:hover { color: var(--color-text-primary) !important; }
 .bp-hero-tab.active {
-  background: transparent !important;
   color: var(--color-text-primary) !important;
   font-weight: 500 !important;
-  position: relative !important;
   z-index: 1 !important;
-  margin-bottom: 0 !important;
+}
+.bp-hero-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--grad-tab);
+  border-radius: 2px 2px 0 0;
+  z-index: 1;
 }
 
 /* ── FILLED HEART when active ── */
