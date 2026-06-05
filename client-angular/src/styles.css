@@ -1376,6 +1376,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-tabs {
   display: flex;
   gap: 28px;   /* v1.66t — flat underline tabs need breathing room */
+  /* v1.66y — full-width gray separator under the whole tab row; the
+     active tab's gradient underline (::after) overlays it on top. */
+  border-bottom: 1px solid #E5E7EB;
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
@@ -1429,10 +1432,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-tab.active::after {
   content: '';
   position: absolute;
-  left: 0; right: 0; bottom: -0.5px;
+  left: 0; right: 0; bottom: -1px;   /* overlay the 1px gray separator */
   height: 2px;
   background: var(--grad-tab);
   border-radius: 2px 2px 0 0;
+  z-index: 1;
 }
 /* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
    surface, so inactive tabs drop their hairline outline (which
