@@ -1458,9 +1458,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 [data-mode="bold"] .bp-hero-tab {
   color: var(--color-text-secondary) !important;
-  background: var(--color-surface) !important;
-  border: var(--border-hairline) !important;
-  border-bottom: none !important;
+  background: transparent !important;   /* v1.66ab — no chip fill/border in bold mode either */
+  border: none !important;
 }
 [data-mode="bold"] .bp-hero-tab:hover {
   color: var(--color-text-primary) !important;
@@ -1471,8 +1470,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 [data-mode="dark"] .bp-hero-tab.active,
 [data-mode="bold"] .bp-hero-tab.active {
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
+  background: transparent !important;   /* v1.66ab — bare active tab; rainbow underline marks it */
+  color: var(--color-text-primary) !important;
   border: none !important;
   margin-bottom: 0 !important;
 }
