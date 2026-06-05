@@ -581,12 +581,8 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.shellCtx.reset(); }
 
   private applyShellHero() {
-    this.shellCtx.set({
-      heroTitle: this.configSvc.platformName,
-      heroSub: this.configSvc.feedbackLabel.toUpperCase(),
-      pills: [],
-      tabs: []
-    });
+    // v1.66ar — hero (title "Feedback" + subtitle) now comes from route
+    // data, like every other ballpark-settings tab. No push here.
   }
 
   // ── Config strip persistence ──────────────────────────────────────────
