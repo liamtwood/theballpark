@@ -361,7 +361,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     if (persona?.kind === 'admin') {
       // Platform admin (Beth). Config Home is the /home dashboard.
       this.navItems = [
-        { label: 'Config Home', icon: 'house',      route: '/home' },
+        { label: 'Home',        icon: 'house',      route: '/home' },
         { label: 'Settings',    icon: 'building-2', route: '/settings' },
       ];
       return;
