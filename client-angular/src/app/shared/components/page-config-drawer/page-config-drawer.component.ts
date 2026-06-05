@@ -152,6 +152,27 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
 
         <!-- ── GENERAL TAB — app-wide hero / site preferences ── -->
         <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'general'">
+          <!-- v1.66an — system-admin: choose which (platform, role) profile
+               to author. Settings below write to the selected profile. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Platform</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let p of cfgPlatforms" type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="activePlatform === p"
+                      (click)="selectProfile(p, activeRole)">{{ p }}</button>
+            </div>
+          </div>
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Role</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let r of cfgRoles" type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="activeRole === r"
+                      (click)="selectProfile(activePlatform, r)">{{ r }}</button>
+            </div>
+          </div>
+
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Theme</label>
             <div class="bp-cfg-swatches-row">
@@ -625,6 +646,17 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   selectHeroAlign(align: 'left' | 'center') {
     this.settingsDraft.heroAlign = align;
     this.configService.update({ heroAlign: align });
+  }
+
+  // ── v1.66an — system-admin profile authoring ──────────────────────
+  // Pick the (platform, role) profile to edit; setActiveProfile re-emits
+  // config$, which reloads settingsDraft via the subscription above.
+  get cfgPlatforms(): readonly string[] { return this.configService.platforms; }
+  get cfgRoles():     readonly string[] { return this.configService.roles; }
+  get activePlatform(): string { return this.configService.activePlatform; }
+  get activeRole():     string { return this.configService.activeRole; }
+  selectProfile(platform: string, role: string) {
+    this.configService.setActiveProfile(platform, role);
   }
 
   /** p0018 — persist all hero-meta + section visibility flags. Fired by

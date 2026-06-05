@@ -17,39 +17,54 @@ const THEME_PRESETS: Record<string, ThemePreset> = {
              contrastSoft: '#F6E6E1', contrast: '#D88A6E', contrastStrong: '#7A3A26' },
 };
 
-const STORAGE_KEY = 'ballpark_config';
+const STORAGE_KEY  = 'ballpark_config';            // legacy single config (migrated)
+const PROFILES_KEY = 'ballpark_config_profiles';   // v1.66an — per (platform, role)
+const ACTIVE_KEY   = 'ballpark_config_active';
+
+// v1.66an — page settings are now a first-class object: a SettingsProfile
+// keyed by (platform, role). The system admin authors any profile via the
+// page-config drawer's Platform + Role selectors. Built as a layered model
+// (today only the role layer is populated); Phase 2 adds a user-override
+// layer + per-setting owner tiers (platform / orgAdmin / user).
+export const CONFIG_PLATFORMS = ['Ballpark', 'Platform'] as const;
+export const CONFIG_ROLES     = ['agent', 'admin', 'supplier'] as const;
+const profileKey = (platform: string, role: string) => `${platform}::${role}`;
+
+const DEFAULT_CONFIG: PlatformConfig = {
+  platformName: 'The Ballpark',
+  tagline: 'Exhibition Costing',
+  projectLabel: 'Event',
+  creditLabel: 'Ball',
+  catalogueLabel: 'Catalogue',
+  feedbackLabel: 'Feedback',
+  homePageLabel: 'Projects',
+  themeName: 'amber',
+  mode: 'system',
+  heroAlign: 'center',
+  // p0023 — hero title source + strip treatment (home / agent).
+  heroTitleMode: 'greeting',
+  heroColor: 'none',
+  showUserName: true,
+  showLocation: true,
+  showOrg: true,
+  showUpcoming: true,
+  showStats: true,
+  // p0018 — dashboard body sections, all visible by default.
+  showQuickActions: true,
+  showCredits: true,
+  showSavedSuppliers: true,
+  showRecentActivity: true,
+};
 
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   static readonly THEME_PRESETS = THEME_PRESETS;
 
-  private config: PlatformConfig = {
-    platformName: 'The Ballpark',
-    tagline: 'Exhibition Costing',
-    projectLabel: 'Event',
-    creditLabel: 'Ball',
-    catalogueLabel: 'Catalogue',
-    feedbackLabel: 'Feedback',
-    homePageLabel: 'Projects',
-    themeName: 'amber',
-    mode: 'system',
-    heroAlign: 'center',
-    // p0023 — hero title source + strip treatment (home / agent).
-    heroTitleMode: 'greeting',
-    heroColor: 'none',
-    showUserName: true,
-    showLocation: true,
-    showOrg: true,
-    showUpcoming: true,
-    showStats: true,
-    // p0018 — dashboard body sections, all visible by default.
-    // (showActiveProjects removed in p0019 — the Active grid moved to
-    // its own /projects page, so the flag had nothing left to gate.)
-    showQuickActions: true,
-    showCredits: true,
-    showSavedSuppliers: true,
-    showRecentActivity: true,
-  };
+  // v1.66an — every (platform, role) profile lives here; `config` always
+  // points at the active one, so all the getters below are unchanged.
+  private profiles: Record<string, PlatformConfig> = {};
+  private activeProfileKey = profileKey('Ballpark', 'agent');
+  private config: PlatformConfig = { ...DEFAULT_CONFIG };
 
   private configSubject = new BehaviorSubject<PlatformConfig>(this.config);
   config$ = this.configSubject.asObservable();
@@ -128,7 +143,28 @@ export class ConfigService {
   }
 
   update(partial: Partial<PlatformConfig>): void {
-    this.config = { ...this.config, ...partial };
+    // v1.66an — writes target the ACTIVE (platform, role) profile.
+    this.profiles[this.activeProfileKey] = { ...this.profiles[this.activeProfileKey], ...partial };
+    this.config = this.profiles[this.activeProfileKey];
+    this.save();
+    this.applyTheme();
+    this.applyMode();
+    this.configSubject.next({ ...this.config });
+  }
+
+  // ── v1.66an — system-admin profile authoring ──────────────────────
+  get platforms(): readonly string[] { return CONFIG_PLATFORMS; }
+  get roles():     readonly string[] { return CONFIG_ROLES; }
+  get activePlatform(): string { return this.activeProfileKey.split('::')[0]; }
+  get activeRole():     string { return this.activeProfileKey.split('::')[1]; }
+
+  /** Switch which (platform, role) profile is active + edited. Re-emits
+      config$ so every surface re-renders from the selected profile. */
+  setActiveProfile(platform: string, role: string): void {
+    const key = profileKey(platform, role);
+    if (!this.profiles[key]) this.profiles[key] = { ...DEFAULT_CONFIG };
+    this.activeProfileKey = key;
+    this.config = this.profiles[key];
     this.save();
     this.applyTheme();
     this.applyMode();
@@ -136,25 +172,46 @@ export class ConfigService {
   }
 
   private load(): void {
+    // 1. Seed every (platform, role) profile from the default.
+    for (const platform of CONFIG_PLATFORMS) {
+      for (const role of CONFIG_ROLES) {
+        this.profiles[profileKey(platform, role)] = { ...DEFAULT_CONFIG };
+      }
+    }
+    // 2. Migrate the legacy single config into Ballpark::agent.
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        this.config = { ...this.config, ...parsed };
+      const legacy = localStorage.getItem(STORAGE_KEY);
+      if (legacy) {
+        const k = profileKey('Ballpark', 'agent');
+        this.profiles[k] = { ...this.profiles[k], ...JSON.parse(legacy) };
       }
     } catch {}
+    // 3. Overlay any stored per-profile settings.
+    try {
+      const stored = localStorage.getItem(PROFILES_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, Partial<PlatformConfig>>;
+        for (const key of Object.keys(parsed)) {
+          this.profiles[key] = { ...(this.profiles[key] || DEFAULT_CONFIG), ...parsed[key] };
+        }
+      }
+    } catch {}
+    // 4. Resolve the active profile.
+    const storedActive = localStorage.getItem(ACTIVE_KEY);
+    if (storedActive && this.profiles[storedActive]) this.activeProfileKey = storedActive;
+    this.config = this.profiles[this.activeProfileKey] || { ...DEFAULT_CONFIG };
 
     // Validate theme — fall back to amber if missing or invalid
     if (!this.config.themeName || !THEME_PRESETS[this.config.themeName]) {
       this.config.themeName = 'amber';
     }
 
-    // Notify subscribers with the loaded (and validated) config
     this.configSubject.next({ ...this.config });
   }
 
   private save(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.config));
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(this.profiles));
+    localStorage.setItem(ACTIVE_KEY, this.activeProfileKey);
   }
 
   applyTheme(): void {
