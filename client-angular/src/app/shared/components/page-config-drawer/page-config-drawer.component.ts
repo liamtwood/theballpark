@@ -42,7 +42,8 @@ import { SidebarModule } from 'primeng/sidebar';
 import { CheckboxModule } from 'primeng/checkbox';
 import { DropdownModule } from 'primeng/dropdown';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, filter } from 'rxjs/operators';
+import { Router, NavigationEnd } from '@angular/router';
 
 import { ConfigService } from '../../../core/services/config.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
@@ -102,7 +103,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
         <div class="bp-cfg-seg bp-pcd-tabs">
           <button type="button" class="bp-cfg-seg-btn"
                   [class.p-highlight]="activeDrawerTab === 'dashboard'"
-                  (click)="activeDrawerTab = 'dashboard'">Dashboard</button>
+                  (click)="activeDrawerTab = 'dashboard'">{{ currentPageName }}</button>
           <button type="button" class="bp-cfg-seg-btn"
                   [class.p-highlight]="activeDrawerTab === 'general'"
                   (click)="activeDrawerTab = 'general'">General</button>
@@ -533,11 +534,32 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'sidenav', label: 'Menu' },
   ];
 
+  /** v1.66as — the page-settings tab is labelled with the current page
+      name (Home / Inbox / Categories …), paired with the global General
+      tab. Derived from the active route's heroTitle (label tokens
+      substituted), falling back to the URL segment. */
+  currentPageName = 'Home';
+
   constructor(
     private configService: ConfigService,
     private configStripSvc: ConfigStripService,
     private cdr: ChangeDetectorRef,
+    private router: Router,
   ) {}
+
+  private updatePageName(): void {
+    let route = this.router.routerState.snapshot.root;
+    while (route.firstChild) route = route.firstChild;
+    let name = (route.data?.['heroTitle'] as string) || '';
+    const ev = this.configService.projectLabel || 'Event';
+    name = name.replace(/\{Events\}/g, ev + 's').replace(/\{Event\}/g, ev);
+    if (!name) {
+      const seg = this.router.url.split('?')[0].split('/').filter(Boolean).pop() || 'home';
+      name = seg === 'home' ? 'Home'
+           : seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    this.currentPageName = name;
+  }
 
   ngOnInit() {
     // Mount-side: tell the service we exist so the top-nav cog appears.
@@ -545,6 +567,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     // — increments here, decrements in ngOnDestroy. hasConfig$ flips
     // true when mountedCount > 0.
     this.configStripSvc.register();
+
+    // v1.66as — keep the page-settings tab label in sync with the route.
+    this.updatePageName();
+    this.router.events
+      .pipe(filter(e => e instanceof NavigationEnd), takeUntil(this.destroy$))
+      .subscribe(() => { this.updatePageName(); this.cdr.markForCheck(); });
 
     // Keep the draft mirrored to the canonical config so changes made
     // elsewhere reflect here without a reload.
