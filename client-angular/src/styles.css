@@ -1387,13 +1387,25 @@ input.bp-cfg-page-label.p-inputtext:focus {
   display: flex;
   align-items: flex-end;
   gap: 28px;   /* v1.66t — flat underline tabs need breathing room */
-  /* v1.66y — full-width gray separator under the whole tab row; the
-     active tab's gradient underline (::after) overlays it on top.
-     v1.66ah — min-height so heros with no tabs still reserve the band
+  /* v1.66ah — min-height so heros with no tabs still reserve the band
      height + show the separator (consistent hero height everywhere). */
-  border-bottom: 1px solid #E5E7EB;
   min-height: 42px;
+  position: relative;
 }
+/* v1.66bb — the separator is now a pseudo-element so its width is
+   controllable (--hero-sep-width, a % general setting). The active tab's
+   gradient underline (::after) overlays it. Anchored to the hero
+   alignment: centred by default, left-anchored on a left-aligned hero. */
+.bp-hero-tabs::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  margin: 0 auto;
+  width: var(--hero-sep-width, 100%);
+  height: 1px;
+  background: #E5E7EB;
+}
+.bp-hero--left .bp-hero-tabs::after { margin: 0; right: auto; }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
    than a row at the bottom of it. On the project Marketplace the

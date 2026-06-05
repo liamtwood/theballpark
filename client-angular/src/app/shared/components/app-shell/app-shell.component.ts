@@ -605,6 +605,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return val;
   }
 
+  @HostBinding('style.--hero-sep-width')
+  get heroSepWidthVar() {
+    const val = `${this.configService.separatorWidth ?? 100}%`;
+    document.documentElement.style.setProperty('--hero-sep-width', val);
+    return val;
+  }
+
   @HostBinding('style.--hero-align-flex')
   get heroAlignFlex() {
     const val = (this.navMode === 'sidenav' || this.effectiveHeroAlign === 'left') ? 'flex-start' : 'center';

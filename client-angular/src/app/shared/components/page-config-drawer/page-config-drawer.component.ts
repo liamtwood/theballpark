@@ -222,6 +222,18 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             </div>
           </div>
 
+          <!-- v1.66bb — separator (tab-band underline) width, % of content. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Separator width</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="range" min="0" max="100" step="5"
+                     [(ngModel)]="settingsDraft.separatorWidth"
+                     (ngModelChange)="saveSeparatorWidth()"
+                     style="flex:1;"/>
+              <span class="bp-pcd-field-label" style="margin:0; min-width:34px; text-align:right;">{{ settingsDraft.separatorWidth }}%</span>
+            </div>
+          </div>
+
           <!-- v1.66ay — Hero align moved to the page tab (it's per-page). -->
 
           <div class="bp-pcd-field">
@@ -476,6 +488,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     // p0023 — hero customisation.
     heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose';
     heroColor: 'theme' | 'none';
+    separatorWidth: number;
     showOrg: boolean;
     showUserName: boolean;
     showLocation: boolean;
@@ -495,6 +508,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     navMode: 'tabs',
     heroTitleMode: 'greeting',
     heroColor: 'none',
+    separatorWidth: 100,
     showOrg: true,
     showUserName: true,
     showLocation: true,
@@ -631,6 +645,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           // p0023 — hero customisation (default greeting / none).
           heroTitleMode: (['org', 'user', 'purpose'].includes(cfg.heroTitleMode as string) ? cfg.heroTitleMode as any : 'greeting'),
           heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
+          separatorWidth: cfg.separatorWidth ?? 100,
           showOrg:       cfg.showOrg       !== false,
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
@@ -703,6 +718,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   selectHeroColor(value: 'theme' | 'none') {
     this.settingsDraft.heroColor = value;
     this.configService.update({ heroColor: value });
+  }
+  saveSeparatorWidth() {
+    this.configService.update({ separatorWidth: this.settingsDraft.separatorWidth });
   }
 
   onThemeChange(theme: string) {

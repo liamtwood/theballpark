@@ -51,6 +51,9 @@ export interface PlatformConfig {
       (--theme-accent), 'none' = calm parchment (--theme-bg, the stripped
       agent look). Default 'none'. */
   heroColor?: 'theme' | 'none';
+  /** v1.66bb — hero separator (tab-band underline) width as a % of the
+      content width. Default 100. General (global) setting. */
+  separatorWidth?: number;
   fontPairing?: string;
   catalogueLabel?: string;
   feedbackLabel?: string;
