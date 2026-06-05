@@ -590,16 +590,23 @@ export class AppShellComponent implements OnInit, OnDestroy {
     }
   ];
 
+  /** v1.66ay — alignment is per-page: a page override (page settings)
+      wins over the global heroAlign. Drives the title, subtitle, pills
+      and the tab band. */
+  get effectiveHeroAlign(): 'left' | 'center' {
+    return this.configService.getPageSetting(this.pageKey).heroAlign || (this.heroAlign as 'left' | 'center');
+  }
+
   @HostBinding('style.--hero-align')
   get heroAlignVar() {
-    const val = this.navMode === 'sidenav' ? 'left' : this.heroAlign;
+    const val = this.navMode === 'sidenav' ? 'left' : this.effectiveHeroAlign;
     document.documentElement.style.setProperty('--hero-align', val);
     return val;
   }
 
   @HostBinding('style.--hero-align-flex')
   get heroAlignFlex() {
-    const val = (this.navMode === 'sidenav' || this.heroAlign === 'left') ? 'flex-start' : 'center';
+    const val = (this.navMode === 'sidenav' || this.effectiveHeroAlign === 'left') ? 'flex-start' : 'center';
     document.documentElement.style.setProperty('--hero-align-flex', val);
     return val;
   }

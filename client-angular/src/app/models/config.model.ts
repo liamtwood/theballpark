@@ -46,7 +46,7 @@ export interface PlatformConfig {
   /** v1.66av — per-page hero overrides, keyed by route path (e.g.
       "/inbox"). Lets each page set its own title mode + subtitle from
       that page's settings tab, overriding the route defaults. */
-  pageSettings?: Record<string, { heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose'; heroSub?: string }>;
+  pageSettings?: Record<string, { heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose'; heroSub?: string; heroAlign?: 'left' | 'center' }>;
   /** p0023 — home / agent hero strip treatment. 'theme' = accent fill
       (--theme-accent), 'none' = calm parchment (--theme-bg, the stripped
       agent look). Default 'none'. */

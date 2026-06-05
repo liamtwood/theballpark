@@ -2191,9 +2191,9 @@ app-top-nav { flex-shrink: 0; }
   stroke: #E11D48 !important;
 }
 
-/* ── CENTER hero tabs ── */
+/* ── hero tabs follow the hero alignment (v1.66ay — was forced center) ── */
 .bp-hero-tabs {
-  justify-content: center !important;
+  justify-content: var(--hero-align-flex, center) !important;
 }
 
 /* ── INBOX CARD STYLE (messages) ── */

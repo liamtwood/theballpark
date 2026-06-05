@@ -134,6 +134,20 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                    placeholder="Describe this page"/>
           </div>
 
+          <!-- v1.66ay — Hero align for THIS page (title / sub / menu). -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Hero align</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let opt of alignOptions"
+                      type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="pageAlign === opt.value"
+                      (click)="onPageAlignChange(opt.value)">
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
           <!-- v1.66au — section-visibility toggles are dashboard-only;
                the other pages don't have these sections. -->
           <ng-container *ngIf="isHomePage">
@@ -208,18 +222,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             </div>
           </div>
 
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Hero align</label>
-            <div class="bp-cfg-seg">
-              <button *ngFor="let opt of alignOptions"
-                      type="button"
-                      class="bp-cfg-seg-btn"
-                      [class.p-highlight]="settingsDraft.heroAlign === opt.value"
-                      (click)="selectHeroAlign(opt.value)">
-                {{ opt.label }}
-              </button>
-            </div>
-          </div>
+          <!-- v1.66ay — Hero align moved to the page tab (it's per-page). -->
 
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Navigation</label>
@@ -552,6 +555,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   routeHeroSub = '';
   pageTitleMode: 'org' | 'user' | 'greeting' | 'purpose' = 'purpose';
   pageSubtitle = '';
+  pageAlign: 'left' | 'center' = 'center';
 
   constructor(
     private configService: ConfigService,
@@ -584,6 +588,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     const ps = this.configService.getPageSetting(this.pageKey);
     this.pageTitleMode = ps.heroTitleMode || (this.isHomePage ? this.settingsDraft.heroTitleMode : 'purpose');
     this.pageSubtitle  = ps.heroSub ?? this.routeHeroSub;
+    this.pageAlign     = ps.heroAlign || (this.settingsDraft.heroAlign === 'left' ? 'left' : 'center');
   }
 
   onPageTitleModeChange(mode: 'org' | 'user' | 'greeting' | 'purpose') {
@@ -592,6 +597,10 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   }
   savePageSubtitle() {
     this.configService.updatePageSetting(this.pageKey, { heroSub: this.pageSubtitle });
+  }
+  onPageAlignChange(align: 'left' | 'center') {
+    this.pageAlign = align;
+    this.configService.updatePageSetting(this.pageKey, { heroAlign: align });
   }
 
   ngOnInit() {
