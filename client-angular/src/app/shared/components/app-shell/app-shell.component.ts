@@ -471,7 +471,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
   /** v1.66ag — org/owner pill content. The org name moved out of the
       hero title into a pill; shown when ConfigService.showOrg is on. */
   get orgPill(): string | null {
-    return this.showOrg && this.orgName ? this.orgName : null;
+    // v1.66aj — the org pill follows the ACTIVE account (persona), like
+    // the user + location pills. Was showing the globally-loaded agency
+    // org (getCurrentOrg) regardless of who's viewing, so a supplier
+    // persona (Ryan / Rocket Food) wrongly read "Woodland Agency".
+    const name = this.personaSvc.active?.orgName || this.orgName;
+    return this.showOrg && name ? name : null;
   }
   get heroSub(): string       { return this.substituteLabels(this.ctx?.heroSub || this.routeHeroSub || this.pageLabel); }
   /** v1.66ag — route/ctx subtitles may use {event} / {events} tokens so a
