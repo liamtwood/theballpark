@@ -160,6 +160,20 @@ export class ConfigService {
 
   /** Switch which (platform, role) profile is active + edited. Re-emits
       config$ so every surface re-renders from the selected profile. */
+  // ── v1.66av — per-page hero overrides (within the active profile) ──
+  getPageSetting(key: string): { heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose'; heroSub?: string } {
+    return this.config.pageSettings?.[key] || {};
+  }
+  updatePageSetting(key: string, partial: { heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose'; heroSub?: string }): void {
+    const profile = this.profiles[this.activeProfileKey];
+    const ps = { ...(profile.pageSettings || {}) };
+    ps[key] = { ...(ps[key] || {}), ...partial };
+    profile.pageSettings = ps;
+    this.config = profile;
+    this.save();
+    this.configSubject.next({ ...this.config });
+  }
+
   setActiveProfile(platform: string, role: string): void {
     const key = profileKey(platform, role);
     if (!this.profiles[key]) this.profiles[key] = { ...DEFAULT_CONFIG };

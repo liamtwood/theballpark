@@ -109,9 +109,9 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                   (click)="activeDrawerTab = 'general'">General</button>
         </div>
 
-        <!-- ── DASHBOARD TAB — customises this page only ── -->
+        <!-- ── PAGE TAB — title + subtitle for THIS page (per-page override) ── -->
         <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'dashboard'">
-          <!-- Title source for the dashboard hero (p0023 heroTitleMode). -->
+          <!-- v1.66av — Title source for THIS page (per-page heroTitleMode). -->
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Title</label>
             <p-dropdown styleClass="bp-pcd-dropdown"
@@ -119,19 +119,19 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                         optionLabel="label"
                         optionValue="value"
                         [appendTo]="'body'"
-                        [(ngModel)]="settingsDraft.heroTitleMode"
-                        (onChange)="onHeroTitleModeChange($event.value)">
+                        [(ngModel)]="pageTitleMode"
+                        (onChange)="onPageTitleModeChange($event.value)">
             </p-dropdown>
           </div>
 
-          <!-- Subtitle — the small-caps eyebrow (writes homePageLabel). -->
+          <!-- v1.66av — Subtitle for THIS page (per-page heroSub override). -->
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Subtitle</label>
             <input pInputText
                    class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.homePageLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Projects"/>
+                   [(ngModel)]="pageSubtitle"
+                   (blur)="savePageSubtitle()"
+                   placeholder="Describe this page"/>
           </div>
 
           <!-- v1.66au — section-visibility toggles are dashboard-only;
@@ -546,6 +546,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   /** v1.66au — the dashboard section toggles (Upcoming / Stats / …) only
       apply to the home page, so they're gated to it. */
   isHomePage = true;
+  /** v1.66av — per-page hero draft. The Title + Subtitle edit THIS page's
+      override (keyed by pageKey), defaulting to the route's values. */
+  pageKey = '/home';
+  routeHeroSub = '';
+  pageTitleMode: 'org' | 'user' | 'greeting' | 'purpose' = 'purpose';
+  pageSubtitle = '';
 
   constructor(
     private configService: ConfigService,
@@ -555,18 +561,37 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   ) {}
 
   private updatePageName(): void {
+    this.pageKey = this.router.url.split('?')[0];
+    this.isHomePage = this.pageKey === '/home';
+    const ev = this.configService.projectLabel || 'Event';
+    const sub = (s: string) => (s || '')
+      .replace(/\{Events\}/g, ev + 's').replace(/\{Event\}/g, ev)
+      .replace(/\{events\}/g, ev.toLowerCase() + 's').replace(/\{event\}/g, ev.toLowerCase());
+
     let route = this.router.routerState.snapshot.root;
     while (route.firstChild) route = route.firstChild;
-    let name = (route.data?.['heroTitle'] as string) || '';
-    const ev = this.configService.projectLabel || 'Event';
-    name = name.replace(/\{Events\}/g, ev + 's').replace(/\{Event\}/g, ev);
+
+    let name = sub(route.data?.['heroTitle'] as string);
     if (!name) {
-      const seg = this.router.url.split('?')[0].split('/').filter(Boolean).pop() || 'home';
+      const seg = this.pageKey.split('/').filter(Boolean).pop() || 'home';
       name = seg === 'home' ? 'Home'
            : seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
     this.currentPageName = name;
-    this.isHomePage = this.router.url.split('?')[0] === '/home';
+    this.routeHeroSub = sub(route.data?.['heroSub'] as string);
+
+    // Load this page's override (→ route default).
+    const ps = this.configService.getPageSetting(this.pageKey);
+    this.pageTitleMode = ps.heroTitleMode || (this.isHomePage ? this.settingsDraft.heroTitleMode : 'purpose');
+    this.pageSubtitle  = ps.heroSub ?? this.routeHeroSub;
+  }
+
+  onPageTitleModeChange(mode: 'org' | 'user' | 'greeting' | 'purpose') {
+    this.pageTitleMode = mode;
+    this.configService.updatePageSetting(this.pageKey, { heroTitleMode: mode });
+  }
+  savePageSubtitle() {
+    this.configService.updatePageSetting(this.pageKey, { heroSub: this.pageSubtitle });
   }
 
   ngOnInit() {
@@ -609,6 +634,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           showSavedSuppliers: cfg.showSavedSuppliers !== false,
           showRecentActivity: cfg.showRecentActivity !== false,
         };
+        this.updatePageName();   // v1.66av — reload the per-page draft on config/profile change
         this.cdr.markForCheck();
       });
 

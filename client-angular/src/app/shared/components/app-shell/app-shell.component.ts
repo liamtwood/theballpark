@@ -415,6 +415,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       routes. */
   routeHeroTitle = '';
   routeHeroSub   = '';
+  pageKey        = '';   // v1.66av — route path, key for per-page hero overrides
   hideHero     = false;
   /* v1.66ag — heroVariant (calm/none) removed. There is ONE hero object;
      the global ConfigService.heroColor decides accent vs stripped. Add a
@@ -430,20 +431,27 @@ export class AppShellComponent implements OnInit, OnDestroy {
       everywhere else it's the page-pushed heroTitle or the org / platform
       fallback. */
   get heroTitle(): string {
-    if (this.ctx?.useConfiguredTitle) return this.configuredHeroTitle();
-    return this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName));
+    return this.resolveTitle(this.effectiveTitleMode);
   }
-  private configuredHeroTitle(): string {
-    if (this.heroTitleMode === 'org')  return this.orgName || this.platformName;
-    if (this.heroTitleMode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
-    // v1.66au — 'purpose' = the page's own name (route heroTitle), e.g. "Home".
-    if (this.heroTitleMode === 'purpose') {
-      return this.substituteLabels(this.routeHeroTitle) || (this.isBallparkRoute ? this.platformName : this.orgName);
+  /** v1.66av — a per-page override (page settings) wins; else the
+      dashboard's configured mode (useConfiguredTitle); else 'purpose'
+      (the page's own name). */
+  get effectiveTitleMode(): 'org' | 'user' | 'greeting' | 'purpose' {
+    const override = this.configService.getPageSetting(this.pageKey).heroTitleMode;
+    if (override) return override;
+    if (this.ctx?.useConfiguredTitle) return this.heroTitleMode;
+    return 'purpose';
+  }
+  private resolveTitle(mode: 'org' | 'user' | 'greeting' | 'purpose'): string {
+    if (mode === 'org')  return this.orgName || this.platformName;
+    if (mode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
+    if (mode === 'greeting') {
+      const name  = this.personaSvc.active?.name?.trim() || '';
+      const first = name.split(/\s+/)[0] || 'there';
+      return `Welcome back, ${first}`;
     }
-    // greeting
-    const name  = this.personaSvc.active?.name?.trim() || '';
-    const first = name.split(/\s+/)[0] || 'there';
-    return `Welcome back, ${first}`;
+    // purpose — the page's own name (route heroTitle)
+    return this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName));
   }
   /** p0032 — Hero color is now a GLOBAL ConfigService setting applied to
       every hero: 'none' = stripped parchment, 'theme' = accent fill. A
@@ -462,7 +470,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
     const name = this.personaSvc.active?.orgName || this.orgName;
     return this.showOrg && name ? name : null;
   }
-  get heroSub(): string       { return this.substituteLabels(this.ctx?.heroSub || this.routeHeroSub || this.pageLabel); }
+  get heroSub(): string {
+    const override = this.configService.getPageSetting(this.pageKey).heroSub;
+    return this.substituteLabels(override || this.ctx?.heroSub || this.routeHeroSub || this.pageLabel);
+  }
   /** v1.66ag — route/ctx subtitles may use {event} / {events} tokens so a
       page subtitle tracks the configurable Events label (projectLabel). */
   private substituteLabels(s: string): string {
@@ -752,6 +763,8 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private updateFromRoute() {
     this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
+    // v1.66av — page key for per-page hero overrides (route path only).
+    this.pageKey = this.router.url.split('?')[0];
     if (!this.router.url.includes('/projects/')) {
       this.shellCtx.reset();
     }
