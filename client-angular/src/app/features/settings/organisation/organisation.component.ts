@@ -38,73 +38,48 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
             <h3 class="bp-card-title">Organisation</h3>
           </div>
 
-          <!-- VIEW -->
-          <div *ngIf="!editingOrg" class="bp-field-grid-2">
+          <!-- Zero-shift fields: one input per field. View = transparent
+               (reads as plain text), edit = grey fill + border. Same
+               metrics in both, so the value never moves or resizes. -->
+          <div class="bp-field-grid-2">
             <div class="bp-field">
               <label class="bp-field-label">Organisation name</label>
-              <span class="bp-field-value">{{ form.name || '—' }}</span>
+              <input pInputText [(ngModel)]="form.name" [readonly]="!editingOrg"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">City</label>
-              <span class="bp-field-value">{{ form.city || '—' }}</span>
+              <input pInputText [(ngModel)]="form.city" [readonly]="!editingOrg"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <div class="bp-field bp-field-s2">
               <label class="bp-field-label">Address</label>
-              <span class="bp-field-value">{{ form.address || '—' }}</span>
+              <input pInputText [(ngModel)]="form.address" [readonly]="!editingOrg"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Email</label>
-              <span class="bp-field-value">{{ form.email || '—' }}</span>
+              <input pInputText [(ngModel)]="form.email" [readonly]="!editingOrg" type="email"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Phone</label>
-              <span class="bp-field-value">{{ form.phone || '—' }}</span>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Project reference prefix</label>
-              <span class="bp-field-value">{{ form.ref_prefix || '—' }}</span>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Projects numbered so far</label>
-              <span class="bp-field-value is-muted">{{ refCounter || 0 }}</span>
-            </div>
-          </div>
-
-          <!-- EDIT -->
-          <div *ngIf="editingOrg" class="bp-field-grid-2">
-            <div class="bp-field">
-              <label class="bp-field-label">Organisation name</label>
-              <input pInputText [(ngModel)]="form.name" class="w-full bp-input-soft"/>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">City</label>
-              <input pInputText [(ngModel)]="form.city" class="w-full bp-input-soft"/>
-            </div>
-            <div class="bp-field bp-field-s2">
-              <label class="bp-field-label">Address</label>
-              <input pInputText [(ngModel)]="form.address" class="w-full bp-input-soft"/>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Email</label>
-              <input pInputText [(ngModel)]="form.email" class="w-full bp-input-soft" type="email"/>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Phone</label>
-              <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-soft" type="tel"/>
+              <input pInputText [(ngModel)]="form.phone" [readonly]="!editingOrg" type="tel"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <!-- v1.39: ref prefix drives the auto-generated project ref
-                 ({prefix}-001 …); the counter is server-driven, shown read-only. -->
+                 ({prefix}-001 …); the counter is server-driven, read-only. -->
             <div class="bp-field">
               <label class="bp-field-label">Project reference prefix</label>
-              <input pInputText [(ngModel)]="form.ref_prefix"
+              <input pInputText [(ngModel)]="form.ref_prefix" [readonly]="!editingOrg"
                      maxlength="4"
                      (ngModelChange)="form.ref_prefix = ($event || '').toUpperCase()"
-                     placeholder="e.g. WA"
-                     class="w-full bp-input-soft"/>
+                     [placeholder]="editingOrg ? 'e.g. WA' : ''"
+                     class="w-full bp-fld" [class.is-edit]="editingOrg"/>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Projects numbered so far</label>
-              <span class="bp-field-value is-muted">{{ refCounter || 0 }}</span>
+              <input pInputText [value]="refCounter || 0" readonly class="w-full bp-fld"/>
             </div>
           </div>
 
@@ -127,35 +102,22 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
             <h3 class="bp-card-title">Financial defaults</h3>
           </div>
 
-          <!-- VIEW -->
-          <div *ngIf="!editingFin" class="bp-field-grid-3">
+          <!-- Zero-shift fields (same single-input pattern as above). -->
+          <div class="bp-field-grid-3">
             <div class="bp-field">
               <label class="bp-field-label">VAT</label>
-              <span class="bp-field-value">{{ form.vat }}%</span>
+              <p-inputNumber [(ngModel)]="form.vat" suffix="%" [readonly]="!editingFin"
+                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Margin</label>
-              <span class="bp-field-value">{{ form.margin }}%</span>
+              <p-inputNumber [(ngModel)]="form.margin" suffix="%" [readonly]="!editingFin"
+                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Contingency</label>
-              <span class="bp-field-value">{{ form.contingency }}%</span>
-            </div>
-          </div>
-
-          <!-- EDIT -->
-          <div *ngIf="editingFin" class="bp-field-grid-3">
-            <div class="bp-field">
-              <label class="bp-field-label">VAT</label>
-              <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Margin</label>
-              <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
-            </div>
-            <div class="bp-field">
-              <label class="bp-field-label">Contingency</label>
-              <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
+              <p-inputNumber [(ngModel)]="form.contingency" suffix="%" [readonly]="!editingFin"
+                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
             </div>
           </div>
 

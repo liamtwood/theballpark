@@ -1730,10 +1730,42 @@ input.bp-cfg-page-label.p-inputtext:focus {
    until it opts in. */
 .bp-field         { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bp-field-s2      { grid-column: span 2; }
-.bp-field .bp-field-label { margin-bottom: 0; }
-/* read-mode value — plain text, replaces the readonly input box */
-.bp-field-value   { font-size: 15px; font-weight: 400; color: var(--color-text-primary); min-height: 22px; }
+.bp-field .bp-field-label { margin-bottom: 0; padding-left: 10px; }
+/* read-mode value — plain text (used by read-only summary cards) */
+.bp-field-value   { font-size: 15px; font-weight: 400; color: var(--color-text-primary); min-height: 22px; padding-left: 10px; }
 .bp-field-value.is-muted { color: var(--color-text-secondary); }
+
+/* v1.66ac — ZERO-SHIFT edit field. One <input> serves both view and
+   edit with identical metrics (height / padding / font); only the fill
+   + border toggle on .is-edit, so the value text never moves or resizes
+   when you click Edit. Transitions off — no morphing. */
+.bp-fld.p-inputtext,
+.bp-fld .p-inputtext,
+input.bp-fld {
+  width: 100%;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  height: 38px !important;
+  font-size: 15px !important;
+  color: var(--color-text-primary) !important;
+  padding: 0 10px !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+input.bp-fld:not(.is-edit),
+.bp-fld:not(.is-edit) input { cursor: default !important; }
+.bp-fld.is-edit.p-inputtext,
+.bp-fld.is-edit .p-inputtext,
+input.bp-fld.is-edit {
+  background: var(--card-soft-input) !important;
+  border-color: var(--color-border) !important;
+}
+input.bp-fld.is-edit:focus,
+.bp-fld.is-edit .p-inputtext:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px rgba(236,72,153,0.10) !important;
+}
 
 /* white surface card */
 .bp-card {
