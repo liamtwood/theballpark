@@ -101,6 +101,13 @@
   --radius-pill: 999px;
   --radius-input: 6px;
 
+  /* v1.66t — Profile/account "light-card" design vocabulary. The
+     gradient accent (pink→green) is the ONLY strong colour in the new
+     language; everything else is light/neutral. Reserved for primary
+     buttons, badges, the avatar and usage cards. */
+  --grad-accent: linear-gradient(135deg, #EC4899 0%, #10B981 100%);
+  --card-soft-input: #F6F7F9;   /* her grey-filled edit input */
+
   /* v1.24: positive-state tokens. STANDARD pairs --color-danger
      (errors / over-budget / destructive) — use whenever the UI
      needs to signal a positive completed state (eg. "All categories
@@ -1717,6 +1724,69 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* ── FIELD LAYOUT ── */
 .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+/* ── v1.66t — Profile/account "light-card" vocabulary ──────────────
+   New shared classes for the redesigned Settings/Profile surface.
+   Only Settings/Organisation consumes these today; other pages adopt
+   them deliberately as the new standard rolls out. Nothing else moves
+   until it opts in. */
+.bp-field         { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bp-field-s2      { grid-column: span 2; }
+.bp-field .bp-field-label { margin-bottom: 0; }
+/* read-mode value — plain text, replaces the readonly input box */
+.bp-field-value   { font-size: 15px; font-weight: 400; color: var(--color-text-primary); min-height: 22px; }
+.bp-field-value.is-muted { color: var(--color-text-secondary); }
+
+/* white surface card */
+.bp-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 16px rgba(16,24,40,0.04);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+}
+.bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.bp-card-title { font-family: var(--font-display); font-size: 21px; font-weight: 500; color: var(--color-text-primary); margin: 0; }
+.bp-card-actions { display: flex; align-items: center; gap: 10px; }
+
+/* her soft grey-filled edit input (view→edit happens behind an Edit
+   button, so a box appearing on edit is an intentional mode change) */
+.bp-input-soft.p-inputtext,
+input.bp-input-soft {
+  background: var(--card-soft-input) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  font-size: 15px !important;
+  color: var(--color-text-primary) !important;
+  padding: 0 14px !important;
+}
+.bp-input-soft.p-inputtext:enabled:focus,
+input.bp-input-soft:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px rgba(236,72,153,0.10) !important;
+}
+.bp-input-soft.p-inputnumber .p-inputtext {
+  background: var(--card-soft-input) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  font-size: 15px !important;
+}
+
+/* pill buttons */
+.bp-btn-outline, .bp-btn-grad {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 18px; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid transparent; transition: filter .15s, background .15s;
+}
+.bp-btn-outline { background: #fff; border-color: var(--color-border); color: var(--color-text-primary); }
+.bp-btn-outline:hover { background: var(--card-soft-input); }
+.bp-btn-grad { background: var(--grad-accent); color: #fff; font-weight: 600; }
+.bp-btn-grad:hover { filter: brightness(1.05); }
+.bp-btn-grad:disabled { opacity: .6; cursor: default; filter: none; }
 
 /* ── FIELD LABELS & VALUES ── */
 .bp-field-label {

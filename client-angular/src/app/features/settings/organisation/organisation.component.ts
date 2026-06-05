@@ -11,7 +11,6 @@ import { OrgService } from '../../../core/services/org.service';
 import { PersonaService } from '../../../core/services/persona.service';
 import { Org } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
 
 @Component({
   selector: 'app-organisation',
@@ -20,7 +19,7 @@ import { UpdateMeComponent } from '../../../shared/components/update-me/update-m
     CommonModule, FormsModule,
     LucideAngularModule,
     ButtonModule, InputTextModule, InputNumberModule, ToastModule,
-    LoadingSpinnerComponent, UpdateMeComponent
+    LoadingSpinnerComponent
   ],
   providers: [MessageService],
   template: `
@@ -33,168 +32,138 @@ import { UpdateMeComponent } from '../../../shared/components/update-me/update-m
              <h2 page header was removed, so the app-page-header debt
              marker is resolved. -->
 
-        <!-- ORGANISATION DETAILS -->
-        <app-update-me reason="app-edit-section" note="has inline edit pencil"></app-update-me>
-        <div class="bp-section">
-          <div class="bp-section-header">
-            <span class="bp-section-title">ORGANISATION DETAILS</span>
-            <div class="bp-section-actions">
-              <button *ngIf="!editingOrg" class="bp-icon-btn" (click)="startEdit('org')" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+        <!-- ORGANISATION card (v1.66t — light-card standard) -->
+        <div class="bp-card">
+          <div class="bp-card-head">
+            <h3 class="bp-card-title">Organisation</h3>
+            <button *ngIf="!editingOrg" class="bp-btn-outline" (click)="startEdit('org')">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit organisation
+            </button>
+            <div *ngIf="editingOrg" class="bp-card-actions">
+              <button class="bp-btn-outline" (click)="cancelEdit('org')">Cancel</button>
+              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
+                <i class="pi pi-check" style="font-size:12px"></i> Save changes
               </button>
-              <ng-container *ngIf="editingOrg">
-                <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
-                  <i class="pi pi-check"></i>
-                </button>
-                <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('org')" title="Cancel">
-                  <i class="pi pi-times"></i>
-                </button>
-              </ng-container>
             </div>
           </div>
 
-          <ng-container *ngIf="!editingOrg">
-            <div class="bp-field-grid-2">
-              <div>
-                <label class="bp-field-label">Organisation name</label>
-                <input pInputText [value]="form.name || '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">City</label>
-                <input pInputText [value]="form.city || '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
+          <!-- VIEW -->
+          <div *ngIf="!editingOrg" class="bp-field-grid-2">
+            <div class="bp-field">
+              <label class="bp-field-label">Organisation name</label>
+              <span class="bp-field-value">{{ form.name || '—' }}</span>
             </div>
-            <div class="mt-4">
+            <div class="bp-field">
+              <label class="bp-field-label">City</label>
+              <span class="bp-field-value">{{ form.city || '—' }}</span>
+            </div>
+            <div class="bp-field bp-field-s2">
               <label class="bp-field-label">Address</label>
-              <input pInputText [value]="form.address || '—'" class="w-full bp-field-readonly" readonly/>
+              <span class="bp-field-value">{{ form.address || '—' }}</span>
             </div>
-            <div class="bp-field-grid-2 mt-4">
-              <div>
-                <label class="bp-field-label">Email</label>
-                <input pInputText [value]="form.email || '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Phone</label>
-                <input pInputText [value]="form.phone || '—'" class="w-full bp-field-readonly" readonly/>
-              </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Email</label>
+              <span class="bp-field-value">{{ form.email || '—' }}</span>
             </div>
-            <!-- v1.39: project reference prefix — drives auto-generated
-                 project ref ({prefix}-001, {prefix}-002, …). Counter is
-                 displayed read-only so owners can see how many projects
-                 have been numbered against this prefix. -->
-            <div class="bp-field-grid-2 mt-4">
-              <div>
-                <label class="bp-field-label">Project reference prefix</label>
-                <input pInputText [value]="form.ref_prefix || '—'"
-                       class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Projects numbered so far</label>
-                <input pInputText [value]="(refCounter || 0).toString()"
-                       class="w-full bp-field-readonly" readonly/>
-              </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Phone</label>
+              <span class="bp-field-value">{{ form.phone || '—' }}</span>
             </div>
-          </ng-container>
+            <div class="bp-field">
+              <label class="bp-field-label">Project reference prefix</label>
+              <span class="bp-field-value">{{ form.ref_prefix || '—' }}</span>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Projects numbered so far</label>
+              <span class="bp-field-value is-muted">{{ refCounter || 0 }}</span>
+            </div>
+          </div>
 
-          <ng-container *ngIf="editingOrg">
-            <div class="bp-field-grid-2">
-              <div>
-                <label class="bp-field-label">Organisation name</label>
-                <input pInputText [(ngModel)]="form.name" class="w-full bp-input-edit"/>
-              </div>
-              <div>
-                <label class="bp-field-label">City</label>
-                <input pInputText [(ngModel)]="form.city" class="w-full bp-input-edit"/>
-              </div>
+          <!-- EDIT -->
+          <div *ngIf="editingOrg" class="bp-field-grid-2">
+            <div class="bp-field">
+              <label class="bp-field-label">Organisation name</label>
+              <input pInputText [(ngModel)]="form.name" class="w-full bp-input-soft"/>
             </div>
-            <div class="mt-4">
+            <div class="bp-field">
+              <label class="bp-field-label">City</label>
+              <input pInputText [(ngModel)]="form.city" class="w-full bp-input-soft"/>
+            </div>
+            <div class="bp-field bp-field-s2">
               <label class="bp-field-label">Address</label>
-              <input pInputText [(ngModel)]="form.address" class="w-full bp-input-edit"/>
+              <input pInputText [(ngModel)]="form.address" class="w-full bp-input-soft"/>
             </div>
-            <div class="bp-field-grid-2 mt-4">
-              <div>
-                <label class="bp-field-label">Email</label>
-                <input pInputText [(ngModel)]="form.email" class="w-full bp-input-edit" type="email"/>
-              </div>
-              <div>
-                <label class="bp-field-label">Phone</label>
-                <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-edit" type="tel"/>
-              </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Email</label>
+              <input pInputText [(ngModel)]="form.email" class="w-full bp-input-soft" type="email"/>
             </div>
-            <div class="bp-field-grid-2 mt-4">
-              <div>
-                <label class="bp-field-label">
-                  Project reference prefix
-                  <span class="bp-help">2-4 letters, uppercase. Used on every project number — e.g. WA-014.</span>
-                </label>
-                <input pInputText [(ngModel)]="form.ref_prefix"
-                       maxlength="4"
-                       (ngModelChange)="form.ref_prefix = ($event || '').toUpperCase()"
-                       placeholder="e.g. WA"
-                       class="w-full bp-input-edit"/>
-              </div>
-              <div>
-                <label class="bp-field-label">Projects numbered so far</label>
-                <input pInputText [value]="(refCounter || 0).toString()"
-                       class="w-full bp-field-readonly" readonly/>
-              </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Phone</label>
+              <input pInputText [(ngModel)]="form.phone" class="w-full bp-input-soft" type="tel"/>
             </div>
-          </ng-container>
+            <!-- v1.39: ref prefix drives the auto-generated project ref
+                 ({prefix}-001 …); the counter is server-driven, shown read-only. -->
+            <div class="bp-field">
+              <label class="bp-field-label">Project reference prefix</label>
+              <input pInputText [(ngModel)]="form.ref_prefix"
+                     maxlength="4"
+                     (ngModelChange)="form.ref_prefix = ($event || '').toUpperCase()"
+                     placeholder="e.g. WA"
+                     class="w-full bp-input-soft"/>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Projects numbered so far</label>
+              <span class="bp-field-value is-muted">{{ refCounter || 0 }}</span>
+            </div>
+          </div>
         </div>
 
-        <!-- FINANCIAL DEFAULTS -->
-        <app-update-me reason="app-edit-section" note="has inline edit pencil"></app-update-me>
-        <div class="bp-section">
-          <div class="bp-section-header">
-            <span class="bp-section-title">FINANCIAL DEFAULTS</span>
-            <div class="bp-section-actions">
-              <button *ngIf="!editingFin" class="bp-icon-btn" (click)="startEdit('fin')" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
+        <!-- FINANCIAL DEFAULTS card (v1.66t) -->
+        <div class="bp-card">
+          <div class="bp-card-head">
+            <h3 class="bp-card-title">Financial defaults</h3>
+            <button *ngIf="!editingFin" class="bp-btn-outline" (click)="startEdit('fin')">
+              <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit defaults
+            </button>
+            <div *ngIf="editingFin" class="bp-card-actions">
+              <button class="bp-btn-outline" (click)="cancelEdit('fin')">Cancel</button>
+              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
+                <i class="pi pi-check" style="font-size:12px"></i> Save changes
               </button>
-              <ng-container *ngIf="editingFin">
-                <button class="bp-icon-btn bp-icon-save" (click)="save()" [disabled]="saving" title="Save">
-                  <i class="pi pi-check"></i>
-                </button>
-                <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('fin')" title="Cancel">
-                  <i class="pi pi-times"></i>
-                </button>
-              </ng-container>
             </div>
           </div>
 
-          <ng-container *ngIf="!editingFin">
-            <div class="bp-field-grid-3">
-              <div>
-                <label class="bp-field-label">VAT</label>
-                <input pInputText [value]="form.vat + '%'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Margin</label>
-                <input pInputText [value]="form.margin + '%'" class="w-full bp-field-readonly" readonly/>
-              </div>
-              <div>
-                <label class="bp-field-label">Contingency</label>
-                <input pInputText [value]="form.contingency + '%'" class="w-full bp-field-readonly" readonly/>
-              </div>
+          <!-- VIEW -->
+          <div *ngIf="!editingFin" class="bp-field-grid-3">
+            <div class="bp-field">
+              <label class="bp-field-label">VAT</label>
+              <span class="bp-field-value">{{ form.vat }}%</span>
             </div>
-          </ng-container>
+            <div class="bp-field">
+              <label class="bp-field-label">Margin</label>
+              <span class="bp-field-value">{{ form.margin }}%</span>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Contingency</label>
+              <span class="bp-field-value">{{ form.contingency }}%</span>
+            </div>
+          </div>
 
-          <ng-container *ngIf="editingFin">
-            <div class="bp-field-grid-3">
-              <div>
-                <label class="bp-field-label">VAT</label>
-                <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
-              </div>
-              <div>
-                <label class="bp-field-label">Margin</label>
-                <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
-              </div>
-              <div>
-                <label class="bp-field-label">Contingency</label>
-                <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-edit"></p-inputNumber>
-              </div>
+          <!-- EDIT -->
+          <div *ngIf="editingFin" class="bp-field-grid-3">
+            <div class="bp-field">
+              <label class="bp-field-label">VAT</label>
+              <p-inputNumber [(ngModel)]="form.vat" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
             </div>
-          </ng-container>
+            <div class="bp-field">
+              <label class="bp-field-label">Margin</label>
+              <p-inputNumber [(ngModel)]="form.margin" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
+            </div>
+            <div class="bp-field">
+              <label class="bp-field-label">Contingency</label>
+              <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -202,17 +171,10 @@ import { UpdateMeComponent } from '../../../shared/components/update-me/update-m
 
     <p-toast></p-toast>
   `,
-  // No component-specific styles — all shared CSS is in styles.css
-  // Exception: bp-page-divider is local to this component
-  styles: [`
-    .bp-page-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 0 0 32px; }
-    .bp-help {
-      display: block;
-      font-size: 10.5px; font-weight: 400;
-      color: var(--color-text-muted);
-      margin-top: 2px;
-    }
-  `]
+  // v1.66t — all chrome now uses the shared light-card vocabulary
+  // (.bp-card / .bp-field / .bp-field-value / .bp-input-soft / pill
+  // buttons) defined in styles.css. No component-specific styles.
+  styles: [``]
 })
 export class OrganisationComponent implements OnInit {
   org: Org | null = null;
