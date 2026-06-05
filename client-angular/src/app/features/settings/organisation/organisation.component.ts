@@ -36,15 +36,6 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
         <div class="bp-card">
           <div class="bp-card-head">
             <h3 class="bp-card-title">Organisation</h3>
-            <button *ngIf="!editingOrg" class="bp-btn-outline" (click)="startEdit('org')">
-              <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit organisation
-            </button>
-            <div *ngIf="editingOrg" class="bp-card-actions">
-              <button class="bp-btn-outline" (click)="cancelEdit('org')">Cancel</button>
-              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
-                <i class="pi pi-check" style="font-size:12px"></i> Save changes
-              </button>
-            </div>
           </div>
 
           <!-- VIEW -->
@@ -116,21 +107,24 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
               <span class="bp-field-value is-muted">{{ refCounter || 0 }}</span>
             </div>
           </div>
+
+          <div class="bp-card-foot">
+            <button *ngIf="!editingOrg" class="bp-btn-outline" (click)="startEdit('org')">
+              <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit organisation
+            </button>
+            <div *ngIf="editingOrg" class="bp-card-actions">
+              <button class="bp-btn-outline" (click)="cancelEdit('org')">Cancel</button>
+              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
+                <i class="pi pi-check" style="font-size:12px"></i> Save changes
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- FINANCIAL DEFAULTS card (v1.66t) -->
         <div class="bp-card">
           <div class="bp-card-head">
             <h3 class="bp-card-title">Financial defaults</h3>
-            <button *ngIf="!editingFin" class="bp-btn-outline" (click)="startEdit('fin')">
-              <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit defaults
-            </button>
-            <div *ngIf="editingFin" class="bp-card-actions">
-              <button class="bp-btn-outline" (click)="cancelEdit('fin')">Cancel</button>
-              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
-                <i class="pi pi-check" style="font-size:12px"></i> Save changes
-              </button>
-            </div>
           </div>
 
           <!-- VIEW -->
@@ -162,6 +156,18 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
             <div class="bp-field">
               <label class="bp-field-label">Contingency</label>
               <p-inputNumber [(ngModel)]="form.contingency" suffix="%" styleClass="w-full bp-input-soft"></p-inputNumber>
+            </div>
+          </div>
+
+          <div class="bp-card-foot">
+            <button *ngIf="!editingFin" class="bp-btn-outline" (click)="startEdit('fin')">
+              <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit defaults
+            </button>
+            <div *ngIf="editingFin" class="bp-card-actions">
+              <button class="bp-btn-outline" (click)="cancelEdit('fin')">Cancel</button>
+              <button class="bp-btn-grad" (click)="save()" [disabled]="saving">
+                <i class="pi pi-check" style="font-size:12px"></i> Save changes
+              </button>
             </div>
           </div>
         </div>

@@ -1741,9 +1741,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
   padding: 28px 32px;
   margin-bottom: 20px;
 }
-.bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-.bp-card-title { font-family: var(--font-display); font-size: 21px; font-weight: 500; color: var(--color-text-primary); margin: 0; }
+.bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.bp-card-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }
 .bp-card-actions { display: flex; align-items: center; gap: 10px; }
+/* v1.66x — card action row, bottom-left (her mock places Edit / Save
+   under the fields, not in the header) */
+.bp-card-foot  { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
 
 /* her soft grey-filled edit input (view→edit happens behind an Edit
    button, so a box appearing on edit is an intentional mode change) */
