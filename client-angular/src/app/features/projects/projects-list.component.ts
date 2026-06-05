@@ -396,11 +396,8 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     // surface, so no useConfiguredTitle).
     // Eyebrow = the Events label (projectLabel), pluralised + uppercased:
     // "EVENTS" / "PROJECTS" / "SHOWS" — follows whatever the org renamed it to.
-    this.shellCtx.set({
-      heroSub: ((this.configService.projectLabel || 'Project') + 's').toUpperCase(),
-      pills: [],
-      tabs: [],
-    });
+    // v1.66ag — hero (title "Projects" + subtitle) comes from route data
+    // now; the page no longer pushes its own hero.
   }
 
   loadProjects() {

@@ -46,7 +46,6 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--calm]="heroIsCalm"
          [class.bp-hero--none]="heroIsNone">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
@@ -85,7 +84,10 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
            Location pill: click → /settings.
            Upcoming pill (v1.23): renders when ctx.upcomingPill is set
            AND ConfigService.showUpcoming is true — see ngOnInit. -->
-      <div *ngIf="heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
+      <div *ngIf="orgPill || heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
+        <!-- v1.66ag — org/owner pill. The org name lives here now (not in
+             the title); shown when ConfigService.showOrg is on. -->
+        <span *ngIf="orgPill" class="bp-hero-tag-span bp-hero-org-pill">{{ orgPill }}</span>
         <ng-container *ngFor="let pill of heroPills">
           <!-- Location pill -->
           <button *ngIf="isLocationPill(pill)"
@@ -429,11 +431,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
   routeHeroTitle = '';
   routeHeroSub   = '';
   hideHero     = false;
-  /** v1.65dh — route-data flag for a calm, non-Bold hero treatment
-      (used by the dashboard + settings surfaces per p0013-followup).
-      'calm' = light parchment fill, no orbs/grain even in Bold mode,
-      calm-underline tabs. Default = the existing Bold-aware hero. */
-  heroVariant: 'default' | 'calm' | 'none' = 'default';
+  /* v1.66ag — heroVariant (calm/none) removed. There is ONE hero object;
+     the global ConfigService.heroColor decides accent vs stripped. Add a
+     variant explicitly here only if a future surface truly needs one. */
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
@@ -461,12 +461,21 @@ export class AppShellComponent implements OnInit, OnDestroy {
       route may still force the stripped treatment via heroVariant='none'
       (e.g. auth pages); the global 'none' no longer fights it. */
   get heroIsNone(): boolean {
-    return this.heroColor === 'none' || this.heroVariant === 'none';
+    return this.heroColor === 'none';
   }
-  get heroIsCalm(): boolean {
-    return this.heroVariant === 'calm';
+  /** v1.66ag — org/owner pill content. The org name moved out of the
+      hero title into a pill; shown when ConfigService.showOrg is on. */
+  get orgPill(): string | null {
+    return this.showOrg && this.orgName ? this.orgName : null;
   }
-  get heroSub(): string       { return this.ctx?.heroSub   || this.routeHeroSub || this.pageLabel; }
+  get heroSub(): string       { return this.substituteLabels(this.ctx?.heroSub || this.routeHeroSub || this.pageLabel); }
+  /** v1.66ag — route/ctx subtitles may use {event} / {events} tokens so a
+      page subtitle tracks the configurable Events label (projectLabel). */
+  private substituteLabels(s: string): string {
+    if (!s) return s;
+    const ev = (this.configService.projectLabel || 'event').toLowerCase();
+    return s.replace(/\{events\}/gi, ev + 's').replace(/\{event\}/gi, ev);
+  }
   /** v1.66ad — a page-pushed / route subtitle is a real sentence (render
       sentence-case); a bare pageLabel is the legacy uppercase eyebrow. */
   get heroSubIsSentence(): boolean { return !!(this.ctx?.heroSub || this.routeHeroSub); }
@@ -543,6 +552,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   heroColor: 'theme' | 'none' = 'none';
   showUserName = true;
   showLocation = true;
+  showOrg      = true;   // v1.66ag — org/owner pill toggle (global)
   showUpcoming = true;
   showStats    = true;
   creditLabel  = 'Ball';
@@ -720,6 +730,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.navMode      = config?.navMode      || 'tabs';
     this.showUserName = config?.showUserName !== false;
     this.showLocation = config?.showLocation !== false;
+    this.showOrg      = config?.showOrg      !== false;
     this.showUpcoming = config?.showUpcoming !== false;
     this.showStats    = config?.showStats    !== false;
     this.creditLabel  = config?.creditLabel  || 'Ball';
@@ -758,13 +769,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
         // Re-read every navigation (default '') so they don't leak.
         this.routeHeroTitle = data['heroTitle'] || '';
         this.routeHeroSub   = data['heroSub']   || '';
-        // v1.65dh — heroVariant flag plumbed through route data.
-        // v1.65h1 — 'none' added for the Agent dashboard: hero text
-        // still renders but the accent background, orbs and grain are
-        // suppressed so the band visually merges with the body.
-        this.heroVariant =
-          data['heroVariant'] === 'calm' ? 'calm' :
-          data['heroVariant'] === 'none' ? 'none' : 'default';
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero

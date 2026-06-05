@@ -366,17 +366,10 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.shellCtx.reset(); }
 
   private applyShellHero(pills: string[]) {
-    // v1.32: hero swaps to "My Suppliers" + "SAVED CATALOGUE" when the
-    // list is filtered to favourites.
-    // v1.32a: Back button now shows on every supplier-list view (not
-    // just the favourites one) — it's reachable from Browse Suppliers
-    // on the dashboard and from the top-nav. history.back() with a
-    // dashboard fallback handles both cases gracefully.
-    const favHero = this.favouritesOnly;
+    // v1.66ag — hero title ("Marketplace") + subtitle come from route data
+    // (the standard hero). This push only carries the dynamic pills and
+    // the back button. v1.32a: Back shows on every supplier-list view.
     this.shellCtx.set({
-      heroTitle: favHero ? 'My Suppliers' : this.configSvc.platformName,
-      heroSub: (favHero ? 'SAVED ' : '') +
-               this.configSvc.catalogueLabel.toUpperCase(),
       pills,
       tabs: [],
       back: { label: 'Back', onBack: () => this.goBack() }

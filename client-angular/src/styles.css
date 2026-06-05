@@ -1483,24 +1483,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   color: var(--theme-accent) !important;
 }
 
-/* ─── v1.65dh — CALM HERO VARIANT ─────────────────────────────────
-   Used by the dashboard + settings surfaces (route data
-   heroVariant: 'calm'). Overrides the Bold-aware default hero with
-   a parchment fill, no orbs/grain regardless of [data-mode], and
-   calm underline tabs (text-muted by default, accent + bottom-
-   underline on active). Selectors win on specificity (.bp-hero--calm
-   + .bp-hero-tab), so the existing !important rules from p0003 +
-   v1.65ca are kept intact for the default hero.
-
-   Notes from the spec:
-   - Card chrome on this page is shadow-only (no hairline border).
-   - Tabs are calm underline, not folder-tab.
-   - No Bold-mode hero on this page even when data-mode='bold'. */
-.bp-hero.bp-hero--calm {
-  background: var(--theme-bg) !important;
-  border-bottom: var(--border-hairline) !important;
-  padding-top: 24px !important;
-}
+/* v1.66ag — the 'calm' hero variant was removed. There is ONE hero
+   object; the global ConfigService.heroColor picks accent vs the
+   stripped ('none') treatment below. */
 
 /* v1.65h1  — 'none' hero variant. Used by the Agent dashboard:
    no accent fill, no orbs/grain, no border.
@@ -1519,8 +1504,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
    folder-chips, v1.65br), so the Home/Inbox tabs render correctly here.
    The pill band (.bp-hero-meta) stays hidden — preserves the clean look. */
 .bp-hero.bp-hero--none .bp-hero-orbs,
-.bp-hero.bp-hero--none .bp-hero-grain,
-.bp-hero.bp-hero--none .bp-hero-meta { display: none !important; }
+.bp-hero.bp-hero--none .bp-hero-grain { display: none !important; }
+/* v1.66ag — the pill band (.bp-hero-meta) now shows on the stripped hero
+   too; the org / user / location pills are part of the standard hero. */
 .bp-hero.bp-hero--none .bp-hero-org-name {
   color: var(--color-text-primary) !important;
 }
@@ -1531,23 +1517,6 @@ input.bp-cfg-page-label.p-inputtext:focus {
 [data-mode="bold"] .bp-hero.bp-hero--none {
   background: var(--theme-bg) !important;
   border-bottom: none !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-orbs,
-.bp-hero.bp-hero--calm .bp-hero-grain { display: none !important; }
-.bp-hero.bp-hero--calm .bp-hero-org-name {
-  color: var(--color-text-primary) !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-page-label {
-  color: var(--color-text-muted) !important;
-}
-/* Tab band — strip-style flat bar with a hairline divider. */
-/* v1.66ae — calm-variant tab overrides removed; calm pages now use the
-   single canonical hero-tab style like everything else. */
-/* Override Bold-mode rules so this variant looks identical regardless
-   of the global data-mode setting. */
-[data-mode="dark"] .bp-hero.bp-hero--calm,
-[data-mode="bold"] .bp-hero.bp-hero--calm {
-  background: var(--theme-bg) !important;
 }
 
 /* ── PAGE LAYOUT ── */

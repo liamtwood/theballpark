@@ -27,6 +27,7 @@ export interface PlatformConfig {
   heroAlign?: string;
   showUserName?: boolean;
   showLocation?: boolean;
+  showOrg?: boolean;
   showUpcoming?: boolean;
   showStats?: boolean;
   /** p0018 — per-section visibility for the dashboard body. All default

@@ -51,23 +51,13 @@ export class InboxComponent implements OnInit, OnDestroy {
     const persona = this.personaSvc.active;
     this.viewer = persona?.kind === 'supplier' ? 'supplier' : 'agency';
 
-    if (this.viewer === 'supplier') {
-      this.shellCtx.set({ heroTitle: persona?.name || 'Inbox', heroSub: 'INBOX', pills: [], tabs: [] });
-      return;
-    }
+    if (this.viewer === 'supplier') return;
 
     // Agency: optional ?projectId binds the inbox to one project (used
-    // when navigating from a project surface); otherwise the org name.
+    // when navigating from a project surface). v1.66ag — the hero
+    // (title "Inbox" + subtitle) now comes from route data, so we no
+    // longer fetch the org/project just to set a title.
     this.preselectedProjectId = this.route.snapshot.queryParams['projectId'] || '';
-    this.orgSvc.getCurrentOrg().subscribe(org => {
-      if (this.preselectedProjectId) {
-        this.projectSvc.getById(this.preselectedProjectId).subscribe(p => {
-          this.shellCtx.set({ heroTitle: p?.event_name || p?.name || 'Inbox', heroSub: 'INBOX', pills: [], tabs: [] });
-        });
-      } else {
-        this.shellCtx.set({ heroTitle: org?.name || 'Inbox', heroSub: 'INBOX', pills: [], tabs: [] });
-      }
-    });
   }
 
   ngOnDestroy() { this.shellCtx.reset(); }

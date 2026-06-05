@@ -39,6 +39,7 @@ export class ConfigService {
     heroColor: 'none',
     showUserName: true,
     showLocation: true,
+    showOrg: true,
     showUpcoming: true,
     showStats: true,
     // p0018 — dashboard body sections, all visible by default.
@@ -75,6 +76,7 @@ export class ConfigService {
   get heroColor(): 'theme' | 'none' { return this.config.heroColor || 'none'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }
   get showLocation(): boolean { return this.config.showLocation !== false; }
+  get showOrg(): boolean { return this.config.showOrg !== false; }
   get showUpcoming(): boolean { return this.config.showUpcoming !== false; }
   get showStats(): boolean { return this.config.showStats !== false; }
   // p0018 — dashboard body section getters (default true when unset).

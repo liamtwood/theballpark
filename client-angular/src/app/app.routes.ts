@@ -101,7 +101,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects-list.component').then(m => m.ProjectsListComponent),
-        data: { pageLabel: '', tabs: [] }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Projects', heroSub: 'Manage your active and completed {events}.' }
       },
       {
         path: 'projects/:id',
@@ -114,8 +114,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'suppliers',
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
-        // Page sets hero via ShellContextService (heroSub = catalogueLabel).
-        data: { pageLabel: '', tabs: [] }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Marketplace', heroSub: 'Browse suppliers, products and services to build your {event}.' }
       },
       {
         path: 'suppliers/:id',
@@ -137,7 +136,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'favourites',
         loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
-        data: { pageLabel: 'FAVOURITES', tabs: [] }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Favourites', heroSub: "Suppliers and items you've saved." }
       },
       // v1.66l (p0015 close-out) — /messages redirects to the canonical
       // /inbox (object naming: Org / Projects / Inbox / Marketplace).
@@ -151,7 +150,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'inbox',
         loadComponent: () => import('./features/messages/inbox.component').then(m => m.InboxComponent),
-        data: { pageLabel: 'INBOX', tabs: [] }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Inbox', heroSub: 'Messages, supplier responses and updates.' }
       },
 
       // v1.65e4 — /admin-home retired. Beth's home is /ballpark-settings
@@ -162,7 +161,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'clients',
         loadComponent: () => import('./features/clients/pages/client-list/client-list.component').then(m => m.ClientListComponent),
-        data: { pageLabel: 'CLIENTS', tabs: [] }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Clients', heroSub: 'Manage your client organisations.' }
       },
       {
         path: 'clients/:id',
