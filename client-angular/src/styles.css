@@ -1407,7 +1407,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
    visible chrome in the row. */
 .bp-hero-tab-band {
   background: transparent;
-  padding: 0 var(--section-pad);
+  /* v1.66ba — no horizontal padding here; .bp-hero already provides
+     --section-pad, so the tab band + separator align to the same left
+     edge as the title/subtitle (was double-indented). */
+  padding: 0;
 }
 /* p0003 — REAL FOLDER TABS. Sentence case, --text-base, readable
    inactive colour. Active tab = --theme-contrast-soft fill +
