@@ -112,10 +112,13 @@ const FULL_ROUTES: Routes = [
 
       // ── SUPPLIERS ──
       {
-        path: 'suppliers',
+        path: 'shop',
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
         data: { pageLabel: '', tabs: [], heroTitle: 'Marketplace', heroSub: 'Browse suppliers, products and services to build your {event}.' }
       },
+      // v1.66al — the marketplace list moved /suppliers → /shop. Old
+      // list links redirect; detail routes stay /suppliers/:id below.
+      { path: 'suppliers', redirectTo: 'shop', pathMatch: 'full' },
       {
         path: 'suppliers/:id',
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),

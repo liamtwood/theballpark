@@ -134,7 +134,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
                  lives behind the cog icon in the header. -->
             <!-- v1.65hQ (p0019 §2): Browse Marketplace dropped — it's now
                  the Marketplace launcher tile in the centre column. -->
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers' }"
                class="bp-quick-action">Browse Suppliers</a>
             <a routerLink="/settings/team" class="bp-quick-action">Invite Member</a>
@@ -234,7 +234,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
             <!-- v1.32: "My Suppliers" lands on the marketplace
                  (a.k.a. supplier-list at /suppliers) pre-filtered
                  to the user's hearted suppliers. -->
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My Suppliers
@@ -242,7 +242,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
           </ng-container>
           <ng-template #noFavSuppliers>
             <div class="bp-empty">No saved suppliers yet</div>
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My suppliers
@@ -732,7 +732,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   // lands.
   goToProjects()    { this.router.navigate(['/projects']); }
   goToInbox()       { this.router.navigate(['/inbox']); }
-  goToMarketplace() { this.router.navigate(['/suppliers']); }
+  goToMarketplace() { this.router.navigate(['/shop']); }
   // No dedicated /profile route — Settings is the account surface today.
   goToProfile()     { this.router.navigate(['/settings']); }
 

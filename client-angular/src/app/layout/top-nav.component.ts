@@ -93,7 +93,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
-        <a routerLink="/suppliers" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/shop" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>{{ catalogueLabel }}</span>
         </a>
@@ -117,7 +117,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="folder" [size]="20"></lucide-icon>
           <span>Project</span>
         </a>
-        <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
+        <a [routerLink]="['/shop']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>{{ catalogueLabel }}</span>
         </a>
@@ -357,14 +357,13 @@ export class TopNavComponent implements OnInit, OnDestroy {
 
   private buildNavItems() {
     const persona = this.personaSvc.active;
-    const orgName = persona?.orgName || 'Settings';
 
     if (persona?.kind === 'admin') {
       // Platform admin (Beth). Cross-org admin tooling is a later
       // prompt; Config Home renders the existing dashboard for now.
       this.navItems = [
         { label: 'Config Home', icon: 'house',      route: '/' },
-        { label: orgName,       icon: 'building-2', route: '/settings' },
+        { label: 'Settings',    icon: 'building-2', route: '/settings' },
       ];
       return;
     }
@@ -376,8 +375,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
       { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
       // v1.66ak — the Projects tab tracks the configurable Events label.
       { label: this.projectLabel + 's', icon: 'folder-open', route: '/projects' },
-      { label: 'Marketplace', icon: 'store',       route: '/suppliers' },
-      { label: orgName,       icon: 'building-2',  route: '/settings' },
+      { label: 'Marketplace', icon: 'store',       route: '/shop' },
+      { label: 'Settings',    icon: 'building-2',  route: '/settings' },
     ];
   }
 
