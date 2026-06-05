@@ -420,6 +420,14 @@ export class AppShellComponent implements OnInit, OnDestroy {
   platformName = 'The Ballpark';
 
   pageLabel    = '';
+  /** v1.66s — optional route-data hero overrides. A route may set
+      `data: { heroTitle, heroSub }` to drive the shell hero from a fixed
+      page title/subtitle (e.g. the Profile/settings surface) instead of
+      the orgName + pageLabel fallback. Empty = use the existing fallback
+      chain. Always re-read per navigation so they don't leak between
+      routes. */
+  routeHeroTitle = '';
+  routeHeroSub   = '';
   hideHero     = false;
   /** v1.65dh — route-data flag for a calm, non-Bold hero treatment
       (used by the dashboard + settings surfaces per p0013-followup).
@@ -438,7 +446,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       fallback. */
   get heroTitle(): string {
     if (this.ctx?.useConfiguredTitle) return this.configuredHeroTitle();
-    return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName);
+    return this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName);
   }
   private configuredHeroTitle(): string {
     if (this.heroTitleMode === 'org')  return this.orgName || this.platformName;
@@ -458,7 +466,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroIsCalm(): boolean {
     return this.heroVariant === 'calm';
   }
-  get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
+  get heroSub(): string       { return this.ctx?.heroSub   || this.routeHeroSub || this.pageLabel; }
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
@@ -743,6 +751,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.pageLabel  = data['pageLabel'];
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
+        // v1.66s — optional fixed hero title/subtitle from route data.
+        // Re-read every navigation (default '') so they don't leak.
+        this.routeHeroTitle = data['heroTitle'] || '';
+        this.routeHeroSub   = data['heroSub']   || '';
         // v1.65dh — heroVariant flag plumbed through route data.
         // v1.65h1 — 'none' added for the Agent dashboard: hero text
         // still renders but the accent background, orbs and grain are

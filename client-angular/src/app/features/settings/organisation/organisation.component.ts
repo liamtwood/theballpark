@@ -28,9 +28,10 @@ import { UpdateMeComponent } from '../../../shared/components/update-me/update-m
 
     <ng-container *ngIf="!loading">
       <div class="bp-settings-body">
-        <app-update-me reason="app-page-header"></app-update-me>
-        <h2 class="bp-page-title">Organisation</h2>
-        <div class="bp-page-divider"></div>
+        <!-- v1.66s — page title moved to the shell hero ("Profile" +
+             subtitle, set on the /settings route data). The hand-rolled
+             <h2 page header was removed, so the app-page-header debt
+             marker is resolved. -->
 
         <!-- ORGANISATION DETAILS -->
         <app-update-me reason="app-edit-section" note="has inline edit pencil"></app-update-me>
