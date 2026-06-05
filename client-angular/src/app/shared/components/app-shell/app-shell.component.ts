@@ -137,8 +137,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
            shares the hero's parchment (or accent in bold) fill. The
            band itself has no background — it inherits visually from
            its hero parent. Tabs are centred. -->
+      <!-- v1.66ah — the tab band always renders in tabs mode (even with no
+           tabs) so every hero reserves the same height + shows the
+           separator; menu items fill it when present. -->
       <div class="bp-hero-tab-band"
-           *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+           *ngIf="navMode === 'tabs'">
         <div class="bp-hero-tabs">
           <button *ngFor="let tab of activeTabs"
             class="bp-hero-tab"
@@ -260,10 +263,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 
+    /* v1.66ah — org / user / location pills share ONE look: white fill,
+       a hairline border in the theme border colour. */
     :host ::ng-deep .bp-hero-tag.p-tag {
       background: #fff !important;
       color: var(--theme-text) !important;
-      border: 1.5px solid var(--theme-accent) !important;
+      border: 1px solid var(--color-border) !important;
       font-size: 11px !important;
       font-weight: 500 !important;
       padding: 3px 12px !important;
@@ -273,7 +278,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-hero-tag-span {
       display: inline-flex; align-items: center; gap: 5px;
       background: #fff; color: var(--theme-text);
-      border: 1.5px solid var(--theme-accent);
+      border: 1px solid var(--color-border);
       font-size: 11px; font-weight: 500;
       padding: 3px 12px; border-radius: 20px;
     }

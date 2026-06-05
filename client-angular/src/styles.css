@@ -1385,10 +1385,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
    Tabs flex row no longer carries it. */
 .bp-hero-tabs {
   display: flex;
+  align-items: flex-end;
   gap: 28px;   /* v1.66t — flat underline tabs need breathing room */
   /* v1.66y — full-width gray separator under the whole tab row; the
-     active tab's gradient underline (::after) overlays it on top. */
+     active tab's gradient underline (::after) overlays it on top.
+     v1.66ah — min-height so heros with no tabs still reserve the band
+     height + show the separator (consistent hero height everywhere). */
   border-bottom: 1px solid #E5E7EB;
+  min-height: 42px;
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
@@ -1469,12 +1473,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 [data-mode="bold"] .bp-hero-back {
   color: var(--color-surface) !important;
 }
-/* Pills on Bold hero — white-fill + theme-text for legibility. */
+/* Pills on Bold hero — white-fill + theme-text for legibility.
+   v1.66ah — hairline border in the theme border colour (was #fff /
+   invisible) so all three pills read consistently. */
 [data-mode="bold"] .bp-hero-tag.p-tag,
 [data-mode="bold"] .bp-hero-tag-span {
   background: #fff !important;
   color: var(--theme-text) !important;
-  border-color: #fff !important;
+  border-color: var(--color-border) !important;
 }
 /* Tab badge in Bold — danger-red on accent is muddy; flip to white-fill
    + accent-text. */
