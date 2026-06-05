@@ -84,43 +84,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
            Location pill: click → /settings.
            Upcoming pill (v1.23): renders when ctx.upcomingPill is set
            AND ConfigService.showUpcoming is true — see ngOnInit. -->
+      <!-- v1.66am — standardised pills: org / user / location are plain,
+           non-interactive chips with one shared look. Account + persona
+           actions live on the top-nav avatar, not the pills. -->
       <div *ngIf="orgPill || heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
-        <!-- v1.66ag — org/owner pill. The org name lives here now (not in
-             the title); shown when ConfigService.showOrg is on. -->
-        <span *ngIf="orgPill" class="bp-hero-tag-span bp-hero-org-pill">{{ orgPill }}</span>
-        <ng-container *ngFor="let pill of heroPills">
-          <!-- Location pill -->
-          <button *ngIf="isLocationPill(pill)"
-                  type="button"
-                  class="bp-hero-tag-span bp-hero-pill-btn"
-                  (click)="onLocationPillClick()">
-            <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
-            {{ pill }}
-          </button>
-          <!-- User pill — wrapped in a relative div so the dropdown
-               anchors below it without affecting layout. -->
-          <div *ngIf="!isLocationPill(pill)" class="bp-hero-pill-wrap">
-            <p-tag [value]="pill"
-                   styleClass="bp-hero-tag bp-hero-pill-btn"
-                   (click)="onUserPillClick($event)"></p-tag>
-            <div *ngIf="userMenuOpen"
-                 class="bp-hero-pill-menu"
-                 (click)="$event.stopPropagation()">
-              <button type="button" class="bp-hero-pill-menu-item"
-                      (click)="onUserMenuAction('profile')">Profile</button>
-              <button type="button" class="bp-hero-pill-menu-item"
-                      (click)="onUserMenuAction('switch-org')">Switch Org</button>
-              <div class="bp-hero-pill-menu-sep"></div>
-              <button type="button"
-                      class="bp-hero-pill-menu-item bp-hero-pill-menu-item--danger"
-                      (click)="onUserMenuAction('signout')">Sign out</button>
-            </div>
-          </div>
-        </ng-container>
-
-        <!-- Upcoming-event pill (v1.23). Dashboard pushes the text via
-             shellCtx.upcomingPill when ConfigService.showUpcoming is on
-             AND a future project exists. Calendar icon + plain text. -->
+        <span *ngIf="orgPill" class="bp-hero-tag-span">{{ orgPill }}</span>
+        <span *ngFor="let pill of heroPills" class="bp-hero-tag-span">
+          <lucide-icon *ngIf="isLocationPill(pill)" name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ pill }}
+        </span>
         <span *ngIf="upcomingPillText" class="bp-hero-tag-span bp-hero-upcoming">
           <lucide-icon name="calendar" [size]="10" style="flex-shrink:0;"></lucide-icon>
           {{ upcomingPillText }}
