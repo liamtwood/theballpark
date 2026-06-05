@@ -208,7 +208,13 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
             </div>
           </div>
 
-          <!-- Hero meta chips (gate the AppShell user / location pills). -->
+          <!-- Hero meta chips (gate the AppShell org / user / location pills). -->
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showOrg"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Org name</span>
+          </label>
           <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showUserName"
                         [binary]="true"
@@ -441,6 +447,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     // p0023 — hero customisation.
     heroTitleMode: 'org' | 'user' | 'greeting';
     heroColor: 'theme' | 'none';
+    showOrg: boolean;
     showUserName: boolean;
     showLocation: boolean;
     showUpcoming: boolean;
@@ -459,6 +466,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     navMode: 'tabs',
     heroTitleMode: 'greeting',
     heroColor: 'none',
+    showOrg: true,
     showUserName: true,
     showLocation: true,
     showUpcoming: true,
@@ -531,6 +539,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           // p0023 — hero customisation (default greeting / none).
           heroTitleMode: (cfg.heroTitleMode === 'org' || cfg.heroTitleMode === 'user' ? cfg.heroTitleMode : 'greeting'),
           heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
+          showOrg:       cfg.showOrg       !== false,
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
           // p0018 — all section flags default visible (!== false) so a
@@ -624,6 +633,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       ConfigService (which spreads + saves + re-emits). */
   saveToggles() {
     this.configService.update({
+      showOrg:            this.settingsDraft.showOrg,
       showUserName:       this.settingsDraft.showUserName,
       showLocation:       this.settingsDraft.showLocation,
       showUpcoming:       this.settingsDraft.showUpcoming,
