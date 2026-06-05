@@ -799,14 +799,17 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // v1.65hG (p0016 Step 2): reads from pageCfg now — the local
     // read-only mirror of the bits the dashboard needs. The full
     // strip draft lives in <app-page-config-drawer>.
-    const homeLabel = this.pageCfg.homePageLabel || 'Projects';
+    // v1.66af — subtitle renders sentence-case like every other hero and
+    // uses the configurable Events label (projectLabel) for the noun, so
+    // renaming events (e.g. "Activation") flows through automatically.
+    const eventWord = (this.projectLabel || 'event').toLowerCase();
     const ctx: any = {
       // p0023 / p0032 — no heroTitle: the AppShell computes it from
       // config.heroTitleMode (org / user / greeting). Hero colour is now
       // global (read from ConfigService by the AppShell), so we just flag
       // that this surface uses the configured title.
       useConfiguredTitle: true,
-      heroSub: homeLabel.toUpperCase(),
+      heroSub: `What ${eventWord} are we working on today?`,
       pills: [],
       // v1.66m — no hero tab band on the dashboard. Home / Inbox /
       // Projects / Marketplace are top-level objects reached from the
