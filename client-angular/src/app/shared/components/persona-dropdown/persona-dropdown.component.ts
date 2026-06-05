@@ -126,35 +126,16 @@ export class PersonaDropdownComponent {
 
   constructor(public personaSvc: PersonaService, private router: Router) {}
 
-  /** v1.65dz → v1.65e1 — flipping persona routes to that persona's
-      home surface:
-        agency   → /                       (existing dashboard)
-        admin    → /ballpark-settings
-        supplier → /suppliers/{id}?tab=home (supplier-detail page's
-                   Home tab, the persona's own page). */
+  /** v1.66ap — every persona lands on the canonical /home. The dashboard
+      renders that role's (platform, role) profile — sections, hero,
+      labels — so the home surface differs by role without a different
+      route. (Was: agency → /, admin → /ballpark-settings, supplier →
+      /suppliers/:id — all pre-/home.) */
   select(p: Persona) {
     this.personaSvc.set(p.id);
     this.open = false;
     this.openChange.emit(false);
-    if (p.kind === 'agency') {
-      this.router.navigateByUrl('/');
-    } else if (p.kind === 'admin') {
-      // v1.65e2 → v1.65e4 — Beth lands on /ballpark-settings (which
-      // already has the 5 sub-tabs she needs: Categories / Marketplace
-      // / Orgs / Early Access / Feedback). The /admin-home placeholder
-      // that briefly lived between is retired.
-      this.router.navigateByUrl('/ballpark-settings');
-    } else if (p.kind === 'supplier') {
-      const sid = p.supplierOrgId;
-      if (sid) {
-        this.router.navigate(['/suppliers', sid], { queryParams: { tab: 'home' } });
-      } else {
-        // No supplierOrgId on the persona record — fall back to the
-        // standalone supplier inbox route so the user still lands
-        // somewhere usable.
-        this.router.navigateByUrl('/inbox');
-      }
-    }
+    this.router.navigateByUrl('/home');
   }
 
   /** Close on outside click. The top-nav avatar handler stops

@@ -359,8 +359,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     const persona = this.personaSvc.active;
 
     if (persona?.kind === 'admin') {
-      // Platform admin (Beth). Cross-org admin tooling is a later
-      // prompt; Config Home renders the existing dashboard for now.
+      // Platform admin (Beth). Config Home is the /home dashboard.
       this.navItems = [
         { label: 'Config Home', icon: 'house',      route: '/home' },
         { label: 'Settings',    icon: 'building-2', route: '/settings' },
@@ -368,10 +367,21 @@ export class TopNavComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Agency role (Sarah). 'Agent' is the agency dashboard (the rich
-    // launcher at /, after /agent collapsed into it).
+    if (persona?.kind === 'supplier') {
+      // v1.66ap — supplier nav (provisional): no Agent / Events. Refine
+      // the supplier set when its home content is designed.
+      this.navItems = [
+        { label: 'Home',        icon: 'house',      route: '/home' },
+        { label: 'Inbox',       icon: 'inbox',      route: '/inbox' },
+        { label: 'Marketplace', icon: 'store',      route: '/shop' },
+        { label: 'Settings',    icon: 'building-2', route: '/settings' },
+      ];
+      return;
+    }
+
+    // Agency role (Sarah). v1.66ap — home item labelled "Home" (was "Agent").
     this.navItems = [
-      { label: 'Agent',       icon: 'house',       route: '/home' },
+      { label: 'Home',        icon: 'house',       route: '/home' },
       { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
       // v1.66ak — the Projects tab tracks the configurable Events label.
       { label: this.projectLabel + 's', icon: 'folder-open', route: '/projects' },

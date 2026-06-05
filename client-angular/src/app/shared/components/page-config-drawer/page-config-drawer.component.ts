@@ -74,6 +74,28 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
 
       <div class="bp-drawer-body bp-pcd-body">
 
+        <!-- v1.66ap — system-admin: pick the (platform, role) profile to
+             author. Sits ABOVE the tabs because it scopes BOTH the
+             Dashboard and General settings below. -->
+        <div class="bp-pcd-field">
+          <label class="bp-pcd-field-label">Platform</label>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let p of cfgPlatforms" type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="activePlatform === p"
+                    (click)="selectProfile(p, activeRole)">{{ p }}</button>
+          </div>
+        </div>
+        <div class="bp-pcd-field">
+          <label class="bp-pcd-field-label">Role</label>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let r of cfgRoles" type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="activeRole === r"
+                    (click)="selectProfile(activePlatform, r)">{{ r }}</button>
+          </div>
+        </div>
+
         <!-- p0032 — two tabs replace the four legacy sub-eyebrow groups.
              Dashboard = settings for THIS page; General = app-wide hero /
              site preferences. Default Dashboard; remembered in state. -->
@@ -152,27 +174,6 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
 
         <!-- ── GENERAL TAB — app-wide hero / site preferences ── -->
         <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'general'">
-          <!-- v1.66an — system-admin: choose which (platform, role) profile
-               to author. Settings below write to the selected profile. -->
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Platform</label>
-            <div class="bp-cfg-seg">
-              <button *ngFor="let p of cfgPlatforms" type="button"
-                      class="bp-cfg-seg-btn"
-                      [class.p-highlight]="activePlatform === p"
-                      (click)="selectProfile(p, activeRole)">{{ p }}</button>
-            </div>
-          </div>
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Role</label>
-            <div class="bp-cfg-seg">
-              <button *ngFor="let r of cfgRoles" type="button"
-                      class="bp-cfg-seg-btn"
-                      [class.p-highlight]="activeRole === r"
-                      (click)="selectProfile(activePlatform, r)">{{ r }}</button>
-            </div>
-          </div>
-
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Theme</label>
             <div class="bp-cfg-swatches-row">
