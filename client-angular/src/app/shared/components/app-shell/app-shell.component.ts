@@ -31,6 +31,9 @@ import {
 import {
   CartDrawerComponent
 } from '../cart-drawer/cart-drawer.component';
+import {
+  PageConfigDrawerComponent
+} from '../page-config-drawer/page-config-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -38,7 +41,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent, PageConfigDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -193,6 +196,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          CartDrawerService.open(projectId). Shows selected + wishlist
          project_items with a description tooltip on hover. -->
     <app-cart-drawer></app-cart-drawer>
+
+    <!-- v1.66at: page-settings drawer mounted globally so the cog +
+         page settings are available on EVERY page (was dashboard-only,
+         so the cog vanished on Inbox / Projects / etc.). -->
+    <app-page-config-drawer></app-page-config-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }

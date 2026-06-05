@@ -25,7 +25,6 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { CodelistService } from '../../core/services/codelist.service';
-import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
 @Component({
@@ -36,7 +35,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
     LucideAngularModule,
     ButtonModule, CheckboxModule, InputTextModule,
     LoadingSpinnerComponent, StatusBadgeComponent,
-    PageConfigDrawerComponent, ActionTileComponent,
+    ActionTileComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   template: `
@@ -44,12 +43,8 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
          inbox. Inbox is its own canonical /inbox route; the hero Inbox
          tab + the launcher Inbox tile both navigate there. -->
     <div class="bp-page">
-    <!-- v1.65hJ (p0017) — page-settings drawer. Migrated from the
-         horizontal strip; same handlers/draft/sync, but rendered as a
-         right-side p-sidebar so it can scroll and accommodate the
-         next round of section-visibility toggles. The cog in the
-         top-nav still toggles it via ConfigStripService.toggle(). -->
-    <app-page-config-drawer></app-page-config-drawer>
+    <!-- v1.66at — page-settings drawer now mounted globally in app-shell,
+         so the cog appears on every page (not just the dashboard). -->
 
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
