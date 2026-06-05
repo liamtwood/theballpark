@@ -83,7 +83,9 @@ const FULL_ROUTES: Routes = [
           // heroTitle drives the "Purpose" title mode (→ "Home"); the
           // greeting mode ignores it and shows "Welcome back, …".
           heroTitle: 'Home',
-          tabs: [{ label: 'Home', path: '/home' }]
+          // v1.66ax — no self-referential "Home" tab; the band stays
+          // (reserved height + separator) but carries no tab here.
+          tabs: []
         }
       },
 
