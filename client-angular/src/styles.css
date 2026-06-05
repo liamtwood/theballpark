@@ -2236,28 +2236,26 @@ app-top-nav { flex-shrink: 0; }
 /* v1.66w — flat underline tabs (was the folder-chip override). No
    chip border / fill / shadow; just text + the gradient underline on
    the active tab. min-width keeps every tab an even, roomy footprint. */
-/* v1.66z — inactive tabs get a soft grey fill so they read as defined
-   chips; the active tab is the "open" white chip with the rainbow
-   underline. Rounded-top, flat bottom flush to the separator line. */
+/* v1.66aa — inactive tabs are bare text (no fill, no border); only the
+   active tab is marked, via the rainbow underline. Grey separator line
+   runs full-width beneath the row. */
 .bp-hero-tab {
   color: var(--color-text-secondary) !important;
-  background: var(--card-soft-input) !important;
+  background: transparent !important;
   font-weight: 400 !important;
   box-shadow: none !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
   font-size: var(--text-base) !important;
-  border: 1px solid #E5E7EB !important;
-  border-bottom: none !important;
-  border-radius: 10px 10px 0 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
   min-width: 25ch !important;
 }
 .bp-hero-tab:hover {
   color: var(--color-text-primary) !important;
-  background: #EFF0F3 !important;
 }
 .bp-hero-tab.active {
-  background: #fff !important;
+  background: transparent !important;
   color: var(--color-text-primary) !important;
   font-weight: 500 !important;
   position: relative !important;
