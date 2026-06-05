@@ -36,7 +36,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
         <div class="bp-card">
           <div class="bp-card-head">
             <h3 class="bp-card-title">Organisation</h3>
-            <button *ngIf="!editingOrg" class="bp-btn-grad" (click)="startEdit('org')">
+            <button *ngIf="!editingOrg" class="bp-btn-outline" (click)="startEdit('org')">
               <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit organisation
             </button>
             <div *ngIf="editingOrg" class="bp-card-actions">
@@ -122,7 +122,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
         <div class="bp-card">
           <div class="bp-card-head">
             <h3 class="bp-card-title">Financial defaults</h3>
-            <button *ngIf="!editingFin" class="bp-btn-grad" (click)="startEdit('fin')">
+            <button *ngIf="!editingFin" class="bp-btn-outline" (click)="startEdit('fin')">
               <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit defaults
             </button>
             <div *ngIf="editingFin" class="bp-card-actions">
