@@ -2195,6 +2195,14 @@ app-top-nav { flex-shrink: 0; }
 .bp-hero-tabs {
   justify-content: var(--hero-align-flex, center) !important;
 }
+/* v1.66az — left-aligned hero: tab labels anchor flush-left to the
+   separator (drop the even 25ch min-width + centered text). */
+.bp-hero--left .bp-hero-tab {
+  min-width: 0 !important;
+  text-align: left !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
 
 /* ── INBOX CARD STYLE (messages) ── */
 .bp-inbox-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); transition: background 0.15s; }

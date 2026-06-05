@@ -49,7 +49,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--none]="heroIsNone">
+         [class.bp-hero--none]="heroIsNone"
+         [class.bp-hero--left]="effectiveHeroAlign === 'left'">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
