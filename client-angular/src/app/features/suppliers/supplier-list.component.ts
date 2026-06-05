@@ -380,7 +380,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       land on the dashboard. Mirrors the supplier-detail goBack(). */
   private goBack() {
     if (history.length > 1) history.back();
-    else this.router.navigate(['/']);
+    else this.router.navigate(['/home']);
   }
 
   // ── Config strip persistence ──────────────────────────────────────────

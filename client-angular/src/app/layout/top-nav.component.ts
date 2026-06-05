@@ -24,7 +24,7 @@ import { environment } from '../../environments/environment';
     <!-- DESKTOP TOP NAV -->
     <nav class="bp-nav">
       <div class="bp-nav-left">
-        <a routerLink="/" class="bp-nav-logo">
+        <a routerLink="/home" class="bp-nav-logo">
           <img *ngIf="logoUrl" [src]="logoUrl" alt="Logo" class="bp-nav-logo-img"/>
           <ng-container *ngIf="!logoUrl">
             <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
@@ -45,7 +45,7 @@ import { environment } from '../../environments/environment';
         <a *ngFor="let item of navItems"
            [routerLink]="item.route"
            routerLinkActive="active"
-           [routerLinkActiveOptions]="{ exact: item.route === '/' }"
+           [routerLinkActiveOptions]="{ exact: item.route === '/home' }"
            class="bp-nav-link">
           <lucide-icon [name]="item.icon" [size]="14"></lucide-icon> {{ item.label }}
         </a>
@@ -89,7 +89,7 @@ import { environment } from '../../environments/environment';
 
       <!-- DEFAULT NAV — Home, Suppliers, Favourites, Messages -->
       <ng-container *ngIf="!inProject">
-        <a routerLink="/" [routerLinkActiveOptions]="{exact:true}" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/home" [routerLinkActiveOptions]="{exact:true}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
@@ -109,7 +109,7 @@ import { environment } from '../../environments/environment';
 
       <!-- PROJECT NAV — Home, Project, Suppliers, Inbox -->
       <ng-container *ngIf="inProject">
-        <a routerLink="/" class="bp-bottom-tab">
+        <a routerLink="/home" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
@@ -362,7 +362,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       // Platform admin (Beth). Cross-org admin tooling is a later
       // prompt; Config Home renders the existing dashboard for now.
       this.navItems = [
-        { label: 'Config Home', icon: 'house',      route: '/' },
+        { label: 'Config Home', icon: 'house',      route: '/home' },
         { label: 'Settings',    icon: 'building-2', route: '/settings' },
       ];
       return;
@@ -371,7 +371,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
     // Agency role (Sarah). 'Agent' is the agency dashboard (the rich
     // launcher at /, after /agent collapsed into it).
     this.navItems = [
-      { label: 'Agent',       icon: 'house',       route: '/' },
+      { label: 'Agent',       icon: 'house',       route: '/home' },
       { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
       // v1.66ak — the Projects tab tracks the configurable Events label.
       { label: this.projectLabel + 's', icon: 'folder-open', route: '/projects' },

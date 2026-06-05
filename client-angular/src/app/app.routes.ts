@@ -73,23 +73,21 @@ const FULL_ROUTES: Routes = [
       // the default folder-tab chip treatment, matching the project
       // marketplace tabs exactly. The .bp-hero--calm CSS in styles.css
       // is dormant for now (kept in case a future page wants it).
+      // v1.66ao — the dashboard now lives at /home; the root redirects to it.
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
       {
-        path: '',
+        path: 'home',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-        // v1.65e6 — dashboard tab band reduced to a single "Home" tab.
-        // Top-nav already carries Home + Settings as text links per
-        // persona; the old HOME_SETTINGS_TABS pair was duplicative.
         data: {
           pageLabel: '',
-          tabs: [{ label: 'Home', path: '/' }]
+          tabs: [{ label: 'Home', path: '/home' }]
         }
       },
 
       // ── AGENT → HOME ──
-      // v1.66n (p0033): /agent collapsed into the canonical dashboard at
-      // '' (the rich launcher IS the agent dashboard). Redirect keeps old
-      // links / bookmarks working; agent.component.ts deleted.
-      { path: 'agent', redirectTo: '', pathMatch: 'full' },
+      // v1.66n (p0033): /agent collapsed into the canonical dashboard.
+      // Redirect keeps old links / bookmarks working.
+      { path: 'agent', redirectTo: 'home', pathMatch: 'full' },
 
       // ── PROJECTS ──
       // v1.30: /projects/new removed — replaced by the intake modal

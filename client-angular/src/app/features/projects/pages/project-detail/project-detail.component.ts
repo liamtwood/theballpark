@@ -26,7 +26,7 @@ import { LoadingSpinnerComponent } from '../../../../shared/components/loading-s
     <ng-container *ngIf="!loading && !project">
       <div class="bp-page" style="text-align:center;padding:80px 0;">
         <p style="color:var(--color-text-muted);font-size:var(--text-sm);">Project not found.</p>
-        <a routerLink="/" style="color:var(--theme-accent);font-size:var(--text-sm);margin-top:8px;display:inline-block;">
+        <a routerLink="/home" style="color:var(--theme-accent);font-size:var(--text-sm);margin-top:8px;display:inline-block;">
           ← Back to Dashboard
         </a>
       </div>
