@@ -374,7 +374,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
     this.navItems = [
       { label: 'Agent',       icon: 'house',       route: '/' },
       { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
-      { label: 'Projects',    icon: 'folder-open', route: '/projects' },
+      // v1.66ak — the Projects tab tracks the configurable Events label.
+      { label: this.projectLabel + 's', icon: 'folder-open', route: '/projects' },
       { label: 'Marketplace', icon: 'store',       route: '/suppliers' },
       { label: orgName,       icon: 'building-2',  route: '/settings' },
     ];
@@ -395,6 +396,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
       if (cfg.feedbackLabel)  this.feedbackLabel  = cfg.feedbackLabel;
       if (cfg.projectLabel)   this.projectLabel   = cfg.projectLabel;
+      this.buildNavItems();   // v1.66ak — rebuild so the Projects tab tracks the Events label
       this.cdr.detectChanges();
     });
 

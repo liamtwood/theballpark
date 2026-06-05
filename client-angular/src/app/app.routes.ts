@@ -101,7 +101,7 @@ const FULL_ROUTES: Routes = [
       {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects-list.component').then(m => m.ProjectsListComponent),
-        data: { pageLabel: '', tabs: [], heroTitle: 'Projects', heroSub: 'Manage your active and completed {events}.' }
+        data: { pageLabel: '', tabs: [], heroTitle: '{Events}', heroSub: 'Manage your active and completed {events}.' }
       },
       {
         path: 'projects/:id',

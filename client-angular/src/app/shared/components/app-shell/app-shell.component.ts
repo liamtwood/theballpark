@@ -451,7 +451,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       fallback. */
   get heroTitle(): string {
     if (this.ctx?.useConfiguredTitle) return this.configuredHeroTitle();
-    return this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName);
+    return this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName));
   }
   private configuredHeroTitle(): string {
     if (this.heroTitleMode === 'org')  return this.orgName || this.platformName;
@@ -483,8 +483,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
       page subtitle tracks the configurable Events label (projectLabel). */
   private substituteLabels(s: string): string {
     if (!s) return s;
-    const ev = (this.configService.projectLabel || 'event').toLowerCase();
-    return s.replace(/\{events\}/gi, ev + 's').replace(/\{event\}/gi, ev);
+    const ev  = this.configService.projectLabel || 'Event';   // e.g. "Event"
+    const evL = ev.toLowerCase();
+    return s
+      .replace(/\{Events\}/g, ev + 's')   // title case, plural  → "Events"
+      .replace(/\{Event\}/g, ev)          // title case, singular
+      .replace(/\{events\}/g, evL + 's')  // lower case, plural  → "events"
+      .replace(/\{event\}/g, evL);
   }
   /** v1.66ad — a page-pushed / route subtitle is a real sentence (render
       sentence-case); a bare pageLabel is the legacy uppercase eyebrow. */
