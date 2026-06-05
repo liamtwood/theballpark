@@ -134,7 +134,9 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                    placeholder="Projects"/>
           </div>
 
-          <!-- Section visibility for the dashboard body. -->
+          <!-- v1.66au — section-visibility toggles are dashboard-only;
+               the other pages don't have these sections. -->
+          <ng-container *ngIf="isHomePage">
           <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
                         [binary]="true"
@@ -171,6 +173,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                         (ngModelChange)="saveToggles()"></p-checkbox>
             <span class="bp-pcd-check-label">Recent Activity</span>
           </label>
+          </ng-container>
         </div>
 
         <!-- ── GENERAL TAB — app-wide hero / site preferences ── -->
@@ -468,7 +471,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     heroAlign: 'left' | 'center';
     navMode: 'tabs' | 'sidenav';
     // p0023 — hero customisation.
-    heroTitleMode: 'org' | 'user' | 'greeting';
+    heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose';
     heroColor: 'theme' | 'none';
     showOrg: boolean;
     showUserName: boolean;
@@ -510,10 +513,11 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   ];
 
   /** p0023 — hero title source (GENERAL dropdown). */
-  readonly heroTitleOptions: Array<{ value: 'org' | 'user' | 'greeting'; label: string }> = [
+  readonly heroTitleOptions: Array<{ value: 'org' | 'user' | 'greeting' | 'purpose'; label: string }> = [
     { value: 'org',      label: 'Org Name' },
     { value: 'user',     label: 'Username' },
     { value: 'greeting', label: 'Greeting' },
+    { value: 'purpose',  label: 'Purpose' },
   ];
 
   /** p0023 — hero strip treatment (APPEARANCE segmented). */
@@ -539,6 +543,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       tab. Derived from the active route's heroTitle (label tokens
       substituted), falling back to the URL segment. */
   currentPageName = 'Home';
+  /** v1.66au — the dashboard section toggles (Upcoming / Stats / …) only
+      apply to the home page, so they're gated to it. */
+  isHomePage = true;
 
   constructor(
     private configService: ConfigService,
@@ -559,6 +566,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
            : seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
     this.currentPageName = name;
+    this.isHomePage = this.router.url.split('?')[0] === '/home';
   }
 
   ngOnInit() {
@@ -587,7 +595,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
           navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
           // p0023 — hero customisation (default greeting / none).
-          heroTitleMode: (cfg.heroTitleMode === 'org' || cfg.heroTitleMode === 'user' ? cfg.heroTitleMode : 'greeting'),
+          heroTitleMode: (['org', 'user', 'purpose'].includes(cfg.heroTitleMode as string) ? cfg.heroTitleMode as any : 'greeting'),
           heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
           showOrg:       cfg.showOrg       !== false,
           showUserName:  cfg.showUserName  !== false,
@@ -651,7 +659,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   }
 
   /** p0023 — hero title source (GENERAL dropdown). Save on change. */
-  onHeroTitleModeChange(mode: 'org' | 'user' | 'greeting') {
+  onHeroTitleModeChange(mode: 'org' | 'user' | 'greeting' | 'purpose') {
     this.settingsDraft.heroTitleMode = mode;
     this.configService.update({ heroTitleMode: mode });
   }

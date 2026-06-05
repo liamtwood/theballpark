@@ -436,6 +436,10 @@ export class AppShellComponent implements OnInit, OnDestroy {
   private configuredHeroTitle(): string {
     if (this.heroTitleMode === 'org')  return this.orgName || this.platformName;
     if (this.heroTitleMode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
+    // v1.66au — 'purpose' = the page's own name (route heroTitle), e.g. "Home".
+    if (this.heroTitleMode === 'purpose') {
+      return this.substituteLabels(this.routeHeroTitle) || (this.isBallparkRoute ? this.platformName : this.orgName);
+    }
     // greeting
     const name  = this.personaSvc.active?.name?.trim() || '';
     const first = name.split(/\s+/)[0] || 'there';
@@ -541,7 +545,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   navMode: 'tabs' | 'sidenav' = 'tabs';
   /** p0023 — hero title source, synced from ConfigService. Read by the
       heroTitle getter on home / agent surfaces. */
-  heroTitleMode: 'org' | 'user' | 'greeting' = 'greeting';
+  heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose' = 'greeting';
   /** p0032 — global hero strip treatment, synced from ConfigService.
       Drives heroIsNone for every hero in the app. */
   heroColor: 'theme' | 'none' = 'none';

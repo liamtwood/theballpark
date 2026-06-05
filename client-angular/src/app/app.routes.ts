@@ -80,6 +80,9 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
         data: {
           pageLabel: '',
+          // heroTitle drives the "Purpose" title mode (→ "Home"); the
+          // greeting mode ignores it and shows "Welcome back, …".
+          heroTitle: 'Home',
           tabs: [{ label: 'Home', path: '/home' }]
         }
       },

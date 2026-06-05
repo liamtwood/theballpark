@@ -42,7 +42,7 @@ export interface PlatformConfig {
   /** p0023 — hero title source on the home / agent surfaces.
       'org' = org name, 'user' = active persona name,
       'greeting' = "Welcome back, {firstName}". Default 'greeting'. */
-  heroTitleMode?: 'org' | 'user' | 'greeting';
+  heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose';
   /** p0023 — home / agent hero strip treatment. 'theme' = accent fill
       (--theme-accent), 'none' = calm parchment (--theme-bg, the stripped
       agent look). Default 'none'. */

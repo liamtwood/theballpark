@@ -87,7 +87,7 @@ export class ConfigService {
   get logoUrl(): string { return this.config.logoUrl || ''; }
   get heroAlign(): string { return this.config.heroAlign || 'center'; }
   // p0023 — hero customisation (home / agent surfaces).
-  get heroTitleMode(): 'org' | 'user' | 'greeting' { return this.config.heroTitleMode || 'greeting'; }
+  get heroTitleMode(): 'org' | 'user' | 'greeting' | 'purpose' { return this.config.heroTitleMode || 'greeting'; }
   get heroColor(): 'theme' | 'none' { return this.config.heroColor || 'none'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }
   get showLocation(): boolean { return this.config.showLocation !== false; }
