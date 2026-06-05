@@ -50,9 +50,9 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     <div class="bp-projects-page">
       <div class="bp-projects-inner">
 
-        <!-- ACTIVE — p0031: full-width grid, no panel header/chrome. The
-             "+ New" dashed tile is the last item in this grid only. -->
-        <div class="bp-project-grid bp-active-grid">
+        <!-- v1.66aw — Current / Completed driven by the hero tabs. The
+             "+ New" dashed tile sits in the Current grid only. -->
+        <div class="bp-project-grid bp-active-grid" *ngIf="activeTab === 'current'">
           <ng-container *ngFor="let p of activeProjects">
             <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
           </ng-container>
@@ -64,23 +64,12 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
           </button>
         </div>
 
-        <!-- COMPLETED — collapsed by default, same card grid -->
-        <div class="bp-dash-card bp-dash-card--collapsible"
-             *ngIf="completedProjects.length > 0"
-             [class.bp-dash-card--open]="completedOpen">
-          <button type="button" class="bp-section-header bp-section-header--toggle"
-                  (click)="completedOpen = !completedOpen">
-            <lucide-icon name="folder-open" [size]="13" class="bp-section-icon"></lucide-icon>
-            <span class="bp-section-title">Completed {{ projectLabel }}s</span>
-            <span class="bp-section-count">{{ completedProjects.length }}</span>
-            <lucide-icon class="bp-section-chev"
-                         [name]="completedOpen ? 'chevron-up' : 'chevron-down'"
-                         [size]="14"></lucide-icon>
-          </button>
-          <div *ngIf="completedOpen" class="bp-project-grid">
-            <ng-container *ngFor="let p of completedProjects">
-              <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
-            </ng-container>
+        <div class="bp-project-grid" *ngIf="activeTab === 'completed'">
+          <ng-container *ngFor="let p of completedProjects">
+            <ng-container *ngTemplateOutlet="cardTpl; context: { $implicit: p }"></ng-container>
+          </ng-container>
+          <div *ngIf="completedProjects.length === 0" class="bp-empty">
+            No completed {{ projectLabel.toLowerCase() }}s yet.
           </div>
         </div>
 
@@ -346,8 +335,9 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 export class ProjectsListComponent implements OnInit, OnDestroy {
   loading = true;
   projects: Project[] = [];
-  activeProjects: Project[] = [];
-  completedProjects: Project[] = [];
+  activeProjects: Project[] = [];      // Current bucket (Draft + Active)
+  completedProjects: Project[] = [];   // Completed bucket (the rest)
+  activeTab: 'current' | 'completed' = 'current';   // v1.66aw — hero filter tab
   projectLabel = 'Event';
   /** id of the project whose "..." dropdown is open ('' = none). */
   openMenuProjectId = '';
@@ -390,24 +380,33 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   /** Push the /projects hero eyebrow. Hero colour is applied globally by
       the AppShell (p0032); the title is the org-name fallback. */
   private pushHero() {
-    // p0032 — hero colour is global now (read by the AppShell from
-    // ConfigService), so /projects no longer pushes heroColor; it just
-    // sets its eyebrow. Title falls back to the org name (not a "home"
-    // surface, so no useConfiguredTitle).
-    // Eyebrow = the Events label (projectLabel), pluralised + uppercased:
-    // "EVENTS" / "PROJECTS" / "SHOWS" — follows whatever the org renamed it to.
-    // v1.66ag — hero (title "Projects" + subtitle) comes from route data
-    // now; the page no longer pushes its own hero.
+    // v1.66aw — Current / Completed filter tabs in the hero band. They
+    // don't navigate: onTabClick switches the in-page filter and
+    // activeTabPath drives the active state. Title + subtitle still come
+    // from route data (Events + the route subtitle).
+    this.shellCtx.set({
+      tabs: [
+        { label: 'Current',   path: 'current' },
+        { label: 'Completed', path: 'completed' },
+      ],
+      activeTabPath: this.activeTab,
+      onTabClick: (tab) => {
+        this.activeTab = tab.path === 'completed' ? 'completed' : 'current';
+        this.pushHero();          // refresh activeTabPath
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   loadProjects() {
     this.projectService.getAll().subscribe({
       next: projects => {
         this.projects = projects || [];
+        // v1.66aw — Current = Draft + Active; Completed = everything else.
         this.activeProjects = this.projects.filter(p =>
-          ['draft', 'active', 'costing'].includes(this.projectStatus(p).key));
+          ['draft', 'active'].includes(this.projectStatus(p).key));
         this.completedProjects = this.projects.filter(p =>
-          ['completed', 'archived', 'closed', 'cancelled'].includes(this.projectStatus(p).key));
+          !['draft', 'active'].includes(this.projectStatus(p).key));
         this.loading = false;
         this.cdr.detectChanges();
       },

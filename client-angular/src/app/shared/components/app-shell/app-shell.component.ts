@@ -704,7 +704,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // also push a heroTitle. Title/sub still fall back to route data.
       // p0032 — keep ctx alive when the surface opts into the configured
       // title (the dashboard pushes useConfiguredTitle without a heroTitle).
-      this.ctx = (ctx.heroTitle || ctx.back || ctx.useConfiguredTitle) ? ctx : null;
+      this.ctx = (ctx.heroTitle || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
       this.cdr.detectChanges();
     });
 
