@@ -125,7 +125,9 @@ const FULL_ROUTES: Routes = [
       {
         path: 'suppliers/:id',
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
-        data: { pageLabel: '', tabs: [] }
+        // heroTitle is the page-settings label fallback ("Supplier"); the live
+        // hero title is the supplier's own name, pushed via ShellContext.
+        data: { pageLabel: '', tabs: [], heroTitle: 'Supplier' }
       },
       {
         path: 'suppliers/:id/items/:itemId',

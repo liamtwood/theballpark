@@ -23,6 +23,11 @@ export interface ShellBack {
 export interface ShellContext {
   heroTitle:    string;
   heroSub:      string;
+  /** Page-scoped org identity. When a page shows a DIFFERENT org than the
+      logged-in viewer (e.g. a supplier detail page viewing "Rocket Food"),
+      it sets this so the hero's org title-mode + org pill reflect the org
+      being VIEWED, not the viewer's own org. Empty = use the viewer's org. */
+  orgName?:     string;
   pills:        string[];
   tabs:         ShellTab[];
   showStats:    boolean;

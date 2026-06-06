@@ -1166,6 +1166,9 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
         ];
     this.shellCtx.set({
       heroTitle: this.supplier.name,
+      // This page VIEWS the supplier's org — drive the hero's org title-mode
+      // + org pill from it (not the logged-in viewer's org).
+      orgName: this.supplier.name,
       heroSub: this.supplier.city || 'London',
       pills: [],
       tabs,

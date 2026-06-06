@@ -10,6 +10,7 @@ import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { pagePatternKey } from '../../../core/utils/page-key';
 import { PersonaService } from '../../../core/services/persona.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 // v1.65hJ (p0017): TemplateRef import dropped — lifted strip slot gone.
@@ -444,7 +445,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return 'purpose';
   }
   private resolveTitle(mode: 'org' | 'user' | 'greeting' | 'purpose'): string {
-    if (mode === 'org')  return this.orgName || this.platformName;
+    // 'org' = the org this PAGE represents. A page viewing another org (e.g.
+    // a supplier detail) sets ctx.orgName so it wins over the viewer's org.
+    if (mode === 'org')  return this.ctx?.orgName || this.orgName || this.platformName;
     if (mode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
     if (mode === 'greeting') {
       const name  = this.personaSvc.active?.name?.trim() || '';
@@ -468,7 +471,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     // the user + location pills. Was showing the globally-loaded agency
     // org (getCurrentOrg) regardless of who's viewing, so a supplier
     // persona (Ryan / Rocket Food) wrongly read "Woodland Agency".
-    const name = this.personaSvc.active?.orgName || this.orgName;
+    // A page viewing another org (supplier detail) sets ctx.orgName, which
+    // wins over the active persona's org so the pill names the VIEWED org.
+    const name = this.ctx?.orgName || this.personaSvc.active?.orgName || this.orgName;
     return this.showOrg && name ? name : null;
   }
   get heroSub(): string {
@@ -722,7 +727,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // also push a heroTitle. Title/sub still fall back to route data.
       // p0032 — keep ctx alive when the surface opts into the configured
       // title (the dashboard pushes useConfiguredTitle without a heroTitle).
-      this.ctx = (ctx.heroTitle || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
+      this.ctx = (ctx.heroTitle || ctx.orgName || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
       this.cdr.detectChanges();
     });
 
@@ -781,8 +786,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   private updateFromRoute() {
     this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
-    // v1.66av — page key for per-page hero overrides (route path only).
-    this.pageKey = this.router.url.split('?')[0];
+    // Per-page key from the route PATTERN (e.g. /suppliers/:id) so param
+    // routes share one settings entry instead of one per concrete id.
+    this.pageKey = pagePatternKey(this.router);
     if (!this.router.url.includes('/projects/')) {
       this.shellCtx.reset();
     }

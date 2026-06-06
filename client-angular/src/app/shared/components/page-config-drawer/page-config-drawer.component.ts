@@ -48,6 +48,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { ConfigService } from '../../../core/services/config.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
+import { pagePatternKey } from '../../../core/utils/page-key';
 
 @Component({
   selector: 'app-page-config-drawer',
@@ -685,7 +686,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   }
 
   private updatePageName(): void {
-    this.pageKey = this.router.url.split('?')[0];
+    // Pattern-based key (e.g. /suppliers/:id) so param routes share one entry
+    // and the label isn't a raw id. Matches the app-shell's key exactly.
+    this.pageKey = pagePatternKey(this.router);
     this.isHomePage = this.pageKey === '/home';
     const ev = this.configService.projectLabel || 'Event';
     const sub = (s: string) => (s || '')
@@ -697,7 +700,8 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
 
     let name = sub(route.data?.['heroTitle'] as string);
     if (!name) {
-      const seg = this.pageKey.split('/').filter(Boolean).pop() || 'home';
+      // Last STATIC segment of the pattern (skip :params like :id).
+      const seg = this.pageKey.split('/').filter(s => s && !s.startsWith(':')).pop() || 'home';
       name = seg === 'home' ? 'Home'
            : seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
