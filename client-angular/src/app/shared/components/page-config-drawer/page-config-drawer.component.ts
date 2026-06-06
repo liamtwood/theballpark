@@ -156,6 +156,14 @@ import { pagePatternKey } from '../../../core/utils/page-key';
           <ng-container *ngIf="catalogueView as cv">
             <div class="bp-pcd-subhead">Catalogue view</div>
             <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Categories</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of catPositionOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.categoriesPosition === o.value"
+                        (click)="setCatalogueView({ categoriesPosition: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
               <label class="bp-pcd-field-label">Shape</label>
               <div class="bp-cfg-seg">
                 <button *ngFor="let o of shapeOptions" type="button" class="bp-cfg-seg-btn"
@@ -668,6 +676,10 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   /** Catalogue view controls (shown when a catalogue page is active). The
       values mirror page-config-toggles' old options. */
   catalogueView: CatalogueViewState | null = null;
+  readonly catPositionOptions = [
+    { value: 'top' as const,  label: 'Top' },
+    { value: 'left' as const, label: 'Left' },
+  ];
   readonly shapeOptions = [
     { value: 'circle' as const, label: 'Circle' },
     { value: 'square' as const, label: 'Square' },

@@ -83,7 +83,7 @@ export type DetailMode = 'inline' | 'drawer';
          the two were sibling panels and the page-ground colour
          between them read as accidental bleed-through. -->
     <div class="bp-browse-strip"
-         *ngIf="categories.length && showCategoryCircles">
+         *ngIf="categories.length && showCategoryCircles && categoriesPosition !== 'left'">
       <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
            Catalogue-grid owns the data + drill/scope state; the sub-
            component owns the markup, scroll-arrow state and event wiring.
@@ -189,10 +189,50 @@ export type DetailMode = 'inline' | 'drawer';
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
       [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
-      [class.bp-cat-body--no-filter]="!showFilter && !filterPanelOpen">
+      [class.bp-cat-body--no-filter]="categoriesPosition !== 'left' && !showFilter && !filterPanelOpen">
 
       <!-- ── SIDEBAR ── -->
-      <div class="bp-cat-sidebar" *ngIf="showFilter || filterPanelOpen">
+      <div class="bp-cat-sidebar" *ngIf="categoriesPosition === 'left' || showFilter || filterPanelOpen">
+        <!-- Categories LEFT rail — replaces the filter sidebar; cats with
+             icon + count, expanding to subcats. -->
+        <ng-container *ngIf="categoriesPosition === 'left'">
+          <div class="bp-cat-sidebar-head">
+            <lucide-icon name="layout-grid" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
+            <div class="bp-filter-title">CATEGORIES</div>
+          </div>
+          <div class="bp-cat-sidebar-body">
+            <div class="bp-cat-rail">
+              <button type="button" class="bp-cat-rail-all" [class.active]="activeCategory === 'all'"
+                      (click)="railExpandedId = null; setCategory('all')">
+                <span>All {{ entityLabel }}s</span>
+                <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
+              </button>
+              <ng-container *ngFor="let cat of sidebarParentCategories">
+                <button type="button" class="bp-cat-rail-item"
+                        [class.active]="activeCategory === cat.id"
+                        (click)="onRailCatClick(cat)">
+                  <span class="bp-cat-rail-icon">
+                    <lucide-icon [name]="cat.icon_name || 'folder'" [size]="16" [strokeWidth]="1.5"></lucide-icon>
+                  </span>
+                  <span class="bp-cat-rail-text">
+                    <span class="bp-cat-rail-name">{{ cat.name }}</span>
+                    <span class="bp-cat-rail-count" *ngIf="cat.count">{{ cat.count }} {{ entityLabel }}s</span>
+                  </span>
+                  <lucide-icon [name]="railExpandedId === cat.id ? 'chevron-down' : 'chevron-right'"
+                               [size]="15" class="bp-cat-rail-chev"></lucide-icon>
+                </button>
+                <div class="bp-cat-rail-subs" *ngIf="railExpandedId === cat.id">
+                  <button type="button" class="bp-cat-rail-sub"
+                          *ngFor="let sub of railSubcats(cat.id)"
+                          [class.active]="activeSubcategoryId === sub.id"
+                          (click)="onRailSubClick(sub)">{{ sub.name }}</button>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="categoriesPosition !== 'left'">
         <!-- v1.65c — search moved out to the strip-bar above. -->
 
         <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
@@ -360,6 +400,7 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
         </ng-container>
         </div><!-- /.bp-cat-sidebar-body -->
+        </ng-container><!-- /categoriesPosition !== 'left' -->
       </div>
 
       <!-- ── MAIN ── -->
@@ -1883,6 +1924,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   @Input() pageLabel: string = '';
   @Input() pageTitle: string = '';
   @Input() pageSubtitle: string = '';
+  /** Category nav position — 'top' (circle strip) or 'left' (vertical rail). */
+  @Input() categoriesPosition: 'top' | 'left' = 'top';
   /** Category-strip shape — round circles or rounded squares. */
   @Input() shape: 'circle' | 'square' = 'circle';
   /** Item/supplier card size — sm (today) / md / lg (project-card width). */
@@ -2527,6 +2570,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     let saved: Partial<CatalogueViewState> = {};
     try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
     const d = this.viewControlsDefaults || {};
+    this.categoriesPosition = (saved.categoriesPosition || d.categoriesPosition || this.categoriesPosition) as 'top' | 'left';
     this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
     this.cardSize   = (saved.cardSize   || d.cardSize   || this.cardSize) as 'sm' | 'md' | 'lg';
     this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
@@ -2542,6 +2586,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
 
   private viewControlsState(): CatalogueViewState {
     return {
+      categoriesPosition: this.categoriesPosition,
       shape: this.shape,
       cardSize: this.cardSize,
       circleSize: this.circleSize,
@@ -2555,6 +2600,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
 
   /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
   private applyViewControls(p: Partial<CatalogueViewState>): void {
+    if (p.categoriesPosition) this.categoriesPosition = p.categoriesPosition;
     if (p.shape)      this.shape      = p.shape;
     if (p.cardSize)   this.cardSize   = p.cardSize;
     if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
@@ -2615,6 +2661,23 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.selectedEntity = e;
     this.entitySelected.emit(e);
     this.cdr.detectChanges();
+  }
+
+  // ── Categories LEFT rail ───────────────────────────────────────────────
+  /** Which parent category is expanded in the left rail (null = none). */
+  railExpandedId: string | null = null;
+  /** Children of a parent category, for the rail accordion. */
+  railSubcats(parentId: string): CategoryInfo[] {
+    return this.categories.filter(c => c.parent_id === parentId);
+  }
+  /** Rail parent click — select the category + toggle its subcat accordion. */
+  onRailCatClick(cat: CategoryInfo) {
+    this.railExpandedId = this.railExpandedId === cat.id ? null : cat.id;
+    this.setCategory(cat.id);
+  }
+  /** Rail subcat click — filter to the subcategory (host reloads). */
+  onRailSubClick(sub: CategoryInfo) {
+    this.subcategoryChanged.emit(sub.id);
   }
 
   // ── v1.66cd card helpers (redesigned item/supplier card) ───────────────

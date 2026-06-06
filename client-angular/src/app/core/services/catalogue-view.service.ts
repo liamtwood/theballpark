@@ -19,6 +19,9 @@ import { BehaviorSubject } from 'rxjs';
  * namespace + feeds the catalogue-grid); this service is a thin editor bridge.
  */
 export interface CatalogueViewState {
+  /** Category navigation position — 'top' (horizontal circle strip) or
+      'left' (a vertical rail with cats + expandable subcats). */
+  categoriesPosition: 'top' | 'left';
   /** Category-strip shape — round circles or rounded squares. */
   shape: 'circle' | 'square';
   /** Item/supplier card size — sm (≈190px, today) / md (≈255px) / lg

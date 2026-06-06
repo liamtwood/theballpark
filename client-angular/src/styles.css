@@ -883,6 +883,40 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow-y: auto;
   padding: 16px;
 }
+/* ── Categories LEFT rail ─────────────────────────────────────────────── */
+.bp-cat-rail { display: flex; flex-direction: column; gap: 2px; }
+.bp-cat-rail-all {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; margin-bottom: 4px; border: none; background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  border-radius: 10px;
+}
+.bp-cat-rail-all:hover { background: var(--theme-bg); }
+.bp-cat-rail-all.active { color: var(--theme-accent); }
+.bp-cat-rail-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 8px; border: none; background: none; cursor: pointer; border-radius: 14px;
+  font-family: var(--font-body); transition: background 0.15s, box-shadow 0.15s;
+}
+.bp-cat-rail-item:hover { background: var(--theme-bg); }
+.bp-cat-rail-item.active { background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.bp-cat-rail-icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--grad-accent-soft); color: #374151;
+}
+.bp-cat-rail-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bp-cat-rail-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-cat-rail-count { font-size: 11px; color: var(--color-text-muted); }
+.bp-cat-rail-chev { color: var(--color-text-muted); flex-shrink: 0; }
+.bp-cat-rail-subs { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 8px 49px; }
+.bp-cat-rail-sub {
+  text-align: left; border: none; background: none; cursor: pointer;
+  padding: 6px 6px; border-radius: 6px; font-family: var(--font-body);
+  font-size: 13px; color: var(--color-text-secondary);
+}
+.bp-cat-rail-sub:hover { color: var(--theme-accent); background: var(--theme-bg); }
+.bp-cat-rail-sub.active { color: var(--theme-accent); font-weight: 600; }
 .bp-cat-main {
   background: var(--color-surface);
   border: var(--border-hairline);
