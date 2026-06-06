@@ -409,6 +409,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
       categoryLabel: i.category_name,
+      subcategoryLabel: i.subcategory_name,
       specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
       parentEntity: i.supplier_name ? {
         id: i.org_id,

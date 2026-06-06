@@ -553,13 +553,9 @@ export type DetailMode = 'inline' | 'drawer';
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
                 <div class="bp-grid-actions">
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
-                          (click)="onCartAddClick($event, e)"
-                          [title]="getSelectionType(e.id) === 'selected' ? 'Remove from project' : 'Add to project'">
-                    <lucide-icon name="plus" [size]="14"></lucide-icon>
-                  </button>
+                  <!-- Corner "+" removed — the primary "Add to Project" action
+                       is now the big button in the card body. Heart (like) +
+                       quote stay here. -->
                   <button *ngIf="showCartActions" type="button"
                           class="bp-grid-action-btn"
                           [class.bp-cart-btn--liked]="getSelectionType(e.id) === 'liked'"
@@ -581,25 +577,32 @@ export type DetailMode = 'inline' | 'drawer';
                   </button>
                 </div>
               </div>
+              <!-- v1.66cd — card redesign: name, subcat/cat pill, "From {min}"
+                   in the Ballpark-cost gradient, lead-time + location meta, and
+                   a big primary action button. -->
               <div class="bp-item-card-body">
                 <div class="bp-item-card-name">
                   {{ e.name }}
                   <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
                 </div>
-                <!-- v1.65ee — card price now mirrors the list-view
-                     fallback: prefer priceRange (min – max) when set,
-                     else fall back to base_price. Was only rendering
-                     base_price, so an item with only min/max set
-                     (e.g. Rocket Food's sit-down dinner at £7k-£12k)
-                     showed as priceless on the card while the detail
-                     panel displayed the range correctly. -->
-                <div class="bp-item-card-price" *ngIf="e.priceRange || e.price">
-                  <ng-container *ngIf="e.priceRange">{{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}</ng-container>
-                  <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
-                  <span class="bp-item-card-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</span>
+                <span class="bp-item-card-cat" *ngIf="cardCatLabel(e)">{{ cardCatLabel(e) }}</span>
+                <div class="bp-item-card-from" *ngIf="cardFromPrice(e) != null">
+                  From {{ cardFromPrice(e) | gbp }}<span class="bp-item-card-unit" *ngIf="e.unit"> {{ unitDisplay(e.unit) }}</span>
                 </div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !(e.priceRange || e.price)">{{ e.subtitle }}</div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && (e.priceRange || e.price)">{{ e.subtitle }}</div>
+                <div class="bp-item-card-meta" *ngIf="cardLeadTime(e) || cardLocation(e)">
+                  <span class="bp-item-card-meta-item" *ngIf="cardLeadTime(e)">
+                    <lucide-icon name="clock" [size]="13"></lucide-icon>{{ cardLeadTime(e) }}
+                  </span>
+                  <span class="bp-item-card-meta-item" *ngIf="cardLocation(e)">
+                    <lucide-icon name="map-pin" [size]="13"></lucide-icon>{{ cardLocation(e) }}
+                  </span>
+                </div>
+                <button type="button" class="bp-item-card-action"
+                        [class.bp-item-card-action--added]="showCartActions && getSelectionType(e.id) === 'selected'"
+                        (click)="onPrimaryAction($event, e)">
+                  <lucide-icon [name]="primaryActionIcon(e)" [size]="16"></lucide-icon>
+                  {{ primaryActionLabel(e) }}
+                </button>
               </div>
             </div>
           </div>
@@ -1406,13 +1409,47 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-card-icon { color: var(--theme-accent); }
-    .bp-item-card-body { padding: 10px 12px; }
-    .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-    /* v1.65f1 — explicit gap so "£140Platter" reads "£140 Platter".
-       padding-left rather than a literal space in the template so the
-       space survives whitespace collapsing across the *ngIf branches. */
-    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); padding-left: 6px; }
+    /* v1.66cd — redesigned card body: name, subcat/cat pill, "From {min}"
+       in the Ballpark-cost gradient, lead-time + location meta, primary button.
+       Type scale steps up with the Card size (data-card-size on the grid). */
+    .bp-item-card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; }
+    .bp-item-card-name { font-size: 15px; font-weight: 600; color: var(--color-text-primary); line-height: 1.25; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    /* Subcat/cat pill — soft accent chip (matches the REF chip language). */
+    .bp-item-card-cat {
+      align-self: flex-start;
+      padding: 2px 9px; border-radius: var(--radius-pill);
+      background: var(--theme-soft); color: var(--theme-accent);
+      font-size: 11px; font-weight: 600; font-family: var(--font-body);
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    /* "From {min}" — same font as the Ballpark cost, accent gradient fill. */
+    .bp-item-card-from {
+      font-family: var(--font-body); font-weight: 400; line-height: 1; font-size: 20px;
+      background: var(--grad-accent);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .bp-item-card-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--color-text-muted); font-family: var(--font-body); }
+    .bp-item-card-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+    /* Primary action — full-width gradient pill (the "larger primary icon"). */
+    .bp-item-card-action {
+      margin-top: 3px; width: 100%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 12px; border: none; border-radius: var(--radius-pill);
+      background: var(--grad-accent); color: #fff;
+      font-size: 13px; font-weight: 600; font-family: var(--font-body); cursor: pointer;
+      box-shadow: 0 2px 8px rgba(var(--theme-accent-rgb), 0.22);
+      transition: box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .bp-item-card-action:hover { box-shadow: 0 6px 16px rgba(var(--theme-accent-rgb), 0.30); }
+    .bp-item-card-action:active { transform: translateY(1px); }
+    .bp-item-card-action--added { background: var(--color-text-secondary); box-shadow: none; }
+    /* Type scale per Card size. */
+    .bp-item-grid[data-card-size="md"] .bp-item-card-name { font-size: 16px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-name { font-size: 18px; }
+    .bp-item-grid[data-card-size="md"] .bp-item-card-from { font-size: 24px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-from { font-size: 28px; }
+    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); -webkit-text-fill-color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
     .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
@@ -2574,6 +2611,42 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.selectedEntity = e;
     this.entitySelected.emit(e);
     this.cdr.detectChanges();
+  }
+
+  // ── v1.66cd card helpers (redesigned item/supplier card) ───────────────
+  /** Pill label: subcategory if present, else category. */
+  cardCatLabel(e: CatalogueEntity): string {
+    return e.subcategoryLabel || e.categoryLabel || '';
+  }
+  /** "From {min}" figure — priceRange.min, else base price. */
+  cardFromPrice(e: CatalogueEntity): number | null {
+    return e.priceRange?.min ?? e.price ?? null;
+  }
+  /** Lead-time spec value, if the entity carries one. */
+  cardLeadTime(e: CatalogueEntity): string {
+    return e.specs?.find(s => /lead/i.test(s.label))?.value || '';
+  }
+  /** Location — supplier's own city for a supplier; the parent supplier's
+      city for an item. */
+  cardLocation(e: CatalogueEntity): string {
+    return (this.entityType === 'supplier' ? e.subtitle : e.parentEntity?.subtitle) || '';
+  }
+  /** Primary action button — label/icon/behaviour by context. */
+  primaryActionLabel(e: CatalogueEntity): string {
+    if (this.entityType === 'supplier') return this.actionLabel || 'View supplier';
+    if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'Added to project' : 'Add to Project';
+    return 'View item';
+  }
+  primaryActionIcon(e: CatalogueEntity): string {
+    if (this.entityType === 'supplier') return 'arrow-right';
+    if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'check' : 'plus';
+    return 'arrow-right';
+  }
+  onPrimaryAction(ev: MouseEvent, e: CatalogueEntity) {
+    ev.stopPropagation();
+    if (this.entityType === 'supplier') { this.actionClicked.emit(e); return; }
+    if (this.showCartActions) { this.onAddToProject(e); return; }
+    this.viewRequested.emit(e);
   }
 
   // ── Circle click handler ──────────────────────────────────────────────

@@ -14,6 +14,9 @@ export interface CatalogueEntity {
   unit?: string;
   category_id?: string;
   categoryLabel?: string;
+  /** Subcategory display name — preferred over categoryLabel for the card's
+      category pill ("subcat, or cat if no subcat"). */
+  subcategoryLabel?: string;
   // Optional pill rendered next to the name (var(--theme-bg) background) —
   // used for things like a feedback version tag (e.g. 'v1.7').
   badge?: string;
