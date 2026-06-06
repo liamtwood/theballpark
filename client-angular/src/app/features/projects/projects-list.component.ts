@@ -34,7 +34,6 @@ import { ConfigService } from '../../core/services/config.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { Project } from '../../models';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
-import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 
 @Component({
   selector: 'app-projects-list',
@@ -43,7 +42,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
   imports: [
     CommonModule, RouterModule, LucideAngularModule,
     CardModule, ConfirmDialogModule, ToastModule,
-    ImageUploadPanelComponent, CompactCurrencyPipe,
+    ImageUploadPanelComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -114,10 +113,11 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
               <span>{{ supplierCount(p) }} Suppliers</span>
               <span>{{ relativeTime(p.updated_at) }}</span>
             </div>
-            <!-- Big gradient Client total (matches the estimate page). -->
+            <!-- Headline "Ballpark" estimate — live client total in the
+                 configured currency, suffixed with the product term, painted
+                 in the rainbow gradient (--grad-tab). -->
             <div class="bp-card-total-row">
-              <span class="bp-card-total">{{ p.total_client_cost | compactCurrency }}</span>
-              <span class="bp-card-total-label">Client total</span>
+              <span class="bp-card-total">{{ (p.total_client_cost || 0) | currency:currencyCode:'symbol':'1.0-0' }} Ballpark</span>
             </div>
             <div *ngIf="openMenuProjectId === p.id"
                  class="bp-card-menu"
@@ -223,9 +223,11 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-bottom:8px; }
     .bp-project-card-wrap { display:block; position:relative; }
     .bp-project-card-wrap--menu-open { z-index:30; }
+    /* v1.66bh — event cards are more rounded (20px) and taller; the radius
+       is shared with the cover header below so the top corners stay flush. */
     :host ::ng-deep .bp-project-card.p-card {
       border: var(--border-hairline) !important;
-      border-radius: var(--radius-card) !important;
+      border-radius: 20px !important;
       box-shadow: var(--shadow-xs) !important;
       overflow: visible !important;
       margin: 0; cursor: pointer; position: relative;
@@ -240,12 +242,12 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     :host ::ng-deep .bp-project-card .p-card-content,
     :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
     .bp-card-header {
-      height:200px; position:relative;
+      height:260px; position:relative;
       display:flex; align-items:flex-end; justify-content:space-between;
       padding:8px 10px;
       background-size:cover; background-position:center;
-      border-top-left-radius: var(--radius-card);
-      border-top-right-radius: var(--radius-card);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
       overflow:hidden;
     }
     .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
@@ -314,11 +316,11 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       display:flex; align-items:center; justify-content:space-between;
       font-size:13px; color:var(--color-text-muted); font-family: var(--font-body);
     }
-    /* Big gradient Client total + muted label. */
+    /* Headline "Ballpark" estimate — rainbow gradient (--grad-tab). */
     .bp-card-total-row { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
     .bp-card-total {
       font-size:28px; font-weight:600; line-height:1; font-family: var(--font-body);
-      background: linear-gradient(90deg, var(--theme-accent), var(--color-action-text));
+      background: var(--grad-tab);
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent; color: transparent;
     }
@@ -329,8 +331,8 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
        empty-grid case. */
     .bp-new-tile {
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap:10px; min-height:340px;
-      border:2px dashed var(--color-border); border-radius: var(--radius-card);
+      gap:10px; min-height:400px;
+      border:2px dashed var(--color-border); border-radius: 20px;
       background: transparent; cursor:pointer;
       color:var(--color-text-muted); font-family: var(--font-body);
       transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -356,6 +358,11 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   uploadPanelProjectId = '';
   completedOpen = false;
   private sub?: Subscription;
+
+  /** Financial defaults — headline currency for the card "Ballpark" total
+      (ISO 4217 code from the active profile). Drives the Angular currency
+      pipe in the template. */
+  get currencyCode(): string { return this.configService.currency; }
 
   constructor(
     private projectService: ProjectService,

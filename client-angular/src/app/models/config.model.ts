@@ -54,6 +54,10 @@ export interface PlatformConfig {
   /** v1.66bb — hero separator (tab-band underline) width as a % of the
       content width. Default 100. General (global) setting. */
   separatorWidth?: number;
+  /** Financial defaults — currency for headline money figures (project
+      card totals, estimates). ISO 4217 code; default 'GBP'. Authored from
+      the page-config drawer's General → Financial defaults group. */
+  currency?: 'GBP' | 'USD' | 'EUR';
   fontPairing?: string;
   catalogueLabel?: string;
   feedbackLabel?: string;

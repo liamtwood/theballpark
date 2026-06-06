@@ -287,6 +287,21 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                    (blur)="saveLabels()"
                    placeholder="Events"/>
           </div>
+
+          <!-- Financial defaults — currency for headline money figures
+               (project card totals / estimates). Default GBP. -->
+          <div class="bp-pcd-subhead">Financial defaults</div>
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Currency</label>
+            <p-dropdown styleClass="bp-pcd-dropdown"
+                        [options]="currencyOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        [appendTo]="'body'"
+                        [(ngModel)]="settingsDraft.currency"
+                        (onChange)="saveCurrency($event.value)">
+            </p-dropdown>
+          </div>
         </div>
 
       </div>
@@ -324,6 +339,19 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       font-weight: 500;
       color: var(--color-text-secondary);
       letter-spacing: 0.02em;
+    }
+    /* Group sub-heading inside a tab panel (e.g. "Financial defaults").
+       A small eyebrow with a hairline above to separate clusters. */
+    .bp-pcd-subhead {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      padding-top: 14px;
+      margin-top: 2px;
+      border-top: var(--border-hairline);
     }
 
     /* Drawer body input — wider than the strip's compact inline input.
@@ -489,6 +517,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose';
     heroColor: 'theme' | 'none';
     separatorWidth: number;
+    currency: 'GBP' | 'USD' | 'EUR';
     showOrg: boolean;
     showUserName: boolean;
     showLocation: boolean;
@@ -509,6 +538,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     heroTitleMode: 'greeting',
     heroColor: 'none',
     separatorWidth: 100,
+    currency: 'GBP',
     showOrg: true,
     showUserName: true,
     showLocation: true,
@@ -547,6 +577,13 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
     { value: 'left',   label: 'Left' },
     { value: 'center', label: 'Centre' },
+  ];
+
+  /** Financial defaults — headline currency (GENERAL dropdown). */
+  readonly currencyOptions: Array<{ value: 'GBP' | 'USD' | 'EUR'; label: string }> = [
+    { value: 'GBP', label: '£ GBP — British Pound' },
+    { value: 'USD', label: '$ USD — US Dollar' },
+    { value: 'EUR', label: '€ EUR — Euro' },
   ];
 
   /** Nav mode — single-pick segmented group. */
@@ -646,6 +683,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           heroTitleMode: (['org', 'user', 'purpose'].includes(cfg.heroTitleMode as string) ? cfg.heroTitleMode as any : 'greeting'),
           heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
           separatorWidth: cfg.separatorWidth ?? 100,
+          currency:      (['USD', 'EUR'].includes(cfg.currency as string) ? cfg.currency as any : 'GBP'),
           showOrg:       cfg.showOrg       !== false,
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
@@ -721,6 +759,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   }
   saveSeparatorWidth() {
     this.configService.update({ separatorWidth: this.settingsDraft.separatorWidth });
+  }
+
+  /** Financial defaults — persist the headline currency on change. */
+  saveCurrency(value: 'GBP' | 'USD' | 'EUR') {
+    this.settingsDraft.currency = value;
+    this.configService.update({ currency: value });
   }
 
   onThemeChange(theme: string) {

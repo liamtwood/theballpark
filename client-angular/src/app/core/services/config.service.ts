@@ -45,6 +45,7 @@ const DEFAULT_CONFIG: PlatformConfig = {
   heroTitleMode: 'greeting',
   heroColor: 'none',
   separatorWidth: 100,
+  currency: 'GBP',
   showUserName: true,
   showLocation: true,
   showOrg: true,
@@ -91,6 +92,8 @@ export class ConfigService {
   get heroTitleMode(): 'org' | 'user' | 'greeting' | 'purpose' { return this.config.heroTitleMode || 'greeting'; }
   get heroColor(): 'theme' | 'none' { return this.config.heroColor || 'none'; }
   get separatorWidth(): number { return this.config.separatorWidth ?? 100; }
+  /** Financial defaults — headline currency (ISO 4217). Default GBP. */
+  get currency(): string { return this.config.currency || 'GBP'; }
   get showUserName(): boolean { return this.config.showUserName !== false; }
   get showLocation(): boolean { return this.config.showLocation !== false; }
   get showOrg(): boolean { return this.config.showOrg !== false; }
