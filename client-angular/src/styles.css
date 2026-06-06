@@ -1346,7 +1346,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero {
   background: var(--theme-accent);
   padding: 32px var(--section-pad) 0;
-  border-bottom: 0.5px solid var(--theme-bg);
+  /* v1.66bc — the hero's full-bleed bottom border is gone; the inset
+     tab-band separator (.bp-hero-tabs::after, aligned with the title)
+     is the single hero baseline now. */
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
