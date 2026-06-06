@@ -59,7 +59,7 @@ type FavTab = 'suppliers' | 'items';
         <div *ngIf="filtered.length === 0" class="bp-fav-empty">
           <lucide-icon name="heart" [size]="32" style="color:var(--color-text-muted);margin-bottom:12px;"></lucide-icon>
           <p>No favourite suppliers yet.</p>
-          <a routerLink="/suppliers" class="bp-fav-browse">Browse suppliers →</a>
+          <a routerLink="/shop" class="bp-fav-browse">Browse suppliers →</a>
         </div>
         <div class="bp-sup-list">
           <a *ngFor="let f of filtered" class="bp-row-card" [routerLink]="['/suppliers', f.ref_id]">
@@ -77,7 +77,7 @@ type FavTab = 'suppliers' | 'items';
           </a>
         </div>
         <div class="bp-fav-browse-row" *ngIf="filtered.length > 0">
-          <a routerLink="/suppliers" class="bp-fav-browse">Browse more suppliers →</a>
+          <a routerLink="/shop" class="bp-fav-browse">Browse more suppliers →</a>
         </div>
       </ng-container>
 
@@ -86,7 +86,7 @@ type FavTab = 'suppliers' | 'items';
         <div *ngIf="filtered.length === 0" class="bp-fav-empty">
           <lucide-icon name="heart" [size]="32" style="color:var(--color-text-muted);margin-bottom:12px;"></lucide-icon>
           <p>No favourite items yet.</p>
-          <a routerLink="/suppliers" class="bp-fav-browse">Browse supplier catalogues →</a>
+          <a routerLink="/shop" class="bp-fav-browse">Browse supplier catalogues →</a>
         </div>
         <div class="bp-sup-list">
           <a *ngFor="let f of filtered" class="bp-row-card"

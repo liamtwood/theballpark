@@ -11,16 +11,6 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     loadComponent: () => import('./tabs/overview/overview.component').then(m => m.OverviewComponent)
   },
   {
-    // v1.29: /event redirects to /overview. The standalone Event tab
-    // was removed in favour of the Event drawer that opens from the
-    // Overview event strip. The component file is preserved at
-    // tabs/event/event.component.ts for git-history continuity; the
-    // drawer reuses its field definitions and dropdown options.
-    path: 'event',
-    redirectTo: 'overview',
-    pathMatch: 'full'
-  },
-  {
     // v1.65cg (p0005) — Plan tab removed. AI matching (Recommend
     // button + ?recommend=1 auto-fire) and per-category brief editing
     // both live on the Marketplace now, so /plan and /brief redirect

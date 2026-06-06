@@ -89,11 +89,6 @@ const FULL_ROUTES: Routes = [
         }
       },
 
-      // ── AGENT → HOME ──
-      // v1.66n (p0033): /agent collapsed into the canonical dashboard.
-      // Redirect keeps old links / bookmarks working.
-      { path: 'agent', redirectTo: 'home', pathMatch: 'full' },
-
       // ── PROJECTS ──
       // v1.30: /projects/new removed — replaced by the intake modal
       // mounted in app-shell and opened via CreateProjectService.
@@ -119,9 +114,9 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/suppliers/supplier-list.component').then(m => m.SupplierListComponent),
         data: { pageLabel: '', tabs: [], heroTitle: 'Marketplace', heroSub: 'Browse suppliers, products and services to build your {event}.' }
       },
-      // v1.66al — the marketplace list moved /suppliers → /shop. Old
-      // list links redirect; detail routes stay /suppliers/:id below.
-      { path: 'suppliers', redirectTo: 'shop', pathMatch: 'full' },
+      // The marketplace list is /shop; supplier DETAIL stays /suppliers/:id.
+      // (The legacy bare /suppliers → /shop redirect was removed in the
+      //  v1.66 route cleanup — all internal links point at /shop now.)
       {
         path: 'suppliers/:id',
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
@@ -146,10 +141,6 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/favourites/favourites.component').then(m => m.FavouritesComponent),
         data: { pageLabel: '', tabs: [], heroTitle: 'Favourites', heroSub: "Suppliers and items you've saved." }
       },
-      // v1.66l (p0015 close-out) — /messages redirects to the canonical
-      // /inbox (object naming: Org / Projects / Inbox / Marketplace).
-      { path: 'messages', redirectTo: 'inbox', pathMatch: 'full' },
-
       // ── INBOX ──
       // One canonical route + one viewer-aware component (InboxComponent)
       // for both agency and supplier — the viewer is chosen from the
@@ -225,7 +216,6 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/meeting/meeting-detail.component').then(m => m.FolderDetailComponent),
         data: { pageLabel: '', tabs: [], hideHero: true }
       },
-      { path: 'meeting/:id', redirectTo: 'folder/:id' },
 
       // ── ABOUT ──
       {

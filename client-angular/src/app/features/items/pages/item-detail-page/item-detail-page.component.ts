@@ -45,7 +45,7 @@ import { Item, Org, Project } from '../../../../models';
     <ng-container *ngIf="!loading && !item">
       <div class="bp-itempage-empty">
         <p>Item not found.</p>
-        <a routerLink="/suppliers">← Back to {{ catalogueLabel }}</a>
+        <a routerLink="/shop">← Back to {{ catalogueLabel }}</a>
       </div>
     </ng-container>
 
@@ -689,7 +689,7 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     } else if (this.context === 'supplier' && this.supplierContextId) {
       this.router.navigate(['/suppliers', this.supplierContextId]);
     } else {
-      this.router.navigate(['/suppliers']);
+      this.router.navigate(['/shop']);
     }
   }
 

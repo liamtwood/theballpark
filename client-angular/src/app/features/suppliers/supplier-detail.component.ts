@@ -1279,7 +1279,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     // no history entry (deep-link / fresh tab) we fall back to the
     // catalogue.
     if (history.length > 1) history.back();
-    else this.router.navigate(['/suppliers']);
+    else this.router.navigate(['/shop']);
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
