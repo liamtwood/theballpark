@@ -529,9 +529,13 @@ export type DetailMode = 'inline' | 'drawer';
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
               <div class="bp-item-card-img"
-                [style.background-image]="getImageUrl(e) && e.image_display !== 'contain' ? 'url(' + getImageUrl(e) + ')' : null"
                 [class.bp-item-card-img-default]="!getImageUrl(e)"
                 [class.bp-item-card-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
+                <!-- Cover image on its own layer so it zooms on hover while the
+                     action buttons / logo stay put (.bp-card-zoom-img). -->
+                <div *ngIf="getImageUrl(e) && e.image_display !== 'contain'"
+                     class="bp-card-zoom-img"
+                     [style.background-image]="'url(' + getImageUrl(e) + ')'"></div>
                 <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name" class="bp-card-logo-img"/>
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>

@@ -81,10 +81,13 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
            [class.bp-project-card-wrap--menu-open]="openMenuProjectId === p.id">
         <p-card styleClass="bp-project-card" [routerLink]="['/projects', p.id]">
           <ng-template pTemplate="header">
-            <div class="bp-card-header"
-              [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
-              [class.bp-card-header-active]="!p.cover_image_url && projectStatus(p).key !== 'draft'"
-              [class.bp-card-header-draft]="!p.cover_image_url && projectStatus(p).key === 'draft'">
+            <div class="bp-card-header">
+              <!-- Cover image on its own layer so it can zoom on hover
+                   (.bp-card-zoom-img) while the chips/logo below stay put. -->
+              <div class="bp-card-zoom-img"
+                [style.background-image]="p.cover_image_url ? 'url(' + p.cover_image_url + ')' : null"
+                [class.bp-card-header-active]="!p.cover_image_url && projectStatus(p).key !== 'draft'"
+                [class.bp-card-header-draft]="!p.cover_image_url && projectStatus(p).key === 'draft'"></div>
               <!-- p0031: notification badge top-right, only when the
                    project has action-needed items (>0). -->
               <span *ngIf="actionNeeded(p) > 0" class="bp-card-notif">
@@ -240,6 +243,12 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       border-color: var(--card-hover-border) !important;
       box-shadow: var(--card-hover-shadow) !important;
       transform: var(--card-hover-transform);
+    }
+    /* Image zoom on hover — references the central --card-img-zoom token
+       (the wrap is this card's hover trigger; base transition + layer come
+       from the global .bp-card-zoom-img standard). */
+    :host ::ng-deep .bp-project-card-wrap:hover .bp-card-zoom-img {
+      transform: var(--card-img-zoom);
     }
     :host ::ng-deep .bp-project-card .p-card-body,
     :host ::ng-deep .bp-project-card .p-card-content,

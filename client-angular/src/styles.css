@@ -121,6 +121,10 @@
   --card-hover-transform: translateY(-8px);
   --card-hover-border: color-mix(in srgb, var(--theme-accent) 20%, #fff);
   --card-hover-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  /* Card image zoom — cover image scales on card hover. 600ms (slower than
+     the lift) for a magazine feel. Single source; see .bp-card-zoom-img. */
+  --card-img-zoom: scale(1.1);
+  --card-img-zoom-transition: transform 0.6s ease;
   --card-soft-input: #F6F7F9;   /* her grey-filled edit input */
 
   /* v1.24: positive-state tokens. STANDARD pairs --color-danger
@@ -1723,6 +1727,24 @@ input.bp-fld.is-edit:focus,
   border-color: var(--card-hover-border);
   box-shadow: var(--card-hover-shadow);
 }
+
+/* ── Card image zoom standard ──────────────────────────────────────────
+   A cover-image layer that scales on card hover (combined with the lift).
+   Put .bp-card-zoom-img on an absolutely-positioned image layer inside an
+   overflow-hidden container, with overlay content (chips / action buttons /
+   logos) as siblings ABOVE it so only the photo zooms. Cards using the
+   .bp-card-hover class get the trigger for free; cards with a bespoke hover
+   trigger (e.g. PrimeNG p-card via a wrap) add one rule referencing the same
+   --card-img-zoom token. */
+.bp-card-zoom-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform-origin: center;
+  transition: var(--card-img-zoom-transition);
+}
+.bp-card-hover:hover .bp-card-zoom-img { transform: var(--card-img-zoom); }
 .bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .bp-card-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }
 .bp-card-actions { display: flex; align-items: center; gap: 10px; }
