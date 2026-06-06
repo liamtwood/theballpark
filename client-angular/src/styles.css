@@ -1412,6 +1412,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
   height: 1px;
   background: #E5E7EB;
 }
+/* v1.66bf — left-aligned hero anchors to the separator's LEFT EDGE. When
+   the separator is < 100% wide it's centred (gap each side); the content
+   (pills / title / subtitle / tab buttons) insets by that same gap so it
+   lines up with the separator's left end. box-sizing is border-box
+   (Tailwind preflight) so padding-left doesn't overflow. At 100% the gap
+   is 0 — content sits at the usual content-left edge. */
+.bp-hero--left .bp-hero-meta,
+.bp-hero--left .bp-hero-org-name,
+.bp-hero--left .bp-hero-page-label,
+.bp-hero--left .bp-hero-tabs {
+  padding-left: calc((100% - var(--hero-sep-width, 100%)) / 2);
+}
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
    than a row at the bottom of it. On the project Marketplace the
