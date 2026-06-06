@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, OnDestroy, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, OnDestroy, SimpleChanges, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -608,30 +608,42 @@ export type DetailMode = 'inline' | 'drawer';
                 <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name" class="bp-card-logo-img"/>
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
-                <div class="bp-grid-actions">
-                  <!-- Corner "+" removed — the primary "Add to Project" action
-                       is now the big button in the card body. Heart (like) +
-                       quote stay here. -->
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          [class.bp-cart-btn--liked]="getSelectionType(e.id) === 'liked'"
-                          (click)="onCartLikeClick($event, e)"
-                          [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          (click)="onRequestQuoteClick($event, e)" title="Request a quote">
-                    <lucide-icon name="mail" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
-                    <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showFavourite" class="bp-grid-action-btn" [class.bp-grid-heart-active]="favouriteIds.has(e.id)"
-                    (click)="onToggleFav($event, e)">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
-                </div>
+              </div>
+              <!-- v1.66cq — actions live OUTSIDE the image (its overflow:hidden
+                   would clip the dropdown). Items get a hover-revealed "⋯" menu
+                   (top-right); suppliers keep a favourite heart. -->
+              <div class="bp-grid-actions">
+                <ng-container *ngIf="entityType === 'item'">
+                  <button type="button" class="bp-grid-menu-btn"
+                          [class.is-open]="openCardMenuId === e.id"
+                          (click)="toggleCardMenu($event, e)"
+                          title="More actions">⋯</button>
+                  <div class="bp-card-menu" *ngIf="openCardMenuId === e.id"
+                       (click)="$event.stopPropagation()">
+                    <button class="bp-card-menu-item" *ngIf="showCartActions"
+                            (click)="onMenuAction('add', e, $event)">
+                      {{ getSelectionType(e.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="showCartActions"
+                            (click)="onMenuAction('wishlist', e, $event)">Wishlist for Project</button>
+                    <button class="bp-card-menu-item"
+                            (click)="onMenuAction('view', e, $event)">View</button>
+                    <button class="bp-card-menu-item" *ngIf="showEdit"
+                            (click)="onMenuAction('edit', e, $event)">Edit</button>
+                    <button class="bp-card-menu-item" *ngIf="showEdit"
+                            (click)="onMenuAction('edit-image', e, $event)">Edit Image</button>
+                    <ng-container *ngIf="showEdit">
+                      <div class="bp-card-menu-sep"></div>
+                      <button class="bp-card-menu-item bp-card-menu-item--danger"
+                              (click)="onMenuAction('delete', e, $event)">Delete</button>
+                    </ng-container>
+                  </div>
+                </ng-container>
+                <button *ngIf="entityType !== 'item' && showFavourite" type="button"
+                        class="bp-grid-action-btn" [class.bp-grid-heart-active]="favouriteIds.has(e.id)"
+                        (click)="onToggleFav($event, e)" title="Favourite">
+                  <lucide-icon name="heart" [size]="14"></lucide-icon>
+                </button>
               </div>
               <!-- v1.66cd — card redesign: name, subcat/cat pill, "From {min}"
                    in the Ballpark-cost gradient, lead-time + location meta, and
@@ -721,72 +733,34 @@ export type DetailMode = 'inline' | 'drawer';
             <span *ngIf="!getImageUrl(selectedEntity)"
                   class="bp-detail-hero-initials">{{ selectedEntity.name.charAt(0) }}</span>
 
-            <!-- ── v1.17 Action cluster ───────────────────────────────
-                 Four circular icon buttons in the hero's top-right.
-                   + (add to project)   — agency only, toggles selected
-                   ♡ (like for project) — agency only, toggles liked
-                   ✎ (edit)             — own org items only, opens drawer
-                                          in edit mode
-                   👁 (view)             — always visible, opens drawer in
-                                          view mode
-                 Add and like toggle the same project_items row through
-                 ProjectItemService.upsert — the cart pattern from v1.13. -->
+            <!-- v1.66cq — action cluster replaced by a single hover-revealed
+                 "⋯" menu (same standard dropdown as the card). The primary
+                 "Add to Project" CTA is the gradient button in the body below. -->
             <div *ngIf="entityType === 'item'" class="bp-detail-actions">
-              <!-- Add to project (agency only). Active state fills the
-                   button amber (via .bp-detail-action.active); the icon
-                   itself stays the same plus glyph. -->
-              <button *ngIf="isAgency"
-                      type="button"
-                      class="bp-detail-action"
-                      [class.active]="getSelectionType(selectedEntity.id) === 'selected'"
-                      (click)="onAddToProject(selectedEntity)"
-                      [title]="getSelectionType(selectedEntity.id) === 'selected'
-                               ? 'Remove from project'
-                               : 'Add to project'">
-                <lucide-icon name="plus" [size]="14"></lucide-icon>
-              </button>
-              <!-- Like for project (agency only). Active state fills the
-                   button amber — no separate solid variant needed
-                   (Lucide doesn't ship one and the button background
-                   already reads as "on"). -->
-              <button *ngIf="isAgency"
-                      type="button"
-                      class="bp-detail-action"
-                      [class.active]="getSelectionType(selectedEntity.id) === 'liked'"
-                      (click)="onLikeForProject(selectedEntity)"
-                      [title]="getSelectionType(selectedEntity.id) === 'liked'
-                               ? 'Remove from project'
-                               : 'Like for project'">
-                <lucide-icon name="heart" [size]="14"></lucide-icon>
-              </button>
-              <!-- v1.52c — Request a quote. Same gate as the card/row mail
-                   action (showCartActions ⇒ agency + a projectId bound),
-                   so it only appears inside a project context. -->
-              <button *ngIf="showCartActions"
-                      type="button"
-                      class="bp-detail-action"
-                      (click)="onRequestQuoteClick($event, selectedEntity)"
-                      title="Request a quote">
-                <lucide-icon name="mail" [size]="14"></lucide-icon>
-              </button>
-              <!-- Edit — visible for all users until auth + roles ship.
-                   Future gate: own-org items OR platform admin role.
-                   See canEdit() for the relaxed-now / strict-later logic.
-                   Uses the standard square-pen edit glyph per WORKING_STANDARDS. -->
-              <button *ngIf="canEdit(selectedEntity)"
-                      type="button"
-                      class="bp-detail-action"
-                      (click)="onEditItem(selectedEntity)"
-                      title="Edit item">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-              <!-- View (always) -->
-              <button type="button"
-                      class="bp-detail-action"
-                      (click)="onViewItem(selectedEntity)"
-                      title="View details">
-                <lucide-icon name="eye" [size]="14"></lucide-icon>
-              </button>
+              <button type="button" class="bp-grid-menu-btn"
+                      [class.is-open]="previewMenuOpen"
+                      (click)="togglePreviewMenu($event)"
+                      title="More actions">⋯</button>
+              <div class="bp-card-menu" *ngIf="previewMenuOpen"
+                   (click)="$event.stopPropagation()">
+                <button class="bp-card-menu-item" *ngIf="showCartActions"
+                        (click)="onMenuAction('add', selectedEntity, $event)">
+                  {{ getSelectionType(selectedEntity.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
+                </button>
+                <button class="bp-card-menu-item" *ngIf="showCartActions"
+                        (click)="onMenuAction('wishlist', selectedEntity, $event)">Wishlist for Project</button>
+                <button class="bp-card-menu-item"
+                        (click)="onMenuAction('view', selectedEntity, $event)">View</button>
+                <button class="bp-card-menu-item" *ngIf="canEdit(selectedEntity)"
+                        (click)="onMenuAction('edit', selectedEntity, $event)">Edit</button>
+                <button class="bp-card-menu-item" *ngIf="canEdit(selectedEntity)"
+                        (click)="onMenuAction('edit-image', selectedEntity, $event)">Edit Image</button>
+                <ng-container *ngIf="canEdit(selectedEntity)">
+                  <div class="bp-card-menu-sep"></div>
+                  <button class="bp-card-menu-item bp-card-menu-item--danger"
+                          (click)="onMenuAction('delete', selectedEntity, $event)">Delete</button>
+                </ng-container>
+              </div>
             </div>
 
             <!-- Legacy item-edit pencil. Kept for parents that still set
@@ -852,16 +826,21 @@ export type DetailMode = 'inline' | 'drawer';
               <lucide-icon name="chevron-right" [size]="14" class="bp-row-chev"></lucide-icon>
             </div>
 
-            <!-- Action buttons. v1.35d: primary CTA only renders when
-                 actionLabel is set; surfaces that don't want a primary
-                 button (supplier shop front, now using the eye instead)
-                 pass [actionLabel]="''". Heart stays independent. -->
-            <div class="flex gap-2">
-              <p-button *ngIf="actionLabel" [label]="actionLabel" styleClass="flex-1"
+            <!-- v1.66cq — primary "Add to Project" CTA as a full-width accent
+                 gradient button (same as the card's primary action). Wishlist /
+                 view / edit / delete now live in the "⋯" menu on the hero. -->
+            <button *ngIf="entityType === 'item'" type="button"
+                    class="bp-item-card-action bp-detail-add-btn"
+                    [class.bp-item-card-action--added]="showCartActions && getSelectionType(selectedEntity.id) === 'selected'"
+                    (click)="onPrimaryAction($event, selectedEntity)">
+              <lucide-icon [name]="primaryActionIcon(selectedEntity)" [size]="16"></lucide-icon>
+              {{ primaryActionLabel(selectedEntity) }}
+            </button>
+            <!-- Non-item surfaces keep the projected primary CTA (e.g. supplier
+                 shop front "View supplier"). -->
+            <div class="flex gap-2" *ngIf="entityType !== 'item' && actionLabel">
+              <p-button [label]="actionLabel" styleClass="flex-1"
                 (onClick)="onAction(selectedEntity)"></p-button>
-              <p-button *ngIf="showFavourite" icon="pi pi-heart" styleClass="p-button-outlined"
-                [class.p-button-danger]="favouriteIds.has(selectedEntity.id)"
-                (onClick)="onToggleFav($event, selectedEntity)"></p-button>
             </div>
           </div>
         </ng-container>
@@ -1451,6 +1430,7 @@ export type DetailMode = 'inline' | 'drawer';
       box-shadow: var(--shadow-xs);
       overflow: hidden;
       cursor: pointer;
+      position: relative;   /* anchors the "⋯" actions + dropdown */
       transition: var(--card-hover-transition);   /* card hover standard */
     }
     /* Hover via the global .bp-card-hover class on the element (see template). */
@@ -1518,7 +1498,39 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-grid[data-card-size="lg"] .bp-item-card-img { height: 260px; }
     .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); -webkit-text-fill-color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
-    .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+    .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 3; }
+    /* v1.66cq — "⋯" actions menu (card + preview). Standard inline dropdown,
+       matching the projects-list card menu. The "⋯" circle is hidden until the
+       card / preview hero is hovered (or the menu is open). */
+    .bp-grid-menu-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: var(--color-surface); color: var(--color-text-secondary);
+      cursor: pointer; font-size: 20px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-xs);
+      opacity: 0; transition: opacity 0.15s, color 0.15s;
+    }
+    .bp-item-card:hover .bp-grid-menu-btn,
+    .bp-detail-hero:hover .bp-grid-menu-btn,
+    .bp-grid-menu-btn.is-open { opacity: 1; }
+    .bp-grid-menu-btn:hover { color: var(--theme-accent); }
+    .bp-card-menu {
+      position: absolute; top: 34px; right: 0; width: 170px;
+      background: var(--color-surface); border: var(--border-hairline);
+      border-radius: var(--radius-button); padding: 4px 0;
+      z-index: 50; box-shadow: var(--shadow-md);
+    }
+    .bp-card-menu-item {
+      display: block; width: 100%; padding: 8px 12px;
+      font-size: 12px; font-weight: 500; text-align: left;
+      background: none; border: none; cursor: pointer;
+      color: var(--color-text-primary); font-family: var(--font-body);
+      transition: background 0.1s;
+    }
+    .bp-card-menu-item:hover { background: var(--theme-bg); }
+    .bp-card-menu-item--danger { color: var(--color-danger); }
+    .bp-card-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
+    .bp-card-menu-sep { height: 0.5px; background: var(--color-border); margin: 4px 0; }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
     .bp-grid-action-btn:hover { color: var(--theme-accent); }
     .bp-grid-heart-active { color: #E11D48 !important; }
@@ -2109,6 +2121,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   @Output() addToProject = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
   @Output() removeFromProject = new EventEmitter<{ entity: CatalogueEntity }>();
   @Output() viewRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.66cq — "Delete" from the card / preview "⋯" menu. The host confirms
+      and performs the delete (soft-delete via ItemService). */
+  @Output() deleteRequested = new EventEmitter<CatalogueEntity>();
 
   /** v1.22 — context panel events.
         briefUpdated → parent persists the new requirement_brief via
@@ -2760,6 +2775,47 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     if (this.entityType === 'supplier') { this.actionClicked.emit(e); return; }
     if (this.showCartActions) { this.onAddToProject(e); return; }
     this.viewRequested.emit(e);
+  }
+
+  // ── "⋯" action menu (card + preview) ──────────────────────────────────
+  /** Id of the card whose "⋯" menu is open, or null. */
+  openCardMenuId: string | null = null;
+  /** Whether the preview panel's "⋯" menu is open. */
+  previewMenuOpen = false;
+
+  toggleCardMenu(ev: MouseEvent, e: CatalogueEntity) {
+    ev.stopPropagation();
+    this.previewMenuOpen = false;
+    this.openCardMenuId = this.openCardMenuId === e.id ? null : e.id;
+  }
+  togglePreviewMenu(ev: MouseEvent) {
+    ev.stopPropagation();
+    this.openCardMenuId = null;
+    this.previewMenuOpen = !this.previewMenuOpen;
+  }
+  /** Dispatch a "⋯" menu action to the matching handler. */
+  onMenuAction(action: 'add' | 'wishlist' | 'view' | 'edit' | 'edit-image' | 'delete',
+               e: CatalogueEntity, ev: MouseEvent) {
+    ev.stopPropagation();
+    this.openCardMenuId = null;
+    this.previewMenuOpen = false;
+    switch (action) {
+      case 'add':        this.onAddToProject(e); break;
+      case 'wishlist':   this.onLikeForProject(e); break;
+      case 'view':       this.onViewItem(e); break;
+      case 'edit':       this.onEditItem(e); break;
+      case 'edit-image': this.imageEditRequested.emit(e); break;
+      case 'delete':     this.deleteRequested.emit(e); break;
+    }
+  }
+  /** Close any open "⋯" menu when clicking elsewhere. Toggles + menu-item
+      clicks stopPropagation, so this only fires for outside clicks. */
+  @HostListener('document:click')
+  onDocumentClickCloseMenus() {
+    if (this.openCardMenuId || this.previewMenuOpen) {
+      this.openCardMenuId = null;
+      this.previewMenuOpen = false;
+    }
   }
 
   // ── Circle click handler ──────────────────────────────────────────────
