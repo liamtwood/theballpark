@@ -242,6 +242,9 @@ export class ConfigService {
     const root = document.documentElement;
     root.style.setProperty('--theme-accent', t.accent);
     root.style.setProperty('--theme-accent-2', t.accent2);
+    // RGB triplet of the primary accent, for glows/shadows that need an
+    // alpha (e.g. button hover): rgba(var(--theme-accent-rgb), 0.28).
+    root.style.setProperty('--theme-accent-rgb', this.hexToRgb(t.accent));
     // Derived brand gradient — accent → accent2. Every object that uses the
     // "this color" gradient references var(--grad-accent), so they all track
     // the active theme with no per-object config.
@@ -269,6 +272,15 @@ export class ConfigService {
     if (this.isDarkMode) mode = 'dark';
     else if (this.isBoldMode) mode = 'bold';
     document.documentElement.setAttribute('data-mode', mode);
+  }
+
+  /** "#EC4899" → "236, 72, 153" (for rgba(var(--theme-accent-rgb), a)). */
+  private hexToRgb(hex: string): string {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `${r}, ${g}, ${b}`;
   }
 
   private darkenForDark(accent: string): string {
