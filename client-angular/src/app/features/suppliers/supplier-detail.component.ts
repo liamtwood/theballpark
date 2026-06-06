@@ -162,8 +162,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
                 <button type="button" class="bp-home-cat-card bp-card-hover"
                         *ngFor="let sub of group.subcategories">
                   <div class="bp-home-cat-card-img"
-                       [style.background-image]="sub.cover_image_url ? 'url(' + sub.cover_image_url + ')' : null"
                        [class.bp-home-cat-card-img--fallback]="!sub.cover_image_url">
+                    <!-- Cover on its own layer so it zooms on hover (only the
+                         photo; the card lifts via .bp-card-hover). -->
+                    <div *ngIf="sub.cover_image_url" class="bp-card-zoom-img"
+                         [style.background-image]="'url(' + sub.cover_image_url + ')'"></div>
                     <span *ngIf="!sub.cover_image_url" class="bp-home-cat-card-initial">
                       {{ sub.name.charAt(0) }}
                     </span>
@@ -626,12 +629,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-home-cat-card-img {
       width: 100%;
       height: 96px;
-      background-size: cover;
-      background-position: center;
       background-color: var(--theme-bg);
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;   /* hosts the .bp-card-zoom-img cover layer */
+      overflow: hidden;     /* clips the zoom to the 96px image area */
     }
     .bp-home-cat-card-img--fallback {
       background: linear-gradient(135deg, var(--theme-bg) 0%, var(--theme-border) 100%);
