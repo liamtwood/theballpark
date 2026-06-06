@@ -152,21 +152,21 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
                 icon="store"
                 title="Shopfront"
                 subtitle="Your public storefront"
-                (action)="goToSupplierTab('front')">
+                (action)="goTo('/shopfront')">
               </app-action-tile>
 
               <app-action-tile
                 icon="package"
                 title="Store"
                 subtitle="Manage your catalogue"
-                (action)="goToSupplierTab('store')">
+                (action)="goTo('/store')">
               </app-action-tile>
 
               <app-action-tile
                 icon="inbox"
                 title="Inbox"
                 subtitle="Enquiries and threads"
-                (action)="goToSupplierTab('inbox')">
+                (action)="goToInbox()">
               </app-action-tile>
 
               <app-action-tile
@@ -769,11 +769,8 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       their home launcher shows shop folders instead of agency ones. */
   get isSupplier(): boolean { return this.personaSvc.isSupplier(); }
 
-  /** Open the supplier's own page on a given tab (Shopfront / Store / Inbox). */
-  goToSupplierTab(tab: 'front' | 'store' | 'inbox') {
-    const id = this.personaSvc.active?.supplierOrgId;
-    if (id) this.router.navigate(['/suppliers', id], { queryParams: { tab } });
-  }
+  /** Navigate to a top-level route (supplier launcher tiles → /shopfront etc). */
+  goTo(path: string) { this.router.navigate([path]); }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = { 'set build': 'setbuild', 'av': 'av', 'audio visual': 'av' };

@@ -118,7 +118,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
               <div class="bp-supplier-cover"
                    [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
                    [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-                <button class="bp-supplier-cover-edit"
+                <button *ngIf="manage" class="bp-supplier-cover-edit"
                         (click)="openSupplierEditDrawer()"
                         title="Edit supplier details">
                   <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -284,10 +284,10 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           entityLabel="item"
           [actionLabel]="''"
           [favouriteIds]="itemFavIds"
-          [showEdit]="true"
-          [showDelete]="ownsCatalogue"
-          [allowItemEdit]="ownsCatalogue"
-          [addToProjectMode]="true"
+          [showEdit]="manage"
+          [showDelete]="manage"
+          [allowItemEdit]="manage"
+          [addToProjectMode]="!manage"
           [showItemEdit]="false"
           [showFavourite]="false"
           [showBack]="false"
@@ -312,7 +312,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)"
           (actionClicked)="onAction($event)">
-          <div catalogue-toggles class="bp-cat-actions">
+          <div catalogue-toggles class="bp-cat-actions" *ngIf="manage">
             <!-- Mirror the project Build tab's scoped/all toggle so suppliers
                  can opt to see categories they don't have items in (e.g. if
                  they're about to add into a new one via + Add item). -->
@@ -783,6 +783,17 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   uploadCoverUrl = '';
   uploadImageDisplay: 'cover' | 'contain' = 'cover';
 
+  // v1.66db — this component serves three URL-distinct surfaces, chosen by
+  // route data.mode/surface (see app.routes):
+  //   mode 'public'  → /suppliers/:id, the read-only tabbed detail (no chrome)
+  //   mode 'manage'  → /shopfront (surface 'shopfront') or /store (surface
+  //                    'store'), the owner's single-surface management views.
+  // ownsCatalogue is the ownership FACT; `manage` (mode==='manage' && owner)
+  // is what gates all edit/delete/add affordances.
+  mode: 'public' | 'manage' = 'public';
+  surface: 'shopfront' | 'store' = 'shopfront';
+  get manage(): boolean { return this.mode === 'manage' && this.ownsCatalogue; }
+
   // Item drawer — v1.17: now driven by an explicit mode input so the
   // same component handles add / edit / view from a single mount.
   ownsCatalogue = false;
@@ -865,7 +876,15 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.sid = this.route.snapshot.paramMap.get('id') || '';
+    // v1.66db — surface chosen by route data. Manage surfaces (/shopfront,
+    // /store) are self-scoped: resolve to the logged-in supplier's own org
+    // (no :id in the URL). Public detail (/suppliers/:id) reads :id.
+    const data = this.route.snapshot.data as any;
+    this.mode = data['mode'] === 'manage' ? 'manage' : 'public';
+    this.surface = data['surface'] === 'store' ? 'store' : 'shopfront';
+    this.sid = data['self']
+      ? (this.personaSvc.active?.supplierOrgId || '')
+      : (this.route.snapshot.paramMap.get('id') || '');
     this.creditLabel = this.configService.current?.creditLabel || 'Ball';
 
     const qp = this.route.snapshot.queryParams;
@@ -875,15 +894,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       // Carry the session "shopping for" project into the store.
       this.selectedProjectId = this.marketProjectSvc.current.id; this.projectPreSelected = true;
     }
-    // v1.65dz (p0015) → v1.65e1 — ?tab= deep-links into any of the 4
-    // supplier-detail tabs. Defaults to 'front' (the public shopfront)
-    // when no param is set OR when an agency is browsing someone
-    // else's supplier page (Home + Inbox only render when ownsCatalogue
-    // is true, so picking them on a foreign page just sticks to front).
-    const tabParam = qp['tab'];
-    if (tabParam === 'home' || tabParam === 'front' ||
-        tabParam === 'store' || tabParam === 'inbox') {
-      this.activeTab = tabParam;
+    // Active surface. Manage mode → the route's surface (URL IS the surface;
+    // no in-page tab bar). Public mode → ?tab= (front|store only), default front.
+    if (this.mode === 'manage') {
+      this.activeTab = this.surface === 'store' ? 'store' : 'front';
+    } else {
+      const tabParam = qp['tab'];
+      if (tabParam === 'front' || tabParam === 'store') this.activeTab = tabParam;
     }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
@@ -1198,30 +1215,30 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       surface tabs render — Front + Store. */
   private applyShellHero() {
     if (!this.supplier) return;
-    const tabs = this.ownsCatalogue
-      ? [
-          { label: 'Home',  path: 'home'  },
-          { label: 'Front', path: 'front' },
-          { label: 'Store', path: 'store' },
-          { label: 'Inbox', path: 'inbox' },
-        ]
+    // Manage surfaces are URL-distinct (no in-page tab bar — you switch via
+    // the top nav). Public detail keeps its 2-tab band (Shopfront / Store).
+    const tabs = this.mode === 'manage'
+      ? []
       : [
-          { label: 'Front', path: 'front' },
-          { label: 'Store', path: 'store' },
+          { label: 'Shopfront', path: 'front' },
+          { label: 'Store',     path: 'store' },
         ];
+    const heroSub = this.mode === 'manage'
+      ? (this.surface === 'store' ? 'Store' : 'Shopfront')
+      : (this.supplier.city || 'London');
     this.shellCtx.set({
       heroTitle: this.supplier.name,
       // This page VIEWS the supplier's org — drive the hero's org title-mode
       // + org pill from it (not the logged-in viewer's org).
       orgName: this.supplier.name,
-      heroSub: this.supplier.city || 'London',
+      heroSub,
       pills: [],
       tabs,
       activeTabPath: this.activeTab,
       onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'front' | 'store' | 'inbox'),
-      // "Shopping for {project}" pill — only on the Store tab, where Add to
-      // Project applies. Opens the picker.
-      projectPill: this.activeTab === 'store' ? {
+      // "Shopping for {project}" pill — only when an agency is shopping a
+      // supplier's store (public store tab). Not in owner management mode.
+      projectPill: (this.mode === 'public' && this.activeTab === 'store') ? {
         text: this.marketProjectName(),
         onClick: () => { this.pickerOpen = true; this.cdr.detectChanges(); },
       } : undefined,

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './shared/components/app-shell/app-shell.component';
 import { devOnlyGuard } from './core/guards/dev-only.guard';
+import { supplierOnlyGuard } from './core/guards/supplier-only.guard';
 import { environment } from '../environments/environment';
 
 // v1.65gG — marketing-only route set used on prod (and any build
@@ -117,12 +118,33 @@ const FULL_ROUTES: Routes = [
       // The marketplace list is /shop; supplier DETAIL stays /suppliers/:id.
       // (The legacy bare /suppliers → /shop redirect was removed in the
       //  v1.66 route cleanup — all internal links point at /shop now.)
+      // v1.66db — SupplierDetailComponent now serves THREE URL-distinct
+      // surfaces via route data.mode/surface:
+      //   /suppliers/:id  → public detail (tabbed, read-only)
+      //   /shopfront      → owner's shopfront management (single surface)
+      //   /store          → owner's catalogue management (single surface)
       {
         path: 'suppliers/:id',
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
         // heroTitle is the page-settings label fallback ("Supplier"); the live
         // hero title is the supplier's own name, pushed via ShellContext.
-        data: { pageLabel: '', tabs: [], heroTitle: 'Supplier' }
+        data: { pageLabel: '', tabs: [], heroTitle: 'Supplier', mode: 'public' }
+      },
+      // ── SUPPLIER MANAGEMENT SURFACES (owner only) ──
+      // URL-distinct management surfaces — each its own URL, mounted on the
+      // same component with a different `surface`. /orders, /analytics, etc.
+      // would follow the same pattern.
+      {
+        path: 'shopfront',
+        canActivate: [supplierOnlyGuard],
+        loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
+        data: { pageLabel: '', tabs: [], mode: 'manage', surface: 'shopfront', self: true }
+      },
+      {
+        path: 'store',
+        canActivate: [supplierOnlyGuard],
+        loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
+        data: { pageLabel: '', tabs: [], mode: 'manage', surface: 'store', self: true }
       },
       {
         path: 'suppliers/:id/items/:itemId',
