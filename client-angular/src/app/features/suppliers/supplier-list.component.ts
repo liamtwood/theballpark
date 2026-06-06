@@ -11,7 +11,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
-import { CatalogueViewState } from '../../core/services/catalogue-view.service';
+import { CatalogueViewState, MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -43,6 +43,7 @@ import {
           [favouriteIds]="currentFavIds"
           [totalCount]="viewMode === 'suppliers' ? suppliers.length : totalItems"
           viewControlsKey="marketplace"
+          [viewControlsDefaults]="viewDefaults"
           (viewStateChange)="onGridViewState($event)"
           [projectId]="projectId"
           [projectItems]="projectItems"
@@ -132,6 +133,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // State
   loading = true;
   viewMode: 'suppliers' | 'items' = 'items';
+  /** Shipped catalogue-view default (shared across all three marketplaces). */
+  viewDefaults = MARKETPLACE_VIEW_DEFAULTS;
   /** v1.32: when ?favourites=true is in the URL, restrict the list to
       the user's hearted suppliers (or items) and surface a "My
       Suppliers" hero + back button so the entry-from-dashboard

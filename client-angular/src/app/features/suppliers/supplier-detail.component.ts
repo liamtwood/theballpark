@@ -23,6 +23,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
+import { MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
@@ -272,6 +273,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [entities]="itemEntities"
           [categories]="displayStoreCategories"
           viewControlsKey="supplier-store"
+          [viewControlsDefaults]="viewDefaults"
           entityType="item"
           entityLabel="item"
           [actionLabel]="''"
@@ -751,6 +753,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // Catalogue grid data
   itemEntities: CatalogueEntity[] = [];
   categories: CategoryInfo[] = [];
+  /** Shipped catalogue-view default (shared across all three marketplaces). */
+  viewDefaults = MARKETPLACE_VIEW_DEFAULTS;
   itemFavIds = new Set<string>();
 
   // Image upload

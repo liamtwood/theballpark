@@ -42,6 +42,26 @@ export interface CatalogueViewState {
   showContainers: boolean;
 }
 
+/**
+ * Shipped default catalogue view, shared by all three marketplaces (standalone
+ * /shop, supplier store, project marketplace). Captured from Liam's preferred
+ * /shop setup. This is the single source of truth for the launch default —
+ * when the Modern/Traditional presets land, this simply becomes one of them.
+ * Applied as each host's viewControlsDefaults (used when no saved state exists).
+ */
+export const MARKETPLACE_VIEW_DEFAULTS: CatalogueViewState = {
+  categoriesPosition: 'left',
+  shape: 'circle',
+  cardSize: 'lg',
+  circleSize: 'lg',
+  detailSize: 'md',
+  view: 'card',
+  detailMode: 'inline',
+  showFilter: false,
+  showPreview: false,
+  showContainers: false,
+};
+
 @Injectable({ providedIn: 'root' })
 export class CatalogueViewService {
   private _state$ = new BehaviorSubject<CatalogueViewState | null>(null);
