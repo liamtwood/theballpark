@@ -41,7 +41,7 @@ import {
           [entityLabel]="viewMode === 'suppliers' ? 'supplier' : 'item'"
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
-          [totalCount]="totalItems"
+          [totalCount]="viewMode === 'suppliers' ? suppliers.length : totalItems"
           viewControlsKey="marketplace"
           (viewStateChange)="onGridViewState($event)"
           [projectId]="projectId"
@@ -150,6 +150,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
+  /** Suppliers-per-category, derived from each supplier's category_ids. Used
+      for the rail/circle counts when viewMode === 'suppliers'. */
+  supplierCounts: Record<string, number> = {};
 
   // Editable page label bound to the config strip. Kept in sync with
   // ConfigService.catalogueLabel (org-wide) via the config$ subscription
@@ -298,7 +301,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
             tagline: c.tagline,
             description: c.description,
             model: c.model || 'A',
-            count: this.categoryCounts[c.id] || 0
+            count: this.countFor(c.id)
           }));
         this.cdr.detectChanges();
       },
@@ -308,6 +311,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.supplierSvc.getAll().subscribe({
       next: (suppliers: Org[]) => {
         this.suppliers = suppliers || [];
+        this.computeSupplierCounts();
+        this.applyCategoryCounts();
         this.mapSuppliers();
         this.loading = false;
         if (this.viewMode === 'items') this.loadItems();
@@ -462,14 +467,33 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       next: (data: any) => {
         this.categoryCounts = data.counts || {};
         this.totalItems = data.total || 0;
-        // Update category counts
-        this.categories = this.categories.map(c => ({
-          ...c,
-          count: this.categoryCounts[c.id] || 0
-        }));
+        this.applyCategoryCounts();
         this.cdr.detectChanges();
       }
     });
+  }
+
+  /** Count suppliers per category from each supplier's category_ids. A
+      supplier tagged to multiple categories counts in each. */
+  private computeSupplierCounts() {
+    const counts: Record<string, number> = {};
+    for (const s of this.suppliers) {
+      for (const id of ((s as any).category_ids || [])) {
+        counts[id] = (counts[id] || 0) + 1;
+      }
+    }
+    this.supplierCounts = counts;
+  }
+
+  /** The per-category count for the active view — item counts in Items mode,
+      supplier counts in Suppliers mode. */
+  private countFor(id: string): number {
+    return (this.viewMode === 'suppliers' ? this.supplierCounts : this.categoryCounts)[id] || 0;
+  }
+
+  /** Re-stamp every category's `count` for the active view (Items/Suppliers). */
+  private applyCategoryCounts() {
+    this.categories = this.categories.map(c => ({ ...c, count: this.countFor(c.id) }));
   }
 
   // ── Event handlers ────────────────────────────────────────────────────
@@ -485,6 +509,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   switchMode(mode: 'items' | 'suppliers') {
     this.viewMode = mode;
+    // Re-stamp the category counts for the new view (items ↔ suppliers).
+    this.applyCategoryCounts();
     if (mode === 'items') this.loadItems();
     else this.mapSuppliers();
     // Re-push so the hero tab band's active state tracks the new mode.

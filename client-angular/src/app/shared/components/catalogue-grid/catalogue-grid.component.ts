@@ -223,7 +223,7 @@ export type DetailMode = 'inline' | 'drawer';
                   </span>
                   <span class="bp-cat-rail-text">
                     <span class="bp-cat-rail-name">{{ cat.name }}</span>
-                    <span class="bp-cat-rail-count" *ngIf="cat.count">{{ cat.count }} {{ entityLabel }}s</span>
+                    <span class="bp-cat-rail-count" *ngIf="cat.count">{{ cat.count }} {{ entityLabel }}{{ cat.count === 1 ? '' : 's' }}</span>
                   </span>
                   <lucide-icon [name]="railExpandedId === cat.id ? 'chevron-down' : 'chevron-right'"
                                [size]="15" class="bp-cat-rail-chev"></lucide-icon>
@@ -643,7 +643,7 @@ export type DetailMode = 'inline' | 'drawer';
                 </div>
                 <span class="bp-item-card-cat" *ngIf="cardCatLabel(e)">{{ cardCatLabel(e) }}</span>
                 <div class="bp-item-card-from" *ngIf="cardFromPrice(e) != null">
-                  From {{ cardFromPrice(e) | gbp }}<span class="bp-item-card-unit" *ngIf="e.unit"> {{ unitDisplay(e.unit) }}</span>
+                  From {{ cardFromPrice(e) | gbp }}
                 </div>
                 <div class="bp-item-card-meta" *ngIf="cardLeadTime(e) || cardLocation(e)">
                   <span class="bp-item-card-meta-item" *ngIf="cardLeadTime(e)">
@@ -1481,6 +1481,9 @@ export type DetailMode = 'inline' | 'drawer';
       background: var(--theme-soft); color: var(--theme-accent);
       font-size: 11px; font-weight: 600; font-family: var(--font-body);
       max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      /* Extra breathing room before the "From {price}" line (on top of the
+         card body's 7px flex gap). */
+      margin-bottom: 5px;
     }
     /* "From {min}" — same font as the Ballpark cost, accent gradient fill. */
     .bp-item-card-from {
