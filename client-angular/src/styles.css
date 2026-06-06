@@ -114,6 +114,13 @@
      icon containers (default ≈ pink-100→green-100, hover ≈ pink-200→green-200). */
   --grad-accent-soft:       linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 12%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 12%, #fff) 100%);
   --grad-accent-soft-hover: linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 30%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 30%, #fff) 100%);
+  /* Card hover standard — the single source for the interactive-card hover
+     (lift + accent shadow/border). Referenced via the .bp-card-hover class or
+     directly by components that need !important. Tracks the theme. */
+  --card-hover-transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  --card-hover-transform: translateY(-8px);
+  --card-hover-border: color-mix(in srgb, var(--theme-accent) 20%, #fff);
+  --card-hover-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
   --card-soft-input: #F6F7F9;   /* her grey-filled edit input */
 
   /* v1.24: positive-state tokens. STANDARD pairs --color-danger
@@ -1697,19 +1704,24 @@ input.bp-fld.is-edit:focus,
 }
 /* ── Card hover standard ───────────────────────────────────────────────
    THE single hover treatment for interactive cards: lift 8px, accent-tinted
-   shadow + soft accent border, 300ms. Both values track the active theme
-   (--theme-accent / --theme-accent-rgb). Any card opts in by adding the
-   class `bp-card-hover` to its hoverable element — do NOT re-declare the
-   lift/shadow per component. Change the standard here and every card that
-   references it updates. (Global, unscoped — applies inside any component.) */
+   shadow + soft accent border, 300ms. Defined once as tokens (below) that
+   track the active theme; change them here and every card follows.
+
+   Two ways to reference it — both trace to the SAME tokens, so never
+   re-declare the lift/shadow per component:
+     1. Plain cards: add the class `bp-card-hover` to the hoverable element.
+     2. Cards that need !important (e.g. PrimeNG p-card): reference the tokens
+        in the component's own :hover, e.g.
+          transform: var(--card-hover-transform);
+          box-shadow: var(--card-hover-shadow) !important;
+          border-color: var(--card-hover-border) !important; */
 .bp-card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: var(--card-hover-transition);
 }
 .bp-card-hover:hover {
-  transform: translateY(-8px);
-  border-color: color-mix(in srgb, var(--theme-accent) 20%, #fff);
-  box-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18),
-              0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  transform: var(--card-hover-transform);
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
 }
 .bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .bp-card-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }

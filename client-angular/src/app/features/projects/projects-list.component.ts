@@ -231,12 +231,15 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       box-shadow: var(--shadow-xs) !important;
       overflow: visible !important;
       margin: 0; cursor: pointer; position: relative;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
+    /* References the global card-hover tokens (styles.css) so the event cards
+       lift identically to every other interactive card. !important is needed
+       to beat PrimeNG's p-card base styles. */
     :host ::ng-deep .bp-project-card-wrap:hover .bp-project-card.p-card {
-      border: var(--border-hairline-strong) !important;
-      box-shadow: var(--shadow-sm) !important;
-      transform: translateY(-1px);
+      border-color: var(--card-hover-border) !important;
+      box-shadow: var(--card-hover-shadow) !important;
+      transform: var(--card-hover-transform);
     }
     :host ::ng-deep .bp-project-card .p-card-body,
     :host ::ng-deep .bp-project-card .p-card-content,
@@ -337,10 +340,14 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       border:2px dashed var(--color-border); border-radius: 20px;
       background: transparent; cursor:pointer;
       color:var(--color-text-muted); font-family: var(--font-body);
-      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      transition: var(--card-hover-transition), color 0.3s ease, background 0.3s ease;
     }
+    /* Lift + shadow + border from the central card-hover tokens, plus the
+       tile's own fill-on-hover identity. */
     .bp-new-tile:hover {
-      border-color: var(--theme-accent);
+      transform: var(--card-hover-transform);
+      box-shadow: var(--card-hover-shadow);
+      border-color: var(--card-hover-border);
       color: var(--theme-accent);
       background: var(--theme-soft);
     }

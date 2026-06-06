@@ -221,7 +221,7 @@ import { Item, Org, Project } from '../../../../models';
           <!-- Supplier card -->
           <div class="bp-itempage-section" *ngIf="supplier">
             <div class="bp-itempage-section-label">Supplier</div>
-            <a class="bp-itempage-supp-card" [routerLink]="['/suppliers', supplier.id]">
+            <a class="bp-itempage-supp-card bp-card-hover" [routerLink]="['/suppliers', supplier.id]">
               <div class="bp-itempage-supp-cover"
                    [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null">
               </div>
@@ -244,7 +244,7 @@ import { Item, Org, Project } from '../../../../models';
         <div class="bp-itempage-related-title">More from {{ item.category_name }}</div>
         <div class="bp-itempage-related-grid">
           <a *ngFor="let r of related"
-             class="bp-itempage-related-card"
+             class="bp-itempage-related-card bp-card-hover"
              [routerLink]="['/items', r.id]"
              [queryParams]="relatedQueryParams()">
             <div class="bp-itempage-related-img"
@@ -521,9 +521,9 @@ import { Item, Org, Project } from '../../../../models';
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-card);
       overflow: hidden; background: var(--color-surface);
-      transition: box-shadow 0.15s;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-itempage-supp-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-itempage-supp-cover {
       height: 180px; background: var(--theme-bg);
       background-size: cover; background-position: center;
@@ -562,13 +562,10 @@ import { Item, Org, Project } from '../../../../models';
       border: 0.5px solid var(--color-border);
       border-radius: 10px; overflow: hidden;
       background: var(--color-surface);
-      transition: box-shadow 0.15s, transform 0.15s;
+      transition: var(--card-hover-transition);   /* card hover standard */
       color: var(--color-text-primary);
     }
-    .bp-itempage-related-card:hover {
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-itempage-related-img {
       height: 120px; background: var(--theme-bg);
       background-size: cover; background-position: center;

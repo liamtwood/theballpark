@@ -525,7 +525,7 @@ export type DetailMode = 'inline' | 'drawer';
         <ng-template #cardGridTpl let-entities>
           <div class="bp-item-grid">
             <div *ngFor="let e of entities"
-              class="bp-item-card"
+              class="bp-item-card bp-card-hover"
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
               <div class="bp-item-card-img"
@@ -1367,13 +1367,9 @@ export type DetailMode = 'inline' | 'drawer';
       box-shadow: var(--shadow-xs);
       overflow: hidden;
       cursor: pointer;
-      transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-item-card:hover {
-      border-color: var(--theme-accent);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-item-card-selected {
       border-color: var(--theme-accent) !important;
       box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-accent) !important;

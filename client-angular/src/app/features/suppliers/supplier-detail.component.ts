@@ -159,7 +159,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
                 </span>
               </div>
               <div class="bp-home-cat-grid">
-                <button type="button" class="bp-home-cat-card"
+                <button type="button" class="bp-home-cat-card bp-card-hover"
                         *ngFor="let sub of group.subcategories">
                   <div class="bp-home-cat-card-img"
                        [style.background-image]="sub.cover_image_url ? 'url(' + sub.cover_image_url + ')' : null"
@@ -619,14 +619,10 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       padding: 0;
       text-align: left;
       cursor: pointer;
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      transition: var(--card-hover-transition);   /* card hover standard */
       font-family: inherit;
     }
-    .bp-home-cat-card:hover {
-      border-color: var(--theme-accent);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-home-cat-card-img {
       width: 100%;
       height: 96px;

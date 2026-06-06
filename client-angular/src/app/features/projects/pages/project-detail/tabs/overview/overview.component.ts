@@ -191,7 +191,7 @@ interface MessagesSummary {
           <!-- v1.65cg (p0005) — Plan tab removed; the BRIEF card now
                opens directly on the Marketplace where per-category
                briefs are edited. -->
-          <div class="bp-ov-card" (click)="goTo('marketplace')">
+          <div class="bp-ov-card bp-card-hover" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">BRIEF</span>
               <span class="bp-ov-status" *ngIf="brief.total > 0">{{ briefPct }}%</span>
@@ -241,7 +241,7 @@ interface MessagesSummary {
           </div>
 
           <!-- MARKETPLACE CARD -->
-          <div class="bp-ov-card" (click)="goTo('marketplace')">
+          <div class="bp-ov-card bp-card-hover" (click)="goTo('marketplace')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">MARKETPLACE</span>
               <span class="bp-ov-status" *ngIf="categories.length > 0">{{ marketPct }}%</span>
@@ -292,7 +292,7 @@ interface MessagesSummary {
 
           <!-- ESTIMATE CARD — v1.64: opens the shared Estimate drawer
                (was: route navigation to the Estimate tab). -->
-          <div class="bp-ov-card" (click)="openEstimate()">
+          <div class="bp-ov-card bp-card-hover" (click)="openEstimate()">
             <div class="bp-ov-head">
               <span class="bp-ov-label">ESTIMATE</span>
               <span class="bp-ov-status" *ngIf="estimateStatus">{{ estimateStatus }}</span>
@@ -353,7 +353,7 @@ interface MessagesSummary {
           </div>
 
           <!-- MESSAGES CARD -->
-          <div class="bp-ov-card" (click)="goTo('messages')">
+          <div class="bp-ov-card bp-card-hover" (click)="goTo('messages')">
             <div class="bp-ov-head">
               <span class="bp-ov-label">MESSAGES</span>
               <!-- v1.24l: pill matches the Estimate Active pill —
@@ -686,12 +686,9 @@ interface MessagesSummary {
       box-shadow: var(--shadow-xs);
       cursor: pointer;
       overflow: hidden;
-      transition: box-shadow 150ms ease, transform 150ms ease;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-ov-card:hover {
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
 
     /* ── THEMED HEADER BAR ───────────────────────────────────── */
     /* v1.24c: banner uses --theme-accent + white text + Libre

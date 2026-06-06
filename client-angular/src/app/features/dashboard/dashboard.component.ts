@@ -210,7 +210,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
             <div class="bp-sup-grid">
               <a *ngFor="let s of favSuppliers.slice(0,2)"
                  [routerLink]="['/suppliers', s.ref_id]"
-                 class="bp-sup-card">
+                 class="bp-sup-card bp-card-hover">
                 <div class="bp-sup-img bp-sup-bg-default"
                      [style.background-image]="s.ref_image_url ? 'url(' + s.ref_image_url + ')' : null">
                   <!-- v1.22i: lucide heart in a small white circle.
@@ -476,13 +476,10 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
       overflow:hidden;
       background:var(--color-surface);
       cursor:pointer;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-sup-card:hover {
-      border: var(--border-hairline-strong);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* Hover (lift + accent shadow/border) via the global .bp-card-hover class
+       on the element — see template. No per-card hover declared here. */
     .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
     .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius: var(--radius-pill); background:rgba(0,0,0,0.5); color:#fff; }
     /* v1.22i: heart sits in a small white circle so the red lucide
