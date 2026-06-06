@@ -316,11 +316,13 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display:flex; align-items:center; justify-content:space-between;
       font-size:13px; color:var(--color-text-muted); font-family: var(--font-body);
     }
-    /* Headline "Ballpark" estimate — rainbow gradient (--grad-tab). */
+    /* Headline "Ballpark" estimate — pink-500 -> green-500 action gradient
+       (--grad-accent), weight 400, ~30px (text-3xl). Matches the customer's
+       Projects.tsx reference; the same gradient used for primary buttons. */
     .bp-card-total-row { display:flex; align-items:baseline; gap:8px; margin-top:2px; }
     .bp-card-total {
-      font-size:28px; font-weight:600; line-height:1; font-family: var(--font-body);
-      background: var(--grad-tab);
+      font-size:30px; font-weight:400; line-height:1; font-family: var(--font-body);
+      background: var(--grad-accent);
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent; color: transparent;
     }
