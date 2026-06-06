@@ -1107,6 +1107,22 @@ input.bp-cfg-page-label.p-inputtext:focus {
    on a grid that mirrors the 3-col body grid below (col 1+2 → search,
    col 3 → actions). Outside project context the wrapper is a no-op
    block and the search panel renders full-width as before. */
+/* Categories LEFT — the search lines up with the left-aligned hero / first
+   card and sheds its container chrome (border + white fill + shadow) so it
+   reads as bare controls (All ▾ · search · filter) on the page ground.
+   349px = the first-card x: body pad 12 + rail 300 + gap 12 + main-body pad
+   24 + 1px border (matches supplier-list's heroExtraLeft). */
+.bp-browse-strip--cats-left { padding-left: 349px; }
+.bp-browse-strip--cats-left .bp-search-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+.bp-browse-strip--cats-left .bp-search-row {
+  background: transparent;
+  border: none;
+}
 .bp-search-row-wrap { display: block; }
 .bp-search-row-wrap--split {
   display: grid;

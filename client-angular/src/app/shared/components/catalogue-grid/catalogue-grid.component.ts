@@ -83,6 +83,7 @@ export type DetailMode = 'inline' | 'drawer';
          the two were sibling panels and the page-ground colour
          between them read as accidental bleed-through. -->
     <div class="bp-browse-strip"
+         [class.bp-browse-strip--cats-left]="categoriesPosition === 'left'"
          *ngIf="categories.length && showCategoryCircles">
       <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
            Catalogue-grid owns the data + drill/scope state; the sub-
