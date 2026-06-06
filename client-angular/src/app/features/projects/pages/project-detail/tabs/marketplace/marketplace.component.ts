@@ -25,6 +25,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 import {
   CatalogueGridComponent
 } from '../../../../../../shared/components/catalogue-grid/catalogue-grid.component';
+import { CatalogueViewState } from '../../../../../../core/services/catalogue-view.service';
 import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../../../../../shared/components/item-drawer/item-drawer.component';
@@ -68,7 +69,8 @@ import {
       entityLabel="item"
       sectionTitle="RESULTS"
       actionLabel="View item"
-      detailSize="lg"
+      viewControlsKey="project-marketplace"
+      [viewControlsDefaults]="viewDefaults"
       [showAdd]="true"
       [projectContext]="projectContext"
       [showEdit]="false"
@@ -122,6 +124,10 @@ import {
 })
 export class MarketplaceComponent implements OnInit {
   loading = true;
+  /** Catalogue view defaults for the project context — wider detail panel
+      (the Project Summary). The grid self-manages the rest via the drawer's
+      Catalogue view controls (viewControlsKey="project-marketplace"). */
+  viewDefaults: Partial<CatalogueViewState> = { detailSize: 'lg' };
   projectContext: ProjectContext | null = null;
   categories: CategoryInfo[] = [];
   itemEntities: CatalogueEntity[] = [];
