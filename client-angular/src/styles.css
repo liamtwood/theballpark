@@ -1401,13 +1401,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero-tabs::after {
   content: '';
   position: absolute;
-  bottom: 0; left: 0; right: 0;
-  margin: 0 auto;
+  bottom: 0;
+  left: 0;                              /* left-anchored (left-aligned hero) */
   width: var(--hero-sep-width, 100%);
   height: 1px;
   background: #E5E7EB;
 }
-.bp-hero--left .bp-hero-tabs::after { margin: 0; right: auto; }
+/* v1.66bd — centred hero: centre the separator (no over-constrained
+   left+right+width, which could resolve to full-bleed). */
+.bp-hero:not(.bp-hero--left) .bp-hero-tabs::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
    than a row at the bottom of it. On the project Marketplace the
