@@ -1449,6 +1449,10 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-grid[data-card-size="lg"] .bp-item-card-name { font-size: 18px; }
     .bp-item-grid[data-card-size="md"] .bp-item-card-from { font-size: 24px; }
     .bp-item-grid[data-card-size="lg"] .bp-item-card-from { font-size: 28px; }
+    /* Cover height scales with Card size; Large matches the project-card cover
+       (260px) so a Large card is the same width AND height as a project card. */
+    .bp-item-grid[data-card-size="md"] .bp-item-card-img { height: 190px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-img { height: 260px; }
     .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); -webkit-text-fill-color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
     .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
