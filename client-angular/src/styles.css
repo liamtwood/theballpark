@@ -819,6 +819,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   gap: 12px;
   padding: 12px;
 }
+/* Categories LEFT — align the catalogue's left edge with the hero's left
+   margin (--section-pad) so the rail lines up under the left-aligned hero. */
+.bp-cat-body--cats-left { padding-left: var(--section-pad); }
 .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }

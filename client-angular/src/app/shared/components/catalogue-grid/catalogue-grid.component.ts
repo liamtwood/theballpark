@@ -189,7 +189,8 @@ export type DetailMode = 'inline' | 'drawer';
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
       [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
-      [class.bp-cat-body--no-filter]="categoriesPosition !== 'left' && !showFilter && !filterPanelOpen">
+      [class.bp-cat-body--no-filter]="categoriesPosition !== 'left' && !showFilter && !filterPanelOpen"
+      [class.bp-cat-body--cats-left]="categoriesPosition === 'left'">
 
       <!-- ── SIDEBAR ── -->
       <div class="bp-cat-sidebar" *ngIf="categoriesPosition === 'left' || showFilter || filterPanelOpen">

@@ -11,6 +11,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CatalogueViewState } from '../../core/services/catalogue-view.service';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -42,6 +43,7 @@ import {
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
           viewControlsKey="marketplace"
+          (viewStateChange)="onGridViewState($event)"
           [projectId]="projectId"
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
@@ -154,6 +156,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // in ngOnInit. The hero subtitle on the global app-shell hero also
   // mirrors this label (uppercased) and re-renders on change.
   catalogueTitle = 'Catalogue';
+  /** True when the grid reports categories in the left rail — drives the
+      hero's left-align halfway-house. */
+  catsLeft = false;
 
   // View controls (circle size / view / detail size / detail mode) are owned
   // by <app-catalogue-grid> via [viewControlsKey]="marketplace" — it registers
@@ -334,6 +339,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     // the back button. v1.32a: Back shows on every supplier-list view.
     this.shellCtx.set({
       pills,
+      // Halfway-house: when categories are in the left rail, left-align the
+      // hero so the title/sub/tabs line up with the catalogue's left edge.
+      heroAlign: this.catsLeft ? 'left' : undefined,
       // Items / Suppliers as hero tabs (like events' Current/Completed). They
       // don't route — onTabClick flips the in-page viewMode + re-pushes so the
       // active tab tracks.
@@ -462,6 +470,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   // ── Event handlers ────────────────────────────────────────────────────
+
+  /** Grid reports its view state — track Left categories so the hero
+      left-aligns to match the catalogue's left edge. */
+  onGridViewState(state: CatalogueViewState) {
+    const left = state?.categoriesPosition === 'left';
+    if (left === this.catsLeft) return;
+    this.catsLeft = left;
+    this.applyShellHero(this.shellCtx.current.pills || []);
+  }
 
   switchMode(mode: 'items' | 'suppliers') {
     this.viewMode = mode;

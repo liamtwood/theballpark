@@ -600,7 +600,12 @@ export class AppShellComponent implements OnInit, OnDestroy {
       wins over the global heroAlign. Drives the title, subtitle, pills
       and the tab band. */
   get effectiveHeroAlign(): 'left' | 'center' {
-    return this.configService.getPageSetting(this.pageKey).heroAlign || (this.heroAlign as 'left' | 'center');
+    // A page may push a transient align override (e.g. the marketplace forces
+    // 'left' when categories are in the left rail) — it wins over the saved
+    // per-page setting + the global default.
+    return (this.ctx?.heroAlign as 'left' | 'center')
+      || this.configService.getPageSetting(this.pageKey).heroAlign
+      || (this.heroAlign as 'left' | 'center');
   }
 
   @HostBinding('style.--hero-align')
@@ -727,7 +732,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // also push a heroTitle. Title/sub still fall back to route data.
       // p0032 — keep ctx alive when the surface opts into the configured
       // title (the dashboard pushes useConfiguredTitle without a heroTitle).
-      this.ctx = (ctx.heroTitle || ctx.orgName || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
+      this.ctx = (ctx.heroTitle || ctx.orgName || ctx.heroAlign || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
       this.cdr.detectChanges();
     });
 
