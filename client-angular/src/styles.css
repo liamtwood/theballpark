@@ -1398,20 +1398,19 @@ input.bp-cfg-page-label.p-inputtext:focus {
    controllable (--hero-sep-width, a % general setting). The active tab's
    gradient underline (::after) overlays it. Anchored to the hero
    alignment: centred by default, left-anchored on a left-aligned hero. */
+/* v1.66be — the separator is always centred within the content area, so
+   when the width is < 100% it shrinks symmetrically from BOTH sides
+   (was left-anchored, which put the whole gap on the right and made the
+   line hug the left). At 100% it still spans title-left → content-right. */
 .bp-hero-tabs::after {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 0;                              /* left-anchored (left-aligned hero) */
+  left: 50%;
+  transform: translateX(-50%);
   width: var(--hero-sep-width, 100%);
   height: 1px;
   background: #E5E7EB;
-}
-/* v1.66bd — centred hero: centre the separator (no over-constrained
-   left+right+width, which could resolve to full-bleed). */
-.bp-hero:not(.bp-hero--left) .bp-hero-tabs::after {
-  left: 50%;
-  transform: translateX(-50%);
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
