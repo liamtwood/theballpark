@@ -655,7 +655,7 @@ export type DetailMode = 'inline' | 'drawer';
                 </div>
                 <span class="bp-item-card-cat" *ngIf="cardCatLabel(e)">{{ cardCatLabel(e) }}</span>
                 <div class="bp-item-card-from" *ngIf="cardFromPrice(e) != null">
-                  From {{ cardFromPrice(e) | gbp }}
+                  From {{ cardFromPrice(e) | gbp:0:true }}
                 </div>
                 <div class="bp-item-card-meta" *ngIf="cardLeadTime(e) || cardLocation(e)">
                   <span class="bp-item-card-meta-item" *ngIf="cardLeadTime(e)">
