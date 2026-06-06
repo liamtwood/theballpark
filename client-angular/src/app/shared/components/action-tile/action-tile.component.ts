@@ -36,7 +36,7 @@ import { LucideAngularModule } from 'lucide-angular';
             (click)="action.emit()"
             [attr.aria-label]="ariaLabel || title">
       <div class="bp-action-tile-icon">
-        <lucide-icon [name]="icon" [size]="20"></lucide-icon>
+        <lucide-icon [name]="icon" [size]="28" [strokeWidth]="1.5"></lucide-icon>
       </div>
       <div class="bp-action-tile-body">
         <h3 class="bp-action-tile-title">{{ title }}</h3>
@@ -67,29 +67,39 @@ import { LucideAngularModule } from 'lucide-angular';
       border: var(--border-hairline);
       border-radius: 20px;
       box-shadow: var(--shadow-md);
-      transition: box-shadow 0.18s, transform 0.18s;
+      transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
     }
+    /* Hover (per the customer mockup): the card lifts 8px and gains a large
+       accent-tinted shadow + a soft accent border. */
     .bp-action-tile:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-1px);
+      transform: translateY(-8px);
+      border-color: color-mix(in srgb, var(--theme-accent) 20%, #fff);
+      box-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18),
+                  0 8px 16px -8px rgba(0, 0, 0, 0.08);
     }
     .bp-action-tile:active {
-      transform: translateY(0);
+      transform: translateY(-2px);
     }
     .bp-action-tile:focus-visible {
       outline: 2px solid var(--theme-accent);
       outline-offset: 2px;
     }
 
-    /* 40px icon square — themed-soft bg, themed-accent glyph, 14px
-       corners to echo the card's 20px silhouette. */
+    /* 56px icon square — accent-gradient tint bg (--grad-accent-soft, tracks
+       the theme), neutral gray-700 glyph, 16px corners. On card hover it
+       deepens to --grad-accent-soft-hover and scales to 110%. */
     .bp-action-tile-icon {
       flex-shrink: 0;
-      width: 40px; height: 40px;
+      width: 56px; height: 56px;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 14px;
-      background: var(--theme-soft);
-      color: var(--theme-accent);
+      border-radius: 16px;
+      background: var(--grad-accent-soft);
+      color: #374151;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    .bp-action-tile:hover .bp-action-tile-icon {
+      background: var(--grad-accent-soft-hover);
+      transform: scale(1.1);
     }
 
     .bp-action-tile-body {

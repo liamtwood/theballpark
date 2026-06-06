@@ -16,6 +16,8 @@
 
   /* Theme colours — amber default (overridden by ConfigService) */
   --theme-accent: #D97706;
+  --theme-accent-2: #EC4899;   /* secondary accent — gradient stop 2 (overridden by ConfigService) */
+  --theme-accent-rgb: 217, 119, 6;   /* primary accent as r,g,b for glows (overridden by ConfigService) */
   --theme-bg: #F5F0E8;
   --theme-empty: #EDD9A3;
   --theme-text: #92400E;
@@ -107,6 +109,11 @@
      buttons, badges, the avatar and usage cards. */
   --grad-accent: linear-gradient(90deg, #EC4899 0%, #22C55E 100%);  /* pink-500 → green-500 (primary buttons) */
   --grad-tab:    linear-gradient(90deg, #F472B6 0%, #C084FC 50%, #4ADE80 100%); /* pink-400 → purple-400 → green-400 (active tab underline) */
+  /* Soft tints of the accent gradient — derived from the theme accents via
+     color-mix, so they track the theme. Used by the dashboard action-tile
+     icon containers (default ≈ pink-100→green-100, hover ≈ pink-200→green-200). */
+  --grad-accent-soft:       linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 12%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 12%, #fff) 100%);
+  --grad-accent-soft-hover: linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 30%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 30%, #fff) 100%);
   --card-soft-input: #F6F7F9;   /* her grey-filled edit input */
 
   /* v1.24: positive-state tokens. STANDARD pairs --color-danger
