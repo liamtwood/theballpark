@@ -1,6 +1,12 @@
 export interface ThemePreset {
   name: string;
+  /** Primary accent — solid-accent UI (hero, pills, tabs) AND the first
+      stop of the derived --grad-accent gradient. */
   accent: string;
+  /** Secondary accent — the second stop of --grad-accent. Predefined per
+      theme so the pink→green-style gradient tracks the active theme with
+      no separate setting. */
+  accent2: string;
   bg: string;
   empty: string;
   text: string;

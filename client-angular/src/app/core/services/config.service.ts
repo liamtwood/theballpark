@@ -4,16 +4,20 @@ import { ThemePreset, PlatformConfig } from '../../models';
 
 /* p0003 — three-stop contrast set per preset.
    Soft = active-tab light fill; mid = bold-mode hero orbs; strong = active-tab text. */
+// `accent2` is the second stop of the derived --grad-accent gradient
+// (accent → accent2). Predefined per theme so the brand gradient tracks the
+// active theme without a separate setting. The pink preset's accent is
+// #EC4899 (pink-500) so its gradient is the canonical pink-500 → green-500.
 const THEME_PRESETS: Record<string, ThemePreset> = {
-  amber:   { name: 'amber',   accent: '#D97706', bg: '#F5F0E8', empty: '#EDD9A3', text: '#92400E', border: '#E8D9C0',
+  amber:   { name: 'amber',   accent: '#D97706', accent2: '#EC4899', bg: '#F5F0E8', empty: '#EDD9A3', text: '#92400E', border: '#E8D9C0',
              contrastSoft: '#DDEEF2', contrast: '#3FA8C4', contrastStrong: '#0C447C' },
-  emerald: { name: 'emerald', accent: '#00B84A', bg: '#EDF7F1', empty: '#A7F3D0', text: '#065F46', border: '#B8E8CC',
+  emerald: { name: 'emerald', accent: '#00B84A', accent2: '#2563EB', bg: '#EDF7F1', empty: '#A7F3D0', text: '#065F46', border: '#B8E8CC',
              contrastSoft: '#FBE4EC', contrast: '#F06F9C', contrastStrong: '#993556' },
-  pink:    { name: 'pink',    accent: '#FF0066', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4',
+  pink:    { name: 'pink',    accent: '#EC4899', accent2: '#22C55E', bg: '#FFF0F5', empty: '#FFD6E8', text: '#99003D', border: '#FFB3D4',
              contrastSoft: '#DFF0E4', contrast: '#3DBE73', contrastStrong: '#0F6E56' },
-  ocean:   { name: 'ocean',   accent: '#2563EB', bg: '#EFF6FF', empty: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE',
+  ocean:   { name: 'ocean',   accent: '#2563EB', accent2: '#22D3EE', bg: '#EFF6FF', empty: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE',
              contrastSoft: '#FBECD3', contrast: '#F0A93E', contrastStrong: '#854F0B' },
-  slate:   { name: 'slate',   accent: '#64748B', bg: '#F8F9FA', empty: '#E8EDF2', text: '#334155', border: '#E2E8F0',
+  slate:   { name: 'slate',   accent: '#64748B', accent2: '#94A3B8', bg: '#F8F9FA', empty: '#E8EDF2', text: '#334155', border: '#E2E8F0',
              contrastSoft: '#F6E6E1', contrast: '#D88A6E', contrastStrong: '#7A3A26' },
 };
 
@@ -237,6 +241,11 @@ export class ConfigService {
     const t = this.theme;
     const root = document.documentElement;
     root.style.setProperty('--theme-accent', t.accent);
+    root.style.setProperty('--theme-accent-2', t.accent2);
+    // Derived brand gradient — accent → accent2. Every object that uses the
+    // "this color" gradient references var(--grad-accent), so they all track
+    // the active theme with no per-object config.
+    root.style.setProperty('--grad-accent', `linear-gradient(90deg, ${t.accent} 0%, ${t.accent2} 100%)`);
     root.style.setProperty('--theme-bg', t.bg);
     root.style.setProperty('--theme-empty', t.empty);
     root.style.setProperty('--theme-text', t.text);
