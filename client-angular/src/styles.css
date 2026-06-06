@@ -1078,6 +1078,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow: hidden;
 }
 .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+/* Filter affordance shown in the search row when the filter sidebar setting
+   is off — reveals the sidebar on demand. Active = revealed. */
+.bp-search-filter-btn {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
+  background: var(--color-surface); color: var(--color-text-muted);
+  cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.bp-search-filter-btn:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+.bp-search-filter-btn.active { background: var(--theme-accent); color: var(--color-surface); border-color: var(--theme-accent); }
 .bp-search-input.p-inputtext {
   flex: 1;
   border: none !important;

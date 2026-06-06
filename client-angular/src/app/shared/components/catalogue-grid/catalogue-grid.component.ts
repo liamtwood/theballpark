@@ -118,6 +118,15 @@ export type DetailMode = 'inline' | 'drawer';
         <div class="bp-search-panel">
           <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
           <div class="bp-search-row">
+            <!-- Filter sidebar is off (setting) — this icon reveals it on
+                 demand without changing the saved setting. -->
+            <button *ngIf="!showFilter" type="button"
+                    class="bp-search-filter-btn"
+                    [class.active]="filterPanelOpen"
+                    (click)="filterPanelOpen = !filterPanelOpen"
+                    title="Filters">
+              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
+            </button>
             <p-dropdown *ngIf="stripDropdownOptions.length > 1"
                         [options]="stripDropdownOptions"
                         [ngModel]="stripDropdownValue"
@@ -179,10 +188,10 @@ export type DetailMode = 'inline' | 'drawer';
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
       [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
-      [class.bp-cat-body--no-filter]="!showFilter">
+      [class.bp-cat-body--no-filter]="!showFilter && !filterPanelOpen">
 
       <!-- ── SIDEBAR ── -->
-      <div class="bp-cat-sidebar" *ngIf="showFilter">
+      <div class="bp-cat-sidebar" *ngIf="showFilter || filterPanelOpen">
         <!-- v1.65c — search moved out to the strip-bar above. -->
 
         <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
@@ -1834,6 +1843,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       drawer's Catalogue view controls when viewControlsKey is set). */
   @Input() showFilter = true;
   @Input() showPreview = true;
+  /** Transient: when the filter sidebar setting is OFF, the filter icon by the
+      search box reveals it on demand without changing the saved setting. */
+  filterPanelOpen = false;
   /** Circle strip size — sm/md/lg map to 56/72/96px circles. */
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
@@ -2494,7 +2506,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
   private applyViewControls(p: Partial<CatalogueViewState>): void {
     if (p.shape)      this.shape      = p.shape;
-    if (p.showFilter  !== undefined) this.showFilter  = p.showFilter;
+    if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
     if (p.showPreview !== undefined) this.showPreview = p.showPreview;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
@@ -2541,6 +2553,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   }
 
   select(e: CatalogueEntity) {
+    // Preview panel off → no inline detail, so go straight to the entity's
+    // own page (items → /items/:id; suppliers → /suppliers/:id via the host's
+    // action handler).
+    if (!this.showPreview) {
+      if (this.entityType === 'supplier') this.actionClicked.emit(e);
+      else this.viewRequested.emit(e);
+      return;
+    }
     this.selectedEntity = e;
     this.entitySelected.emit(e);
     this.cdr.detectChanges();
