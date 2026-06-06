@@ -368,12 +368,15 @@ export class TopNavComponent implements OnInit, OnDestroy {
     }
 
     if (persona?.kind === 'supplier') {
-      // v1.66ap — supplier nav (provisional): no Agent / Events. Refine
-      // the supplier set when its home content is designed.
+      // v1.66db — supplier works their own shop: Shopfront + Store are the
+      // owner management surfaces (/shopfront, /store); Marketplace (/shop)
+      // stays because suppliers shop too (buy from / watch each other).
       this.navItems = [
         { label: 'Home',        icon: 'house',      route: '/home' },
+        { label: 'Shopfront',   icon: 'store',      route: '/shopfront' },
+        { label: 'Store',       icon: 'package',    route: '/store' },
         { label: 'Inbox',       icon: 'inbox',      route: '/inbox' },
-        { label: 'Marketplace', icon: 'store',      route: '/shop' },
+        { label: 'Marketplace', icon: 'compass',    route: '/shop' },
         { label: 'Settings',    icon: 'building-2', route: '/settings' },
       ];
       return;
