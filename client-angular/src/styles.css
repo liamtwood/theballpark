@@ -718,12 +718,16 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-circles-toggle:hover { opacity: 0.75; }
 .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; position: relative; }
-.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s, box-shadow 150ms ease; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-xs); color: var(--color-text-muted); position: relative; }
-/* v1.65ag — circles adopt the v1.22 elevation: --shadow-xs at rest,
-   --shadow-sm on hover. Active state preserves the themed ring and
-   lifts to --shadow-sm. */
+/* Match the dashboard action-tile icons: soft accent-gradient fill + neutral
+   gray-700 glyph, scaling up to 110% with a deeper gradient on hover. The
+   gradient is set as background-IMAGE so it layers over the per-circle
+   background-color; a cover photo (inline background-image: url) still wins,
+   and the active circle clears it for a solid accent fill (see below). */
+.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s, box-shadow 150ms ease, transform 0.3s ease, background-image 0.3s ease; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); background-image: var(--grad-accent-soft); box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-xs); color: #374151; position: relative; }
 .bp-cat-circle-btn:hover .bp-cat-circle {
   box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-sm);
+  transform: scale(1.1);
+  background-image: var(--grad-accent-soft-hover);
 }
 .bp-cat-circle--all       { background-color: var(--color-surface); }
 .bp-cat-circle--no-image  { background-color: var(--theme-bg); }
@@ -736,9 +740,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circle-btn--add .bp-cat-circle-label { color: var(--theme-accent);
                                                font-weight: 600; }
 .bp-cat-circle--logo      { background: var(--theme-bg); }
-.bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
-.bp-cat-circle-icon       { color: var(--theme-accent); }
-.bp-cat-circle-lucide     { color: var(--color-text-muted); }
+.bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: #374151; font-family: var(--font-display); }
+.bp-cat-circle-icon       { color: #374151; }
+.bp-cat-circle-lucide     { color: #374151; }
 .bp-cat-circle-logo-img   { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
 /* v1.65am (p0002 #8) — active category circle: SOLID --theme-accent
    fill with white-rendered contents. Unmistakable active state. The
