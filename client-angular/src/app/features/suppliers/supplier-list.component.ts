@@ -62,15 +62,10 @@ import {
           (itemEditRequested)="onItemEditRequested($event)"
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)">
-          <div catalogue-toggles class="bp-cat-toggle-wrap">
-            <button class="bp-toggle-btn" [class.active]="viewMode === 'items'"
-              (click)="switchMode('items')">Items</button>
-            <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'"
-              (click)="switchMode('suppliers')">Suppliers</button>
-          </div>
-          <!-- Config-strip bar removed — circle size / view / detail size /
-               detail mode now live in the global page-config drawer, wired via
-               CatalogueViewService (register/unregister in this component). -->
+          <!-- Items / Suppliers moved to the hero tab band (pushed via
+               ShellContextService in applyShellHero), matching the events
+               Current/Completed pattern. Config-strip bar also removed — the
+               view controls live in the global page-config drawer. -->
         </app-catalogue-grid>
       </ng-container>
 
@@ -122,11 +117,8 @@ import {
     </div>
   `,
   styles: [`
-    .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
-    .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
-    /* v1.65an — solid --theme-accent active state (matches the unified
-       selector pattern across the app). */
-    .bp-toggle-btn.active { background: var(--theme-accent); color: var(--color-surface); font-weight: 600; }
+    /* Items/Suppliers toggle styles removed — they're now hero tabs
+       (rendered by the app-shell tab band, styled globally). */
   `]
 })
 export class SupplierListComponent implements OnInit, OnDestroy {
@@ -342,7 +334,15 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     // the back button. v1.32a: Back shows on every supplier-list view.
     this.shellCtx.set({
       pills,
-      tabs: [],
+      // Items / Suppliers as hero tabs (like events' Current/Completed). They
+      // don't route — onTabClick flips the in-page viewMode + re-pushes so the
+      // active tab tracks.
+      tabs: [
+        { label: 'Items',     path: 'items' },
+        { label: 'Suppliers', path: 'suppliers' },
+      ],
+      activeTabPath: this.viewMode,
+      onTabClick: (t) => this.switchMode(t.path === 'suppliers' ? 'suppliers' : 'items'),
       back: { label: 'Back', onBack: () => this.goBack() }
     });
   }
@@ -466,6 +466,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.viewMode = mode;
     if (mode === 'items') this.loadItems();
     else this.mapSuppliers();
+    // Re-push so the hero tab band's active state tracks the new mode.
+    this.applyShellHero(this.shellCtx.current.pills || []);
     this.cdr.detectChanges();
   }
 
