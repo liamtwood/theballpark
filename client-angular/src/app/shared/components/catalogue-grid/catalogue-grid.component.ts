@@ -620,11 +620,11 @@ export type DetailMode = 'inline' | 'drawer';
                           title="More actions">⋯</button>
                   <div class="bp-card-menu" *ngIf="openCardMenuId === e.id"
                        (click)="$event.stopPropagation()">
-                    <button class="bp-card-menu-item" *ngIf="showCartActions"
+                    <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                             (click)="onMenuAction('add', e, $event)">
                       {{ getSelectionType(e.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
                     </button>
-                    <button class="bp-card-menu-item" *ngIf="showCartActions"
+                    <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                             (click)="onMenuAction('wishlist', e, $event)">Wishlist for Project</button>
                     <button class="bp-card-menu-item"
                             (click)="onMenuAction('view', e, $event)">View</button>
@@ -743,11 +743,11 @@ export type DetailMode = 'inline' | 'drawer';
                       title="More actions">⋯</button>
               <div class="bp-card-menu" *ngIf="previewMenuOpen"
                    (click)="$event.stopPropagation()">
-                <button class="bp-card-menu-item" *ngIf="showCartActions"
+                <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                         (click)="onMenuAction('add', selectedEntity, $event)">
                   {{ getSelectionType(selectedEntity.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
                 </button>
-                <button class="bp-card-menu-item" *ngIf="showCartActions"
+                <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                         (click)="onMenuAction('wishlist', selectedEntity, $event)">Wishlist for Project</button>
                 <button class="bp-card-menu-item"
                         (click)="onMenuAction('view', selectedEntity, $event)">View</button>
@@ -1977,6 +1977,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Show the "Delete" item in the "⋯" menu. Off by default — delete lives on
       the supplier store (where a supplier manages their own catalogue). */
   @Input() showDelete = false;
+  /** Marketplace mode: the primary CTA + menu always offer "Add to Project"
+      even before a project is chosen. Triggering an add with no project
+      selected emits projectRequired so the host can open the project picker. */
+  @Input() addToProjectMode = false;
   /** Transient: when the filter sidebar setting is OFF, the filter icon by the
       search box reveals it on demand without changing the saved setting. */
   filterPanelOpen = false;
@@ -2130,6 +2134,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** v1.66cq — "Delete" from the card / preview "⋯" menu. The host confirms
       and performs the delete (soft-delete via ItemService). */
   @Output() deleteRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.66ct — user wants to add/wishlist but no project is selected yet
+      (addToProjectMode). Host opens the project picker, then adds. */
+  @Output() projectRequired = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
 
   /** v1.22 — context panel events.
         briefUpdated → parent persists the new requirement_brief via
@@ -2772,17 +2779,21 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   primaryActionLabel(e: CatalogueEntity): string {
     if (this.entityType === 'supplier') return this.actionLabel || 'View supplier';
     if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'Added to project' : 'Add to Project';
+    if (this.addToProjectMode) return 'Add to Project';
     return 'View item';
   }
   primaryActionIcon(e: CatalogueEntity): string {
     if (this.entityType === 'supplier') return 'arrow-right';
     if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'check' : 'plus';
+    if (this.addToProjectMode) return 'plus';
     return 'arrow-right';
   }
   onPrimaryAction(ev: MouseEvent, e: CatalogueEntity) {
     ev.stopPropagation();
     if (this.entityType === 'supplier') { this.actionClicked.emit(e); return; }
     if (this.showCartActions) { this.onAddToProject(e); return; }
+    // Marketplace with no project chosen yet — ask the host to open the picker.
+    if (this.addToProjectMode) { this.projectRequired.emit({ entity: e, type: 'selected' }); return; }
     this.viewRequested.emit(e);
   }
 
@@ -2809,8 +2820,14 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.openCardMenuId = null;
     this.previewMenuOpen = false;
     switch (action) {
-      case 'add':        this.onAddToProject(e); break;
-      case 'wishlist':   this.onLikeForProject(e); break;
+      case 'add':
+        if (this.showCartActions) this.onAddToProject(e);
+        else this.projectRequired.emit({ entity: e, type: 'selected' });
+        break;
+      case 'wishlist':
+        if (this.showCartActions) this.onLikeForProject(e);
+        else this.projectRequired.emit({ entity: e, type: 'liked' });
+        break;
       case 'view':       this.onViewItem(e); break;
       case 'edit':       this.onEditItem(e); break;
       case 'edit-image': this.imageEditRequested.emit(e); break;

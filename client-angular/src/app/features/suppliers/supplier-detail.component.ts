@@ -26,6 +26,8 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import { MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
 import { ItemService } from '../../core/services/item.service';
+import { MarketplaceProjectService, MarketplaceProject } from '../../core/services/marketplace-project.service';
+import { MarketplaceProjectPickerComponent } from '../../shared/components/marketplace-project-picker/marketplace-project-picker.component';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
@@ -40,7 +42,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     ConfirmDialogModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent
+    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent,
+    MarketplaceProjectPickerComponent
   ],
   providers: [MessageService, ConfirmationService],
   template: `
@@ -283,6 +286,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [favouriteIds]="itemFavIds"
           [showEdit]="true"
           [showDelete]="ownsCatalogue"
+          [addToProjectMode]="true"
           [showItemEdit]="false"
           [showFavourite]="false"
           [showBack]="false"
@@ -302,6 +306,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
           (deleteRequested)="onDeleteItem($event)"
+          (projectRequired)="onProjectRequired($event)"
           (viewRequested)="onViewItem($event)"
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)"
@@ -417,6 +422,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
 
     <p-toast></p-toast>
     <p-confirmDialog></p-confirmDialog>
+    <app-marketplace-project-picker
+      [(visible)]="pickerOpen"
+      [activeId]="selectedProjectId || null"
+      (picked)="onProjectPicked($event)">
+    </app-marketplace-project-picker>
     </div>
   `,
   styles: [`
@@ -750,6 +760,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   showQuoteDrawer = false;
   selectedItem: any = null;
   selectedProjectId = '';
+  /** Project picker dialog state + pending add (queued until a project is
+      chosen via the hero pill). */
+  pickerOpen = false;
+  private pendingAdd: { entity: CatalogueEntity; type: 'selected' | 'liked' } | null = null;
   quoteBrief = '';
   ballsBalance = 0;
   creditLabel = 'Ball';
@@ -844,6 +858,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private msg: MessageService,
     private confirm: ConfirmationService,
     private itemSvc: ItemService,
+    private marketProjectSvc: MarketplaceProjectService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -853,7 +868,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     this.creditLabel = this.configService.current?.creditLabel || 'Ball';
 
     const qp = this.route.snapshot.queryParams;
-    if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
+    if (qp['projectId']) {
+      this.selectedProjectId = qp['projectId']; this.projectPreSelected = true;
+    } else if (this.marketProjectSvc.current) {
+      // Carry the session "shopping for" project into the store.
+      this.selectedProjectId = this.marketProjectSvc.current.id; this.projectPreSelected = true;
+    }
     // v1.65dz (p0015) → v1.65e1 — ?tab= deep-links into any of the 4
     // supplier-detail tabs. Defaults to 'front' (the public shopfront)
     // when no param is set OR when an agency is browsing someone
@@ -898,6 +918,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       next: projects => {
         this.projects = (projects || []).filter(p => ['active','costing','draft'].includes(p.status_name || ''));
         if (this.projects.length > 0 && !this.projectPreSelected) this.selectedProjectId = this.projects[0].id;
+        // Re-push so the hero project pill label resolves from the loaded list.
+        if (this.supplier) this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -984,14 +1006,24 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
     const counts: Record<string, number> = {};
     for (const item of this.catalogueItems) {
-      let current = this.allCatalogueCategories.find(c => c.id === item.category_id);
-      let guard = 6;
-      while (current && guard-- > 0) {
-        counts[current.id] = (counts[current.id] || 0) + 1;
-        if (!current.parent_id) break;
-        const parentId: string = current.parent_id;
-        current = this.allCatalogueCategories.find(c => c.id === parentId);
+      // Collect this item's category + ALL ancestors, seeded from BOTH its
+      // category_id and its subcategory_id, deduped so each is counted once.
+      // Seeding from subcategory_id is what makes leaf subcategories carry a
+      // count — without it they're filtered out of the scoped LEFT rail and
+      // never appear when a parent is expanded.
+      const ids = new Set<string>();
+      for (const seed of [item.category_id, item.subcategory_id]) {
+        if (!seed) continue;
+        let current = this.allCatalogueCategories.find(c => c.id === seed);
+        let guard = 6;
+        while (current && guard-- > 0) {
+          ids.add(current.id);
+          if (!current.parent_id) break;
+          const parentId: string = current.parent_id;
+          current = this.allCatalogueCategories.find(c => c.id === parentId);
+        }
       }
+      for (const id of ids) counts[id] = (counts[id] || 0) + 1;
     }
 
     this.categories = this.allCatalogueCategories
@@ -1186,8 +1218,48 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       tabs,
       activeTabPath: this.activeTab,
       onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'front' | 'store' | 'inbox'),
+      // "Shopping for {project}" pill — only on the Store tab, where Add to
+      // Project applies. Opens the picker.
+      projectPill: this.activeTab === 'store' ? {
+        text: this.marketProjectName(),
+        onClick: () => { this.pickerOpen = true; this.cdr.detectChanges(); },
+      } : undefined,
       back: { label: 'Back', onBack: () => this.goBack() }
     });
+  }
+
+  /** Label for the project pill — the selected project's name, or a prompt. */
+  private marketProjectName(): string {
+    const p = this.projects.find(x => x.id === this.selectedProjectId);
+    return p ? (p.event_name || p.name) : 'Select project';
+  }
+
+  /** Add attempted before a project was chosen — stash + open the picker. */
+  onProjectRequired(req: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    this.pendingAdd = req;
+    this.pickerOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  /** Project picked from the hero pill — set it (and remember for the session
+      so it carries to /shop), flush any pending add, refresh the cart. */
+  onProjectPicked(p: MarketplaceProject | null) {
+    this.marketProjectSvc.set(p);
+    this.selectedProjectId = p?.id || '';
+    const pending = this.pendingAdd;
+    this.pendingAdd = null;
+    if (p && pending) {
+      this.projectItemSvc.add(p.id, pending.entity.id, pending.type).subscribe({
+        next: () => this.loadProjectItems(p.id),
+        error: () => this.loadProjectItems(p.id),
+      });
+    } else if (p) {
+      this.loadProjectItems(p.id);
+    } else {
+      this.projectItems = [];
+    }
+    this.applyShellHero();
+    this.cdr.detectChanges();
   }
 
   /** v1.65dm — flip the page-local tab AND re-push the shell context so

@@ -51,6 +51,8 @@ import {
           [totalCount]="viewMode === 'suppliers' ? suppliers.length : totalItems"
           viewControlsKey="marketplace"
           [viewControlsDefaults]="viewDefaults"
+          [addToProjectMode]="true"
+          (projectRequired)="onProjectRequired($event)"
           (viewStateChange)="onGridViewState($event)"
           [projectId]="projectId"
           [projectItems]="projectItems"
@@ -145,6 +147,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   /** Project picker dialog open state + the session "shopping for" project. */
   pickerOpen = false;
   marketProject: MarketplaceProject | null = null;
+  /** Item the user tried to add before choosing a project — added once they
+      pick one (the picker opens via onProjectRequired). */
+  private pendingAdd: { entity: CatalogueEntity; type: 'selected' | 'liked' } | null = null;
   /** v1.32: when ?favourites=true is in the URL, restrict the list to
       the user's hearted suppliers (or items) and surface a "My
       Suppliers" hero + back button so the entry-from-dashboard
@@ -578,22 +583,42 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   onEntitySelected(_entity: CatalogueEntity) {}
 
+  /** User clicked Add to Project / Wishlist before choosing a project — stash
+      the intent and open the picker; onProjectPicked flushes it. */
+  onProjectRequired(req: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    this.pendingAdd = req;
+    this.pickerOpen = true;
+    this.cdr.detectChanges();
+  }
+
   /** Project picked from the hero pill dialog — remember it for the session,
-      retarget Add to Project / Wishlist, and refresh the cart state. */
+      retarget Add to Project / Wishlist, flush any pending add, and refresh
+      the cart state. */
   onProjectPicked(p: MarketplaceProject | null) {
     this.marketProjectSvc.set(p);
     this.marketProject = p;
     this.projectId = p?.id || null;
-    if (p) {
-      this.projectItemSvc.getByProject(p.id).subscribe(rows => {
-        this.projectItems = rows || [];
-        this.cdr.detectChanges();
+    const pending = this.pendingAdd;
+    this.pendingAdd = null;
+    if (p && pending) {
+      this.projectItemSvc.add(p.id, pending.entity.id, pending.type).subscribe({
+        next: () => this.reloadProjectItems(p.id),
+        error: () => this.reloadProjectItems(p.id),
       });
+    } else if (p) {
+      this.reloadProjectItems(p.id);
     } else {
       this.projectItems = [];
     }
     this.applyShellHero(this.shellCtx.current.pills || []);
     this.cdr.detectChanges();
+  }
+
+  private reloadProjectItems(projectId: string) {
+    this.projectItemSvc.getByProject(projectId).subscribe(rows => {
+      this.projectItems = rows || [];
+      this.cdr.detectChanges();
+    });
   }
 
   onFavToggled(entityId: string) {
