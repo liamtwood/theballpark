@@ -118,15 +118,6 @@ export type DetailMode = 'inline' | 'drawer';
         <div class="bp-search-panel">
           <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
           <div class="bp-search-row">
-            <!-- Filter sidebar is off (setting) — this icon reveals it on
-                 demand without changing the saved setting. -->
-            <button *ngIf="!showFilter" type="button"
-                    class="bp-search-filter-btn"
-                    [class.active]="filterPanelOpen"
-                    (click)="filterPanelOpen = !filterPanelOpen"
-                    title="Filters">
-              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
-            </button>
             <p-dropdown *ngIf="stripDropdownOptions.length > 1"
                         [options]="stripDropdownOptions"
                         [ngModel]="stripDropdownValue"
@@ -140,6 +131,16 @@ export type DetailMode = 'inline' | 'drawer';
                    [placeholder]="searchPlaceholder"
                    class="bp-search-input"
                    (keyup.enter)="applySearch()"/>
+            <!-- Filter sidebar is off (setting) — this icon (right of the
+                 search box) reveals it on demand without changing the saved
+                 setting. -->
+            <button *ngIf="!showFilter" type="button"
+                    class="bp-search-filter-btn"
+                    [class.active]="filterPanelOpen"
+                    (click)="filterPanelOpen = !filterPanelOpen"
+                    title="Filters">
+              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
+            </button>
             <!-- v1.65cm — Recommend lives in the SEARCH row (was in
                  QUICK ACTIONS). It's an AI-driven search/match action
                  — belongs alongside the text search + scope dropdown.
