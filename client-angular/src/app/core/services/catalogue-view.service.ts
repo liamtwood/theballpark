@@ -21,6 +21,9 @@ import { BehaviorSubject } from 'rxjs';
 export interface CatalogueViewState {
   /** Category-strip shape — round circles or rounded squares. */
   shape: 'circle' | 'square';
+  /** Item/supplier card size — sm (≈190px, today) / md (≈255px) / lg
+      (≈320px, the project-card width). */
+  cardSize: 'sm' | 'md' | 'lg';
   /** Category-strip size (sm/md/lg). Labelled "Shape size" in the UI. */
   circleSize: 'sm' | 'md' | 'lg';
   detailSize: 'sm' | 'md' | 'lg';

@@ -172,6 +172,14 @@ import { pagePatternKey } from '../../../core/utils/page-key';
               </div>
             </div>
             <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Card size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of circleSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.cardSize === o.value"
+                        (click)="setCatalogueView({ cardSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
               <label class="bp-pcd-field-label">View</label>
               <div class="bp-cfg-seg">
                 <button *ngFor="let o of catViewOptions" type="button" class="bp-cfg-seg-btn"

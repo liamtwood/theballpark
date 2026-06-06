@@ -536,7 +536,7 @@ export type DetailMode = 'inline' | 'drawer';
         </ng-container>
 
         <ng-template #cardGridTpl let-entities>
-          <div class="bp-item-grid">
+          <div class="bp-item-grid" [attr.data-card-size]="cardSize">
             <div *ngFor="let e of entities"
               class="bp-item-card bp-card-hover"
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
@@ -1374,6 +1374,10 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+    /* Card size — sm (today) / md / lg (lg = the project-card width). */
+    .bp-item-grid[data-card-size="sm"] { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    .bp-item-grid[data-card-size="md"] { grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
+    .bp-item-grid[data-card-size="lg"] { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
     /* v1.65ag — result cards adopt the v1.22 elevation system:
        --shadow-xs at rest, --shadow-sm + translateY(-1px) on hover.
        Lift uses transform so there's no layout shift. */
@@ -1840,6 +1844,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   @Input() pageSubtitle: string = '';
   /** Category-strip shape — round circles or rounded squares. */
   @Input() shape: 'circle' | 'square' = 'circle';
+  /** Item/supplier card size — sm (today) / md / lg (project-card width). */
+  @Input() cardSize: 'sm' | 'md' | 'lg' = 'sm';
   /** Toggle the left filter sidebar / right preview panel (managed via the
       drawer's Catalogue view controls when viewControlsKey is set). */
   @Input() showFilter = true;
@@ -2481,6 +2487,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
     const d = this.viewControlsDefaults || {};
     this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
+    this.cardSize   = (saved.cardSize   || d.cardSize   || this.cardSize) as 'sm' | 'md' | 'lg';
     this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
     this.showPreview = saved.showPreview ?? d.showPreview ?? this.showPreview;
     this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
@@ -2495,6 +2502,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   private viewControlsState(): CatalogueViewState {
     return {
       shape: this.shape,
+      cardSize: this.cardSize,
       circleSize: this.circleSize,
       detailSize: this.detailSize,
       view: this.layout,
@@ -2507,6 +2515,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
   private applyViewControls(p: Partial<CatalogueViewState>): void {
     if (p.shape)      this.shape      = p.shape;
+    if (p.cardSize)   this.cardSize   = p.cardSize;
     if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
     if (p.showPreview !== undefined) this.showPreview = p.showPreview;
     if (p.circleSize) this.circleSize = p.circleSize;

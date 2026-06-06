@@ -467,6 +467,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     detailMode: 'ballpark:feedback:detailMode'
   };
   catShape: 'circle' | 'square' = 'circle';
+  catCardSize: 'sm' | 'md' | 'lg' = 'sm';
   catShowFilter = true;
   catShowPreview = true;
   circleSize: CircleSize = 'md';
@@ -585,6 +586,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   private catalogueViewState(): CatalogueViewState {
     return {
       shape: this.catShape,
+      cardSize: this.catCardSize,
       circleSize: this.circleSize,
       detailSize: this.detailSize,
       view: this.viewMode,
@@ -603,6 +605,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   /** Drawer → this page: apply a view change, persist, re-sync the drawer. */
   private applyCatalogueView(p: Partial<CatalogueViewState>) {
     if (p.shape)      this.catShape   = p.shape;
+    if (p.cardSize)   this.catCardSize = p.cardSize;
     if (p.showFilter  !== undefined) this.catShowFilter  = p.showFilter;
     if (p.showPreview !== undefined) this.catShowPreview = p.showPreview;
     if (p.circleSize) this.circleSize = p.circleSize;
