@@ -31,7 +31,7 @@ import {
     ItemDrawerComponent
   ],
   template: `
-    <div class="bp-page">
+    <div class="bp-page bp-page--catalogue">
       <app-loading *ngIf="loading"></app-loading>
       <ng-container *ngIf="!loading">
         <app-catalogue-grid

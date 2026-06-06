@@ -83,12 +83,14 @@ export type DetailMode = 'inline' | 'drawer';
          the two were sibling panels and the page-ground colour
          between them read as accidental bleed-through. -->
     <div class="bp-browse-strip"
-         *ngIf="categories.length && showCategoryCircles && categoriesPosition !== 'left'">
+         *ngIf="categories.length && showCategoryCircles">
       <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
            Catalogue-grid owns the data + drill/scope state; the sub-
            component owns the markup, scroll-arrow state and event wiring.
-           Messages tab mounts the SAME component so the two stay aligned. -->
-      <div class="bp-browse-panel">
+           Messages tab mounts the SAME component so the two stay aligned.
+           Hidden in Categories-LEFT mode (the rail owns category nav) — but
+           the SEARCH row below still renders so search isn't lost. -->
+      <div class="bp-browse-panel" *ngIf="categoriesPosition !== 'left'">
         <app-category-circles
           [categories]="displayedCircles"
           [activeId]="circleActiveId"

@@ -815,6 +815,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
   --cat-col1: 260px;
   display: grid;
   grid-template-columns: var(--cat-col1) 1fr;
+  /* Fallback height for catalogue hosts that aren't flex-filled (e.g. the
+     project marketplace tab). Standalone catalogue pages (.bp-page--catalogue)
+     override this with flex:1 so the body fills the shell viewport EXACTLY and
+     only the two columns scroll — no redundant outer page scrollbar. */
   height: calc(100vh - var(--nav-height) - 160px);
   /* v1.65bp — page ground reverted to --theme-bg parchment (was
      --theme-contrast-soft green). Cat + search panels back to
@@ -823,6 +827,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
   gap: 12px;
   padding: 12px;
 }
+/* ── Catalogue page flex-fill ─────────────────────────────────────────────
+   A standalone catalogue page (marketplace / supplier store) marks its
+   wrapper .bp-page--catalogue. The chain shell-content → page → grid → body
+   becomes a flex column so the body fills the viewport height precisely; the
+   sidebar + main columns own the only scrollbars. Without this the body's
+   calc() height never matches the shell viewport exactly, leaking a 1px+
+   outer scrollbar. */
+.bp-shell-content:has(.bp-page--catalogue) { display: flex; flex-direction: column; overflow: hidden; }
+.bp-shell-content:has(.bp-page--catalogue) > * { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.bp-page--catalogue { overflow: hidden; display: flex; flex-direction: column; }
+.bp-page--catalogue app-catalogue-grid { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.bp-page--catalogue .bp-cat-body { height: auto; flex: 1 1 auto; min-height: 0; }
 .bp-cat-body--detail { grid-template-columns: var(--cat-col1) 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: var(--cat-col1) 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: var(--cat-col1) 1fr 320px; }
