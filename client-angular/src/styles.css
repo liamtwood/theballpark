@@ -1695,6 +1695,22 @@ input.bp-fld.is-edit:focus,
   padding: 28px 32px;
   margin-bottom: 20px;
 }
+/* ── Card hover standard ───────────────────────────────────────────────
+   THE single hover treatment for interactive cards: lift 8px, accent-tinted
+   shadow + soft accent border, 300ms. Both values track the active theme
+   (--theme-accent / --theme-accent-rgb). Any card opts in by adding the
+   class `bp-card-hover` to its hoverable element — do NOT re-declare the
+   lift/shadow per component. Change the standard here and every card that
+   references it updates. (Global, unscoped — applies inside any component.) */
+.bp-card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.bp-card-hover:hover {
+  transform: translateY(-8px);
+  border-color: color-mix(in srgb, var(--theme-accent) 20%, #fff);
+  box-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18),
+              0 8px 16px -8px rgba(0, 0, 0, 0.08);
+}
 .bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .bp-card-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }
 .bp-card-actions { display: flex; align-items: center; gap: 10px; }

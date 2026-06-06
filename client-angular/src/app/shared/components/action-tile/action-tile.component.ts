@@ -32,7 +32,7 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [CommonModule, LucideAngularModule],
   template: `
     <button type="button"
-            class="bp-action-tile"
+            class="bp-action-tile bp-card-hover"
             (click)="action.emit()"
             [attr.aria-label]="ariaLabel || title">
       <div class="bp-action-tile-icon">
@@ -67,15 +67,9 @@ import { LucideAngularModule } from 'lucide-angular';
       border: var(--border-hairline);
       border-radius: 20px;
       box-shadow: var(--shadow-md);
-      transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
-    }
-    /* Hover (per the customer mockup): the card lifts 8px and gains a large
-       accent-tinted shadow + a soft accent border. */
-    .bp-action-tile:hover {
-      transform: translateY(-8px);
-      border-color: color-mix(in srgb, var(--theme-accent) 20%, #fff);
-      box-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18),
-                  0 8px 16px -8px rgba(0, 0, 0, 0.08);
+      /* Hover (lift + accent shadow/border, 300ms) comes from the global
+         .bp-card-hover standard in styles.css — see the class on the button.
+         Do not re-declare it here. */
     }
     .bp-action-tile:active {
       transform: translateY(-2px);
