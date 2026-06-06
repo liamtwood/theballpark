@@ -25,6 +25,7 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { CodelistService } from '../../core/services/codelist.service';
+import { PersonaService } from '../../core/services/persona.service';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
 @Component({
@@ -144,6 +145,40 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
              not wrapped in a bp-dash-card. -->
         <div class="bp-body-left">
           <div class="bp-launcher-grid">
+            <!-- Supplier persona (e.g. Ryan @ Rocket Food) — their home is
+                 their own shop: Shopfront / Store / Inbox / Profile. -->
+            <ng-container *ngIf="isSupplier; else agencyLauncher">
+              <app-action-tile
+                icon="store"
+                title="Shopfront"
+                subtitle="Your public storefront"
+                (action)="goToSupplierTab('front')">
+              </app-action-tile>
+
+              <app-action-tile
+                icon="package"
+                title="Store"
+                subtitle="Manage your catalogue"
+                (action)="goToSupplierTab('store')">
+              </app-action-tile>
+
+              <app-action-tile
+                icon="inbox"
+                title="Inbox"
+                subtitle="Enquiries and threads"
+                (action)="goToSupplierTab('inbox')">
+              </app-action-tile>
+
+              <app-action-tile
+                icon="circle-user"
+                title="Profile"
+                subtitle="Your account and settings"
+                (action)="goToProfile()">
+              </app-action-tile>
+            </ng-container>
+
+            <!-- Agency / admin launcher -->
+            <ng-template #agencyLauncher>
             <app-action-tile
               icon="folder-plus"
               title="Add {{ projectLabel }}"
@@ -178,6 +213,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
               subtitle="Your account and settings"
               (action)="goToProfile()">
             </app-action-tile>
+            </ng-template>
           </div>
         </div>
 
@@ -682,6 +718,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
     private codelistSvc: CodelistService,
+    private personaSvc: PersonaService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -727,6 +764,16 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   goToMarketplace() { this.router.navigate(['/shop']); }
   // No dedicated /profile route — Settings is the account surface today.
   goToProfile()     { this.router.navigate(['/settings']); }
+
+  /** True when the active persona is a supplier (e.g. Ryan @ Rocket Food) —
+      their home launcher shows shop folders instead of agency ones. */
+  get isSupplier(): boolean { return this.personaSvc.isSupplier(); }
+
+  /** Open the supplier's own page on a given tab (Shopfront / Store / Inbox). */
+  goToSupplierTab(tab: 'front' | 'store' | 'inbox') {
+    const id = this.personaSvc.active?.supplierOrgId;
+    if (id) this.router.navigate(['/suppliers', id], { queryParams: { tab } });
+  }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = { 'set build': 'setbuild', 'av': 'av', 'audio visual': 'av' };
