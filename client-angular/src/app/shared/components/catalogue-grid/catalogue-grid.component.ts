@@ -178,10 +178,11 @@ export type DetailMode = 'inline' | 'drawer';
     <!-- THREE-COLUMN BODY -->
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
-      [class.bp-cat-body--no-inline-detail]="hideInlineDetail">
+      [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
+      [class.bp-cat-body--no-filter]="!showFilter">
 
       <!-- ── SIDEBAR ── -->
-      <div class="bp-cat-sidebar">
+      <div class="bp-cat-sidebar" *ngIf="showFilter">
         <!-- v1.65c — search moved out to the strip-bar above. -->
 
         <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
@@ -636,7 +637,7 @@ export type DetailMode = 'inline' | 'drawer';
            projected content and skip the built-in entity preview below.
            Hidden entirely in table+drawer mode — the page's own drawer
            handles detail there. -->
-      <div *ngIf="!hideInlineDetail" class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
+      <div *ngIf="showPreview && !hideInlineDetail" class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
         <ng-container *ngIf="useCustomDetail">
           <ng-content select="[catalogue-detail]"></ng-content>
         </ng-container>
@@ -1829,6 +1830,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   @Input() pageSubtitle: string = '';
   /** Category-strip shape — round circles or rounded squares. */
   @Input() shape: 'circle' | 'square' = 'circle';
+  /** Toggle the left filter sidebar / right preview panel (managed via the
+      drawer's Catalogue view controls when viewControlsKey is set). */
+  @Input() showFilter = true;
+  @Input() showPreview = true;
   /** Circle strip size — sm/md/lg map to 56/72/96px circles. */
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
@@ -2463,6 +2468,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
     const d = this.viewControlsDefaults || {};
     this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
+    this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
+    this.showPreview = saved.showPreview ?? d.showPreview ?? this.showPreview;
     this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
     this.detailSize = (saved.detailSize || d.detailSize || this.detailSize) as DetailSize;
     this.layout     = (saved.view       || d.view       || this.layout) as 'list' | 'card' | 'table';
@@ -2479,12 +2486,16 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       detailSize: this.detailSize,
       view: this.layout,
       detailMode: this.detailMode,
+      showFilter: this.showFilter,
+      showPreview: this.showPreview,
     };
   }
 
   /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
   private applyViewControls(p: Partial<CatalogueViewState>): void {
     if (p.shape)      this.shape      = p.shape;
+    if (p.showFilter  !== undefined) this.showFilter  = p.showFilter;
+    if (p.showPreview !== undefined) this.showPreview = p.showPreview;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
     if (p.view)       this.layout     = p.view;

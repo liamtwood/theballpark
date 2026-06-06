@@ -826,6 +826,20 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
   grid-template-columns: 260px 1fr;
 }
+/* Filter sidebar hidden — drop the leading 260px column (main + optional
+   detail remain). The no-inline-detail combo comes last so it wins on equal
+   specificity and collapses to a single column. */
+.bp-cat-body--no-filter { grid-template-columns: 1fr; }
+.bp-cat-body--no-filter.bp-cat-body--detail,
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 1fr 260px; }
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 1fr 320px; }
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 1fr 420px; }
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail,
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="sm"],
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="md"],
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
+  grid-template-columns: 1fr;
+}
 /* v1.65ai — sidebar + main become flex columns. Each has a fixed,
    non-scrolling head and a flex:1 body wrapper that owns the scrollbar
    so the scrollbar starts BELOW the sticky-equivalent header rather

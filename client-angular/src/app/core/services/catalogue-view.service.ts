@@ -26,6 +26,10 @@ export interface CatalogueViewState {
   detailSize: 'sm' | 'md' | 'lg';
   view: 'card' | 'list' | 'table';
   detailMode: 'inline' | 'drawer';
+  /** Show the left filter sidebar. */
+  showFilter: boolean;
+  /** Show the right preview / detail panel. */
+  showPreview: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -195,6 +195,28 @@ import { pagePatternKey } from '../../../core/utils/page-key';
                         (click)="setCatalogueView({ detailMode: o.value })">{{ o.label }}</button>
               </div>
             </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Filter sidebar</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showFilter"
+                        (click)="setCatalogueView({ showFilter: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showFilter"
+                        (click)="setCatalogueView({ showFilter: false })">Off</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Preview panel</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: false })">Off</button>
+              </div>
+            </div>
           </ng-container>
 
           <!-- v1.66au — section-visibility toggles are dashboard-only;
