@@ -230,7 +230,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
        is shared with the cover header below so the top corners stay flush. */
     :host ::ng-deep .bp-project-card.p-card {
       border: var(--border-hairline) !important;
-      border-radius: 20px !important;
+      border-radius: var(--radius-card-lg) !important;
       box-shadow: var(--shadow-xs) !important;
       overflow: visible !important;
       margin: 0; cursor: pointer; position: relative;
@@ -258,8 +258,8 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display:flex; align-items:flex-end; justify-content:space-between;
       padding:8px 10px;
       background-size:cover; background-position:center;
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
+      border-top-left-radius: var(--radius-card-lg);
+      border-top-right-radius: var(--radius-card-lg);
       overflow:hidden;
     }
     .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
@@ -346,7 +346,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     .bp-new-tile {
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       gap:10px; min-height:400px;
-      border:2px dashed var(--color-border); border-radius: 20px;
+      border:2px dashed var(--color-border); border-radius: var(--radius-card-lg);
       background: transparent; cursor:pointer;
       color:var(--color-text-muted); font-family: var(--font-body);
       transition: var(--card-hover-transition), color 0.3s ease, background 0.3s ease;

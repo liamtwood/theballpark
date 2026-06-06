@@ -1380,7 +1380,7 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-item-card {
       background: var(--color-surface);
       border: var(--border-hairline);
-      border-radius: var(--radius-card);
+      border-radius: var(--radius-card-lg);
       box-shadow: var(--shadow-xs);
       overflow: hidden;
       cursor: pointer;

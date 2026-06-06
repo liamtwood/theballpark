@@ -65,7 +65,7 @@ import { LucideAngularModule } from 'lucide-angular';
       cursor: pointer;
       background: var(--color-surface);
       border: var(--border-hairline);
-      border-radius: 20px;
+      border-radius: var(--radius-card-lg);
       box-shadow: var(--shadow-md);
       /* Hover (lift + accent shadow/border, 300ms) comes from the global
          .bp-card-hover standard in styles.css — see the class on the button.
