@@ -731,6 +731,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-cat-circle--all       { background-color: var(--color-surface); }
 .bp-cat-circle--no-image  { background-color: var(--theme-bg); }
+/* Shape: "square" rounds to a soft rounded-square (matches the dashboard
+   icon tiles); default stays a full circle. % radius keeps it proportional
+   across sm/md/lg sizes. */
+.bp-cat-circles-wrap[data-circle-shape="square"] .bp-cat-circle { border-radius: 24%; }
 /* v1.65b — "+ Add category" trailing pseudo-circle: solid theme fill,
    white icon, scaled up on hover. */
 .bp-cat-circle--add       { background-color: var(--theme-accent);

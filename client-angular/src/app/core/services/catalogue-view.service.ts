@@ -19,6 +19,9 @@ import { BehaviorSubject } from 'rxjs';
  * namespace + feeds the catalogue-grid); this service is a thin editor bridge.
  */
 export interface CatalogueViewState {
+  /** Category-strip shape — round circles or rounded squares. */
+  shape: 'circle' | 'square';
+  /** Category-strip size (sm/md/lg). Labelled "Shape size" in the UI. */
   circleSize: 'sm' | 'md' | 'lg';
   detailSize: 'sm' | 'md' | 'lg';
   view: 'card' | 'list' | 'table';

@@ -41,7 +41,8 @@ export interface CategoryCircle {
   template: `
     <div class="bp-cat-circles-wrap"
          *ngIf="categories.length || showAll"
-         [attr.data-circle-size]="size">
+         [attr.data-circle-size]="size"
+         [attr.data-circle-shape]="shape">
 
       <button type="button"
               class="bp-circles-arrow bp-circles-arrow--left"
@@ -141,6 +142,8 @@ export class CategoryCirclesComponent implements AfterViewInit, OnChanges {
   @Input() activeId: string = 'all';
   /** Circle size — sm/md/lg map to 56/72/96px (see styles.css). */
   @Input() size: 'sm' | 'md' | 'lg' = 'lg';
+  /** Strip shape — round circles (default) or rounded squares. */
+  @Input() shape: 'circle' | 'square' = 'circle';
   /** Render the "All" pseudo-circle at the start of the strip. */
   @Input() showAll = true;
   /** Render the small edit-pencil overlay on each circle. */

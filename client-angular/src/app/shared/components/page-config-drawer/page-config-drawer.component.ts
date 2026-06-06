@@ -156,7 +156,15 @@ import { pagePatternKey } from '../../../core/utils/page-key';
           <ng-container *ngIf="catalogueView as cv">
             <div class="bp-pcd-subhead">Catalogue view</div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Circle size</label>
+              <label class="bp-pcd-field-label">Shape</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of shapeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.shape === o.value"
+                        (click)="setCatalogueView({ shape: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Shape size</label>
               <div class="bp-cfg-seg">
                 <button *ngFor="let o of circleSizeOptions" type="button" class="bp-cfg-seg-btn"
                         [class.p-highlight]="cv.circleSize === o.value"
@@ -630,6 +638,10 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   /** Catalogue view controls (shown when a catalogue page is active). The
       values mirror page-config-toggles' old options. */
   catalogueView: CatalogueViewState | null = null;
+  readonly shapeOptions = [
+    { value: 'circle' as const, label: 'Circle' },
+    { value: 'square' as const, label: 'Square' },
+  ];
   readonly circleSizeOptions = [
     { value: 'sm' as const, label: 'S' },
     { value: 'md' as const, label: 'M' },

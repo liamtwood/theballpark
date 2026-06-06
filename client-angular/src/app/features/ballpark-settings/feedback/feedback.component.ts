@@ -466,6 +466,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     viewMode:   'ballpark:feedback:viewMode',
     detailMode: 'ballpark:feedback:detailMode'
   };
+  catShape: 'circle' | 'square' = 'circle';
   circleSize: CircleSize = 'md';
   detailSize: DetailSize = 'md';
   // Drawer is the only fully-supported detail mode for feedback today.
@@ -581,6 +582,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
 
   private catalogueViewState(): CatalogueViewState {
     return {
+      shape: this.catShape,
       circleSize: this.circleSize,
       detailSize: this.detailSize,
       view: this.viewMode,
@@ -596,6 +598,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
 
   /** Drawer → this page: apply a view change, persist, re-sync the drawer. */
   private applyCatalogueView(p: Partial<CatalogueViewState>) {
+    if (p.shape)      this.catShape   = p.shape;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
     if (p.view)       this.viewMode   = p.view;

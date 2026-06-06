@@ -93,6 +93,7 @@ export type DetailMode = 'inline' | 'drawer';
           [categories]="displayedCircles"
           [activeId]="circleActiveId"
           [size]="circleSize"
+          [shape]="shape"
           [showEdit]="showEdit && !projectContext"
           [unscopedIds]="circleUnscopedIds"
           [showAdd]="showAdd"
@@ -1826,6 +1827,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   @Input() pageLabel: string = '';
   @Input() pageTitle: string = '';
   @Input() pageSubtitle: string = '';
+  /** Category-strip shape — round circles or rounded squares. */
+  @Input() shape: 'circle' | 'square' = 'circle';
   /** Circle strip size — sm/md/lg map to 56/72/96px circles. */
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
@@ -2459,6 +2462,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     let saved: Partial<CatalogueViewState> = {};
     try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
     const d = this.viewControlsDefaults || {};
+    this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
     this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
     this.detailSize = (saved.detailSize || d.detailSize || this.detailSize) as DetailSize;
     this.layout     = (saved.view       || d.view       || this.layout) as 'list' | 'card' | 'table';
@@ -2470,6 +2474,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
 
   private viewControlsState(): CatalogueViewState {
     return {
+      shape: this.shape,
       circleSize: this.circleSize,
       detailSize: this.detailSize,
       view: this.layout,
@@ -2479,6 +2484,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
 
   /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
   private applyViewControls(p: Partial<CatalogueViewState>): void {
+    if (p.shape)      this.shape      = p.shape;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
     if (p.view)       this.layout     = p.view;
