@@ -453,6 +453,13 @@ export type DetailMode = 'inline' | 'drawer';
         <!-- Main-column breadcrumb — hidden in project mode for the same
              reason as the top one (no drill nav, so the crumb is noise). -->
         <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext">
+          <!-- Active category/subcat → show its name as the heading + a Clear
+               filter link (replaces the "CATEGORY › All …" crumb). -->
+          <ng-container *ngIf="activeFilterLabel as label; else defaultCrumbs">
+            <h2 class="bp-crumb-filter-title">{{ label }}</h2>
+            <button class="bp-crumb-clear" (click)="clearCategoryFilter()">Clear filter</button>
+          </ng-container>
+          <ng-template #defaultCrumbs>
           <ng-container *ngIf="!isCrumbDrilled; else crumbsDrilled">
             <span class="bp-crumb-root">{{ resolvedBreadcrumbRoot }}</span>
             <span class="bp-crumb-sep">›</span>
@@ -465,6 +472,7 @@ export type DetailMode = 'inline' | 'drawer';
             <span class="bp-crumb-sep">›</span>
             <span class="bp-crumb-active">{{ resolvedBreadcrumbActive }}</span>
           </ng-template>
+          </ng-template><!-- /#defaultCrumbs -->
         </nav>
 
         <!-- v1.65i — Selected + Wishlist sections (project context only).
@@ -1382,6 +1390,10 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-crumb-link:hover { color: var(--theme-accent); }
     .bp-crumb-active { color: var(--color-text-primary); font-weight: 500; }
+    /* Active category/subcat heading + Clear filter (replaces the crumb). */
+    .bp-crumb-filter-title { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; }
+    .bp-crumb-clear { margin-left: auto; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 0; }
+    .bp-crumb-clear:hover { opacity: 0.75; }
 
     /* v1.27: bp-cat-section-header / -title / -count + bp-view-toggle /
        -btn live in styles.css now (shared with app-messages-inbox). */
@@ -2678,6 +2690,24 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Rail subcat click — filter to the subcategory (host reloads). */
   onRailSubClick(sub: CategoryInfo) {
     this.subcategoryChanged.emit(sub.id);
+  }
+
+  /** Active filter heading — the selected subcat, else the selected category,
+      else '' (show the default breadcrumb). */
+  get activeFilterLabel(): string {
+    if (this.activeSubcategoryId) {
+      return this.categories.find(c => c.id === this.activeSubcategoryId)?.name || '';
+    }
+    if (this.activeCategory && this.activeCategory !== 'all') {
+      return this.categories.find(c => c.id === this.activeCategory)?.name || '';
+    }
+    return '';
+  }
+  /** "Clear filter" — reset category + subcategory back to All. */
+  clearCategoryFilter() {
+    this.railExpandedId = null;
+    this.subcategoryChanged.emit('');
+    this.setCategory('all');
   }
 
   // ── v1.66cd card helpers (redesigned item/supplier card) ───────────────
