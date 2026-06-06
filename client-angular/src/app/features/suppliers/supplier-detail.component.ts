@@ -7,7 +7,8 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { LucideAngularModule, MapPin, ChevronRight, Heart, SquarePen, Globe, Phone, Mail } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -24,6 +25,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import { MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
+import { ItemService } from '../../core/services/item.service';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
@@ -35,11 +37,12 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
   imports: [
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
+    ConfirmDialogModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
     ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   template: `
     <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
@@ -279,6 +282,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [actionLabel]="''"
           [favouriteIds]="itemFavIds"
           [showEdit]="true"
+          [showDelete]="ownsCatalogue"
           [showItemEdit]="false"
           [showFavourite]="false"
           [showBack]="false"
@@ -297,6 +301,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
+          (deleteRequested)="onDeleteItem($event)"
           (viewRequested)="onViewItem($event)"
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)"
@@ -411,6 +416,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     </p-sidebar>
 
     <p-toast></p-toast>
+    <p-confirmDialog></p-confirmDialog>
     </div>
   `,
   styles: [`
@@ -836,6 +842,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private shellCtx: ShellContextService,
     public  personaSvc: PersonaService,
     private msg: MessageService,
+    private confirm: ConfirmationService,
+    private itemSvc: ItemService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1202,6 +1210,35 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
+
+  /** Delete from the Store "⋯" menu — supplier managing their own catalogue.
+      Confirms, soft-deletes via the item API, drops the row locally and
+      rebuilds the category circles / counts. */
+  onDeleteItem(entity: CatalogueEntity) {
+    this.confirm.confirm({
+      header: `Delete ${entity.name}?`,
+      message: 'This removes the item from your catalogue. You can’t undo this from here.',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      accept: () => {
+        this.itemSvc.delete(entity.id).subscribe({
+          next: () => {
+            this.catalogueItems = this.catalogueItems.filter(i => i.id !== entity.id);
+            this.mapItems();
+            this.buildCategories();
+            this.buildHomeCategoryGroups();
+            this.msg.add({ severity: 'success', summary: 'Item deleted', life: 2500 });
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.msg.add({ severity: 'error', summary: 'Delete failed', life: 3500 });
+          },
+        });
+      },
+    });
+  }
 
   onFavToggled(entityId: string) {
     this.favSvc.toggleItem(entityId).subscribe(() => this.cdr.detectChanges());

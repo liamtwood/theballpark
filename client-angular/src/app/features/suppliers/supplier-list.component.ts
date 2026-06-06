@@ -3,10 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { ConfirmationService, MessageService } from 'primeng/api';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { SupplierService } from '../../core/services/supplier.service';
-import { ItemService } from '../../core/services/item.service';
 import { CategoryService } from '../../core/services/category.service';
 import { FavouriteService } from '../../core/services/favourite.service';
 import { OrgService } from '../../core/services/org.service';
@@ -30,13 +27,10 @@ import {
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule, LucideAngularModule,
-    ConfirmDialogModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
     ItemDrawerComponent
   ],
-  providers: [ConfirmationService],
   template: `
-    <p-confirmDialog></p-confirmDialog>
     <div class="bp-page bp-page--catalogue">
       <app-loading *ngIf="loading"></app-loading>
       <ng-container *ngIf="!loading">
@@ -51,7 +45,6 @@ import {
           viewControlsKey="marketplace"
           [viewControlsDefaults]="viewDefaults"
           (viewStateChange)="onGridViewState($event)"
-          (deleteRequested)="onDeleteItem($event)"
           [projectId]="projectId"
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
@@ -220,9 +213,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
-    private itemSvc: ItemService,
-    private confirm: ConfirmationService,
-    private msg: MessageService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -560,33 +550,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
-
-  /** Delete from the card / preview "⋯" menu. Confirms, soft-deletes via the
-      item API, then drops the row locally and refreshes the category counts. */
-  onDeleteItem(entity: CatalogueEntity) {
-    this.confirm.confirm({
-      header: `Delete ${entity.name}?`,
-      message: 'This removes the item from the catalogue. You can’t undo this from here.',
-      acceptLabel: 'Delete',
-      rejectLabel: 'Cancel',
-      acceptButtonStyleClass: 'p-button-danger',
-      rejectButtonStyleClass: 'p-button-text',
-      accept: () => {
-        this.itemSvc.delete(entity.id).subscribe({
-          next: () => {
-            this.rawItems = this.rawItems.filter(i => i.id !== entity.id);
-            this.itemEntities = this.itemEntities.filter(i => i.id !== entity.id);
-            this.loadCategoryCounts();
-            this.msg.add({ severity: 'success', summary: 'Item deleted', life: 2500 });
-            this.cdr.detectChanges();
-          },
-          error: () => {
-            this.msg.add({ severity: 'error', summary: 'Delete failed', life: 3500 });
-          },
-        });
-      },
-    });
-  }
 
   onFavToggled(entityId: string) {
     if (this.viewMode === 'suppliers') {

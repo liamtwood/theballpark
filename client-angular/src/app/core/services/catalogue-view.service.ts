@@ -34,6 +34,9 @@ export interface CatalogueViewState {
   detailMode: 'inline' | 'drawer';
   /** Show the left filter sidebar. */
   showFilter: boolean;
+  /** Show the filter icon button by the search box (independent of the
+      sidebar — reveals filters on demand / opens the filter surface). */
+  showFilterButton: boolean;
   /** Show the right preview / detail panel. */
   showPreview: boolean;
   /** Show the panel "containers" (CATEGORIES + CATALOGUE headers, borders and
@@ -58,6 +61,7 @@ export const MARKETPLACE_VIEW_DEFAULTS: CatalogueViewState = {
   view: 'card',
   detailMode: 'inline',
   showFilter: false,
+  showFilterButton: false,
   showPreview: false,
   showContainers: false,
 };

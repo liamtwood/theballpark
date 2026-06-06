@@ -470,6 +470,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   catShape: 'circle' | 'square' = 'circle';
   catCardSize: 'sm' | 'md' | 'lg' = 'sm';
   catShowFilter = true;
+  catShowFilterButton = true;
   catShowPreview = true;
   catShowContainers = true;
   circleSize: CircleSize = 'md';
@@ -595,6 +596,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
       view: this.viewMode,
       detailMode: this.detailMode,
       showFilter: this.catShowFilter,
+      showFilterButton: this.catShowFilterButton,
       showPreview: this.catShowPreview,
       showContainers: this.catShowContainers,
     };
@@ -612,6 +614,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     if (p.shape)      this.catShape   = p.shape;
     if (p.cardSize)   this.catCardSize = p.cardSize;
     if (p.showFilter  !== undefined) this.catShowFilter  = p.showFilter;
+    if (p.showFilterButton !== undefined) this.catShowFilterButton = p.showFilterButton;
     if (p.showPreview !== undefined) this.catShowPreview = p.showPreview;
     if (p.showContainers !== undefined) this.catShowContainers = p.showContainers;
     if (p.circleSize) this.circleSize = p.circleSize;

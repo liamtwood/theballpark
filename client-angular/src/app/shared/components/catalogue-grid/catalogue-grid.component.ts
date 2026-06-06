@@ -137,9 +137,9 @@ export type DetailMode = 'inline' | 'drawer';
             <!-- Filter sidebar is off (setting) — this icon (right of the
                  search box) reveals it on demand without changing the saved
                  setting. -->
-            <!-- Hidden in Categories-LEFT mode — filtering will move to a
-                 dedicated drawer/dialog there (deferred). -->
-            <button *ngIf="!showFilter && categoriesPosition !== 'left'" type="button"
+            <!-- Filter button — its own setting (Show Button) now, independent
+                 of the sidebar. Filtering surface in Left mode is deferred. -->
+            <button *ngIf="showFilterButton" type="button"
                     class="bp-search-filter-btn"
                     [class.active]="filterPanelOpen"
                     (click)="filterPanelOpen = !filterPanelOpen"
@@ -632,7 +632,7 @@ export type DetailMode = 'inline' | 'drawer';
                             (click)="onMenuAction('edit', e, $event)">Edit</button>
                     <button class="bp-card-menu-item" *ngIf="showEdit"
                             (click)="onMenuAction('edit-image', e, $event)">Edit Image</button>
-                    <ng-container *ngIf="showEdit">
+                    <ng-container *ngIf="showDelete">
                       <div class="bp-card-menu-sep"></div>
                       <button class="bp-card-menu-item bp-card-menu-item--danger"
                               (click)="onMenuAction('delete', e, $event)">Delete</button>
@@ -755,7 +755,7 @@ export type DetailMode = 'inline' | 'drawer';
                         (click)="onMenuAction('edit', selectedEntity, $event)">Edit</button>
                 <button class="bp-card-menu-item" *ngIf="canEdit(selectedEntity)"
                         (click)="onMenuAction('edit-image', selectedEntity, $event)">Edit Image</button>
-                <ng-container *ngIf="canEdit(selectedEntity)">
+                <ng-container *ngIf="showDelete">
                   <div class="bp-card-menu-sep"></div>
                   <button class="bp-card-menu-item bp-card-menu-item--danger"
                           (click)="onMenuAction('delete', selectedEntity, $event)">Delete</button>
@@ -1967,10 +1967,16 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Toggle the left filter sidebar / right preview panel (managed via the
       drawer's Catalogue view controls when viewControlsKey is set). */
   @Input() showFilter = true;
+  /** Show the filter icon button by the search box (own setting, independent
+      of the sidebar). */
+  @Input() showFilterButton = true;
   @Input() showPreview = true;
   /** Show the panel containers (CATEGORIES/CATALOGUE heads + borders + fill).
       When false the catalogue renders bare on the page ground. */
   @Input() showContainers = true;
+  /** Show the "Delete" item in the "⋯" menu. Off by default — delete lives on
+      the supplier store (where a supplier manages their own catalogue). */
+  @Input() showDelete = false;
   /** Transient: when the filter sidebar setting is OFF, the filter icon by the
       search box reveals it on demand without changing the saved setting. */
   filterPanelOpen = false;
@@ -2614,6 +2620,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
     this.cardSize   = (saved.cardSize   || d.cardSize   || this.cardSize) as 'sm' | 'md' | 'lg';
     this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
+    this.showFilterButton = saved.showFilterButton ?? d.showFilterButton ?? this.showFilterButton;
     this.showPreview = saved.showPreview ?? d.showPreview ?? this.showPreview;
     this.showContainers = saved.showContainers ?? d.showContainers ?? this.showContainers;
     this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
@@ -2635,6 +2642,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       view: this.layout,
       detailMode: this.detailMode,
       showFilter: this.showFilter,
+      showFilterButton: this.showFilterButton,
       showPreview: this.showPreview,
       showContainers: this.showContainers,
     };
@@ -2646,6 +2654,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     if (p.shape)      this.shape      = p.shape;
     if (p.cardSize)   this.cardSize   = p.cardSize;
     if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
+    if (p.showFilterButton !== undefined) this.showFilterButton = p.showFilterButton;
     if (p.showPreview !== undefined) this.showPreview = p.showPreview;
     if (p.showContainers !== undefined) this.showContainers = p.showContainers;
     if (p.circleSize) this.circleSize = p.circleSize;

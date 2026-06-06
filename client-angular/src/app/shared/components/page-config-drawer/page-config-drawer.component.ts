@@ -113,6 +113,8 @@ import { pagePatternKey } from '../../../core/utils/page-key';
 
         <!-- ── PAGE TAB — title + subtitle for THIS page (per-page override) ── -->
         <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'dashboard'">
+          <!-- ── HERO ── -->
+          <div class="bp-pcd-subhead">Hero</div>
           <!-- v1.66av — Title source for THIS page (per-page heroTitleMode). -->
           <div class="bp-pcd-field">
             <label class="bp-pcd-field-label">Title</label>
@@ -138,7 +140,7 @@ import { pagePatternKey } from '../../../core/utils/page-key';
 
           <!-- v1.66ay — Hero align for THIS page (title / sub / menu). -->
           <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Hero align</label>
+            <label class="bp-pcd-field-label">Position</label>
             <div class="bp-cfg-seg">
               <button *ngFor="let opt of alignOptions"
                       type="button"
@@ -155,8 +157,11 @@ import { pagePatternKey } from '../../../core/utils/page-key';
                config-strip bar; they edit the page via CatalogueViewService. -->
           <ng-container *ngIf="catalogueView as cv">
             <div class="bp-pcd-subhead">Catalogue view</div>
+
+            <!-- Categories -->
+            <div class="bp-pcd-subhead2">Categories</div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Categories</label>
+              <label class="bp-pcd-field-label">Position</label>
               <div class="bp-cfg-seg">
                 <button *ngFor="let o of catPositionOptions" type="button" class="bp-cfg-seg-btn"
                         [class.p-highlight]="cv.categoriesPosition === o.value"
@@ -179,6 +184,17 @@ import { pagePatternKey } from '../../../core/utils/page-key';
                         (click)="setCatalogueView({ circleSize: o.value })">{{ o.label }}</button>
               </div>
             </div>
+
+            <!-- Catalogue -->
+            <div class="bp-pcd-subhead2">Catalogue</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Default View Mode</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of catViewOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.view === o.value"
+                        (click)="setCatalogueView({ view: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
             <div class="bp-pcd-field">
               <label class="bp-pcd-field-label">Card size</label>
               <div class="bp-cfg-seg">
@@ -187,32 +203,33 @@ import { pagePatternKey } from '../../../core/utils/page-key';
                         (click)="setCatalogueView({ cardSize: o.value })">{{ o.label }}</button>
               </div>
             </div>
+
+            <!-- Preview panel -->
+            <div class="bp-pcd-subhead2">Preview panel</div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">View</label>
+              <label class="bp-pcd-field-label">Show</label>
               <div class="bp-cfg-seg">
-                <button *ngFor="let o of catViewOptions" type="button" class="bp-cfg-seg-btn"
-                        [class.p-highlight]="cv.view === o.value"
-                        (click)="setCatalogueView({ view: o.value })">{{ o.label }}</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: false })">Off</button>
               </div>
             </div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Detail size</label>
+              <label class="bp-pcd-field-label">Size</label>
               <div class="bp-cfg-seg">
                 <button *ngFor="let o of detailSizeOptions" type="button" class="bp-cfg-seg-btn"
                         [class.p-highlight]="cv.detailSize === o.value"
                         (click)="setCatalogueView({ detailSize: o.value })">{{ o.label }}</button>
               </div>
             </div>
+
+            <!-- Filter -->
+            <div class="bp-pcd-subhead2">Filter</div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Detail mode</label>
-              <div class="bp-cfg-seg">
-                <button *ngFor="let o of detailModeOptions" type="button" class="bp-cfg-seg-btn"
-                        [class.p-highlight]="cv.detailMode === o.value"
-                        (click)="setCatalogueView({ detailMode: o.value })">{{ o.label }}</button>
-              </div>
-            </div>
-            <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Filter sidebar</label>
+              <label class="bp-pcd-field-label">Show Sidebar</label>
               <div class="bp-cfg-seg">
                 <button type="button" class="bp-cfg-seg-btn"
                         [class.p-highlight]="cv.showFilter"
@@ -223,16 +240,19 @@ import { pagePatternKey } from '../../../core/utils/page-key';
               </div>
             </div>
             <div class="bp-pcd-field">
-              <label class="bp-pcd-field-label">Preview panel</label>
+              <label class="bp-pcd-field-label">Show Button</label>
               <div class="bp-cfg-seg">
                 <button type="button" class="bp-cfg-seg-btn"
-                        [class.p-highlight]="cv.showPreview"
-                        (click)="setCatalogueView({ showPreview: true })">On</button>
+                        [class.p-highlight]="cv.showFilterButton"
+                        (click)="setCatalogueView({ showFilterButton: true })">On</button>
                 <button type="button" class="bp-cfg-seg-btn"
-                        [class.p-highlight]="!cv.showPreview"
-                        (click)="setCatalogueView({ showPreview: false })">Off</button>
+                        [class.p-highlight]="!cv.showFilterButton"
+                        (click)="setCatalogueView({ showFilterButton: false })">Off</button>
               </div>
             </div>
+
+            <!-- Containers -->
+            <div class="bp-pcd-subhead2">Containers</div>
             <div class="bp-pcd-field">
               <label class="bp-pcd-field-label">Show containers</label>
               <div class="bp-cfg-seg">
@@ -450,6 +470,18 @@ import { pagePatternKey } from '../../../core/utils/page-key';
       padding-top: 14px;
       margin-top: 2px;
       border-top: var(--border-hairline);
+    }
+    /* Subsection header inside a section (e.g. Categories / Catalogue /
+       Preview panel / Filter / Containers under "Catalogue view"). Accent
+       tinted, no rule, tighter — reads as a child of the section above. */
+    .bp-pcd-subhead2 {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-accent);
+      margin-top: 6px;
     }
 
     /* Drawer body input — wider than the strip's compact inline input.
