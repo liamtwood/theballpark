@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, OnDestroy, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -26,6 +26,7 @@ import { ApiService } from '../../../core/services/api.service';
 import { OutreachService } from '../../../core/services/outreach.service';
 import { EventDrawerService } from '../../../core/services/event-drawer.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
+import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -1809,7 +1810,7 @@ export type DetailMode = 'inline' | 'drawer';
     }
   `]
 })
-export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit {
+export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   /** When false, suppresses the top horizontal category-circle row.
@@ -1834,6 +1835,21 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       app-feedback-drawer) is the only detail surface. In 'inline' mode
       or any non-table layout the inline column is always shown. */
   @Input() detailMode: DetailMode = 'inline';
+  /** Opt this grid into the global drawer's "Catalogue view" controls.
+      When set, the grid registers with CatalogueViewService on init (so the
+      page-config drawer drives circle size / view / detail size / detail mode),
+      persists per this key (localStorage `ballpark:catview:<key>`), and applies
+      drawer edits to itself. This is the single home for the view controls —
+      every catalogue surface (marketplace, supplier store, …) reuses it by
+      setting this one input instead of re-wiring the controls per host. */
+  @Input() viewControlsKey?: string;
+  /** Initial defaults for the managed view controls (used only on first load,
+      before any persisted value). Lets a host keep its own default look. */
+  @Input() viewControlsDefaults?: Partial<CatalogueViewState>;
+  /** Emits the managed view state on init + whenever the drawer changes it,
+      for hosts that also use the values outside the grid (e.g. feedback's
+      area-circle size). */
+  @Output() viewStateChange = new EventEmitter<CatalogueViewState>();
   /** Always-visible breadcrumb row at the top of the main column.
       Default: derives root from sidebarCategoryLabel and "All …" segment
       from a naive plural; the active segment falls back to the internal
@@ -2363,7 +2379,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     private api: ApiService,
     private outreach: OutreachService,
     private eventDrawerSvc: EventDrawerService,
-    private cartDrawerSvc: CartDrawerService
+    private cartDrawerSvc: CartDrawerService,
+    private catalogueViewSvc: CatalogueViewService
   ) {}
 
   /** v1.65ab — open the shared Project Items cart drawer.
@@ -2407,6 +2424,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   ngOnInit() {
+    this.initViewControls();
     forkJoin({
       units: this.codelistSvc.getByName('item_unit'),
       timeUnits: this.codelistSvc.getByName('item_time_unit')
@@ -2426,6 +2444,51 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   ngAfterViewInit() { /* circle scroll handled inside <app-category-circles> */ }
+
+  ngOnDestroy() {
+    if (this.viewControlsKey) this.catalogueViewSvc.unregister();
+  }
+
+  // ── Managed view controls (opt-in via [viewControlsKey]) ────────────────
+  // The single home for the drawer's "Catalogue view" controls: any catalogue
+  // surface (marketplace, supplier store, …) reuses them by setting the input.
+  private get viewControlsLsKey(): string { return `ballpark:catview:${this.viewControlsKey}`; }
+
+  private initViewControls(): void {
+    if (!this.viewControlsKey) return;
+    let saved: Partial<CatalogueViewState> = {};
+    try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
+    const d = this.viewControlsDefaults || {};
+    this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
+    this.detailSize = (saved.detailSize || d.detailSize || this.detailSize) as DetailSize;
+    this.layout     = (saved.view       || d.view       || this.layout) as 'list' | 'card' | 'table';
+    this.detailMode = (saved.detailMode || d.detailMode || this.detailMode) as DetailMode;
+    const state = this.viewControlsState();
+    this.catalogueViewSvc.register(state, (p) => this.applyViewControls(p));
+    this.viewStateChange.emit(state);
+  }
+
+  private viewControlsState(): CatalogueViewState {
+    return {
+      circleSize: this.circleSize,
+      detailSize: this.detailSize,
+      view: this.layout,
+      detailMode: this.detailMode,
+    };
+  }
+
+  /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
+  private applyViewControls(p: Partial<CatalogueViewState>): void {
+    if (p.circleSize) this.circleSize = p.circleSize;
+    if (p.detailSize) this.detailSize = p.detailSize;
+    if (p.view)       this.layout     = p.view;
+    if (p.detailMode) this.detailMode = p.detailMode;
+    try { localStorage.setItem(this.viewControlsLsKey, JSON.stringify(this.viewControlsState())); } catch {}
+    const state = this.viewControlsState();
+    this.catalogueViewSvc.sync(state);
+    this.viewStateChange.emit(state);
+    this.cdr.detectChanges();
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['entities']) {

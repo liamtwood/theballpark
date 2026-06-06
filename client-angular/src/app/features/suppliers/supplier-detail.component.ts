@@ -271,6 +271,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
         <app-catalogue-grid
           [entities]="itemEntities"
           [categories]="displayStoreCategories"
+          viewControlsKey="supplier-store"
           entityType="item"
           entityLabel="item"
           [actionLabel]="''"

@@ -11,19 +11,15 @@ import { ProjectService } from '../../core/services/project.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
-import { CatalogueViewService, CatalogueViewState } from '../../core/services/catalogue-view.service';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import {
-  CatalogueGridComponent, CircleSize, DetailSize
+  CatalogueGridComponent
 } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../shared/components/item-drawer/item-drawer.component';
-import {
-  Layout, DetailMode
-} from '../../shared/components/page-config-toggles/page-config-toggles.component';
 
 @Component({
   selector: 'app-supplier-list',
@@ -45,11 +41,7 @@ import {
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
-          [showConfigStrip]="false"
-          [circleSize]="circleSize"
-          [detailSize]="detailSize"
-          [detailMode]="detailMode"
-          [layout]="layout"
+          viewControlsKey="marketplace"
           [projectId]="projectId"
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
@@ -171,19 +163,10 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // mirrors this label (uppercased) and re-renders on change.
   catalogueTitle = 'Catalogue';
 
-  // Layout-only config strip state — persisted per-user to localStorage
-  // with the ballpark:marketplace:* key namespace. Page label lives in
-  // ConfigService (org-wide), not here.
-  private readonly LS = {
-    circleSize: 'ballpark:marketplace:circleSize',
-    detailSize: 'ballpark:marketplace:detailSize',
-    layout:     'ballpark:marketplace:layout',
-    detailMode: 'ballpark:marketplace:detailMode'
-  };
-  circleSize: CircleSize = 'lg';
-  detailSize: DetailSize = 'md';
-  layout: Layout = 'card';
-  detailMode: DetailMode = 'inline';
+  // View controls (circle size / view / detail size / detail mode) are owned
+  // by <app-catalogue-grid> via [viewControlsKey]="marketplace" — it registers
+  // with CatalogueViewService so the page-config drawer drives them. No host
+  // state here anymore.
 
   // Image upload
   categoryUploadId = '';
@@ -227,7 +210,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
-    private catalogueViewSvc: CatalogueViewService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -242,13 +224,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadConfig();
-    // Expose the view controls to the global page-config drawer (replaces
-    // the old config-strip bar).
-    this.catalogueViewSvc.register(
-      this.catalogueViewState(),
-      (p) => this.applyCatalogueView(p)
-    );
     this.catalogueTitle = this.configSvc.catalogueLabel;
 
     // v1.22i: ?view=suppliers | items lets the dashboard's Browse
@@ -359,27 +334,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.shellCtx.reset();
-    this.catalogueViewSvc.unregister();
-  }
-
-  private catalogueViewState(): CatalogueViewState {
-    return {
-      circleSize: this.circleSize,
-      detailSize: this.detailSize,
-      view: this.layout,
-      detailMode: this.detailMode,
-    };
-  }
-
-  /** Drawer → this page: apply a view change, persist, re-sync the drawer. */
-  private applyCatalogueView(p: Partial<CatalogueViewState>) {
-    if (p.circleSize) this.circleSize = p.circleSize;
-    if (p.detailSize) this.detailSize = p.detailSize;
-    if (p.view)       this.layout     = p.view;
-    if (p.detailMode) this.detailMode = p.detailMode;
-    this.persistConfig();
-    this.catalogueViewSvc.sync(this.catalogueViewState());
-    this.cdr.detectChanges();
   }
 
   private applyShellHero(pills: string[]) {
@@ -398,20 +352,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   private goBack() {
     if (history.length > 1) history.back();
     else this.router.navigate(['/home']);
-  }
-
-  // ── Config strip persistence ──────────────────────────────────────────
-  loadConfig() {
-    this.circleSize = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
-    this.detailSize = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
-    this.layout     = (localStorage.getItem(this.LS.layout)     || 'card') as Layout;
-    this.detailMode = (localStorage.getItem(this.LS.detailMode) || 'inline') as DetailMode;
-  }
-  persistConfig() {
-    localStorage.setItem(this.LS.circleSize, this.circleSize);
-    localStorage.setItem(this.LS.detailSize, this.detailSize);
-    localStorage.setItem(this.LS.layout, this.layout);
-    localStorage.setItem(this.LS.detailMode, this.detailMode);
   }
 
   // ── Data mapping ──────────────────────────────────────────────────────
