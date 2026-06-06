@@ -602,6 +602,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get heroAlignVar() {
     const val = this.navMode === 'sidenav' ? 'left' : this.effectiveHeroAlign;
     document.documentElement.style.setProperty('--hero-align', val);
+    // v1.66bg — mirror align as an attribute so page bodies (outside the
+    // hero) can anchor their content to the separator's left edge too.
+    document.documentElement.setAttribute('data-hero-align', val);
     return val;
   }
 

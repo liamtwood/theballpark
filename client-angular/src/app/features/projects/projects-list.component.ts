@@ -154,7 +154,10 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
     .bp-projects-page {
       background: var(--theme-bg);
       min-height: calc(100vh - var(--nav-height));
-      padding: 24px 20px 48px;
+      /* Horizontal pad mirrors the hero (.bp-hero uses --section-pad) so the
+         body content box equals the hero content box — a prerequisite for
+         pixel-aligning the cards to the separator/title. v1.66bg */
+      padding: 24px var(--section-pad) 48px;
     }
     .bp-projects-inner {
       max-width: 1400px;
@@ -162,6 +165,15 @@ import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+    /* v1.66bg — when the hero is left-aligned, anchor the first project card
+       to the separator's LEFT edge (matching the title/sub/tabs). The inner's
+       100% equals the hero content box (full − 2·--section-pad), so the same
+       gap formula used by the hero title lands the card at the identical x. */
+    :host-context([data-hero-align="left"]) .bp-projects-inner {
+      max-width: none;
+      margin: 0;
+      padding-left: calc((100% - var(--hero-sep-width, 100%)) / 2);
     }
 
     /* Card shell + section header (recovered from the pre-p0019
