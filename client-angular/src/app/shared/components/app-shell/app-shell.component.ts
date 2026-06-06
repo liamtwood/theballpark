@@ -92,7 +92,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       <!-- v1.66am — standardised pills: org / user / location are plain,
            non-interactive chips with one shared look. Account + persona
            actions live on the top-nav avatar, not the pills. -->
-      <div *ngIf="orgPill || heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
+      <div *ngIf="orgPill || heroPills.length > 0 || upcomingPillText || projectPill" class="bp-hero-meta">
         <span *ngIf="orgPill" class="bp-hero-tag-span">{{ orgPill }}</span>
         <span *ngFor="let pill of heroPills" class="bp-hero-tag-span">
           <lucide-icon *ngIf="isLocationPill(pill)" name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
@@ -102,6 +102,14 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
           <lucide-icon name="calendar" [size]="10" style="flex-shrink:0;"></lucide-icon>
           {{ upcomingPillText }}
         </span>
+        <!-- Clickable "shopping for {project}" pill — opens the marketplace
+             project picker (the page supplies onClick). -->
+        <button *ngIf="projectPill as pp" type="button"
+                class="bp-hero-tag-span bp-hero-project-pill" (click)="pp.onClick()">
+          <lucide-icon name="folder" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ pp.text }}
+          <lucide-icon name="chevron-down" [size]="11" style="flex-shrink:0;"></lucide-icon>
+        </button>
       </div>
 
       <!-- TITLE -->
@@ -273,6 +281,17 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       transition: border-color 150ms ease, background-color 100ms ease;
     }
+    /* Marketplace project pill — clickable chip that opens the picker. Accent
+       tinted so it reads as the active "shopping for" context. */
+    .bp-hero-project-pill {
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--theme-accent) !important;
+      color: var(--theme-accent) !important;
+      background: var(--theme-soft) !important;
+      transition: background-color 100ms ease, border-color 150ms ease;
+    }
+    .bp-hero-project-pill:hover { background: var(--theme-bg) !important; }
     .bp-hero-pill-btn:hover {
       border-color: var(--theme-accent) !important;
       background: var(--theme-bg) !important;
@@ -539,6 +558,11 @@ export class AppShellComponent implements OnInit, OnDestroy {
   get upcomingPillText(): string {
     if (!this.showUpcoming) return '';
     return this.ctx?.upcomingPill?.text || '';
+  }
+
+  /** Clickable marketplace "shopping for {project}" pill, or null. */
+  get projectPill(): { text: string; onClick: () => void } | null {
+    return this.ctx?.projectPill || null;
   }
 
   // Tab click — use onTabClick callback if present, otherwise navigate by path

@@ -12,6 +12,8 @@ import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
 import { CatalogueViewState, MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
+import { MarketplaceProjectService, MarketplaceProject } from '../../core/services/marketplace-project.service';
+import { MarketplaceProjectPickerComponent } from '../../shared/components/marketplace-project-picker/marketplace-project-picker.component';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -28,9 +30,14 @@ import {
   imports: [
     CommonModule, FormsModule, RouterModule, LucideAngularModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent
+    ItemDrawerComponent, MarketplaceProjectPickerComponent
   ],
   template: `
+    <app-marketplace-project-picker
+      [(visible)]="pickerOpen"
+      [activeId]="projectId"
+      (picked)="onProjectPicked($event)">
+    </app-marketplace-project-picker>
     <div class="bp-page bp-page--catalogue">
       <app-loading *ngIf="loading"></app-loading>
       <ng-container *ngIf="!loading">
@@ -135,6 +142,9 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   viewMode: 'suppliers' | 'items' = 'items';
   /** Shipped catalogue-view default (shared across all three marketplaces). */
   viewDefaults = MARKETPLACE_VIEW_DEFAULTS;
+  /** Project picker dialog open state + the session "shopping for" project. */
+  pickerOpen = false;
+  marketProject: MarketplaceProject | null = null;
   /** v1.32: when ?favourites=true is in the URL, restrict the list to
       the user's hearted suppliers (or items) and surface a "My
       Suppliers" hero + back button so the entry-from-dashboard
@@ -213,6 +223,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
+    private marketProjectSvc: MarketplaceProjectService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -251,23 +262,33 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       }
     });
 
-    const projectId = this.route.snapshot.queryParams['projectId'];
-    this.projectId = projectId || null;
-    if (projectId) {
-      this.projectSvc.getById(projectId).subscribe(p => {
-        this.applyShellHero(p ? [p.event_name || p.name || ''] : []);
+    // The marketplace's active project: an explicit ?projectId= wins; else the
+    // session "shopping for" project (chosen via the picker pill). Either way it
+    // drives projectId (→ Add to Project / Wishlist) + the clickable hero pill.
+    const queryPid = this.route.snapshot.queryParams['projectId'];
+    if (queryPid) {
+      this.projectId = queryPid;
+      this.projectSvc.getById(queryPid).subscribe(p => {
+        this.marketProject = p ? { id: p.id, name: p.event_name || p.name || '' } : null;
+        this.applyShellHero(this.shellCtx.current.pills || []);
+        this.cdr.detectChanges();
       });
-      // Load the cart so the detail-panel +/♡ buttons reflect existing
-      // selections on first paint.
-      this.projectItemSvc.getByProject(projectId).subscribe(rows => {
+      // Load the cart so the +/♡ states reflect existing selections.
+      this.projectItemSvc.getByProject(queryPid).subscribe(rows => {
         this.projectItems = rows || [];
         this.cdr.detectChanges();
       });
     } else {
-      // Defer past NavigationEnd — AppShell's router subscription resets
-      // shellCtx on every navigation, so a synchronous set in ngOnInit
-      // would be wiped immediately afterwards.
-      setTimeout(() => this.applyShellHero([]), 0);
+      this.marketProject = this.marketProjectSvc.current;
+      this.projectId = this.marketProject?.id || null;
+      if (this.projectId) {
+        this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+          this.projectItems = rows || [];
+          this.cdr.detectChanges();
+        });
+      }
+      // Defer past NavigationEnd — AppShell resets shellCtx on every nav.
+      setTimeout(() => this.applyShellHero(this.shellCtx.current.pills || []), 0);
     }
 
     this.configSvc.config$.subscribe(cfg => {
@@ -353,6 +374,12 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       // cats-left) + gap 12 + main-body pad 24 + 1px border; minus --section-pad.
       heroAlign: this.catsLeft ? 'left' : undefined,
       heroExtraLeft: this.catsLeft ? 'calc(349px - var(--section-pad))' : undefined,
+      // Clickable "shopping for {project}" pill — opens the project picker so
+      // Add to Project / Wishlist have a target.
+      projectPill: {
+        text: this.marketProject ? this.marketProject.name : 'Select project',
+        onClick: () => { this.pickerOpen = true; this.cdr.detectChanges(); },
+      },
       // Items / Suppliers as hero tabs (like events' Current/Completed). They
       // don't route — onTabClick flips the in-page viewMode + re-pushes so the
       // active tab tracks.
@@ -550,6 +577,24 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
+
+  /** Project picked from the hero pill dialog — remember it for the session,
+      retarget Add to Project / Wishlist, and refresh the cart state. */
+  onProjectPicked(p: MarketplaceProject | null) {
+    this.marketProjectSvc.set(p);
+    this.marketProject = p;
+    this.projectId = p?.id || null;
+    if (p) {
+      this.projectItemSvc.getByProject(p.id).subscribe(rows => {
+        this.projectItems = rows || [];
+        this.cdr.detectChanges();
+      });
+    } else {
+      this.projectItems = [];
+    }
+    this.applyShellHero(this.shellCtx.current.pills || []);
+    this.cdr.detectChanges();
+  }
 
   onFavToggled(entityId: string) {
     if (this.viewMode === 'suppliers') {

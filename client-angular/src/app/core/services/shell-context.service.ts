@@ -50,6 +50,10 @@ export interface ShellContext {
       when ConfigService.showUpcoming is true and a future project
       exists; app-shell renders a calendar-iconned pill in the hero. */
   upcomingPill?: { text: string };
+  /** Optional clickable pill above the hero title — the marketplace pushes a
+      "shopping for {project}" chip so the user can pick / change the project
+      that "Add to Project" targets. onClick opens the project picker. */
+  projectPill?: { text: string; onClick: () => void };
   /** p0032: a surface (the dashboard) sets this to drive its hero title
       from ConfigService.heroTitleMode (org / username / greeting) instead
       of a fixed page title. Hero COLOR is no longer pushed per-surface —
