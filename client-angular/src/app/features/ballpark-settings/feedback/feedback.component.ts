@@ -471,6 +471,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   catCardSize: 'sm' | 'md' | 'lg' = 'sm';
   catShowFilter = true;
   catShowPreview = true;
+  catShowContainers = true;
   circleSize: CircleSize = 'md';
   detailSize: DetailSize = 'md';
   // Drawer is the only fully-supported detail mode for feedback today.
@@ -595,6 +596,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
       detailMode: this.detailMode,
       showFilter: this.catShowFilter,
       showPreview: this.catShowPreview,
+      showContainers: this.catShowContainers,
     };
   }
 
@@ -611,6 +613,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     if (p.cardSize)   this.catCardSize = p.cardSize;
     if (p.showFilter  !== undefined) this.catShowFilter  = p.showFilter;
     if (p.showPreview !== undefined) this.catShowPreview = p.showPreview;
+    if (p.showContainers !== undefined) this.catShowContainers = p.showContainers;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
     if (p.view)       this.viewMode   = p.view;

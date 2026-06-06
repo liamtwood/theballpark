@@ -233,6 +233,17 @@ import { pagePatternKey } from '../../../core/utils/page-key';
                         (click)="setCatalogueView({ showPreview: false })">Off</button>
               </div>
             </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Show containers</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showContainers"
+                        (click)="setCatalogueView({ showContainers: true })">Yes</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showContainers"
+                        (click)="setCatalogueView({ showContainers: false })">No</button>
+              </div>
+            </div>
           </ng-container>
 
           <!-- v1.66au — section-visibility toggles are dashboard-only;

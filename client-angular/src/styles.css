@@ -809,8 +809,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
    (--color-surface + hairline + --radius-card + --shadow-xs) with a gap
    between them so the layout reads as objects, not zones. */
 .bp-cat-body {
+  /* --cat-col1 is the leading column width (filter sidebar / categories rail).
+     The Categories-LEFT rail widens it so long names (e.g. "Logistics &
+     Transport") don't truncate — see .bp-cat-body--cats-left. */
+  --cat-col1: 260px;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--cat-col1) 1fr;
   height: calc(100vh - var(--nav-height) - 160px);
   /* v1.65bp — page ground reverted to --theme-bg parchment (was
      --theme-contrast-soft green). Cat + search panels back to
@@ -819,17 +823,21 @@ input.bp-cfg-page-label.p-inputtext:focus {
   gap: 12px;
   padding: 12px;
 }
-.bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
-.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
-.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
-.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
+.bp-cat-body--detail { grid-template-columns: var(--cat-col1) 1fr 260px; }
+.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: var(--cat-col1) 1fr 260px; }
+.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: var(--cat-col1) 1fr 320px; }
+.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: var(--cat-col1) 1fr 420px; }
 .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
 .bp-cat-body--detail.bp-cat-body--no-inline-detail,
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="sm"],
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="md"],
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--cat-col1) 1fr;
 }
+/* Categories LEFT — widen the rail so category names fit; the marketplace
+   keeps the left-aligned hero lined up with the first card via heroExtraLeft
+   (309px at 260, 349px at 300 — see supplier-list). */
+.bp-cat-body--cats-left { --cat-col1: 300px; }
 /* Filter sidebar hidden — drop the leading 260px column (main + optional
    detail remain). The no-inline-detail combo comes last so it wins on equal
    specificity and collapses to a single column. */
@@ -953,6 +961,27 @@ input.bp-cfg-page-label.p-inputtext:focus {
   box-shadow: var(--shadow-xs);
   overflow-y: auto;
 }
+
+/* ── Show Containers = No ─────────────────────────────────────────────────
+   Strip the panel chrome (heads, borders, white fill, shadow) so the
+   catalogue reads as bare lists/cards on the page ground. The section heads
+   carry the CATEGORIES / CATALOGUE titles AND the view-mode toggle, so hiding
+   them removes those too (per the setting). Body padding is kept so the cards
+   stay put — the left-aligned hero stays lined up with the first card. */
+.bp-cat-body--no-containers .bp-cat-sidebar,
+.bp-cat-body--no-containers .bp-cat-main,
+.bp-cat-body--no-containers .bp-cat-detail {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* !important — beats the component-scoped `.bp-cat-sidebar-head { display:flex }`
+   rule (catalogue-grid styles) which competes at equal specificity. */
+.bp-cat-body--no-containers .bp-cat-sidebar-head,
+.bp-cat-body--no-containers .bp-cat-main-head { display: none !important; }
+/* Bare bodies hug the column edges (no inner gutter to a missing border). */
+.bp-cat-body--no-containers .bp-cat-sidebar-body { padding-left: 0; padding-right: 0; }
 
 /* ── Sidebar primitives ── */
 .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }

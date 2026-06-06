@@ -189,6 +189,8 @@ export type DetailMode = 'inline' | 'drawer';
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
       [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
+      [class.bp-cat-body--cats-left]="categoriesPosition === 'left'"
+      [class.bp-cat-body--no-containers]="!showContainers"
       [class.bp-cat-body--no-filter]="categoriesPosition !== 'left' && !showFilter && !filterPanelOpen">
 
       <!-- ── SIDEBAR ── -->
@@ -452,7 +454,7 @@ export type DetailMode = 'inline' | 'drawer';
              when drilled and reset to top via onBreadcrumbBack(). -->
         <!-- Main-column breadcrumb — hidden in project mode for the same
              reason as the top one (no drill nav, so the crumb is noise). -->
-        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext">
+        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext && (activeFilterLabel || isCrumbDrilled)">
           <!-- Active category/subcat → show its name as the heading + a Clear
                filter link (replaces the "CATEGORY › All …" crumb). -->
           <ng-container *ngIf="activeFilterLabel as label; else defaultCrumbs">
@@ -1946,6 +1948,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       drawer's Catalogue view controls when viewControlsKey is set). */
   @Input() showFilter = true;
   @Input() showPreview = true;
+  /** Show the panel containers (CATEGORIES/CATALOGUE heads + borders + fill).
+      When false the catalogue renders bare on the page ground. */
+  @Input() showContainers = true;
   /** Transient: when the filter sidebar setting is OFF, the filter icon by the
       search box reveals it on demand without changing the saved setting. */
   filterPanelOpen = false;
@@ -2587,6 +2592,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.cardSize   = (saved.cardSize   || d.cardSize   || this.cardSize) as 'sm' | 'md' | 'lg';
     this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
     this.showPreview = saved.showPreview ?? d.showPreview ?? this.showPreview;
+    this.showContainers = saved.showContainers ?? d.showContainers ?? this.showContainers;
     this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
     this.detailSize = (saved.detailSize || d.detailSize || this.detailSize) as DetailSize;
     this.layout     = (saved.view       || d.view       || this.layout) as 'list' | 'card' | 'table';
@@ -2607,6 +2613,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       detailMode: this.detailMode,
       showFilter: this.showFilter,
       showPreview: this.showPreview,
+      showContainers: this.showContainers,
     };
   }
 
@@ -2617,6 +2624,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     if (p.cardSize)   this.cardSize   = p.cardSize;
     if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
     if (p.showPreview !== undefined) this.showPreview = p.showPreview;
+    if (p.showContainers !== undefined) this.showContainers = p.showContainers;
     if (p.circleSize) this.circleSize = p.circleSize;
     if (p.detailSize) this.detailSize = p.detailSize;
     if (p.view)       this.layout     = p.view;

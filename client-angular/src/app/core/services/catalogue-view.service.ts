@@ -36,6 +36,10 @@ export interface CatalogueViewState {
   showFilter: boolean;
   /** Show the right preview / detail panel. */
   showPreview: boolean;
+  /** Show the panel "containers" (CATEGORIES + CATALOGUE headers, borders and
+      white fill). When false the catalogue reads as bare lists/cards on the
+      page ground — no panel chrome, no section heads (incl. the view toggle). */
+  showContainers: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
