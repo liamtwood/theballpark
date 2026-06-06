@@ -27,6 +27,10 @@ export interface ShellContext {
       The marketplace pushes 'left' when categories sit in the left rail so the
       hero lines up with the catalogue's left edge. */
   heroAlign?:   'left' | 'center';
+  /** Extra left inset (CSS length) for the left-aligned hero content — the
+      marketplace pushes the rail width here so the hero lines up with the
+      catalogue's main column (first item card) in Left categories mode. */
+  heroExtraLeft?: string;
   /** Page-scoped org identity. When a page shows a DIFFERENT org than the
       logged-in viewer (e.g. a supplier detail page viewing "Rocket Food"),
       it sets this so the hero's org title-mode + org pill reflect the org

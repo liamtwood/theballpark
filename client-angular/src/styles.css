@@ -819,9 +819,6 @@ input.bp-cfg-page-label.p-inputtext:focus {
   gap: 12px;
   padding: 12px;
 }
-/* Categories LEFT — align the catalogue's left edge with the hero's left
-   margin (--section-pad) so the rail lines up under the left-aligned hero. */
-.bp-cat-body--cats-left { padding-left: var(--section-pad); }
 .bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
 .bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
@@ -1515,7 +1512,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero--left .bp-hero-org-name,
 .bp-hero--left .bp-hero-page-label,
 .bp-hero--left .bp-hero-tabs {
-  padding-left: calc((100% - var(--hero-sep-width, 100%)) / 2);
+  /* --hero-extra-left lets a page push the hero content further right (e.g.
+     the marketplace indents it to the catalogue's main column when categories
+     are in the left rail). Default 0. */
+  padding-left: calc((100% - var(--hero-sep-width, 100%)) / 2 + var(--hero-extra-left, 0px));
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather

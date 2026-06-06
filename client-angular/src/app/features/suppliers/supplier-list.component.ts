@@ -340,8 +340,11 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.shellCtx.set({
       pills,
       // Halfway-house: when categories are in the left rail, left-align the
-      // hero so the title/sub/tabs line up with the catalogue's left edge.
+      // hero AND indent it to the first item card so the title/sub/tabs line up
+      // with the catalogue grid. 309px = body pad 12 + rail 260 + gap 12 +
+      // main-body pad 24 + 1px border; minus the hero's own --section-pad.
       heroAlign: this.catsLeft ? 'left' : undefined,
+      heroExtraLeft: this.catsLeft ? 'calc(309px - var(--section-pad))' : undefined,
       // Items / Suppliers as hero tabs (like events' Current/Completed). They
       // don't route — onTabClick flips the in-page viewMode + re-pushes so the
       // active tab tracks.

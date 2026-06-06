@@ -625,6 +625,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return val;
   }
 
+  /** Extra left inset for the left-aligned hero content (pushed by a page,
+      e.g. the marketplace's Left categories mode). Default 0px. */
+  @HostBinding('style.--hero-extra-left')
+  get heroExtraLeftVar() {
+    return this.ctx?.heroExtraLeft || '0px';
+  }
+
   @HostBinding('style.--hero-align-flex')
   get heroAlignFlex() {
     const val = (this.navMode === 'sidenav' || this.effectiveHeroAlign === 'left') ? 'flex-start' : 'center';
