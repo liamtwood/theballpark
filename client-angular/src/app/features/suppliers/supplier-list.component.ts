@@ -11,6 +11,7 @@ import { ProjectService } from '../../core/services/project.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CatalogueViewService, CatalogueViewState } from '../../core/services/catalogue-view.service';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
@@ -21,7 +22,7 @@ import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../shared/components/item-drawer/item-drawer.component';
 import {
-  PageConfigTogglesComponent, Layout, DetailMode, ThemeSwatch
+  Layout, DetailMode
 } from '../../shared/components/page-config-toggles/page-config-toggles.component';
 
 @Component({
@@ -30,7 +31,7 @@ import {
   imports: [
     CommonModule, FormsModule, RouterModule, LucideAngularModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, PageConfigTogglesComponent
+    ItemDrawerComponent
   ],
   template: `
     <div class="bp-page">
@@ -44,7 +45,7 @@ import {
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
           [totalCount]="totalItems"
-          [showConfigStrip]="true"
+          [showConfigStrip]="false"
           [circleSize]="circleSize"
           [detailSize]="detailSize"
           [detailMode]="detailMode"
@@ -75,21 +76,9 @@ import {
             <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'"
               (click)="switchMode('suppliers')">Suppliers</button>
           </div>
-
-          <!-- Shared config strip controls (toggled by cog in top-nav) -->
-          <app-page-config-toggles config-content
-            [(pageLabel)]="catalogueTitle"
-            (pageLabelChange)="onPageLabelChange($event)"
-            [(theme)]="theme"
-            (themeChange)="onThemeChange()"
-            [(circleSize)]="circleSize"
-            (circleSizeChange)="persistConfig()"
-            [(view)]="layout"
-            (viewChange)="persistConfig()"
-            [(detailSize)]="detailSize"
-            (detailSizeChange)="persistConfig()"
-            [(detailMode)]="detailMode"
-            (detailModeChange)="persistConfig()"></app-page-config-toggles>
+          <!-- Config-strip bar removed — circle size / view / detail size /
+               detail mode now live in the global page-config drawer, wired via
+               CatalogueViewService (register/unregister in this component). -->
         </app-catalogue-grid>
       </ng-container>
 
@@ -186,13 +175,11 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // with the ballpark:marketplace:* key namespace. Page label lives in
   // ConfigService (org-wide), not here.
   private readonly LS = {
-    theme:      'ballpark:marketplace:theme',
     circleSize: 'ballpark:marketplace:circleSize',
     detailSize: 'ballpark:marketplace:detailSize',
     layout:     'ballpark:marketplace:layout',
     detailMode: 'ballpark:marketplace:detailMode'
   };
-  theme: ThemeSwatch = '';
   circleSize: CircleSize = 'lg';
   detailSize: DetailSize = 'md';
   layout: Layout = 'card';
@@ -240,6 +227,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
+    private catalogueViewSvc: CatalogueViewService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -255,6 +243,12 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadConfig();
+    // Expose the view controls to the global page-config drawer (replaces
+    // the old config-strip bar).
+    this.catalogueViewSvc.register(
+      this.catalogueViewState(),
+      (p) => this.applyCatalogueView(p)
+    );
     this.catalogueTitle = this.configSvc.catalogueLabel;
 
     // v1.22i: ?view=suppliers | items lets the dashboard's Browse
@@ -363,7 +357,30 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.shellCtx.reset(); }
+  ngOnDestroy() {
+    this.shellCtx.reset();
+    this.catalogueViewSvc.unregister();
+  }
+
+  private catalogueViewState(): CatalogueViewState {
+    return {
+      circleSize: this.circleSize,
+      detailSize: this.detailSize,
+      view: this.layout,
+      detailMode: this.detailMode,
+    };
+  }
+
+  /** Drawer → this page: apply a view change, persist, re-sync the drawer. */
+  private applyCatalogueView(p: Partial<CatalogueViewState>) {
+    if (p.circleSize) this.circleSize = p.circleSize;
+    if (p.detailSize) this.detailSize = p.detailSize;
+    if (p.view)       this.layout     = p.view;
+    if (p.detailMode) this.detailMode = p.detailMode;
+    this.persistConfig();
+    this.catalogueViewSvc.sync(this.catalogueViewState());
+    this.cdr.detectChanges();
+  }
 
   private applyShellHero(pills: string[]) {
     // v1.66ag — hero title ("Marketplace") + subtitle come from route data
@@ -385,37 +402,16 @@ export class SupplierListComponent implements OnInit, OnDestroy {
 
   // ── Config strip persistence ──────────────────────────────────────────
   loadConfig() {
-    const t  = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
-    const cs = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
-    const ds = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
-    const ly = (localStorage.getItem(this.LS.layout) || 'card') as Layout;
-    const dm = (localStorage.getItem(this.LS.detailMode) || 'inline') as DetailMode;
-    this.theme = t;
-    this.circleSize = cs;
-    this.detailSize = ds;
-    this.layout = ly;
-    this.detailMode = dm;
-    this.applyTheme();
+    this.circleSize = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
+    this.detailSize = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
+    this.layout     = (localStorage.getItem(this.LS.layout)     || 'card') as Layout;
+    this.detailMode = (localStorage.getItem(this.LS.detailMode) || 'inline') as DetailMode;
   }
   persistConfig() {
-    localStorage.setItem(this.LS.theme, this.theme);
     localStorage.setItem(this.LS.circleSize, this.circleSize);
     localStorage.setItem(this.LS.detailSize, this.detailSize);
     localStorage.setItem(this.LS.layout, this.layout);
     localStorage.setItem(this.LS.detailMode, this.detailMode);
-  }
-  onThemeChange() {
-    this.applyTheme();
-    this.persistConfig();
-  }
-  /** Page label is org-wide — write through to ConfigService so the
-      top-nav and admin terminology editor see the change too. */
-  onPageLabelChange(label: string) {
-    this.configSvc.update({ catalogueLabel: label });
-  }
-  private applyTheme() {
-    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
-    else document.documentElement.removeAttribute('data-theme');
   }
 
   // ── Data mapping ──────────────────────────────────────────────────────

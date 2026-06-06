@@ -47,6 +47,7 @@ import { Router, NavigationEnd } from '@angular/router';
 
 import { ConfigService } from '../../../core/services/config.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
+import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
 
 @Component({
   selector: 'app-page-config-drawer',
@@ -147,6 +148,45 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
               </button>
             </div>
           </div>
+
+          <!-- Catalogue view controls — shown only when a catalogue page
+               (marketplace / feedback) is active. These replace the old
+               config-strip bar; they edit the page via CatalogueViewService. -->
+          <ng-container *ngIf="catalogueView as cv">
+            <div class="bp-pcd-subhead">Catalogue view</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Circle size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of circleSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.circleSize === o.value"
+                        (click)="setCatalogueView({ circleSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">View</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of catViewOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.view === o.value"
+                        (click)="setCatalogueView({ view: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Detail size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of detailSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.detailSize === o.value"
+                        (click)="setCatalogueView({ detailSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Detail mode</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of detailModeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.detailMode === o.value"
+                        (click)="setCatalogueView({ detailMode: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+          </ng-container>
 
           <!-- v1.66au — section-visibility toggles are dashboard-only;
                the other pages don't have these sections. -->
@@ -586,6 +626,29 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'EUR', label: '€ EUR — Euro' },
   ];
 
+  /** Catalogue view controls (shown when a catalogue page is active). The
+      values mirror page-config-toggles' old options. */
+  catalogueView: CatalogueViewState | null = null;
+  readonly circleSizeOptions = [
+    { value: 'sm' as const, label: 'S' },
+    { value: 'md' as const, label: 'M' },
+    { value: 'lg' as const, label: 'L' },
+  ];
+  readonly detailSizeOptions = [
+    { value: 'sm' as const, label: 'S' },
+    { value: 'md' as const, label: 'M' },
+    { value: 'lg' as const, label: 'L' },
+  ];
+  readonly catViewOptions = [
+    { value: 'card' as const,  label: 'Card' },
+    { value: 'list' as const,  label: 'List' },
+    { value: 'table' as const, label: 'Table' },
+  ];
+  readonly detailModeOptions = [
+    { value: 'inline' as const, label: 'Inline' },
+    { value: 'drawer' as const, label: 'Drawer' },
+  ];
+
   /** Nav mode — single-pick segmented group. */
   readonly navOptions: Array<{ value: 'tabs' | 'sidenav'; label: string }> = [
     { value: 'tabs',    label: 'Tabs' },
@@ -611,9 +674,15 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
   constructor(
     private configService: ConfigService,
     private configStripSvc: ConfigStripService,
+    private catalogueViewSvc: CatalogueViewService,
     private cdr: ChangeDetectorRef,
     private router: Router,
   ) {}
+
+  /** Drawer → active catalogue page. The host persists + re-syncs. */
+  setCatalogueView(partial: Partial<CatalogueViewState>) {
+    this.catalogueViewSvc.apply(partial);
+  }
 
   private updatePageName(): void {
     this.pageKey = this.router.url.split('?')[0];
@@ -699,6 +768,11 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
         this.updatePageName();   // v1.66av — reload the per-page draft on config/profile change
         this.cdr.markForCheck();
       });
+
+    // Catalogue view controls appear when a catalogue page registers.
+    this.catalogueViewSvc.state$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(state => { this.catalogueView = state; this.cdr.markForCheck(); });
 
     // Bind visibility to the shared open$ signal so the top-nav cog
     // toggle() reaches the drawer.
