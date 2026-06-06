@@ -628,9 +628,9 @@ export type DetailMode = 'inline' | 'drawer';
                             (click)="onMenuAction('wishlist', e, $event)">Wishlist for Project</button>
                     <button class="bp-card-menu-item"
                             (click)="onMenuAction('view', e, $event)">View</button>
-                    <button class="bp-card-menu-item" *ngIf="showEdit"
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
                             (click)="onMenuAction('edit', e, $event)">Edit</button>
-                    <button class="bp-card-menu-item" *ngIf="showEdit"
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
                             (click)="onMenuAction('edit-image', e, $event)">Edit Image</button>
                     <ng-container *ngIf="showDelete">
                       <div class="bp-card-menu-sep"></div>
@@ -751,9 +751,9 @@ export type DetailMode = 'inline' | 'drawer';
                         (click)="onMenuAction('wishlist', selectedEntity, $event)">Wishlist for Project</button>
                 <button class="bp-card-menu-item"
                         (click)="onMenuAction('view', selectedEntity, $event)">View</button>
-                <button class="bp-card-menu-item" *ngIf="canEdit(selectedEntity)"
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
                         (click)="onMenuAction('edit', selectedEntity, $event)">Edit</button>
-                <button class="bp-card-menu-item" *ngIf="canEdit(selectedEntity)"
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
                         (click)="onMenuAction('edit-image', selectedEntity, $event)">Edit Image</button>
                 <ng-container *ngIf="showDelete">
                   <div class="bp-card-menu-sep"></div>
@@ -1981,6 +1981,10 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       even before a project is chosen. Triggering an add with no project
       selected emits projectRequired so the host can open the project picker. */
   @Input() addToProjectMode = false;
+  /** Show "Edit" + "Edit Image" in the "⋯" menu. Off by default — item
+      editing lives on the supplier store (where a supplier manages their own
+      catalogue), not in the marketplace / project marketplace. */
+  @Input() allowItemEdit = false;
   /** Transient: when the filter sidebar setting is OFF, the filter icon by the
       search box reveals it on demand without changing the saved setting. */
   filterPanelOpen = false;

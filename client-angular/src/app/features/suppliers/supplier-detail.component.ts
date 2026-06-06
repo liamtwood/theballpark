@@ -286,6 +286,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           [favouriteIds]="itemFavIds"
           [showEdit]="true"
           [showDelete]="ownsCatalogue"
+          [allowItemEdit]="ownsCatalogue"
           [addToProjectMode]="true"
           [showItemEdit]="false"
           [showFavourite]="false"
