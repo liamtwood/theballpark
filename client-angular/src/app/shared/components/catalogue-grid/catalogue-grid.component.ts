@@ -121,7 +121,7 @@ export type DetailMode = 'inline' | 'drawer';
         <div class="bp-search-panel">
           <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
           <div class="bp-search-row">
-            <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+            <p-dropdown *ngIf="stripDropdownOptions.length > 1 && categoriesPosition !== 'left'"
                         [options]="stripDropdownOptions"
                         [ngModel]="stripDropdownValue"
                         (onChange)="onStripDropdownChange($event.value)"
@@ -137,7 +137,9 @@ export type DetailMode = 'inline' | 'drawer';
             <!-- Filter sidebar is off (setting) — this icon (right of the
                  search box) reveals it on demand without changing the saved
                  setting. -->
-            <button *ngIf="!showFilter" type="button"
+            <!-- Hidden in Categories-LEFT mode — filtering will move to a
+                 dedicated drawer/dialog there (deferred). -->
+            <button *ngIf="!showFilter && categoriesPosition !== 'left'" type="button"
                     class="bp-search-filter-btn"
                     [class.active]="filterPanelOpen"
                     (click)="filterPanelOpen = !filterPanelOpen"

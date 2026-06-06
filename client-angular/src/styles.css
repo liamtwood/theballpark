@@ -1108,10 +1108,11 @@ input.bp-cfg-page-label.p-inputtext:focus {
    col 3 → actions). Outside project context the wrapper is a no-op
    block and the search panel renders full-width as before. */
 /* Categories LEFT — the search lines up with the left-aligned hero / first
-   card and sheds its container chrome (border + white fill + shadow) so it
-   reads as bare controls (All ▾ · search · filter) on the page ground.
-   349px = the first-card x: body pad 12 + rail 300 + gap 12 + main-body pad
-   24 + 1px border (matches supplier-list's heroExtraLeft). */
+   card (349px = body pad 12 + rail 300 + gap 12 + main-body pad 24 + 1px
+   border, matching supplier-list's heroExtraLeft). The outer panel "card"
+   chrome is dropped; the field itself becomes one clean, tall, rounded search
+   box (subtle border + soft fill) — no "All" scope chip, no filter icon (that
+   moves to a drawer later). */
 .bp-browse-strip--cats-left { padding-left: 349px; }
 .bp-browse-strip--cats-left .bp-search-panel {
   background: transparent;
@@ -1120,8 +1121,12 @@ input.bp-cfg-page-label.p-inputtext:focus {
   padding: 0;
 }
 .bp-browse-strip--cats-left .bp-search-row {
-  background: transparent;
-  border: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xs);
+  padding: 15px 20px;
+  gap: 12px;
 }
 .bp-search-row-wrap { display: block; }
 .bp-search-row-wrap--split {
