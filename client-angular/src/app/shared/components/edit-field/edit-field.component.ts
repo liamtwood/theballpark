@@ -84,7 +84,7 @@ export type EditFieldDensity = 'card' | 'drawer';
              (ngModelChange)="onModel($event)"
              [readonly]="isReadonly"
              [placeholder]="isEdit ? placeholder : ''"
-             rows="3"
+             [rows]="rows"
              class="w-full bp-fld-textarea"
              [ngClass]="fldBase"
              [class.is-edit]="isEdit"></textarea>
@@ -104,6 +104,8 @@ export class EditFieldComponent {
   @Input() suffix?: string;
   @Input() options: { label: string; value: any }[] | null = null;
   @Input() placeholder = '';
+  /** Visible rows for type="textarea" (height grows from here). */
+  @Input() rows = 3;
   @Input() maxlength?: number;
   @Input({ transform: booleanAttribute }) uppercase = false;
   @Input({ transform: booleanAttribute }) span2 = false;

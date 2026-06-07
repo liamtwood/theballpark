@@ -1972,9 +1972,10 @@ textarea.bp-fld--drawer {
   padding: 0 9px !important;
   border-radius: 8px !important;
 }
-/* Textarea grows vertically — undo the fixed field height at both densities. */
+/* Textarea grows vertically (rows-driven) — undo the fixed field height at both
+   densities so the [rows] attribute sets the height. */
 textarea.bp-fld.p-inputtext         { height: auto !important; min-height: 76px !important; padding: 8px 10px !important; }
-textarea.bp-fld--drawer.p-inputtext { min-height: 60px !important; padding: 7px 9px !important; }
+textarea.bp-fld--drawer.p-inputtext { height: auto !important; min-height: 60px !important; padding: 7px 9px !important; }
 /* Label: 10px (vs 11px) + tighter inter-field gap. */
 .bp-field--drawer .bp-field-label { font-size: 10px; margin-bottom: 4px; }
 .bp-card--drawer .bp-field-grid-2,

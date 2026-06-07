@@ -6,8 +6,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
@@ -16,6 +14,8 @@ import { MessageService } from 'primeng/api';
 import { Org } from '../../../models';
 import { OrgService } from '../../../core/services/org.service';
 import { ImageUploadPanelComponent } from '../image-upload-panel/image-upload-panel.component';
+import { EditSectionComponent } from '../edit-section/edit-section.component';
+import { EditFieldComponent } from '../edit-field/edit-field.component';
 
 interface SupplierForm {
   name: string;
@@ -39,8 +39,9 @@ interface SupplierForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule,
-    SidebarModule, ButtonModule, InputTextModule, InputTextareaModule, InputSwitchModule,
-    ToastModule, ImageUploadPanelComponent
+    SidebarModule, ButtonModule, InputSwitchModule,
+    ToastModule, ImageUploadPanelComponent,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -66,106 +67,55 @@ interface SupplierForm {
 
       <div class="bp-drawer-body">
 
+        <!-- v1.66dq — Tier 2: always-edit drawer adopts the shared
+             <app-edit-section editable=false> + <app-edit-field editing> at
+             drawer density. No per-section lifecycle (one Save in the footer);
+             every field reads as editable (grey fill). -->
+
         <!-- ═══ DETAILS ═══ -->
-        <div class="bp-section-h">DETAILS</div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Name *</label>
-          <input pInputText
-                 [(ngModel)]="form.name"
-                 class="w-full bp-input-edit"
-                 placeholder="Supplier name"/>
-        </div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Description</label>
-          <textarea pInputTextarea
-                    [(ngModel)]="form.description"
-                    class="w-full bp-input-edit bp-input-textarea-lg"
-                    [autoResize]="true"
-                    [rows]="10"
-                    placeholder="What this supplier does, who they work with, capabilities, geographic coverage, notable clients or projects..."></textarea>
-          <div class="bp-field-hint">A few paragraphs work well. Plain text for now — markdown rendering on the Home tab lands next.</div>
-        </div>
+        <app-edit-section title="Details" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Name *" density="drawer" [editing]="true"
+                            [(value)]="form.name" placeholder="Supplier name"></app-edit-field>
+            <app-edit-field span2 label="Description" type="textarea" [rows]="10"
+                            density="drawer" [editing]="true" [(value)]="form.description"
+                            placeholder="What this supplier does, who they work with, capabilities, geographic coverage, notable clients or projects..."
+                            hint="A few paragraphs work well. Plain text for now — markdown rendering on the Home tab lands next."></app-edit-field>
+          </div>
+        </app-edit-section>
 
         <!-- ═══ ADDRESS ═══ -->
-        <div class="bp-section-h">ADDRESS</div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Address</label>
-          <input pInputText
-                 [(ngModel)]="form.address"
-                 class="w-full bp-input-edit"
-                 placeholder="Street address"/>
-        </div>
-
-        <div class="bp-grid-2">
-          <div class="bp-field">
-            <label class="bp-field-label">City</label>
-            <input pInputText
-                   [(ngModel)]="form.city"
-                   class="w-full bp-input-edit"
-                   placeholder="London"/>
+        <app-edit-section title="Address" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Address" density="drawer" [editing]="true"
+                            [(value)]="form.address" placeholder="Street address"></app-edit-field>
+            <app-edit-field label="City" density="drawer" [editing]="true" [(value)]="form.city" placeholder="London"></app-edit-field>
+            <app-edit-field label="Country" density="drawer" [editing]="true" [(value)]="form.country" placeholder="United Kingdom"></app-edit-field>
           </div>
-          <div class="bp-field">
-            <label class="bp-field-label">Country</label>
-            <input pInputText
-                   [(ngModel)]="form.country"
-                   class="w-full bp-input-edit"
-                   placeholder="United Kingdom"/>
-          </div>
-        </div>
+        </app-edit-section>
 
         <!-- ═══ CONTACT ═══ -->
-        <div class="bp-section-h">CONTACT</div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Phone</label>
-          <input pInputText
-                 [(ngModel)]="form.phone"
-                 class="w-full bp-input-edit"
-                 placeholder="+44 ..."/>
-        </div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Email</label>
-          <input pInputText
-                 type="email"
-                 [(ngModel)]="form.email"
-                 class="w-full bp-input-edit"
-                 placeholder="hello@example.com"/>
-        </div>
-
-        <div class="bp-field">
-          <label class="bp-field-label">Website</label>
-          <input pInputText
-                 [(ngModel)]="form.website"
-                 class="w-full bp-input-edit"
-                 placeholder="https://..."/>
-        </div>
+        <app-edit-section title="Contact" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Phone" type="tel" density="drawer" [editing]="true" [(value)]="form.phone" placeholder="+44 ..."></app-edit-field>
+            <app-edit-field span2 label="Email" type="email" density="drawer" [editing]="true" [(value)]="form.email" placeholder="hello@example.com"></app-edit-field>
+            <app-edit-field span2 label="Website" density="drawer" [editing]="true" [(value)]="form.website" placeholder="https://..."></app-edit-field>
+          </div>
+        </app-edit-section>
 
         <!-- ═══ VAT ═══ -->
-        <div class="bp-section-h">VAT</div>
-
-        <div class="bp-field">
+        <app-edit-section title="VAT" density="drawer" [editable]="false">
           <label class="bp-vat-toggle">
             <p-inputSwitch [(ngModel)]="form.vat_registered"></p-inputSwitch>
             <span>VAT registered</span>
           </label>
-        </div>
-
-        <div class="bp-field" *ngIf="form.vat_registered">
-          <label class="bp-field-label">VAT number</label>
-          <input pInputText
-                 [(ngModel)]="form.vat_number"
-                 class="w-full bp-input-edit"
-                 placeholder="GB 123 4567 89"/>
-        </div>
+          <div class="bp-field-grid-2" *ngIf="form.vat_registered" style="margin-top:12px;">
+            <app-edit-field span2 label="VAT number" density="drawer" [editing]="true" [(value)]="form.vat_number" placeholder="GB 123 4567 89"></app-edit-field>
+          </div>
+        </app-edit-section>
 
         <!-- ═══ IMAGES ═══ -->
-        <div class="bp-section-h">IMAGES</div>
-
-        <div class="bp-field">
+        <app-edit-section title="Images" density="drawer" [editable]="false">
           <label class="bp-field-label">Cover &amp; logo</label>
           <div class="bp-image-preview-row">
             <div class="bp-image-slot">
@@ -193,7 +143,7 @@ interface SupplierForm {
           <div class="bp-field-hint" *ngIf="!supplier?.id">
             Save the supplier first, then you can attach images.
           </div>
-        </div>
+        </app-edit-section>
 
       </div>
 
@@ -233,20 +183,9 @@ interface SupplierForm {
   styles: [`
     :host { display: contents; }
 
-    .bp-section-h {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      padding: 14px 0 6px;
-      margin: 6px 0 10px;
-      border-bottom: 0.5px solid var(--color-border);
-      font-family: var(--font-body);
-    }
-    .bp-section-h:first-child { padding-top: 0; }
-
-    .bp-field { margin-bottom: 14px; }
+    /* Section chrome + fields now come from <app-edit-section> / <app-edit-field>
+       (drawer density). Only the bespoke bits (images label/hint, VAT toggle,
+       image previews) keep local styles. */
     .bp-field-label {
       display: block;
       font-size: 11px;
@@ -260,15 +199,6 @@ interface SupplierForm {
       color: var(--color-text-muted);
       margin-top: 4px;
       line-height: 1.4;
-    }
-    .bp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    /* Large textarea — explicit min-height so the description field
-       is comfortable to write into. autoResize lets it grow further. */
-    :host ::ng-deep .bp-input-textarea-lg {
-      min-height: 220px;
-      line-height: 1.5;
-      resize: vertical;
     }
 
     /* VAT toggle row */
