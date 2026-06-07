@@ -14,6 +14,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
+import { EditSectionComponent } from '../../../shared/components/edit-section/edit-section.component';
+import { EditFieldComponent } from '../../../shared/components/edit-field/edit-field.component';
 
 interface InviteCode {
   code: string;
@@ -28,7 +30,8 @@ interface InviteCode {
     CommonModule, FormsModule, TitleCasePipe,
     LucideAngularModule,
     ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, UpdateMeComponent
+    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, UpdateMeComponent,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -179,18 +182,20 @@ interface InviteCode {
         </div>
       </ng-template>
       <div class="bp-drawer-body">
-        <div class="mb-4">
-          <label class="bp-field-label">Email address</label>
-          <input pInputText [(ngModel)]="inviteForm.email" class="w-full bp-input-edit"
-            type="email" placeholder="colleague@company.com"/>
-        </div>
-        <div>
-          <label class="bp-field-label">Role</label>
-          <p-dropdown [(ngModel)]="inviteForm.role" [options]="roleOptions"
-            optionLabel="label" optionValue="value"
-            styleClass="w-full bp-input-edit" placeholder="Select role">
-          </p-dropdown>
-        </div>
+        <!-- v1.66ds — always-edit invite form on the shared standard. -->
+        <app-edit-section title="Invite" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Email address" type="email" density="drawer" [editing]="true"
+                            [(value)]="inviteForm.email" placeholder="colleague@company.com"></app-edit-field>
+            <div class="bp-field bp-field-s2 bp-field--drawer">
+              <label class="bp-field-label">Role</label>
+              <p-dropdown [(ngModel)]="inviteForm.role" [options]="roleOptions"
+                optionLabel="label" optionValue="value"
+                styleClass="w-full bp-input-edit" placeholder="Select role">
+              </p-dropdown>
+            </div>
+          </div>
+        </app-edit-section>
       </div>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeInviteDrawer()"></p-button>
@@ -219,58 +224,26 @@ interface InviteCode {
       </ng-template>
 
       <div class="bp-drawer-body">
-        <div class="bp-section-header mb-4">
-          <span class="bp-section-title">MEMBER DETAILS</span>
-          <div class="flex items-center gap-1">
-            <ng-container *ngIf="!editingMember">
-              <button class="bp-icon-btn" (click)="startEditMember()" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editingMember">
-              <button class="bp-icon-btn bp-icon-save" (click)="submitEdit()"
-                [disabled]="!editForm.name?.trim()" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditMember()" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
+        <!-- v1.66ds — per-member view/edit on the shared standard. ES owns the
+             Edit/Cancel/Save lifecycle (reuses the existing snapshot methods);
+             email is always read-only, role swaps text→dropdown in edit. -->
+        <app-edit-section title="Member details" density="drawer" saveLabel="Save"
+                          [(editing)]="editingMember"
+                          (edit)="startEditMember()" (cancel)="cancelEditMember()" (save)="submitEdit()">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Name" density="drawer" [editing]="editingMember"
+                            [(value)]="editForm.name" placeholder="Full name"></app-edit-field>
+            <app-edit-field span2 label="Email address" density="drawer" readonlyAlways
+                            [value]="editForm.email"></app-edit-field>
+            <div class="bp-field bp-field-s2 bp-field--drawer">
+              <label class="bp-field-label">Role</label>
+              <input *ngIf="!editingMember" pInputText [value]="editForm.role | titlecase"
+                     class="w-full bp-fld bp-fld--drawer" readonly/>
+              <p-dropdown *ngIf="editingMember" [(ngModel)]="editForm.role" [options]="roleOptions"
+                optionLabel="label" optionValue="value" styleClass="w-full bp-input-edit"></p-dropdown>
+            </div>
           </div>
-        </div>
-
-        <ng-container *ngIf="!editingMember">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [value]="editForm.name" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Email address</label>
-            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Role</label>
-            <input pInputText [value]="editForm.role | titlecase" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </ng-container>
-
-        <ng-container *ngIf="editingMember">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [(ngModel)]="editForm.name" class="w-full bp-input-edit" placeholder="Full name"/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Email address</label>
-            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Role</label>
-            <p-dropdown [(ngModel)]="editForm.role" [options]="roleOptions"
-              optionLabel="label" optionValue="value"
-              styleClass="w-full bp-input-edit">
-            </p-dropdown>
-          </div>
-        </ng-container>
+        </app-edit-section>
       </div>
     </p-sidebar>
 
