@@ -2,7 +2,6 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { DropdownModule } from 'primeng/dropdown';
 import { DialogModule } from 'primeng/dialog';
@@ -13,6 +12,8 @@ import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { Org, PlatformConfig } from '../../../models';
 import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
+import { EditSectionComponent } from '../../../shared/components/edit-section/edit-section.component';
+import { EditFieldComponent } from '../../../shared/components/edit-field/edit-field.component';
 
 @Component({
   selector: 'app-marketplace',
@@ -20,72 +21,38 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
   imports: [
     CommonModule, FormsModule,
     LucideAngularModule,
-    ButtonModule, InputTextModule, InputSwitchModule, DropdownModule, DialogModule, ToastModule,
-    ImageUploadPanelComponent
+    ButtonModule, InputSwitchModule, DropdownModule, DialogModule, ToastModule,
+    ImageUploadPanelComponent,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
+  // v1.66dk — adopts the shared <app-edit-section> + <app-edit-field> standard.
+  // Platform + Terminology are editable attribute sections (ES + EF, replacing
+  // the old duplicated view/edit *ngIf blocks). The remaining sections are
+  // non-editable (live-update) shells: ES [editable]="false" with their existing
+  // bespoke controls projected in. Same card chrome as /settings/organisation.
   template: `
     <div class="bp-team-title-bar">
       <h2 class="bp-page-title">Marketplace</h2>
     </div>
 
-    <div style="padding: var(--section-pad); max-width: 640px; margin: 0 auto;">
+    <div class="bp-settings-body">
 
       <!-- PLATFORM -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">PLATFORM</span>
-          <div class="bp-section-actions">
-            <button *ngIf="!editingPlatform" class="bp-icon-btn" (click)="startEdit('platform')" title="Edit">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-            <ng-container *ngIf="editingPlatform">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('platform')" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('platform')" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
-          </div>
+      <app-edit-section title="Platform" [(editing)]="editingPlatform"
+                        (edit)="secEdit('platform')" (cancel)="secCancel('platform')" (save)="secSave('platform')">
+        <div class="bp-field-grid-2">
+          <app-edit-field label="Platform name" [(value)]="appearance.platformName" [editing]="editingPlatform"></app-edit-field>
+          <app-edit-field label="Tagline" [(value)]="appearance.tagline" [editing]="editingPlatform"></app-edit-field>
         </div>
-        <ng-container *ngIf="!editingPlatform">
-          <div class="mb-3">
-            <label class="bp-field-label">Platform name</label>
-            <input pInputText [value]="appearance.platformName || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Tagline</label>
-            <input pInputText [value]="appearance.tagline || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </ng-container>
-        <ng-container *ngIf="editingPlatform">
-          <div class="mb-3">
-            <label class="bp-field-label">Platform name</label>
-            <input pInputText [(ngModel)]="appearance.platformName" class="w-full bp-input-edit"/>
-          </div>
-          <div>
-            <label class="bp-field-label">Tagline</label>
-            <input pInputText [(ngModel)]="appearance.tagline" class="w-full bp-input-edit"/>
-          </div>
-        </ng-container>
-      </div>
+      </app-edit-section>
 
-      <!-- MARKETPLACE LOGO -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">MARKETPLACE LOGO</span>
-          <div class="bp-section-actions">
-            <button *ngIf="!editingLogo" class="bp-icon-btn" (click)="editingLogo = true" title="Edit">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-            <ng-container *ngIf="editingLogo">
-              <button class="bp-icon-btn bp-icon-cancel" (click)="editingLogo = false" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
-          </div>
-        </div>
+      <!-- MARKETPLACE LOGO (non-editable shell; its own inline upload toggle) -->
+      <app-edit-section title="Marketplace logo" [editable]="false">
+        <button headExtra *ngIf="!editingLogo" class="bp-btn-outline" (click)="editingLogo = true">
+          <lucide-icon name="square-pen" [size]="16"></lucide-icon> Edit
+        </button>
+        <button headExtra *ngIf="editingLogo" class="bp-btn-outline" (click)="editingLogo = false">Cancel</button>
 
         <!-- VIEW MODE -->
         <ng-container *ngIf="!editingLogo">
@@ -112,73 +79,21 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             (imagesUpdated)="onLogoUpdated($event)">
           </app-image-upload-panel>
         </ng-container>
-      </div>
+      </app-edit-section>
 
       <!-- TERMINOLOGY -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">TERMINOLOGY</span>
-          <div class="bp-section-actions">
-            <button *ngIf="!editingTerminology" class="bp-icon-btn" (click)="startEdit('terminology')" title="Edit">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-            <ng-container *ngIf="editingTerminology">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('terminology')" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('terminology')" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
-          </div>
+      <app-edit-section title="Terminology" [(editing)]="editingTerminology"
+                        (edit)="secEdit('terminology')" (cancel)="secCancel('terminology')" (save)="secSave('terminology')">
+        <div class="bp-field-grid-2">
+          <app-edit-field label="Projects are called" [(value)]="appearance.projectLabel" [editing]="editingTerminology"></app-edit-field>
+          <app-edit-field label="Credits are called" [(value)]="appearance.creditLabel" [editing]="editingTerminology"></app-edit-field>
+          <app-edit-field label="Catalogue page is called" [(value)]="appearance.catalogueLabel" [editing]="editingTerminology"></app-edit-field>
+          <app-edit-field label="Feedback page is called" [(value)]="appearance.feedbackLabel" [editing]="editingTerminology"></app-edit-field>
         </div>
-        <ng-container *ngIf="!editingTerminology">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="bp-field-label">Projects are called</label>
-              <input pInputText [value]="appearance.projectLabel || '—'" class="w-full bp-field-readonly" readonly/>
-            </div>
-            <div>
-              <label class="bp-field-label">Credits are called</label>
-              <input pInputText [value]="appearance.creditLabel || '—'" class="w-full bp-field-readonly" readonly/>
-            </div>
-            <div>
-              <label class="bp-field-label">Catalogue page is called</label>
-              <input pInputText [value]="appearance.catalogueLabel || '—'" class="w-full bp-field-readonly" readonly/>
-            </div>
-            <div>
-              <label class="bp-field-label">Feedback page is called</label>
-              <input pInputText [value]="appearance.feedbackLabel || '—'" class="w-full bp-field-readonly" readonly/>
-            </div>
-          </div>
-        </ng-container>
-        <ng-container *ngIf="editingTerminology">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="bp-field-label">Projects are called</label>
-              <input pInputText [(ngModel)]="appearance.projectLabel" class="w-full bp-input-edit"/>
-            </div>
-            <div>
-              <label class="bp-field-label">Credits are called</label>
-              <input pInputText [(ngModel)]="appearance.creditLabel" class="w-full bp-input-edit"/>
-            </div>
-            <div>
-              <label class="bp-field-label">Catalogue page is called</label>
-              <input pInputText [(ngModel)]="appearance.catalogueLabel" class="w-full bp-input-edit"/>
-            </div>
-            <div>
-              <label class="bp-field-label">Feedback page is called</label>
-              <input pInputText [(ngModel)]="appearance.feedbackLabel" class="w-full bp-input-edit"/>
-            </div>
-          </div>
-        </ng-container>
-      </div>
+      </app-edit-section>
 
       <!-- TYPOGRAPHY -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">TYPOGRAPHY</span>
-        </div>
+      <app-edit-section title="Typography" [editable]="false">
         <label class="bp-field-label">Font pairing</label>
         <p-dropdown
           [(ngModel)]="appearance.fontPairing"
@@ -197,13 +112,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             </div>
           </ng-template>
         </p-dropdown>
-      </div>
+      </app-edit-section>
 
       <!-- COLOUR THEME -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">COLOUR THEME</span>
-        </div>
+      <app-edit-section title="Colour theme" [editable]="false">
         <div class="flex gap-3 mt-2">
           <button *ngFor="let t of themeNames" (click)="selectTheme(t)"
             class="bp-swatch" [style.background]="themePresets[t].accent"
@@ -211,25 +123,19 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <i *ngIf="appearance.themeName === t" class="pi pi-check" style="color:#fff;font-size:12px;"></i>
           </button>
         </div>
-      </div>
+      </app-edit-section>
 
       <!-- MODE -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">MODE</span>
-        </div>
+      <app-edit-section title="Mode" [editable]="false">
         <div class="flex gap-2 mt-2">
           <button (click)="selectMode('light')"  [class.bp-mode-active]="appearance.mode==='light'"  class="bp-mode-option">Light</button>
           <button (click)="selectMode('dark')"   [class.bp-mode-active]="appearance.mode==='dark'"   class="bp-mode-option">Dark</button>
           <button (click)="selectMode('system')" [class.bp-mode-active]="appearance.mode==='system'" class="bp-mode-option">System</button>
         </div>
-      </div>
+      </app-edit-section>
 
       <!-- HERO BANNER -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">HERO BANNER</span>
-        </div>
+      <app-edit-section title="Hero banner" [editable]="false">
         <label class="bp-field-label">Alignment</label>
         <div class="flex gap-2 mt-1 mb-4">
           <button (click)="setHeroAlign('left')"   [class.bp-mode-active]="appearance.heroAlign!=='center'" class="bp-mode-option">Left</button>
@@ -258,13 +164,10 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             <p-inputSwitch [(ngModel)]="appearance.showStats" (ngModelChange)="liveUpdate()"></p-inputSwitch>
           </div>
         </div>
-      </div>
+      </app-edit-section>
 
       <!-- NAVIGATION -->
-      <div class="bp-section">
-        <div class="bp-section-header">
-          <span class="bp-section-title">NAVIGATION</span>
-        </div>
+      <app-edit-section title="Navigation" [editable]="false">
         <label class="bp-field-label">Layout</label>
         <div class="flex gap-2 mt-2">
           <button (click)="selectNavMode('tabs')"
@@ -278,7 +181,7 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
             Side navigation
           </button>
         </div>
-      </div>
+      </app-edit-section>
 
       <!-- ACTIONS -->
       <div class="flex gap-3">
@@ -424,30 +327,25 @@ export class MarketplaceComponent implements OnInit {
     { value: 'fraunces-nunito',   label: 'Fraunces + Nunito',                  preview: "'Fraunces', serif",          specimen: 'The quick brown fox' },
   ];
 
-  startEdit(section: 'platform' | 'terminology') {
+  // ── Section edit lifecycle (Platform / Terminology) ────────────────
+  // <app-edit-section> owns the `editing` flag via [(editing)]; these handlers
+  // own the DATA: snapshot on (edit), restore on (cancel), persist on (save).
+  secEdit(section: 'platform' | 'terminology') {
     if (section === 'platform') {
       this.platformSnapshot = { platformName: this.appearance.platformName, tagline: this.appearance.tagline };
-      this.editingPlatform = true;
     } else {
       this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel, catalogueLabel: this.appearance.catalogueLabel, feedbackLabel: this.appearance.feedbackLabel };
-      this.editingTerminology = true;
     }
-    this.cdr.detectChanges();
   }
 
-  cancelEdit(section: 'platform' | 'terminology') {
-    if (section === 'platform' && this.platformSnapshot) {
-      Object.assign(this.appearance, this.platformSnapshot);
-      this.editingPlatform = false;
-    } else if (section === 'terminology' && this.terminologySnapshot) {
-      Object.assign(this.appearance, this.terminologySnapshot);
-      this.editingTerminology = false;
-    }
+  secCancel(section: 'platform' | 'terminology') {
+    if (section === 'platform' && this.platformSnapshot) Object.assign(this.appearance, this.platformSnapshot);
+    else if (section === 'terminology' && this.terminologySnapshot) Object.assign(this.appearance, this.terminologySnapshot);
     this.liveUpdate();
     this.cdr.detectChanges();
   }
 
-  saveSection(section: 'platform' | 'terminology') {
+  secSave(section: 'platform' | 'terminology') {
     if (section === 'platform') this.editingPlatform = false;
     else this.editingTerminology = false;
     this.liveUpdate();
@@ -475,31 +373,18 @@ export class MarketplaceComponent implements OnInit {
   onLogoUpdated(urls: { coverUrl: string }) {
     if (!this.org || urls.coverUrl === undefined) return;
     const logoUrl = (urls.coverUrl || '').trim();
-    // v1.65g7 — guard against empty payload. The previous version
-    // PATCHed any value through, so a stray emit with coverUrl=''
-    // (e.g. cancel-after-remove flow) would silently clear the
-    // canonical orgs.logo_url and break the brand mark for fresh
-    // visitors. Skip both writes when there's nothing to save.
+    // v1.65g7 — guard against empty payload (cancel-after-remove emits '').
     if (!logoUrl) {
       this.editingLogo = false;
       this.cdr.detectChanges();
       this.msg.add({ severity: 'warn', summary: 'No logo selected — nothing saved' });
       return;
     }
-    // Local display update for the marketplace settings page itself.
     (this.org as any).logo_url = logoUrl;
     this.editingLogo = false;
     this.cdr.detectChanges();
 
-    // Persist to two places:
-    //   1. ConfigService.logoUrl — picked up by the top-nav via
-    //      config$ so the brand mark swaps to the uploaded logo
-    //      immediately (instant local feedback). Also written to
-    //      localStorage for this browser's reload survival.
-    //   2. orgs.logo_url via the API — canonical DB record. Top-nav
-    //      reads this in preference to ConfigService on org load so
-    //      other sessions / browsers / fresh visitors all see the
-    //      same mark.
+    // Persist to ConfigService (top-nav reads config$) + orgs.logo_url (canonical DB).
     this.configService.update({ logoUrl });
     this.orgSvc.updateCurrentOrg({ logo_url: logoUrl } as any).subscribe({
       next: () => {

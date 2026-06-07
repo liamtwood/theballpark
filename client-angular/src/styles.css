@@ -1940,6 +1940,38 @@ input.bp-input-soft:focus {
 .bp-btn-grad:hover { box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.28), 0 2px 6px rgba(0,0,0,0.08); }
 .bp-btn-grad:disabled { opacity: .55; cursor: default; box-shadow: none; }
 
+/* ── v1.66dk — DRAWER DENSITY for the shared <app-edit-section> /
+   <app-edit-field>. ONE chrome, scaled down for sidebar drawers; the
+   page/card density is the rules above, unchanged. The consuming SURFACE picks
+   the container (drawer OR page, one at a time) and the matching density flag.
+   Placed after .bp-card / .bp-btn / .bp-fld so source order + specificity
+   resolve in the drawer modifier's favour. ── */
+/* Field: 34px (vs 38px). The .is-edit grey fill/border is inherited from the
+   .bp-fld.is-edit rules above — only the metrics change here. */
+.bp-fld--drawer.p-inputtext,
+.bp-fld--drawer .p-inputtext,
+input.bp-fld--drawer,
+textarea.bp-fld--drawer {
+  height: 34px !important;
+  font-size: 13px !important;
+  padding: 0 9px !important;
+  border-radius: 8px !important;
+}
+/* Textarea grows vertically — undo the fixed field height at both densities. */
+textarea.bp-fld.p-inputtext         { height: auto !important; min-height: 76px !important; padding: 8px 10px !important; }
+textarea.bp-fld--drawer.p-inputtext { min-height: 60px !important; padding: 7px 9px !important; }
+/* Label: 10px (vs 11px) + tighter inter-field gap. */
+.bp-field--drawer .bp-field-label { font-size: 10px; margin-bottom: 4px; }
+.bp-card--drawer .bp-field-grid-2,
+.bp-card--drawer .bp-field-grid-3 { gap: 12px; }
+/* Card shell: 16px padding, serif 20px title, tighter head/foot, 32px pills. */
+.bp-card--drawer { padding: 16px; margin-bottom: 16px; border-radius: 12px; }
+.bp-card--drawer .bp-card-head { margin-bottom: 16px; }
+.bp-card--drawer .bp-card-title { font-size: 20px; }
+.bp-card--drawer .bp-card-foot { margin-top: 16px; }
+.bp-card--drawer .bp-btn-outline,
+.bp-card--drawer .bp-btn-grad { padding: 8px 16px; font-size: 13px; }
+
 /* ── FIELD LABELS & VALUES ── */
 .bp-field-label {
   font-size: var(--text-sm);
