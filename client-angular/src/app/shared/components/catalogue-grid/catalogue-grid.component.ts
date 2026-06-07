@@ -27,6 +27,7 @@ import { OutreachService } from '../../../core/services/outreach.service';
 import { EventDrawerService } from '../../../core/services/event-drawer.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
 import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
+import { PersonaService } from '../../../core/services/persona.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -2548,7 +2549,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     private outreach: OutreachService,
     private eventDrawerSvc: EventDrawerService,
     private cartDrawerSvc: CartDrawerService,
-    private catalogueViewSvc: CatalogueViewService
+    private catalogueViewSvc: CatalogueViewService,
+    private personaSvc: PersonaService
   ) {}
 
   /** v1.65ab — open the shared Project Items cart drawer.
@@ -2620,7 +2622,13 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   // ── Managed view controls (opt-in via [viewControlsKey]) ────────────────
   // The single home for the drawer's "Catalogue view" controls: any catalogue
   // surface (marketplace, supplier store, …) reuses them by setting the input.
-  private get viewControlsLsKey(): string { return `ballpark:catview:${this.viewControlsKey}`; }
+  // v1.66de — role-scoped: the same surface (e.g. supplier-store) keeps a
+  // SEPARATE catalogue view per persona role, so an agent's view of a store
+  // doesn't overwrite the supplier's (and vice-versa). Matches the role-
+  // specific page settings from Step 5.
+  private get viewControlsLsKey(): string {
+    return `ballpark:catview:${this.viewControlsKey}::${this.personaSvc.active?.kind || 'agency'}`;
+  }
 
   private initViewControls(): void {
     if (!this.viewControlsKey) return;
