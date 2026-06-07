@@ -708,6 +708,29 @@ When to use: Catalogue items, team members, categories, send lead
 </p-sidebar>
 ```
 
+### Section + field chrome inside drawers — use the shared standard
+
+For a drawer's **editable attribute sections**, do NOT hand-roll `bp-section-h`
+headers + `bp-input-edit` fields. Use the shared components at drawer density:
+`<app-edit-section density="drawer">` (per-section Edit/Save/Cancel lifecycle) or
+`[editable]="false"` for an always-edit form, with `<app-edit-field density="drawer">`
+for the fields (same component as the page/card surfaces, scaled down — see the
+edit-field/edit-section headers).
+
+Adoption status (Tier 2):
+- ✅ `event-drawer` — per-section lifecycle (`density="drawer"`); Status pill + the
+  type/tier dropdowns kept bespoke.
+- ✅ `supplier-drawer` — always-edit form (`[editable]="false"`); VAT toggle + image
+  panel kept bespoke.
+- ⛔ `item-drawer` — **intentionally left bespoke** (decision: 2026-06-07). It's a
+  tabbed, 3-mode (add/edit/view) editor whose fields are mostly NOT plain
+  attributes — markdown editor, £-prefixed money inputs, several dropdowns, tier
+  pills, dimension-tag chips, an 8-slot image gallery, and an AI-classification
+  panel. Forcing the edit-field/edit-section standard onto it would fit poorly
+  (don't force a misfit — see "One Definition, One Role" below). Revisit only as a
+  dedicated design pass, and only after the field component grows zero-shift
+  `select` + a money `prefix`.
+
 ---
 
 ## One Definition, One Role, One Application
