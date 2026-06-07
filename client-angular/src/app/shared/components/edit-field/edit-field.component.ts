@@ -92,7 +92,10 @@ export type EditFieldDensity = 'card' | 'drawer';
       <span *ngIf="hint" class="bp-field-hint">{{ hint }}</span>
     </div>
   `,
-  styles: ['']
+  // display:contents removes the host box so the inner .bp-field IS the grid
+  // item — otherwise span2 (grid-column on .bp-field-s2) lands on a non-grid
+  // child of the host and silently does nothing.
+  styles: [':host { display: contents; }']
 })
 export class EditFieldComponent {
   @Input() label = '';
