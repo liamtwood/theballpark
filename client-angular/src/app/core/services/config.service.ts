@@ -26,6 +26,10 @@ const THEME_PRESETS: Record<string, ThemePreset> = {
              contrastSoft: '#F6E6E1', contrast: '#D88A6E', contrastStrong: '#7A3A26' },
 };
 
+// p00xx — neutral off-white page ground (parchment→white sweep). Kept in sync
+// with --color-hero-bg in styles.css. Light mode only; dark mode overrides.
+const NEUTRAL_GROUND = '#FAFAF8';
+
 const STORAGE_KEY  = 'ballpark_config';            // legacy single config (migrated)
 const PROFILES_KEY = 'ballpark_config_profiles';   // v1.66an — per (platform, role)
 const ACTIVE_KEY   = 'ballpark_config_active';
@@ -407,7 +411,12 @@ export class ConfigService {
     // "this color" gradient references var(--grad-accent), so they all track
     // the active theme with no per-object config.
     root.style.setProperty('--grad-accent', `linear-gradient(90deg, ${t.accent} 0%, ${t.accent2} 100%)`);
-    root.style.setProperty('--theme-bg', t.bg);
+    // p00xx — parchment→white sweep. The page ground is a neutral off-white,
+    // decoupled from the theme accent (which still drives buttons / active
+    // states). We no longer paint the theme's parchment `t.bg`; we set the
+    // neutral ground (matches --color-hero-bg in styles.css). Dark mode keeps
+    // its own dark ground via the isDarkMode override below.
+    root.style.setProperty('--theme-bg', NEUTRAL_GROUND);
     root.style.setProperty('--theme-empty', t.empty);
     root.style.setProperty('--theme-text', t.text);
     root.style.setProperty('--theme-border', t.border);

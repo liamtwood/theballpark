@@ -18,7 +18,13 @@
   --theme-accent: #D97706;
   --theme-accent-2: #EC4899;   /* secondary accent — gradient stop 2 (overridden by ConfigService) */
   --theme-accent-rgb: 217, 119, 6;   /* primary accent as r,g,b for glows (overridden by ConfigService) */
-  --theme-bg: #F5F0E8;
+  /* p00xx — parchment→white sweep. The page ground is now a neutral off-white
+     (--color-hero-bg), decoupled from the theme accent: pink/amber still drive
+     interaction (buttons, active states) but no longer wash the background.
+     --theme-bg keeps its name (255 consumers) but resolves to the neutral
+     ground; ConfigService.applyTheme sets the same neutral value at runtime
+     (light mode) so themes share one calm ground. */
+  --theme-bg: var(--color-hero-bg);
   --theme-empty: #EDD9A3;
   --theme-text: #92400E;
   --theme-border: #E8D9C0;
@@ -28,6 +34,11 @@
   --color-white: #FFFFFF;
   --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
+  /* p00xx — background hierarchy tokens (parchment→white sweep) */
+  --color-page-bg: #FFFFFF;     /* page body */
+  --color-hero-bg: #FAFAF8;     /* hero + content grounds — subtle off-white, ~2% darker than body */
+  --color-section-bg: #F4F3EF;  /* deeper neutral ground for nested sections (available for tuning) */
+  --color-card-border: #ECEAE4; /* hairline to lift white cards off the off-white ground */
   --color-border: #EBEBEB;
   --color-text-primary: #111111;
   --color-text-secondary: #888888;
