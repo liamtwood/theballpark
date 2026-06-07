@@ -773,6 +773,49 @@ The three checks, concretely:
 When in doubt, ask: *"If this needs to change, how many places do I touch?"* The
 answer must be **one**.
 
+---
+
+## Data Audit — Soft Delete + Audit Trail
+
+Enforced at the DB layer so no service can bypass it. See
+`database/migration_soft_delete_and_audit_trail.sql` + `SWEEP_soft_delete_audit.md`.
+
+**Soft delete.** Every business **entity** table has `deleted_at TIMESTAMP NULL`.
+Hard deletes are forbidden — a `BEFORE DELETE` trigger raises. The delete method
+is `softDelete(id, reason?)` (stamps `deleted_at`), never `delete(id)`. `deleted_at`
+is the one convention — the older `is_active=false` pattern converges to it.
+
+**Audit trail.** Every create / update / soft-delete / restore writes to
+`audit.audit_log` via an `AFTER INSERT OR UPDATE` trigger (column-agnostic — one
+`audit.audit_row()` serves every table). `changed_by` comes from
+`audit.current_user_id()`: a server-set per-request GUC `app.current_user_id`
+(never raw client input) → `auth.uid()` → a SYSTEM sentinel, so it is never NULL
+and never blocks a write. **The backend must `SET LOCAL app.current_user_id` per
+request** or writes attribute to SYSTEM.
+
+**Default read scope** is `WHERE deleted_at IS NULL` on every entity table.
+Surfaces that need deleted rows (admin restore, audit viewer) pass an explicit
+`includeDeleted` / use an `_all` view.
+
+**Exemptions (do NOT force the standard — "don't force a misfit"):**
+- **Junction / sync tables** maintained by delete-and-reinsert (`supplier_item_tag`,
+  `project_item_suppliers`, `project_items`) keep hard delete (guard OFF). Soft-delete
+  there would accumulate dead rows on every sync. They still get the audit trigger.
+- **Append-only ledgers** (`balls_transactions`) — guard ON (immutable), never
+  soft-deleted.
+- **Logs / transient** (`internal.project_log`, `audit.audit_log` itself, and any
+  future session / reset-token / upload-metadata tables) — no soft-delete, no audit.
+
+**New business table checklist:**
+1. Include `deleted_at TIMESTAMP NULL`.
+2. `SELECT audit.add_audit_to_table('<schema>','<table>')` (pass `false` for a
+   junction/sync table to keep it deletable).
+3. Default repository scope excludes deleted rows.
+4. Delete method is `softDelete(id, reason?)` — never `delete(id)`.
+5. Classify it in `SWEEP_soft_delete_audit.md`. **An unaccounted table is a violation.**
+
+Audit-log retention: indefinite for now; revisit at scale.
+
 ## Audit Checklist — Architectural Anti-Patterns
 
 The "One Definition, One Role, One Application" law above states the principle.
