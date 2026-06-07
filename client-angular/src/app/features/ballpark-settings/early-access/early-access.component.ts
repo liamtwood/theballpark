@@ -14,6 +14,7 @@ import { MessageService } from 'primeng/api';
 
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
+import { EditFieldComponent } from '../../../shared/components/edit-field/edit-field.component';
 
 import {
   MarketingService, ContentField, WelcomeSettings, SignupRow
@@ -36,7 +37,7 @@ const ROLE_OPTIONS = [
   imports: [
     CommonModule, FormsModule, DatePipe, LucideAngularModule,
     ButtonModule, InputTextModule, InputTextareaModule, ChipsModule, ToastModule,
-    LoadingSpinnerComponent, StatCardComponent
+    LoadingSpinnerComponent, StatCardComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -171,29 +172,17 @@ const ROLE_OPTIONS = [
                         (onClick)="saveSlide(group)"></p-button>
             </div>
 
+            <!-- v1.66dt — fields on the shared edit-field standard (always-edit
+                 page editor; live dirty-tracking via valueChange). -->
             <div *ngFor="let f of group.fields" class="bp-ea-field">
-              <label class="bp-field-label">{{ f.label }}</label>
-
-              <input *ngIf="f.field_type === 'text'"
-                     pInputText
-                     [(ngModel)]="f.value"
-                     (ngModelChange)="markGroupDirty(group)"
-                     class="bp-input-edit w-full"/>
-
-              <textarea *ngIf="f.field_type === 'longtext'"
-                        pInputTextarea
-                        rows="3"
-                        [(ngModel)]="f.value"
-                        (ngModelChange)="markGroupDirty(group)"
-                        class="bp-input-edit w-full"></textarea>
-
-              <input *ngIf="f.field_type === 'list'"
-                     pInputText
-                     [(ngModel)]="f.value"
-                     (ngModelChange)="markGroupDirty(group)"
-                     class="bp-input-edit w-full"
-                     placeholder="Comma-separated"/>
-
+              <app-edit-field
+                [label]="f.label"
+                [type]="f.field_type === 'longtext' ? 'textarea' : 'text'"
+                [editing]="true"
+                [(value)]="f.value"
+                (valueChange)="markGroupDirty(group)"
+                [placeholder]="f.field_type === 'list' ? 'Comma-separated' : ''">
+              </app-edit-field>
               <p *ngIf="f.help_text" class="bp-ea-help">{{ f.help_text }}</p>
             </div>
           </div>
@@ -222,16 +211,12 @@ const ROLE_OPTIONS = [
               </div>
 
               <div class="bp-ea-field">
-                <label class="bp-field-label">Email subject</label>
-                <input pInputText [(ngModel)]="settings.email_subject" class="bp-input-edit w-full"/>
+                <app-edit-field label="Email subject" [editing]="true" [(value)]="settings.email_subject"></app-edit-field>
                 <p class="bp-ea-help">Variables: <code>{{ '{{name}}' }}</code> <code>{{ '{{email}}' }}</code> <code>{{ '{{company}}' }}</code> <code>{{ '{{role}}' }}</code> <code>{{ '{{created_at}}' }}</code></p>
               </div>
 
               <div class="bp-ea-field">
-                <label class="bp-field-label">Email body template</label>
-                <textarea pInputTextarea rows="10"
-                          [(ngModel)]="settings.email_body_template"
-                          class="bp-input-edit w-full"></textarea>
+                <app-edit-field label="Email body template" type="textarea" [rows]="10" [editing]="true" [(value)]="settings.email_body_template"></app-edit-field>
                 <p class="bp-ea-help">Same variables as subject, plus <code>{{ '{{admin_url}}' }}</code>.</p>
               </div>
 
