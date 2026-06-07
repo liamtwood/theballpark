@@ -89,7 +89,7 @@ import { PersonaService, Persona } from '../../../core/services/persona.service'
       text-align: left;
       font-family: var(--font-body);
     }
-    .bp-persona-row:hover { background: var(--theme-bg); }
+    .bp-persona-row:hover { background: var(--color-fill); }
     .bp-persona-row--active { background: var(--theme-soft); }
     .bp-persona-avatar {
       width: 32px; height: 32px;

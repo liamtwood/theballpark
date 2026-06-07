@@ -118,7 +118,7 @@ type FavTab = 'suppliers' | 'items';
     .bp-fav-subtab  { flex: 1; padding: 12px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.15s; }
     .bp-fav-subtab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
     .bp-fav-count { font-size: 11px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; color: var(--color-text-muted); }
-    .bp-fav-subtab.active .bp-fav-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-fav-subtab.active .bp-fav-count { background: var(--color-fill); border-color: var(--theme-border); color: var(--theme-accent); }
 
     /* SEARCH */
     .bp-sup-search-bar  { padding: 12px 16px; background: var(--color-surface); border-bottom: 0.5px solid var(--color-border); }
@@ -140,7 +140,7 @@ type FavTab = 'suppliers' | 'items';
     .bp-row-card:active { background: var(--color-surface); }
     .bp-row-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-row-img-default { background: linear-gradient(160deg, #1a1a2e, #16213e); }
-    .bp-row-icon-wrap { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-row-icon-wrap { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
     .bp-row-body { flex: 1; min-width: 0; }
     .bp-row-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .bp-row-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

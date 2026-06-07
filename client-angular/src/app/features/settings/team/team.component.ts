@@ -287,11 +287,11 @@ interface InviteCode {
     .bp-sidebar-sublabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
     .bp-sidebar-item     { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 2px; transition: background 0.15s; }
     .bp-sidebar-item:hover { background: var(--color-surface); }
-    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-text); font-weight: 500; }
+    .bp-sidebar-item.active { background: var(--color-fill); color: var(--theme-text); font-weight: 500; }
     .bp-sidebar-arrow { font-size: 10px; color: var(--color-text-muted); }
     .bp-sidebar-item.active .bp-sidebar-arrow { color: var(--theme-accent); }
     .bp-sidebar-count { font-size: 11px; color: var(--color-text-muted); background: var(--color-surface); padding: 1px 7px; border-radius: 20px; border: 0.5px solid var(--color-border); }
-    .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); color: var(--theme-text); border-color: var(--theme-border); }
+    .bp-sidebar-item.active .bp-sidebar-count { background: var(--color-fill); color: var(--theme-text); border-color: var(--theme-border); }
     .bp-sidebar-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 16px 0; }
     .bp-team-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 6px; padding: 5px 10px; margin-bottom: 10px; }
     .bp-team-search:focus-within { border-color: var(--theme-accent); }
@@ -299,7 +299,7 @@ interface InviteCode {
     /* ── VIEW TOGGLE ── */
     .bp-view-toggle { display: flex; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-view-btn    { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: var(--color-surface); cursor: pointer; color: var(--color-text-muted); font-size: 13px; transition: all 0.15s; }
-    .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
+    .bp-view-btn.active { background: var(--color-fill); color: var(--theme-accent); }
 
     /* Section-header add button — sized to match the view-toggle row. */
     :host ::ng-deep .bp-section-add-btn .p-button {
@@ -311,7 +311,7 @@ interface InviteCode {
     /* ── MEMBERS ── */
     .bp-member-row           { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }
     .bp-member-row-clickable { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
-    .bp-member-row-clickable:hover { background: var(--theme-bg); }
+    .bp-member-row-clickable:hover { background: var(--color-fill); }
     .bp-member-grid          { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
     .bp-member-card          { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
     .bp-member-card-footer   { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
@@ -324,7 +324,7 @@ interface InviteCode {
     .bp-code-value   { font-size: 13px; font-weight: 600; color: var(--color-text-primary); font-family: monospace; letter-spacing: 0.04em; margin-bottom: 3px; }
     .bp-code-meta    { font-size: 11px; color: var(--color-text-muted); }
     .bp-copy-btn     { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 6px; padding: 4px 12px; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
-    .bp-copy-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-copy-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--color-fill); }
   `]
 })
 export class TeamComponent implements OnInit {

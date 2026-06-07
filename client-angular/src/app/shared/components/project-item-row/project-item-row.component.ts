@@ -127,7 +127,7 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
     .bp-item-thumb {
       width: 48px; height: 48px;
       border-radius: 8px;
-      background-color: var(--theme-bg);
+      background-color: var(--color-fill);
       background-size: cover;
       background-position: center;
       display: flex;
@@ -138,7 +138,7 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
     .bp-item-row--compact .bp-item-thumb {
       width: 40px; height: 40px;
     }
-    .bp-item-thumb--empty { background-color: var(--theme-bg); }
+    .bp-item-thumb--empty { background-color: var(--color-fill); }
     .bp-item-thumb-letter {
       font-family: var(--font-display);
       font-size: 18px;
@@ -186,7 +186,7 @@ export type ProjectItemRowMode = 'selected' | 'wishlist';
       font-weight: 500;
       letter-spacing: 0.02em;
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 10px;
       font-family: var(--font-body);

@@ -115,7 +115,7 @@ interface Plan {
     /* ── CURRENT PLAN SUMMARY ── */
     .bp-plan-summary     { border: 0.5px solid var(--color-border); border-radius: 10px; overflow: hidden; }
     .bp-plan-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); }
-    .bp-plan-badge       { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--theme-text); background: var(--theme-bg); border: 0.5px solid var(--theme-border); padding: 3px 10px; border-radius: 20px; }
+    .bp-plan-badge       { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--theme-text); background: var(--color-fill); border: 0.5px solid var(--theme-border); padding: 3px 10px; border-radius: 20px; }
 
     /* ── PLAN GRID ── */
     .bp-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -130,7 +130,7 @@ interface Plan {
       display: flex;
       flex-direction: column;
     }
-    .bp-plan-card-active  { border-color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-plan-card-active  { border-color: var(--theme-accent); background: var(--color-fill); }
     .bp-plan-card-popular { border-color: var(--color-text-primary); border-width: 1.5px; }
 
     /* ── POPULAR BADGE ── */

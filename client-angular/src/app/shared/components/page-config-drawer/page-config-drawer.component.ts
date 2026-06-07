@@ -599,7 +599,7 @@ import { pagePatternKey } from '../../../core/utils/page-key';
     }
     .bp-cfg-seg-btn:first-child { border-left: none; }
     .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cfg-seg-btn.p-highlight {

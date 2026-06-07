@@ -428,7 +428,7 @@ export class ImageUploadPanelComponent implements OnInit {
   selectedColor = 'navy';
   imageDisplay: 'cover' | 'contain' = 'cover';
   selectedIconName = '';
-  selectedIconColor = 'var(--theme-bg)';
+  selectedIconColor = 'var(--color-fill)';
   activeTab: 'upload' | 'search' | 'icon' = 'upload';
   unsplashQuery = '';
   unsplashResults: { url: string; thumb: string; description: string; photographer: string }[] = [];
@@ -450,7 +450,7 @@ export class ImageUploadPanelComponent implements OnInit {
     return this.iconOptions.filter(n => n.includes(q));
   }
   iconColors = [
-    'var(--theme-bg)', 'var(--color-surface)',
+    'var(--color-fill)', 'var(--color-surface)',
     '#FEF3C7', '#DBEAFE', '#D1FAE5', '#FDE2E2', '#EDE9FE', '#FEE2E2'
   ];
 

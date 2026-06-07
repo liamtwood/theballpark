@@ -1047,7 +1047,7 @@ export type DetailMode = 'inline' | 'drawer';
        v1.65bp — reverted to --theme-bg parchment. */
     :host {
       display: block;
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
 
     /* v1.65ax — .bp-browse-panel chrome moved to .bp-browse-strip in
@@ -1108,7 +1108,7 @@ export type DetailMode = 'inline' | 'drawer';
       overflow: hidden; background: var(--color-surface);
     }
     :host ::ng-deep .bp-strip-search-dd.p-dropdown {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: none !important;
       border-right: 0.5px solid var(--color-border) !important;
       border-radius: 0 !important; box-shadow: none !important;
@@ -1262,7 +1262,7 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 36px 40px;
       text-align: center;
       border-bottom: 0.5px solid var(--theme-border);
@@ -1389,10 +1389,10 @@ export type DetailMode = 'inline' | 'drawer';
     /* LIST VIEW */
     .bp-list-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border); cursor: pointer; transition: background 0.15s; }
     .bp-list-row:hover { background: var(--color-surface); margin: 0 -12px; padding: 10px 12px; border-radius: 8px; border-bottom-color: transparent; }
-    .bp-list-row-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
+    .bp-list-row-selected { background: var(--color-fill) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
     .bp-list-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-list-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-list-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
+    .bp-list-img-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-list-img-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
     .bp-list-img-logo img { max-width: 36px; max-height: 36px; object-fit: contain; }
     .bp-list-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-list-icon { color: var(--theme-accent); }
@@ -1402,7 +1402,7 @@ export type DetailMode = 'inline' | 'drawer';
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
       padding: 1px 7px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-family: var(--font-body);
     }
     .bp-list-sub { font-size: 12px; color: var(--color-text-muted); }
@@ -1445,8 +1445,8 @@ export type DetailMode = 'inline' | 'drawer';
        .bp-card-logo-img, but the parent now clips too. */
     .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; overflow: hidden; }
     .bp-item-card-img img { max-width: 100%; object-fit: contain; }
-    .bp-item-card-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-item-card-img-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-item-card-img-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-card-icon { color: var(--theme-accent); }
@@ -1528,7 +1528,7 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-primary); font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-card-menu-item:hover { background: var(--theme-bg); }
+    .bp-card-menu-item:hover { background: var(--color-fill); }
     .bp-card-menu-item--danger { color: var(--color-danger); }
     .bp-card-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
     .bp-card-menu-sep { height: 0.5px; background: var(--color-border); margin: 4px 0; }
@@ -1628,7 +1628,7 @@ export type DetailMode = 'inline' | 'drawer';
       font-size: 12px; line-height: 1.6;
       font-family: var(--font-body);
     }
-    .bp-brief-card--cat-desc { background: var(--theme-bg); }
+    .bp-brief-card--cat-desc { background: var(--color-fill); }
     .bp-brief-card--cat-desc .bp-brief-card-text { color: var(--color-text-primary); }
     .bp-brief-card-counts {
       display: flex; align-items: center; gap: 4px;
@@ -1839,8 +1839,8 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-muted); position: relative;
       flex-shrink: 0;
     }
-    .bp-brief-cat-circle--no-image { background-color: var(--theme-bg); }
-    .bp-brief-cat-circle--logo { background: var(--theme-bg); }
+    .bp-brief-cat-circle--no-image { background-color: var(--color-fill); }
+    .bp-brief-cat-circle--logo { background: var(--color-fill); }
     .bp-brief-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; }
     .bp-brief-cat-circle-icon { color: var(--theme-accent); }
     .bp-brief-cat-circle-lucide { color: var(--color-text-muted); }
@@ -1911,8 +1911,8 @@ export type DetailMode = 'inline' | 'drawer';
       background: var(--theme-accent);
       color: var(--color-surface);
     }
-    .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-detail-hero-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-detail-hero-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-detail-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-detail-body { padding: 16px 20px; }
@@ -1932,7 +1932,7 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-detail-parent { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
     .bp-detail-parent:hover { border-color: var(--theme-accent); }
     .bp-detail-parent-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-detail-parent-img-default { background: var(--theme-bg); }
+    .bp-detail-parent-img-default { background: var(--color-fill); }
     .bp-detail-parent-body { flex: 1; min-width: 0; }
     .bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
     .bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }

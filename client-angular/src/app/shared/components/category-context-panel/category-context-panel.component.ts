@@ -378,7 +378,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     }
     :host ::ng-deep .bp-ctx-field-clickable.p-inputtext:hover {
       border-color: var(--theme-accent) !important;
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
     }
 
     /* v1.65x — cart icon + count badge on the pink header. Replaces
@@ -426,7 +426,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       padding: 2px 4px; margin: -2px -4px;
       transition: background 0.15s;
     }
-    .bp-ctx-brief-editable:hover { background: var(--theme-bg); }
+    .bp-ctx-brief-editable:hover { background: var(--color-fill); }
     .bp-ctx-brief-input {
       width: 100%; min-height: 96px;
       padding: 8px 10px;
@@ -523,7 +523,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       font-size: 10px;
       font-weight: 600;
       color: var(--color-text-muted);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: 10px;
     }
     .bp-ctx-tab.active .bp-ctx-tab-count { color: var(--theme-accent); }
@@ -548,7 +548,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       color: var(--color-text-secondary);
       padding: 10px 12px;
       margin-bottom: 10px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 8px;
     }
@@ -657,10 +657,10 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
       transition: border-color 0.12s, background 0.12s;
     }
     .bp-ctx-sup + .bp-ctx-sup { margin-top: 6px; }
-    .bp-ctx-sup:hover { border-color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-ctx-sup:hover { border-color: var(--theme-accent); background: var(--color-fill); }
     .bp-ctx-sup-ic {
       width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       display: flex; align-items: center; justify-content: center;
       font-family: var(--font-display); font-size: 12px; font-weight: 600;
     }
@@ -673,7 +673,7 @@ type PanelTab = 'items' | 'wishlist' | 'brief';
     .bp-ctx-sup-sub { display: block; font-size: 10px; color: var(--color-text-muted); }
     .bp-ctx-sup-count {
       font-size: 10px; font-weight: 600; flex-shrink: 0;
-      color: var(--theme-accent); background: var(--theme-bg);
+      color: var(--theme-accent); background: var(--color-fill);
       border-radius: 10px; padding: 2px 7px;
     }
     .bp-ctx-sup-chev { color: var(--color-text-muted); font-size: 13px; flex-shrink: 0; }

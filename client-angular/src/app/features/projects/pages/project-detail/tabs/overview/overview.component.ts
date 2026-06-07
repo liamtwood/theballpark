@@ -626,7 +626,7 @@ interface MessagesSummary {
       font-family: var(--font-body);
     }
     .bp-event-menu-btn:hover {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-event-actions { position: relative; }
@@ -659,7 +659,7 @@ interface MessagesSummary {
       font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-event-menu-item:hover { background: var(--theme-bg); }
+    .bp-event-menu-item:hover { background: var(--color-fill); }
 
     /* ── 2×2 GRID ───────────────────────────────────────────── */
     .bp-overview-grid {
@@ -776,7 +776,7 @@ interface MessagesSummary {
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-text);
       box-shadow: 0 0 0 0.5px var(--theme-border);
     }

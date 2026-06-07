@@ -303,9 +303,9 @@ interface SupplierForm {
     .bp-image-thumb--logo {
       background-size: contain;
       background-repeat: no-repeat;
-      background-color: var(--theme-bg);
+      background-color: var(--color-fill);
     }
-    .bp-image-thumb--empty { background: var(--theme-bg); }
+    .bp-image-thumb--empty { background: var(--color-fill); }
     .bp-image-empty-text { font-size: 11px; color: var(--color-text-muted); }
 
     .bp-drawer-footer-row {

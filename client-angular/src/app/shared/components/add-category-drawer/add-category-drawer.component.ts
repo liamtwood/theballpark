@@ -76,7 +76,7 @@ import { Category } from '../../../models';
       cursor: pointer; font-family: var(--font-body); transition: all 0.12s; }
     .bp-addcat-cat:hover { border-color: var(--theme-border); }
     .bp-addcat-ic { width: 26px; height: 26px; border-radius: 50%;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .bp-addcat-name { flex: 1; text-align: left; font-size: var(--text-base);
       font-weight: 600; color: var(--color-text-primary); }

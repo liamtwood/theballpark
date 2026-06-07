@@ -295,7 +295,7 @@ interface NamespaceOption {
     .bp-area-icon-row { display: flex; gap: 8px; align-items: center; }
     .bp-area-icon-preview {
       width: 36px; height: 36px; border-radius: 8px;
-      border: 1px solid var(--color-border); background: var(--theme-bg);
+      border: 1px solid var(--color-border); background: var(--color-fill);
       display: flex; align-items: center; justify-content: center;
       color: var(--theme-accent); flex-shrink: 0;
     }
@@ -338,9 +338,9 @@ export class CategoriesComponent implements OnInit {
 
   namespaces: NamespaceOption[] = [
     { id: 'all',       label: 'All',       icon: 'layers',         bg: 'var(--color-surface)' },
-    { id: 'catalogue', label: 'Catalogue', icon: 'shopping-bag',   bg: 'var(--theme-bg)' },
-    { id: 'feedback',  label: 'Feedback',  icon: 'message-square', bg: 'var(--theme-bg)' },
-    { id: 'area',      label: 'Area',      icon: 'compass',        bg: 'var(--theme-bg)' }
+    { id: 'catalogue', label: 'Catalogue', icon: 'shopping-bag',   bg: 'var(--color-fill)' },
+    { id: 'feedback',  label: 'Feedback',  icon: 'message-square', bg: 'var(--color-fill)' },
+    { id: 'area',      label: 'Area',      icon: 'compass',        bg: 'var(--color-fill)' }
   ];
 
   namespaceOptions = [
@@ -412,7 +412,7 @@ export class CategoriesComponent implements OnInit {
       id: '', name: '', namespace: 'catalogue', object_type: 'folder',
       parent_id: null, tagline: '', description: '', model: '',
       tags: [], enabled: true, sort_order: 0,
-      cover_image_url: '', card_color: '', icon_name: '', icon_color: 'var(--theme-bg)'
+      cover_image_url: '', card_color: '', icon_name: '', icon_color: 'var(--color-fill)'
     };
   }
 
@@ -570,7 +570,7 @@ export class CategoriesComponent implements OnInit {
   private beginAreaIconEdit(a: FeedbackCategory) {
     this.uploadAreaId = a.id;
     this.uploadAreaIconName = a.icon_name || '';
-    this.uploadAreaIconColor = a.icon_color || 'var(--theme-bg)';
+    this.uploadAreaIconColor = a.icon_color || 'var(--color-fill)';
     this.uploadAreaName = a.name;
     this.cdr.detectChanges();
   }
@@ -598,7 +598,7 @@ export class CategoriesComponent implements OnInit {
       description: a.description || '',
       sort_order: a.sort_order ?? 0,
       icon_name: a.icon_name || '',
-      icon_color: a.icon_color || 'var(--theme-bg)'
+      icon_color: a.icon_color || 'var(--color-fill)'
     };
     this.showImagePanel = false;
     this.showDrawer = true;
@@ -610,7 +610,7 @@ export class CategoriesComponent implements OnInit {
     this.uploadCoverUrl = cat.cover_image_url || '';
     this.uploadCardColor = cat.card_color || '';
     this.uploadIconName = cat.icon_name || '';
-    this.uploadIconColor = cat.icon_color || 'var(--theme-bg)';
+    this.uploadIconColor = cat.icon_color || 'var(--color-fill)';
     this.uploadSearchTerm = cat.name;
     this.cdr.detectChanges();
   }
@@ -657,7 +657,7 @@ export class CategoriesComponent implements OnInit {
       cover_image_url: c.cover_image_url || '',
       card_color: c.card_color || '',
       icon_name: c.icon_name || '',
-      icon_color: c.icon_color || 'var(--theme-bg)'
+      icon_color: c.icon_color || 'var(--color-fill)'
     };
     this.showImagePanel = false;
     this.showDrawer = true;

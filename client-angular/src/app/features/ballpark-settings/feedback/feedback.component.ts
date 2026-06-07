@@ -273,7 +273,7 @@ type ViewMode = 'card' | 'list' | 'table';
       display: flex; align-items: center; justify-content: center;
       border: 2.5px solid transparent;
       transition: width 0.18s, height 0.18s, border-color 0.15s;
-      color: var(--theme-accent); background: var(--theme-bg);
+      color: var(--theme-accent); background: var(--color-fill);
       box-shadow: 0 0 0 0.5px var(--color-border);
     }
     /* When icon_color is set on the area, an inline style fills the
@@ -333,7 +333,7 @@ type ViewMode = 'card' | 'list' | 'table';
       font-size: 13px !important;
     }
     :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
       color: var(--theme-accent) !important;
     }
     :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none !important; }
@@ -345,20 +345,20 @@ type ViewMode = 'card' | 'list' | 'table';
     .bp-fb-type-pill {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 11px; font-weight: 500; text-transform: capitalize;
     }
     .bp-fb-area-pill {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 11px; font-weight: 500;
     }
     .bp-fb-page-cell { font-size: 12px; color: var(--color-text-secondary); }
     .bp-muted-text { color: var(--color-text-muted); font-size: 12px; }
     .bp-fb-version-pill {
       display: inline-flex; padding: 1px 7px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
     }
     .bp-fb-tests-pill {
@@ -367,7 +367,7 @@ type ViewMode = 'card' | 'list' | 'table';
       font-size: 11px; font-weight: 500;
     }
     .bp-fb-tests-pill--todo {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       border: 0.5px solid var(--theme-border, var(--color-border));
     }
@@ -394,7 +394,7 @@ type ViewMode = 'card' | 'list' | 'table';
     /* Bulk action bar */
     .bp-fb-bulk-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 28px;
-      background: var(--theme-bg); border-bottom: 0.5px solid var(--color-border);
+      background: var(--color-fill); border-bottom: 0.5px solid var(--color-border);
     }
     .bp-fb-bulk-count { font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
     .bp-fb-bulk-btn {

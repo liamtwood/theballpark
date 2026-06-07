@@ -1005,7 +1005,7 @@ interface VendorThread {
     .bp-badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
     .bp-badge-quoted  { background: var(--color-quoted-bg);  color: var(--color-quoted-text); }
     .bp-badge-booked  { background: var(--color-booked-bg);  color: var(--color-booked-text); }
-    .bp-badge-default { background: var(--theme-bg);          color: var(--theme-accent); }
+    .bp-badge-default { background: var(--color-fill);          color: var(--theme-accent); }
 
     /* v1.65cr (p0006) — old .bp-msg-card-tile / -top / -av / -name /
        -time / -prev / -foot rules removed; the card view now uses the
@@ -1029,7 +1029,7 @@ interface VendorThread {
       letter-spacing: 0.04em;
       color: var(--color-text-muted);
       border-bottom: 0.5px solid var(--color-border);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-msg-table td {
       padding: 9px 12px;
@@ -1131,7 +1131,7 @@ interface VendorThread {
     }
     .bp-thread-drawer-chip-badge {
       padding: 2px 6px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: var(--radius-pill);
       font-size: 10px;
       font-weight: 600;
@@ -1353,7 +1353,7 @@ interface VendorThread {
     .bp-cat-waiting { background: var(--color-waiting-bg); border-color: var(--color-waiting-border); color: var(--color-waiting-text); }
     .bp-cat-quoted  { background: var(--color-quoted-bg); border-color: var(--color-quoted-border); color: var(--color-quoted-text); }
     .bp-cat-booked  { background: var(--color-booked-bg); border-color: var(--color-booked-border); color: var(--color-booked-text); }
-    .bp-cat-default { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-cat-default { background: var(--color-fill); border-color: var(--theme-border); color: var(--theme-accent); }
     .bp-thread-info { flex: 1; min-width: 0; }
     .bp-thread-name { font-family: var(--font-display); font-size: 16px; font-weight: 400; color: var(--color-text-primary); }
     .bp-thread-sub  { font-size: 11px; color: var(--color-text-muted); }
@@ -1382,7 +1382,7 @@ interface VendorThread {
       letter-spacing: 0.06em; text-transform: uppercase;
       transition: background 0.12s;
     }
-    .bp-thread-sec-head:hover { background: var(--theme-bg); }
+    .bp-thread-sec-head:hover { background: var(--color-fill); }
     .bp-thread-sec-head lucide-icon { color: var(--theme-accent); flex-shrink: 0; }
     .bp-thread-sec-label { flex-grow: 0; }
     .bp-thread-sec-badge {
@@ -1473,7 +1473,7 @@ interface VendorThread {
       flex: 1; overflow-y: auto;
       padding: 12px 14px;
       display: flex; flex-direction: column; gap: 8px;
-      background-color: var(--color-thread-bg, var(--theme-bg));
+      background-color: var(--color-thread-bg, var(--color-fill));
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       background-attachment: local;
       min-height: 200px;
@@ -1564,7 +1564,7 @@ interface VendorThread {
     .bp-msg-bubble:hover .bp-msg-bubble-reply { opacity: 1; }
     .bp-msg-bubble-reply:hover {
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-msg-bubble-reply lucide-icon { line-height: 0; }
     /* v1.65g0 — delete trash icon. Same hover-fade vocabulary as
@@ -1646,7 +1646,7 @@ interface VendorThread {
     .bp-quoted-items { margin-top: 10px; border-top: 0.5px solid var(--color-border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .bp-quoted-items-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
     .bp-quoted-item { display: flex; align-items: center; gap: 10px; background: var(--color-surface); border: var(--border-hairline); border-radius: var(--radius-button); padding: 9px 11px; }
-    .bp-quoted-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--theme-bg); border: 0.5px solid var(--theme-border); display: flex; align-items: center; justify-content: center; color: var(--theme-accent); flex-shrink: 0; }
+    .bp-quoted-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--color-fill); border: 0.5px solid var(--theme-border); display: flex; align-items: center; justify-content: center; color: var(--theme-accent); flex-shrink: 0; }
     .bp-quoted-item-body { flex: 1; min-width: 0; }
     .bp-quoted-item-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
     .bp-quoted-item-desc { font-size: 11px; color: var(--color-text-muted); }
@@ -1686,7 +1686,7 @@ interface VendorThread {
       white-space: nowrap;
       transition: background 0.12s, border-color 0.12s;
     }
-    .bp-compose-chip:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
+    .bp-compose-chip:hover { background: var(--color-fill); border-color: var(--theme-accent); }
     .bp-compose-ph {
       display: flex; gap: 6px; align-items: center;
       padding: 6px 0;

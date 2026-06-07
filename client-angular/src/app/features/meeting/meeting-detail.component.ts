@@ -220,7 +220,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
       cursor: pointer; font-family: var(--font-body); transition: color 0.15s;
     }
     .bp-mtg-back:hover { color: var(--theme-accent); }
-    .bp-mtg-header-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--theme-accent); text-transform: uppercase; background: var(--theme-bg); padding: 2px 8px; border-radius: 4px; }
+    .bp-mtg-header-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--theme-accent); text-transform: uppercase; background: var(--color-fill); padding: 2px 8px; border-radius: 4px; }
     .bp-mtg-header-title { flex: 1; text-align: center; font-size: 13px; color: var(--color-text-muted); font-weight: 500; }
     .bp-mtg-open-btn {
       font-size: 12px; font-weight: 500; color: var(--theme-accent);
@@ -260,7 +260,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
       border: none; background: var(--color-surface); color: var(--color-text-muted);
       cursor: pointer; transition: all 0.15s;
     }
-    .bp-mtg-type-pill.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 600; }
+    .bp-mtg-type-pill.active { background: var(--color-fill); color: var(--theme-accent); font-weight: 600; }
     :host ::ng-deep .bp-mtg-date-cal { max-width: 180px; }
     :host ::ng-deep .bp-mtg-date-input {
       font-size: 12px !important; color: var(--color-text-muted) !important;
@@ -294,7 +294,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
       font-family: var(--font-body); cursor: pointer;
     }
     .bp-mtg-agenda-item { cursor: pointer; border-radius: 6px; padding: 5px 4px; transition: background 0.1s; }
-    .bp-mtg-agenda-item:hover { background: var(--theme-bg); }
+    .bp-mtg-agenda-item:hover { background: var(--color-fill); }
     .bp-mtg-agenda-linked { color: var(--theme-accent); display: flex; align-items: center; flex-shrink: 0; }
     .bp-mtg-reorder {
       display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
@@ -316,7 +316,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
       opacity: 0; transition: opacity 0.15s; border-radius: 50%; flex-shrink: 0;
     }
     .bp-mtg-agenda-item:hover .bp-mtg-remove, .bp-mtg-row:hover .bp-mtg-remove { opacity: 1; }
-    .bp-mtg-remove:hover { color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-mtg-remove:hover { color: var(--theme-accent); background: var(--color-fill); }
 
     .bp-mtg-inline-add { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
     .bp-mtg-add-circle {
@@ -329,7 +329,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
 
     .bp-mtg-notes {
       width: 100%; flex: 1; min-height: 120px; border: none !important; outline: none;
-      background: var(--theme-bg) !important; border-radius: 10px; padding: 14px 16px;
+      background: var(--color-fill) !important; border-radius: 10px; padding: 14px 16px;
       font-size: 14px; line-height: 1.7; color: var(--color-text-primary);
       font-family: var(--font-body); resize: none;
     }
@@ -340,7 +340,7 @@ import { MarkdownEditorComponent } from '../../shared/components/markdown-editor
       padding: 8px 4px; border-bottom: 0.5px solid var(--color-border);
       cursor: pointer; border-radius: 6px; transition: background 0.1s;
     }
-    .bp-mtg-row:hover { background: var(--theme-bg); }
+    .bp-mtg-row:hover { background: var(--color-fill); }
     .bp-mtg-row--done { opacity: 0.5; }
     .bp-mtg-row--done .bp-mtg-row-title { text-decoration: line-through; }
     .bp-mtg-row-title { flex: 1; font-size: 13px; color: var(--color-text-primary); min-width: 0; }

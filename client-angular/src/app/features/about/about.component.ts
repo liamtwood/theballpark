@@ -12,7 +12,7 @@ import { ConfigService } from '../../core/services/config.service';
     <div style="max-width:640px;margin:0 auto;">
       <div style="background:var(--color-surface);border:0.5px solid var(--color-border);border-radius:10px;padding:32px;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-          <div style="width:48px;height:48px;background:var(--theme-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:48px;height:48px;background:var(--color-fill);border-radius:10px;display:flex;align-items:center;justify-content:center;">
             <lucide-icon name="circle-dot" [size]="24" style="color:var(--theme-accent);"></lucide-icon>
           </div>
           <div>
@@ -21,7 +21,7 @@ import { ConfigService } from '../../core/services/config.service';
           </div>
         </div>
         <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:24px;">{{ platformName }} gives event agencies real market intelligence to estimate, plan and procure production with confidence.</p>
-        <div style="background:var(--theme-bg);border-radius:10px;padding:20px;margin-bottom:24px;">
+        <div style="background:var(--color-fill);border-radius:10px;padding:20px;margin-bottom:24px;">
           <h2 style="font-size:var(--text-md);font-weight:600;color:var(--color-text-primary);margin-bottom:12px;">How {{ creditLabel }}s Work</h2>
           <p style="font-size:var(--text-sm);color:var(--theme-text);margin-bottom:12px;">{{ creditLabel }}s are your currency for requesting supplier estimates. Each estimate costs {{ creditLabel.toLowerCase() }}s based on its value:</p>
           <div style="font-size:var(--text-sm);">
@@ -33,7 +33,7 @@ import { ConfigService } from '../../core/services/config.service';
         </div>
         <div style="display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--color-text-muted);">
           <span>Built with</span>
-          <span style="background:var(--theme-bg);color:var(--theme-text);padding:2px 8px;border-radius:4px;font-weight:500;">
+          <span style="background:var(--color-fill);color:var(--theme-text);padding:2px 8px;border-radius:4px;font-weight:500;">
             <lucide-icon name="sparkles" [size]="10" style="display:inline;vertical-align:middle;margin-right:2px;"></lucide-icon>Claude AI
           </span>
           <span>by Anthropic</span>

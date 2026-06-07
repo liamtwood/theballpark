@@ -277,7 +277,7 @@ const ROLE_OPTIONS = [
       padding: 6px 12px;
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-button);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       font-family: var(--font-body); font-size: 12px; font-weight: 600;
       text-decoration: none;
@@ -416,7 +416,7 @@ const ROLE_OPTIONS = [
     .bp-ea-role-pill {
       display: inline-flex; align-items: center;
       padding: 3px 10px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-text);
       border: 0.5px solid var(--theme-border);
       border-radius: 20px;
@@ -497,7 +497,7 @@ const ROLE_OPTIONS = [
       color: var(--color-text-muted);
     }
     .bp-ea-help code {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 1px 5px;
       border-radius: 3px;
       font-family: ui-monospace, 'SF Mono', monospace;
@@ -518,7 +518,7 @@ const ROLE_OPTIONS = [
       justify-content: flex-end;
     }
     .bp-ea-settings-preview {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 6px;
       padding: 16px;

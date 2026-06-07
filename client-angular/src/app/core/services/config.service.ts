@@ -422,12 +422,15 @@ export class ConfigService {
     root.style.setProperty('--theme-contrast-strong', t.contrastStrong);
 
     if (this.isDarkMode) {
-      root.style.setProperty('--theme-bg', this.darkenForDark(t.accent));
+      // v1.66dp (Cleanup 2) — dark ground is theme-derived (the one dynamic
+      // case). Set the SINGLE knob --color-ground-base; every ground/hero/fill
+      // role token references it, so they all darken together.
+      root.style.setProperty('--color-ground-base', this.darkenForDark(t.accent));
       root.style.setProperty('--theme-border', this.darkenBorderForDark(t.accent));
     } else {
       // Light mode → defer to the CSS :root token; clear any prior dark inline
       // so there is never a stale JS value shadowing the single source.
-      root.style.removeProperty('--theme-bg');
+      root.style.removeProperty('--color-ground-base');
     }
   }
 

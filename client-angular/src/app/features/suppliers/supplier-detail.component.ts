@@ -431,7 +431,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     </div>
   `,
   styles: [`
-    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--color-fill); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
     .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 2px; }
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
@@ -465,7 +465,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
        a continuous parchment surface. */
 
     .bp-supplier-home-ground {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 24px 20px;
       min-height: calc(100vh - var(--nav-height) - 64px);
     }
@@ -649,7 +649,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     .bp-home-cat-card-img {
       width: 100%;
       height: 96px;
-      background-color: var(--theme-bg);
+      background-color: var(--color-fill);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -657,7 +657,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       overflow: hidden;     /* clips the zoom to the 96px image area */
     }
     .bp-home-cat-card-img--fallback {
-      background: linear-gradient(135deg, var(--theme-bg) 0%, var(--theme-border) 100%);
+      background: linear-gradient(135deg, var(--color-fill) 0%, var(--theme-border) 100%);
     }
     .bp-home-cat-card-initial {
       font-family: var(--font-display);
@@ -693,7 +693,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       align-items: flex-start;
       gap: 12px;
       padding: 14px 16px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 10px;
       text-decoration: none;

@@ -710,6 +710,216 @@ When to use: Catalogue items, team members, categories, send lead
 
 ---
 
+## One Definition, One Role, One Application
+
+> **No token may have two definitions. No token may have two unrelated roles.
+> No shared standard may be hand-applied at consumer sites.**
+> When you see any of the three, **extract / unify / split** until it is one
+> definition, one role, one application.
+
+This is the umbrella law; "Extract Before Duplicate" (below) is its markup
+instance. We have now fixed three instances of the same bug class — *shared
+standard, multiple definitions or hand-applied at each site, drift inevitable*:
+
+| Disguise | Symptom | Fix |
+|---|---|---|
+| **CSS classes** (the editable field) | `is-edit` hand-wired per field; one instance routed it to the wrong element on `p-inputNumber` | extracted `<app-edit-section>` + `<app-edit-field>` — the wiring lives in one component |
+| **Storage shape** (page-settings) | catalogue-view keyed by surface, read by role — writer and reader assumed different shapes | role-scoped the storage key (Step 5a) |
+| **Colour tokens** (the page ground) | `--theme-bg` defined in CSS *and* overwritten in JS; one token painting ground + hero + fills + rings | one literal `--color-ground-base`; role tokens (`--color-page-ground` / `--color-hero-bg` / `--color-fill` / `--color-focus-ring`); JS only sets the dark value (Cleanups 1 + 2) |
+
+The three checks, concretely:
+1. **One definition** — a value (colour, size, label, config) is declared in
+   exactly one place. No CSS-token-shadowed-by-JS, no constant duplicated across
+   files. Change it once, everything follows.
+2. **One role** — a token/variable means exactly one thing. If `--x` paints both
+   the page ground and decorative fills, split it the moment you notice — not
+   when the two roles finally need to diverge under pressure.
+3. **One application** — a shared standard (component, token, behaviour) is
+   applied through one mechanism, not re-typed at each consumer. If every page
+   hand-writes the same markup/binding, extract it; if a rule is an opt-in
+   allow-list that pages can silently fall out of, make it the default.
+
+When in doubt, ask: *"If this needs to change, how many places do I touch?"* The
+answer must be **one**.
+
+## Audit Checklist — Architectural Anti-Patterns
+
+The "One Definition, One Role, One Application" law above states the principle.
+This section is the **operational checklist** every substantive audit must run
+through, not just answer its specific question.
+
+**Why this exists:** every architectural drift bug we've found has been an
+instance of the same meta-class — *shared standard, multiple definitions or
+hand-applied at each consumer*. We were catching them retail, after they bit,
+because audits were question-shaped ("is X consistent?") rather than
+class-shaped ("what categories of inconsistency exist here?"). Naming the
+classes turns reactive bug-hunting into proactive prevention.
+
+### How to use this checklist
+
+Every audit report (whether by a human, Claude, or any agent) must have
+**two parts**:
+
+1. **The specific finding** — answer to the question that triggered the audit.
+2. **Standing-checklist scan** — explicit pass through the seven classes below,
+   each either *"none found"* or a list of findings.
+
+The second pass takes 5–10 extra minutes. It catches the next bug class before
+it ships. Report template:
+
+```
+Audit: [question being asked]
+
+Part 1 — Specific finding
+[answer]
+
+Part 2 — Standing checklist scan
+- Duplicate source of truth: none found / [findings]
+- Shared standard, hand-applied: none found / [findings]
+- Overloaded token / key: none found / [findings]
+- Behavioral drift across structural reuse: none found / [findings]
+- Allow-list when default-on is correct: none found / [findings]
+- Read/write key mismatch: none found / [findings]
+- Container-coupled logic: none found / [findings]
+```
+
+### The seven anti-pattern classes
+
+**1. Duplicate source of truth**
+
+Same value or concept defined in more than one place. Synchronised by hand.
+Drift is inevitable; the only question is when.
+
+- *Examples we've hit:* `--theme-bg` defined in `styles.css` AND overwritten
+  by `applyTheme()` in `config.service.ts`. A `DEFAULT_CONFIG` constant
+  duplicated across client and server. Hardcoded fallback values inside
+  `var(--token, fallback)` expressions that diverge from the canonical token.
+- *How to spot it:* search for the same literal in more than one file. If a
+  config value matters, it should be defined exactly once and imported
+  everywhere else.
+- *Fix:* delete every copy except one. Make the others import or reference it.
+
+**2. Shared standard, hand-applied per consumer**
+
+Pattern documented or convention established, but each consumer wires it
+themselves rather than consuming a shared component or token. Every consumer
+is a chance to drift.
+
+- *Examples we've hit:* `bp-section` / `bp-field` markup hand-rolled per
+  page (now `<app-edit-section>` + `<app-edit-field>`). `is-edit` class
+  manually attached per field, one instance routed to the wrong DOM element
+  on `p-inputNumber`. `bp-brief-*` parallel namespace invented from scratch
+  for the project Event tab.
+- *How to spot it:* if two pages render the same chrome with hand-written
+  markup, the chrome is hand-applied. If a CSS class appears as a literal
+  string in N consumer templates, it's hand-applied.
+- *Fix:* extract to a shared component or directive; ban the underlying
+  literal/class outside the extracted component's template.
+
+**3. Overloaded token / key**
+
+One name doing multiple unrelated jobs. Today the roles happen to want the
+same value, so it's invisible. Tomorrow when they diverge, you can't separate
+them without touching every consumer.
+
+- *Examples we've hit:* `--theme-bg` painting the page ground, hero band,
+  category circles, sidenav hover, and focus rings — five unrelated roles
+  on one token. A `Config` object carrying mixed concerns (UI prefs +
+  feature flags + role state).
+- *How to spot it:* read the token's name out loud and list every place it's
+  used. If the uses don't share a single sentence-length description, it's
+  overloaded.
+- *Fix:* split into role-named tokens (`--color-page-ground`,
+  `--color-hero-bg`, `--color-fill`, `--color-focus-ring`). Do it before any
+  divergence is needed, not after.
+
+**4. Behavioral drift across structural reuse**
+
+Same component used by N parents, but each parent's handlers do different
+things. Structural audit ("are they using the same component?") says yes;
+behavior diverges silently.
+
+- *Examples we've hit:* `<app-catalogue-grid>` used by `/shop`,
+  `/suppliers/:id`, `/projects/:id/marketplace`. Only `/shop`'s parent
+  refilters entities on `categoryChanged`; the other two updated chip state
+  only. User-visible bug: filters didn't work on two of three surfaces.
+- *How to spot it:* when a shared component fires events, every parent
+  handler must do the same conceptual work. If one parent's handler is
+  longer or shorter than another's, that's the drift smell.
+- *Fix:* move the behavior INTO the shared component where possible (so
+  parents can't drift), or assert via test that all parents' handlers
+  produce equivalent side effects.
+
+**5. Allow-list when default-on is correct**
+
+Opt-in configuration where the opt-out cases are rarer than the opt-in
+cases. Inverts cleanly to default-on with explicit opt-outs.
+
+- *Examples we've hit:* content-ground paint gated by
+  `:has(catalogue-grid|messages-inbox|project-detail)` — settings,
+  ballpark-settings, home, profile all silently fell through to bare white.
+  A feature flag that's enabled for every customer (should just be a default).
+- *How to spot it:* when adding a new page to an allow-list feels routine,
+  the list is wrong. When the opt-outs are countable on one hand, default-on.
+- *Fix:* invert. Make the behavior the default; the rare opt-outs become an
+  explicit exception list.
+
+**6. Read/write key mismatch**
+
+Write under one key, read under another. Code compiles, runtime returns
+undefined or wrong values.
+
+- *Examples we've hit:* drawer wrote page-settings keyed by `role='agent'`;
+  consumer read keyed by `kind='agency'`. Migration wrote `org_type='platform'`;
+  routes resolved by checking `org_type='admin'`.
+- *How to spot it:* every place a config is *written* must use a key
+  string identical to where it's *read*. Audit the storage shape end to end:
+  write call site → storage key → read call site. If those three don't share
+  a typed constant, drift is one rename away.
+- *Fix:* centralize the key as a typed constant or enum, import everywhere.
+
+**7. Container-coupled logic**
+
+Behavior tied to drawer / modal / page rather than to the operation. When
+you move the operation to a different container, the logic breaks.
+
+- *Examples we've hit:* save handlers that only worked inside drawer
+  chrome (relied on drawer lifecycle events). Validation tied to modal
+  open/close rather than form submit.
+- *How to spot it:* ask "if this operation moved from a drawer to a page,
+  would the save/validation still work?" If no, the logic is
+  container-coupled.
+- *Fix:* extract the operation into a service or self-contained component;
+  let containers mount it but not own it.
+
+### Convert what can be automated into guards
+
+Not every anti-pattern can be linted; the ones that can, should be.
+
+| Pattern | Possible guard |
+|---|---|
+| #1 — Duplicate source of truth | Lint rule banning inline `style="background: ..."` in templates; require token usage |
+| #2 — Hand-applied standard | Lint rule banning specific class literals (`bp-fld`, `is-edit`) outside the extracting component's template |
+| #4 — Behavioral drift | Structural test: every parent of `<app-catalogue-grid>` must call a method that mutates the entities array in `onCategoryChanged` |
+| #6 — Read/write key mismatch | Typed constants for storage keys; type-check on get/set |
+
+The catch-net is not a substitute for the checklist. Patterns #3, #5, and #7
+require human judgment. The checklist is the durable mechanism; automation
+is the additional safety net where possible.
+
+### Adding to this checklist
+
+When a new bug class is discovered that doesn't fit one of the seven
+patterns above, add it as a new line item with:
+- Pattern name
+- Example bug that revealed it
+- How to spot it
+- Fix shape
+
+The list grows over time. Every architectural drift bug becomes a permanent
+diagnostic line item so future audits catch it without anyone having to
+remember to look.
+
 ## Extract Before Duplicate
 
 When adding a UI block to a second page, if it would mean copying:

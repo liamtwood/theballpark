@@ -155,7 +155,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
     /* Page — parchment ground, centred single column (the dashboard is
        3-col; /projects is a vertical stack of the three sections). */
     .bp-projects-page {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       min-height: calc(100vh - var(--nav-height));
       /* Horizontal pad mirrors the hero (.bp-hero uses --section-pad) so the
          body content box equals the hero content box — a prerequisite for
@@ -299,7 +299,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       display:flex; align-items:center; justify-content:center;
       transition: background 0.15s, color 0.15s;
     }
-    .bp-card-menu-btn:hover { background:var(--theme-bg); color:var(--theme-accent); }
+    .bp-card-menu-btn:hover { background:var(--color-fill); color:var(--theme-accent); }
     .bp-card-menu {
       position:absolute; top:32px; right:12px; width:150px;
       background:var(--color-surface); border: var(--border-hairline);
@@ -313,7 +313,7 @@ import { ImageUploadPanelComponent } from '../../shared/components/image-upload-
       color:var(--color-text-primary); font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-card-menu-item:hover { background:var(--theme-bg); }
+    .bp-card-menu-item:hover { background:var(--color-fill); }
     .bp-card-menu-item--danger { color:var(--color-danger); }
     .bp-card-menu-item--danger:hover { background:rgba(225, 29, 72, 0.06); }
     .bp-card-menu-sep { height:0.5px; background:var(--color-border); margin:4px 0; }

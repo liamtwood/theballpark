@@ -22,7 +22,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       <a routerLink="/clients" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"><lucide-icon name="arrow-left" [size]="12"></lucide-icon> Back to Clients</a>
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-8">
         <div class="flex items-start gap-4">
-          <div class="w-14 h-14 rounded-xl flex items-center justify-center" style="background:var(--theme-bg);"><lucide-icon name="user" [size]="24" style="color:var(--theme-accent);"></lucide-icon></div>
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center" style="background:var(--color-fill);"><lucide-icon name="user" [size]="24" style="color:var(--theme-accent);"></lucide-icon></div>
           <div class="flex-1">
             <h1 class="text-xl font-bold text-gray-900">{{client.name}}</h1>
             <div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">

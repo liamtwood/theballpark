@@ -424,7 +424,7 @@ type SectionKey = EventDrawerSection;
     /* Project brief — view mode prose + edit-mode textarea + parse pill. */
     .bp-evd-brief-view {
       padding: 9px 12px;
-      background: var(--color-background-secondary, var(--theme-bg));
+      background: var(--color-background-secondary, var(--color-fill));
       border: 0.5px solid var(--color-border);
       border-radius: 6px;
       font-size: 12.5px; line-height: 1.55;
@@ -438,7 +438,7 @@ type SectionKey = EventDrawerSection;
       display: inline-flex; align-items: center; gap: 6px;
       height: 28px; padding: 0 12px;
       border: 0.5px solid var(--theme-accent);
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-radius: 14px;
       font-size: 11.5px; font-weight: 600;
       font-family: var(--font-body);

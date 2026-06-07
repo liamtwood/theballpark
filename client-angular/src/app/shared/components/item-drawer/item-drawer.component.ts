@@ -848,7 +848,7 @@ interface DimensionGroup {
       font-size: 11px;
       font-weight: 500;
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 20px;
       font-family: var(--font-body);
@@ -916,7 +916,7 @@ interface DimensionGroup {
 
     /* Summary card */
     .bp-summary-card {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 10px;
       padding: 12px 14px;
@@ -947,7 +947,7 @@ interface DimensionGroup {
       display: flex;
       align-items: center;
       gap: 8px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 8px;
       padding: 8px 12px;
@@ -999,7 +999,7 @@ interface DimensionGroup {
     .bp-img-slot--empty:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-img-slot--readonly { cursor: default; }
     .bp-img-slot--readonly:hover {
@@ -1104,7 +1104,7 @@ interface DimensionGroup {
       width: 100%;
       margin-bottom: 14px;
       padding: 10px 12px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 8px;
       cursor: pointer;
@@ -1168,7 +1168,7 @@ interface DimensionGroup {
       font-size: 10px; font-weight: 600;
       letter-spacing: 0.04em;
       color: var(--color-text-muted);
-      background: var(--color-surface-2, var(--theme-bg));
+      background: var(--color-surface-2, var(--color-fill));
       border: 0.5px solid var(--color-border);
       border-radius: 20px;
       padding: 3px 9px;
@@ -1216,7 +1216,7 @@ interface DimensionGroup {
       padding: 3px 10px;
       font-size: 11px; font-weight: 500;
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 20px;
       font-family: var(--font-body);

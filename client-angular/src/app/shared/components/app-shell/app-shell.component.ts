@@ -291,10 +291,10 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       background: var(--theme-soft) !important;
       transition: background-color 100ms ease, border-color 150ms ease;
     }
-    .bp-hero-project-pill:hover { background: var(--theme-bg) !important; }
+    .bp-hero-project-pill:hover { background: var(--color-fill) !important; }
     .bp-hero-pill-btn:hover {
       border-color: var(--theme-accent) !important;
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
     }
     :host ::ng-deep .bp-hero-tag.bp-hero-pill-btn .p-tag {
       cursor: pointer;
@@ -330,7 +330,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-hero-pill-menu-item:hover { background: var(--theme-bg); }
+    .bp-hero-pill-menu-item:hover { background: var(--color-fill); }
     .bp-hero-pill-menu-item--danger { color: var(--color-danger); }
     .bp-hero-pill-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
     .bp-hero-pill-menu-sep {
@@ -404,7 +404,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
        default so EVERY page shares the one neutral ground; white cards/panels
        lift off it. --theme-bg is the off-white ground in light mode, the dark
        ground in dark mode. */
-    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; background: var(--theme-bg); }
+    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-page-ground); }
 
     /* ── SIDE NAV ── */
     .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }
@@ -414,8 +414,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-sidenav-home.active .bp-sidenav-org { color: var(--theme-accent); }
     .bp-sidenav-group-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); padding: 12px 16px 4px; }
     .bp-sidenav-item { display: flex; align-items: center; padding: 7px 16px; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-    .bp-sidenav-item:hover { background: var(--theme-bg); color: var(--color-text-primary); }
-    .bp-sidenav-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; border-left-color: var(--theme-accent); }
+    .bp-sidenav-item:hover { background: var(--color-fill); color: var(--color-text-primary); }
+    .bp-sidenav-item.active { background: var(--color-fill); color: var(--theme-accent); font-weight: 500; border-left-color: var(--theme-accent); }
   `]
 })
 export class AppShellComponent implements OnInit, OnDestroy {

@@ -342,7 +342,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       padding: 24px 20px 0;
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-dash-stat {
       display: flex; flex-direction: column;
@@ -365,7 +365,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
       display: grid;
       grid-template-columns: 320px minmax(400px, 1fr) 320px;
       gap: 16px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 16px 20px 24px;
       min-height: calc(100vh - var(--nav-height) - 64px);
     }
@@ -589,7 +589,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
     }
     .bp-cfg-seg-btn:first-child { border-left: none; }
     .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cfg-seg-btn.p-highlight {
@@ -627,7 +627,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
     .bp-fav-subtab  { flex: 1; padding: 10px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.15s; }
     .bp-fav-subtab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
     .bp-fav-count { font-size: 11px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; color: var(--color-text-muted); }
-    .bp-fav-subtab.active .bp-fav-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-fav-subtab.active .bp-fav-count { background: var(--color-fill); border-color: var(--theme-border); color: var(--theme-accent); }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {

@@ -65,7 +65,7 @@ import { MarketplaceProject } from '../../../core/services/marketplace-project.s
       padding: 10px 12px; border: none; background: none; cursor: pointer;
       border-radius: 12px; font-family: var(--font-body); transition: background 0.12s;
     }
-    .bp-mpp-row:hover { background: var(--theme-bg); }
+    .bp-mpp-row:hover { background: var(--color-fill); }
     .bp-mpp-row--active { background: var(--theme-soft); }
     .bp-mpp-row-icon {
       width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;

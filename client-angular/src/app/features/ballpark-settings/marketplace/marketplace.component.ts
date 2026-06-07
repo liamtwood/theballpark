@@ -238,7 +238,7 @@ import { EditFieldComponent } from '../../../shared/components/edit-field/edit-f
   styles: [`
     /* ── LOGO PREVIEW ── */
     .bp-logo-preview     { width: 80px; height: 80px; border-radius: 8px; border: 0.5px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; }
-    .bp-logo-placeholder { width: 80px; height: 80px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
+    .bp-logo-placeholder { width: 80px; height: 80px; border-radius: 8px; border: 0.5px solid var(--color-border); background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
 
     /* ── THEME SWATCHES ── */
     .bp-swatch        { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }

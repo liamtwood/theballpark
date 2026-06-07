@@ -103,7 +103,7 @@ interface SupplierWithState extends Org {
     .bp-sup-tag-group-label:first-child { margin-top:0; }
     .bp-sup-tags { display:flex;flex-wrap:wrap;gap:6px; }
     .bp-sup-tag { font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:0.5px solid var(--color-border);background:#fff;color:var(--color-text-primary);cursor:pointer;font-family:var(--font-body);transition:all 0.15s; }
-    .bp-sup-tag:hover { border-color:var(--theme-accent);color:var(--theme-accent);background:var(--theme-bg); }
+    .bp-sup-tag:hover { border-color:var(--theme-accent);color:var(--theme-accent);background:var(--color-fill); }
     .bp-sup-view-all { font-size:12px;font-weight:500;color:var(--theme-accent);background:none;border:none;cursor:pointer;font-family:var(--font-body);padding:4px 0; }
   `]
 })
