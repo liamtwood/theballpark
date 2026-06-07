@@ -329,7 +329,7 @@ import { registeredIconNames } from '../../../core/icons';
       font-family: inherit;
     }
     .iup-icon-btn:hover { border-color: var(--color-border, #D9CFC2); }
-    .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--theme-bg, #FEF3C7); color: var(--theme-accent, #D97706); }
+    .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--color-fill); color: var(--theme-accent, #D97706); }
     .iup-icon-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
     .iup-search-bar { display: flex; gap: 6px; margin-bottom: 10px; }
     .iup-search-input {
@@ -375,7 +375,7 @@ import { registeredIconNames } from '../../../core/icons';
     .iup-unsplash-credit a { color: var(--theme-accent, #D97706); text-decoration: none; }
     .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
     .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
-    .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
+    .iup-toggle-opt.active { background: var(--color-fill); color: var(--theme-accent, #D97706); font-weight: 600; }
   `]
 })
 export class ImageUploadPanelComponent implements OnInit {

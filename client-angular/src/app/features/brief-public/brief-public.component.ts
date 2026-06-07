@@ -143,7 +143,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     </div>
   `,
   styles: [`
-    :host { display: block; min-height: 100vh; background: var(--theme-bg, #f5f0e8); }
+    :host { display: block; min-height: 100vh; background: var(--color-page-ground); }
     .bp-brief-shell {
       max-width: 800px; margin: 0 auto;
       padding: 24px 16px 48px;
