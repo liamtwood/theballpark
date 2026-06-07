@@ -717,19 +717,27 @@ headers + `bp-input-edit` fields. Use the shared components at drawer density:
 for the fields (same component as the page/card surfaces, scaled down — see the
 edit-field/edit-section headers).
 
-Adoption status (Tier 2):
+Adoption status:
 - ✅ `event-drawer` — per-section lifecycle (`density="drawer"`); Status pill + the
   type/tier dropdowns kept bespoke.
 - ✅ `supplier-drawer` — always-edit form (`[editable]="false"`); VAT toggle + image
   panel kept bespoke.
-- ⛔ `item-drawer` — **intentionally left bespoke** (decision: 2026-06-07). It's a
-  tabbed, 3-mode (add/edit/view) editor whose fields are mostly NOT plain
-  attributes — markdown editor, £-prefixed money inputs, several dropdowns, tier
-  pills, dimension-tag chips, an 8-slot image gallery, and an AI-classification
-  panel. Forcing the edit-field/edit-section standard onto it would fit poorly
-  (don't force a misfit — see "One Definition, One Role" below). Revisit only as a
-  dedicated design pass, and only after the field component grows zero-shift
-  `select` + a money `prefix`.
+- ✅ `ballpark-settings/orgs` — add-org (always-edit) + view-details (read-only,
+  `readonlyAlways`) drawers; org-type dropdown bespoke.
+- ✅ `settings/team` — invite (always-edit) + member-details (view/edit lifecycle)
+  drawers; role dropdown bespoke.
+- ✅ `ballpark-settings/early-access` — content + settings editor fields (card
+  density, always-edit); chips + per-group Save bespoke.
+- ⛔ `item-drawer` **and** `feedback-drawer` — **intentionally left bespoke**
+  (decision: 2026-06-07). Both are specialised editors dominated by NON-attribute
+  controls: item-drawer is tabbed/3-mode with markdown, £-money, several dropdowns,
+  tier pills, dimension chips, an 8-slot gallery, and an AI panel; feedback-drawer
+  is a triage editor with ~6 dropdowns, a markdown notes editor, date/version
+  datalists, and tag chips. In both, the *dropdowns are the substance*, so a clean
+  conversion is blocked on the field component growing a **zero-shift `select`**
+  (plus a money `prefix` for item-drawer). Forcing the standard now would fit poorly
+  (don't force a misfit — see "One Definition, One Role" below). The unblock for
+  BOTH is the same: build zero-shift `select`, then convert in a dedicated pass.
 
 ---
 
@@ -817,10 +825,20 @@ Drift is inevitable; the only question is when.
   by `applyTheme()` in `config.service.ts`. A `DEFAULT_CONFIG` constant
   duplicated across client and server. Hardcoded fallback values inside
   `var(--token, fallback)` expressions that diverge from the canonical token.
+  **Drawer / modal / live-save panels hand-rolling `bg-white` or `#ffffff`
+  literals** while the shell inherits `var(--theme-bg)` — the local literal
+  silently competes with the global token, so a colour sweep on the token
+  doesn't fully propagate. Surface looks "missed" but the actual disease is
+  two definitions for the same field's background.
 - *How to spot it:* search for the same literal in more than one file. If a
   config value matters, it should be defined exactly once and imported
-  everywhere else.
-- *Fix:* delete every copy except one. Make the others import or reference it.
+  everywhere else. For colour specifically, grep for any `bg-white`,
+  `#ffffff`, `#fff`, or inline `style="background: ..."` outside the
+  canonical token definition — every hit is a candidate disease site.
+- *Fix:* delete every copy except one. Make the others import or reference
+  it. For local literals competing with inheritance: delete the literal so
+  the surface inherits naturally; if inheritance is wrong for that surface,
+  use a *role-named* token (not another literal).
 
 **2. Shared standard, hand-applied per consumer**
 
@@ -882,10 +900,20 @@ cases. Inverts cleanly to default-on with explicit opt-outs.
   `:has(catalogue-grid|messages-inbox|project-detail)` — settings,
   ballpark-settings, home, profile all silently fell through to bare white.
   A feature flag that's enabled for every customer (should just be a default).
+  **Coordinated sweep across the app that hits the obvious surfaces but
+  misses modals / drawers / live-save forms** — the sweep was structurally
+  correct against the targets it knew about, but consumers outside the sweep
+  scope silently opted themselves out. (Team's member-details drawer, the
+  invite-member modal, ballpark-settings add-org / view-details drawers,
+  early-access live-save form, feedback dialog — all surfaced in QC after a
+  v1.66dn-style color sweep that was thought complete.)
 - *How to spot it:* when adding a new page to an allow-list feels routine,
   the list is wrong. When the opt-outs are countable on one hand, default-on.
+  For sweeps: any surface NOT enumerated in the sweep report (touched / verified /
+  explicitly skipped) is a candidate miss — see the Sweep Completeness rule below.
 - *Fix:* invert. Make the behavior the default; the rare opt-outs become an
-  explicit exception list.
+  explicit exception list. For coordinated sweeps: enumerate every surface
+  before the sweep runs, not after.
 
 **6. Read/write key mismatch**
 
@@ -914,6 +942,59 @@ you move the operation to a different container, the logic breaks.
   container-coupled.
 - *Fix:* extract the operation into a service or self-contained component;
   let containers mount it but not own it.
+
+### Sweep Completeness — procedural rule for coordinated changes
+
+When running a change that should affect "every editable surface" or
+"every page" or any other app-wide claim, the report must explicitly
+enumerate three categories before the commit lands:
+
+1. **Surfaces changed** — every file/component the sweep modified.
+2. **Surfaces verified unchanged** — every consumer of the affected token /
+   class / pattern that was checked and confirmed to inherit the new
+   behaviour without modification (the inheritance / default-on case).
+3. **Surfaces explicitly skipped** — every consumer that was intentionally
+   not touched, *with the reason* (e.g., "live-save form, no Edit/Save
+   lifecycle so the new component shape doesn't apply").
+
+**Anything not in those three categories is a candidate miss.** A surface
+that's editable but doesn't appear in any list is by definition unverified —
+the sweep author either forgot it exists or hand-waved past it.
+
+The enumeration is done **before** the commit lands, not after the QC
+catches the leftovers. Cost: ~10 minutes scrolling the codebase. Benefit:
+the leftovers don't ship and don't accumulate.
+
+How to build the enumeration:
+- Start from a grep that targets the affected token / class / pattern.
+  Every match is a candidate consumer.
+- For each match, classify: change / verify-inheritance / skip-with-reason.
+- The report's enumeration is that classified list. If a class is empty,
+  state it: "Surfaces skipped: none."
+
+Examples this rule would have caught:
+- The v1.66dn `:has()`-removal commit should have enumerated every page in
+  the app and classified each (the settings / ballpark-settings / home pages
+  would have appeared as "verified inheritance" and the inheritance failure
+  would have surfaced before the commit, not in QC two days later).
+- The Tier 1 → Tier 2 component-adoption work should have enumerated every
+  editable surface in the app (drawers, modals, live-save forms included)
+  and classified the Tier 2 deferrals explicitly. Then the missed surfaces
+  Liam flagged in QC (member details, invite member, add org, view details,
+  early access, feedback) would have shown up as "Pass 2 — deferred,
+  awaiting sign-off" rather than as silent leftovers.
+
+This rule applies to:
+- Any commit that touches a CSS token consumed across the app
+- Any commit that introduces a shared component intended to replace
+  hand-rolled markup
+- Any commit framed as "apply X to every Y"
+- Any commit whose name or description contains "sweep", "all", "every", or
+  "global"
+
+It does NOT apply to localised changes (one component, one bug, one feature).
+The rule's value is in coordinated changes whose scope is implicit; making
+the scope explicit is the whole point.
 
 ### Convert what can be automated into guards
 
