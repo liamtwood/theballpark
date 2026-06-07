@@ -172,6 +172,7 @@ app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/codelists', require('./routes/codelists'));
 app.use('/api/project-items', require('./routes/projectItems'));
+app.use('/api/config', require('./routes/config')); // p0021 — org_type page-settings config
 
 // v1.65cu (p0008) — Public supplier brief surface. No auth on this
 // prefix — access is gated by the unguessable per-message token in

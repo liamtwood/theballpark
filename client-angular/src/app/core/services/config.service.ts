@@ -1,7 +1,11 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { ThemePreset, PlatformConfig } from '../../models';
 import { PersonaService } from './persona.service';
+import { OrgService } from './org.service';
 
 /* p0003 — three-stop contrast set per preset.
    Soft = active-tab light fill; mid = bold-mode hero orbs; strong = active-tab text. */
@@ -80,8 +84,28 @@ export class ConfigService {
   private configSubject = new BehaviorSubject<PlatformConfig>(this.config);
   config$ = this.configSubject.asObservable();
 
-  constructor(private persona: PersonaService) {
+  // ── Piece 2 (p0021) — server-backed config ────────────────────────
+  // localStorage is now only a FAST-PAINT CACHE + degradation layer. The
+  // authoritative store is org_type_config in the DB (one row per org_type).
+  // On init / persona change we paint instantly from cache, then hydrate from
+  // the DB and re-emit. Writes go through to both cache (always) and DB (debounced,
+  // platform-admin only). Every DB path is fail-safe: any error/empty response
+  // keeps the cache → DEFAULT_CONFIG, so the app never blanks.
+  private readonly apiBase = environment.apiUrl;
+  // Coalesces rapid edits (slider drags) into one PUT per org_type.
+  private dbWrite$ = new Subject<string>();
+  // Monotonic per-org_type local-edit counter. Snapshotted when a GET is issued
+  // and re-checked on response so an in-flight hydrate never clobbers a fresh
+  // local edit made while it was outstanding.
+  private localWriteVersion: Record<string, number> = {};
+
+  constructor(
+    private persona: PersonaService,
+    private http: HttpClient,
+    private org: OrgService,
+  ) {
     this.load();
+    this.dbWrite$.pipe(debounceTime(400)).subscribe(orgType => this.flushToDb(orgType));
     // v1.66dd — page-settings profiles are ROLE-SPECIFIC for consumption: the
     // live config always reflects the ACTIVE PERSONA's role profile, not the
     // drawer's last-edited one. active$ is a BehaviorSubject, so this fires
@@ -95,6 +119,31 @@ export class ConfigService {
       case 'supplier': return 'supplier';
       case 'admin':    return 'admin';
       default:         return 'agent';
+    }
+  }
+
+  // ── org_type ⇄ role boundary (p0021) ──────────────────────────────
+  // org_type mirrors orgs.type ('agency' | 'supplier' | 'admin'); the
+  // CONFIG_ROLES label is user-facing ('agent' | 'admin' | 'supplier').
+  private orgTypeForPersona(): string {
+    switch (this.persona.active?.kind) {
+      case 'supplier': return 'supplier';
+      case 'admin':    return 'admin';
+      default:         return 'agency';
+    }
+  }
+  private orgTypeForRole(role: string): string {
+    switch (role) {
+      case 'supplier': return 'supplier';
+      case 'admin':    return 'admin';
+      default:         return 'agency';   // 'agent' → 'agency'
+    }
+  }
+  private roleForOrgType(orgType: string): string {
+    switch (orgType) {
+      case 'supplier': return 'supplier';
+      case 'admin':    return 'admin';
+      default:         return 'agent';    // 'agency' → 'agent'
     }
   }
 
@@ -112,6 +161,8 @@ export class ConfigService {
     this.applyTheme();
     this.applyMode();
     this.configSubject.next({ ...this.config });
+    // ...then hydrate this persona's org_type from the DB (async, fail-safe).
+    this.hydrateFromDb(this.orgTypeForPersona());
   }
 
   get current(): PlatformConfig { return { ...this.config }; }
@@ -189,6 +240,7 @@ export class ConfigService {
     this.profiles[this.activeProfileKey] = { ...this.profiles[this.activeProfileKey], ...partial };
     this.config = this.profiles[this.activeProfileKey];
     this.save();
+    this.queueDbWrite();
     this.applyTheme();
     this.applyMode();
     this.configSubject.next({ ...this.config });
@@ -213,6 +265,7 @@ export class ConfigService {
     profile.pageSettings = ps;
     this.config = profile;
     this.save();
+    this.queueDbWrite();
     this.configSubject.next({ ...this.config });
   }
 
@@ -225,6 +278,8 @@ export class ConfigService {
     this.applyTheme();
     this.applyMode();
     this.configSubject.next({ ...this.config });
+    // Admin authoring: pull the latest DB state for the profile being edited.
+    this.hydrateFromDb(this.orgTypeForRole(role));
   }
 
   private load(): void {
@@ -268,6 +323,76 @@ export class ConfigService {
   private save(): void {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(this.profiles));
     localStorage.setItem(ACTIVE_KEY, this.activeProfileKey);
+  }
+
+  // ── Piece 2 (p0021) — DB hydrate / persist ────────────────────────
+
+  /** Fetch one org_type's config from the DB and overlay it onto its cached
+      profile. DB is authoritative; defaults fill any gaps. Fully fail-safe:
+      an error or empty payload leaves the cache (→ DEFAULT_CONFIG) untouched,
+      so the app never blanks before the migration/seed has run. */
+  private hydrateFromDb(orgType: string): void {
+    const key = profileKey(CONSUMPTION_PLATFORM, this.roleForOrgType(orgType));
+    const versionAtFetch = this.localWriteVersion[orgType] || 0;
+    this.http
+      .get<{ org_type: string; payload: Partial<PlatformConfig> }>(`${this.apiBase}/config/${orgType}`)
+      .subscribe({
+        next: (row) => {
+          const payload = row?.payload || {};
+          // Empty payload (seeded-but-unauthored row, or table missing) → keep
+          // cache/defaults rather than wiping the profile blank.
+          if (!payload || Object.keys(payload).length === 0) return;
+          // A local edit landed while this GET was in flight — don't clobber it.
+          if ((this.localWriteVersion[orgType] || 0) !== versionAtFetch) return;
+          this.profiles[key] = { ...DEFAULT_CONFIG, ...payload };
+          if (!this.profiles[key].themeName || !THEME_PRESETS[this.profiles[key].themeName]) {
+            this.profiles[key].themeName = 'amber';
+          }
+          this.save(); // write-through: next cold start paints the DB state
+          // Re-emit only if this profile is the one currently live/edited.
+          if (key === this.activeProfileKey) {
+            this.config = this.profiles[key];
+            this.applyTheme();
+            this.applyMode();
+            this.configSubject.next({ ...this.config });
+          }
+        },
+        error: () => { /* fail-safe: keep cache → defaults, never blank */ },
+      });
+  }
+
+  /** Mark the active profile dirty + schedule a debounced DB write for it. */
+  private queueDbWrite(): void {
+    const orgType = this.orgTypeForRole(this.activeRole);
+    this.localWriteVersion[orgType] = (this.localWriteVersion[orgType] || 0) + 1;
+    this.dbWrite$.next(orgType);
+  }
+
+  /** Persist one org_type's profile to the DB. PLATFORM ADMIN ONLY — for any
+      other persona this is a no-op (their edits stay a local cache only and are
+      overwritten on the next hydrate). Failures are swallowed: the cache already
+      holds the value, so a backend hiccup is invisible. */
+  private flushToDb(orgType: string): void {
+    if (this.persona.active?.kind !== 'admin') return;
+    const key = profileKey(CONSUMPTION_PLATFORM, this.roleForOrgType(orgType));
+    const payload = this.profiles[key];
+    this.adminUserId().subscribe((id) => {
+      const headers = new HttpHeaders(id ? { 'x-bp-user-id': id } : {});
+      this.http
+        .put(`${this.apiBase}/config/${orgType}`, { payload }, { headers })
+        .subscribe({ error: () => { /* fail-safe: cache already holds it */ } });
+    });
+  }
+
+  /** Current user id for the x-bp-user-id stop-gap auth header (matches the
+      existing admin gate: users[0].id from /org/users). Resolves '' on error. */
+  private adminUserId(): Observable<string> {
+    return new Observable<string>((sub) => {
+      this.org.getUsers().subscribe({
+        next: (users: any[]) => { sub.next(users?.[0]?.id || ''); sub.complete(); },
+        error: () => { sub.next(''); sub.complete(); },
+      });
+    });
   }
 
   applyTheme(): void {
