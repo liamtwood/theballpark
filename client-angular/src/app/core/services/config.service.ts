@@ -26,10 +26,6 @@ const THEME_PRESETS: Record<string, ThemePreset> = {
              contrastSoft: '#F6E6E1', contrast: '#D88A6E', contrastStrong: '#7A3A26' },
 };
 
-// p00xx — neutral off-white page ground (parchment→white sweep). Kept in sync
-// with --color-hero-bg in styles.css. Light mode only; dark mode overrides.
-const NEUTRAL_GROUND = '#FAFAF8';
-
 const STORAGE_KEY  = 'ballpark_config';            // legacy single config (migrated)
 const PROFILES_KEY = 'ballpark_config_profiles';   // v1.66an — per (platform, role)
 const ACTIVE_KEY   = 'ballpark_config_active';
@@ -411,12 +407,11 @@ export class ConfigService {
     // "this color" gradient references var(--grad-accent), so they all track
     // the active theme with no per-object config.
     root.style.setProperty('--grad-accent', `linear-gradient(90deg, ${t.accent} 0%, ${t.accent2} 100%)`);
-    // p00xx — parchment→white sweep. The page ground is a neutral off-white,
-    // decoupled from the theme accent (which still drives buttons / active
-    // states). We no longer paint the theme's parchment `t.bg`; we set the
-    // neutral ground (matches --color-hero-bg in styles.css). Dark mode keeps
-    // its own dark ground via the isDarkMode override below.
-    root.style.setProperty('--theme-bg', NEUTRAL_GROUND);
+    // v1.66do (Cleanup 1) — the page-ground colour has ONE definition: the CSS
+    // :root token (--theme-bg → --color-hero-bg in styles.css). applyTheme no
+    // longer writes --theme-bg in light mode (that inline write made the CSS
+    // token dead and created a second, hand-synced source of truth). It only
+    // OVERRIDES the token for dark mode below.
     root.style.setProperty('--theme-empty', t.empty);
     root.style.setProperty('--theme-text', t.text);
     root.style.setProperty('--theme-border', t.border);
@@ -429,6 +424,10 @@ export class ConfigService {
     if (this.isDarkMode) {
       root.style.setProperty('--theme-bg', this.darkenForDark(t.accent));
       root.style.setProperty('--theme-border', this.darkenBorderForDark(t.accent));
+    } else {
+      // Light mode → defer to the CSS :root token; clear any prior dark inline
+      // so there is never a stale JS value shadowing the single source.
+      root.style.removeProperty('--theme-bg');
     }
   }
 
