@@ -396,17 +396,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
-    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
-    /* v1.65an — paint the scroll viewport with the page ground so the
-       empty area below the 3-col body doesn't reveal white.
-       v1.65bp — reverted to --theme-bg parchment (was --theme-contrast-soft
-       green). Cat + search panels are contained white cards on the
-       parchment ground. */
-    .bp-shell-content:has(app-catalogue-grid),
-    .bp-shell-content:has(app-messages-inbox),
-    .bp-shell-content:has(app-project-detail) {
-      background: var(--theme-bg);
-    }
+    /* v1.65an — paint the scroll viewport with the page ground so the empty
+       area below the body doesn't reveal white.
+       v1.66dn — was a :has() allow-list (catalogue / inbox / project only),
+       which left settings, ballpark-settings, home, etc. on the bare white body
+       and out of step with the parchment→off-white sweep. Promoted to a blanket
+       default so EVERY page shares the one neutral ground; white cards/panels
+       lift off it. --theme-bg is the off-white ground in light mode, the dark
+       ground in dark mode. */
+    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; background: var(--theme-bg); }
 
     /* ── SIDE NAV ── */
     .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }
