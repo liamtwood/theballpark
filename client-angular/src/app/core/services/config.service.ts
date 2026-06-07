@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ThemePreset, PlatformConfig } from '../../models';
+import { PersonaService } from './persona.service';
 
 /* p0003 — three-stop contrast set per preset.
    Soft = active-tab light fill; mid = bold-mode hero orbs; strong = active-tab text. */
@@ -33,6 +34,10 @@ const ACTIVE_KEY   = 'ballpark_config_active';
 export const CONFIG_PLATFORMS = ['Ballpark', 'Platform'] as const;
 export const CONFIG_ROLES     = ['agent', 'admin', 'supplier'] as const;
 const profileKey = (platform: string, role: string) => `${platform}::${role}`;
+// The deployed platform that live users CONSUME (the Platform variant is an
+// authoring-only white-label dimension in the drawer). Consumption resolves
+// to (CONSUMPTION_PLATFORM, <active persona's role>).
+const CONSUMPTION_PLATFORM = 'Ballpark';
 
 const DEFAULT_CONFIG: PlatformConfig = {
   platformName: 'The Ballpark',
@@ -75,10 +80,38 @@ export class ConfigService {
   private configSubject = new BehaviorSubject<PlatformConfig>(this.config);
   config$ = this.configSubject.asObservable();
 
-  constructor() {
+  constructor(private persona: PersonaService) {
     this.load();
+    // v1.66dd — page-settings profiles are ROLE-SPECIFIC for consumption: the
+    // live config always reflects the ACTIVE PERSONA's role profile, not the
+    // drawer's last-edited one. active$ is a BehaviorSubject, so this fires
+    // immediately for the initial activation (theme/mode/config) too.
+    this.persona.active$.subscribe(() => this.activatePersonaProfile());
+  }
+
+  /** CONFIG_ROLES key for the active persona ('agency' persona → 'agent'). */
+  private roleForPersona(): string {
+    switch (this.persona.active?.kind) {
+      case 'supplier': return 'supplier';
+      case 'admin':    return 'admin';
+      default:         return 'agent';
+    }
+  }
+
+  /** Point the live config at the active persona's role profile + re-emit.
+      The drawer can still switch activeProfileKey to author OTHER profiles
+      (setActiveProfile) for the session; the next persona change resets here. */
+  private activatePersonaProfile(): void {
+    const key = profileKey(CONSUMPTION_PLATFORM, this.roleForPersona());
+    if (!this.profiles[key]) this.profiles[key] = { ...DEFAULT_CONFIG };
+    this.activeProfileKey = key;
+    this.config = this.profiles[key];
+    if (!this.config.themeName || !THEME_PRESETS[this.config.themeName]) {
+      this.config.themeName = 'amber';
+    }
     this.applyTheme();
     this.applyMode();
+    this.configSubject.next({ ...this.config });
   }
 
   get current(): PlatformConfig { return { ...this.config }; }

@@ -839,13 +839,18 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     // uses the configurable Events label (projectLabel) for the noun, so
     // renaming events (e.g. "Activation") flows through automatically.
     const eventWord = (this.projectLabel || 'event').toLowerCase();
+    // Persona-appropriate DEFAULT subtitle (a per-role drawer override still
+    // wins via getPageSetting). Suppliers run a shop, not events.
+    const defaultSub = this.isSupplier
+      ? 'How are sales going?'
+      : `What ${eventWord} are we working on today?`;
     const ctx: any = {
       // p0023 / p0032 — no heroTitle: the AppShell computes it from
       // config.heroTitleMode (org / user / greeting). Hero colour is now
       // global (read from ConfigService by the AppShell), so we just flag
       // that this surface uses the configured title.
       useConfiguredTitle: true,
-      heroSub: `What ${eventWord} are we working on today?`,
+      heroSub: defaultSub,
       pills: [],
       // v1.66m — no hero tab band on the dashboard. Home / Inbox /
       // Projects / Marketplace are top-level objects reached from the
