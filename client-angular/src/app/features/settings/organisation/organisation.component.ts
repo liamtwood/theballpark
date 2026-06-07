@@ -107,17 +107,17 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
             <div class="bp-field">
               <label class="bp-field-label">VAT</label>
               <p-inputNumber [(ngModel)]="form.vat" suffix="%" [readonly]="!editingFin"
-                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
+                             [styleClass]="editingFin ? 'w-full bp-fld is-edit' : 'w-full bp-fld'"></p-inputNumber>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Margin</label>
               <p-inputNumber [(ngModel)]="form.margin" suffix="%" [readonly]="!editingFin"
-                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
+                             [styleClass]="editingFin ? 'w-full bp-fld is-edit' : 'w-full bp-fld'"></p-inputNumber>
             </div>
             <div class="bp-field">
               <label class="bp-field-label">Contingency</label>
               <p-inputNumber [(ngModel)]="form.contingency" suffix="%" [readonly]="!editingFin"
-                             styleClass="w-full bp-fld" [class.is-edit]="editingFin"></p-inputNumber>
+                             [styleClass]="editingFin ? 'w-full bp-fld is-edit' : 'w-full bp-fld'"></p-inputNumber>
             </div>
           </div>
 
