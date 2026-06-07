@@ -25,6 +25,8 @@ import {
   EventDrawerService, EventDrawerSection
 } from '../../../core/services/event-drawer.service';
 import { Project, Codelist, Client, Category, ParsedBrief, ParsedBriefCategory } from '../../../models';
+import { EditSectionComponent } from '../edit-section/edit-section.component';
+import { EditFieldComponent } from '../edit-field/edit-field.component';
 
 /**
  * Event drawer — v1.65o.
@@ -70,7 +72,8 @@ type SectionKey = EventDrawerSection;
   imports: [
     CommonModule, FormsModule, TitleCasePipe, LucideAngularModule,
     ButtonModule, InputTextModule, InputTextareaModule,
-    DropdownModule, SidebarModule, ToastModule
+    DropdownModule, SidebarModule, ToastModule,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -97,217 +100,85 @@ type SectionKey = EventDrawerSection;
       <div class="bp-drawer-body" *ngIf="project">
 
         <!-- ═══ SECTION 1: EVENT DETAILS ═══ -->
-        <div class="bp-section-header">
-          <span class="bp-section-title">EVENT DETAILS</span>
-          <div class="bp-section-actions">
-            <ng-container *ngIf="!editing.details">
-              <button class="bp-icon-btn" (click)="startEdit('details')" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editing.details">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('details')"
-                      [disabled]="saving" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('details')"
-                      [disabled]="saving" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
-          </div>
-        </div>
-
-        <!-- v1.31b: section rows reflowed.
-             Row 1: Ref | Status   (Status pill in view mode, dropdown in edit)
-             Row 2: Event name | Client
-             Row 3: Venue | City
-             Ref leads the section per request — Status sits to its right. -->
-        <div class="bp-evd-row bp-evd-row--2">
-          <!-- v1.65g3 — "Ref" was ambiguous (form.po_ref is the
-               CLIENT's PO number, distinct from project.ref which
-               is the auto-generated agency ref shown in the chip
-               above). Renamed to "PO Ref" + null-safe view: a
-               literal string "null" used to fall through the
-               existing || em-dash guard. -->
-          <div class="bp-evd-field">
-            <label class="bp-field-label">PO Ref</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="poRefDisplay"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.po_ref"
-                   placeholder="e.g. TVS-2026-047"
-                   class="w-full bp-input-edit"/>
-          </div>
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Status</label>
-            <div *ngIf="!editing.details" class="bp-evd-status-view">
-              <span class="bp-evd-status-pill"
-                    [style.background-color]="statusColor()">
-                {{ statusLabel() }}
-              </span>
+        <!-- v1.66dm — Tier 2: adopts the shared <app-edit-section> +
+             <app-edit-field> at drawer density. Status keeps its bespoke
+             colour-pill (view) / dropdown (edit) — colour carries meaning. -->
+        <app-edit-section title="Event details" density="drawer"
+                          [(editing)]="editing.details" [saving]="saving"
+                          (edit)="snapshotSection('details')" (cancel)="restoreSection('details')"
+                          (save)="saveSection('details')">
+          <div class="bp-evd-row bp-evd-row--2">
+            <app-edit-field label="PO Ref" density="drawer" [editing]="editing.details"
+                            [(value)]="form.po_ref" placeholder="e.g. TVS-2026-047"></app-edit-field>
+            <div class="bp-evd-field bp-field--drawer">
+              <label class="bp-field-label">Status</label>
+              <div *ngIf="!editing.details" class="bp-evd-status-view">
+                <span class="bp-evd-status-pill" [style.background-color]="statusColor()">{{ statusLabel() }}</span>
+              </div>
+              <p-dropdown *ngIf="editing.details"
+                          [(ngModel)]="form.status_code"
+                          [options]="statusOptions" optionLabel="label" optionValue="code"
+                          styleClass="w-full bp-evd-dropdown" placeholder="Draft"></p-dropdown>
             </div>
-            <p-dropdown *ngIf="editing.details"
-                        [(ngModel)]="form.status_code"
-                        [options]="statusOptions"
-                        optionLabel="label" optionValue="code"
-                        styleClass="w-full bp-evd-dropdown"
-                        placeholder="Draft">
-            </p-dropdown>
           </div>
-        </div>
-        <div class="bp-evd-row bp-evd-row--2">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Event name</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="form.event_name || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.event_name"
-                   class="w-full bp-input-edit"/>
+          <div class="bp-evd-row bp-evd-row--2">
+            <app-edit-field label="Event name" density="drawer" [editing]="editing.details" [(value)]="form.event_name"></app-edit-field>
+            <app-edit-field label="Client" density="drawer" [editing]="editing.details" [(value)]="form.client_name"></app-edit-field>
           </div>
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Client</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="form.client_name || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.client_name"
-                   class="w-full bp-input-edit"/>
+          <div class="bp-evd-row bp-evd-row--2">
+            <app-edit-field label="Venue" density="drawer" [editing]="editing.details" [(value)]="form.venue_name"></app-edit-field>
+            <app-edit-field label="City" density="drawer" [editing]="editing.details" [(value)]="form.venue_city"></app-edit-field>
           </div>
-        </div>
-        <div class="bp-evd-row bp-evd-row--2">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Venue</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="form.venue_name || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.venue_name"
-                   class="w-full bp-input-edit"/>
-          </div>
-          <div class="bp-evd-field">
-            <label class="bp-field-label">City</label>
-            <input pInputText *ngIf="!editing.details"
-                   [value]="form.venue_city || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.details"
-                   [(ngModel)]="form.venue_city"
-                   class="w-full bp-input-edit"/>
-          </div>
-        </div>
+        </app-edit-section>
 
         <!-- ═══ SECTION 2: EVENT TYPE ═══ -->
-        <div class="bp-section-header bp-section-header--top">
-          <span class="bp-section-title">EVENT TYPE</span>
-          <div class="bp-section-actions">
-            <ng-container *ngIf="!editing.type">
-              <button class="bp-icon-btn" (click)="startEdit('type')" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editing.type">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('type')"
-                      [disabled]="saving" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('type')"
-                      [disabled]="saving" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
+        <!-- Dropdowns kept bespoke (view = label, edit = p-dropdown) inside the
+             shared drawer-density section; EF-select zero-shift is a follow-up. -->
+        <app-edit-section title="Event type" density="drawer"
+                          [(editing)]="editing.type" [saving]="saving"
+                          (edit)="snapshotSection('type')" (cancel)="restoreSection('type')"
+                          (save)="saveSection('type')">
+          <div class="bp-evd-row bp-evd-row--2">
+            <div class="bp-evd-field bp-field--drawer">
+              <label class="bp-field-label">Event type</label>
+              <input pInputText *ngIf="!editing.type"
+                     [value]="(form.event_type | titlecase) || '—'"
+                     class="w-full bp-field-readonly" readonly/>
+              <p-dropdown *ngIf="editing.type"
+                          [(ngModel)]="form.event_type"
+                          [options]="eventTypeOptions" optionLabel="label" optionValue="value"
+                          styleClass="w-full bp-evd-dropdown" placeholder="Select event type"></p-dropdown>
+            </div>
+            <div class="bp-evd-field bp-field--drawer">
+              <label class="bp-field-label">Tier</label>
+              <input pInputText *ngIf="!editing.type"
+                     [value]="tierDisplay()"
+                     class="w-full bp-field-readonly" readonly/>
+              <p-dropdown *ngIf="editing.type"
+                          [(ngModel)]="form.tier"
+                          [options]="tierOptions" optionLabel="label" optionValue="code"
+                          styleClass="w-full bp-evd-dropdown" placeholder="Select tier"></p-dropdown>
+            </div>
           </div>
-        </div>
-
-        <div class="bp-evd-row bp-evd-row--2">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Event type</label>
-            <input pInputText *ngIf="!editing.type"
-                   [value]="(form.event_type | titlecase) || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <p-dropdown *ngIf="editing.type"
-                        [(ngModel)]="form.event_type"
-                        [options]="eventTypeOptions"
-                        optionLabel="label" optionValue="value"
-                        styleClass="w-full bp-evd-dropdown"
-                        placeholder="Select event type">
-            </p-dropdown>
-          </div>
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Tier</label>
-            <input pInputText *ngIf="!editing.type"
-                   [value]="tierDisplay()"
-                   class="w-full bp-field-readonly" readonly/>
-            <p-dropdown *ngIf="editing.type"
-                        [(ngModel)]="form.tier"
-                        [options]="tierOptions"
-                        optionLabel="label" optionValue="code"
-                        styleClass="w-full bp-evd-dropdown"
-                        placeholder="Select tier">
-            </p-dropdown>
-          </div>
-        </div>
+        </app-edit-section>
 
         <!-- ═══ SECTION 3: LOGISTICS ═══ -->
-        <div class="bp-section-header bp-section-header--top">
-          <span class="bp-section-title">LOGISTICS</span>
-          <div class="bp-section-actions">
-            <ng-container *ngIf="!editing.logistics">
-              <button class="bp-icon-btn" (click)="startEdit('logistics')" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editing.logistics">
-              <button class="bp-icon-btn bp-icon-save" (click)="saveSection('logistics')"
-                      [disabled]="saving" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEdit('logistics')"
-                      [disabled]="saving" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
+        <!-- Event date is FREE TEXT (often approximate — "Late September"/"TBC"). -->
+        <app-edit-section title="Logistics" density="drawer"
+                          [(editing)]="editing.logistics" [saving]="saving"
+                          (edit)="snapshotSection('logistics')" (cancel)="restoreSection('logistics')"
+                          (save)="saveSection('logistics')">
+          <div class="bp-evd-row bp-evd-row--2">
+            <app-edit-field label="Event date" density="drawer" [editing]="editing.logistics"
+                            [(value)]="form.event_date" placeholder="e.g. 2 Jun 2026 / TBC"></app-edit-field>
+            <app-edit-field label="Duration (days)" type="number" density="drawer"
+                            [editing]="editing.logistics" [(value)]="form.duration_days"></app-edit-field>
           </div>
-        </div>
-
-        <!-- Row 1: Event date | Duration. Event date is FREE TEXT per
-             spec — dates are often approximate ("Late September", "TBC"). -->
-        <div class="bp-evd-row bp-evd-row--2">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Event date</label>
-            <input pInputText *ngIf="!editing.logistics"
-                   [value]="form.event_date || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.logistics"
-                   [(ngModel)]="form.event_date"
-                   placeholder="e.g. 2 Jun 2026 / TBC"
-                   class="w-full bp-input-edit"/>
+          <div class="bp-evd-row bp-evd-row--1">
+            <app-edit-field label="Guest count" type="number" density="drawer"
+                            [editing]="editing.logistics" [(value)]="form.guest_count"></app-edit-field>
           </div>
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Duration (days)</label>
-            <input pInputText *ngIf="!editing.logistics"
-                   [value]="form.duration_days || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.logistics"
-                   type="number" min="1"
-                   [(ngModel)]="form.duration_days"
-                   class="w-full bp-input-edit"/>
-          </div>
-        </div>
-        <!-- Row 2: Guest count (alone, full-width below Event date). -->
-        <div class="bp-evd-row bp-evd-row--1">
-          <div class="bp-evd-field">
-            <label class="bp-field-label">Guest count</label>
-            <input pInputText *ngIf="!editing.logistics"
-                   [value]="form.guest_count || '—'"
-                   class="w-full bp-field-readonly" readonly/>
-            <input pInputText *ngIf="editing.logistics"
-                   type="number" min="1"
-                   [(ngModel)]="form.guest_count"
-                   class="w-full bp-input-edit"/>
-          </div>
-        </div>
+        </app-edit-section>
 
         <!-- ═══ SECTION 4: FINANCIALS ═══
              No subtitle per spec.
@@ -738,7 +609,9 @@ export class EventDrawerComponent implements OnInit, OnDestroy {
   // ── Form sync ───────────────────────────────────────────────────────
   private syncForm(p: Project) {
     this.form = {
-      po_ref:                  p.po_ref,
+      // v1.66dm — sanitise the legacy literal "null" string at the source
+      // (EF shows the raw value; the old poRefDisplay em-dash guard is gone).
+      po_ref:                  (p.po_ref != null && String(p.po_ref).trim().toLowerCase() !== 'null') ? p.po_ref : '',
       event_name:              p.event_name,
       client_name:             p.client_name,
       venue_name:              p.venue_name,
@@ -785,13 +658,24 @@ export class EventDrawerComponent implements OnInit, OnDestroy {
   }
 
   // ── Per-section edit controls ───────────────────────────────────────
-  startEdit(section: SectionKey) {
+  // v1.66dm — <app-edit-section> owns the `editing` flag via [(editing)];
+  // these own the DATA. (edit)→snapshotSection, (cancel)→restoreSection,
+  // (save)→saveSection. startEdit stays for programmatic open (req.section),
+  // where it sets the flag too (which flows into the section via [(editing)]).
+  snapshotSection(section: SectionKey) {
     this.snapshots[section] = { ...this.form };
+  }
+  restoreSection(section: SectionKey) {
+    Object.assign(this.form, this.snapshots[section]);
+    this.cdr.markForCheck();
+  }
+  startEdit(section: SectionKey) {
+    this.snapshotSection(section);
     this.editing[section] = true;
     this.cdr.markForCheck();
   }
   cancelEdit(section: SectionKey) {
-    Object.assign(this.form, this.snapshots[section]);
+    this.restoreSection(section);
     this.editing[section] = false;
     this.cdr.markForCheck();
   }
