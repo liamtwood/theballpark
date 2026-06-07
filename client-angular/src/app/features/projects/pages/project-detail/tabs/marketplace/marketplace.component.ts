@@ -335,9 +335,10 @@ export class MarketplaceComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  /** v1.41a — chip click from <app-catalogue-grid>. Internal filter
-      runs inside the grid; we just track the active id so the chip's
-      "active" state stays in sync with the URL bar. */
+  /** Subcategory click from <app-catalogue-grid>. We pre-load all items, so
+      filtering happens INSIDE the grid (applyFilter on activeSubcategoryId —
+      see the grid's Filtering contract). No refetch needed here; we just keep
+      our copy of the active id in sync for [activeSubcategoryId] binding. */
   onSubcategoryChanged(id: string) {
     this.activeSubcategoryId = id || '';
     this.cdr.detectChanges();

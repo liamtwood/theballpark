@@ -2746,9 +2746,19 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.railExpandedId = this.railExpandedId === cat.id ? null : cat.id;
     this.setCategory(cat.id);
   }
-  /** Rail subcat click — filter to the subcategory (host reloads). */
+  /** Rail subcat click — delegate to the SAME handler the subcategory chips
+      use (onSubcategoryClick) so the left rail and the chip strip behave
+      identically: filter the pre-loaded entities client-side immediately
+      (toggles off if the active sub is re-clicked) AND emit subcategoryChanged
+      so server-backed hosts (/shop) can additionally refetch.
+
+      v1.66di — previously this only emitted, so hosts that pre-load all
+      entities (supplier store, project marketplace) never refiltered on a
+      rail subcat click; only /shop worked, because its refetch swapped the
+      `entities` input and incidentally re-ran applyFilter(). Single source of
+      truth now: see the Filtering contract note on applyFilter(). */
   onRailSubClick(sub: CategoryInfo) {
-    this.subcategoryChanged.emit(sub.id);
+    this.onSubcategoryClick(sub.id);
   }
 
   /** Active filter heading — the selected subcat, else the selected category,
@@ -3746,7 +3756,23 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   }
 
   // ── Filtering ─────────────────────────────────────────────────────────
-
+  //
+  // FILTERING CONTRACT (read before wiring a new host):
+  // The grid OWNS category/subcategory/facet filtering of its `entities`
+  // input. Every category path (setCategory / onCircleClick / rail / sidebar)
+  // and BOTH subcategory paths (chip onSubcategoryClick, rail onRailSubClick)
+  // set the internal active* state and call applyFilter(), which recomputes
+  // `filteredEntities` (what the template renders). ngOnChanges also re-runs
+  // applyFilter() whenever the `entities` input changes.
+  //
+  // The grid ALSO emits categoryChanged / subcategoryChanged. These are NOT
+  // required for filtering — they let server-backed hosts (e.g. /shop) ALSO
+  // refetch a narrowed set from the API. Hosts that pre-load all entities
+  // (supplier store, project marketplace) need only bind `entities` once and
+  // can ignore the events for filtering; the internal filter handles it.
+  // => Do NOT replicate this filter logic in a host. If a chip/rail action
+  //    doesn't filter, the bug is a grid handler that forgot applyFilter(),
+  //    not a missing host refilter.
   private applyFilter() {
     let result = this.entities;
 
