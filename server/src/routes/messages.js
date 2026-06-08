@@ -59,13 +59,6 @@ router.patch('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const msg = await MessageService.hardDelete(req.params.id);
-    if (!msg) return res.status(404).json({ error: 'Not found' });
-    res.json(msg);
-  } catch (err) { next(err); }
-});
 
 /** v1.65cu (p0008) — GET /api/messages/:id/items — message_items rows
     for one outreach message. Used by the agent inbox + the (future)

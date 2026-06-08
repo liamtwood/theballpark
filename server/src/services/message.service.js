@@ -77,11 +77,6 @@ async function update(id, data) {
   return result.rows[0] || null;
 }
 
-async function hardDelete(id) {
-  const result = await pool.query('DELETE FROM messages WHERE id = $1 RETURNING *', [id]);
-  return result.rows[0] || null;
-}
-
 async function getAllByOrg(orgId) {
   // v1.65cs — supplier JOIN added so the global Inbox card renders
   // logos the same way as the project-scoped inbox.
@@ -148,4 +143,4 @@ async function softDelete(id) {
   return result.rows[0] || null;
 }
 
-module.exports = { getAll, getById, getAllByOrg, getAllForSupplier, create, update, hardDelete, softDelete };
+module.exports = { getAll, getById, getAllByOrg, getAllForSupplier, create, update, softDelete };
