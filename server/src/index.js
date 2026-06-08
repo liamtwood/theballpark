@@ -49,6 +49,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:4200'];
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
+// Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
+// pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
+app.use(require('./middleware/user-context'));
 
 // Services
 const OrgService = require('./services/org.service');

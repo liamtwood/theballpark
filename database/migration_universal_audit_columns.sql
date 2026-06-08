@@ -25,11 +25,11 @@
 --    project_item_suppliers, project_items) are maintained by delete-and-reinsert
 --    (taxonomy re-sync on every item save; cart toggles) — they get the columns +
 --    stamp but NOT the hard-delete guard.
---  • SEQUENCING: the guard breaks the 5 existing entity hard-delete call sites
---    (estimate_items, shared.codelists, shared.feedback(_categories), messages
---    .hardDelete, project_categories — see SWEEP doc). Convert those to softDelete
---    first, OR run with v_guard=false, convert, then re-run with v_guard=true.
---    The columns + stamp trigger are safe to run anytime.
+--  • SEQUENCING (confirmed plan): the 5 existing entity hard-delete call sites
+--    (estimate_items, shared.codelists, shared.feedback(_categories),
+--    messages.hardDelete, project_categories — see SWEEP doc) are converted to
+--    softDelete FIRST, so this runs with v_guard=true from the start — no
+--    deferred-guard state.
 -- =============================================================================
 
 create schema if not exists audit;
@@ -106,11 +106,11 @@ declare
   t text;
 begin
   -- ENTITY tables — 6 columns + stamp + hard-delete guard
+  -- (ai_search_hints + statuses SKIPPED per sign-off: reference / regenerable)
   foreach t in array array[
     'orgs','users','clients','categories','items','projects','project_categories',
     'estimates','estimate_items','messages','message_items','message_item_events',
-    'message_item_decisions','quote_requests','tag','ai_search_hints','statuses',
-    'balls_transactions'
+    'message_item_decisions','quote_requests','tag','balls_transactions'
   ] loop
     perform audit.add_audit_columns(v_schema, t, v_guard);
   end loop;

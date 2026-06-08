@@ -32,8 +32,8 @@ change. **SKIPPED** = deferred, with reason.
 | message_item_decisions | uuid | CHANGED | |
 | quote_requests | uuid | CHANGED | |
 | tag | uuid | CHANGED | |
-| ai_search_hints | uuid | CHANGED | low-stakes; SKIP if you prefer |
-| statuses | uuid | CHANGED | reference data |
+| ai_search_hints | uuid | **SKIPPED** | reference/regenerable (sign-off) — no audit columns |
+| statuses | uuid | **SKIPPED** | reference/regenerable (sign-off) — no audit columns; is_active stays |
 | balls_transactions | uuid | CHANGED | append-only ledger — guard ON (immutable); updated_/deleted_ cols moot |
 | project_items | uuid | **JUNCTION** | cart toggle = delete/reinsert (project-item:434, taxonomy:909) |
 | project_item_suppliers | **composite** | **JUNCTION** | delete/reinsert (project-item:281) |
@@ -56,18 +56,30 @@ change. **SKIPPED** = deferred, with reason.
 | shared.bugs | uuid | **SKIPPED** | internal dev/ops tracking |
 | org_type_config | text | **SKIPPED** | Piece 2, not yet created; add columns when its migration runs |
 
-## is_active → deleted_at convergence (per-table; report before running)
-The `softDelete()` services that set **`is_active=false`** (reads filter
-`WHERE is_active=true`) — converge to stamping **`deleted_at`** + read
-`deleted_at IS NULL`:
-- **is_active cohort:** orgs, users, clients, categories, items, projects,
-  project_categories, estimates, statuses (confirmed pattern: e.g.
-  category/client/estimate/project-category `softDelete` = `SET is_active=false`).
-- **already deleted_at (standard):** messages, marketing.guestlist_signup.
-- **Plan (post-migration, app layer):** per service, (1) `softDelete` stamps
-  `deleted_at=now()`, (2) list reads filter `deleted_at IS NULL`, (3) keep
-  `is_active` writes during transition, then drop the `is_active` filter, then
-  drop the column. Done one service at a time so each is independently verifiable.
+## is_active → deleted_at convergence (SIGNED OFF)
+`softDelete()` services that set `is_active=false` (reads filter `is_active=true`)
+converge to stamping `deleted_at` + read `deleted_at IS NULL`. **Per-table call:**
+- **KEEP `is_active`** (genuine distinct concept — publish / visibility / access),
+  alongside the new `deleted_at`: **items, orgs, users**.
+- **DROP `is_active`** (was disguised soft-delete → fully replaced by `deleted_at`):
+  **clients, categories, projects, project_categories, estimates, codelists,
+  favourites**. (`statuses` is SKIPPED entirely — see below — so its is_active is moot.)
+- **Already `deleted_at` ✓:** messages, marketing.guestlist_signup.
+- **Default rule:** drop unless a distinct non-deletion meaning is confirmed by grep.
+- **Plan (post-migration, ONE service per commit, each independently verifiable —
+  do NOT bundle):** (1) `softDelete` stamps `deleted_at=now()`, (2) reads filter
+  `deleted_at IS NULL`, (3) for DROP tables, remove the `is_active` filter/writes
+  then drop the column; for KEEP tables, `is_active` stays as a separate flag.
+
+## Entity base shape (architectural standard — `is_active` vs `status` PENDING Liam)
+Every entity table converges to: `id`, `name`, `description`,
+`status`-or-`is_active` (**Liam picking one** — Opt 1 `status` everywhere /
+Opt 2 `is_active` everywhere + `status_id` on projects+estimates), + the 6 audit
+columns. Dormant columns default NULL/sensible. Junction tables stay minimal:
+FKs + **4** audit columns (`created_at/by`, `deleted_at/by`) — they have no
+meaningful update, so `updated_*` are omitted there.
+*(This migration adds all 6 to junctions for one uniform applier; trimming
+junctions to 4 is a follow-up if the redundancy bothers us.)*
 
 ## Blast radius — 5 hard-delete sites the guard blocks (convert before guard=true)
 - `estimate-item.service.js:135` — estimate_items
@@ -86,7 +98,9 @@ Junction sites that **stay** hard-delete (guard OFF, no change):
 2. **Convert the 5 hard-delete sites** to `softDelete`.
 3. **is_active → deleted_at convergence** (above).
 
-## Open items for sign-off
-1. `ai_search_hints` / `statuses` — CHANGED, or SKIP (low value)?
-2. Junction exemptions confirmed? (`supplier_item_tag` MUST stay deletable.)
-3. Keep `is_active` after convergence, or drop the column once reads move over?
+## Sign-offs (RESOLVED)
+1. ✅ `ai_search_hints` + `statuses` — **SKIP** both (reference/regenerable).
+2. ✅ Junction exemptions — **all 4 stay deletable**.
+3. ✅ `is_active` — KEEP items/orgs/users; DROP the rest (see convergence above).
+4. ✅ Guard — convert 5 sites first; migration runs `v_guard=true` from the start.
+5. ⏳ Entity base shape `is_active` vs `status` — **PENDING Liam** (Opt 1 vs Opt 2).
