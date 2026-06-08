@@ -1,73 +1,92 @@
-# Sweep Completeness — Soft-Delete + Audit Trail (Item 1)
+# Sweep Completeness — Universal Audit Columns + Hard-Delete Guard (Item 1)
 
 Every business table is classified below. **Nothing is unaccounted for.**
-Companion to `migration_soft_delete_and_audit_trail.sql` (read its DESIGN
-DECISIONS block first). Source of truth: `server/src/db/migrate-schemas.js`.
+Companion to `migration_universal_audit_columns.sql`. Source of truth:
+`server/src/db/migrate-schemas.js`.
 
-Legend: **CHANGED** = gets `deleted_at` + audit (+ hard-delete guard).
-**JUNCTION** = audit only, guard OFF (delete-reinsert is its normal op).
-**EXEMPT** = no soft-delete, no audit. **SKIPPED** = deferred, with reason.
+**This migration:** 6 universal audit columns (`created_at/by`, `updated_at/by`,
+`deleted_at/by`) + a BEFORE stamp trigger + a hard-delete guard on entity tables.
+**Deferred to a separate commit this week:** the `audit_log` table + entity-scoped
+audit trigger (Option A, entity-scoped). Versioning is deferred indefinitely.
+
+Legend: **CHANGED** = 6 columns + stamp + hard-delete guard. **JUNCTION** = 6
+columns + stamp, guard OFF (delete-reinsert is its normal op). **EXEMPT** = no
+change. **SKIPPED** = deferred, with reason.
 
 ## Per-environment business schema (public=dev / preview / master)
 
 | Table | PK | Class | Notes |
 |---|---|---|---|
 | orgs | uuid | CHANGED | is_active today → converge to deleted_at |
-| users | uuid | CHANGED | has softDelete (is_active); converge |
-| clients | uuid | CHANGED | converge |
-| categories | uuid | CHANGED | converge |
-| items | uuid | CHANGED | converge |
-| projects | uuid | CHANGED | converge |
-| project_categories | uuid | CHANGED | has `DELETE` site (project-category.service:183) — convert before guard |
-| estimates | uuid | CHANGED | converge |
-| estimate_items | uuid | CHANGED | **hard-deletes today** (estimate-item.service:135) — convert before guard |
-| messages | uuid | CHANGED | **already uses deleted_at** ✓; has `hardDelete` (msg.service:81) — drop/convert |
-| message_items | uuid | CHANGED | conversation model |
-| message_item_events | uuid | CHANGED | conversation model |
-| message_item_decisions | uuid | CHANGED | conversation model |
+| users | uuid | CHANGED | is_active → converge |
+| clients | uuid | CHANGED | is_active → converge |
+| categories | uuid | CHANGED | is_active → converge |
+| items | uuid | CHANGED | is_active → converge |
+| projects | uuid | CHANGED | is_active → converge |
+| project_categories | uuid | CHANGED | is_active → converge; **hard-delete site** (project-category.service:183) |
+| estimates | uuid | CHANGED | is_active → converge |
+| estimate_items | uuid | CHANGED | **hard-deletes** (estimate-item.service:135) — convert before guard |
+| messages | uuid | CHANGED | **already deleted_at** ✓; `hardDelete` (msg.service:81) — convert |
+| message_items | uuid | CHANGED | |
+| message_item_events | uuid | CHANGED | |
+| message_item_decisions | uuid | CHANGED | |
 | quote_requests | uuid | CHANGED | |
-| tag | uuid | CHANGED | tag dictionary (entity) |
-| ai_search_hints | uuid | CHANGED | low-stakes; could SKIP if you prefer |
-| statuses | uuid | CHANGED | reference data; audit valuable, rarely deleted |
-| balls_transactions | uuid | CHANGED* | **append-only ledger** — guard=immutable, audit on insert, never soft-deleted |
-| project_items | uuid | **JUNCTION** | cart toggle = delete/reinsert (project-item:434, taxonomy:909) — guard OFF |
-| project_item_suppliers | **composite** | **JUNCTION** | delete/reinsert (project-item:281) — guard OFF; record_id NULL (D1) |
-| supplier_item_tag | (junction) | **JUNCTION** | full re-sync on every item save (taxonomy:425,483) — guard OFF; **must stay deletable** |
-| favourites | uuid | **JUNCTION** | uses is_active toggle (no delete); audit only |
+| tag | uuid | CHANGED | |
+| ai_search_hints | uuid | CHANGED | low-stakes; SKIP if you prefer |
+| statuses | uuid | CHANGED | reference data |
+| balls_transactions | uuid | CHANGED | append-only ledger — guard ON (immutable); updated_/deleted_ cols moot |
+| project_items | uuid | **JUNCTION** | cart toggle = delete/reinsert (project-item:434, taxonomy:909) |
+| project_item_suppliers | **composite** | **JUNCTION** | delete/reinsert (project-item:281) |
+| supplier_item_tag | (junction) | **JUNCTION** | full re-sync every item save (taxonomy:425,483) — **must stay deletable** |
+| favourites | uuid | **JUNCTION** | is_active toggle (no delete); guard moot |
 
 ## Shared / Marketing / Internal
 
 | Table | PK | Class | Notes |
 |---|---|---|---|
-| shared.feedback | uuid | CHANGED | product data; **hard-deletes** (feedback.service:244-245) — convert before guard |
+| shared.feedback | uuid | CHANGED | **hard-deletes** (feedback.service:244-245) — convert before guard |
 | shared.feedback_categories | uuid | CHANGED | **hard-deletes** (feedback.service:220) — convert |
 | shared.codelists | uuid | CHANGED | **hard-deletes** (codelist.service:103) — convert |
-| shared.feature_flags | uuid | CHANGED | config; audit valuable |
-| marketing.guestlist_signup | uuid | CHANGED | **already soft-deletes** ✓ (marketing.service) |
-| marketing.welcome_content | **text** | CHANGED | CMS config; record_id = the text key (D1) |
-| marketing.welcome_settings | **int=1** | CHANGED | single-row config; record_id = '1' (D1) |
-| internal.project_log | uuid | **EXEMPT** | append-only commit log; auditing it is recursive/pointless |
-| audit.audit_log | bigserial | **EXEMPT** | the audit log itself |
-| shared.backlog | uuid | **SKIPPED** | internal dev/ops tracking, not customer business data — revisit if it becomes a product surface |
-| shared.bugs | uuid | **SKIPPED** | internal dev/ops tracking — same reason |
-| org_type_config | text | **SKIPPED** | Piece 2, not yet created. When its migration runs: add audit (config changes), no soft-delete (fixed 3 rows) |
+| shared.feature_flags | uuid | CHANGED | |
+| marketing.guestlist_signup | uuid | CHANGED | **already deleted_at** ✓ |
+| marketing.welcome_content | **text** | CHANGED | CMS config |
+| marketing.welcome_settings | **int=1** | CHANGED | single-row config |
+| internal.project_log | uuid | **EXEMPT** | append-only commit log |
+| shared.backlog | uuid | **SKIPPED** | internal dev/ops tracking — revisit if it becomes a product surface |
+| shared.bugs | uuid | **SKIPPED** | internal dev/ops tracking |
+| org_type_config | text | **SKIPPED** | Piece 2, not yet created; add columns when its migration runs |
 
-## Blast radius — hard-delete call sites the guard blocks
-Convert these to `softDelete` (set `deleted_at`) **before** enabling the guard
-(`v_guard=true` / the shared+marketing PART) on their table:
+## is_active → deleted_at convergence (per-table; report before running)
+The `softDelete()` services that set **`is_active=false`** (reads filter
+`WHERE is_active=true`) — converge to stamping **`deleted_at`** + read
+`deleted_at IS NULL`:
+- **is_active cohort:** orgs, users, clients, categories, items, projects,
+  project_categories, estimates, statuses (confirmed pattern: e.g.
+  category/client/estimate/project-category `softDelete` = `SET is_active=false`).
+- **already deleted_at (standard):** messages, marketing.guestlist_signup.
+- **Plan (post-migration, app layer):** per service, (1) `softDelete` stamps
+  `deleted_at=now()`, (2) list reads filter `deleted_at IS NULL`, (3) keep
+  `is_active` writes during transition, then drop the `is_active` filter, then
+  drop the column. Done one service at a time so each is independently verifiable.
+
+## Blast radius — 5 hard-delete sites the guard blocks (convert before guard=true)
 - `estimate-item.service.js:135` — estimate_items
 - `feedback.service.js:220/244/245` — shared.feedback(_categories)
 - `codelist.service.js:103` — shared.codelists
 - `message.service.js:81` — messages.hardDelete (softDelete already exists)
 - `project-category.service.js:183` — project_categories
 
-Junction sites that **stay** hard-delete (guard OFF, no change needed):
+Junction sites that **stay** hard-delete (guard OFF, no change):
 `project-item.service.js:281/434`, `taxonomy.service.js:425/483/909`.
 
+## Backend (post-migration, coordinated with the run)
+1. **`SET LOCAL app.current_user_id` middleware** — wrap each request's DB work in
+   a txn that sets the GUC from the resolved user, so the stamp trigger attributes
+   correctly (until then: app-supplied value, else NULL).
+2. **Convert the 5 hard-delete sites** to `softDelete`.
+3. **is_active → deleted_at convergence** (above).
+
 ## Open items for sign-off
-1. **is_active → deleted_at convergence** — app-layer follow-up converts the
-   ~11 is_active services to stamp deleted_at. Keep is_active too, or drop it?
-2. **ai_search_hints / statuses** — CHANGED as above, or SKIP (low value)?
-3. **Junction exemptions** confirmed? (supplier_item_tag MUST stay deletable.)
-4. **changed_by attribution** — backend must `SET LOCAL app.current_user_id`
-   per request (D3); until then all writes attribute to the SYSTEM sentinel.
+1. `ai_search_hints` / `statuses` — CHANGED, or SKIP (low value)?
+2. Junction exemptions confirmed? (`supplier_item_tag` MUST stay deletable.)
+3. Keep `is_active` after convergence, or drop the column once reads move over?
