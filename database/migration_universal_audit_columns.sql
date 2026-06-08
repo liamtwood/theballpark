@@ -25,11 +25,15 @@
 --    project_item_suppliers, project_items) are maintained by delete-and-reinsert
 --    (taxonomy re-sync on every item save; cart toggles) — they get the columns +
 --    stamp but NOT the hard-delete guard.
---  • SEQUENCING (confirmed plan): the 5 existing entity hard-delete call sites
---    (estimate_items, shared.codelists, shared.feedback(_categories),
---    messages.hardDelete, project_categories — see SWEEP doc) are converted to
---    softDelete FIRST, so this runs with v_guard=true from the start — no
---    deferred-guard state.
+--  • SEQUENCING (Option 2 — controlled two-pass, no lingering deferred state):
+--    PASS 1: run with v_guard=FALSE → adds the 6 columns + stamp trigger to every
+--            table, NO hard-delete guard. Purely additive; nothing breaks. Verify
+--            dev unchanged.
+--    Then CC converts the remaining no-is_active hard-delete sites (estimate_items,
+--    shared.feedback(_categories)) to softDelete now that deleted_at exists.
+--    PASS 2: re-run the apply blocks with v_guard=TRUE → activates the guard.
+--    (messages, project_categories, codelists hard-delete sites are already
+--    converted — see SWEEP doc.)
 -- =============================================================================
 
 create schema if not exists audit;
@@ -102,7 +106,7 @@ end $$;
 do $$
 declare
   v_schema text := 'public';   -- <<< CHANGE PER ENV: public (dev) | preview | master
-  v_guard  boolean := true;    -- <<< false until the 5 entity hard-delete sites are converted
+  v_guard  boolean := false;   -- <<< PASS 1 = false (columns only). Flip to true for PASS 2 after estimate_items+feedback are converted.
   t text;
 begin
   -- ENTITY tables — 6 columns + stamp + hard-delete guard
