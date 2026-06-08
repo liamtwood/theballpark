@@ -99,8 +99,10 @@ async function remove(id) {
     err.status = 409;
     throw err;
   }
+  // v1.66e0 (Item 1): soft-delete (was a hard DELETE). getByName already
+  // filters is_active = true, so a removed entry disappears from the live read.
   const result = await pool.query(
-    `DELETE FROM shared.codelists WHERE id = $1 RETURNING *`,
+    `UPDATE shared.codelists SET is_active = false WHERE id = $1 RETURNING *`,
     [id]
   );
   return result.rows[0] || null;
