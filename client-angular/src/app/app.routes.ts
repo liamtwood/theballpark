@@ -121,7 +121,7 @@ const FULL_ROUTES: Routes = [
       // v1.66db — SupplierDetailComponent now serves THREE URL-distinct
       // surfaces via route data.mode/surface:
       //   /suppliers/:id  → public detail (tabbed, read-only)
-      //   /shopfront      → owner's shopfront management (single surface)
+      //   /storefront     → owner's storefront management (single surface)
       //   /store          → owner's catalogue management (single surface)
       {
         path: 'suppliers/:id',
@@ -135,10 +135,13 @@ const FULL_ROUTES: Routes = [
       // same component with a different `surface`. /orders, /analytics, etc.
       // would follow the same pattern.
       {
-        path: 'shopfront',
+        // v1.68c — renamed /shopfront → /storefront (internal URL
+        // consistency: "storefront" management surface vs "store" catalogue).
+        // No legacy /shopfront alias — pre-launch, no saved links to break.
+        path: 'storefront',
         canActivate: [supplierOnlyGuard],
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
-        data: { pageLabel: '', tabs: [], mode: 'manage', surface: 'shopfront', self: true }
+        data: { pageLabel: '', tabs: [], mode: 'manage', surface: 'storefront', self: true }
       },
       {
         path: 'store',

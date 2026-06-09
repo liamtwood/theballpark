@@ -147,7 +147,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
         <div class="bp-body-left">
           <div class="bp-launcher-grid">
             <!-- Supplier persona (e.g. Ryan @ Rocket Food) — v1.67d: three
-                 tiles matching the agent home pattern. Shopfront / Store /
+                 tiles matching the agent home pattern. Storefront / Store /
                  Profile moved behind the Marketplace Profile hub. -->
             <ng-container *ngIf="isSupplier; else agencyLauncher">
               <app-action-tile
@@ -769,7 +769,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       their home launcher shows shop folders instead of agency ones. */
   get isSupplier(): boolean { return this.personaSvc.isSupplier(); }
 
-  /** Navigate to a top-level route (supplier launcher tiles → /shopfront etc). */
+  /** Navigate to a top-level route (supplier launcher tiles → /storefront etc). */
   goTo(path: string) { this.router.navigate([path]); }
 
   getCategoryClass(cat: string): string {

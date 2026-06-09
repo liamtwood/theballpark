@@ -38,7 +38,7 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
           icon="building-2"
           title="Profile"
           subtitle="Manage company information, payment details, team members and account settings."
-          (action)="go('/shopfront')">
+          (action)="go('/storefront')">
         </app-action-tile>
       </div>
     </div>

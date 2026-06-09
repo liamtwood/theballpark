@@ -368,12 +368,13 @@ export class TopNavComponent implements OnInit, OnDestroy {
     }
 
     if (persona?.kind === 'supplier') {
-      // v1.66db — supplier works their own shop: Shopfront + Store are the
-      // owner management surfaces (/shopfront, /store); Marketplace (/shop)
+      // v1.66db — supplier works their own shop: Storefront + Store are the
+      // owner management surfaces (/storefront, /store); Marketplace (/shop)
       // stays because suppliers shop too (buy from / watch each other).
+      // v1.68c — /shopfront renamed to /storefront; default label "Storefront".
       this.navItems = [
         { label: 'Home',        icon: 'house',      route: '/home' },
-        { label: 'Shopfront',   icon: 'store',      route: '/shopfront' },
+        { label: 'Storefront',  icon: 'store',      route: '/storefront' },
         { label: 'Store',       icon: 'package',    route: '/store' },
         { label: 'Inbox',       icon: 'inbox',      route: '/inbox' },
         { label: 'Marketplace', icon: 'compass',    route: '/shop' },

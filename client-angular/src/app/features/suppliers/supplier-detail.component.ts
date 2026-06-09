@@ -788,12 +788,13 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // v1.66db — this component serves three URL-distinct surfaces, chosen by
   // route data.mode/surface (see app.routes):
   //   mode 'public'  → /suppliers/:id, the read-only tabbed detail (no chrome)
-  //   mode 'manage'  → /shopfront (surface 'shopfront') or /store (surface
+  //   mode 'manage'  → /storefront (surface 'storefront') or /store (surface
   //                    'store'), the owner's single-surface management views.
   // ownsCatalogue is the ownership FACT; `manage` (mode==='manage' && owner)
   // is what gates all edit/delete/add affordances.
   mode: 'public' | 'manage' = 'public';
-  surface: 'shopfront' | 'store' = 'shopfront';
+  // v1.68c — surface 'shopfront' renamed to 'storefront' (URL + vocabulary).
+  surface: 'storefront' | 'store' = 'storefront';
   get manage(): boolean { return this.mode === 'manage' && this.ownsCatalogue; }
 
   // Item drawer — v1.17: now driven by an explicit mode input so the
@@ -816,7 +817,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   currentOrgType: string | null = null;
 
   // v1.65dz (p0015) — "Home" tab renamed to "Front" (the supplier's
-  // public shopfront).
+  // public storefront).
   // v1.65e1 — supplier-detail expanded to FOUR tabs when viewing your
   // own org (ownsCatalogue): Home / Front / Store / Inbox. Agencies
   // browsing a supplier see only Front + Store (the public surface).
@@ -878,12 +879,12 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // v1.66db — surface chosen by route data. Manage surfaces (/shopfront,
+    // v1.66db — surface chosen by route data. Manage surfaces (/storefront,
     // /store) are self-scoped: resolve to the logged-in supplier's own org
     // (no :id in the URL). Public detail (/suppliers/:id) reads :id.
     const data = this.route.snapshot.data as any;
     this.mode = data['mode'] === 'manage' ? 'manage' : 'public';
-    this.surface = data['surface'] === 'store' ? 'store' : 'shopfront';
+    this.surface = data['surface'] === 'store' ? 'store' : 'storefront';
     this.sid = data['self']
       ? (this.personaSvc.active?.supplierOrgId || '')
       : (this.route.snapshot.paramMap.get('id') || '');
@@ -1222,15 +1223,15 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   private applyShellHero() {
     if (!this.supplier) return;
     // Manage surfaces are URL-distinct (no in-page tab bar — you switch via
-    // the top nav). Public detail keeps its 2-tab band (Shopfront / Store).
+    // the top nav). Public detail keeps its 2-tab band (Storefront / Store).
     const tabs = this.mode === 'manage'
       ? []
       : [
-          { label: 'Shopfront', path: 'front' },
-          { label: 'Store',     path: 'store' },
+          { label: 'Storefront', path: 'front' },
+          { label: 'Store',      path: 'store' },
         ];
     const heroSub = this.mode === 'manage'
-      ? (this.surface === 'store' ? 'Store' : 'Shopfront')
+      ? (this.surface === 'store' ? 'Store' : 'Storefront')
       : (this.supplier.city || 'London');
     this.shellCtx.set({
       heroTitle: this.supplier.name,

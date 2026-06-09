@@ -542,6 +542,31 @@ Custom CSS → ONLY for unique visuals that PrimeNG/Tailwind cannot do
 
 ---
 
+## Naming & Vocabulary
+
+Canonical **internal** vocabulary — use these exact names in routes,
+components, types, and code comments. Customer-facing UI labels may differ
+(they are config / persona overrides); the internal names below are fixed and
+must not drift to match a label.
+
+| Internal name | What it is | URL | Default label | Customer override |
+|---|---|---|---|---|
+| **storefront** | A supplier's public-facing presence — branding, company info, how they appear in the Marketplace | `/storefront` | "Storefront" | "Profile" |
+| **store** | A supplier's catalogue management — their items/products | `/store` | "Store" | "Shop" |
+
+**`storefront` vs `store`** is the canonical pair — keep them distinct:
+- *storefront* = the shop window (presentation / profile).
+- *store* = the stockroom (catalogue / items).
+
+Do **not** reintroduce `shopfront` — it was renamed to `storefront` in v1.68c
+for URL + vocabulary consistency, with **no legacy alias** (pre-launch, no
+saved links to break — per the "no legacy aliases" cleanup rule). UI labels are
+the ONLY place an alternative word may appear, and only via the
+label-config / persona override mechanism — never hard-code a customer label
+(e.g. "Profile", "Shop") as the internal route/type/component name.
+
+---
+
 ## Standard Components
 
 ### PrimeNG Components (always use these)
@@ -836,6 +861,28 @@ that needs both:
 - **Append-only ledgers** (`balls_transactions`) — guard ON (immutable).
 - **Logs / transient** (`internal.project_log`, and any future session /
   reset-token / upload-metadata tables) — exempt entirely.
+
+**Reporting under soft-delete — gate on the parent chain, not the child's own flag.**
+Because soft-delete is a parent-only state flip and child tables don't cascade
+(the DB-level `ON DELETE CASCADE` is unreachable under the soft-delete model;
+no service issues hard DELETEs), child rows stay live in the DB and become
+dormant — reachable only by joining through their parent. Reports and counts
+MUST filter on the parent's liveness, not the child's own flag, or counts drift.
+
+- *Wrong:* `COUNT(*) FROM project_items WHERE deleted_at IS NULL`
+- *Right:* `COUNT(pi.*) FROM project_items pi JOIN projects p ON p.id = pi.project_id WHERE p.deleted_at IS NULL AND p.is_active = true`
+
+The child's own flag will happily say "live" while its parent is gone. This is
+the trade-off for cheap undelete (parent flip restores the whole subtree
+intact, with all original relationships) — the discipline lives in the queries.
+Same rule applies to every table that FKs to a soft-deletable parent:
+`project_categories`, `project_items`, `project_item_suppliers`,
+`estimate_items`, `messages`, and any future parent-child entity pair.
+
+A backlog item exists to extract `_live` views (`project_items_live`,
+`estimate_items_live`, etc.) that pre-join the parent liveness so reporting
+queries can't forget. Until those land, every cross-entity report should
+explicitly join through the parent chain.
 
 **Coming in a follow-up commit this week:** the `audit.audit_log` table + an
 entity-scoped audit trigger (full row-level history; junctions excluded). Until
