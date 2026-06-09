@@ -112,7 +112,7 @@ end $$;
 do $$
 declare
   v_schema text := 'public';   -- <<< CHANGE PER ENV: public (dev) | preview | master
-  v_guard  boolean := false;   -- <<< PASS 1 = false (columns only). Flip to true for PASS 2 after estimate_items+feedback are converted.
+  v_guard  boolean := true;    -- <<< PASS 2 = true (hard-delete guard active). All 5 sites + the 2 dev scripts converted.
   t text;
 begin
   -- ENTITY tables — 6 columns + stamp + hard-delete guard

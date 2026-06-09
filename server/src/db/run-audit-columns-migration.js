@@ -39,7 +39,7 @@ async function main() {
       `select tgname from pg_trigger
         where tgrelid = ($1 || '.items')::regclass and not tgisinternal order by tgname`, [sch]);
     console.log(`[verify] ${sch}.items triggers           :`, trg.rows.map((r) => r.tgname).join(', '),
-                '(expect trg_stamp_audit only — no forbid guard on Pass 1)');
+                '(Pass 1 = trg_stamp_audit only; Pass 2 also has trg_forbid_hard_delete)');
 
     // ── End-to-end stamp test (rolled back — does NOT persist) ───────────────
     await client.query('BEGIN');
@@ -54,6 +54,28 @@ async function main() {
     } else {
       console.log('[verify] stamp test: no items row to test against');
     }
+
+    // ── Guard tests (rolled back) — meaningful on Pass 2 (v_guard=true) ───────
+    let entityRaised = false;
+    await client.query('BEGIN');
+    try {
+      await client.query('DELETE FROM items WHERE id = (select id from items limit 1)');
+    } catch (e) {
+      entityRaised = /hard delete forbidden/i.test(e.message);
+    }
+    await client.query('ROLLBACK');
+    console.log('[verify] entity hard-delete RAISES     :', entityRaised, '(expect true on Pass 2)');
+
+    let junctionOk = false;
+    await client.query('BEGIN');
+    try {
+      await client.query('DELETE FROM project_items WHERE id = (select id from project_items limit 1)');
+      junctionOk = true;   // 0 or 1 rows, no raise = guard correctly OFF
+    } catch (e) {
+      junctionOk = false;
+    }
+    await client.query('ROLLBACK');
+    console.log('[verify] junction hard-delete SUCCEEDS :', junctionOk, '(expect true — guard off on junctions)');
   } finally {
     client.release();
   }
