@@ -100,16 +100,14 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
   }
 
   private pushContext(p: Project) {
-    // v1.29 tab bar — Event removed. v1.64 Estimate removed too — it
-    // now opens as a shared drawer from the Overview card, Marketplace
-    // footer link, and dashboard menu.
-    // v1.65cg (p0005) — Plan tab removed; AI matching + per-category
-    // brief editing both moved into the Marketplace. /plan and /brief
-    // still route — they redirect to /marketplace.
-    //   Overview · Marketplace · Inbox
+    // v1.67 tab bar — Event details + Estimate drawers converted to
+    // dedicated tab PAGES. Overview hidden from the band (route kept
+    // for back-compat). /plan + /brief still redirect to /marketplace.
+    //   Project Details · Estimate · Marketplace · Inbox
     const tabs = [
-      { label: 'Overview',    path: `/projects/${this.pid}/overview` },
-      { label: 'Marketplace', path: `/projects/${this.pid}/marketplace` },
+      { label: 'Project Details', path: `/projects/${this.pid}/details` },
+      { label: 'Estimate',        path: `/projects/${this.pid}/estimate` },
+      { label: 'Marketplace',     path: `/projects/${this.pid}/marketplace` },
       {
         label: 'Inbox',
         path: `/projects/${this.pid}/messages`,
@@ -151,6 +149,7 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
       v1.65cg (p0005) — /plan + /brief entries removed; both now
       redirect to /marketplace so they're never the resolved URL. */
   private eyebrowForUrl(url: string): string {
+    if (url.includes('/details'))      return 'PROJECT DETAILS';
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
     if (url.includes('/estimate'))     return 'ESTIMATE';
