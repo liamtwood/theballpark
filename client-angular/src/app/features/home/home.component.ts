@@ -93,7 +93,7 @@ interface LauncherTile {
     .bp-home-sub {
       margin: 0;
       font-family: var(--font-body);
-      font-size: 18px; font-weight: 400;
+      font-size: 20px; font-weight: 400;
       color: var(--color-text-secondary);
     }
 
@@ -109,7 +109,7 @@ interface LauncherTile {
 
     @media (max-width: 640px) {
       .bp-home-title { font-size: 40px; }
-      .bp-home-sub   { font-size: 16px; }
+      .bp-home-sub   { font-size: 18px; }
       .bp-home-stack { gap: 32px; }
     }
   `]
