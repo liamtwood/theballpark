@@ -331,6 +331,10 @@ const EVENT_TYPE_CATEGORIES = PARENTS.filter(
       log(`Step 4: cleared subcategory_id on ${cleared.rowCount} items.`);
 
       // STEP 5 — delete all child categories, then the 3 retired parents.
+      // Guard-safe by sequencing: this whole block only runs when retired
+      // parents still exist (i.e. on a not-yet-migrated DB), which is BEFORE the
+      // Item 1 hard-delete guard is ever installed — so these DELETEs never
+      // coincide with the guard.
       const delChildren = await q(
         `DELETE FROM ${SCHEMA}.categories WHERE parent_id IS NOT NULL AND namespace='catalogue'`
       );
@@ -363,7 +367,11 @@ const EVENT_TYPE_CATEGORIES = PARENTS.filter(
     log(`Step 6: inserted ${childCount} subcategories (131 expected on first run).`);
 
     // ── STEP 7 — wipe + reseed the tag table ────────────────────────────
-    await q(`DELETE FROM ${SCHEMA}.tag`);
+    // v1.66e5 (Item 1): TRUNCATE (was DELETE FROM) — this runs on EVERY pass,
+    // so once the hard-delete guard is on, a plain DELETE would be blocked.
+    // TRUNCATE fires TRUNCATE-triggers, not the BEFORE DELETE guard, so it
+    // bypasses it; CASCADE clears supplier_item_tag's FK refs (rebuilt on reseed).
+    await q(`TRUNCATE TABLE ${SCHEMA}.tag CASCADE`);
     let tagRows = 0, evtRows = 0;
 
     for (const [parent, dims] of Object.entries(DIMENSIONS)) {
