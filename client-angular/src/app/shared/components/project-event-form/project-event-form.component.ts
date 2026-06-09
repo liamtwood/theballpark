@@ -72,11 +72,11 @@ type SectionKey = 'details' | 'type' | 'logistics';
                         (edit)="snapshotSection('details')" (cancel)="restoreSection('details')"
                         (save)="saveSection('details')">
         <div class="bp-field-grid-2">
-          <!-- v1.67a — Ref is the project's system-generated identifier
-               (org prefix + counter, e.g. WA-026), the same value shown in
-               the hero pill / drawer chip. Always read-only. -->
-          <app-edit-field label="Ref" [density]="density"
-                          [value]="project?.ref || '—'" readonlyAlways></app-edit-field>
+          <!-- Ref — the project identifier (org prefix + counter, e.g.
+               WA-026; same value as the hero pill / drawer chip). v1.67b:
+               editable so it can be overridden. -->
+          <app-edit-field label="Ref" [density]="density" [editing]="editing.details"
+                          [(value)]="form.ref" placeholder="e.g. WA-026"></app-edit-field>
 
           <!-- Status — bespoke colour pill (view) / dropdown (edit). -->
           <div class="bp-field" [class.bp-field--drawer]="density === 'drawer'">
@@ -90,8 +90,9 @@ type SectionKey = 'details' | 'type' | 'logistics';
                         [styleClass]="dropdownClass" placeholder="Draft"></p-dropdown>
           </div>
 
-          <app-edit-field label="Event name" [density]="density" [editing]="editing.details" [(value)]="form.event_name"></app-edit-field>
-          <app-edit-field label="Client" [density]="density" [editing]="editing.details" [(value)]="form.client_name"></app-edit-field>
+          <!-- v1.67b — Event name + Client each on their own full-width row. -->
+          <app-edit-field label="Event name" span2 [density]="density" [editing]="editing.details" [(value)]="form.event_name"></app-edit-field>
+          <app-edit-field label="Client" span2 [density]="density" [editing]="editing.details" [(value)]="form.client_name"></app-edit-field>
           <app-edit-field label="Venue" [density]="density" [editing]="editing.details" [(value)]="form.venue_name"></app-edit-field>
           <app-edit-field label="City" [density]="density" [editing]="editing.details" [(value)]="form.venue_city"></app-edit-field>
         </div>
@@ -132,7 +133,9 @@ type SectionKey = 'details' | 'type' | 'logistics';
                         [(editing)]="editing.logistics" [saving]="saving"
                         (edit)="snapshotSection('logistics')" (cancel)="restoreSection('logistics')"
                         (save)="saveSection('logistics')">
-        <div class="bp-field-grid-3">
+        <!-- v1.67b — Event date + Duration share row 1; Guest count drops
+             to its own row below. -->
+        <div class="bp-field-grid-2">
           <app-edit-field label="Event date" [density]="density" [editing]="editing.logistics"
                           [(value)]="form.event_date" placeholder="e.g. 2 Jun 2026 / TBC"></app-edit-field>
           <app-edit-field label="Duration (days)" type="number" [density]="density"
@@ -217,7 +220,7 @@ export class ProjectEventFormComponent implements OnChanges {
 
   /** Which DB columns each section may persist — save sends only these. */
   private sectionFields: Record<SectionKey, (keyof Project)[]> = {
-    details:   ['event_name', 'client_name', 'venue_name', 'venue_city', 'status_code' as any],
+    details:   ['ref', 'event_name', 'client_name', 'venue_name', 'venue_city', 'status_code' as any],
     type:      ['event_type', 'tier'],
     logistics: ['event_date', 'duration_days', 'guest_count'],
   };
@@ -278,6 +281,7 @@ export class ProjectEventFormComponent implements OnChanges {
   // ── Form sync ───────────────────────────────────────────────────────
   private syncForm(p: Project) {
     this.form = {
+      ref:           p.ref,
       event_name:    p.event_name,
       client_name:   p.client_name,
       venue_name:    p.venue_name,
