@@ -31,14 +31,14 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
           icon="package"
           title="My Shop"
           subtitle="Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile."
-          (action)="go('/shopfront')">
+          (action)="go('/store')">
         </app-action-tile>
 
         <app-action-tile
           icon="building-2"
           title="Profile"
           subtitle="Manage company information, payment details, team members and account settings."
-          (action)="go('/settings')">
+          (action)="go('/shopfront')">
         </app-action-tile>
       </div>
     </div>
