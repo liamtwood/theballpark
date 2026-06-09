@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 
 import { PersonaService } from '../../core/services/persona.service';
 import { MessageService } from '../../core/services/message.service';
+import { ConfigService } from '../../core/services/config.service';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
 /**
@@ -123,6 +124,7 @@ export class HomeComponent implements OnInit {
   constructor(
     private personaSvc: PersonaService,
     private messageService: MessageService,
+    private configService: ConfigService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -142,10 +144,14 @@ export class HomeComponent implements OnInit {
     this.title = org ? `Welcome back, ${org}` : 'Welcome back';
     this.subtitle = 'What opportunities are we working on today?';
 
+    // v1.68m — the "Projects" tile uses the configurable Events label
+    // (config.projectLabel, pluralised) so it tracks the platform terminology.
+    const eventsLabel = ((this.configService.current as any)?.projectLabel || 'Event') + 's';
+
     this.tiles = [
       {
         icon: 'folder-open',
-        title: 'Projects',
+        title: eventsLabel,
         subtitle: 'Manage active opportunities, confirmed projects and ongoing work.',
         go: () => this.router.navigate(['/projects']),
       },

@@ -53,6 +53,12 @@ import { LucideAngularModule } from 'lucide-angular';
           the two-tier --shadow-xs rule — now the action-tile standard)
         · button so it's keyboard-focusable + fires on Enter/Space
         · icon stacked ABOVE the body (flex column, align flex-start) */
+    /* v1.68m — the host is the grid item; the grid stretches it to the row
+       height (= tallest sibling). Make the host a flex box so the card button
+       fills that stretched height → every card is the same height. (Width is
+       already equalised by the grid columns.) */
+    :host { display: flex; }
+
     .bp-action-tile {
       position: relative;
       display: flex;
