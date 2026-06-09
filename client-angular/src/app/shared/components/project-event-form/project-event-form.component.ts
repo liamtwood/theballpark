@@ -72,8 +72,11 @@ type SectionKey = 'details' | 'type' | 'logistics';
                         (edit)="snapshotSection('details')" (cancel)="restoreSection('details')"
                         (save)="saveSection('details')">
         <div class="bp-field-grid-2">
-          <app-edit-field label="PO Ref" [density]="density" [editing]="editing.details"
-                          [(value)]="form.po_ref" placeholder="e.g. TVS-2026-047"></app-edit-field>
+          <!-- v1.67a — Ref is the project's system-generated identifier
+               (org prefix + counter, e.g. WA-026), the same value shown in
+               the hero pill / drawer chip. Always read-only. -->
+          <app-edit-field label="Ref" [density]="density"
+                          [value]="project?.ref || '—'" readonlyAlways></app-edit-field>
 
           <!-- Status — bespoke colour pill (view) / dropdown (edit). -->
           <div class="bp-field" [class.bp-field--drawer]="density === 'drawer'">
@@ -214,7 +217,7 @@ export class ProjectEventFormComponent implements OnChanges {
 
   /** Which DB columns each section may persist — save sends only these. */
   private sectionFields: Record<SectionKey, (keyof Project)[]> = {
-    details:   ['po_ref', 'event_name', 'client_name', 'venue_name', 'venue_city', 'status_code' as any],
+    details:   ['event_name', 'client_name', 'venue_name', 'venue_city', 'status_code' as any],
     type:      ['event_type', 'tier'],
     logistics: ['event_date', 'duration_days', 'guest_count'],
   };
@@ -275,8 +278,6 @@ export class ProjectEventFormComponent implements OnChanges {
   // ── Form sync ───────────────────────────────────────────────────────
   private syncForm(p: Project) {
     this.form = {
-      // Sanitise the legacy literal "null" string at the source.
-      po_ref:        (p.po_ref != null && String(p.po_ref).trim().toLowerCase() !== 'null') ? p.po_ref : '',
       event_name:    p.event_name,
       client_name:   p.client_name,
       venue_name:    p.venue_name,
