@@ -1,25 +1,24 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
 import { PersonaService } from '../../core/services/persona.service';
-import { ShellContextService } from '../../core/services/shell-context.service';
 import { MessageService } from '../../core/services/message.service';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
 /**
- * Home — v1.68h. The "website-feel" landing: a calm hero + a centred row of
- * action tiles, replacing the data-dashboard as the default landing. The old
- * dashboard (stats + Upcoming / Credits / Saved-suppliers panels) lives on at
- * /dashboard.
+ * Home — v1.68i. The "website-feel" landing: the page body holds a single
+ * centred stack (vertically + horizontally) of TWO blocks — the title/subtitle,
+ * then the folder/action tiles. The shell hero band is suppressed for /home
+ * (route data `hideHero: true`); the title/subtitle live here instead so the
+ * whole thing centres in the viewport below the header. The old data dashboard
+ * lives on at /dashboard.
  *
- * THE MASTER. The launcher is driven entirely by a per-persona `HomeConfig`
- * (hero subtitle + tiles), so the agency and admin homes are just two more
- * config entries — same template, same centred-tile chrome, only the folders
- * shown + the title/subtitle change. The hero TITLE is the shell's configured
- * greeting ("Welcome back, {name}"); each persona supplies the subtitle.
+ * THE MASTER. Driven by a per-persona config (title + subtitle + tiles) so the
+ * agency and admin homes are just two more config entries — same centred-stack
+ * template, only the folders shown + the title/subtitle change.
  *
- * v1.68h ships the SUPPLIER config only. Agency / admin fall back to /dashboard
+ * v1.68i ships the SUPPLIER config only. Agency / admin fall back to /dashboard
  * until their configs land (next pass on this same master).
  */
 interface LauncherTile {
@@ -36,41 +35,90 @@ interface LauncherTile {
   standalone: true,
   imports: [CommonModule, ActionTileComponent],
   template: `
-    <div class="bp-page">
-      <div class="bp-home-launcher" *ngIf="tiles.length">
-        <app-action-tile *ngFor="let t of tiles"
-          [icon]="t.icon"
-          [title]="t.title"
-          [subtitle]="t.subtitle"
-          [badge]="t.badge"
-          (action)="t.go()">
-        </app-action-tile>
+    <div class="bp-home-page">
+      <div class="bp-home-stack" *ngIf="tiles.length">
+
+        <!-- Container 1 — title + subtitle -->
+        <div class="bp-home-hero">
+          <h1 class="bp-home-title">{{ title }}</h1>
+          <p class="bp-home-sub" *ngIf="subtitle">{{ subtitle }}</p>
+        </div>
+
+        <!-- Container 2 — folders / action tiles -->
+        <div class="bp-home-launcher">
+          <app-action-tile *ngFor="let t of tiles"
+            [icon]="t.icon"
+            [title]="t.title"
+            [subtitle]="t.subtitle"
+            [badge]="t.badge"
+            (action)="t.go()">
+          </app-action-tile>
+        </div>
+
       </div>
     </div>
   `,
   styles: [`
-    /* Centred launcher row — full width, capped, wraps gracefully. Same tile
-       grid pattern as the Marketplace Profile hub so the two read as one
-       family. */
+    /* Fill the viewport below the header and centre the stack both axes. */
+    .bp-home-page {
+      min-height: calc(100vh - var(--nav-height));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      box-sizing: border-box;
+    }
+    .bp-home-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 48px;
+      width: 100%;
+      max-width: 1180px;
+    }
+
+    /* Container 1 — title + subtitle */
+    .bp-home-hero { text-align: center; }
+    .bp-home-title {
+      margin: 0 0 12px;
+      font-family: var(--font-display);
+      font-size: 44px; font-weight: 400; line-height: 1.1;
+      letter-spacing: -0.01em;
+      color: var(--color-text-primary);
+    }
+    .bp-home-sub {
+      margin: 0;
+      font-family: var(--font-body);
+      font-size: 18px; font-weight: 400;
+      color: var(--color-text-secondary);
+    }
+
+    /* Container 2 — centred launcher row, wraps gracefully. Same tile grid as
+       the Marketplace Profile hub. */
     .bp-home-launcher {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
       justify-content: center;
       gap: 20px;
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 48px 24px 64px;
+      width: 100%;
+    }
+
+    @media (max-width: 640px) {
+      .bp-home-title { font-size: 32px; }
+      .bp-home-sub   { font-size: 16px; }
+      .bp-home-stack { gap: 32px; }
     }
   `]
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit {
+  title = '';
+  subtitle = '';
   tiles: LauncherTile[] = [];
   /** Supplier Inbox tile badge — unread thread count. */
   inboxUnread = 0;
 
   constructor(
     private personaSvc: PersonaService,
-    private shellCtx: ShellContextService,
     private messageService: MessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -86,19 +134,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void {
-    this.shellCtx.reset();
-  }
-
   private buildSupplier(): void {
-    // Hero: shell-configured greeting ("Welcome back, {org}") + persona subtitle.
-    this.shellCtx.set({
-      useConfiguredTitle: true,
-      heroSub: 'What opportunities are we working on today?',
-      pills: [],
-      tabs: [],
-      showStats: false,
-    } as any);
+    const org = this.personaSvc.active?.orgName;
+    this.title = org ? `Welcome back, ${org}` : 'Welcome back';
+    this.subtitle = 'What opportunities are we working on today?';
 
     this.tiles = [
       {

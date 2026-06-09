@@ -85,7 +85,9 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent),
         data: {
           pageLabel: '',
-          heroTitle: 'Home',
+          // v1.68i — the launcher renders its own centred title/subtitle, so
+          // the shell hero band is suppressed here.
+          hideHero: true,
           tabs: []
         }
       },
