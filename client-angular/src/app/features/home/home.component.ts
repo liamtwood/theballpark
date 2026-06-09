@@ -79,10 +79,13 @@ interface LauncherTile {
 
     /* Container 1 — title + subtitle */
     .bp-home-hero { text-align: center; }
+    /* v1.68j — match the mockup's "Welcome back" exactly: text-6xl (60px),
+       weight 400, and the system-UI sans stack (Tailwind font-sans default),
+       NOT the app's Playfair display font. Scoped to the home launcher. */
     .bp-home-title {
       margin: 0 0 12px;
-      font-family: var(--font-display);
-      font-size: 44px; font-weight: 400; line-height: 1.1;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 60px; font-weight: 400; line-height: 1.1;
       letter-spacing: -0.01em;
       color: var(--color-text-primary);
     }
@@ -104,7 +107,7 @@ interface LauncherTile {
     }
 
     @media (max-width: 640px) {
-      .bp-home-title { font-size: 32px; }
+      .bp-home-title { font-size: 40px; }
       .bp-home-sub   { font-size: 16px; }
       .bp-home-stack { gap: 32px; }
     }
