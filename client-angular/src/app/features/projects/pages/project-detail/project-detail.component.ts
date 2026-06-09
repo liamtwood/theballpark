@@ -107,8 +107,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     const tabs = [
       { label: 'Project Details', path: `/projects/${this.pid}/details` },
       { label: 'Estimate',        path: `/projects/${this.pid}/estimate` },
-      // v1.68f — Build tab re-enabled (two-column Build/Estimate working view).
-      { label: 'Build',           path: `/projects/${this.pid}/build` },
       { label: 'Marketplace',     path: `/projects/${this.pid}/marketplace` },
       {
         label: 'Inbox',
@@ -154,7 +152,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy {
     if (url.includes('/details'))      return 'PROJECT DETAILS';
     if (url.includes('/overview'))     return 'PROJECT OVERVIEW';
     if (url.includes('/marketplace'))  return 'MARKETPLACE';
-    if (url.includes('/build'))        return 'BUILD';
     if (url.includes('/estimate'))     return 'ESTIMATE';
     if (url.includes('/messages'))     return 'MESSAGES';
     // /event no longer surfaces (replaced by the Event drawer) but the
