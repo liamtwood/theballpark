@@ -35,6 +35,7 @@ import { LucideAngularModule } from 'lucide-angular';
             class="bp-action-tile bp-card-hover"
             (click)="action.emit()"
             [attr.aria-label]="ariaLabel || title">
+      <span class="bp-action-tile-badge" *ngIf="badge">{{ badge }}</span>
       <div class="bp-action-tile-icon">
         <lucide-icon [name]="icon" [size]="28" [strokeWidth]="1.5"></lucide-icon>
       </div>
@@ -53,6 +54,7 @@ import { LucideAngularModule } from 'lucide-angular';
         · button so it's keyboard-focusable + fires on Enter/Space
         · icon stacked ABOVE the body (flex column, align flex-start) */
     .bp-action-tile {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
@@ -96,6 +98,23 @@ import { LucideAngularModule } from 'lucide-angular';
       transform: scale(1.1);
     }
 
+    /* Unread / count chip — top-right corner, red fill. Renders only
+       when [badge] > 0 (e.g. the supplier home Inbox tile's unread
+       thread count). */
+    .bp-action-tile-badge {
+      position: absolute;
+      top: 18px; right: 18px;
+      min-width: 22px; height: 22px;
+      padding: 0 7px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 11px;
+      background: var(--color-danger);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 600;
+      line-height: 1;
+    }
+
     .bp-action-tile-body {
       min-width: 0;
       flex: 1;
@@ -127,6 +146,9 @@ export class ActionTileComponent {
   @Input() subtitle?: string;
   /** Optional aria-label override (defaults to title). */
   @Input() ariaLabel?: string;
+  /** Optional count chip (top-right). Renders only when > 0 — e.g. the
+      supplier home Inbox tile's unread-thread count. */
+  @Input() badge?: number;
 
   /** Fired on click / Enter / Space. Parent wires the behaviour. */
   @Output() action = new EventEmitter<void>();

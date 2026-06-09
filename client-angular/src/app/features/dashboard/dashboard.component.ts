@@ -11,6 +11,7 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { ProjectService } from '../../core/services/project.service';
+import { MessageService } from '../../core/services/message.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -145,35 +146,30 @@ import { ActionTileComponent } from '../../shared/components/action-tile/action-
              not wrapped in a bp-dash-card. -->
         <div class="bp-body-left">
           <div class="bp-launcher-grid">
-            <!-- Supplier persona (e.g. Ryan @ Rocket Food) — their home is
-                 their own shop: Shopfront / Store / Inbox / Profile. -->
+            <!-- Supplier persona (e.g. Ryan @ Rocket Food) — v1.67d: three
+                 tiles matching the agent home pattern. Shopfront / Store /
+                 Profile moved behind the Marketplace Profile hub. -->
             <ng-container *ngIf="isSupplier; else agencyLauncher">
               <app-action-tile
-                icon="store"
-                title="Shopfront"
-                subtitle="Your public storefront"
-                (action)="goTo('/shopfront')">
-              </app-action-tile>
-
-              <app-action-tile
-                icon="package"
-                title="Store"
-                subtitle="Manage your catalogue"
-                (action)="goTo('/store')">
+                icon="folder-open"
+                title="Projects"
+                subtitle="Manage active opportunities, confirmed projects and ongoing work."
+                (action)="goToProjects()">
               </app-action-tile>
 
               <app-action-tile
                 icon="inbox"
                 title="Inbox"
-                subtitle="Enquiries and threads"
+                subtitle="View and respond to producer conversations."
+                [badge]="inboxUnread"
                 (action)="goToInbox()">
               </app-action-tile>
 
               <app-action-tile
-                icon="circle-user"
-                title="Profile"
-                subtitle="Your account and settings"
-                (action)="goToProfile()">
+                icon="store"
+                title="Marketplace Profile"
+                subtitle="Manage how your company appears in Ballpark Marketplace. Update categories, pricing, portfolio and company information."
+                (action)="goTo('/marketplace-profile')">
               </app-action-tile>
             </ng-container>
 
@@ -658,6 +654,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   projectLabel = 'Event';
   creditLabel  = 'Ball';
   daysUntilReset = 0;
+  /** v1.67d — supplier home Inbox tile badge: count of threads with an
+      unread inbound message. Loaded only for the supplier persona. */
+  inboxUnread = 0;
   // v1.65hQ (p0019 §2): the Active/Inactive/Past project-card grid +
   // its "..." menu / image-upload / collapse state moved out of the
   // dashboard with the centre column. activeProjects / completedProjects
@@ -711,6 +710,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   constructor(
     private projectService: ProjectService,
+    private messageService: MessageService,
     private orgService: OrgService,
     private supplierService: SupplierService,
     private configService: ConfigService,
@@ -821,6 +821,24 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loadProjects();
     this.loadSuppliers();
     this.loadFavourites();
+    this.loadInboxUnread();
+  }
+
+  /** v1.67d — supplier Inbox tile badge. Loads the supplier-scoped message
+      feed and counts distinct threads with an unread inbound message via the
+      shared MessageService.countUnreadThreads helper (same thread grouping
+      as the inbox). Supplier persona only; agency home has no badge. */
+  private loadInboxUnread() {
+    if (!this.isSupplier) return;
+    const supId = this.personaSvc.active?.orgId;
+    if (!supId) return;
+    this.messageService.getAllBySupplier(supId).subscribe({
+      next: (msgs: any[]) => {
+        this.inboxUnread = MessageService.countUnreadThreads(msgs);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
   }
 
   // ── v1.23 settings persistence ────────────────────────────────────

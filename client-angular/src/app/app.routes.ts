@@ -146,6 +146,21 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent),
         data: { pageLabel: '', tabs: [], mode: 'manage', surface: 'store', self: true }
       },
+      // v1.67d — Marketplace Profile hub. Supplier sub-hub reached from the
+      // supplier home launcher tile; routes out to Marketplace / My Shop /
+      // Profile via the canonical <app-action-tile> grid. Hero + Back link
+      // come from this route data (rendered by the shell).
+      {
+        path: 'marketplace-profile',
+        canActivate: [supplierOnlyGuard],
+        loadComponent: () => import('./features/suppliers/marketplace-profile.component').then(m => m.MarketplaceProfileComponent),
+        data: {
+          pageLabel: '', tabs: [],
+          heroTitle: 'Marketplace Profile',
+          heroSub: 'Manage your Marketplace presence, products and company information.',
+          back: '/home'
+        }
+      },
       {
         path: 'suppliers/:id/items/:itemId',
         loadComponent: () => import('./features/suppliers/item-detail.component').then(m => m.ItemDetailComponent),

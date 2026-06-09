@@ -2173,7 +2173,9 @@ export class MessagesInboxComponent implements OnInit {
       const sid = m.supplier_org_id || 'unknown';
       const cid = m.category_id || '';
       const pid = (m as any).project_id || '';
-      const key = sid + '_' + cid + '_' + pid;
+      // v1.67d — one definition of the thread key (MsgSvc.threadKey),
+      // shared with the supplier home unread-count badge.
+      const key = MsgSvc.threadKey(m);
       if (!map[key]) {
         map[key] = {
           key, supplierId: sid,
