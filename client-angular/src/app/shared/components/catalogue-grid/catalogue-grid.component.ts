@@ -2800,12 +2800,17 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** Primary action button — label/icon/behaviour by context. */
   primaryActionLabel(e: CatalogueEntity): string {
     if (this.entityType === 'supplier') return this.actionLabel || 'View supplier';
+    // v1.68a — when the viewer OWNS this catalogue (supplier on their own
+    // /store, allowItemEdit — store-only), the primary CTA edits the item.
+    // Takes precedence over the agency-facing Add-to-Project / View CTAs.
+    if (this.allowItemEdit) return 'Edit';
     if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'Added to project' : 'Add to Project';
     if (this.addToProjectMode) return 'Add to Project';
     return 'View item';
   }
   primaryActionIcon(e: CatalogueEntity): string {
     if (this.entityType === 'supplier') return 'arrow-right';
+    if (this.allowItemEdit) return 'square-pen';
     if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'check' : 'plus';
     if (this.addToProjectMode) return 'plus';
     return 'arrow-right';
@@ -2813,6 +2818,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   onPrimaryAction(ev: MouseEvent, e: CatalogueEntity) {
     ev.stopPropagation();
     if (this.entityType === 'supplier') { this.actionClicked.emit(e); return; }
+    // v1.68a — owner's own catalogue (store-only): primary CTA opens the
+    // item edit drawer. Precedence over the agency Add-to-Project CTAs.
+    if (this.allowItemEdit) { this.onEditItem(e); return; }
     if (this.showCartActions) { this.onAddToProject(e); return; }
     // Marketplace with no project chosen yet — ask the host to open the picker.
     if (this.addToProjectMode) { this.projectRequired.emit({ entity: e, type: 'selected' }); return; }
