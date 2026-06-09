@@ -75,17 +75,28 @@ const FULL_ROUTES: Routes = [
       // marketplace tabs exactly. The .bp-hero--calm CSS in styles.css
       // is dormant for now (kept in case a future page wants it).
       // v1.66ao — the dashboard now lives at /home; the root redirects to it.
+      // v1.68h — /home is now the "website-feel" launcher (HomeComponent, a
+      // centred hero + action tiles). The data dashboard was renamed and moved
+      // to /dashboard (same component, kept intact). Supplier first: agency /
+      // admin /home falls back to /dashboard until their launcher configs land.
       { path: '', redirectTo: 'home', pathMatch: 'full' },
       {
         path: 'home',
+        loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent),
+        data: {
+          pageLabel: '',
+          heroTitle: 'Home',
+          tabs: []
+        }
+      },
+      {
+        // v1.68h — the former /home data dashboard (stats + Upcoming / Credits
+        // / Saved-suppliers panels), renamed to Dashboard.
+        path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
         data: {
           pageLabel: '',
-          // heroTitle drives the "Purpose" title mode (→ "Home"); the
-          // greeting mode ignores it and shows "Welcome back, …".
           heroTitle: 'Home',
-          // v1.66ax — no self-referential "Home" tab; the band stays
-          // (reserved height + separator) but carries no tab here.
           tabs: []
         }
       },
