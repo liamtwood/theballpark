@@ -10,10 +10,10 @@ const BASE_SELECT = `
          ac.icon_name   AS area_icon_name,
          ac.icon_color  AS area_icon_color,
          (SELECT COUNT(*) FROM shared.feedback tc
-            WHERE tc.parent_id = f.id AND tc.type = 'test_case')::int AS test_count,
+            WHERE tc.parent_id = f.id AND tc.type = 'test_case' AND tc.deleted_at IS NULL)::int AS test_count,
          (SELECT COUNT(*) FROM shared.feedback tc
             WHERE tc.parent_id = f.id AND tc.type = 'test_case'
-              AND tc.status = 'todo')::int AS test_todo_count
+              AND tc.status = 'todo' AND tc.deleted_at IS NULL)::int AS test_todo_count
   FROM shared.feedback f
   LEFT JOIN shared.feedback_categories fc ON fc.id = f.feedback_category_id
   LEFT JOIN shared.feedback_categories ac ON ac.id = f.area_category_id
@@ -21,7 +21,7 @@ const BASE_SELECT = `
 
 async function getAll(filters) {
   // filters = { object_type?, priority?, target_version? }
-  const where = [];
+  const where = ['f.deleted_at IS NULL'];   // v1.66e4 (Item 1): exclude soft-deleted
   const params = [];
   if (filters && typeof filters === 'object') {
     if (filters.object_type) {
@@ -49,13 +49,13 @@ async function getAll(filters) {
 }
 
 async function getById(id) {
-  const result = await pool.query(BASE_SELECT + ' WHERE f.id = $1', [id]);
+  const result = await pool.query(BASE_SELECT + ' WHERE f.id = $1 AND f.deleted_at IS NULL', [id]);
   const entry = result.rows[0];
   if (!entry) return null;
   const cases = await pool.query(
     `SELECT id, notes, status, owner, submitted_by, created_at
        FROM shared.feedback
-      WHERE parent_id = $1 AND type = 'test_case'
+      WHERE parent_id = $1 AND type = 'test_case' AND deleted_at IS NULL
       ORDER BY created_at ASC`,
     [id]
   );
@@ -65,13 +65,13 @@ async function getById(id) {
 
 async function getFolders() {
   const result = await pool.query(
-    BASE_SELECT + ` WHERE f.object_type = 'folder' ORDER BY f.event_date DESC NULLS LAST, f.created_at DESC`
+    BASE_SELECT + ` WHERE f.object_type = 'folder' AND f.deleted_at IS NULL ORDER BY f.event_date DESC NULLS LAST, f.created_at DESC`
   );
   return result.rows;
 }
 
 async function getIssues(folderId) {
-  let query = BASE_SELECT + ` WHERE f.object_type = 'issue'`;
+  let query = BASE_SELECT + ` WHERE f.object_type = 'issue' AND f.deleted_at IS NULL`;
   const params = [];
   if (folderId) {
     params.push(folderId);
@@ -85,7 +85,7 @@ async function getIssues(folderId) {
 async function getToday() {
   const today = new Date().toISOString().split('T')[0];
   const result = await pool.query(
-    `SELECT f.* FROM shared.feedback f WHERE f.event_date = $1 AND f.parent_id IS NULL AND f.object_type = 'folder' ORDER BY f.created_at DESC LIMIT 1`,
+    `SELECT f.* FROM shared.feedback f WHERE f.event_date = $1 AND f.parent_id IS NULL AND f.object_type = 'folder' AND f.deleted_at IS NULL ORDER BY f.created_at DESC LIMIT 1`,
     [today]
   );
   if (result.rows.length) return result.rows[0];
@@ -99,7 +99,7 @@ async function getToday() {
 
 async function getChildren(parentId, type) {
   const params = [parentId];
-  let where = 'f.parent_id = $1';
+  let where = 'f.parent_id = $1 AND f.deleted_at IS NULL';
   if (type) {
     params.push(type);
     where += ` AND f.type = $${params.length}`;
@@ -148,9 +148,9 @@ async function create(data) {
 
 async function getVersions() {
   const result = await pool.query(
-    `SELECT DISTINCT version AS v FROM shared.feedback WHERE version IS NOT NULL
+    `SELECT DISTINCT version AS v FROM shared.feedback WHERE version IS NOT NULL AND deleted_at IS NULL
      UNION
-     SELECT DISTINCT target_version AS v FROM shared.feedback WHERE target_version IS NOT NULL
+     SELECT DISTINCT target_version AS v FROM shared.feedback WHERE target_version IS NOT NULL AND deleted_at IS NULL
      ORDER BY v ASC`
   );
   return result.rows.map(r => r.v);
@@ -161,7 +161,7 @@ async function getCategories(namespace) {
     `SELECT id, name, object_type, icon_name, icon_color,
             tagline, description, parent_id, sort_order, namespace, created_at
        FROM shared.feedback_categories
-      WHERE ($1::text IS NULL OR namespace = $1)
+      WHERE ($1::text IS NULL OR namespace = $1) AND deleted_at IS NULL
       ORDER BY namespace ASC, sort_order ASC, name ASC`,
     [namespace || null]
   );
@@ -214,10 +214,12 @@ async function patchCategory(id, data) {
 }
 
 async function removeCategory(id) {
-  // Detach any feedback rows referencing this category before deleting.
+  // Detach any feedback rows referencing this category, then SOFT-delete the
+  // category (v1.66e4 Item 1 — was a hard DELETE). getCategories filters
+  // deleted_at IS NULL so it disappears from the picker.
   await pool.query(`UPDATE shared.feedback SET feedback_category_id = NULL WHERE feedback_category_id = $1`, [id]);
   await pool.query(`UPDATE shared.feedback SET area_category_id = NULL WHERE area_category_id = $1`, [id]);
-  await pool.query(`DELETE FROM shared.feedback_categories WHERE id = $1`, [id]);
+  await pool.query(`UPDATE shared.feedback_categories SET deleted_at = NOW() WHERE id = $1`, [id]);
 }
 
 async function patch(id, data) {
@@ -241,8 +243,10 @@ async function patch(id, data) {
 }
 
 async function remove(id) {
-  await pool.query('DELETE FROM shared.feedback WHERE parent_id = $1', [id]);
-  await pool.query('DELETE FROM shared.feedback WHERE id = $1', [id]);
+  // v1.66e4 (Item 1): soft-delete the row + its children (was hard DELETE). All
+  // reads filter f.deleted_at IS NULL, so the row and its descendants disappear.
+  await pool.query('UPDATE shared.feedback SET deleted_at = NOW() WHERE parent_id = $1 AND deleted_at IS NULL', [id]);
+  await pool.query('UPDATE shared.feedback SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL', [id]);
 }
 
 module.exports = {
