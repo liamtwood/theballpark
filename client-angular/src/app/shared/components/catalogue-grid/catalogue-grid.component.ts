@@ -544,6 +544,7 @@ export type DetailMode = 'inline' | 'drawer';
               <div class="bp-list-name">
                 {{ e.name }}
                 <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+                <span class="bp-hidden-pill" *ngIf="allowItemEdit && e.is_active === false">Hidden</span>
               </div>
               <div class="bp-list-sub" *ngIf="e.subtitle">{{ e.subtitle }}</div>
             </div>
@@ -623,20 +624,40 @@ export type DetailMode = 'inline' | 'drawer';
                        (click)="$event.stopPropagation()">
                     <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                             (click)="onMenuAction('add', e, $event)">
+                      <lucide-icon name="plus" [size]="14"></lucide-icon>
                       {{ getSelectionType(e.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
                     </button>
                     <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
-                            (click)="onMenuAction('wishlist', e, $event)">Wishlist for Project</button>
+                            (click)="onMenuAction('wishlist', e, $event)">
+                      <lucide-icon name="heart" [size]="14"></lucide-icon> Wishlist for Project
+                    </button>
                     <button class="bp-card-menu-item"
-                            (click)="onMenuAction('view', e, $event)">View</button>
+                            (click)="onMenuAction('view', e, $event)">
+                      <lucide-icon name="arrow-right" [size]="14"></lucide-icon> View
+                    </button>
                     <button class="bp-card-menu-item" *ngIf="allowItemEdit"
-                            (click)="onMenuAction('edit', e, $event)">Edit</button>
+                            (click)="onMenuAction('edit', e, $event)">
+                      <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit
+                    </button>
                     <button class="bp-card-menu-item" *ngIf="allowItemEdit"
-                            (click)="onMenuAction('edit-image', e, $event)">Edit Image</button>
+                            (click)="onMenuAction('edit-image', e, $event)">
+                      <lucide-icon name="image" [size]="14"></lucide-icon> Edit Image
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('copy', e, $event)">
+                      <lucide-icon name="copy" [size]="14"></lucide-icon> Copy
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('toggle-active', e, $event)">
+                      <lucide-icon [name]="e.is_active === false ? 'eye' : 'eye-off'" [size]="14"></lucide-icon>
+                      {{ e.is_active === false ? 'Make active' : 'Make inactive' }}
+                    </button>
                     <ng-container *ngIf="showDelete">
                       <div class="bp-card-menu-sep"></div>
                       <button class="bp-card-menu-item bp-card-menu-item--danger"
-                              (click)="onMenuAction('delete', e, $event)">Delete</button>
+                              (click)="onMenuAction('delete', e, $event)">
+                        <lucide-icon name="trash-2" [size]="14"></lucide-icon> Delete
+                      </button>
                     </ng-container>
                   </div>
                 </ng-container>
@@ -653,6 +674,7 @@ export type DetailMode = 'inline' | 'drawer';
                 <div class="bp-item-card-name">
                   {{ e.name }}
                   <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+                  <span class="bp-hidden-pill" *ngIf="allowItemEdit && e.is_active === false">Hidden</span>
                 </div>
                 <span class="bp-item-card-cat" *ngIf="cardCatLabel(e)">{{ cardCatLabel(e) }}</span>
                 <div class="bp-item-card-from" *ngIf="cardFromPrice(e) != null">
@@ -746,20 +768,40 @@ export type DetailMode = 'inline' | 'drawer';
                    (click)="$event.stopPropagation()">
                 <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
                         (click)="onMenuAction('add', selectedEntity, $event)">
+                  <lucide-icon name="plus" [size]="14"></lucide-icon>
                   {{ getSelectionType(selectedEntity.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
                 </button>
                 <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
-                        (click)="onMenuAction('wishlist', selectedEntity, $event)">Wishlist for Project</button>
+                        (click)="onMenuAction('wishlist', selectedEntity, $event)">
+                  <lucide-icon name="heart" [size]="14"></lucide-icon> Wishlist for Project
+                </button>
                 <button class="bp-card-menu-item"
-                        (click)="onMenuAction('view', selectedEntity, $event)">View</button>
+                        (click)="onMenuAction('view', selectedEntity, $event)">
+                  <lucide-icon name="arrow-right" [size]="14"></lucide-icon> View
+                </button>
                 <button class="bp-card-menu-item" *ngIf="allowItemEdit"
-                        (click)="onMenuAction('edit', selectedEntity, $event)">Edit</button>
+                        (click)="onMenuAction('edit', selectedEntity, $event)">
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit
+                </button>
                 <button class="bp-card-menu-item" *ngIf="allowItemEdit"
-                        (click)="onMenuAction('edit-image', selectedEntity, $event)">Edit Image</button>
+                        (click)="onMenuAction('edit-image', selectedEntity, $event)">
+                  <lucide-icon name="image" [size]="14"></lucide-icon> Edit Image
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('copy', selectedEntity, $event)">
+                  <lucide-icon name="copy" [size]="14"></lucide-icon> Copy
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('toggle-active', selectedEntity, $event)">
+                  <lucide-icon [name]="selectedEntity.is_active === false ? 'eye' : 'eye-off'" [size]="14"></lucide-icon>
+                  {{ selectedEntity.is_active === false ? 'Make active' : 'Make inactive' }}
+                </button>
                 <ng-container *ngIf="showDelete">
                   <div class="bp-card-menu-sep"></div>
                   <button class="bp-card-menu-item bp-card-menu-item--danger"
-                          (click)="onMenuAction('delete', selectedEntity, $event)">Delete</button>
+                          (click)="onMenuAction('delete', selectedEntity, $event)">
+                    <lucide-icon name="trash-2" [size]="14"></lucide-icon> Delete
+                  </button>
                 </ng-container>
               </div>
             </div>
@@ -1522,16 +1564,30 @@ export type DetailMode = 'inline' | 'drawer';
       z-index: 50; box-shadow: var(--shadow-md);
     }
     .bp-card-menu-item {
-      display: block; width: 100%; padding: 8px 12px;
+      display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 12px;
       font-size: 12px; font-weight: 500; text-align: left;
       background: none; border: none; cursor: pointer;
       color: var(--color-text-primary); font-family: var(--font-body);
       transition: background 0.1s;
     }
+    /* v1.68b — leading action icon, muted; inherits danger colour on Delete. */
+    .bp-card-menu-item lucide-icon { color: var(--color-text-muted); flex-shrink: 0; }
     .bp-card-menu-item:hover { background: var(--color-fill); }
     .bp-card-menu-item--danger { color: var(--color-danger); }
+    .bp-card-menu-item--danger lucide-icon { color: var(--color-danger); }
     .bp-card-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
     .bp-card-menu-sep { height: 0.5px; background: var(--color-border); margin: 4px 0; }
+    /* v1.68b — "Hidden" pill on the owner's own store cards (is_active=false). */
+    .bp-hidden-pill {
+      display: inline-flex; align-items: center;
+      margin-left: 6px; padding: 1px 7px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+      color: var(--color-text-muted);
+      background: var(--color-fill);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      vertical-align: middle;
+    }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
     .bp-grid-action-btn:hover { color: var(--theme-accent); }
     .bp-grid-heart-active { color: #E11D48 !important; }
@@ -2139,6 +2195,12 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
   /** v1.66cq — "Delete" from the card / preview "⋯" menu. The host confirms
       and performs the delete (soft-delete via ItemService). */
   @Output() deleteRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.68b — owner "Copy" from the "⋯" menu. Host calls ItemService.duplicate
+      and navigates to the new item. */
+  @Output() copyRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.68b — owner "Make inactive / Make active" (eye toggle). Host flips
+      items.is_active via ItemService.setActive and refreshes. */
+  @Output() activeToggleRequested = new EventEmitter<CatalogueEntity>();
   /** v1.66ct — user wants to add/wishlist but no project is selected yet
       (addToProjectMode). Host opens the project picker, then adds. */
   @Output() projectRequired = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
@@ -2844,7 +2906,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
     this.previewMenuOpen = !this.previewMenuOpen;
   }
   /** Dispatch a "⋯" menu action to the matching handler. */
-  onMenuAction(action: 'add' | 'wishlist' | 'view' | 'edit' | 'edit-image' | 'delete',
+  onMenuAction(action: 'add' | 'wishlist' | 'view' | 'edit' | 'edit-image' | 'copy' | 'toggle-active' | 'delete',
                e: CatalogueEntity, ev: MouseEvent) {
     ev.stopPropagation();
     this.openCardMenuId = null;
@@ -2861,6 +2923,8 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit,
       case 'view':       this.onViewItem(e); break;
       case 'edit':       this.onEditItem(e); break;
       case 'edit-image': this.imageEditRequested.emit(e); break;
+      case 'copy':          this.copyRequested.emit(e); break;
+      case 'toggle-active': this.activeToggleRequested.emit(e); break;
       case 'delete':     this.deleteRequested.emit(e); break;
     }
   }

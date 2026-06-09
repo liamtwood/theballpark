@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+const { als } = require('../db/request-context');
 
 async function getAll(orgId, categoryId, tag, subcategoryId) {
   // v1.41: items.category_id is ALWAYS a parent now (migration ran in
@@ -19,7 +20,7 @@ async function getAll(orgId, categoryId, tag, subcategoryId) {
     LEFT JOIN categories c  ON i.category_id    = c.id
     LEFT JOIN categories sc ON i.subcategory_id = sc.id
     LEFT JOIN orgs o ON i.org_id = o.id
-    WHERE i.is_active = true
+    WHERE i.is_active = true AND i.deleted_at IS NULL
   `;
   const params = [];
   if (orgId) { params.push(orgId); query += ` AND i.org_id = $${params.length}`; }
@@ -42,7 +43,7 @@ async function countsByCategory() {
     `SELECT i.category_id, c.parent_id, COUNT(*) AS count
      FROM items i
      LEFT JOIN categories c ON i.category_id = c.id
-     WHERE i.is_active = true AND i.category_id IS NOT NULL
+     WHERE i.is_active = true AND i.deleted_at IS NULL AND i.category_id IS NOT NULL
      GROUP BY i.category_id, c.parent_id`
   );
   const map = {};
@@ -64,7 +65,7 @@ async function getTagsByCategory(categoryId) {
     `SELECT DISTINCT UNNEST(tags) AS tag
      FROM items
      WHERE (category_id = $1 OR category_id IN (SELECT id FROM categories WHERE parent_id = $1))
-       AND is_active = true AND tags IS NOT NULL AND array_length(tags, 1) > 0
+       AND is_active = true AND deleted_at IS NULL AND tags IS NOT NULL AND array_length(tags, 1) > 0
      ORDER BY tag ASC`,
     [categoryId]
   );
@@ -156,7 +157,11 @@ const UPDATABLE_COLS = [
   'unit', 'time_unit', 'base_price', 'min_price', 'max_price',
   'lead_time_days', 'coverage_area', 'tier', 'tags',
   'image_url', 'image_display', 'external_url',
-  'derived_from_id', 'parent_item_id', 'attributes', 'images'
+  'derived_from_id', 'parent_item_id', 'attributes', 'images',
+  // v1.68b — is_active is the publish/hide toggle (distinct from the
+  // deleted_at soft-delete). The supplier store's eye/eye-off action
+  // PUTs { is_active } through update() to hide/show an item.
+  'is_active'
 ];
 
 async function update(id, data) {
@@ -201,11 +206,65 @@ async function update(id, data) {
   return result.rows[0] || null;
 }
 
+// v1.68b — items converged to the deleted_at soft-delete pattern (was the
+// legacy is_active=false). deleted_at REMOVES the item; is_active is now an
+// independent publish/hide toggle. The BEFORE-DELETE hard-delete guard and
+// the audit stamp trigger (deleted_by from app.current_user_id, set per
+// request in pool.js) are already installed on items (Item 1, v1.66e6).
 async function softDelete(id) {
   const result = await pool.query(
-    'UPDATE items SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING *', [id]
+    'UPDATE items SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *', [id]
   );
   return result.rows[0] || null;
 }
 
-module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete };
+// v1.68b — duplicate an item: clones the items row (the images[] gallery is a
+// JSONB column, so it copies inline) + the supplier_item_tag taxonomy rows, in
+// one transaction. The copy lands is_active=false (hidden) so the owner reviews
+// before publishing. pool.query's auto-GUC only wraps single statements, so we
+// run our own transaction and SET LOCAL app.current_user_id (mirrors pool.js)
+// for correct created_by attribution.
+async function duplicate(id) {
+  const ctx = als.getStore && als.getStore();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (ctx && ctx.userId) {
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [ctx.userId]);
+    }
+    const ins = await client.query(
+      `INSERT INTO items
+         (org_id, category_id, subcategory_id, name, description,
+          unit, time_unit, base_price, min_price, max_price,
+          lead_time_days, coverage_area, tier, tags,
+          image_url, image_display, external_url,
+          derived_from_id, parent_item_id, attributes, images, is_active)
+       SELECT
+          org_id, category_id, subcategory_id, name || ' (copy)', description,
+          unit, time_unit, base_price, min_price, max_price,
+          lead_time_days, coverage_area, tier, tags,
+          image_url, image_display, external_url,
+          derived_from_id, parent_item_id, attributes, images, false
+       FROM items
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING *`,
+      [id]
+    );
+    const copy = ins.rows[0];
+    if (!copy) { await client.query('ROLLBACK'); return null; }
+    await client.query(
+      `INSERT INTO supplier_item_tag (item_id, tag_id)
+       SELECT $1, tag_id FROM supplier_item_tag WHERE item_id = $2`,
+      [copy.id, id]
+    );
+    await client.query('COMMIT');
+    return copy;
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { getAll, getById, getTagsByCategory, countsByCategory, create, update, softDelete, duplicate };

@@ -307,6 +307,8 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
           (deleteRequested)="onDeleteItem($event)"
+          (copyRequested)="onCopyItem($event)"
+          (activeToggleRequested)="onToggleActive($event)"
           (projectRequired)="onProjectRequired($event)"
           (viewRequested)="onViewItem($event)"
           (addToProject)="onAddToProject($event)"
@@ -950,7 +952,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
@@ -1004,6 +1006,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       unit: i.unit,
       categoryLabel: i.category_name,
       specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
+      // v1.68b — publish state drives the "Hidden" badge + eye toggle on the
+      // owner's own store. The catalogue endpoint returns hidden items only
+      // when include_hidden=true (manage mode).
+      is_active: i.is_active,
       _raw: i
     }));
   }
@@ -1330,6 +1336,41 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** v1.68b — Make inactive / Make active (eye toggle) from the Store menu.
+      Flips items.is_active; the row stays in the owner's own store (loaded
+      with include_hidden) and the "Hidden" badge toggles. Hidden items vanish
+      from the marketplace. */
+  onToggleActive(entity: CatalogueEntity) {
+    const newActive = entity.is_active === false; // hidden → activate; active → hide
+    this.itemSvc.setActive(entity.id, newActive).subscribe({
+      next: () => {
+        const it = this.catalogueItems.find((i: any) => i.id === entity.id);
+        if (it) it.is_active = newActive;
+        this.mapItems();
+        this.msg.add({
+          severity: 'success',
+          summary: newActive ? 'Item published' : 'Item hidden',
+          life: 2500
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Update failed', life: 3500 }),
+    });
+  }
+
+  /** v1.68b — Copy from the Store menu. Duplicates the item (row + gallery +
+      taxonomy) via the backend; the copy lands hidden (is_active=false). Then
+      navigates to the new item per spec. */
+  onCopyItem(entity: CatalogueEntity) {
+    this.itemSvc.duplicate(entity.id).subscribe({
+      next: (copy: any) => {
+        this.msg.add({ severity: 'success', summary: 'Item copied', life: 2000 });
+        if (copy?.id) this.router.navigate(['/items', copy.id]);
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Copy failed', life: 3500 }),
+    });
+  }
+
   onFavToggled(entityId: string) {
     this.favSvc.toggleItem(entityId).subscribe(() => this.cdr.detectChanges());
   }
@@ -1427,7 +1468,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   onItemSaved(_item: Item) {
     // Refresh the catalogue so the grid AND the Home subcategory cards
     // reflect the new/updated row.
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
@@ -1444,7 +1485,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       the deleted row drops out of the grid + the Home subcategory
       counts update. */
   onItemDeleted(_e: { id: string }) {
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();

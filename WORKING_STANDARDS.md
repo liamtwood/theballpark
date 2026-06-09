@@ -799,6 +799,24 @@ one convention — the older `is_active=false` pattern converges to it per-table
 Default read scope is `WHERE deleted_at IS NULL`; surfaces that need deleted rows
 pass an explicit `includeDeleted` / `_all` view.
 
+**The dual-pattern — `is_active` (publish) + `deleted_at` (soft-delete) on the
+same table. Reference: `items` (converged v1.68b).** When a table needs BOTH a
+reversible "hide/unpublish" state AND a soft-delete, the two are *distinct
+columns with distinct semantics* — do not overload one for both (the legacy
+items bug: `delete` set `is_active=false`, so "hidden" and "deleted" were the
+same state, with no way back). Canonical wiring, copy it for any future table
+that needs both:
+- `deleted_at` = **removed**. `softDelete` stamps `deleted_at = NOW()` (trigger
+  fills `deleted_by`); excluded from **every** read, always.
+- `is_active` = **publish/visibility toggle**, reversible. Flipped via the normal
+  `update` path (whitelisted column). Excluded from PUBLIC / marketplace reads,
+  but RELAXED for the owner's own management view (an explicit `includeHidden` /
+  `include_hidden=true` param) so hidden rows render with a "Hidden" badge
+  instead of vanishing — otherwise there's no UI to re-activate them.
+- Read scope therefore reads as: marketplace = `WHERE is_active = true AND
+  deleted_at IS NULL`; owner-own view = `WHERE deleted_at IS NULL` (is_active
+  relaxed). Never relax `deleted_at`.
+
 **Exemptions (do NOT force the standard — "don't force a misfit"):**
 - **Junction / sync tables** maintained by delete-and-reinsert (`supplier_item_tag`,
   `project_item_suppliers`, `project_items`) keep hard delete (guard OFF) — soft-delete

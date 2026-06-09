@@ -127,7 +127,10 @@ app.get('/api/suppliers', async (req, res, next) => {
 
 // Convenience: get supplier catalogue items grouped by category
 app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
-  try { res.json(await OrgService.getCatalogue(req.params.id)); } catch (err) { next(err); }
+  // v1.68b — include_hidden=true relaxes the is_active filter for the owner's
+  // own /store so hidden items appear (with a Hidden badge). deleted_at rows
+  // stay excluded regardless.
+  try { res.json(await OrgService.getCatalogue(req.params.id, req.query.include_hidden === 'true')); } catch (err) { next(err); }
 });
 
 // PATCH item images

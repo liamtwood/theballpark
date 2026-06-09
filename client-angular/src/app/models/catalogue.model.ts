@@ -27,6 +27,10 @@ export interface CatalogueEntity {
   image_display?: 'cover' | 'contain';
   // Lucide icon name — shown when no image
   icon?: string;
+  /** v1.68b — publish state for owner-managed catalogues. false → the item
+      is hidden from the marketplace and renders a "Hidden" badge in the
+      owner's own store. Undefined/true on browse surfaces. */
+  is_active?: boolean;
   // Pass-through for actions
   _raw?: any;
 }
