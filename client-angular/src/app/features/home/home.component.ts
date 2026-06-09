@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
 
 import { PersonaService } from '../../core/services/persona.service';
@@ -21,7 +21,7 @@ import { HomeLauncherComponent, LauncherTile } from '../../shared/components/hom
   standalone: true,
   imports: [CommonModule, HomeLauncherComponent],
   template: `
-    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles">
+    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles" [back]="back">
     </app-home-launcher>
   `,
 })
@@ -32,10 +32,14 @@ export class HomeComponent implements OnInit {
   /** Supplier Inbox tile badge — unread thread count. */
   inboxUnread = 0;
 
+  /** v1.68q — Home is the root, so Back uses browser history. */
+  back = () => this.location.back();
+
   constructor(
     private personaSvc: PersonaService,
     private messageService: MessageService,
     private configService: ConfigService,
+    private location: Location,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
