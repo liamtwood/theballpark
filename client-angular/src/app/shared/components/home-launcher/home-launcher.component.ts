@@ -32,27 +32,31 @@ export interface LauncherTile {
     <div class="bp-launcher-page">
       <div class="bp-launcher-stack" *ngIf="tiles.length">
 
+        <!-- Back row — ALWAYS reserved (whether or not there's a Back), so the
+             title sits at the same vertical position on every launcher page and
+             the titles line up across pages. Back's left edge aligns to the
+             first tile's left edge (the row spans the tile-row width). -->
+        <div class="bp-launcher-backrow">
+          <button *ngIf="back" type="button" class="bp-launcher-back" (click)="back()">
+            <lucide-icon name="arrow-left" [size]="16"></lucide-icon> {{ backLabel }}
+          </button>
+        </div>
+
         <!-- Title + subtitle -->
         <div class="bp-launcher-hero">
           <h1 class="bp-launcher-title">{{ title }}</h1>
           <p class="bp-launcher-sub" *ngIf="subtitle">{{ subtitle }}</p>
         </div>
 
-        <!-- Back (optional) + tiles. The wrap fills the stack width so Back's
-             left edge aligns with the first tile's left edge. -->
-        <div class="bp-launcher-tiles-wrap">
-          <button *ngIf="back" type="button" class="bp-launcher-back" (click)="back()">
-            <lucide-icon name="arrow-left" [size]="16"></lucide-icon> {{ backLabel }}
-          </button>
-          <div class="bp-launcher-tiles">
-            <app-action-tile *ngFor="let t of tiles"
-              [icon]="t.icon"
-              [title]="t.title"
-              [subtitle]="t.subtitle"
-              [badge]="t.badge"
-              (action)="t.go()">
-            </app-action-tile>
-          </div>
+        <!-- Tiles -->
+        <div class="bp-launcher-tiles">
+          <app-action-tile *ngFor="let t of tiles"
+            [icon]="t.icon"
+            [title]="t.title"
+            [subtitle]="t.subtitle"
+            [badge]="t.badge"
+            (action)="t.go()">
+          </app-action-tile>
         </div>
 
       </div>
@@ -73,12 +77,31 @@ export interface LauncherTile {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 40px;
       width: 100%;
       max-width: 1120px;
     }
 
-    .bp-launcher-hero { text-align: center; }
+    /* Back row — full tile-row width, always present (reserves height even when
+       empty). ~5 lines above the title; Back sits at the row's left edge. */
+    .bp-launcher-backrow {
+      width: 100%;
+      min-height: 22px;
+      margin-bottom: 84px;
+      display: flex;
+      align-items: flex-start;
+    }
+    .bp-launcher-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 0;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 15px; color: var(--color-text-secondary);
+      transition: color 0.15s;
+    }
+    .bp-launcher-back:hover { color: var(--theme-accent); }
+    .bp-launcher-back lucide-icon { display: inline-flex; }
+
+    .bp-launcher-hero { text-align: center; margin-bottom: 48px; }
     .bp-launcher-title {
       margin: 0 0 12px;
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -93,25 +116,6 @@ export interface LauncherTile {
       color: var(--color-text-secondary);
     }
 
-    .bp-launcher-tiles-wrap {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    /* Back — left edge aligned to the tile row's left edge. */
-    .bp-launcher-back {
-      align-self: flex-start;
-      display: inline-flex; align-items: center; gap: 6px;
-      background: none; border: none; padding: 0;
-      cursor: pointer;
-      font-family: var(--font-body);
-      font-size: 15px; color: var(--color-text-secondary);
-      transition: color 0.15s;
-    }
-    .bp-launcher-back:hover { color: var(--theme-accent); }
-    .bp-launcher-back lucide-icon { display: inline-flex; }
-
     .bp-launcher-tiles {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
@@ -121,9 +125,10 @@ export interface LauncherTile {
     }
 
     @media (max-width: 640px) {
-      .bp-launcher-title { font-size: 40px; }
-      .bp-launcher-sub   { font-size: 18px; }
-      .bp-launcher-stack { gap: 32px; }
+      .bp-launcher-title   { font-size: 40px; }
+      .bp-launcher-sub     { font-size: 18px; }
+      .bp-launcher-backrow { margin-bottom: 48px; }
+      .bp-launcher-hero    { margin-bottom: 32px; }
     }
   `]
 })
