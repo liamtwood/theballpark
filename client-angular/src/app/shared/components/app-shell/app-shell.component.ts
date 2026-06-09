@@ -816,6 +816,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     'playfair-dm':       { display: "'Playfair Display', serif",  body: "'DM Sans', sans-serif",        label: 'Playfair Display + DM Sans' },
     'inter':             { display: "'Inter', sans-serif",        body: "'Inter', sans-serif",           label: 'Inter + Inter' },
     'fraunces-nunito':   { display: "'Fraunces', serif",          body: "'Nunito', sans-serif",          label: 'Fraunces + Nunito' },
+    // v1.68k — one system font app-wide: display === body, the system-UI sans
+    // stack (Tailwind font-sans default). No web-font load needed.
+    'system':            { display: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', body: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', label: 'System Sans' },
   };
 
   private updateFromRoute() {

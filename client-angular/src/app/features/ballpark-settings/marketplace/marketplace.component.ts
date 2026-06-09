@@ -325,6 +325,8 @@ export class MarketplaceComponent implements OnInit {
     { value: 'playfair-dm',       label: 'Playfair Display + DM Sans',        preview: "'Playfair Display', serif",  specimen: 'The quick brown fox' },
     { value: 'inter',             label: 'Inter + Inter',                      preview: "'Inter', sans-serif",        specimen: 'The quick brown fox' },
     { value: 'fraunces-nunito',   label: 'Fraunces + Nunito',                  preview: "'Fraunces', serif",          specimen: 'The quick brown fox' },
+    // v1.68k — one system font for the whole app (headings + body identical).
+    { value: 'system',            label: 'System Sans (one font everywhere)', preview: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', specimen: 'The quick brown fox' },
   ];
 
   // ── Section edit lifecycle (Platform / Terminology) ────────────────
