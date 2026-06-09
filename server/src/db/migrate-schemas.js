@@ -1829,6 +1829,50 @@ const migrate = async () => {
     }
     console.log('  v1.65gZ27 RLS + grant hardening applied.');
 
+    // ── Items convergence backfill (v1.68b) — ONE-TIME, per schema ──────
+    // Before the hide-vs-delete split, the ONLY operation that set
+    // items.is_active=false was the old soft-delete. After the split,
+    // is_active=false means "hidden" (reversible) and deleted_at means
+    // "deleted" — and the two are INDISTINGUISHABLE by column values
+    // (both are is_active=false / deleted_at IS NULL for a hidden item).
+    // So reclassifying legacy is_active=false rows to deleted_at MUST run
+    // exactly once per schema: a blind re-run of the UPDATE would
+    // soft-delete legitimately-hidden items. Guarded by a marker in
+    // shared.migration_flags, plus a deleted_at column-exists check (the
+    // 6 audit columns are added by the Item 1 audit migration, which may
+    // run after this script on a fresh build — skip cleanly until then).
+    // Production note: master is empty today, so the UPDATE is a no-op
+    // there; the marker still records it so the rule is encoded for any
+    // future env that inherits the old convention.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.migration_flags (
+        name       TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = '${schema}' AND table_name = 'items'
+                   AND column_name = 'deleted_at')
+             AND NOT EXISTS (
+                SELECT 1 FROM shared.migration_flags
+                 WHERE name = 'items_is_active_to_deleted_at:${schema}')
+          THEN
+            UPDATE ${schema}.items
+               SET deleted_at = NOW()
+             WHERE is_active = false AND deleted_at IS NULL;
+            INSERT INTO shared.migration_flags (name)
+              VALUES ('items_is_active_to_deleted_at:${schema}');
+          END IF;
+        END $$;
+      `);
+    }
+    console.log('  items is_active=false → deleted_at backfill applied (once per schema, guarded).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');

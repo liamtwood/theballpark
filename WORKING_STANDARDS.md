@@ -816,6 +816,18 @@ that needs both:
 - Read scope therefore reads as: marketplace = `WHERE is_active = true AND
   deleted_at IS NULL`; owner-own view = `WHERE deleted_at IS NULL` (is_active
   relaxed). Never relax `deleted_at`.
+- **One-time backfill (v1.68b):** pre-existing `is_active=false` rows were
+  recategorised to `deleted_at = NOW()`, since that was the ONLY operation that
+  flipped the column before the hide-vs-delete split — so every legacy
+  `is_active=false` row was really a delete. **This backfill must run exactly
+  once per env** (`migrate-schemas.js`, guarded by a `shared.migration_flags`
+  marker + a `deleted_at` column-exists check): a blind re-run would soft-delete
+  legitimately-hidden items, because post-split a hidden row is *also*
+  `is_active=false / deleted_at IS NULL`. Production rollout: master is empty
+  today so the UPDATE is a no-op there, but it's encoded in the same script so
+  it runs once at cutover for any future env that inherits the old convention.
+  **The rule for any future is_active→deleted_at convergence: pair the service
+  change with a marker-guarded one-time backfill — never an unguarded UPDATE.**
 
 **Exemptions (do NOT force the standard — "don't force a misfit"):**
 - **Junction / sync tables** maintained by delete-and-reinsert (`supplier_item_tag`,
