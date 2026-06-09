@@ -896,10 +896,27 @@ is a chance to drift.
   page (now `<app-edit-section>` + `<app-edit-field>`). `is-edit` class
   manually attached per field, one instance routed to the wrong DOM element
   on `p-inputNumber`. `bp-brief-*` parallel namespace invented from scratch
-  for the project Event tab.
+  for the project Event tab. **v1.67c** — the event form's bespoke Event
+  type / Tier fields hand-rolled their *view-mode* input with
+  `bp-field-readonly` (a `--theme-border` box) instead of the shared field's
+  `.bp-fld` (transparent border); invisible on the drawer's parchment, it
+  stood out as a stray border once the same form rendered on a white card.
 - *How to spot it:* if two pages render the same chrome with hand-written
   markup, the chrome is hand-applied. If a CSS class appears as a literal
   string in N consumer templates, it's hand-applied.
+- *Class-shaped, not question-shaped (the v1.67c lesson):* auditing a
+  hand-rolled field by asking a yes/no question ("is `is-edit` routed
+  through `styleClass`?") passes the field while missing a different state.
+  Instead, for **every** field that deviates from the shared component,
+  **diff its computed styles — BOTH view and edit — against a neighbouring
+  `app-edit-field` on the SAME surface** (the white card, not the parchment
+  drawer it was copied from). A hand-applied field is "compliant" only when
+  it is pixel-indistinguishable from the shared component in *both* states.
+  The v1.67c border slipped because the scan verified the edit path and
+  assumed the view path was fine (it compiled and looked right on the
+  surface it was lifted from). Beware two class names for one role
+  (`bp-field-readonly` vs `.bp-fld` not-editing) — that is itself a
+  duplicate-source-of-truth smell (#1) hiding inside a hand-applied field.
 - *Fix:* extract to a shared component or directive; ban the underlying
   literal/class outside the extracted component's template.
 
@@ -1399,6 +1416,37 @@ If yes — move it to the service layer.
 > "Is org_id coming from the request body instead of req.user?"
 
 If yes — security violation, fix immediately.
+
+---
+
+## Closing List — near-term standards work
+
+Standing tracker for committed-to standards work that is scoped but not yet
+landed. Distinct from the open-ended backlog: every item here has an agreed
+shape and a **trigger** that says when it must be done by. Pull from the top.
+
+### NEAR-TERM
+
+**Zero-shift `<app-edit-field type="select">`.** Promote the deferred
+select to a first-class, verified field type so dropdowns stop being
+hand-rolled. Today `.bp-fld` / `.is-edit` only style `.p-inputtext`, so a
+`p-dropdown` routed through the shared field picks up neither the view
+(transparent-border, plain-text) nor the edit (grey-fill) treatment — which
+is why status / event-type / tier are still bespoke (see the Drawer Standard
+deferral note and `edit-field.component.ts` header).
+
+- *Shape:* extend `styles.css` so `.bp-fld` / `.bp-fld.is-edit` cover
+  `.p-dropdown` (label metrics + 38/34px height + transparent→grey-fill
+  border) with zero view↔edit shift; then convert the bespoke
+  status/event-type/tier dropdowns (and unblock item-drawer / feedback-drawer)
+  to `app-edit-field type="select"`. App-wide blast radius — do it as a
+  dedicated pass with the full Sweep Completeness enumeration.
+- *Trigger:* **before any new surface adds a hand-rolled dropdown.** Each new
+  bespoke `p-dropdown` is another hand-applied consumer (anti-pattern #2) and
+  another v1.67c-class divergence waiting to happen. If a prompt would add
+  one, land this first.
+
+When an item lands, move it to Version History and delete it here.
 
 ---
 
