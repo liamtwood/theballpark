@@ -28,13 +28,14 @@ import { HomeLauncherComponent, LauncherTile } from '../../shared/components/hom
   `,
 })
 export class ProjectsHubComponent implements OnInit {
-  title = 'Projects';
+  title = 'Events';   // replaced in ngOnInit with the configured label (plural)
   subtitle = 'Manage opportunities from quote to completion.';
   tiles: LauncherTile[] = [];
 
-  /** Singular project term from the global config (e.g. "Project"/"Event"). */
+  /** Singular Events-label term from the global Ballpark config (the
+      ballpark-settings "Projects are called" setting, default "Event"). */
   private get label(): string {
-    return (this.configService.current as any)?.projectLabel || 'Project';
+    return this.configService.projectLabel || 'Event';
   }
 
   back = () => this.location.back();
