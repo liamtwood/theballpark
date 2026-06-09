@@ -59,15 +59,19 @@ import { LucideAngularModule } from 'lucide-angular';
       flex-direction: column;
       align-items: flex-start;
       gap: 14px;
-      padding: 26px;
+      /* v1.68l — match the mockup project card: white/80 + backdrop blur,
+         rounded-3xl (24px), p-8 (32px). */
+      padding: 32px;
       min-height: 200px;
       width: 100%;
       text-align: left;
       font: inherit;
       cursor: pointer;
-      background: var(--color-surface);
+      background: rgba(255, 255, 255, 0.8);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
       border: var(--border-hairline);
-      border-radius: var(--radius-card-lg);
+      border-radius: 24px;
       box-shadow: var(--shadow-md);
       /* Hover (lift + accent shadow/border, 300ms) comes from the global
          .bp-card-hover standard in styles.css — see the class on the button.
@@ -121,16 +125,17 @@ import { LucideAngularModule } from 'lucide-angular';
     }
     .bp-action-tile-title {
       margin: 0 0 4px 0;
-      font-family: var(--font-display);   /* Playfair Display */
-      font-size: 18px;
+      font-family: var(--font-display);   /* follows the global font setting */
+      font-size: 24px;                    /* v1.68l — mockup text-2xl */
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.2;
     }
     .bp-action-tile-sub {
       margin: 0;
-      font-family: var(--font-body);      /* Libre Franklin */
-      font-size: 13px;
+      font-family: var(--font-body);      /* follows the global font setting */
+      font-size: 16px;                    /* v1.68l — mockup text-base */
+      font-weight: 400;
       color: var(--color-text-secondary);
       line-height: 1.4;
     }
