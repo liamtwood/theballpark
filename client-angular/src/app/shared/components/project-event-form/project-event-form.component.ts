@@ -87,7 +87,7 @@ type SectionKey = 'details' | 'type' | 'logistics';
             <p-dropdown *ngIf="editing.details"
                         [(ngModel)]="form.status_code"
                         [options]="statusOptions" optionLabel="label" optionValue="code"
-                        [styleClass]="dropdownClass" placeholder="Draft"></p-dropdown>
+                        [styleClass]="ddClass(editing.details)" placeholder="Draft"></p-dropdown>
           </div>
 
           <!-- v1.67b — Event name + Client each on their own full-width row. -->
@@ -106,23 +106,26 @@ type SectionKey = 'details' | 'type' | 'logistics';
         <div class="bp-field-grid-2">
           <div class="bp-field" [class.bp-field--drawer]="density === 'drawer'">
             <label class="bp-field-label">Event type</label>
+            <!-- v1.67c — view input uses the SAME .bp-fld treatment as
+                 <app-edit-field> (transparent border), not bp-field-readonly
+                 (which paints a themed border that stood out on the card). -->
             <input pInputText *ngIf="!editing.type"
                    [value]="(form.event_type | titlecase) || '—'"
-                   class="w-full bp-field-readonly" readonly/>
+                   class="w-full" [ngClass]="fldBase" readonly/>
             <p-dropdown *ngIf="editing.type"
                         [(ngModel)]="form.event_type"
                         [options]="eventTypeOptions" optionLabel="label" optionValue="value"
-                        [styleClass]="dropdownClass" placeholder="Select event type"></p-dropdown>
+                        [styleClass]="ddClass(editing.type)" placeholder="Select event type"></p-dropdown>
           </div>
           <div class="bp-field" [class.bp-field--drawer]="density === 'drawer'">
             <label class="bp-field-label">Tier</label>
             <input pInputText *ngIf="!editing.type"
                    [value]="tierDisplay()"
-                   class="w-full bp-field-readonly" readonly/>
+                   class="w-full" [ngClass]="fldBase" readonly/>
             <p-dropdown *ngIf="editing.type"
                         [(ngModel)]="form.tier"
                         [options]="tierOptions" optionLabel="label" optionValue="code"
-                        [styleClass]="dropdownClass" placeholder="Select tier"></p-dropdown>
+                        [styleClass]="ddClass(editing.type)" placeholder="Select tier"></p-dropdown>
           </div>
         </div>
       </app-edit-section>
@@ -297,11 +300,21 @@ export class ProjectEventFormComponent implements OnChanges {
     } as any;
   }
 
-  /** styleClass for the bespoke p-dropdowns: fill the column + carry the
-      edit fill. These only render in edit mode, so is-edit is constant
-      while visible — routed via styleClass per the PrimeNG-wrapper rule. */
-  get dropdownClass(): string {
-    return 'w-full bp-pef-dropdown is-edit'
+  /** Base field class for the bespoke view inputs (status pill aside) —
+      mirrors <app-edit-field>'s `fldBase` so view mode renders identically
+      (transparent border, no themed box). */
+  get fldBase(): string {
+    return this.density === 'drawer' ? 'bp-fld bp-fld--drawer' : 'bp-fld';
+  }
+
+  /** styleClass for the bespoke p-dropdowns (status / event type / tier).
+      `is-edit` is routed CONDITIONALLY through styleClass — never hardcoded
+      and never via [class.is-edit] on the wrapper host — per the PrimeNG
+      wrapper rule in WORKING_STANDARDS (the bug fixed on Organisation's
+      Financial defaults, which recurred here on the card surface). */
+  ddClass(editing: boolean): string {
+    return 'w-full bp-pef-dropdown'
+      + (editing ? ' is-edit' : '')
       + (this.density === 'drawer' ? ' bp-fld--drawer' : '');
   }
 
