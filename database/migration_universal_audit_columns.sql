@@ -86,6 +86,12 @@ end $$;
 create or replace function audit.add_audit_columns(p_schema text, p_table text, p_forbid_delete boolean default true)
 returns void language plpgsql as $$
 begin
+  -- Resilient: skip (with a notice) if the table doesn't exist in this env, so a
+  -- table that lives only in some environments can't fail the whole migration.
+  if to_regclass(format('%I.%I', p_schema, p_table)) is null then
+    raise notice 'audit.add_audit_columns: skip (absent) %.%', p_schema, p_table;
+    return;
+  end if;
   execute format('alter table %I.%I add column if not exists created_at timestamptz default now()', p_schema, p_table);
   execute format('alter table %I.%I add column if not exists created_by uuid', p_schema, p_table);
   execute format('alter table %I.%I add column if not exists updated_at timestamptz default now()', p_schema, p_table);
