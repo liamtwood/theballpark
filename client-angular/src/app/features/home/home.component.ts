@@ -5,114 +5,25 @@ import { Router } from '@angular/router';
 import { PersonaService } from '../../core/services/persona.service';
 import { MessageService } from '../../core/services/message.service';
 import { ConfigService } from '../../core/services/config.service';
-import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
+import { HomeLauncherComponent, LauncherTile } from '../../shared/components/home-launcher/home-launcher.component';
 
 /**
- * Home — v1.68i. The "website-feel" landing: the page body holds a single
- * centred stack (vertically + horizontally) of TWO blocks — the title/subtitle,
- * then the folder/action tiles. The shell hero band is suppressed for /home
- * (route data `hideHero: true`); the title/subtitle live here instead so the
- * whole thing centres in the viewport below the header. The old data dashboard
+ * Home — v1.68o. The default landing. Resolves a per-persona config
+ * (title + subtitle + tiles) and hands it to the shared <app-home-launcher>
+ * MASTER, which owns the centred hero + tile layout. The old data dashboard
  * lives on at /dashboard.
  *
- * THE MASTER. Driven by a per-persona config (title + subtitle + tiles) so the
- * agency and admin homes are just two more config entries — same centred-stack
- * template, only the folders shown + the title/subtitle change.
- *
- * v1.68i ships the SUPPLIER config only. Agency / admin fall back to /dashboard
- * until their configs land (next pass on this same master).
+ * Supplier first: agency / admin fall back to /dashboard until their launcher
+ * configs are built on this same master.
  */
-interface LauncherTile {
-  icon: string;
-  title: string;
-  subtitle: string;
-  /** Optional count chip (e.g. Inbox unread threads). */
-  badge?: number;
-  go: () => void;
-}
-
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, ActionTileComponent],
+  imports: [CommonModule, HomeLauncherComponent],
   template: `
-    <div class="bp-home-page">
-      <div class="bp-home-stack" *ngIf="tiles.length">
-
-        <!-- Container 1 — title + subtitle -->
-        <div class="bp-home-hero">
-          <h1 class="bp-home-title">{{ title }}</h1>
-          <p class="bp-home-sub" *ngIf="subtitle">{{ subtitle }}</p>
-        </div>
-
-        <!-- Container 2 — folders / action tiles -->
-        <div class="bp-home-launcher">
-          <app-action-tile *ngFor="let t of tiles"
-            [icon]="t.icon"
-            [title]="t.title"
-            [subtitle]="t.subtitle"
-            [badge]="t.badge"
-            (action)="t.go()">
-          </app-action-tile>
-        </div>
-
-      </div>
-    </div>
+    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles">
+    </app-home-launcher>
   `,
-  styles: [`
-    /* Fill the viewport below the header and centre the stack both axes. */
-    .bp-home-page {
-      min-height: calc(100vh - var(--nav-height));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 24px;
-      box-sizing: border-box;
-    }
-    .bp-home-stack {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 48px;
-      width: 100%;
-      max-width: 1180px;
-    }
-
-    /* Container 1 — title + subtitle */
-    .bp-home-hero { text-align: center; }
-    /* v1.68j — match the mockup's "Welcome back" exactly: text-6xl (60px),
-       weight 400, and the system-UI sans stack (Tailwind font-sans default),
-       NOT the app's Playfair display font. Scoped to the home launcher. */
-    .bp-home-title {
-      margin: 0 0 12px;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 60px; font-weight: 400; line-height: 1.1;
-      letter-spacing: -0.01em;
-      color: var(--color-text-primary);
-    }
-    .bp-home-sub {
-      margin: 0;
-      font-family: var(--font-body);
-      font-size: 20px; font-weight: 400;
-      color: var(--color-text-secondary);
-    }
-
-    /* Container 2 — centred launcher row, wraps gracefully. Same tile grid as
-       the Marketplace Profile hub. */
-    .bp-home-launcher {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
-      justify-content: center;
-      gap: 20px;
-      width: 100%;
-    }
-
-    @media (max-width: 640px) {
-      .bp-home-title { font-size: 40px; }
-      .bp-home-sub   { font-size: 18px; }
-      .bp-home-stack { gap: 32px; }
-    }
-  `]
 })
 export class HomeComponent implements OnInit {
   title = '';
@@ -130,8 +41,6 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // v1.68h — supplier first. Agency / admin keep the data dashboard as their
-    // landing until their launcher configs are built on this same master.
     if (this.personaSvc.isSupplier()) {
       this.buildSupplier();
     } else {
@@ -144,8 +53,7 @@ export class HomeComponent implements OnInit {
     this.title = org ? `Welcome back, ${org}` : 'Welcome back';
     this.subtitle = 'What opportunities are we working on today?';
 
-    // v1.68m — the "Projects" tile uses the configurable Events label
-    // (config.projectLabel, pluralised) so it tracks the platform terminology.
+    // The "Projects" tile uses the configurable Events label (pluralised).
     const eventsLabel = ((this.configService.current as any)?.projectLabel || 'Event') + 's';
 
     this.tiles = [

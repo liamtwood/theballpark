@@ -172,9 +172,9 @@ const FULL_ROUTES: Routes = [
         loadComponent: () => import('./features/suppliers/marketplace-profile.component').then(m => m.MarketplaceProfileComponent),
         data: {
           pageLabel: '', tabs: [],
-          heroTitle: 'Marketplace Profile',
-          heroSub: 'Manage your Marketplace presence, products and company information.',
-          back: '/home'
+          // v1.68o — the shared <app-home-launcher> master renders its own
+          // centred hero + Back, so the shell hero band is suppressed here.
+          hideHero: true
         }
       },
       {

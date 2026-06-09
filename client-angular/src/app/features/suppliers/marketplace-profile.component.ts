@@ -1,62 +1,53 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
+import { HomeLauncherComponent, LauncherTile } from '../../shared/components/home-launcher/home-launcher.component';
 
 /**
- * Marketplace Profile hub — v1.67d.
+ * Marketplace Profile hub — v1.68o.
  *
- * Supplier sub-hub reached from the supplier home's "Marketplace Profile"
- * launcher tile. Mounts the SAME canonical <app-action-tile> grid as the
- * agent / supplier home (no hand-rolled tile chrome) and routes out to the
- * three marketplace surfaces. Hero title/subtitle + the ← Back link are
- * supplied by the route data (see app.routes.ts) and rendered by the shell,
- * exactly like the /projects and /inbox landing pages.
+ * Supplier sub-hub reached from the Home "Marketplace Profile" tile. Now
+ * consumes the shared <app-home-launcher> MASTER (same centred hero + tiles as
+ * Home), with a Back button whose left edge lines up with the first tile. Hero
+ * title/subtitle live in the component; the route suppresses the shell hero.
  */
 @Component({
   selector: 'app-marketplace-profile',
   standalone: true,
-  imports: [CommonModule, ActionTileComponent],
+  imports: [CommonModule, HomeLauncherComponent],
   template: `
-    <div class="bp-page">
-      <div class="bp-mp-grid">
-        <app-action-tile
-          icon="store"
-          title="Marketplace"
-          subtitle="Browse the Ballpark Marketplace, explore suppliers and discover opportunities."
-          (action)="go('/shop')">
-        </app-action-tile>
-
-        <app-action-tile
-          icon="package"
-          title="My Shop"
-          subtitle="Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile."
-          (action)="go('/store')">
-        </app-action-tile>
-
-        <app-action-tile
-          icon="building-2"
-          title="Profile"
-          subtitle="Manage company information, payment details, team members and account settings."
-          (action)="go('/storefront')">
-        </app-action-tile>
-      </div>
-    </div>
+    <app-home-launcher
+      title="Marketplace Profile"
+      subtitle="Manage your Marketplace presence, products and company information."
+      [tiles]="tiles"
+      [back]="goBack">
+    </app-home-launcher>
   `,
-  styles: [`
-    /* Same launcher-grid sizing as the home pages: auto-fit minmax(280,350)
-       capped (not 1fr) so tiles keep their roomy footprint, centred, and
-       wrap onto new rows as the viewport narrows. */
-    .bp-mp-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 350px));
-      justify-content: center;
-      gap: 16px;
-      padding: 24px 20px 40px;
-    }
-  `]
 })
 export class MarketplaceProfileComponent {
+  tiles: LauncherTile[] = [
+    {
+      icon: 'store',
+      title: 'Marketplace',
+      subtitle: 'Browse the Ballpark Marketplace, explore suppliers and discover opportunities.',
+      go: () => this.router.navigate(['/shop']),
+    },
+    {
+      icon: 'package',
+      title: 'My Shop',
+      subtitle: 'Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile.',
+      go: () => this.router.navigate(['/store']),
+    },
+    {
+      icon: 'building-2',
+      title: 'Profile',
+      subtitle: 'Manage company information, payment details, team members and account settings.',
+      go: () => this.router.navigate(['/storefront']),
+    },
+  ];
+
+  /** Arrow function so `this` binds when passed as the launcher's [back] input. */
+  goBack = () => this.router.navigate(['/home']);
+
   constructor(private router: Router) {}
-  go(path: string) { this.router.navigate([path]); }
 }
