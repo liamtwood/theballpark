@@ -13,12 +13,12 @@ import { Project } from '../../../models';
 import { EstimateComponent } from '../../../features/projects/pages/project-detail/tabs/estimate/estimate.component';
 
 /**
- * ⚠️ DEPRECATED SURFACE (v1.67). The canonical destination for the
- * project Estimate is now the /projects/:id/estimate PAGE
- * (EstimatePageComponent), which mounts the same read-only
- * <app-estimate> inside the card chrome. This drawer stays mounted only
- * for surfaces that still open it via EstimateDrawerService.open();
- * full removal is a follow-up commit.
+ * RETAINED (v1.67) — need to keep, still in use elsewhere. Opened via
+ * EstimateDrawerService.open() from surfaces that show the estimate
+ * inline. The /projects/:id/estimate PAGE (EstimatePageComponent) mounts
+ * the same read-only <app-estimate> in card chrome and is the canonical
+ * destination for direct navigation; the drawer stays as a valid
+ * alternate surface — NOT slated for removal.
  *
  * v1.64 — single shared drawer that surfaces the project Estimate
  * (the financial summary: category rows + subtotal / contingency /

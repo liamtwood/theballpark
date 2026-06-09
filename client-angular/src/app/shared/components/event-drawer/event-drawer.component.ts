@@ -15,12 +15,12 @@ import { ProjectEventFormComponent } from '../project-event-form/project-event-f
 /**
  * Event drawer — v1.67.
  *
- * ⚠️ DEPRECATED SURFACE. The canonical destination for editing a
- * project's event facts is now the /projects/:id/details PAGE
- * (ProjectDetailsComponent). This drawer stays mounted only because
- * other surfaces (overview event strip, marketplace project-summary
- * panel kebabs) still open it via EventDrawerService.open(). Full
- * removal is a follow-up commit once those callers move to the tab.
+ * RETAINED — need to keep, still in use elsewhere. Opened from the
+ * overview event strip + the marketplace project-summary kebab via
+ * EventDrawerService.open(). The /projects/:id/details PAGE
+ * (ProjectDetailsComponent) is the canonical destination for direct
+ * navigation, but the drawer stays as a valid alternate surface — NOT
+ * slated for removal.
  *
  * v1.67 reduced this from a 950-line bespoke form to a thin SHELL.
  * All field markup + save logic (snapshot/restore/save, sectionFields
