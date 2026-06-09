@@ -32,12 +32,10 @@ export interface LauncherTile {
     <div class="bp-launcher-page">
       <div class="bp-launcher-stack" *ngIf="tiles.length">
 
-        <!-- Back row — ALWAYS reserved (whether or not there's a Back), so the
-             title sits at the same vertical position on every launcher page and
-             the titles line up across pages. Back's left edge aligns to the
-             first tile's left edge (the row spans the tile-row width). -->
-        <div class="bp-launcher-backrow">
-          <button *ngIf="back" type="button" class="bp-launcher-back" (click)="back()">
+        <!-- Back row — only rendered when there's a Back. Its left edge aligns
+             to the first tile's left edge (the row spans the tile-row width). -->
+        <div class="bp-launcher-backrow" *ngIf="back">
+          <button type="button" class="bp-launcher-back" (click)="back()">
             <lucide-icon name="arrow-left" [size]="16"></lucide-icon> {{ backLabel }}
           </button>
         </div>
@@ -81,11 +79,10 @@ export interface LauncherTile {
       max-width: 1120px;
     }
 
-    /* Back row — full tile-row width, always present (reserves height even when
-       empty). ~5 lines above the title; Back sits at the row's left edge. */
+    /* Back row — full tile-row width, only present when there's a Back.
+       ~5 lines above the title; Back sits at the row's left edge. */
     .bp-launcher-backrow {
       width: 100%;
-      min-height: 22px;
       margin-bottom: 84px;
       display: flex;
       align-items: flex-start;
