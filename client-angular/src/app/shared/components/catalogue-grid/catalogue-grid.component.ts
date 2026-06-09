@@ -164,6 +164,12 @@ export type DetailMode = 'inline' | 'drawer';
             </button>
           </div>
         </div>
+        <!-- v1.68d — store-owner actions (Add / Upload) project here so they
+             sit inline to the RIGHT of the search bar. Only the supplier store
+             provides this content; every other grid surface renders nothing. -->
+        <div class="bp-search-actions-slot">
+          <ng-content select="[catalogue-search-actions]"></ng-content>
+        </div>
         <div class="bp-quick-actions-panel" *ngIf="projectContext">
           <div class="bp-search-section-label">QUICK ACTIONS</div>
           <div class="bp-search-actions">

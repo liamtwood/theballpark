@@ -317,19 +317,25 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           <div catalogue-toggles class="bp-cat-actions" *ngIf="manage">
             <!-- Mirror the project Build tab's scoped/all toggle so suppliers
                  can opt to see categories they don't have items in (e.g. if
-                 they're about to add into a new one via + Add item). -->
+                 they're about to add into a new one via Add). -->
             <button type="button" class="bp-store-scope-toggle"
                     (click)="toggleShowAllStoreCategories()">
               {{ showAllStoreCategories ? 'Show scoped only' : 'Show all categories' }}
             </button>
-            <p-button label="+ Add item"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="openAddItemDrawer()">
-            </p-button>
-            <p-button label="Upload" icon="pi pi-upload"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="fileInput.click()">
-            </p-button>
+          </div>
+          <!-- v1.68d — Add (gradient, primary) + Upload (outline, secondary)
+               pills sit inline to the RIGHT of the search bar via the grid's
+               [catalogue-search-actions] slot. Canonical bp-btn-grad /
+               bp-btn-outline, sized to the 38px search-bar height. -->
+          <div catalogue-search-actions class="bp-store-actions" *ngIf="manage">
+            <button type="button" class="bp-btn-grad bp-store-action-btn"
+                    (click)="openAddItemDrawer()">
+              <lucide-icon name="plus" [size]="16"></lucide-icon> Add
+            </button>
+            <button type="button" class="bp-btn-outline bp-store-action-btn"
+                    (click)="fileInput.click()">
+              <lucide-icon name="upload" [size]="16"></lucide-icon> Upload
+            </button>
             <input #fileInput type="file"
                    accept=".xls,.xlsx,.csv"
                    (change)="onCatalogueUploadSelected($event)"
@@ -443,11 +449,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
        slot. Sits inline in the section header, between the entity count
        and the list/card/table view-toggle. */
     .bp-cat-actions { display: flex; gap: 8px; align-items: center; }
-    :host ::ng-deep .bp-section-add-btn .p-button {
-      height: 30px; padding: 0 12px;
-      font-size: 12px; font-weight: 500;
-      font-family: var(--font-body);
-    }
+    /* v1.68d — store Add / Upload pills (canonical bp-btn-grad / bp-btn-outline)
+       sized to the 38px search-bar height so they sit inline with it. */
+    .bp-store-actions { display: flex; gap: 8px; align-items: center; }
+    .bp-store-action-btn { height: 38px; padding: 0 16px; font-size: 14px; }
+    .bp-store-action-btn lucide-icon { display: inline-flex; }
     /* Scoped/all categories toggle — matches the catalogue-grid's own
        .bp-circles-toggle look (text link, accent colour). */
     .bp-store-scope-toggle {

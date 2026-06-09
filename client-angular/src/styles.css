@@ -1122,28 +1122,30 @@ input.bp-cfg-page-label.p-inputtext:focus {
    on a grid that mirrors the 3-col body grid below (col 1+2 → search,
    col 3 → actions). Outside project context the wrapper is a no-op
    block and the search panel renders full-width as before. */
-/* Categories LEFT — the search lines up with the left-aligned hero / first
-   card (349px = body pad 12 + rail 300 + gap 12 + main-body pad 24 + 1px
-   border, matching supplier-list's heroExtraLeft). The outer panel "card"
-   chrome is dropped; the field itself becomes one clean, tall, rounded search
-   box (subtle border + soft fill) — no "All" scope chip, no filter icon (that
-   moves to a drawer later). */
-.bp-browse-strip--cats-left { padding-left: 349px; }
+/* Categories LEFT — v1.68d: the search bar spans FULL WIDTH with its LEFT edge
+   aligned to the containers panel (the left rail), not indented to the first
+   card. 12px = the body's left padding, where the rail starts. The bespoke
+   "card" search-row chrome (white fill, 16px radius, tall padding) is dropped —
+   the row now inherits the canonical .bp-search-row (38px, transparent +
+   theme-border, radius-button) so the search bar is consistent across every
+   grid surface (marketplace / supplier store / project marketplace). */
+.bp-browse-strip--cats-left { padding-left: 12px; }
 .bp-browse-strip--cats-left .bp-search-panel {
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
 }
-.bp-browse-strip--cats-left .bp-search-row {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-xs);
-  padding: 15px 20px;
-  gap: 12px;
-}
-.bp-search-row-wrap { display: block; }
+/* v1.68d — flex row so projected [catalogue-search-actions] (the supplier
+   store's Add / Upload pills) sit inline to the RIGHT of the search bar.
+   The --split variant below overrides to grid for project context. */
+.bp-search-row-wrap { display: flex; align-items: center; gap: 10px; }
+.bp-search-row-wrap > .bp-search-panel { flex: 1 1 auto; min-width: 0; }
+.bp-search-actions-slot { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* The actions slot is store-only; in project context (--split grid) it would
+   auto-place into a grid cell and break the search / quick-actions columns, so
+   hide it there. */
+.bp-search-row-wrap--split .bp-search-actions-slot { display: none; }
 .bp-search-row-wrap--split {
   display: grid;
   gap: 12px;
@@ -1189,12 +1191,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* v1.65bo — search row gets its own white fill + hairline so the
    input reads as a defined field while the surrounding browse + search
    panels stay chrome-less. */
+/* v1.68d — search-style inputs join the canonical input chrome family:
+   38px tall + var(--radius-button) (same as bp-btn-grad / Edit pill) so the
+   bar can sit inline with action buttons; transparent fill + theme-border,
+   accent focus ring (matches bp-fld). Shared across every catalogue-grid
+   surface (marketplace / supplier store / project marketplace). */
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
-  background: var(--color-surface);
-  border: var(--border-hairline);
+  min-height: 38px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--theme-border);
   border-radius: var(--radius-button);
-  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bp-search-row:focus-within {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(var(--theme-accent-rgb), 0.10);
 }
 .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
 /* Filter affordance shown in the search row when the filter sidebar setting
@@ -1215,7 +1228,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 !important;
-  font-size: 12px !important;
+  /* v1.68d — canonical input font size (was 12px — too small). Matches bp-fld. */
+  font-size: 15px !important;
   height: auto !important;
   min-height: 0 !important;
 }

@@ -589,6 +589,15 @@ p-calendar         → Date picker
 p-chips            → Tag input
 ```
 
+### Search inputs (v1.68d)
+Search-style inputs use `.bp-search-row` (a `bp-fld`-family control: transparent
+fill, `var(--theme-border)`, `var(--radius-button)`, accent focus ring) with a
+leading `.bp-search-icon` prefix. They share the **same 38px height + radius as
+`bp-btn-grad`** so a search bar can sit inline with action pills (e.g. the
+supplier store's `[ 🔍 Search ][+ Add][↑ Upload]` row). One definition in
+`styles.css` — shared across every `catalogue-grid` surface; never re-style the
+search box per surface.
+
 ### Shared Angular Components
 ```
 app-modal               → p-dialog wrapper with parchment header
