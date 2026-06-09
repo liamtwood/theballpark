@@ -61,12 +61,18 @@ export interface LauncherTile {
     </div>
   `,
   styles: [`
+    /* TOP-ANCHORED, not vertical-centred. Vertical-centring made the Back/title
+       Y depend on the stack's total height, so pages whose tallest tile wraps to
+       a different line count (Home vs the hub) put Back ~11px apart. A vh-based
+       top offset is the SAME for both pages at a given viewport, so Back + title
+       land at an identical Y regardless of tile content. clamp keeps it low
+       enough to still feel balanced while staying deterministic. */
     .bp-launcher-page {
       min-height: calc(100vh - var(--nav-height));
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 40px 24px;
+      padding: clamp(56px, 14vh, 140px) 24px 48px;
       box-sizing: border-box;
     }
     /* max-width == 3 tiles (3×360 + 2×20 gap) so the tiles fill the stack
