@@ -9,6 +9,8 @@ export interface LauncherTile {
   subtitle: string;
   /** Optional count chip (e.g. Inbox unread threads). */
   badge?: number;
+  /** Optional footer line below a divider (e.g. "3 projects"). */
+  meta?: string;
   go: () => void;
 }
 
@@ -53,6 +55,7 @@ export interface LauncherTile {
             [title]="t.title"
             [subtitle]="t.subtitle"
             [badge]="t.badge"
+            [meta]="t.meta"
             (action)="t.go()">
           </app-action-tile>
         </div>

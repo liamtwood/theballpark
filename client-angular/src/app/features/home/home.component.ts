@@ -65,7 +65,9 @@ export class HomeComponent implements OnInit {
         icon: 'folder-open',
         title: eventsLabel,
         subtitle: 'Manage active opportunities, confirmed projects and ongoing work.',
-        go: () => this.router.navigate(['/projects']),
+        // v1.68t — lands on the Projects launch page (stage tiles), which drills
+        // into the /projects list. Was /projects directly.
+        go: () => this.router.navigate(['/projects-hub']),
       },
       {
         icon: 'inbox',

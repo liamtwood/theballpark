@@ -43,6 +43,7 @@ import { LucideAngularModule } from 'lucide-angular';
         <h3 class="bp-action-tile-title">{{ title }}</h3>
         <p class="bp-action-tile-sub" *ngIf="subtitle">{{ subtitle }}</p>
       </div>
+      <div class="bp-action-tile-foot" *ngIf="meta">{{ meta }}</div>
     </button>
   `,
   styles: [`
@@ -145,6 +146,20 @@ import { LucideAngularModule } from 'lucide-angular';
       color: var(--color-text-secondary);
       line-height: 1.4;
     }
+
+    /* v1.68t — optional footer meta line (e.g. "3 projects"), divided from the
+       body by a hairline. Sits at the card's bottom edge (body is flex:1), full
+       content-width so every tile's divider aligns. */
+    .bp-action-tile-foot {
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: var(--border-hairline);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+    }
   `],
 })
 export class ActionTileComponent {
@@ -160,6 +175,8 @@ export class ActionTileComponent {
   /** Optional count chip (top-right). Renders only when > 0 — e.g. the
       supplier home Inbox tile's unread-thread count. */
   @Input() badge?: number;
+  /** Optional footer line below a hairline divider, e.g. "3 projects". */
+  @Input() meta?: string;
 
   /** Fired on click / Enter / Space. Parent wires the behaviour. */
   @Output() action = new EventEmitter<void>();

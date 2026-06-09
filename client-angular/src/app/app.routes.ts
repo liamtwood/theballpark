@@ -111,6 +111,15 @@ const FULL_ROUTES: Routes = [
       // page (the launcher "View Projects" tile + top-nav button land
       // here). Hero pushed via ShellContextService like dashboard/agent.
       {
+        // v1.68t — supplier Projects launch page (Quoting / Live / Completed
+        // stage tiles on the shared <app-home-launcher> master). The supplier
+        // Home "Events" tile lands here; tiles drill into the /projects list.
+        path: 'projects-hub',
+        canActivate: [supplierOnlyGuard],
+        loadComponent: () => import('./features/projects/projects-hub.component').then(m => m.ProjectsHubComponent),
+        data: { pageLabel: '', tabs: [], hideHero: true }
+      },
+      {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects-list.component').then(m => m.ProjectsListComponent),
         data: { pageLabel: '', tabs: [], heroTitle: '{Events}', heroSub: 'Manage your active and completed {events}.' }
