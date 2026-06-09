@@ -45,16 +45,15 @@ export const PROJECT_DETAIL_ROUTES: Routes = [
     loadComponent: () => import('./tabs/estimate/estimate-page.component').then(m => m.EstimatePageComponent)
   },
   {
-    // Backward compat: anyone with a saved /build link lands on the
-    // Estimate tab.
+    // v1.68f — Build tab re-enabled for agents (was unrouted in v1.67).
+    // The two-column Build/Estimate working view: compressed category
+    // cards (left) + sticky estimate summary (right).
     path: 'build',
-    redirectTo: 'estimate',
-    pathMatch: 'full'
+    loadComponent: () => import('./tabs/build/build.component').then(m => m.BuildComponent)
   },
   // v1.67 — UNROUTED (files kept in tree for git history, no longer
-  // surfaced): the BuildComponent two-column Build/Estimate view
-  // (tabs/build/build.component.ts), the legacy vendor-selection Build
-  // tab (tabs/build/build-legacy.component.ts, was /supplier), and the
+  // surfaced): the legacy vendor-selection Build tab
+  // (tabs/build/build-legacy.component.ts, was /supplier), and the
   // standalone legacy Estimate summary route (was /estimate-legacy;
   // EstimateComponent itself lives on, mounted by the Estimate tab page
   // + the deprecated estimate drawer).
