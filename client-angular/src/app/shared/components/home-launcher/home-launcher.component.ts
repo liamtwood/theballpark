@@ -32,7 +32,8 @@ export interface LauncherTile {
   imports: [CommonModule, LucideAngularModule, ActionTileComponent],
   template: `
     <div class="bp-launcher-page">
-      <div class="bp-launcher-stack" *ngIf="tiles.length">
+      <div class="bp-launcher-stack" *ngIf="tiles.length"
+           [class.bp-launcher--left]="align === 'left'">
 
         <!-- Back row — only rendered when there's a Back. Its left edge aligns
              to the first tile's left edge (the row spans the tile-row width). -->
@@ -130,6 +131,14 @@ export interface LauncherTile {
       width: 100%;
     }
 
+    /* v1.68v — Position: Left. Per-page hero alignment (page settings). The
+       stack already spans the tile-row width, so left-aligning the hero text
+       and packing the tiles to the start lines everything up with the Back
+       button's left edge. Default (no modifier) stays centred. */
+    .bp-launcher--left { align-items: flex-start; }
+    .bp-launcher--left .bp-launcher-hero { text-align: left; }
+    .bp-launcher--left .bp-launcher-tiles { justify-content: start; }
+
     @media (max-width: 640px) {
       .bp-launcher-title   { font-size: 40px; }
       .bp-launcher-sub     { font-size: 18px; }
@@ -146,4 +155,7 @@ export class HomeLauncherComponent {
       first tile's left edge. */
   @Input() back?: () => void;
   @Input() backLabel = 'Back';
+  /** Hero/tile alignment — 'center' (default) or 'left'. Driven by the page
+      settings (heroAlign) via the consumer page. */
+  @Input() align: 'left' | 'center' = 'center';
 }

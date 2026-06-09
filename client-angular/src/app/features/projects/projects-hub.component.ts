@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 
 import { ProjectService } from '../../core/services/project.service';
 import { ConfigService } from '../../core/services/config.service';
+import { HeroSettingsService } from '../../core/services/hero-settings.service';
 import { Project } from '../../models';
 import { HomeLauncherComponent, LauncherTile } from '../../shared/components/home-launcher/home-launcher.component';
 
@@ -23,14 +24,18 @@ import { HomeLauncherComponent, LauncherTile } from '../../shared/components/hom
   standalone: true,
   imports: [CommonModule, HomeLauncherComponent],
   template: `
-    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles" [back]="back">
+    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles" [back]="back" [align]="align">
     </app-home-launcher>
   `,
 })
 export class ProjectsHubComponent implements OnInit {
   title = 'Events';   // replaced in ngOnInit with the configured label (plural)
   subtitle = 'Manage opportunities from quote to completion.';
+  align: 'left' | 'center' = 'center';
   tiles: LauncherTile[] = [];
+
+  private readonly pageKey = '/projects-hub';
+  private defaultSubtitle = 'Manage opportunities from quote to completion.';
 
   /** Singular Events-label term from the global Ballpark config (the
       ballpark-settings "Projects are called" setting, default "Event"). */
@@ -43,17 +48,29 @@ export class ProjectsHubComponent implements OnInit {
   constructor(
     private projectService: ProjectService,
     private configService: ConfigService,
+    private heroSettings: HeroSettingsService,
     private location: Location,
     private router: Router,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
-    // Hero title tracks the configurable project label (plural), so it reads
-    // "Projects" / "Events" consistently with the Home tile that lands here.
-    this.title = `${this.label}s`;
+    this.applyHeroSettings();
     this.buildTiles(0, 0, 0);
     this.loadCounts();
+    // Live-apply page-settings (Title / Subtitle / Position) edits.
+    this.configService.config$.subscribe(() => {
+      this.applyHeroSettings();
+      this.cdr.detectChanges();
+    });
+  }
+
+  /** Resolve title / subtitle / alignment from the per-page settings, falling
+      back to the configurable Events label + page default subtitle. */
+  private applyHeroSettings(): void {
+    this.title = this.heroSettings.title(this.pageKey, `${this.label}s`);
+    this.subtitle = this.heroSettings.subtitle(this.pageKey, this.defaultSubtitle);
+    this.align = this.heroSettings.align(this.pageKey);
   }
 
   /** (Re)build the three tiles with the current bucket counts. */

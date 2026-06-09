@@ -9,6 +9,7 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
+import { HeroSettingsService } from '../../../core/services/hero-settings.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
 import { pagePatternKey } from '../../../core/utils/page-key';
 import { PersonaService } from '../../../core/services/persona.service';
@@ -462,17 +463,17 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return 'purpose';
   }
   private resolveTitle(mode: 'org' | 'user' | 'greeting' | 'purpose'): string {
-    // 'org' = the org this PAGE represents. A page viewing another org (e.g.
-    // a supplier detail) sets ctx.orgName so it wins over the viewer's org.
-    if (mode === 'org')  return this.ctx?.orgName || this.orgName || this.platformName;
-    if (mode === 'user') return this.personaSvc.active?.name || this.orgName || 'there';
-    if (mode === 'greeting') {
-      const name  = this.personaSvc.active?.name?.trim() || '';
-      const first = name.split(/\s+/)[0] || 'there';
-      return `Welcome back, ${first}`;
-    }
-    // purpose — the page's own name (route heroTitle)
-    return this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName));
+    // Delegates the org / user / greeting / purpose logic to the shared
+    // HeroSettingsService (One Definition — the launcher pages resolve titles
+    // the same way). The shell supplies its own ctx-derived values:
+    //   · org     = the org this PAGE represents (ctx.orgName wins when viewing
+    //               another org, e.g. a supplier detail)
+    //   · purpose = the page's own name (ctx / route heroTitle)
+    return this.heroSettings.resolveTitle(mode, {
+      orgName: this.ctx?.orgName || this.orgName || this.platformName,
+      userName: this.personaSvc.active?.name || this.orgName,
+      purpose: this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName)),
+    });
   }
   /** p0032 — Hero color is now a GLOBAL ConfigService setting applied to
       every hero: 'none' = stripped parchment, 'theme' = accent fill. A
@@ -680,6 +681,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private configStripSvc: ConfigStripService,
     private msg: MessageService,
     public  personaSvc: PersonaService,
+    private heroSettings: HeroSettingsService,
     private cdr: ChangeDetectorRef
   ) {}
 

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { PersonaService } from '../../core/services/persona.service';
 import { MessageService } from '../../core/services/message.service';
 import { ConfigService } from '../../core/services/config.service';
+import { HeroSettingsService } from '../../core/services/hero-settings.service';
 import { HomeLauncherComponent, LauncherTile } from '../../shared/components/home-launcher/home-launcher.component';
 
 /**
@@ -21,16 +22,23 @@ import { HomeLauncherComponent, LauncherTile } from '../../shared/components/hom
   standalone: true,
   imports: [CommonModule, HomeLauncherComponent],
   template: `
-    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles" [back]="back">
+    <app-home-launcher [title]="title" [subtitle]="subtitle" [tiles]="tiles" [back]="back" [align]="align">
     </app-home-launcher>
   `,
 })
 export class HomeComponent implements OnInit {
   title = '';
   subtitle = '';
+  align: 'left' | 'center' = 'center';
   tiles: LauncherTile[] = [];
   /** Supplier Inbox tile badge — unread thread count. */
   inboxUnread = 0;
+
+  /** Per-page settings key (matches pagePatternKey for this route). */
+  private readonly pageKey = '/home';
+  /** Page defaults — used when no per-page override is set. */
+  private defaultTitle = 'Welcome back';
+  private defaultSubtitle = 'What opportunities are we working on today?';
 
   /** v1.68q — Home is the root, so Back uses browser history. */
   back = () => this.location.back();
@@ -39,6 +47,7 @@ export class HomeComponent implements OnInit {
     private personaSvc: PersonaService,
     private messageService: MessageService,
     private configService: ConfigService,
+    private heroSettings: HeroSettingsService,
     private location: Location,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -47,18 +56,35 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.personaSvc.isSupplier()) {
       this.buildSupplier();
+      // Re-resolve the hero whenever page settings change in the drawer, so
+      // Title / Subtitle / Position edits apply live without a reload.
+      this.configService.config$.subscribe(() => {
+        this.applyHeroSettings();
+        this.cdr.detectChanges();
+      });
     } else {
       this.router.navigate(['/dashboard']);
     }
   }
 
-  private buildSupplier(): void {
+  /** Resolve title / subtitle / alignment from the per-page settings, falling
+      back to this page's defaults (so nothing changes until customised). */
+  private applyHeroSettings(): void {
     const org = this.personaSvc.active?.orgName;
-    this.title = org ? `Welcome back, ${org}` : 'Welcome back';
-    this.subtitle = 'What opportunities are we working on today?';
+    this.defaultTitle = org ? `Welcome back, ${org}` : 'Welcome back';
+    this.title = this.heroSettings.title(this.pageKey, this.defaultTitle, {
+      orgName: org,
+      userName: this.personaSvc.active?.name,
+    });
+    this.subtitle = this.heroSettings.subtitle(this.pageKey, this.defaultSubtitle);
+    this.align = this.heroSettings.align(this.pageKey);
+  }
+
+  private buildSupplier(): void {
+    this.applyHeroSettings();
 
     // The "Projects" tile uses the configurable Events label (pluralised).
-    const eventsLabel = ((this.configService.current as any)?.projectLabel || 'Event') + 's';
+    const eventsLabel = (this.configService.projectLabel || 'Event') + 's';
 
     this.tiles = [
       {

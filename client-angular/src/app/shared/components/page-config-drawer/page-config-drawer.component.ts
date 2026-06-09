@@ -267,8 +267,9 @@ import { pagePatternKey } from '../../../core/utils/page-key';
           </ng-container>
 
           <!-- v1.66au — section-visibility toggles are dashboard-only;
-               the other pages don't have these sections. -->
-          <ng-container *ngIf="isHomePage">
+               the other pages (incl. the /home launcher) don't have these
+               sections, so they're gated to the data dashboard. -->
+          <ng-container *ngIf="isDashboardPage">
           <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
                         [binary]="true"
@@ -759,8 +760,9 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       substituted), falling back to the URL segment. */
   currentPageName = 'Home';
   /** v1.66au — the dashboard section toggles (Upcoming / Stats / …) only
-      apply to the home page, so they're gated to it. */
-  isHomePage = true;
+      apply to the data dashboard, so they're gated to it. v1.68v: the /home
+      page is now the launcher (no such sections), so this tracks /dashboard. */
+  isDashboardPage = true;
   /** v1.66av — per-page hero draft. The Title + Subtitle edit THIS page's
       override (keyed by pageKey), defaulting to the route's values. */
   pageKey = '/home';
@@ -786,7 +788,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     // Pattern-based key (e.g. /suppliers/:id) so param routes share one entry
     // and the label isn't a raw id. Matches the app-shell's key exactly.
     this.pageKey = pagePatternKey(this.router);
-    this.isHomePage = this.pageKey === '/home';
+    this.isDashboardPage = this.pageKey === '/dashboard';
     const ev = this.configService.projectLabel || 'Event';
     const sub = (s: string) => (s || '')
       .replace(/\{Events\}/g, ev + 's').replace(/\{Event\}/g, ev)
@@ -807,7 +809,7 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
 
     // Load this page's override (→ route default).
     const ps = this.configService.getPageSetting(this.pageKey);
-    this.pageTitleMode = ps.heroTitleMode || (this.isHomePage ? this.settingsDraft.heroTitleMode : 'purpose');
+    this.pageTitleMode = ps.heroTitleMode || (this.isDashboardPage ? this.settingsDraft.heroTitleMode : 'purpose');
     this.pageSubtitle  = ps.heroSub ?? this.routeHeroSub;
     this.pageAlign     = ps.heroAlign || (this.settingsDraft.heroAlign === 'left' ? 'left' : 'center');
   }
