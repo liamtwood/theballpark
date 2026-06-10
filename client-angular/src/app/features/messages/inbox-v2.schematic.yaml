@@ -1,0 +1,146 @@
+# inbox-v2 — Component Schematic
+# Living spec. Update whenever a layer is added/changed.
+# In Notepad++: Language → Y → YAML  (folds with +/- on every indent level)
+#
+# Legend:
+#   [global: x]  — imported / shared chrome, no per-page CSS
+#   [local]      — unique to this component
+
+inbox-v2:
+
+  inputs:
+    desc: "Reusable contract — every mount point sets these"
+    scope:
+      scopedToProjectId: "string? — null = all projects"
+      scopedToSupplierId: "string? — null = all suppliers"
+      scopedToItemId: "string? — null = all items"
+      viewerRole: "'agency' | 'supplier' (default 'agency')"
+    chrome:
+      showHero: "boolean (default true) — false when embedded"
+      showSearchRow: "boolean (default true)"
+      showFilterDrawer: "boolean (default true)"
+      showTreeRail: "boolean (default true) — false = single-item mode"
+      compact: "boolean (default false) — tighter padding"
+    events:
+      threadSelected: "EventEmitter<string>"
+      messageSent: "EventEmitter<MessageDto>"
+
+  mount-points:
+    full-inbox:
+      route: /inbox-v2
+      inputs: "viewerRole=agency (all defaults)"
+    embedded-in-project:
+      where: project-detail page
+      inputs: "scopedToProjectId, showHero=false, compact=true"
+    embedded-on-item-card:
+      where: item card / item detail
+      inputs: "scopedToItemId, all chrome=false except message-list + compose-bar"
+
+  hero:
+    type: "[global: app-shell]"
+    back:
+      source: route.data.back
+    title:
+      source: route.data.heroTitle
+      overridden_by: page-settings
+    subtitle:
+      source: route.data.heroSub
+      overridden_by: page-settings
+    align:
+      source: route.data.heroAlign
+      overridden_by: page-settings
+    page-settings-cog:
+      type: "[global: HeroSettingsService + ConfigService]"
+
+  search-row:
+    type: "[global: .bp-search-row CSS]"
+    search-input:
+      type: "[global: .bp-search-input + pInputText]"
+      binding: ngModel -> searchTerm
+    filter-button:
+      type: "[global: .bp-search-filter-btn]"
+      badge: activeFilterCount()
+      click: filterOpen = !filterOpen
+
+  filter-drawer:
+    type: "[global: p-sidebar styleClass=bp-drawer]"
+    client-dropdown:
+      timing: load-time
+      model: selectedClientId
+    project-dropdown:
+      timing: load-time
+      model: selectedProjectId
+    category-dropdown:
+      timing: post-load
+      model: activeFolder
+    contact-dropdown:
+      timing: post-load
+      model: activeSupplier
+    status-dropdown:
+      timing: post-load
+      model: activeStatus
+
+  body:
+    type: "[local]"
+
+    tree-rail-left:
+      desc: "thread list, hierarchical: Project -> Supplier -> Item"
+      project-card:
+        type: "[local]"
+        header: "project name + count + expand chevron"
+        supplier-row:
+          type: "[local]"
+          visible_when: project expanded
+          header: "supplier name + count + expand chevron"
+          item-thread-row:
+            type: "[local]"
+            visible_when: supplier expanded
+            item-name: -> selectedItemId
+            latest-snippet: truncated body of latest message
+            timestamp: relative ("2h", "Yesterday")
+            unread-badge: count, hidden if 0
+
+    thread-pane-right:
+      desc: per-item conversation
+
+      thread-header:
+        type: "[local]"
+        breadcrumb: "Project > Supplier > Item"
+        status-pill: "open / closed / awaiting"
+
+      quoted-item-card:
+        type: "[local]"
+        pinned: top
+        thumbnail: ~
+        item-name-price: ~
+        decision-state: "pending / accepted / rejected"
+
+      message-list:
+        type: "[local]"
+        scrollable: true
+        message-bubble:
+          type: "[global: .bp-msg-bubble CSS]"
+          avatar: ~
+          sender-name-timestamp: ~
+          body: "text / attachments"
+          decision-action: "accept / counter / reject (when applicable)"
+
+      compose-bar:
+        type: "[local]"
+        pinned: bottom
+        textarea:
+          type: "[global: .bp-compose-input]"
+        attach-button: paperclip icon
+        send-button:
+          type: "[global: .bp-btn-primary]"
+
+status:
+  built_so_far:
+    - hero          # p0037 — shared shell + route, hero layer only
+  sketched_not_yet_coded:
+    - search-row
+    - filter-drawer
+    - tree-rail
+    - thread-pane
+  next_to_code:
+    - search-row

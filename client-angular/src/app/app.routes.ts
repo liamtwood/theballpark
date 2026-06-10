@@ -214,6 +214,21 @@ const FULL_ROUTES: Routes = [
         // v1.68z — standard hero Back → Home (app-shell reads data.back).
         data: { pageLabel: '', tabs: [], heroTitle: 'Inbox', heroSub: 'Messages, supplier responses and updates.', back: '/home' }
       },
+      {
+        // p0037 — inbox-v2 shared shell (hero layer only). Body layers
+        // (search-row / filter-drawer / tree-rail / thread-pane) land in
+        // follow-up prompts. Hero is rendered by app-shell from this data.
+        path: 'inbox-v2',
+        loadComponent: () => import('./features/messages/inbox-v2.component').then(m => m.InboxV2Component),
+        data: {
+          pageLabel: '',
+          tabs: [],
+          heroTitle: 'Inbox',
+          heroSub: 'Project conversations.',
+          back: '/home',
+          heroAlign: 'left'
+        }
+      },
 
       // v1.65e4 — /admin-home retired. Beth's home is /ballpark-settings
       // (which already carries the Categories / Marketplace / Orgs /
