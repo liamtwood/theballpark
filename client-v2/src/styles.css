@@ -24,6 +24,11 @@
      single source of truth for NON-PrimeNG brand tokens (app chrome, Tailwind). */
 }
 
+/* Standard page-body padding below an <app-page-hero>. */
+.bp-page-body {
+  padding: 32px;
+}
+
 html,
 body {
   margin: 0;
