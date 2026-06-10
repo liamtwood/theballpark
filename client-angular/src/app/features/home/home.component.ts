@@ -5,17 +5,20 @@ import { Router } from '@angular/router';
 import { PersonaService } from '../../core/services/persona.service';
 import { MessageService } from '../../core/services/message.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CreateProjectService } from '../../core/services/create-project.service';
 import { HeroSettingsService } from '../../core/services/hero-settings.service';
 import { HomeLauncherComponent, LauncherTile } from '../../shared/components/home-launcher/home-launcher.component';
 
 /**
- * Home — v1.68o. The default landing. Resolves a per-persona config
+ * Home — v1.68w. The default landing. Resolves a per-persona config
  * (title + subtitle + tiles) and hands it to the shared <app-home-launcher>
  * MASTER, which owns the centred hero + tile layout. The old data dashboard
  * lives on at /dashboard.
  *
- * Supplier first: agency / admin fall back to /dashboard until their launcher
- * configs are built on this same master.
+ * Two launchers on the one master: supplier (Events / Inbox / Marketplace
+ * Profile) and agency/admin (Add / View / Inbox / Marketplace / Profile — the
+ * same tiles the dashboard's agency launcher used). Title / Subtitle / Position
+ * come from the per-page settings (per-profile), defaults below.
  */
 @Component({
   selector: 'app-home',
@@ -47,6 +50,7 @@ export class HomeComponent implements OnInit {
     private personaSvc: PersonaService,
     private messageService: MessageService,
     private configService: ConfigService,
+    private createProjectSvc: CreateProjectService,
     private heroSettings: HeroSettingsService,
     private location: Location,
     private router: Router,
@@ -56,24 +60,23 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.personaSvc.isSupplier()) {
       this.buildSupplier();
-      // Re-resolve the hero whenever page settings change in the drawer, so
-      // Title / Subtitle / Position edits apply live without a reload.
-      this.configService.config$.subscribe(() => {
-        this.applyHeroSettings();
-        this.cdr.detectChanges();
-      });
     } else {
-      this.router.navigate(['/dashboard']);
+      this.buildAgency();
     }
+    // Re-resolve the hero whenever page settings change in the drawer, so
+    // Title / Subtitle / Position edits apply live without a reload.
+    this.configService.config$.subscribe(() => {
+      this.applyHeroSettings();
+      this.cdr.detectChanges();
+    });
   }
 
   /** Resolve title / subtitle / alignment from the per-page settings, falling
-      back to this page's defaults (so nothing changes until customised). */
+      back to this page's defaults (set by the persona build below, so nothing
+      changes until customised). */
   private applyHeroSettings(): void {
-    const org = this.personaSvc.active?.orgName;
-    this.defaultTitle = org ? `Welcome back, ${org}` : 'Welcome back';
     this.title = this.heroSettings.title(this.pageKey, this.defaultTitle, {
-      orgName: org,
+      orgName: this.personaSvc.active?.orgName,
       userName: this.personaSvc.active?.name,
     });
     this.subtitle = this.heroSettings.subtitle(this.pageKey, this.defaultSubtitle);
@@ -81,6 +84,9 @@ export class HomeComponent implements OnInit {
   }
 
   private buildSupplier(): void {
+    const org = this.personaSvc.active?.orgName;
+    this.defaultTitle = org ? `Welcome back, ${org}` : 'Welcome back';
+    this.defaultSubtitle = 'What opportunities are we working on today?';
     this.applyHeroSettings();
 
     // The "Projects" tile uses the configurable Events label (pluralised).
@@ -111,6 +117,53 @@ export class HomeComponent implements OnInit {
     ];
 
     this.loadInboxUnread();
+  }
+
+  /** Agency / admin launcher — the same five tiles the dashboard's agency
+      launcher used (Add / View / Inbox / Marketplace / Profile), with their
+      original icons + navigation. Add/View use the configurable Events label;
+      Profile lands on /settings (no dedicated /profile route today). */
+  private buildAgency(): void {
+    const org = this.personaSvc.active?.orgName;
+    this.defaultTitle = org ? `Welcome back, ${org}` : 'Welcome back';
+    this.defaultSubtitle = 'What are we working on today?';
+    this.applyHeroSettings();
+
+    const label = this.configService.projectLabel || 'Event';
+    const lower = label.toLowerCase();
+
+    this.tiles = [
+      {
+        icon: 'folder-plus',
+        title: `Add ${label}`,
+        subtitle: `Start a new ${lower}`,
+        go: () => this.createProjectSvc.open(),
+      },
+      {
+        icon: 'folder-open',
+        title: `View ${label}s`,
+        subtitle: `Browse all your ${lower}s`,
+        go: () => this.router.navigate(['/projects']),
+      },
+      {
+        icon: 'inbox',
+        title: 'Inbox',
+        subtitle: 'Supplier replies and threads',
+        go: () => this.router.navigate(['/inbox']),
+      },
+      {
+        icon: 'store',
+        title: 'Marketplace',
+        subtitle: 'Browse items and suppliers',
+        go: () => this.router.navigate(['/shop']),
+      },
+      {
+        icon: 'circle-user',
+        title: 'Profile',
+        subtitle: 'Your account and settings',
+        go: () => this.router.navigate(['/settings']),
+      },
+    ];
   }
 
   /** Supplier Inbox unread-thread count → the Inbox tile badge. Uses the shared
