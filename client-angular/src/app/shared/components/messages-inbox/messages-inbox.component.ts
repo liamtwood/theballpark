@@ -1992,6 +1992,13 @@ export class MessagesInboxComponent implements OnInit {
         // v1.65db (p0013 header refit) — agency name for the new
         // 3×2 grid header (From line).
         this.agencyName = (org as any).name || '';
+        // v1.69d — global agency inbox (home → inbox, no project context):
+        // show ALL threads (all projects / clients / statuses) by default
+        // instead of waiting for a project pick. getAllByOrg needs orgId, so
+        // kick the load here, once it resolves.
+        if (this.viewer !== 'supplier' && this.showProjectSelector && !this.boundProjectId) {
+          this.loadAllMessages();
+        }
       }
     });
 
@@ -2001,7 +2008,8 @@ export class MessagesInboxComponent implements OnInit {
       // is the source of truth for which supplier we are.
       this.loadAllMessages();
     } else if (this.showProjectSelector && !this.boundProjectId) {
-      // Global mode — load all projects for selector
+      // Global mode — load the projects list for the Project filter dropdown.
+      // The threads themselves load above (loadAllMessages) once orgId resolves.
       this.projectSvc.getAll().subscribe({
         next: projects => {
           this.projects = projects || [];
