@@ -3,9 +3,12 @@
 ## Goal
 
 Add the next chrome layers to `<app-messages-inbox-v2>`: the search row,
-the three-column body shell, and the empty 3-deep tree rail using the
-marketplace's existing global classes. **No data is loaded** — the rail
+the two-column body shell, and the empty 3-deep tree rail using the
+marketplace's existing global sidebar classes. **No data is loaded** — the rail
 renders zero rows; the right pane shows an empty-state placeholder.
+
+Agent default tree shape (this prompt): **Supplier → Category → Item**.
+Supplier-viewer tree (Project → Item) and project-scoped variants land in p0039.
 
 Also fold in two small adjacent items:
 - Wire `heroAlign` from route data in app-shell (p0037 QC note).
@@ -28,45 +31,64 @@ The marketplace `catalogue-grid.component.ts` (`shared/components/catalogue-grid
 
 ## What's new
 
-### 1. One CSS class added to `styles.css` — the 3rd-level row
+### 1. New generic level primitive added to `styles.css`
 
-Marketplace's rail is 2 deep (cat → subcat). Inbox-v2 is 3 deep (project → supplier → item-thread). Add ONE new class for the third level, alongside the existing rail classes:
+Inbox-v2's tree depth varies (1-3 levels deep depending on viewerRole + scopedToProjectId). Instead of adding `.bp-cat-rail-sub-sub` for a fixed third level, add ONE generic row primitive that takes a `[data-level]` attribute for indent:
 
 ```css
-/* v1.69x (p0038) — third-level rail row, sits under .bp-cat-rail-sub.
-   Used by inbox-v2 to show item-thread rows nested under suppliers. */
-.bp-cat-rail-sub-sub {
+/* v1.69x (p0038) — generic tree row used by inbox-v2's rail.
+   Replaces ad-hoc .bp-cat-rail-sub-sub. Indent set by [data-level]. */
+.bp-cat-rail-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px 6px 36px;  /* +12px indent vs .bp-cat-rail-sub */
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  padding: 8px 10px;
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
   width: 100%;
   border-radius: var(--radius-button);
-  transition: background 0.1s;
+  font-size: 13px;
+  color: var(--color-text);
+  transition: background 0.12s;
 }
-.bp-cat-rail-sub-sub:hover { background: var(--color-fill); }
-.bp-cat-rail-sub-sub.active { background: var(--theme-soft); color: var(--theme-accent); font-weight: 600; }
+.bp-cat-rail-row[data-level="1"] { padding-left: 12px; font-weight: 600; }
+.bp-cat-rail-row[data-level="2"] { padding-left: 28px; font-size: 12px; color: var(--color-text-secondary); }
+.bp-cat-rail-row[data-level="3"] { padding-left: 44px; font-size: 12px; color: var(--color-text-secondary); }
+.bp-cat-rail-row:hover { background: var(--color-fill); }
+.bp-cat-rail-row.active { background: var(--theme-soft); color: var(--theme-accent); font-weight: 600; }
+
+/* Optional subtitle line under the row's main label (used for supplier viewer:
+   project row shows agency name as muted subtitle below project name). */
+.bp-cat-rail-row-text { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; }
+.bp-cat-rail-row-name { line-height: 1.3; }
+.bp-cat-rail-row-sub  { font-size: 11px; color: var(--color-text-secondary); font-weight: 400; line-height: 1.2; }
+.bp-cat-rail-row-count { font-size: 11px; color: var(--color-text-secondary); }
+.bp-cat-rail-row-chev  { color: var(--color-text-secondary); flex-shrink: 0; }
 ```
 
-Match the visual rhythm of `.bp-cat-rail-sub` — sit it next to that rule in styles.css.
+Sit these rules next to the existing `.bp-cat-rail-*` block in styles.css.
 
 ### 2. heroAlign wiring in app-shell
 
-In `app-shell.component.ts` `updateFromRoute()`, alongside the existing `heroTitle` / `heroSub` reads, also read `heroAlign` from route data and apply it. Today the value only takes effect via page-settings; this lets route-data set the default.
+In `app-shell.component.ts` `updateFromRoute()`, alongside the existing `heroTitle` / `heroSub` reads (around line 846-847), also read `heroAlign` from route data and store it as the route default. The hero template should resolve final align as:
 
-The existing block (around line 846-847) reads:
-```typescript
-this.routeHeroTitle = data['heroTitle'] || '';
-this.routeHeroSub   = data['heroSub']   || '';
+```
+saved page-setting (ConfigService.getPageSetting(pageKey).heroAlign)
+  ?? route.data.heroAlign
+  ?? 'centre'        // existing global default
 ```
 
-Add a sibling line that sets the per-route hero-align default. Wire it through the same channel `ConfigService.heroAlign` uses, so the page-setting override still wins. Implementation choice is yours — what matters is: `data: { heroAlign: 'left' }` produces left-aligned hero in absence of any saved page-setting, and a saved page-setting still overrides.
+Concretely:
+1. Add a new field on the component: `routeHeroAlign: 'left' | 'centre' | '' = ''`
+2. In `updateFromRoute()`: `this.routeHeroAlign = data['heroAlign'] || '';`
+3. Wherever the final `heroAlign` value is computed (currently reads from `ConfigService` / page-settings), add a fallback to `this.routeHeroAlign`, then to the existing default.
+
+Behaviour after this lands:
+- `/inbox-v2` (route data has `heroAlign: 'left'`, no saved page-setting) → left-aligned hero
+- Open page-settings drawer, change align to Centre, save → centre wins (saved override beats route default)
+- Reset page-settings → falls back to route default → left again
 
 ### 3. Component changes — `messages-inbox-v2.component.ts`
 
@@ -80,62 +102,74 @@ No template usage yet. It's declared so future prompts (item-preview-card layer)
 
 #### 3b. State + types
 
-Stub types (declare them, leave fields skeletal):
+Tree shape — **Supplier → Category → Item** for the agent-full case (this prompt's default). Supplier-viewer (Project → Item) and project-scoped variants come in p0039.
+
 ```typescript
 export interface ItemThreadNode {
   itemId: string;
   itemName: string;
   latestSnippet: string;
-  timestamp: string;   // pre-formatted relative string for now
+  timestamp: string;       // pre-formatted relative string for now
   unreadCount: number;
 }
-export interface SupplierNode {
+export interface CategoryNode {
+  categoryId: string;
+  categoryName: string;
+  iconName?: string;       // Lucide icon name (e.g. 'flower-2', 'utensils')
+  threadCount: number;
+  items: ItemThreadNode[];
+}
+// Top-level node for AGENT viewer (this prompt's tree).
+export interface AgentSupplierNode {
   supplierId: string;
   supplierName: string;
+  subtitle?: string;       // optional muted subtitle (reserved for future use)
   threadCount: number;
-  itemThreads: ItemThreadNode[];
+  categories: CategoryNode[];
 }
-export interface ProjectNode {
+// Top-level node for SUPPLIER viewer (declared for forward compat — not used here).
+export interface SupplierProjectNode {
   projectId: string;
   projectName: string;
+  agencyName: string;      // the FROM — shown as muted subtitle
   threadCount: number;
-  suppliers: SupplierNode[];
+  items: ItemThreadNode[];
 }
 ```
 
 Component state:
 ```typescript
 searchTerm = '';
-filterOpen = false;             // stays false — filter drawer comes later
-projectTree: ProjectNode[] = []; // empty for now
-expandedProjectIds = new Set<string>();
+filterOpen = false;                            // filter drawer comes later
+agentTree: AgentSupplierNode[] = [];           // empty for now
 expandedSupplierIds = new Set<string>();
+expandedCategoryIds = new Set<string>();
 selectedItemId: string | null = null;
 ```
 
 Stub handlers (template hooks, no logic):
 ```typescript
 onSearchChange(): void { /* debounced filter — comes with data prompt */ }
-toggleProject(id: string): void {
-  this.expandedProjectIds.has(id)
-    ? this.expandedProjectIds.delete(id)
-    : this.expandedProjectIds.add(id);
-}
 toggleSupplier(id: string): void {
   this.expandedSupplierIds.has(id)
     ? this.expandedSupplierIds.delete(id)
     : this.expandedSupplierIds.add(id);
 }
+toggleCategory(id: string): void {
+  this.expandedCategoryIds.has(id)
+    ? this.expandedCategoryIds.delete(id)
+    : this.expandedCategoryIds.add(id);
+}
 selectItem(id: string): void {
   this.selectedItemId = id;
   this.threadSelected.emit(id);
 }
-activeFilterCount(): number { return 0; }  // stub — filter drawer comes later
+activeFilterCount(): number { return 0; }     // stub — filter drawer comes later
 ```
 
 #### 3c. Template
 
-Top to bottom:
+Uses the new `.bp-cat-rail-row[data-level]` primitive for ALL three levels — uniform markup, indent driven by the data attribute. Top to bottom:
 
 ```html
 <div class="bp-inbox-v2" [class.bp-inbox-v2--compact]="compact">
@@ -154,55 +188,69 @@ Top to bottom:
             (click)="filterOpen = !filterOpen"
             title="Filters">
       <lucide-icon name="list-filter" [size]="15"></lucide-icon>
-      <span class="bp-search-filter-count" *ngIf="activeFilterCount()">{{ activeFilterCount() }}</span>
     </button>
   </div>
 
-  <!-- Three-column body shell -->
+  <!-- Two-column body shell (sidebar + thread pane) -->
   <div class="bp-cat-body bp-cat-body--cats-left">
 
     <!-- LEFT: tree rail (gated) -->
     <div class="bp-cat-sidebar" *ngIf="showTreeRail">
       <div class="bp-cat-sidebar-head">
         <lucide-icon name="messages-square" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
-        <div class="bp-filter-title">Project conversations</div>
+        <div class="bp-filter-title">Supplier conversations</div>
       </div>
       <div class="bp-cat-sidebar-body">
         <div class="bp-cat-rail">
-          <!-- Empty state: rail renders nothing while projectTree is empty -->
-          <ng-container *ngFor="let project of projectTree">
-            <button type="button" class="bp-cat-rail-item"
-                    [class.active]="expandedProjectIds.has(project.projectId)"
-                    (click)="toggleProject(project.projectId)">
-              <span class="bp-cat-rail-icon">
-                <lucide-icon name="folder" [size]="16" [strokeWidth]="1.5"></lucide-icon>
+          <!-- Empty while agentTree = []. Each level uses .bp-cat-rail-row
+               with [data-level] driving indent. -->
+          <ng-container *ngFor="let supplier of agentTree">
+
+            <!-- LEVEL 1 — supplier -->
+            <button type="button" class="bp-cat-rail-row" [attr.data-level]="1"
+                    (click)="toggleSupplier(supplier.supplierId)">
+              <lucide-icon name="store" [size]="15"></lucide-icon>
+              <span class="bp-cat-rail-row-text">
+                <span class="bp-cat-rail-row-name">{{ supplier.supplierName }}</span>
+                <span class="bp-cat-rail-row-sub" *ngIf="supplier.subtitle">{{ supplier.subtitle }}</span>
               </span>
-              <span class="bp-cat-rail-text">
-                <span class="bp-cat-rail-name">{{ project.projectName }}</span>
-                <span class="bp-cat-rail-count" *ngIf="project.threadCount">{{ project.threadCount }}</span>
-              </span>
-              <lucide-icon [name]="expandedProjectIds.has(project.projectId) ? 'chevron-down' : 'chevron-right'"
-                           [size]="15" class="bp-cat-rail-chev"></lucide-icon>
+              <span class="bp-cat-rail-row-count" *ngIf="supplier.threadCount">{{ supplier.threadCount }}</span>
+              <lucide-icon [name]="expandedSupplierIds.has(supplier.supplierId) ? 'chevron-down' : 'chevron-right'"
+                           [size]="14" class="bp-cat-rail-row-chev"></lucide-icon>
             </button>
 
-            <div class="bp-cat-rail-subs" *ngIf="expandedProjectIds.has(project.projectId)">
-              <ng-container *ngFor="let supplier of project.suppliers">
-                <button type="button" class="bp-cat-rail-sub"
-                        (click)="toggleSupplier(supplier.supplierId)">
-                  {{ supplier.supplierName }}
-                  <span *ngIf="supplier.threadCount">({{ supplier.threadCount }})</span>
+            <ng-container *ngIf="expandedSupplierIds.has(supplier.supplierId)">
+              <ng-container *ngFor="let category of supplier.categories">
+
+                <!-- LEVEL 2 — category -->
+                <button type="button" class="bp-cat-rail-row" [attr.data-level]="2"
+                        (click)="toggleCategory(category.categoryId)">
+                  <lucide-icon [name]="category.iconName || 'folder'" [size]="14"></lucide-icon>
+                  <span class="bp-cat-rail-row-text">
+                    <span class="bp-cat-rail-row-name">{{ category.categoryName }}</span>
+                  </span>
+                  <span class="bp-cat-rail-row-count" *ngIf="category.threadCount">{{ category.threadCount }}</span>
+                  <lucide-icon [name]="expandedCategoryIds.has(category.categoryId) ? 'chevron-down' : 'chevron-right'"
+                               [size]="13" class="bp-cat-rail-row-chev"></lucide-icon>
                 </button>
 
-                <ng-container *ngIf="expandedSupplierIds.has(supplier.supplierId)">
-                  <button type="button" class="bp-cat-rail-sub-sub"
-                          *ngFor="let thread of supplier.itemThreads"
+                <ng-container *ngIf="expandedCategoryIds.has(category.categoryId)">
+                  <!-- LEVEL 3 — item thread (leaf, selectable) -->
+                  <button type="button" class="bp-cat-rail-row" [attr.data-level]="3"
+                          *ngFor="let thread of category.items"
                           [class.active]="selectedItemId === thread.itemId"
                           (click)="selectItem(thread.itemId)">
-                    {{ thread.itemName }}
+                    <span class="bp-cat-rail-row-text">
+                      <span class="bp-cat-rail-row-name">{{ thread.itemName }}</span>
+                      <span class="bp-cat-rail-row-sub" *ngIf="thread.latestSnippet">{{ thread.latestSnippet }}</span>
+                    </span>
+                    <span class="bp-cat-rail-row-count" *ngIf="thread.unreadCount">{{ thread.unreadCount }}</span>
                   </button>
                 </ng-container>
+
               </ng-container>
-            </div>
+            </ng-container>
+
           </ng-container>
         </div>
       </div>
@@ -218,12 +266,14 @@ Top to bottom:
 </div>
 ```
 
+Note: only the LEAF row (`[data-level]="3"`) uses `.active` (the currently-selected thread). The level-1 and level-2 rows don't carry `.active` — they're expand/collapse controls, not selection targets. Avoids conflating "expanded" with "active".
+
 #### 3d. Imports
 
 Add to the component's `imports` array:
 - `FormsModule` (for `[(ngModel)]`)
 - `InputTextModule` from `primeng/inputtext` (for `pInputText`)
-- `LucideAngularModule.pick({ Search, ListFilter, MessagesSquare, Folder, ChevronDown, ChevronRight })`
+- `LucideAngularModule.pick({ Search, ListFilter, MessagesSquare, Store, Folder, ChevronDown, ChevronRight })`
 
 #### 3e. Minimal local styles
 
@@ -253,8 +303,8 @@ Update `client-angular/src/app/features/messages/inbox-v2.schematic.yaml`:
 
 1. Navigate to `/inbox-v2`:
    - Hero renders with title "Inbox", subtitle "Project conversations.", **left-aligned** (heroAlign now works from route data)
-   - Below hero: search row visible with placeholder "Search threads, suppliers, items..." and filter button on the right (badge hidden — `activeFilterCount()` returns 0)
-   - Below search: two-column body. Left column = sidebar with eyebrow "Project conversations" + `messages-square` icon, empty rail below. Right column = "Select a thread to view." centred placeholder.
+   - Below hero: search row visible with placeholder "Search threads, suppliers, items..." and filter button on the right (no badge — `activeFilterCount()` returns 0 and the template doesn't render a count yet)
+   - Below search: two-column body. Left column = sidebar with eyebrow "Supplier conversations" + `messages-square` icon, empty rail below. Right column = "Select a thread to view." centred placeholder.
 2. Type in the search box — value binds (verify by setting a breakpoint or `console.log` in onSearchChange) — no visual change, no errors.
 3. Click filter button — toggles `filterOpen` boolean (no drawer opens yet — that's a future prompt).
 4. No console errors, no template warnings.

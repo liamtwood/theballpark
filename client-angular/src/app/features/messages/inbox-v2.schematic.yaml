@@ -85,26 +85,36 @@ inbox-v2:
     type: "[local]"
 
     tree-rail-left:
-      desc: "3-deep tree: Project -> Supplier -> Item-thread. Reuses marketplace rail chrome."
+      desc: |
+        Hierarchical tree. Depth depends on viewerRole + scopedToProjectId:
+          Agent full        : Project -> Category -> Item   (3 deep)
+          Agent project     : Category -> Item              (2 deep)
+          Supplier full     : Project -> Item               (2 deep — suppliers skip cat)
+          Supplier project  : Item (flat)                   (1 deep)
+        Uses generic .bp-cat-rail-row primitive with [data-level] for indent.
       container:
         outer: ".bp-cat-body--cats-left  [global: marketplace]"
         sidebar: ".bp-cat-sidebar        [global]"
         head: ".bp-cat-sidebar-head      [global] — eyebrow"
-        head-label: "Project conversations"
+        head-label:
+          agent-full: "Project conversations"
+          agent-project: "Category conversations"
+          supplier-full: "Client conversations"
+          supplier-project: "Conversations"
         head-icon: "messages-square (Lucide)"
         body: ".bp-cat-sidebar-body      [global] — scrollable"
         list: ".bp-cat-rail              [global]"
-      level-1-project:
-        class: ".bp-cat-rail-item        [global]"
-        content: "icon + project name + thread count + chevron"
-        binding: "(click) -> toggle expand; selectedProjectId on activate"
-      level-2-supplier:
-        class: ".bp-cat-rail-sub         [global]  (visible when project expanded)"
-        content: "supplier name + thread count + chevron"
-      level-3-item-thread:
-        class: ".bp-cat-rail-sub-sub     [NEW — to add for 3rd level]  (visible when supplier expanded)"
-        content: "item-name + latest-snippet + timestamp + unread-badge"
-        binding: "(click) -> selectedItemId; emits threadSelected"
+      row-primitive:
+        class: ".bp-cat-rail-row         [NEW — to add for generic indent]"
+        levels: "[data-level=1|2|3] sets padding-left; replaces .bp-cat-rail-sub-sub family"
+      level-content:
+        project:
+          content: "folder icon + project name + (supplier subtitle for supplier viewer) + thread count + chevron"
+        category:
+          content: "category icon + category name + thread count + chevron"
+        item:
+          content: "item-name + latest-snippet + timestamp + unread-badge"
+          binding: "(click) -> selectedItemId; emits threadSelected"
 
     thread-pane-right:
       desc: per-item conversation
