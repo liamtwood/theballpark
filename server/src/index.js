@@ -167,6 +167,8 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 // middleware/authenticate.js scope note.
 app.use('/auth', require('./routes/auth'));
 app.use('/api/dev', require('./routes/dev'));
+// pV2-03 — team management (v2-only; JWT + live membership gate inside).
+app.use('/api/team', require('./routes/team'));
 // Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
 app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));

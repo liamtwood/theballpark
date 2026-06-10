@@ -31,15 +31,31 @@ async function upsertUserFromGoogle(profile) {
     return { userId: r.rows[0].id };
   }
 
-  // 2. by email (linking flow)
+  // 2. by email (linking flow — covers invited stubs from /api/team/invite).
   r = await pool.query('SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL', [email]);
   if (r.rows.length) {
+    const userId = r.rows[0].id;
     await pool.query(
       `UPDATE users SET google_sub = $2, display_name = COALESCE(display_name, $3),
               avatar_url = COALESCE($4, avatar_url), updated_at = NOW() WHERE id = $1`,
-      [r.rows[0].id, sub, displayName, avatarUrl]
+      [userId, sub, displayName, avatarUrl]
     );
-    return { userId: r.rows[0].id };
+    // pV2-03 — accept any pending invites on first sign-in: invited → active.
+    await pool.query(
+      `UPDATE user_orgs SET status = 'active', joined_at = NOW(), updated_at = NOW()
+        WHERE user_id = $1 AND status = 'invited' AND deleted_at IS NULL`,
+      [userId]
+    );
+    // Land the user in an org: default_org_id, else their first membership.
+    await pool.query(
+      `UPDATE users SET default_org_id = COALESCE(default_org_id,
+         (SELECT org_id FROM user_orgs
+           WHERE user_id = $1 AND status = 'active' AND deleted_at IS NULL
+           ORDER BY joined_at ASC NULLS LAST LIMIT 1))
+        WHERE id = $1`,
+      [userId]
+    );
+    return { userId };
   }
 
   // 3. brand-new signup → user + new agency org + admin membership.
