@@ -5,6 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
+import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import {
@@ -106,7 +107,7 @@ interface VendorThread {
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    ButtonModule, InputTextModule, DropdownModule, ToastModule,
+    ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, CategoryCirclesComponent,
     MessageItemCardComponent
@@ -124,6 +125,16 @@ interface VendorThread {
            chrome and the three coarsest filters sit shoulder to
            shoulder. -->
       <div class="bp-msg-top-filter-row">
+        <!-- Search left-justified (standard bp-search-row). -->
+        <div class="bp-search-row bp-msg-top-search">
+          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+          <input pInputText type="text"
+                 [(ngModel)]="searchTerm"
+                 (ngModelChange)="onSearchChange()"
+                 placeholder="Search threads, suppliers, messages…"
+                 class="bp-search-input"/>
+        </div>
+
         <p-dropdown *ngIf="!boundProjectId"
           [(ngModel)]="selectedClientId"
           [options]="clientDropdownOptions"
@@ -142,14 +153,12 @@ interface VendorThread {
           (onChange)="onProjectChange()">
         </p-dropdown>
 
-        <div class="bp-search-row bp-msg-top-search">
-          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-          <input pInputText type="text"
-                 [(ngModel)]="searchTerm"
-                 (ngModelChange)="onSearchChange()"
-                 placeholder="Search threads, suppliers, messages…"
-                 class="bp-search-input"/>
-        </div>
+        <!-- Filter → opens the standard bp-drawer (Category / Contact / Status). -->
+        <button type="button" class="bp-btn-outline bp-msg-filter-btn" (click)="filterOpen = true">
+          <lucide-icon name="list-filter" [size]="16"></lucide-icon>
+          Filter
+          <span *ngIf="activeFilterCount" class="bp-msg-filter-badge">{{ activeFilterCount }}</span>
+        </button>
       </div><!-- /.bp-msg-top-filter-row -->
 
       <!-- ═══════════════ TWO-COLUMN BODY ═══════════════
@@ -160,51 +169,10 @@ interface VendorThread {
       <div class="bp-cat-body bp-msg-body bp-msg-body--2col"
            [style.--bp-msg-preview-w.px]="previewWidth">
 
-        <!-- ── MAIN: panel head (icon + INBOX + count + 3 filter
-             dropdowns) + scrolling body ── -->
+        <!-- ── MAIN: scrolling thread list. v1.68y — the panel head
+             (INBOX title + count + Category/Contact/Status dropdowns) was
+             removed; those filters now live in the Filter drawer. ── -->
         <section class="bp-cat-main">
-          <div class="bp-cat-main-head">
-            <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
-            <span class="bp-cat-section-title">INBOX</span>
-            <span class="bp-cat-section-count">
-              {{ filteredThreads().length }}
-              {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
-            </span>
-
-            <!-- v1.65dv — Category / Contact / Status dropdowns. All
-                 three reuse the existing activeFolder / activeSupplier
-                 / activeStatus state, so filteredThreads() keeps
-                 working without change. The "Contact" label fits both
-                 viewers — agency sees suppliers, supplier sees
-                 agencies (when /inbox lands in Phase 2). -->
-            <div class="bp-msg-head-filters">
-              <p-dropdown *ngIf="folderDropdownOptions.length > 1"
-                          [options]="folderDropdownOptions"
-                          [ngModel]="activeFolder"
-                          (onChange)="onFolderDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          placeholder="Category"></p-dropdown>
-
-              <p-dropdown [options]="contactDropdownOptions"
-                          [ngModel]="activeSupplier"
-                          (onChange)="onContactDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          [placeholder]="viewer === 'supplier' ? 'Agency' : 'Contact'"></p-dropdown>
-
-              <p-dropdown [options]="statusDropdownOptions"
-                          [ngModel]="activeStatus"
-                          (onChange)="onStatusDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          placeholder="Status"></p-dropdown>
-            </div>
-          </div>
-
           <div class="bp-cat-main-body">
           <!-- v1.28: Status pills moved to the left sidebar — only ONE
                filter rail across the page now. -->
@@ -643,6 +611,57 @@ interface VendorThread {
       </div>
 
     </ng-container>
+
+    <!-- FILTER DRAWER — standard bp-drawer (Category / Contact / Status),
+         moved out of the inbox panel head. -->
+    <p-sidebar [(visible)]="filterOpen" position="right"
+               styleClass="bp-drawer" [style]="{width:'420px'}"
+               [showCloseIcon]="false">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">INBOX</span>
+            <div class="bp-drawer-title">Filters</div>
+          </div>
+          <button class="bp-icon-btn" (click)="filterOpen = false" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </ng-template>
+
+      <div class="bp-drawer-body bp-msg-filter-body">
+        <div class="bp-field" *ngIf="folderDropdownOptions.length > 1">
+          <label class="bp-field-label">Category</label>
+          <p-dropdown [options]="folderDropdownOptions"
+                      [ngModel]="activeFolder"
+                      (onChange)="onFolderDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="Category"></p-dropdown>
+        </div>
+
+        <div class="bp-field">
+          <label class="bp-field-label">{{ viewer === 'supplier' ? 'Agency' : 'Contact' }}</label>
+          <p-dropdown [options]="contactDropdownOptions"
+                      [ngModel]="activeSupplier"
+                      (onChange)="onContactDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      [placeholder]="viewer === 'supplier' ? 'Agency' : 'Contact'"></p-dropdown>
+        </div>
+
+        <div class="bp-field">
+          <label class="bp-field-label">Status</label>
+          <p-dropdown [options]="statusDropdownOptions"
+                      [ngModel]="activeStatus"
+                      (onChange)="onStatusDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="Status"></p-dropdown>
+        </div>
+      </div>
+    </p-sidebar>
+
     <p-toast></p-toast>
   `,
   styles: [`
@@ -759,11 +778,27 @@ interface VendorThread {
        chrome (flex icon + p-inputtext sibling). We just flex it to
        consume the remaining width and pad it inside so the icon
        isn't flush against the border. */
+    /* v1.68y — search left-justified (no longer flex:1); the Filter button
+       is pushed to the right edge via margin-left:auto. */
     .bp-msg-top-search {
-      flex: 1 1 auto;
+      flex: 0 1 360px;
+      min-width: 200px;
       padding: 0 12px;
       height: 34px;
     }
+    .bp-msg-filter-btn {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 6px;
+      flex-shrink: 0;
+    }
+    .bp-msg-filter-badge {
+      min-width: 18px; height: 18px; padding: 0 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 9px;
+      background: var(--theme-accent); color: #fff;
+      font-size: 11px; font-weight: 600; line-height: 1;
+    }
+    .bp-msg-filter-body { display: flex; flex-direction: column; gap: 16px; }
 
     /* Long supplier names truncate inside the shared bp-sidebar-item. */
     .bp-msg-supp-name {
@@ -1829,6 +1864,8 @@ export class MessagesInboxComponent implements OnInit {
   selectedClientId = '';
   activeStatus = 'all';
   activeFolder = 'all';
+  /** Filter drawer (Category / Contact / Status) open state. */
+  filterOpen = false;
   /** v1.27: supplier filter (left sidebar). 'all' = no filter. */
   activeSupplier: string = 'all';
   /** v1.27 → v1.65dt (p0015) — list / card / table view toggle
@@ -2353,6 +2390,15 @@ export class MessagesInboxComponent implements OnInit {
       opts.push({ id: f.id, name: f.name });
     }
     return opts;
+  }
+
+  /** Number of active (non-default) drawer filters → the Filter button badge. */
+  get activeFilterCount(): number {
+    let n = 0;
+    if (this.activeFolder && this.activeFolder !== 'all') n++;
+    if (this.activeSupplier && this.activeSupplier !== 'all') n++;
+    if (this.activeStatus && this.activeStatus !== 'all') n++;
+    return n;
   }
 
   /** Dropdown change handler — keeps activeFolder + circle strip in sync. */
