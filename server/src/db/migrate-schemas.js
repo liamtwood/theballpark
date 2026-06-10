@@ -1904,6 +1904,60 @@ const migrate = async () => {
     }
     console.log('  bp_brand_config table + seeds installed (v2.03a, all schemas).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v2.04a (pV2-02) — auth: users reshape + user_orgs membership.
+    // The v1 `users` table ALREADY EXISTS (id/org_id/name/email/role/…),
+    // so the reshape is ADDITIVE — new columns only, v1 rows + reads
+    // untouched (criterion: v1 on 4200 keeps working). New columns:
+    //   · google_sub  — Google's stable subject id. NULLABLE (dev-seed
+    //     users have none — the prompt's NOT NULL contradicts its own
+    //     seed spec); uniqueness via partial index WHERE NOT NULL.
+    //   · display_name, default_org_id — per the auth plan.
+    // user_orgs = role-per-membership (is_admin flag; effective role is
+    // derived from (orgs.type, is_admin) at session time). Soft-delete
+    // cols kept — richer membership, not a pure FK junction.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS display_name TEXT;
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS default_org_id UUID;
+      `);
+      // preview/master users predate the audit sweep — ensure the 6 audit
+      // cols (incl. deleted_at, referenced by the email index) exist first.
+      await client.query(`SELECT audit.add_audit_columns('${schema}', 'users')`);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx
+          ON ${schema}.users (google_sub) WHERE google_sub IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx
+          ON ${schema}.users (lower(email)) WHERE deleted_at IS NULL;
+      `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.user_orgs (
+          user_id   UUID NOT NULL REFERENCES ${schema}.users(id),
+          org_id    UUID NOT NULL REFERENCES ${schema}.orgs(id),
+          is_admin  BOOLEAN NOT NULL DEFAULT false,
+          job_title TEXT,
+          status    TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','invited','suspended')),
+          invited_by_user_id UUID REFERENCES ${schema}.users(id),
+          invited_at TIMESTAMPTZ,
+          joined_at  TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          deleted_at TIMESTAMPTZ,
+          created_by UUID,
+          updated_by UUID,
+          deleted_by UUID,
+          PRIMARY KEY (user_id, org_id)
+        );
+        CREATE INDEX IF NOT EXISTS user_orgs_user_id_idx ON ${schema}.user_orgs (user_id);
+        CREATE INDEX IF NOT EXISTS user_orgs_org_id_idx  ON ${schema}.user_orgs (org_id);
+      `);
+      // Audit stamping + hard-delete guard via the universal helper.
+      await client.query(`SELECT audit.add_audit_columns('${schema}', 'user_orgs')`);
+    }
+    console.log('  users reshape (google_sub/display_name/default_org_id) + user_orgs installed (v2.04a, all schemas).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
