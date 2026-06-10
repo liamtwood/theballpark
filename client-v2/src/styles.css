@@ -7,11 +7,21 @@
 
 :root {
   /* ── Ballpark brand tokens — single source of truth ───────────────────── */
+  /* Brand mark (pV2-01f): vivid pink→green "logo circle" gradient — white
+     text reads cleanly on it. The soft pastel use case (row tints, soft
+     surfaces) stays on --theme-soft; --bp-gradient is brand-mark territory. */
+  --bp-gradient: linear-gradient(135deg, #d63384 0%, #16a34a 100%);
+  /* Text color that sits ON the gradient (avatar initials, brand buttons). */
+  --bp-text-on-gradient: #ffffff;
+  /* Master brand font + text color (DB-driven from pV2-01e onwards). */
+  --bp-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bp-text-color: #1f2937;
+
   --theme-accent: #d63384;
   --theme-accent-contrast: #ffffff;
   --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
   --theme-bg: #fbf7f4;
-  --theme-text: #1f2937;
+  --theme-text: var(--bp-text-color);
   /* Chrome tokens */
   --border-hairline: 1px solid rgba(0, 0, 0, 0.06);
   --color-text-secondary: #6b7280;
@@ -35,5 +45,5 @@ body {
   min-height: 100%;
   background: var(--theme-bg);
   color: var(--theme-text);
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--bp-font);
 }

@@ -54,11 +54,15 @@ function deriveInitials(name: string | null, email: string | null): string {
         border-radius: 50%;
         flex-shrink: 0;
         font-weight: 600;
-        color: var(--theme-accent);
       }
+      /* pV2-01f — vivid brand gradient + white initials (the "logo circle"
+         treatment); metrics match the wordmark (600 / line-height 1 / 0 tracking). */
       .avatar--initials {
-        background: var(--theme-soft);
-        font-family: var(--font-display, inherit);
+        background: var(--bp-gradient);
+        color: var(--bp-text-on-gradient);
+        font-family: var(--bp-font);
+        line-height: 1;
+        letter-spacing: 0;
       }
       .avatar--img {
         object-fit: cover;
