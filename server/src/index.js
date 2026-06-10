@@ -159,6 +159,8 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 });
 
 // Mount routes
+// Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
+app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));
 app.use('/api/orgs', require('./routes/orgs'));
 app.use('/api/users', require('./routes/users'));
