@@ -43,12 +43,14 @@ ensureBuckets().catch(err => console.error('[STORAGE] ensureBuckets error:', err
 
 const app = express();
 
-// CORS — environment-driven origins
+// CORS — environment-driven origins. credentials:true so the bp_session
+// cookie flows on cross-origin XHR from the SPA origins (pV2-02 auth).
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : ['http://localhost:4200'];
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use(require('cookie-parser')());
 // Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
 app.use(require('./middleware/user-context'));
@@ -159,6 +161,12 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 });
 
 // Mount routes
+// pV2-02 — auth surface (/auth/*, distinct from /api/*) + dev-only endpoints.
+// The JWT middleware is NOT applied to the v1 /api routes — v1 (port 4200)
+// has no session cookie and must keep working unchanged; see
+// middleware/authenticate.js scope note.
+app.use('/auth', require('./routes/auth'));
+app.use('/api/dev', require('./routes/dev'));
 // Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
 app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));

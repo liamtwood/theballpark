@@ -1,0 +1,98 @@
+// pV2-02 — auth service: Google-profile upsert + session building.
+//
+// The v1 `users` table was reshaped ADDITIVELY (google_sub / display_name /
+// default_org_id added; v1's name/org_id/role columns remain). New rows
+// populate BOTH name (v1 NOT NULL) and display_name so both apps read clean.
+
+const pool = require('../db/pool');
+const { effectiveRole, normalizeOrgType } = require('./permissions.service');
+
+/**
+ * Upsert a user from a Google OAuth profile.
+ *  1. by google_sub → refresh display fields.
+ *  2. by email      → link google_sub to the existing row.
+ *  3. else          → create user + a new agency org + admin membership.
+ * Returns { userId } — callers then buildSession(userId).
+ */
+async function upsertUserFromGoogle(profile) {
+  const sub = profile.id;
+  const email = (profile.emails && profile.emails[0] && profile.emails[0].value || '').toLowerCase();
+  const displayName = profile.displayName || email;
+  const avatarUrl = (profile.photos && profile.photos[0] && profile.photos[0].value) || null;
+  if (!email) throw new Error('Google profile has no email');
+
+  // 1. by google_sub
+  let r = await pool.query('SELECT id FROM users WHERE google_sub = $1 AND deleted_at IS NULL', [sub]);
+  if (r.rows.length) {
+    await pool.query(
+      `UPDATE users SET display_name = $2, avatar_url = $3, updated_at = NOW() WHERE id = $1`,
+      [r.rows[0].id, displayName, avatarUrl]
+    );
+    return { userId: r.rows[0].id };
+  }
+
+  // 2. by email (linking flow)
+  r = await pool.query('SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL', [email]);
+  if (r.rows.length) {
+    await pool.query(
+      `UPDATE users SET google_sub = $2, display_name = COALESCE(display_name, $3),
+              avatar_url = COALESCE($4, avatar_url), updated_at = NOW() WHERE id = $1`,
+      [r.rows[0].id, sub, displayName, avatarUrl]
+    );
+    return { userId: r.rows[0].id };
+  }
+
+  // 3. brand-new signup → user + new agency org + admin membership.
+  const orgName = `${displayName}'s Workspace`;
+  const org = await pool.query(
+    `INSERT INTO orgs (name, type) VALUES ($1, 'agency') RETURNING id`,
+    [orgName]
+  );
+  const orgId = org.rows[0].id;
+  const user = await pool.query(
+    `INSERT INTO users (name, display_name, email, google_sub, avatar_url, default_org_id, role)
+     VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
+    [displayName, displayName, email, sub, avatarUrl, orgId]
+  );
+  const userId = user.rows[0].id;
+  await pool.query(
+    `INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
+     VALUES ($1, $2, true, 'active', NOW())`,
+    [userId, orgId]
+  );
+  return { userId };
+}
+
+/**
+ * Build the SessionUser payload for a user id: profile + active org
+ * (default_org_id, else first active membership) + derived role.
+ * Returns null if the user has no usable membership.
+ */
+async function buildSession(userId) {
+  const r = await pool.query(
+    `SELECT u.id, u.email, COALESCE(u.display_name, u.name) AS display_name, u.avatar_url,
+            o.id AS org_id, o.name AS org_name, o.type AS org_type, uo.is_admin
+       FROM users u
+       JOIN user_orgs uo ON uo.user_id = u.id AND uo.status = 'active' AND uo.deleted_at IS NULL
+       JOIN orgs o ON o.id = uo.org_id
+      WHERE u.id = $1 AND u.deleted_at IS NULL
+      ORDER BY (o.id = u.default_org_id) DESC NULLS LAST, uo.joined_at ASC NULLS LAST
+      LIMIT 1`,
+    [userId]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    activeOrgId: row.org_id,
+    activeOrgName: row.org_name,
+    activeOrgType: normalizeOrgType(row.org_type),
+    isAdmin: row.is_admin,
+    role: effectiveRole(row.org_type, row.is_admin),
+  };
+}
+
+module.exports = { upsertUserFromGoogle, buildSession };
