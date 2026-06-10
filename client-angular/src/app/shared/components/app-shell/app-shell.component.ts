@@ -220,46 +220,31 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* Optional back link on the hero's left edge. Vertically centred
        against the hero's full height; offset is var(--section-pad) so it
        aligns with the page's left content gutter. */
+    /* v1.69 — the back sits IN FLOW above the title (launcher / standard
+       pattern), the hero's first child, for BOTH centre- and left-aligned
+       heroes. Block-level (display:flex + fit-content width) so the hero's
+       centred text flow doesn't centre the inline button — it hugs the
+       content's left edge. z-index:3 keeps it above the orbs/grain (the
+       .bp-hero child-layering rule excludes .bp-hero-back, so it lifts itself). */
     .bp-hero-back {
-      position: absolute;
-      left: var(--section-pad, 28px);
-      top: 50%;
-      transform: translateY(-50%);
-      /* v1.65ds — z-index: 3 explicitly so the back link still sits
-         above the orbs/grain. The .bp-hero direct-child layering
-         rule below excludes .bp-hero-back (because that rule forces
-         position:relative which clobbers our absolute positioning),
-         so the back link needs to lift itself manually. */
+      position: relative;
       z-index: 3;
-      display: inline-flex;
+      display: flex;
+      width: fit-content;
       align-items: center;
       gap: 4px;
+      margin: 0 0 14px 0;
       background: none; border: none;
       cursor: pointer;
       font-family: var(--font-body);
       font-size: 12px;
       font-weight: 500;
-      /* v1.65bs — back link on the accent-filled hero needs to be
-         white for contrast. */
+      /* white on an accent-filled hero; greyed on a stripped hero below. */
       color: var(--color-surface);
-      padding: 4px 0;
+      padding: 0;
       white-space: nowrap;
     }
     .bp-hero-back:hover { opacity: 0.75; }
-    /* v1.68z — left-aligned hero: the back sits IN FLOW above the title
-       (launcher pattern) instead of vertically centred on the left edge.
-       Block-level (display:flex + fit-content width) so the hero's centred
-       text flow doesn't centre the inline button — it hugs the content's left
-       edge. position:relative keeps z-index:3 above the orbs/grain. */
-    .bp-hero--left .bp-hero-back {
-      position: relative;
-      top: auto; left: auto;
-      transform: none;
-      display: flex;
-      width: fit-content;
-      margin: 0 0 14px 0;
-      padding: 0;
-    }
     /* On a stripped (parchment) hero the white back link would vanish. */
     .bp-hero--none .bp-hero-back { color: var(--color-text-secondary); }
     @media (max-width: 600px) {
