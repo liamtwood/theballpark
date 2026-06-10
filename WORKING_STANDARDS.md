@@ -1361,7 +1361,7 @@ SSL        → Conditional on NODE_ENV
 
 ## Database Schema Architecture
 
-One Railway PostgreSQL instance, four schemas:
+One Supabase PostgreSQL instance, four schemas:
 
 ```
 public   → dev        Local development. Default schema.
