@@ -14,6 +14,7 @@ import { LucideAngularModule, ChevronLeft, Rocket } from 'lucide-angular';
 
 import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/runtime-config.service';
+import { BrandConfigService } from './core/brand-config.service';
 
 // Bridge the Ballpark brand into PrimeNG's Aura preset. PrimeNG styled mode
 // injects its design tokens at runtime, so a CSS `--p-*` override in styles.css
@@ -57,6 +58,14 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(LucideAngularModule.pick({ ChevronLeft, Rocket })),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
     // an undefined API URL (self-host: API endpoint is editable post-build).
-    provideAppInitializer(() => inject(RuntimeConfigService).load()),
+    // Then load brand config (pV2-01e) — the --bp-* tokens land on :root
+    // before the first paint, so there is no FOUC / font flash. Brand load
+    // never throws (cosmetic — API down just keeps the styles.css fallbacks).
+    provideAppInitializer(async () => {
+      const rc = inject(RuntimeConfigService);
+      const brand = inject(BrandConfigService);
+      await rc.load();
+      await brand.load();
+    }),
   ],
 };
