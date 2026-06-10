@@ -956,6 +956,25 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-cat-rail-sub:hover { color: var(--theme-accent); background: var(--color-fill); }
 .bp-cat-rail-sub.active { color: var(--theme-accent); font-weight: 600; }
+/* v1.69x (p0038) — third-level rail row, sits under .bp-cat-rail-sub.
+   Used by inbox-v2 to show item-thread rows nested under suppliers. */
+.bp-cat-rail-sub-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 36px;  /* +12px indent vs .bp-cat-rail-sub */
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-button);
+  transition: background 0.1s;
+}
+.bp-cat-rail-sub-sub:hover { background: var(--color-fill); }
+.bp-cat-rail-sub-sub.active { background: var(--theme-soft); color: var(--theme-accent); font-weight: 600; }
 .bp-cat-main {
   background: var(--color-surface);
   border: var(--border-hairline);
@@ -1199,10 +1218,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
   min-height: 38px;
-  padding: 0 12px;
+  padding: 0 14px;
   background: transparent;
   border: 1px solid var(--theme-border);
-  border-radius: var(--radius-button);
+  /* v1.68e — matches the grid's container family (item cards / detail
+     preview panel = --radius-card-lg) so the search bar + category
+     container + cards all share one rounding. */
+  border-radius: var(--radius-card-lg);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .bp-search-row:focus-within {

@@ -436,6 +436,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
       routes. */
   routeHeroTitle = '';
   routeHeroSub   = '';
+  /** p0038 — per-route hero-align default from route data. A saved page-setting
+      still wins over it (see effectiveHeroAlign). undefined = no route default. */
+  routeHeroAlign?: 'left' | 'center';
   pageKey        = '';   // v1.66av — route path, key for per-page hero overrides
   hideHero     = false;
   /* v1.66ag — heroVariant (calm/none) removed. There is ONE hero object;
@@ -629,6 +632,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     // per-page setting + the global default.
     return (this.ctx?.heroAlign as 'left' | 'center')
       || this.configService.getPageSetting(this.pageKey).heroAlign
+      || this.routeHeroAlign                       // p0038 — route-data default
       || (this.heroAlign as 'left' | 'center');
   }
 
@@ -845,6 +849,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
         // Re-read every navigation (default '') so they don't leak.
         this.routeHeroTitle = data['heroTitle'] || '';
         this.routeHeroSub   = data['heroSub']   || '';
+        // p0038 — route-data hero-align default (page-setting override wins).
+        this.routeHeroAlign = (data['heroAlign'] === 'left' || data['heroAlign'] === 'center')
+          ? data['heroAlign'] : undefined;
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero

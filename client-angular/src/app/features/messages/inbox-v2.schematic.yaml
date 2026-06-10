@@ -20,6 +20,7 @@ inbox-v2:
       showSearchRow: "boolean (default true)"
       showFilterDrawer: "boolean (default true)"
       showTreeRail: "boolean (default true) — false = single-item mode"
+      showItemPreview: "boolean (default true) — toggles <app-message-item-card> at top of thread pane; page-setting overrides"
       compact: "boolean (default false) — tighter padding"
     events:
       threadSelected: "EventEmitter<string>"
@@ -84,21 +85,26 @@ inbox-v2:
     type: "[local]"
 
     tree-rail-left:
-      desc: "thread list, hierarchical: Project -> Supplier -> Item"
-      project-card:
-        type: "[local]"
-        header: "project name + count + expand chevron"
-        supplier-row:
-          type: "[local]"
-          visible_when: project expanded
-          header: "supplier name + count + expand chevron"
-          item-thread-row:
-            type: "[local]"
-            visible_when: supplier expanded
-            item-name: -> selectedItemId
-            latest-snippet: truncated body of latest message
-            timestamp: relative ("2h", "Yesterday")
-            unread-badge: count, hidden if 0
+      desc: "3-deep tree: Project -> Supplier -> Item-thread. Reuses marketplace rail chrome."
+      container:
+        outer: ".bp-cat-body--cats-left  [global: marketplace]"
+        sidebar: ".bp-cat-sidebar        [global]"
+        head: ".bp-cat-sidebar-head      [global] — eyebrow"
+        head-label: "Project conversations"
+        head-icon: "messages-square (Lucide)"
+        body: ".bp-cat-sidebar-body      [global] — scrollable"
+        list: ".bp-cat-rail              [global]"
+      level-1-project:
+        class: ".bp-cat-rail-item        [global]"
+        content: "icon + project name + thread count + chevron"
+        binding: "(click) -> toggle expand; selectedProjectId on activate"
+      level-2-supplier:
+        class: ".bp-cat-rail-sub         [global]  (visible when project expanded)"
+        content: "supplier name + thread count + chevron"
+      level-3-item-thread:
+        class: ".bp-cat-rail-sub-sub     [NEW — to add for 3rd level]  (visible when supplier expanded)"
+        content: "item-name + latest-snippet + timestamp + unread-badge"
+        binding: "(click) -> selectedItemId; emits threadSelected"
 
     thread-pane-right:
       desc: per-item conversation
@@ -108,12 +114,11 @@ inbox-v2:
         breadcrumb: "Project > Supplier > Item"
         status-pill: "open / closed / awaiting"
 
-      quoted-item-card:
-        type: "[local]"
+      item-preview-card:
+        type: "[global: <app-message-item-card>] — reused from marketplace shape (p0011)"
         pinned: top
-        thumbnail: ~
-        item-name-price: ~
-        decision-state: "pending / accepted / rejected"
+        gated_by: showItemPreview input  (page-setting can turn off)
+        content: "thumbnail + item-name + was->now price + decision pill"
 
       message-list:
         type: "[local]"
@@ -136,11 +141,11 @@ inbox-v2:
 
 status:
   built_so_far:
-    - hero          # p0037 — shared shell + route, hero layer only
+    - hero             # p0037 — shared shell + route, hero layer only
+    - search-row       # p0038
+    - tree-rail-shell  # p0038 — empty 3-deep rail + thread-pane placeholder, no data
   sketched_not_yet_coded:
-    - search-row
     - filter-drawer
-    - tree-rail
     - thread-pane
   next_to_code:
-    - search-row
+    - filter-drawer
