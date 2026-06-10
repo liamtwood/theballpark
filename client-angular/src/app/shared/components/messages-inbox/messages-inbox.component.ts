@@ -117,45 +117,31 @@ interface VendorThread {
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- v1.65g4 — top filter row: Client | Project | Search on a
-           single line. Client + Project dropdowns only render in
-           global (un-bound) mode; search is universal. The two
-           previously-separate bars (bp-msg-project-bar + bp-browse-
-           strip) collapsed into one row so the inbox loses ~50px of
-           chrome and the three coarsest filters sit shoulder to
-           shoulder. -->
-      <div class="bp-msg-top-filter-row">
-        <!-- Search left-justified (standard bp-search-row). -->
-        <div class="bp-search-row bp-msg-top-search">
-          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-          <input pInputText type="text"
-                 [(ngModel)]="searchTerm"
-                 (ngModelChange)="onSearchChange()"
-                 placeholder="Search threads, suppliers, messages…"
-                 class="bp-search-input"/>
-        </div>
-
-        <!-- Filter → opens the standard bp-drawer (Client / Project /
-             Category / Contact / Status). -->
-        <button type="button" class="bp-btn-outline bp-msg-filter-btn" (click)="filterOpen = true">
-          <lucide-icon name="list-filter" [size]="16"></lucide-icon>
-          Filter
-          <span *ngIf="activeFilterCount" class="bp-msg-filter-badge">{{ activeFilterCount }}</span>
-        </button>
-      </div><!-- /.bp-msg-top-filter-row -->
-
       <!-- ═══════════════ TWO-COLUMN BODY ═══════════════
-           v1.65dv (p0015 follow-up) — filter sidebar retired. Three
-           dropdowns in the INBOX header (Category / Contact / Status)
-           replace the rail. Body grid is now main (1fr) | detail
-           (resizable preview). -->
+           Body grid is main (1fr) | detail (resizable preview). -->
       <div class="bp-cat-body bp-msg-body bp-msg-body--2col"
            [style.--bp-msg-preview-w.px]="previewWidth">
 
-        <!-- ── MAIN: scrolling thread list. v1.68y — the panel head
-             (INBOX title + count + Category/Contact/Status dropdowns) was
-             removed; those filters now live in the Filter drawer. ── -->
+        <!-- ── MAIN: search bar (spans the inbox container width) + scrolling
+             thread list. v1.69c — the search moved into the inbox column so it
+             matches its width; the Filter sits as an icon INSIDE the search
+             bar (standard .bp-search-filter-btn), opening the filter drawer. ── -->
         <section class="bp-cat-main">
+          <div class="bp-search-row bp-msg-search">
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText type="text"
+                   [(ngModel)]="searchTerm"
+                   (ngModelChange)="onSearchChange()"
+                   placeholder="Search threads, suppliers, messages…"
+                   class="bp-search-input"/>
+            <button type="button" class="bp-search-filter-btn"
+                    [class.active]="activeFilterCount > 0"
+                    (click)="filterOpen = true" title="Filter">
+              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
+              <span *ngIf="activeFilterCount" class="bp-msg-filter-badge">{{ activeFilterCount }}</span>
+            </button>
+          </div>
+
           <div class="bp-cat-main-body">
           <!-- v1.28: Status pills moved to the left sidebar — only ONE
                filter rail across the page now. -->
@@ -759,47 +745,29 @@ interface VendorThread {
       margin: 0 auto;
     }
 
-    /* v1.65g4 — single horizontal row at the top of the inbox holding
-       Client + Project + Search. Same horizontal padding as the
-       former two bars combined; the search input flexes to consume
-       the remaining width so the line reads:
-         [Client ▼] [Project ▼] [🔍 search ............................. ] */
-    .bp-msg-top-filter-row {
+    /* v1.69c — the inbox column is a flex stack: the search bar at the top
+       (spanning the column = inbox container width), the thread list scrolling
+       below it. */
+    .bp-cat-main {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 24px;
-      max-width: 1200px;
-      margin: 0 auto;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .bp-msg-search {
       width: 100%;
-    }
-    .bp-msg-top-filter-row :host ::ng-deep .bp-msg-top-dd,
-    .bp-msg-top-filter-row ::ng-deep .bp-msg-top-dd {
-      min-width: 200px;
-    }
-    /* v1.65g4 — top-row search reuses the shared .bp-search-row
-       chrome (flex icon + p-inputtext sibling). We just flex it to
-       consume the remaining width and pad it inside so the icon
-       isn't flush against the border. */
-    /* v1.68y — search left-justified (no longer flex:1); the Filter button
-       is pushed to the right edge via margin-left:auto. */
-    .bp-msg-top-search {
-      flex: 0 1 360px;
-      min-width: 200px;
-      padding: 0 12px;
-      height: 34px;
-    }
-    .bp-msg-filter-btn {
-      margin-left: auto;
-      display: inline-flex; align-items: center; gap: 6px;
+      margin-bottom: 12px;
       flex-shrink: 0;
     }
+    /* Filter-icon active-count chip, top-right of the in-search filter button. */
+    .bp-search-filter-btn { position: relative; }
     .bp-msg-filter-badge {
-      min-width: 18px; height: 18px; padding: 0 5px;
+      position: absolute;
+      top: -5px; right: -5px;
+      min-width: 15px; height: 15px; padding: 0 4px;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 9px;
+      border-radius: 8px;
       background: var(--theme-accent); color: #fff;
-      font-size: 11px; font-weight: 600; line-height: 1;
+      font-size: 10px; font-weight: 700; line-height: 1;
     }
     .bp-msg-filter-body { display: flex; flex-direction: column; gap: 16px; }
 
