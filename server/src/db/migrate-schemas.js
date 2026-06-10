@@ -1873,6 +1873,37 @@ const migrate = async () => {
     }
     console.log('  items is_active=false → deleted_at backfill applied (once per schema, guarded).');
 
+    // ─────────────────────────────────────────────────────────────────
+    // v2.03a (pV2-01e) — bp_brand_config: key/value brand registry read
+    // by client-v2's BrandConfigService via GET /api/brand (public). The
+    // values land on the --bp-* CSS tokens at client bootstrap, so brand
+    // font / gradient / text color are DB-changeable without a redeploy.
+    // Config registry: rows never go away → no deleted_at (per the
+    // WORKING_STANDARDS registry exemption). Seeded with the pV2-01f
+    // vivid brand values (matches client-v2/styles.css fallbacks — no
+    // visual change on first load).
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.bp_brand_config (
+          key        TEXT PRIMARY KEY,
+          value      TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_by UUID,
+          updated_by UUID
+        );
+      `);
+      await client.query(`
+        INSERT INTO ${schema}.bp_brand_config (key, value) VALUES
+          ('font_pair',  'ui-sans-serif, system-ui, -apple-system, ''Segoe UI'', Roboto, sans-serif'),
+          ('gradient',   'linear-gradient(135deg, #d63384 0%, #16a34a 100%)'),
+          ('text_color', '#1f2937')
+        ON CONFLICT (key) DO NOTHING;
+      `);
+    }
+    console.log('  bp_brand_config table + seeds installed (v2.03a, all schemas).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
