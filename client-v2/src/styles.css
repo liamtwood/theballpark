@@ -12,6 +12,9 @@
   --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
   --theme-bg: #fbf7f4;
   --theme-text: #1f2937;
+  /* Chrome tokens */
+  --border-hairline: 1px solid rgba(0, 0, 0, 0.06);
+  --color-text-secondary: #6b7280;
 
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────
      PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
