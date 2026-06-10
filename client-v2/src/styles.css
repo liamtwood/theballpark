@@ -1,0 +1,31 @@
+/* @import rules must precede other statements. */
+@import 'primeicons/primeicons.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Ballpark brand tokens — single source of truth ───────────────────── */
+  --theme-accent: #d63384;
+  --theme-accent-contrast: #ffffff;
+  --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
+  --theme-bg: #fbf7f4;
+  --theme-text: #1f2937;
+
+  /* ── PrimeNG bridge ───────────────────────────────────────────────────────
+     PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
+     `--p-*` here would be clobbered. The Ballpark→PrimeNG bridge therefore lives
+     in ONE place: the `BallparkPreset` (definePreset(Aura, …)) in app.config.ts,
+     whose primary.500 == --theme-accent below. This `:root` block stays the
+     single source of truth for NON-PrimeNG brand tokens (app chrome, Tailwind). */
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}

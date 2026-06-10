@@ -14,6 +14,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 4200,
       "cwd": "client-angular"
+    },
+    {
+      "name": "client-v2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 4201,
+      "cwd": "client-v2"
     }
   ]
 }
