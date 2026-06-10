@@ -45,6 +45,10 @@ export class InboxComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // Hero Back → Home is wired via route data `back: '/home'` (app-shell
+    // reads it in updateFromRoute; setting shellCtx here would be reset on
+    // NavigationEnd).
+
     // Viewer follows the active persona — supplier persona sees the
     // supplier-side variant of every divergent slot; everyone else
     // (agency / admin) sees the agency variant.

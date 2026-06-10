@@ -246,6 +246,22 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       white-space: nowrap;
     }
     .bp-hero-back:hover { opacity: 0.75; }
+    /* v1.68z — left-aligned hero: the back sits IN FLOW above the title
+       (launcher pattern) instead of vertically centred on the left edge.
+       Block-level (display:flex + fit-content width) so the hero's centred
+       text flow doesn't centre the inline button — it hugs the content's left
+       edge. position:relative keeps z-index:3 above the orbs/grain. */
+    .bp-hero--left .bp-hero-back {
+      position: relative;
+      top: auto; left: auto;
+      transform: none;
+      display: flex;
+      width: fit-content;
+      margin: 0 0 14px 0;
+      padding: 0;
+    }
+    /* On a stripped (parchment) hero the white back link would vanish. */
+    .bp-hero--none .bp-hero-back { color: var(--color-text-secondary); }
     @media (max-width: 600px) {
       /* Hide the back label on narrow screens — keep the chevron only. */
       .bp-hero-back span { display: none; }

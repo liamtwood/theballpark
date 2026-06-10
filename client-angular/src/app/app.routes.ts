@@ -211,7 +211,8 @@ const FULL_ROUTES: Routes = [
       {
         path: 'inbox',
         loadComponent: () => import('./features/messages/inbox.component').then(m => m.InboxComponent),
-        data: { pageLabel: '', tabs: [], heroTitle: 'Inbox', heroSub: 'Messages, supplier responses and updates.' }
+        // v1.68z — standard hero Back → Home (app-shell reads data.back).
+        data: { pageLabel: '', tabs: [], heroTitle: 'Inbox', heroSub: 'Messages, supplier responses and updates.', back: '/home' }
       },
 
       // v1.65e4 — /admin-home retired. Beth's home is /ballpark-settings
