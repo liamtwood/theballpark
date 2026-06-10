@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputSwitchModule } from 'primeng/inputswitch';
-import { DropdownModule } from 'primeng/dropdown';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -21,7 +20,7 @@ import { EditFieldComponent } from '../../../shared/components/edit-field/edit-f
   imports: [
     CommonModule, FormsModule,
     LucideAngularModule,
-    ButtonModule, InputSwitchModule, DropdownModule, DialogModule, ToastModule,
+    ButtonModule, InputSwitchModule, DialogModule, ToastModule,
     ImageUploadPanelComponent,
     EditSectionComponent, EditFieldComponent
   ],
@@ -92,26 +91,17 @@ import { EditFieldComponent } from '../../../shared/components/edit-field/edit-f
         </div>
       </app-edit-section>
 
-      <!-- TYPOGRAPHY -->
-      <app-edit-section title="Typography" [editable]="false">
-        <label class="bp-field-label">Font pairing</label>
-        <p-dropdown
-          [(ngModel)]="appearance.fontPairing"
-          [options]="fontPairingOptions"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="w-full bp-input-edit mt-2"
-          (ngModelChange)="liveUpdate()">
-          <ng-template pTemplate="selectedItem" let-item>
-            <span [style.font-family]="item?.preview">{{ item?.label }}</span>
-          </ng-template>
-          <ng-template pTemplate="item" let-item>
-            <div>
-              <div [style.font-family]="item?.preview" style="font-size:14px;">{{ item?.label }}</div>
-              <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px;">{{ item?.specimen }}</div>
-            </div>
-          </ng-template>
-        </p-dropdown>
+      <!-- TYPOGRAPHY — standard editable section (ES + EF select), matching
+           Platform / Terminology: view shows the pairing, Edit reveals the
+           dropdown, Save persists / Cancel reverts. -->
+      <app-edit-section title="Typography" [(editing)]="editingTypography"
+                        (edit)="secEdit('typography')" (cancel)="secCancel('typography')" (save)="secSave('typography')">
+        <div class="bp-field-grid-2">
+          <app-edit-field label="Font pairing" type="select"
+                          [options]="fontPairingOptions"
+                          [(value)]="appearance.fontPairing"
+                          [editing]="editingTypography"></app-edit-field>
+        </div>
       </app-edit-section>
 
       <!-- COLOUR THEME -->
@@ -267,8 +257,10 @@ export class MarketplaceComponent implements OnInit {
   editingLogo = false;
   editingPlatform = false;
   editingTerminology = false;
+  editingTypography = false;
   private platformSnapshot: any = null;
   private terminologySnapshot: any = null;
+  private typographySnapshot: any = null;
 
   appearance: PlatformConfig & {
     heroAlign?: string;
@@ -332,24 +324,28 @@ export class MarketplaceComponent implements OnInit {
   // ── Section edit lifecycle (Platform / Terminology) ────────────────
   // <app-edit-section> owns the `editing` flag via [(editing)]; these handlers
   // own the DATA: snapshot on (edit), restore on (cancel), persist on (save).
-  secEdit(section: 'platform' | 'terminology') {
+  secEdit(section: 'platform' | 'terminology' | 'typography') {
     if (section === 'platform') {
       this.platformSnapshot = { platformName: this.appearance.platformName, tagline: this.appearance.tagline };
-    } else {
+    } else if (section === 'terminology') {
       this.terminologySnapshot = { projectLabel: this.appearance.projectLabel, creditLabel: this.appearance.creditLabel, catalogueLabel: this.appearance.catalogueLabel, feedbackLabel: this.appearance.feedbackLabel };
+    } else {
+      this.typographySnapshot = { fontPairing: this.appearance.fontPairing };
     }
   }
 
-  secCancel(section: 'platform' | 'terminology') {
+  secCancel(section: 'platform' | 'terminology' | 'typography') {
     if (section === 'platform' && this.platformSnapshot) Object.assign(this.appearance, this.platformSnapshot);
     else if (section === 'terminology' && this.terminologySnapshot) Object.assign(this.appearance, this.terminologySnapshot);
+    else if (section === 'typography' && this.typographySnapshot) Object.assign(this.appearance, this.typographySnapshot);
     this.liveUpdate();
     this.cdr.detectChanges();
   }
 
-  secSave(section: 'platform' | 'terminology') {
+  secSave(section: 'platform' | 'terminology' | 'typography') {
     if (section === 'platform') this.editingPlatform = false;
-    else this.editingTerminology = false;
+    else if (section === 'terminology') this.editingTerminology = false;
+    else this.editingTypography = false;
     this.liveUpdate();
     this.saveAppearance();
     this.cdr.detectChanges();
