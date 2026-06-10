@@ -135,25 +135,8 @@ interface VendorThread {
                  class="bp-search-input"/>
         </div>
 
-        <p-dropdown *ngIf="!boundProjectId"
-          [(ngModel)]="selectedClientId"
-          [options]="clientDropdownOptions"
-          optionLabel="name" optionValue="id"
-          styleClass="bp-msg-top-dd"
-          placeholder="All clients"
-          (onChange)="onClientChange()">
-        </p-dropdown>
-
-        <p-dropdown *ngIf="!boundProjectId"
-          [(ngModel)]="selectedProjectId"
-          [options]="projectOptions"
-          optionLabel="name" optionValue="id"
-          styleClass="bp-msg-top-dd"
-          placeholder="All projects"
-          (onChange)="onProjectChange()">
-        </p-dropdown>
-
-        <!-- Filter → opens the standard bp-drawer (Category / Contact / Status). -->
+        <!-- Filter → opens the standard bp-drawer (Client / Project /
+             Category / Contact / Status). -->
         <button type="button" class="bp-btn-outline bp-msg-filter-btn" (click)="filterOpen = true">
           <lucide-icon name="list-filter" [size]="16"></lucide-icon>
           Filter
@@ -630,6 +613,26 @@ interface VendorThread {
       </ng-template>
 
       <div class="bp-drawer-body bp-msg-filter-body">
+        <div class="bp-field" *ngIf="!boundProjectId">
+          <label class="bp-field-label">Client</label>
+          <p-dropdown [(ngModel)]="selectedClientId"
+                      [options]="clientDropdownOptions"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="All clients"
+                      (onChange)="onClientChange()"></p-dropdown>
+        </div>
+
+        <div class="bp-field" *ngIf="!boundProjectId">
+          <label class="bp-field-label">Project</label>
+          <p-dropdown [(ngModel)]="selectedProjectId"
+                      [options]="projectOptions"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="All projects"
+                      (onChange)="onProjectChange()"></p-dropdown>
+        </div>
+
         <div class="bp-field" *ngIf="folderDropdownOptions.length > 1">
           <label class="bp-field-label">Category</label>
           <p-dropdown [options]="folderDropdownOptions"
@@ -2395,6 +2398,8 @@ export class MessagesInboxComponent implements OnInit {
   /** Number of active (non-default) drawer filters → the Filter button badge. */
   get activeFilterCount(): number {
     let n = 0;
+    if (!this.boundProjectId && this.selectedClientId && this.selectedClientId !== 'all') n++;
+    if (!this.boundProjectId && this.selectedProjectId && this.selectedProjectId !== 'all') n++;
     if (this.activeFolder && this.activeFolder !== 'all') n++;
     if (this.activeSupplier && this.activeSupplier !== 'all') n++;
     if (this.activeStatus && this.activeStatus !== 'all') n++;
