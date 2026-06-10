@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './shell/app-shell.component';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     component: AppShellComponent, // header + outlet — every feature route gets the shell
+    canActivate: [authGuard], // signed-out → /login (login + callback live outside)
     children: [
       {
         path: '',

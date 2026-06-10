@@ -1,7 +1,12 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../api.service';
+import { RuntimeConfigService } from '../runtime-config.service';
 
-/** Role taxonomy — mirrors `prompts/auth-and-users-plan.md` (role lives on the
- *  membership, derived from org.type + is_admin). */
+export type OrgType = 'agency' | 'supplier' | 'ballpark';
+
+/** Role taxonomy — derived server-side from (orgs.type, user_orgs.is_admin). */
 export type Role =
   | 'ballpark_admin'
   | 'agency_admin'
@@ -17,66 +22,21 @@ export interface SessionUser {
   avatarUrl: string | null;
   activeOrgId: string;
   activeOrgName: string;
-  activeOrgType: 'agency' | 'supplier' | 'ballpark';
+  activeOrgType: OrgType;
   isAdmin: boolean;
   role: Role;
 }
 
-// Fixed list of fake users for dev — replaced by /api/dev/users in pV2-02.
-const STUB_USERS: SessionUser[] = [
-  {
-    id: 'stub-sm',
-    email: 'sarah@creative-agency.example',
-    displayName: 'Sarah Mitchell',
-    avatarUrl: null,
-    activeOrgId: 'stub-cag',
-    activeOrgName: 'Creative Agency Ltd',
-    activeOrgType: 'agency',
-    isAdmin: true,
-    role: 'agency_admin',
-  },
-  {
-    id: 'stub-bp',
-    email: 'beth@ballpark.example',
-    displayName: 'Beth Pizey',
-    avatarUrl: null,
-    activeOrgId: 'stub-bp-org',
-    activeOrgName: 'Ballpark',
-    activeOrgType: 'ballpark',
-    isAdmin: true,
-    role: 'ballpark_admin',
-  },
-  {
-    id: 'stub-ry',
-    email: 'ryan@rocketfood.example',
-    displayName: 'Ryan Chen',
-    avatarUrl: null,
-    activeOrgId: 'stub-rf',
-    activeOrgName: 'Rocket Food',
-    activeOrgType: 'supplier',
-    isAdmin: true,
-    role: 'supplier_admin',
-  },
-  {
-    id: 'stub-am',
-    email: 'alex@creative-agency.example',
-    displayName: 'Alex Martin',
-    avatarUrl: null,
-    activeOrgId: 'stub-cag',
-    activeOrgName: 'Creative Agency Ltd',
-    activeOrgType: 'agency',
-    isAdmin: false,
-    role: 'agency_member',
-  },
-];
-
-/** STUB auth — in-memory signal state, same public surface as the real
- *  HTTP-backed implementation that arrives in pV2-02. Components built against
- *  this don't change when the implementation swaps. */
+/** Real auth (pV2-02) — session lives in the bp_session HTTP-only cookie;
+ *  this service mirrors it into a signal via GET /auth/me. Same public
+ *  surface the pV2-01b stub declared, so consumers didn't change shape. */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // Start logged in as Sarah for dev convenience.
-  private readonly _user = signal<SessionUser | null>(STUB_USERS[0]);
+  private readonly api = inject(ApiService);
+  private readonly rc = inject(RuntimeConfigService);
+  private readonly router = inject(Router);
+
+  private readonly _user = signal<SessionUser | null>(null);
 
   /** The current session user, or null when signed out. */
   readonly user = this._user.asReadonly();
@@ -85,26 +45,42 @@ export class AuthService {
   /** The active membership role, or null when signed out. */
   readonly role = computed(() => this._user()?.role ?? null);
 
-  /** Dev-only — the pickable stub identities (real impl: /api/dev/users). */
-  listDevUsers(): SessionUser[] {
-    return STUB_USERS;
-  }
-
-  /** Dev-only — switch the in-memory session to the given stub user. */
-  devLogin(userId: string): void {
-    const u = STUB_USERS.find((x) => x.id === userId);
-    if (u) {
+  /** Hydrate the session from the cookie (called at bootstrap + callback).
+   *  Never throws — no/expired cookie just means signed out. */
+  async loadSession(): Promise<void> {
+    try {
+      const u = await firstValueFrom(this.api.get<SessionUser>('/auth/me'));
       this._user.set(u);
+    } catch {
+      this._user.set(null);
     }
   }
 
-  /** Real Google OAuth lands in pV2-02. */
+  /** Hard redirect to the API's Google OAuth entry point. */
   loginWithGoogle(): void {
-    console.warn('Google OAuth lands in pV2-02');
+    window.location.href = `${this.rc.get().apiBaseUrl}/auth/google`;
   }
 
-  /** Clear the in-memory session. */
-  logout(): void {
-    this._user.set(null);
+  /** Clear the server cookie + local state, land on /login. */
+  async logout(): Promise<void> {
+    try {
+      await firstValueFrom(this.api.post('/auth/logout', {}));
+    } finally {
+      this._user.set(null);
+      void this.router.navigate(['/login']);
+    }
+  }
+
+  /** Dev-only — seeded identities for the login picker. 403 (→ throw) in
+   *  prod; callers treat failure as an empty list. */
+  listDevUsers(): Promise<SessionUser[]> {
+    return firstValueFrom(this.api.get<SessionUser[]>('/api/dev/users'));
+  }
+
+  /** Dev-only — cookie-login as a seeded user, then hard reload so the whole
+   *  app re-bootstraps with the fresh session (no leaked state). */
+  async devLogin(userId: string): Promise<void> {
+    await firstValueFrom(this.api.post('/auth/dev/login', { userId }));
+    window.location.href = '/';
   }
 }

@@ -1,11 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, resource } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { AuthService } from '../../core/auth/auth.service';
+import { AuthService, SessionUser } from '../../core/auth/auth.service';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
-/** Sign-in surface. Google is the primary CTA (stub until pV2-02); the dev
- *  picker renders only while AuthService exposes stub identities. */
+/** Sign-in surface. Google OAuth is the primary CTA (real since pV2-02); the
+ *  dev picker lists seeded identities from /api/dev/users — the endpoint
+ *  returns 403 in production, which resolves to an empty list here and the
+ *  section simply doesn't render. */
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,44 +19,48 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
 
       <p-button label="Continue with Google" styleClass="w-full" class="mt-6 block" (onClick)="auth.loginWithGoogle()" />
 
-      @if (devUsers.length > 0) {
-        <div class="mt-8">
-          <div class="flex items-center gap-3 text-[11px] uppercase tracking-wide text-slate-400">
-            <span class="h-px flex-1 bg-black/10"></span>
-            or, for dev, pick a user
-            <span class="h-px flex-1 bg-black/10"></span>
-          </div>
+      @if (devUsers.value(); as users) {
+        @if (users.length > 0) {
+          <div class="mt-8">
+            <div class="flex items-center gap-3 text-[11px] uppercase tracking-wide text-slate-400">
+              <span class="h-px flex-1 bg-black/10"></span>
+              or, for dev, pick a user
+              <span class="h-px flex-1 bg-black/10"></span>
+            </div>
 
-          <div class="mt-3 overflow-hidden rounded-xl border border-black/10 bg-white">
-            @for (dev of devUsers; track dev.id) {
-              <button
-                type="button"
-                class="flex w-full cursor-pointer items-center gap-3 border-b border-black/5 px-4 py-2.5 text-left last:border-b-0 hover:bg-black/5"
-                (click)="devLogin(dev.id)"
-              >
-                <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="28" />
-                <span class="min-w-0">
-                  <span class="block truncate text-sm font-medium">{{ dev.displayName }}</span>
-                  <span class="block truncate text-xs text-slate-500">
-                    {{ dev.activeOrgType }} · {{ dev.isAdmin ? 'Admin' : 'Member' }}
+            <div class="mt-3 overflow-hidden rounded-xl border border-black/10 bg-white">
+              @for (dev of users; track dev.id) {
+                <button
+                  type="button"
+                  class="flex w-full cursor-pointer items-center gap-3 border-b border-black/5 px-4 py-2.5 text-left last:border-b-0 hover:bg-black/5"
+                  (click)="devLogin(dev.id)"
+                >
+                  <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="28" />
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-medium">{{ dev.displayName }}</span>
+                    <span class="block truncate text-xs text-slate-500">
+                      {{ dev.activeOrgType }} · {{ dev.isAdmin ? 'Admin' : 'Member' }}
+                    </span>
                   </span>
-                </span>
-              </button>
-            }
+                </button>
+              }
+            </div>
           </div>
-        </div>
+        }
       }
     </section>
   `,
 })
 export class LoginComponent {
   protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
-  protected readonly devUsers = this.auth.listDevUsers();
+  /** Seeded dev identities — resource per the v2 fetch-into-state standard.
+   *  Loader failure (e.g. the endpoint's prod 403) → empty list → no section. */
+  protected readonly devUsers = resource<SessionUser[], void>({
+    loader: () => this.auth.listDevUsers().catch(() => []),
+  });
 
   protected devLogin(userId: string): void {
-    this.auth.devLogin(userId);
-    void this.router.navigate(['/']);
+    void this.auth.devLogin(userId); // sets cookie then hard-reloads to '/'
   }
 }

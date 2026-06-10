@@ -15,6 +15,7 @@ import { LucideAngularModule, ChevronLeft, Rocket } from 'lucide-angular';
 import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/runtime-config.service';
 import { BrandConfigService } from './core/brand-config.service';
+import { AuthService } from './core/auth/auth.service';
 
 // Bridge the Ballpark brand into PrimeNG's Aura preset. PrimeNG styled mode
 // injects its design tokens at runtime, so a CSS `--p-*` override in styles.css
@@ -61,11 +62,15 @@ export const appConfig: ApplicationConfig = {
     // Then load brand config (pV2-01e) — the --bp-* tokens land on :root
     // before the first paint, so there is no FOUC / font flash. Brand load
     // never throws (cosmetic — API down just keeps the styles.css fallbacks).
+    // Then hydrate the auth session from the bp_session cookie (pV2-02), so
+    // the auth guard sees a settled signal on the very first navigation.
     provideAppInitializer(async () => {
       const rc = inject(RuntimeConfigService);
       const brand = inject(BrandConfigService);
+      const auth = inject(AuthService);
       await rc.load();
       await brand.load();
+      await auth.loadSession();
     }),
   ],
 };

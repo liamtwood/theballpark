@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  versionChip: '[Dev v2] v2.03a',
+  versionChip: '[Dev v2] v2.04a',
 };

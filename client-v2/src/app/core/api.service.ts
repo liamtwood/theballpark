@@ -14,23 +14,23 @@ export class ApiService {
     return this.rc.get().apiBaseUrl;
   }
 
-  /** GET `{apiBaseUrl}{path}`. */
+  /** GET `{apiBaseUrl}{path}`. withCredentials so the bp_session cookie flows. */
   get<T>(path: string): Observable<T> {
-    return this.http.get<T>(`${this.base()}${path}`);
+    return this.http.get<T>(`${this.base()}${path}`, { withCredentials: true });
   }
 
   /** POST `{apiBaseUrl}{path}`. */
   post<T>(path: string, body: unknown): Observable<T> {
-    return this.http.post<T>(`${this.base()}${path}`, body);
+    return this.http.post<T>(`${this.base()}${path}`, body, { withCredentials: true });
   }
 
   /** PUT `{apiBaseUrl}{path}`. */
   put<T>(path: string, body: unknown): Observable<T> {
-    return this.http.put<T>(`${this.base()}${path}`, body);
+    return this.http.put<T>(`${this.base()}${path}`, body, { withCredentials: true });
   }
 
   /** DELETE `{apiBaseUrl}{path}`. */
   delete<T>(path: string): Observable<T> {
-    return this.http.delete<T>(`${this.base()}${path}`);
+    return this.http.delete<T>(`${this.base()}${path}`, { withCredentials: true });
   }
 }
