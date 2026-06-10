@@ -3,7 +3,8 @@ import { ButtonModule } from 'primeng/button';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** Dev-only style sandbox for `<app-page-hero>` — the v2 equivalent of v1's
- *  component playground. Four variants, stacked, for visual QC. */
+ *  component playground. Four variants, stacked, for visual QC. Transparent is
+ *  the default (pV2-01d); variant 4 shows the opt-in theme wash. */
 @Component({
   selector: 'app-hero-demo',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -13,31 +14,31 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
     <div class="bp-page-body flex flex-col gap-8">
       <section>
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-          1 · Title only — left, theme wash
+          1 · Title only — left, transparent (default)
         </p>
-        <app-page-hero title="Inbox" class="overflow-hidden rounded-xl" />
+        <app-page-hero title="Inbox" class="overflow-hidden rounded-xl border border-black/5" />
       </section>
 
       <section>
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-          2 · Title + subtitle — left, theme wash
+          2 · Title + subtitle — left, transparent (default)
         </p>
         <app-page-hero
           title="Inbox"
           subtitle="Project conversations"
-          class="overflow-hidden rounded-xl"
+          class="overflow-hidden rounded-xl border border-black/5"
         />
       </section>
 
       <section>
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-          3 · Title + subtitle + back link — left, theme wash (+ actions slot)
+          3 · Title + subtitle + back link — left, transparent (default, + actions slot)
         </p>
         <app-page-hero
           title="Inbox"
           subtitle="Project conversations"
           [back]="{ label: 'Home', href: '/' }"
-          class="overflow-hidden rounded-xl"
+          class="overflow-hidden rounded-xl border border-black/5"
         >
           <p-button hero-actions label="Action" size="small" />
         </app-page-hero>
@@ -45,14 +46,14 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
 
       <section>
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-          4 · Title + subtitle — center, no accent
+          4 · Title + subtitle — center, accent="theme" (the opt-in wash)
         </p>
         <app-page-hero
           title="Inbox"
           subtitle="Project conversations"
           align="center"
-          accent="none"
-          class="overflow-hidden rounded-xl border border-black/5"
+          accent="theme"
+          class="overflow-hidden rounded-xl"
         />
       </section>
     </div>

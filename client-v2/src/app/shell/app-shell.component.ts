@@ -14,7 +14,6 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
   template: `
     <header
       class="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-transparent px-6"
-      style="border-bottom: var(--border-hairline)"
     >
       <a routerLink="/" class="text-sm font-semibold tracking-tight" style="color: var(--theme-accent)">
         Ballpark

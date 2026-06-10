@@ -131,7 +131,7 @@ export class PageHeroComponent {
   /** Alignment of title/subtitle text. */
   readonly align = input<'left' | 'center'>('left');
 
-  /** Accent treatment. `'theme'` paints a soft theme wash behind the band;
-   *  `'none'` is transparent over the page background. */
-  readonly accent = input<'theme' | 'none'>('theme');
+  /** Accent treatment. `'none'` (default) is transparent over the page
+   *  background; routes opt in to the soft theme wash with `accent="theme"`. */
+  readonly accent = input<'theme' | 'none'>('none');
 }
