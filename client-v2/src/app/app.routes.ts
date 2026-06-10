@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './shell/app-shell.component';
 import { authGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/auth/admin.guard';
 
 export const routes: Routes = [
   {
@@ -11,6 +12,13 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./pages/hello/hello.component').then((m) => m.HelloComponent),
+      },
+      {
+        // Settings → Team (pV2-03). Admin-only on top of the shell's authGuard.
+        path: 'settings/team',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./pages/settings/team/team.component').then((m) => m.TeamComponent),
       },
       {
         // Dev-only style sandbox — visual QC for shared chrome components.

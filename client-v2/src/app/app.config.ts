@@ -10,7 +10,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
-import { LucideAngularModule, ChevronLeft, Rocket } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, Rocket, Trash2 } from 'lucide-angular';
 
 import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/runtime-config.service';
@@ -56,7 +56,7 @@ export const appConfig: ApplicationConfig = {
     // the app level because `.pick()` returns a ModuleWithProviders, which is
     // valid via importProvidersFrom but not inside a standalone component's
     // `imports`. Components import the bare module for the <lucide-icon> directive.
-    importProvidersFrom(LucideAngularModule.pick({ ChevronLeft, Rocket })),
+    importProvidersFrom(LucideAngularModule.pick({ ChevronLeft, Rocket, Trash2 })),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
     // an undefined API URL (self-host: API endpoint is editable post-build).
     // Then load brand config (pV2-01e) — the --bp-* tokens land on :root

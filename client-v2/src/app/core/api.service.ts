@@ -29,6 +29,11 @@ export class ApiService {
     return this.http.put<T>(`${this.base()}${path}`, body, { withCredentials: true });
   }
 
+  /** PATCH `{apiBaseUrl}{path}`. */
+  patch<T>(path: string, body: unknown): Observable<T> {
+    return this.http.patch<T>(`${this.base()}${path}`, body, { withCredentials: true });
+  }
+
   /** DELETE `{apiBaseUrl}{path}`. */
   delete<T>(path: string): Observable<T> {
     return this.http.delete<T>(`${this.base()}${path}`, { withCredentials: true });
