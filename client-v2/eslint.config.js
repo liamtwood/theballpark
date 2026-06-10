@@ -13,6 +13,13 @@ module.exports = defineConfig([
       tseslint.configs.stylistic,
       angular.configs.tsRecommended,
     ],
+    // Typed linting — required by @angular-eslint/no-uncalled-signals.
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
+    },
     processor: angular.processInlineTemplates,
     rules: {
       '@angular-eslint/directive-selector': [
@@ -31,11 +38,19 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
+      // v2 signal rigor (post-audit, v2.04a): enforce the signal idioms
+      // mechanically instead of by convention — One Application, default-on.
+      '@angular-eslint/prefer-signals': 'error',
+      '@angular-eslint/no-uncalled-signals': 'error',
+      '@angular-eslint/computed-must-return': 'error',
     },
   },
   {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
-    rules: {},
+    rules: {
+      // v2 signal rigor: ban ! assertions in templates (narrow with @if instead).
+      '@angular-eslint/template/no-non-null-assertion': 'error',
+    },
   },
 ]);
