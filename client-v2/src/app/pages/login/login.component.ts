@@ -1,26 +1,32 @@
-import { ChangeDetectionStrategy, Component, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, resource } from '@angular/core';
+import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { AuthService, SessionUser } from '../../core/auth/auth.service';
+import { PublicHeaderComponent } from '../../shared/public-header/public-header.component';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
-/** Sign-in surface. Google OAuth is the primary CTA (real since pV2-02); the
- *  dev picker lists seeded identities from /api/dev/users — the endpoint
- *  returns 403 in production, which resolves to an empty list here and the
- *  section simply doesn't render. */
+/** Dev-picker surface (pV2-02b demoted this from primary entry to dev tool —
+ *  the public landing page at `/` is the front door now). Lists seeded
+ *  identities from /api/dev/users; when the endpoint yields an empty list
+ *  (prod 403, or simply no seeds) the page redirects to `/` instead of
+ *  rendering a broken-feeling stub. Carries the public chrome so a direct
+ *  /login hit matches the landing page while it decides. */
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonModule, UserAvatarComponent],
+  imports: [ButtonModule, PublicHeaderComponent, UserAvatarComponent],
   host: { class: 'flex min-h-screen items-center justify-center px-6' },
   template: `
-    <section class="w-full max-w-sm rounded-2xl bg-surface-alt p-8 shadow-sm">
-      <h1 class="text-2xl font-semibold tracking-tight">Sign in to Ballpark</h1>
-      <p class="mt-1 text-sm text-secondary">Continue with Google to access your account.</p>
+    <app-public-header />
 
-      <p-button label="Continue with Google" styleClass="w-full" class="mt-6 block" (onClick)="auth.loginWithGoogle()" />
+    @if (devUsers.value(); as users) {
+      @if (users.length > 0) {
+        <section class="w-full max-w-sm rounded-2xl bg-surface-alt p-8 shadow-sm">
+          <h1 class="text-2xl font-semibold tracking-tight">Sign in to Ballpark</h1>
+          <p class="mt-1 text-sm text-secondary">Continue with Google to access your account.</p>
 
-      @if (devUsers.value(); as users) {
-        @if (users.length > 0) {
+          <p-button label="Continue with Google" styleClass="w-full" class="mt-6 block" (onClick)="auth.loginWithGoogle()" />
+
           <div class="mt-8">
             <div class="flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted">
               <span class="h-px flex-1 bg-hairline"></span>
@@ -46,13 +52,14 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
               }
             </div>
           </div>
-        }
+        </section>
       }
-    </section>
+    }
   `,
 })
 export class LoginComponent {
   protected readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   /** Seeded dev identities — resource per the v2 fetch-into-state standard.
    *  listDevUsers never rejects (401/403 → empty list, faults logged there).
@@ -62,7 +69,18 @@ export class LoginComponent {
     loader: () => this.auth.listDevUsers(),
   });
 
+  constructor() {
+    // No dev picker to show (prod, or no seeds) → this page has no purpose;
+    // send the visitor to the public landing page.
+    effect(() => {
+      const users = this.devUsers.value();
+      if (users && users.length === 0) {
+        void this.router.navigate(['/']);
+      }
+    });
+  }
+
   protected devLogin(userId: string): void {
-    void this.auth.devLogin(userId); // sets cookie then hard-reloads to '/'
+    void this.auth.devLogin(userId); // sets cookie then hard-reloads to /home
   }
 }

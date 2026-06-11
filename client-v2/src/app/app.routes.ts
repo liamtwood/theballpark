@@ -5,12 +5,21 @@ import { adminGuard } from './core/auth/admin.guard';
 
 export const routes: Routes = [
   {
+    // PUBLIC front door (pV2-02b) — no guard, no shell. Matches `/` only;
+    // deeper URLs fall through to the shell parent below.
+    path: '',
+    loadComponent: () =>
+      import('./pages/landing/landing.component').then((m) => m.LandingComponent),
+  },
+  {
     path: '',
     component: AppShellComponent, // header + outlet — every feature route gets the shell
     canActivate: [authGuard], // signed-out → /login (login + callback live outside)
     children: [
       {
-        path: '',
+        // The authenticated home surface — was `/` before pV2-02b made the
+        // root public.
+        path: 'home',
         loadComponent: () => import('./pages/hello/hello.component').then((m) => m.HelloComponent),
       },
       {

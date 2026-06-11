@@ -5,7 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 /** OAuth landing — Google's flow ends with the API redirecting here
  *  (?login=ok) after setting the bp_session cookie. We hydrate the session
  *  signal, hold the spinner ~1s so the transition doesn't flash, then land
- *  at `/` (or back at /login with an error flag). */
+ *  at /home (or back at /login with an error flag). */
 @Component({
   selector: 'app-auth-callback',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,7 +27,7 @@ export class AuthCallbackComponent implements OnInit {
       const wait = Math.max(0, 1000 - (Date.now() - start));
       setTimeout(() => {
         if (this.auth.isLoggedIn()) {
-          void this.router.navigate(['/']);
+          void this.router.navigate(['/home']);
         } else {
           void this.router.navigate(['/login'], { queryParams: { error: 'auth_failed' } });
         }

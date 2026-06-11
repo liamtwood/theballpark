@@ -101,9 +101,10 @@ export class AuthService {
   }
 
   /** Dev-only — cookie-login as a seeded user, then hard reload so the whole
-   *  app re-bootstraps with the fresh session (no leaked state). */
+   *  app re-bootstraps with the fresh session (no leaked state). Lands on
+   *  /home — `/` is the public landing page since pV2-02b. */
   async devLogin(userId: string): Promise<void> {
     await firstValueFrom(this.api.post('/auth/dev/login', { userId }));
-    window.location.href = '/';
+    window.location.href = '/home';
   }
 }
