@@ -3,6 +3,7 @@ import { AppShellComponent } from './shell/app-shell.component';
 import { requiresOrgGuard } from './core/auth/requires-org.guard';
 import { needsOnboardingGuard } from './core/auth/needs-onboarding.guard';
 import { adminGuard } from './core/auth/admin.guard';
+import { ballparkAdminGuard } from './core/auth/ballpark-admin.guard';
 
 export const routes: Routes = [
   {
@@ -37,6 +38,16 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () =>
           import('./pages/settings/team/team.component').then((m) => m.TeamComponent),
+      },
+      {
+        // Settings → Pages — the page-settings TABLE (Liam's simplification).
+        // PLATFORM admins only: these settings are org_type-wide.
+        path: 'settings/pages',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/settings/pages/pages-settings.component').then(
+            (m) => m.PagesSettingsComponent
+          ),
       },
       {
         // Dev-only style sandbox — visual QC for shared chrome components.

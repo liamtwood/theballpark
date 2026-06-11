@@ -144,7 +144,7 @@ export class HomeLauncherComponent {
   readonly title = input<string>('');
   readonly subtitle = input<string>('');
   readonly align = input<'left' | 'center'>('center');
-  readonly tiles = input.required<LauncherTile[]>();
+  readonly tiles = input.required<readonly LauncherTile[]>();
 
   /** v1 parity: Back uses browser history, rendered even at root. */
   protected onBack(): void {

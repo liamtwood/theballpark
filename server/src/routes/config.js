@@ -21,7 +21,6 @@ const pool = require('../db/pool');
 const ConfigService = require('../services/config.service');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
-const { normalizeOrgType } = require('../services/permissions.service');
 const { PageConfigSchema } = require('../schemas/page-config.schema');
 
 // ── v2 path detection (pV2-04b) ──────────────────────────────────────────────
@@ -93,11 +92,13 @@ router.get('/:orgType', v2Only(authenticate, requireActiveMembership()), async (
 });
 
 // PUT — v1: platform admin via x-bp-user-id (legacy, full-payload upsert).
-// v2 (cookie): org admins (org.invite_member — same gate as Settings → Team)
-// may write THEIR OWN org_type's v2Home slice only; Zod-validated.
+// v2 (cookie): PLATFORM admins only (admin.cross_org_view) — page settings
+// are org_type-WIDE, so org-level admin is not enough (Liam 2026-06-11;
+// restores v1's requirePlatformAdmin model). Ballpark admins write ANY
+// org_type's v2Home slice; Zod-validated.
 router.put(
   '/:orgType',
-  v2Only(authenticate, requireActiveMembership('org.invite_member')),
+  v2Only(authenticate, requireActiveMembership('admin.cross_org_view')),
   (req, res, next) => (isV2(req) ? next() : requirePlatformAdmin(req, res, next)),
   async (req, res, next) => {
     try {
@@ -105,11 +106,6 @@ router.put(
         return res.status(400).json({ error: 'Invalid org_type' });
       }
       if (isV2(req)) {
-        // Own-orgType only: an agency admin must not author supplier config.
-        // (req.user.org_type is live DB truth via requireActiveMembership.)
-        if (normalizeOrgType(req.user.org_type) !== normalizeOrgType(req.params.orgType)) {
-          return res.status(403).json({ error: 'You can only edit your own organisation type\'s settings' });
-        }
         const parsed = PageConfigSchema.safeParse(req.body && req.body.payload);
         if (!parsed.success) {
           return res.status(400).json({

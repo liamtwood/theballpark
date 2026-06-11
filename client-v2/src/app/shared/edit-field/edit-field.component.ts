@@ -36,7 +36,9 @@ export interface EditFieldOption {
     '[class.bp-edit-field--editing]': 'editing()',
   },
   template: `
-    <div class="bp-field-label bp-edit-field__label">{{ label() }}</div>
+    @if (label()) {
+      <div class="bp-field-label bp-edit-field__label">{{ label() }}</div>
+    }
     @switch (type()) {
       @case ('text') {
         @if (editing()) {
