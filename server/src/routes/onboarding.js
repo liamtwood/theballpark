@@ -10,27 +10,27 @@
 // report).
 
 const router = require('express').Router();
+const { z } = require('zod');
 const pool = require('../db/pool');
 const { authenticate } = require('../middleware/authenticate');
 const { authWriteLimit } = require('../middleware/rate-limits');
 const { withTransaction } = require('../db/with-transaction');
 const { buildSession } = require('../services/auth.service');
 const { signSessionCookie } = require('../services/auth-cookie.service');
-
-const ORG_TYPES = new Set(['agency', 'supplier']);
-const NAME_MIN = 2;
-const NAME_MAX = 100;
+const { CreateOrgSchema } = require('../schemas/onboarding.schema');
 
 router.post('/create-org', authWriteLimit, authenticate, async (req, res, next) => {
   try {
-    const { orgType, orgName } = req.body || {};
-    if (!ORG_TYPES.has(orgType)) {
-      return res.status(400).json({ error: 'orgType must be "agency" or "supplier"' });
+    // Zod schema is the single definition of accepted input (pV2-AUDIT-03 —
+    // the example endpoint for the pattern; others migrate as touched).
+    const parsed = CreateOrgSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        details: z.flattenError(parsed.error).fieldErrors,
+      });
     }
-    const name = String(orgName || '').trim();
-    if (name.length < NAME_MIN || name.length > NAME_MAX) {
-      return res.status(400).json({ error: `Org name must be ${NAME_MIN}-${NAME_MAX} chars` });
-    }
+    const { orgType, orgName: name } = parsed.data; // orgName arrives trimmed
 
     // Reject if the user already has an active membership. (Known benign
     // race: two concurrent submits could both pass this check — accepted for
