@@ -132,45 +132,4 @@ async function buildSession(userId) {
   };
 }
 
-/** All ACTIVE memberships for a user — the org-switcher list.
- *  Same role derivation as buildSession; default-org first, then join order. */
-async function listUserOrgs(userId) {
-  const r = await pool.query(
-    `SELECT o.id, o.name, o.type, uo.is_admin,
-            (o.id = u.default_org_id) AS is_default
-       FROM user_orgs uo
-       JOIN orgs o ON o.id = uo.org_id
-       JOIN users u ON u.id = uo.user_id
-      WHERE uo.user_id = $1 AND uo.status = 'active' AND uo.deleted_at IS NULL
-        AND u.deleted_at IS NULL
-      ORDER BY (o.id = u.default_org_id) DESC NULLS LAST, uo.joined_at ASC NULLS LAST`,
-    [userId]
-  );
-  return r.rows.map((row) => ({
-    orgId: row.id,
-    orgName: row.name,
-    orgType: normalizeOrgType(row.type),
-    role: effectiveRole(row.type, row.is_admin),
-    isDefault: !!row.is_default,
-  }));
-}
-
-/** Switch the user's active org (= default_org_id, until a session-scoped
- *  active org exists). Membership-validated IN the statement — org_id is
- *  never trusted without proof the caller belongs to it. Returns the fresh
- *  session, or null when the user has no active membership in that org. */
-async function switchActiveOrg(userId, orgId) {
-  const r = await pool.query(
-    `UPDATE users SET default_org_id = $2, updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
-        AND EXISTS (SELECT 1 FROM user_orgs uo
-                     WHERE uo.user_id = $1 AND uo.org_id = $2
-                       AND uo.status = 'active' AND uo.deleted_at IS NULL)
-      RETURNING id`,
-    [userId, orgId]
-  );
-  if (!r.rows.length) return null;
-  return buildSession(userId);
-}
-
-module.exports = { upsertUserFromGoogle, buildSession, listUserOrgs, switchActiveOrg };
+module.exports = { upsertUserFromGoogle, buildSession };

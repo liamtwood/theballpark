@@ -30,16 +30,6 @@ export interface SessionUser {
   role: Role | null;
 }
 
-/** One of the current user's active memberships (GET /auth/orgs) — the
- *  org-switcher list (v2.12). */
-export interface MyOrg {
-  orgId: string;
-  orgName: string;
-  orgType: OrgType;
-  role: Role;
-  isDefault: boolean;
-}
-
 /** 401 from /auth/me just means "signed out" — the designed no-session
  *  signal. Anything else (5xx, network, CORS) is a real fault that must not
  *  be swallowed silently (WORKING_STANDARDS §"Catch blocks justify
@@ -120,25 +110,6 @@ export class AuthService {
    *  /home — `/` is the public landing page since pV2-02b. */
   async devLogin(userId: string): Promise<void> {
     await firstValueFrom(this.api.post('/auth/dev/login', { userId }));
-    window.location.href = '/home';
-  }
-
-  /** The current user's active memberships. Never rejects — a failed list
-   *  just hides the switcher entries (logged; the menu must still render). */
-  async listMyOrgs(): Promise<MyOrg[]> {
-    try {
-      return await firstValueFrom(this.api.get<MyOrg[]>('/auth/orgs'));
-    } catch (err) {
-      console.warn('[auth] membership list failed', err);
-      return [];
-    }
-  }
-
-  /** Switch the active org (own memberships only — the server proves it),
-   *  then hard reload so the whole app re-bootstraps with the fresh session,
-   *  same as devLogin. The user STAYS themselves (Liam, 2026-06-12). */
-  async switchOrg(orgId: string): Promise<void> {
-    await firstValueFrom(this.api.post('/auth/switch-org', { orgId }));
     window.location.href = '/home';
   }
 }

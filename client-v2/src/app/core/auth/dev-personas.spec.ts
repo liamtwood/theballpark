@@ -1,5 +1,5 @@
 import { devPersonas } from './dev-personas';
-import { MyOrg, SessionUser } from './auth.service';
+import { SessionUser } from './auth.service';
 
 const u = (email: string, role: SessionUser['role']): SessionUser => ({
   id: email,
@@ -13,16 +13,8 @@ const u = (email: string, role: SessionUser['role']): SessionUser => ({
   role,
 });
 
-const org = (orgId: string, orgType: MyOrg['orgType'], role: MyOrg['role']): MyOrg => ({
-  orgId,
-  orgName: orgId,
-  orgType,
-  role,
-  isDefault: false,
-});
-
 describe('devPersonas', () => {
-  it('maps one representative per role in display order (seeded fallback)', () => {
+  it('maps one representative per role in display order', () => {
     const personas = devPersonas([
       u('alex@x', 'agency_member'),
       u('beth@x', 'ballpark_admin'),
@@ -30,41 +22,16 @@ describe('devPersonas', () => {
       u('sarah@x', 'agency_admin'),
     ]);
     expect(personas.map((p) => p.label)).toEqual(['Ballpark Admin', 'Agent', 'Supplier']);
-    expect(personas.map((p) => p.action)).toEqual([
-      { kind: 'impersonate', userId: 'beth@x' },
-      { kind: 'impersonate', userId: 'sarah@x' },
-      { kind: 'impersonate', userId: 'ryan@x' },
-    ]);
+    expect(personas.map((p) => p.user.email)).toEqual(['beth@x', 'sarah@x', 'ryan@x']);
   });
 
-  it('prefers the current user OWN membership over a seeded user', () => {
-    const personas = devPersonas(
-      [u('beth@x', 'ballpark_admin'), u('sarah@x', 'agency_admin')],
-      [org('liams-ballpark', 'ballpark', 'ballpark_admin')]
-    );
-    expect(personas.map((p) => p.action)).toEqual([
-      { kind: 'switch-org', orgId: 'liams-ballpark' }, // stay Liam
-      { kind: 'impersonate', userId: 'sarah@x' }, // no own agency → seeded
-    ]);
-  });
-
-  it('matches own memberships by org TYPE (member role still wins)', () => {
-    const personas = devPersonas(
-      [u('sarah@x', 'agency_admin')],
-      [org('my-agency', 'agency', 'agency_member')]
-    );
-    expect(personas).toHaveLength(1);
-    expect(personas[0].action).toEqual({ kind: 'switch-org', orgId: 'my-agency' });
-    expect(personas[0].role).toBe('agency_member');
-  });
-
-  it('picks the FIRST matching seeded user per role', () => {
+  it('picks the FIRST matching user per role', () => {
     const personas = devPersonas([u('a@x', 'agency_admin'), u('b@x', 'agency_admin')]);
     expect(personas).toHaveLength(1);
-    expect(personas[0].action).toEqual({ kind: 'impersonate', userId: 'a@x' });
+    expect(personas[0].user.email).toBe('a@x');
   });
 
-  it('omits experiences with neither an own membership nor a seeded user', () => {
+  it('omits roles with no seeded user', () => {
     expect(devPersonas([u('sarah@x', 'agency_admin')]).map((p) => p.label)).toEqual(['Agent']);
     expect(devPersonas([])).toEqual([]);
   });
