@@ -3,9 +3,11 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 
 /** pV2-04b — launcher tile (the v2 rebuild of v1's action-tile, p0019): a
- *  white routerLink card with a brand-gradient icon block above title +
- *  subtitle (v1 proportions per pV2-04b1-qc; gradient-on-icon-block per
- *  Liam's follow-up QC — every tile identical, no primary variant). */
+ *  white routerLink card with a SOFT-pastel icon block (--theme-soft wash,
+ *  --theme-accent icon stroke) above title + subtitle. Per the Figma
+ *  correction in pV2-04b2-qc: all five tiles are uniform — the vivid
+ *  --bp-gradient never appears on this surface (it's brand-mark territory:
+ *  avatar fill, future brand CTAs). No primary variant. */
 @Component({
   selector: 'app-launcher-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,8 +32,9 @@ import { LucideAngularModule } from 'lucide-angular';
         display: block;
         background: var(--color-surface);
         border: 1px solid var(--color-border-hairline);
-        border-radius: 16px;
-        box-shadow: var(--shadow-xs);
+        border-radius: var(--radius-card);
+        /* md at rest (Figma lifted-card; xs was flagged as drift from v1) */
+        box-shadow: var(--shadow-md);
         transition: transform 0.12s ease, box-shadow 0.12s ease;
       }
       :host(:hover) {
@@ -53,31 +56,33 @@ import { LucideAngularModule } from 'lucide-angular';
         color: var(--color-text);
         outline: none;
       }
-      /* Brand-gradient icon square (Liam's QC call): the ONE --bp-gradient
-         token (styles.css fallback, DB-overridable via BrandConfigService) —
-         same treatment as the avatar initials circle. White icon on it. */
+      /* Soft pastel icon square (--theme-soft wash) with the pink accent
+         icon stroke — the calm tier of the two gradient tokens; the vivid
+         --bp-gradient stays on brand marks only (DESIGN.md §2). */
       .bp-launcher-tile__icon-block {
         display: flex;
         align-items: center;
         justify-content: center;
         width: 64px;
         height: 64px;
-        border-radius: 12px;
-        background: var(--bp-gradient);
-        color: var(--bp-text-on-gradient);
+        border-radius: var(--radius-card);
+        background: var(--theme-soft);
+        color: var(--theme-accent);
       }
       .bp-launcher-tile__title {
         display: block;
         font-family: var(--font-body);
-        font-size: 17px;
-        font-weight: 600;
+        font-size: 22px;
+        font-weight: 400;
         line-height: 1.3;
+        color: var(--color-text);
       }
       .bp-launcher-tile__subtitle {
         display: block;
         margin-top: 4px;
         font-family: var(--font-body);
         font-size: 13px;
+        font-weight: 400;
         line-height: 1.4;
         color: var(--color-text-secondary);
       }

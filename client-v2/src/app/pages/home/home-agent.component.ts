@@ -21,7 +21,7 @@ import { heroTitle } from './hero-title';
       [title]="title()"
       [subtitle]="config.heroSubtitle()"
       [align]="config.heroAlign()"
-      [tiles]="tiles()"
+      [tiles]="tiles"
     />
   `,
 })
@@ -41,27 +41,26 @@ export class HomeAgentComponent {
     heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
   );
 
-  /** The agent tile set (p0019) with the v1 subtitle copy. Add/View
-   *  interpolate the configurable events label live. */
-  protected readonly tiles = computed<LauncherTile[]>(() => {
-    const label = this.config.eventLabel();
-    const lower = label.toLowerCase();
-    return [
-      {
-        icon: 'folder-plus',
-        label: `Add ${lower}`,
-        subtitle: `Start a new ${lower}`,
-        href: '/projects',
-      },
-      {
-        icon: 'folder-open',
-        label: `View ${lower}s`,
-        subtitle: `Browse all your ${lower}s`,
-        href: '/projects',
-      },
-      { icon: 'inbox', label: 'Inbox', subtitle: 'Supplier replies and threads', href: '/inbox' },
-      { icon: 'store', label: 'Marketplace', subtitle: 'Browse items and suppliers', href: '/marketplace' },
-      { icon: 'circle-user', label: 'Profile', subtitle: 'Your account and settings', href: '/settings/profile' },
-    ];
-  });
+  /** The agent tile set — Figma copy verbatim (pV2-04b2-qc). Labels are
+   *  FIXED copy now (the configurable events-label interpolation from p0019
+   *  is dropped with this copy set — flagged in the ship report). Both
+   *  project tiles target the /projects stub until the projects arc defines
+   *  distinct destinations. */
+  protected readonly tiles: LauncherTile[] = [
+    {
+      icon: 'folder-plus',
+      label: 'New Project',
+      subtitle: 'Manage active projects and supplier conversations.',
+      href: '/projects',
+    },
+    {
+      icon: 'folder-open',
+      label: 'Past Projects',
+      subtitle: 'View completed and archived work.',
+      href: '/projects',
+    },
+    { icon: 'inbox', label: 'Inbox', subtitle: 'Messages, supplier responses and updates.', href: '/inbox' },
+    { icon: 'store', label: 'Marketplace', subtitle: 'Browse suppliers, ideas and ballpark costs.', href: '/marketplace' },
+    { icon: 'circle-user', label: 'Profile', subtitle: 'Manage your portfolio, pricing and account.', href: '/settings/profile' },
+  ];
 }
