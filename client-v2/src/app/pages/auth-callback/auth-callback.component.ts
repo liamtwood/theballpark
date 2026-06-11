@@ -12,7 +12,7 @@ import { AuthService } from '../../core/auth/auth.service';
   host: { class: 'flex min-h-screen items-center justify-center px-6' },
   template: `
     <section class="text-center">
-      <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200" style="border-top-color: var(--theme-accent)"></div>
+      <div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-hairline" style="border-top-color: var(--theme-accent)"></div>
       <h1 class="text-xl font-semibold tracking-tight">Signing you in…</h1>
     </section>
   `,

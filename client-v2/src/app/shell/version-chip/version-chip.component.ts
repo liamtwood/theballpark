@@ -16,7 +16,7 @@ import { environment } from '../../../environments/environment';
         right: 16px;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 11px;
-        color: var(--color-text-secondary, #6b7280);
+        color: var(--color-text-secondary);
         pointer-events: none;
         z-index: 50;
         opacity: 0.55;

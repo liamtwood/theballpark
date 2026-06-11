@@ -35,9 +35,9 @@ interface InviteForm {
 
     <div class="bp-page-body">
       @if (members.isLoading()) {
-        <p class="text-sm text-slate-500">Loading team…</p>
+        <p class="text-sm text-secondary">Loading team…</p>
       } @else if (members.value(); as list) {
-        <div class="overflow-hidden rounded-xl border border-black/10 bg-white">
+        <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
           @for (m of list; track m.userId ?? m.email) {
             <app-team-member-row
               [member]="m"
@@ -47,7 +47,7 @@ interface InviteForm {
               (removed)="confirmRemove(m)"
             />
           } @empty {
-            <p class="px-4 py-6 text-sm text-slate-500">No team members yet.</p>
+            <p class="px-4 py-6 text-sm text-secondary">No team members yet.</p>
           }
         </div>
       }
@@ -56,20 +56,20 @@ interface InviteForm {
     <!-- Invite modal -->
     <p-dialog header="Invite a team member" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [style]="{ width: '380px' }">
       <form class="flex flex-col gap-3" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
-        <label class="text-xs font-medium text-slate-500">
+        <label class="text-xs font-medium text-secondary">
           Email *
-          <input type="email" formControlName="email" class="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm" placeholder="name@company.com" />
+          <input type="email" formControlName="email" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm" placeholder="name@company.com" />
         </label>
-        <label class="text-xs font-medium text-slate-500">
+        <label class="text-xs font-medium text-secondary">
           Name
-          <input type="text" formControlName="displayName" class="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm" />
+          <input type="text" formControlName="displayName" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm" />
         </label>
-        <label class="text-xs font-medium text-slate-500">
+        <label class="text-xs font-medium text-secondary">
           Job title
-          <input type="text" formControlName="jobTitle" class="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm" />
+          <input type="text" formControlName="jobTitle" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm" />
         </label>
-        <label class="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" formControlName="isAdmin" class="rounded border-black/20" />
+        <label class="flex items-center gap-2 text-sm text-secondary">
+          <input type="checkbox" formControlName="isAdmin" class="rounded border-medium" />
           Make admin
         </label>
         <div class="mt-2 flex justify-end gap-2">
@@ -82,7 +82,7 @@ interface InviteForm {
     <!-- Remove confirmation -->
     <p-dialog header="Remove member?" [visible]="removeTarget() !== null" (visibleChange)="!$event && removeTarget.set(null)" [modal]="true" [style]="{ width: '380px' }">
       @if (removeTarget(); as t) {
-        <p class="text-sm text-slate-600">
+        <p class="text-sm text-secondary">
           Remove <strong>{{ t.displayName ?? t.email }}</strong>? They'll lose access to this org.
           Reversible — you can re-invite them by email.
         </p>

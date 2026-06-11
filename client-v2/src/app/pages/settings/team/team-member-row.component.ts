@@ -12,7 +12,7 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
   selector: 'app-team-member-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, ToggleSwitchModule, LucideAngularModule, UserAvatarComponent],
-  host: { class: 'flex items-center gap-4 border-b border-black/5 px-4 py-3 last:border-b-0' },
+  host: { class: 'flex items-center gap-4 border-b border-hairline px-4 py-3 last:border-b-0' },
   template: `
     <app-user-avatar
       [displayName]="member().displayName"
@@ -25,18 +25,18 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
       <div class="truncate text-sm font-semibold">
         {{ member().displayName ?? member().email }}
         @if (member().status === 'invited') {
-          <span class="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">pending invite</span>
+          <span class="ml-2 rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn">pending invite</span>
         }
         @if (member().status === 'suspended') {
-          <span class="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">suspended</span>
+          <span class="ml-2 rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-danger">suspended</span>
         }
       </div>
-      <div class="truncate text-xs text-slate-500">{{ member().jobTitle ?? '—' }}</div>
-      <div class="truncate text-xs text-slate-400">{{ member().email }}</div>
+      <div class="truncate text-xs text-secondary">{{ member().jobTitle ?? '—' }}</div>
+      <div class="truncate text-xs text-muted">{{ member().email }}</div>
     </div>
 
     <div class="flex shrink-0 items-center gap-5" [title]="selfTooltip()">
-      <span class="flex items-center gap-2 text-xs text-slate-500">
+      <span class="flex items-center gap-2 text-xs text-secondary">
         Admin
         <p-toggleswitch
           [ngModel]="member().isAdmin"
@@ -45,7 +45,7 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
           (onChange)="roleChanged.emit($event.checked === true)"
         />
       </span>
-      <span class="flex items-center gap-2 text-xs text-slate-500">
+      <span class="flex items-center gap-2 text-xs text-secondary">
         Suspend
         <p-toggleswitch
           [ngModel]="member().status === 'suspended'"
@@ -56,7 +56,7 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
       </span>
       <button
         type="button"
-        class="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+        class="cursor-pointer rounded-md p-1.5 text-muted hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
         [disabled]="isSelf()"
         (click)="removed.emit()"
         aria-label="Remove member"

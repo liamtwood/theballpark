@@ -26,6 +26,30 @@
   --border-hairline: 1px solid rgba(0, 0, 0, 0.06);
   --color-text-secondary: #6b7280;
 
+  /* ── Semantic state tokens (pV2-AUDIT-02 fix 5) — DO NOT recolour with
+     theme presets. Carried from v1's vocabulary for parity. ───────────── */
+  --color-success: #047857; /* green — Live / Signed / Accepted / connected */
+  --color-success-soft: #d1fae5;
+  --color-warn: #b45309; /* amber — Negotiating / Pending invite / degraded */
+  --color-warn-soft: #fef3c7;
+  --color-danger: #b91c1c; /* red — Suspended / Declined / destructive */
+  --color-danger-soft: #fee2e2;
+  --color-info: #1e40af; /* blue — Signing SOW / in progress */
+  --color-info-soft: #dbeafe;
+  --color-action: #6d28d9; /* purple — Payment Processing / Quoted */
+  --color-action-soft: #ede9fe;
+
+  /* ── Surface / structure tokens ──────────────────────────────────────── */
+  --color-surface: #ffffff;
+  --color-surface-alt: rgba(255, 255, 255, 0.8); /* glassy card (login) */
+  --color-fill: #f8fafc; /* hover fills, subtle grounds */
+  --color-border-hairline: rgba(15, 23, 42, 0.1);
+  --color-border-medium: rgba(15, 23, 42, 0.18);
+  /* Muted text — one step lighter than secondary (#6b7280); the spec's
+     literal #6b7280 would have made muted === secondary, collapsing two
+     roles into one value. Deviation flagged in the ship report. */
+  --color-text-muted: #9ca3af;
+
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────
      PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
      `--p-*` here would be clobbered. The Ballpark→PrimeNG bridge therefore lives

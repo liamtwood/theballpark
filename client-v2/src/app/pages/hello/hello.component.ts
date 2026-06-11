@@ -36,27 +36,27 @@ type ApiStatus = 'checking' | 'connected' | 'unreachable';
 
       @if (hasCheckout()) {
         <!-- TEMP (pV2-02 criterion 10) — proves can() works end to end. -->
-        <div class="mb-4 inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+        <div class="mb-4 inline-block rounded-full bg-success-soft px-3 py-1 text-xs font-medium text-success">
           has checkout
         </div>
       }
 
       <div class="flex items-center gap-2 text-sm">
         @if (apiStatus() === 'checking') {
-          <span class="inline-block h-2.5 w-2.5 rounded-full bg-slate-300"></span>
-          <span class="text-slate-500">API: checking…</span>
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-muted"></span>
+          <span class="text-secondary">API: checking…</span>
         } @else if (apiStatus() === 'connected') {
-          <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-          <span class="text-emerald-700">API: connected</span>
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-success"></span>
+          <span class="text-success">API: connected</span>
         } @else {
-          <span class="inline-block h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-          <span class="text-orange-700">API: not reachable</span>
+          <span class="inline-block h-2.5 w-2.5 rounded-full bg-warn"></span>
+          <span class="text-warn">API: not reachable</span>
         }
       </div>
 
       <div class="mt-8">
         <p-button label="Primary action" />
-        <p class="mt-2 text-xs text-slate-400">
+        <p class="mt-2 text-xs text-muted">
           ↑ PrimeNG Aura button, themed via the <code>BallparkPreset</code> brand bridge.
         </p>
       </div>
