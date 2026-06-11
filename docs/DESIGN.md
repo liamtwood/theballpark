@@ -112,8 +112,9 @@ Plus structural neutrals:
 ```css
 --color-border-hairline:  rgba(15, 23, 42, 0.10);
 --color-border-medium:    rgba(15, 23, 42, 0.18);
---color-text:             #111111;
---color-text-secondary:   #6b7280;
+--color-text:             #111111;  /* darkest — hero/page titles */
+--color-text-strong:      #374151;  /* middle — section titles + field values */
+--color-text-secondary:   #6b7280;  /* light — subtitles + field labels */
 --color-text-muted:       #BBBBBB;
 --color-surface:          #FFFFFF;
 --color-fill:             #f8fafc;
@@ -167,8 +168,7 @@ bridge needed; PrimeNG controls follow `--bp-font` automatically.
 --text-md:       14px;   /* body default, drawer section titles */
 --text-lg:       16px;   /* large body — marketing paragraph */
 --text-xl:       18px;   /* section titles, home subtitle */
---text-2xl:      22px;   /* card / drawer titles */
---text-3xl:      28px;   /* edit-form card titles */
+--text-2xl:      22px;   /* ALL container headings: card / drawer / edit-section titles */
 --text-hero:     40px;   /* page titles (28px under 640px via ROOT media override) */
 --text-greeting: clamp(40px, 5vw, 60px);  /* home greeting — responsive in the token */
 
@@ -198,10 +198,10 @@ compositions, free to diverge later — the values live once, in Layer 1.
 | | `.bp-home-subtitle` | xl | 400 | — | normal | `--color-text-secondary` |
 | Hero — page | `.bp-page-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
 | | `.bp-page-title` | hero | 400 | — | tight | `--color-text` |
-| | `.bp-page-subtitle` | lg | 400 | — | normal | `--color-text-secondary` |
+| | `.bp-page-subtitle` | xl | 400 | — | normal | `--color-text-secondary` |
 | Section | `.bp-section-title` | xl | 500 | — | snug | `--color-text` |
 | | `.bp-section-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
-| Edit-form card | `.bp-edit-section-title` | 3xl | 400 | — | tight | `--color-text` — `<app-edit-section>` bakes it in; NOT `.bp-card-title` (tiles) nor `.bp-section-title` (generic) |
+| Edit-form card | `.bp-edit-section-title` | 2xl | 400 | — | snug | `--color-text-strong` — `<app-edit-section>` bakes it in; same RANK as card/drawer titles, differentiated by the middle shade |
 | Card / tile | `.bp-card-title` | 2xl | 400 | — | snug | `--color-text` |
 | | `.bp-card-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
 | Drawer | `.bp-drawer-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
@@ -209,7 +209,7 @@ compositions, free to diverge later — the values live once, in Layer 1.
 | | `.bp-drawer-section-title` | md | 500 | — | snug | `--color-text` |
 | | `.bp-drawer-section-subtitle` | sm | 400 | — | normal | `--color-text-secondary` |
 | Field | `.bp-field-label` | sm | 500 | — | normal | `--color-text-secondary` |
-| | `.bp-field-value` | md | 400 | — | normal | `--color-text` — converged with edit-field's `.bp-fld` chrome (Liam, 2026-06-11) |
+| | `.bp-field-value` | md | 400 | — | normal | `--color-text-strong` — converged with edit-field's `.bp-fld` chrome (Liam, 2026-06-11) |
 | | `.bp-field-help` | sm | 400 | — | normal | `--color-text-muted` |
 | Body | `.bp-body` | md | 400 | — | normal | `--color-text` |
 | | `.bp-body-small` | base | 400 | — | normal | `--color-text` |

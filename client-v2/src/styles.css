@@ -25,6 +25,9 @@
   /* Chrome tokens */
   --border-hairline: 1px solid rgba(0, 0, 0, 0.06);
   --color-text-secondary: #6b7280;
+  /* Middle step of the 3-shade text ramp (Liam, 2026-06-11): section titles
+     + field values sit between the #111 title black and the secondary gray. */
+  --color-text-strong: #374151;
 
   /* ── Semantic state tokens (pV2-AUDIT-02 fix 5) — DO NOT recolour with
      theme presets. Carried from v1's vocabulary for parity. ───────────── */
@@ -70,8 +73,7 @@
   --text-md: 14px;
   --text-lg: 16px; /* large body — marketing paragraph */
   --text-xl: 18px;
-  --text-2xl: 22px;
-  --text-3xl: 28px; /* edit-form card titles */
+  --text-2xl: 22px; /* all container headings: card / drawer / edit-section titles */
   --text-hero: 40px;
   --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
 
@@ -129,15 +131,16 @@
 /* Hero — page */
 .bp-page-label    { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
 .bp-page-title    { font-family: var(--bp-font); font-size: var(--text-hero); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); }
-.bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-lg); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+.bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Section */
 .bp-section-title    { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
 .bp-section-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Edit-form card (the v2 edit-form standard — Profile is the reference).
-   New role: NOT .bp-card-title (22, tiles) nor .bp-section-title (18). */
-.bp-edit-section-title { font-family: var(--bp-font); font-size: var(--text-3xl); font-weight: 400; line-height: var(--leading-tight); letter-spacing: -0.01em; color: var(--color-text); }
+   Converged on the 2xl container-heading rank (card ≡ drawer ≡ edit-section);
+   differentiated by SHADE — the middle --color-text-strong step. */
+.bp-edit-section-title { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text-strong); }
 
 /* Card / tile */
 .bp-card-title    { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text); }
@@ -151,7 +154,7 @@
 
 /* Field */
 .bp-field-label { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 500; line-height: var(--leading-normal); color: var(--color-text-secondary); }
-.bp-field-value { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text); }
+.bp-field-value { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-strong); }
 .bp-field-help  { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
 
 /* Body */

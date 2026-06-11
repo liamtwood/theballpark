@@ -111,7 +111,7 @@ export interface EditFieldOption {
         height: 34px;
         padding: 0 10px;
         font-size: var(--text-md);
-        color: var(--color-text);
+        color: var(--color-text-strong);
         background: transparent;
         border: 1px solid transparent;
         border-radius: 10px;
@@ -149,12 +149,12 @@ export interface EditFieldOption {
       }
       :host ::ng-deep .p-select.bp-fld .p-select-label {
         font-size: var(--text-md);
-        color: var(--color-text);
+        color: var(--color-text-strong);
         padding: 0;
       }
       :host ::ng-deep .p-inputnumber.bp-fld .p-inputnumber-input {
         font-size: var(--text-md);
-        color: var(--color-text);
+        color: var(--color-text-strong);
         background: transparent;
         border: none;
         box-shadow: none;

@@ -27,6 +27,7 @@ module.exports = {
 
       // Text
       text: 'var(--theme-text)',
+      strong: 'var(--color-text-strong)',
       secondary: 'var(--color-text-secondary)',
       muted: 'var(--color-text-muted)',
 
@@ -60,7 +61,6 @@ module.exports = {
       lg: 'var(--text-lg)',
       xl: 'var(--text-xl)',
       '2xl': 'var(--text-2xl)',
-      '3xl': 'var(--text-3xl)',
       hero: 'var(--text-hero)',
       greeting: 'var(--text-greeting)',
     },
