@@ -49,6 +49,15 @@ const app = express();
 // — without it every user shares the proxy's IP (self-DoS).
 app.set('trust proxy', 1);
 
+// Security headers (pV2-AUDIT-03). Defaults are sensible for an API; the
+// SPA's HTML is served elsewhere (Vercel / ng serve) and owns its own CSP.
+// Also removes X-Powered-By: Express (version disclosure).
+app.use(require('helmet')({
+  contentSecurityPolicy: false, // we don't serve HTML; SPA host owns CSP
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // SPA on a different origin
+}));
+
 // CORS — environment-driven origins. credentials:true so the bp_session
 // cookie flows on cross-origin XHR from the SPA origins (pV2-02 auth).
 const allowedOrigins = process.env.ALLOWED_ORIGINS
