@@ -196,7 +196,8 @@ compositions, free to diverge later — the values live once, in Layer 1.
 |---|---|---|---|---|---|---|
 | Hero — home | `.bp-home-title` | greeting | 400 | — | tight | `--color-text` |
 | | `.bp-home-subtitle` | xl | 400 | — | normal | `--color-text-secondary` |
-| Hero — page | `.bp-page-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
+| Hero — page | `.bp-page-back` | base | 500 | — | normal | `--color-text-secondary` (hover `--theme-accent`) — back link ABOVE the title; `<app-page-hero>` bakes it in |
+| | `.bp-page-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
 | | `.bp-page-title` | hero | 400 | — | tight | `--color-text` |
 | | `.bp-page-subtitle` | xl | 400 | — | normal | `--color-text-secondary` |
 | Section | `.bp-section-title` | xl | 500 | — | snug | `--color-text` |
@@ -546,7 +547,7 @@ retired.
 ```
 Card chrome:  --color-surface bg, --color-border-hairline border,
               --radius-card (20px), p-6
-Title:        .bp-edit-section-title (3xl/400/tight) at the top —
+Title:        .bp-edit-section-title (2xl/400/snug/strong) at the top —
               <app-edit-section> bakes it in; consumers never type the class
 Fields:       .bp-field-grid-2 / .bp-field-grid-3 of <app-edit-field>
               (zero view→edit shift)

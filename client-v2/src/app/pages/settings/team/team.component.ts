@@ -30,7 +30,7 @@ interface InviteForm {
   template: `
     @let me = auth.user();
 
-    <app-page-hero title="Team" [subtitle]="me?.activeOrgName ?? ''">
+    <app-page-hero [back]="{ label: 'Back', href: '/home' }" title="Team" [subtitle]="me?.activeOrgName ?? ''">
       <p-button hero-actions label="+ Invite Team Member" size="small" (onClick)="openInvite()" />
     </app-page-hero>
 

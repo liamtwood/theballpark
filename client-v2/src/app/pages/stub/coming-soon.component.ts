@@ -14,7 +14,7 @@ import { tileForPath } from '../../shared/launcher/agent-tiles';
   imports: [PageHeroComponent],
   host: { class: 'block' },
   template: `
-    <app-page-hero [title]="title()" [subtitle]="subtitle()" />
+    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="title()" [subtitle]="subtitle()" />
     <div class="bp-page-body">
       <p class="bp-body-small text-secondary">
         The {{ title() }} page isn't built yet — it lands in a later prompt. The route exists so

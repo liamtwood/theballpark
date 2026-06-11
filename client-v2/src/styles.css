@@ -129,6 +129,7 @@
 .bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Hero — page */
+.bp-page-back     { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 500; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 .bp-page-label    { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
 .bp-page-title    { font-family: var(--bp-font); font-size: var(--text-hero); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); }
 .bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }

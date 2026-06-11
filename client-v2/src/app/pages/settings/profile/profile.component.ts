@@ -37,7 +37,7 @@ interface ProfileForm {
   providers: [MessageService],
   host: { class: 'block' },
   template: `
-    <app-page-hero [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
     <div class="bp-page-body">
       @if (profile.isLoading()) {

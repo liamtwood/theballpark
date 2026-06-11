@@ -19,8 +19,8 @@ import { LucideAngularModule } from 'lucide-angular';
   },
   template: `
     @if (back(); as b) {
-      <a class="bp-page-hero__back" [routerLink]="b.href">
-        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+      <a class="bp-page-back bp-page-hero__back" [routerLink]="b.href">
+        <lucide-icon name="arrow-left" [size]="16"></lucide-icon>
         <span>{{ b.label }}</span>
       </a>
     }
@@ -41,11 +41,13 @@ import { LucideAngularModule } from 'lucide-angular';
       :host {
         position: relative;
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 1fr auto;
         grid-template-rows: auto auto;
+        /* Back link sits ABOVE the title (Liam, 2026-06-11); actions stay
+           aligned with the text block. */
         grid-template-areas:
-          'back  text    actions'
-          'back  text    actions';
+          'back  back'
+          'text  actions';
         align-items: center;
         gap: 12px 20px;
         padding: 28px 32px 24px;
@@ -56,15 +58,14 @@ import { LucideAngularModule } from 'lucide-angular';
         background: transparent;
       }
 
+      /* Type comes from .bp-page-back (§5); structural only here. */
       .bp-page-hero__back {
         grid-area: back;
+        justify-self: start;
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        font-size: var(--text-base); /* family inherits --bp-font */
-        color: var(--color-text-secondary);
         text-decoration: none;
-        padding-top: 4px;
       }
       .bp-page-hero__back:hover {
         color: var(--theme-accent);
@@ -104,8 +105,8 @@ import { LucideAngularModule } from 'lucide-angular';
           padding: 20px 16px 16px;
           grid-template-columns: 1fr auto;
           grid-template-areas:
-            'back    actions'
-            'text    text';
+            'back    back'
+            'text    actions';
         }
         /* Title shrinks via the ROOT --text-hero mobile override (28px) —
            no per-component re-declaration (DESIGN.md §5 rule 5). */

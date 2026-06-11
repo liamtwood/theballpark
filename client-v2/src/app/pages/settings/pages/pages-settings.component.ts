@@ -23,6 +23,7 @@ type RoleType = (typeof ROLES)[number];
   host: { class: 'block' },
   template: `
     <app-page-hero
+      [back]="{ label: 'Back', href: '/home' }"
       title="Page settings"
       subtitle="Hero defaults per customer role — changes apply to every organisation of that type."
     />
