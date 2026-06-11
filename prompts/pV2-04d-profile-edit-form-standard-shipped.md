@@ -72,7 +72,55 @@ converge call (either `.bp-fld` → 13 or table row → 14).
 (Liam fills this in)
 
 ## Chat audit
-(chat fills this in — leave the section header so chat finds it)
+**Audit pass: 2026-06-11, chat** — verified across v2.11c-g (5 chips, 8 commits).
+
+### Verified ✓
+
+- **Tokens landed correctly in `client-v2/src/styles.css`:**
+  - `--color-text-strong: #374151` (line 30) — new middle shade
+  - `--radius-pill: 999px` (line 95) — net new
+  - `--bp-gradient-shadow-rgb: 214, 51, 132` (line 99) — net new, used in `.bp-btn-grad` glow
+  - `--text-3xl` retired cleanly from styles.css + Tailwind map; only orphan ref was DESIGN.md §10 (fixed in this audit, see below)
+- **Role classes match the locked spec:**
+  - `.bp-page-subtitle` — `--text-xl` (18) / 400 / normal / `--color-text-secondary` ✓
+  - `.bp-edit-section-title` — `--text-2xl` (22) / 400 / snug / `--color-text-strong` ✓
+  - `.bp-field-value` — `--text-md` (14) / 400 / normal / `--color-text-strong` ✓
+  - `.bp-page-title` rides `--text-hero` token bumped to 40px
+- **`.bp-btn-outline` + `.bp-btn-grad` per §8 spec** — shared chrome block, glow via `rgba(var(--bp-gradient-shadow-rgb), 0.2)` at rest + 0.28 on hover, `:focus-visible` outline at full opacity, `.bp-card--drawer` density variant present
+- **Edit-form lifecycle** — `<app-edit-section>` foot row with Edit / Cancel / Save changes, hover-pencil retired; Profile consumes with zero local changes
+- **5-rank size + 3-shade color ramp** — CC's computed-style verification on :4201 confirms the table maps end-to-end
+- **DESIGN.md §4 ramp updated** with `--color-text-strong` between secondary + primary text
+- **DESIGN.md §5 token list + table** — `--text-3xl` removed, `.bp-edit-section-title` reflects 2xl/snug/strong, `.bp-page-subtitle` reflects xl, `.bp-field-value` reflects md/strong
+- **DESIGN.md §8 buttons** — chrome verbatim from the locked spec
+- **DESIGN.md §10 edit-form card standard** — Profile cited as reference, lifecycle + chrome documented
+
+### Fixed in this audit
+
+- **DESIGN.md §10 line 549** was stale — said `.bp-edit-section-title (3xl/400/tight)` (pre-v2.11g spec). Updated to `2xl/400/snug/strong`. One-line edit. Chip not bumped; cosmetic doc fix.
+
+### Concerns / flags
+
+- **`tailwind.config.js` line 52 comment** mentions `text-3xl/4xl…` as "don't map" sizes — this comment is technically still correct (3xl/4xl are no longer mapped because 3xl was retired) but reads ambiguously. Not blocking; consider rewording on the next Tailwind config touch.
+- **Hero subtitle at 18 vs Home greeting subtitle at 18** — same size, but the home greeting subtitle is part of a different surface rhythm (60→18 vs 40→18). CC flagged convergence in the v2.11d iteration note; not a defect, just an observation worth keeping an eye on as more page heroes land.
+- **`.bp-field-value` class has no current consumer** — edit-field renders values via the structural `.bp-fld` class which pulls from `--text-md` + `--color-text-strong` independently. Both resolve to the same metrics, so no visual divergence. Worth keeping the `.bp-field-value` class around for read-only display contexts (audit logs, public profile views) where edit-field's chrome isn't appropriate.
+
+### Files re-audited in ledger after this ship
+
+- `client-v2/src/styles.css` — refreshed entry to v2.11g state
+- `client-v2/src/app/shared/edit-section/edit-section.component.ts` — was unaudited, now ✓ clean post-rewrite
+- `client-v2/src/app/shared/edit-field/edit-field.component.ts` — was at warning (208 lines); v2.11g touch added 3-line value-color pin → check if still in warning band
+- `client-v2/src/app/pages/settings/profile/profile.component.ts` — was ○ unaudited / canEdit-blocked; the canEdit gate is still ballpark_admin-blocked pending the in-flight matrix change, but typography + structure now match the locked v2 edit-form standard
+- `client-v2/src/app/shell/page-hero/page-hero.component.ts` — separator removed in v2.11d; refresh ledger
+- `client-v2/src/app/shell/app-shell.component.ts` — sticky/opaque header in v2.11d; refresh ledger
+- `docs/DESIGN.md` — §4, §5, §8, §10 all touched
+
+### Verdict
+
+**Done.** Backlog row flips Shipped → Done. The edit-form pattern is now the
+locked v2 standard — Profile is the canonical reference; every future edit
+surface inherits via `<app-edit-section>` + `<app-edit-field>` without
+touching typography or chrome. The shipped-file contract (this file) worked
+exactly as designed — audit took 15 minutes vs ~hour previously.
 
 ## Iteration — v2.11d (2026-06-11)
 **Triggered by QC:** "increase the size of the font for Title and Subtitle of
@@ -115,3 +163,15 @@ ramp + §5 token list + table; chip.
 Verified computed on 4201: 40/#111 · 18/#6b7280 · 22/#374151 · 12/#6b7280 ·
 14/#374151. Container headings (card ≡ drawer ≡ edit-section) now converge
 on the 2xl rank, differentiated by shade only.
+
+## Iteration — v2.11h (2026-06-11)
+**Triggered by QC:** back button missing from the hero; must sit ABOVE the
+title (Liam's mockup: ← arrow + "Back").
+**Commit:** `4a029c5`
+**Files:** page-hero.component.ts (grid back row above text, both
+breakpoints; chevron-left→arrow-left); styles.css (new §5 class
+.bp-page-back base/500/secondary, baked in — structural CSS keeps layout
+only); back={Back,/home} added to Profile, Team, Page settings, and the
+coming-soon stubs; DESIGN.md §5 table row; chip.
+Verified on 4201: ← Back renders above the title, left-aligned with it,
+13px/500/#6b7280, routes /home.
