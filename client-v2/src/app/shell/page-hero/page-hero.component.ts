@@ -50,7 +50,6 @@ import { LucideAngularModule } from 'lucide-angular';
         gap: 12px 20px;
         padding: 28px 32px 24px;
         background: var(--theme-soft);
-        border-bottom: var(--border-hairline);
       }
 
       :host(.bp-page-hero--accent-none) {

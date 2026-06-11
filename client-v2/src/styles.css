@@ -72,7 +72,7 @@
   --text-xl: 18px;
   --text-2xl: 22px;
   --text-3xl: 28px; /* edit-form card titles */
-  --text-hero: 36px;
+  --text-hero: 40px;
   --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
 
   /* Tracking (uppercase treatments) + line heights */
@@ -129,7 +129,7 @@
 /* Hero — page */
 .bp-page-label    { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
 .bp-page-title    { font-family: var(--bp-font); font-size: var(--text-hero); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); }
-.bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+.bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-lg); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
 
 /* Section */
 .bp-section-title    { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }

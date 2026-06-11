@@ -17,7 +17,7 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
   host: { class: 'block min-h-screen' },
   template: `
     <header
-      class="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-transparent px-6"
+      class="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-bg px-6"
     >
       <!-- Wordmark routes to /home (pV2-02b): the root is the public landing
            page now; authenticated users clicking the logo belong on home. -->

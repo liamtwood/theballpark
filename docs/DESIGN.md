@@ -169,7 +169,7 @@ bridge needed; PrimeNG controls follow `--bp-font` automatically.
 --text-xl:       18px;   /* section titles, home subtitle */
 --text-2xl:      22px;   /* card / drawer titles */
 --text-3xl:      28px;   /* edit-form card titles */
---text-hero:     36px;   /* page titles (28px under 640px via ROOT media override) */
+--text-hero:     40px;   /* page titles (28px under 640px via ROOT media override) */
 --text-greeting: clamp(40px, 5vw, 60px);  /* home greeting — responsive in the token */
 
 --tracking-wide:  0.05em; /* uppercase treatments */
@@ -198,7 +198,7 @@ compositions, free to diverge later — the values live once, in Layer 1.
 | | `.bp-home-subtitle` | xl | 400 | — | normal | `--color-text-secondary` |
 | Hero — page | `.bp-page-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
 | | `.bp-page-title` | hero | 400 | — | tight | `--color-text` |
-| | `.bp-page-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
+| | `.bp-page-subtitle` | lg | 400 | — | normal | `--color-text-secondary` |
 | Section | `.bp-section-title` | xl | 500 | — | snug | `--color-text` |
 | | `.bp-section-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
 | Edit-form card | `.bp-edit-section-title` | 3xl | 400 | — | tight | `--color-text` — `<app-edit-section>` bakes it in; NOT `.bp-card-title` (tiles) nor `.bp-section-title` (generic) |
