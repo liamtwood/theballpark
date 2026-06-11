@@ -89,24 +89,10 @@ export class AuthService {
     }
   }
 
-  /** Dev-only — seeded identities for the login picker + header switcher.
-   *  Never rejects: 401/403 are the designed "picker off" signals (prod, or
-   *  the gated /api surface) → empty list, silently; any other failure also
-   *  yields an empty list but is logged. Error classification lives HERE so
-   *  the two resource consumers (login, user-menu) don't duplicate it. */
-  async listDevUsers(): Promise<SessionUser[]> {
-    try {
-      return await firstValueFrom(this.api.get<SessionUser[]>('/api/dev/users'));
-    } catch (err) {
-      if (!(err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403))) {
-        console.warn('[auth] dev user list failed unexpectedly', err);
-      }
-      return [];
-    }
-  }
-
   /** Dev-only — cookie-login as a seeded user, then hard reload so the whole
-   *  app re-bootstraps with the fresh session (no leaked state). Lands on
+   *  app re-bootstraps with the fresh session (no leaked state). Kept for
+   *  tooling/QC against POST /auth/dev/login even though the login-page
+   *  picker is gone (v2.12e — real Google accounts test roles). Lands on
    *  /home — `/` is the public landing page since pV2-02b. */
   async devLogin(userId: string): Promise<void> {
     await firstValueFrom(this.api.post('/auth/dev/login', { userId }));

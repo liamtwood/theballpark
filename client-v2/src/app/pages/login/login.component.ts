@@ -1,83 +1,36 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, resource } from '@angular/core';
-import { Router } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
-import { AuthService, SessionUser } from '../../core/auth/auth.service';
-import { devPersonas } from '../../core/auth/dev-personas';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
 import { PublicHeaderComponent } from '../../shared/public-header/public-header.component';
 
-/** Dev-picker surface (pV2-02b demoted this from primary entry to dev tool —
- *  the public landing page at `/` is the front door now). Lists seeded
- *  identities from /api/dev/users; when the endpoint yields an empty list
- *  (prod 403, or simply no seeds) the page redirects to `/` instead of
- *  rendering a broken-feeling stub. Carries the public chrome so a direct
- *  /login hit matches the landing page while it decides. */
+/** Sign-in page: ONE action — the Google-branded button (Liam, 2026-06-12:
+ *  the dev role picker is gone; role testing uses real Google accounts, one
+ *  per role, through the normal OAuth → onboarding flow). Carries the
+ *  public chrome so a direct /login hit matches the landing page. */
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonModule, PublicHeaderComponent],
+  imports: [PublicHeaderComponent],
   host: { class: 'flex min-h-screen items-center justify-center px-6' },
   template: `
     <app-public-header />
 
-    @if (devUsers.value(); as users) {
-      @if (users.length > 0) {
-        <section class="w-full max-w-sm rounded-2xl bg-surface-alt p-8 shadow-sm">
-          <h1 class="text-2xl font-semibold tracking-tight">Sign in to Ballpark</h1>
-          <p class="mt-1 text-md text-secondary">Continue with Google to access your account.</p>
+    <section class="w-full max-w-sm rounded-2xl bg-surface-alt p-8 shadow-sm">
+      <h1 class="text-2xl font-semibold tracking-tight">Sign in to Ballpark</h1>
+      <p class="mt-1 text-md text-secondary">Continue with Google to access your account.</p>
 
-          <p-button label="Continue with Google" styleClass="w-full" class="mt-6 block" (onClick)="auth.loginWithGoogle()" />
-
-          <div class="mt-8">
-            <div class="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted">
-              <span class="h-px flex-1 bg-hairline"></span>
-              or, for dev, view as
-              <span class="h-px flex-1 bg-hairline"></span>
-            </div>
-
-            <div class="mt-3 overflow-hidden rounded-xl border border-hairline bg-surface">
-              @for (p of personas(); track p.role) {
-                <button
-                  type="button"
-                  class="block w-full cursor-pointer border-b border-hairline px-4 py-2.5 text-left text-md font-medium last:border-b-0 hover:bg-fill"
-                  (click)="devLogin(p.user.id)"
-                >
-                  {{ p.label }}
-                </button>
-              }
-            </div>
-          </div>
-        </section>
-      }
-    }
+      <!-- Google sign-in per Google's branding (white, hairline, G mark) —
+           deliberately NOT a p-button/.bp-btn: third-party identity chrome. -->
+      <button
+        type="button"
+        class="bp-btn-outline mt-6 w-full"
+        (click)="auth.loginWithGoogle()"
+      >
+        <img src="/google-g.svg" alt="" width="18" height="18" />
+        Continue with Google
+      </button>
+    </section>
   `,
 })
 export class LoginComponent {
   protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
-
-  /** Seeded dev identities — resource per the v2 fetch-into-state standard.
-   *  listDevUsers never rejects (401/403 → empty list, faults logged there).
-   *  TODO(third-use): user-menu holds this resource's twin — a third consumer
-   *  extracts a shared devUsersResource() helper. */
-  protected readonly devUsers = resource<SessionUser[], void>({
-    loader: () => this.auth.listDevUsers(),
-  });
-
-  /** The three role personas derived from the seeded users. */
-  protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
-
-  constructor() {
-    // No dev picker to show (prod, or no seeds) → this page has no purpose;
-    // send the visitor to the public landing page.
-    effect(() => {
-      const users = this.devUsers.value();
-      if (users && users.length === 0) {
-        void this.router.navigate(['/']);
-      }
-    });
-  }
-
-  protected devLogin(userId: string): void {
-    void this.auth.devLogin(userId); // sets cookie then hard-reloads to /home
-  }
 }
