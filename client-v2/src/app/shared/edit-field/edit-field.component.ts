@@ -119,6 +119,13 @@ export interface EditFieldOption {
         border-radius: 10px;
         align-items: center;
       }
+      /* PrimeNG's select label carries its OWN size/color tokens (16px /
+         --p-select-color) that don't inherit — pin the value to the same
+         field metrics as the text input (pV2-TYPE-01 QC). */
+      :host ::ng-deep .p-select.bp-fld .p-select-label {
+        font-size: var(--text-md);
+        color: var(--color-text);
+      }
       .bp-edit-field__value {
         cursor: default;
       }
