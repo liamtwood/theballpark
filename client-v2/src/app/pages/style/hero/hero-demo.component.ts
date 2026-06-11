@@ -13,14 +13,14 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
   template: `
     <div class="bp-page-body flex flex-col gap-8">
       <section>
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+        <p class="mb-2 text-sm font-medium uppercase tracking-wide text-muted">
           1 · Title only — left, transparent (default)
         </p>
         <app-page-hero title="Inbox" class="overflow-hidden rounded-xl border border-hairline" />
       </section>
 
       <section>
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+        <p class="mb-2 text-sm font-medium uppercase tracking-wide text-muted">
           2 · Title + subtitle — left, transparent (default)
         </p>
         <app-page-hero
@@ -31,7 +31,7 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       </section>
 
       <section>
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+        <p class="mb-2 text-sm font-medium uppercase tracking-wide text-muted">
           3 · Title + subtitle + back link — left, transparent (default, + actions slot)
         </p>
         <app-page-hero
@@ -45,7 +45,7 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       </section>
 
       <section>
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+        <p class="mb-2 text-sm font-medium uppercase tracking-wide text-muted">
           4 · Title + subtitle — center, accent="theme" (the opt-in wash)
         </p>
         <app-page-hero

@@ -23,12 +23,12 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
       @if (users.length > 0) {
         <section class="w-full max-w-sm rounded-2xl bg-surface-alt p-8 shadow-sm">
           <h1 class="text-2xl font-semibold tracking-tight">Sign in to Ballpark</h1>
-          <p class="mt-1 text-sm text-secondary">Continue with Google to access your account.</p>
+          <p class="mt-1 text-md text-secondary">Continue with Google to access your account.</p>
 
           <p-button label="Continue with Google" styleClass="w-full" class="mt-6 block" (onClick)="auth.loginWithGoogle()" />
 
           <div class="mt-8">
-            <div class="flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted">
+            <div class="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted">
               <span class="h-px flex-1 bg-hairline"></span>
               or, for dev, pick a user
               <span class="h-px flex-1 bg-hairline"></span>
@@ -43,8 +43,8 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
                 >
                   <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="28" />
                   <span class="min-w-0">
-                    <span class="block truncate text-sm font-medium">{{ dev.displayName }}</span>
-                    <span class="block truncate text-xs text-secondary">
+                    <span class="block truncate text-md font-medium">{{ dev.displayName }}</span>
+                    <span class="block truncate text-sm text-secondary">
                       {{ dev.activeOrgType }} · {{ dev.isAdmin ? 'Admin' : 'Member' }}
                     </span>
                   </span>

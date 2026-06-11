@@ -17,7 +17,7 @@ import { PublicHeaderComponent } from '../../shared/public-header/public-header.
     <app-public-header />
 
     <main class="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <h1 class="max-w-xl text-4xl font-semibold tracking-tight">
+      <h1 class="max-w-xl text-hero font-semibold tracking-tight">
         Plan events with the right suppliers.
       </h1>
       <p class="mt-4 max-w-md text-secondary">

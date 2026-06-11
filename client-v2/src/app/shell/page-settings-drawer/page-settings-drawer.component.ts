@@ -25,8 +25,8 @@ import { ShellContextService } from '../shell-context.service';
     >
       <ng-template #header>
         <div>
-          <div class="text-[11px] font-medium uppercase tracking-wide text-secondary">Page settings</div>
-          <div class="text-lg font-semibold">{{ drawerTitle() }}</div>
+          <div class="bp-drawer-label">Page settings</div>
+          <div class="bp-drawer-title">{{ drawerTitle() }}</div>
         </div>
       </ng-template>
 

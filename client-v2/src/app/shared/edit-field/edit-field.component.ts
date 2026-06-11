@@ -36,7 +36,7 @@ export interface EditFieldOption {
     '[class.bp-edit-field--editing]': 'editing()',
   },
   template: `
-    <div class="bp-edit-field__label">{{ label() }}</div>
+    <div class="bp-field-label bp-edit-field__label">{{ label() }}</div>
     @switch (type()) {
       @case ('text') {
         @if (editing()) {
@@ -77,27 +77,23 @@ export interface EditFieldOption {
       :host {
         display: block;
       }
-      /* Label — v1 rhythm: small, muted, 4px above the field. */
+      /* Label type comes from .bp-field-label (pV2-TYPE-01); this structural
+         class keeps only spacing. */
       .bp-edit-field__label {
-        font-family: var(--font-body);
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--color-text-muted);
         margin-bottom: 4px;
-        line-height: 1.4;
         padding-left: 10px;
       }
       /* The zero-shift field: identical metrics in view + edit; only fill and
          border toggle with .is-edit. Drawer density = 34px (v1's tighter
-         sidebar scale); page density (pV2-04c) will set 38px. */
+         sidebar scale); page density (pV2-04c) will set 38px. Family inherits
+         --bp-font; size from the Layer-1 token. */
       .bp-fld {
         display: flex;
         align-items: center;
         width: 100%;
         height: 34px;
         padding: 0 10px;
-        font-family: var(--font-body);
-        font-size: 14px;
+        font-size: var(--text-md);
         color: var(--color-text);
         background: transparent;
         border: 1px solid transparent;

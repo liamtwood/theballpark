@@ -26,9 +26,9 @@ import { LucideAngularModule } from 'lucide-angular';
     }
 
     <div class="bp-page-hero__text">
-      <h1 class="bp-page-hero__title">{{ title() }}</h1>
+      <h1 class="bp-page-title bp-page-hero__title">{{ title() }}</h1>
       @if (subtitle()) {
-        <p class="bp-page-hero__subtitle">{{ subtitle() }}</p>
+        <p class="bp-page-subtitle bp-page-hero__subtitle">{{ subtitle() }}</p>
       }
     </div>
 
@@ -62,7 +62,7 @@ import { LucideAngularModule } from 'lucide-angular';
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        font-size: 13px;
+        font-size: var(--text-base); /* family inherits --bp-font */
         color: var(--color-text-secondary);
         text-decoration: none;
         padding-top: 4px;
@@ -82,17 +82,14 @@ import { LucideAngularModule } from 'lucide-angular';
         text-align: center;
       }
 
+      /* Type comes from .bp-page-title / .bp-page-subtitle (pV2-TYPE-01 —
+         was a local 28px/700; the table's 36/400 is the title2 standard).
+         Structural classes keep only spacing. */
       .bp-page-hero__title {
-        font-size: 28px;
-        font-weight: 700;
-        line-height: 1.15;
         margin: 0;
-        color: var(--theme-text);
       }
 
       .bp-page-hero__subtitle {
-        font-size: 14px;
-        color: var(--color-text-secondary);
         margin: 0;
       }
 
@@ -112,7 +109,7 @@ import { LucideAngularModule } from 'lucide-angular';
             'text    text';
         }
         .bp-page-hero__title {
-          font-size: 22px;
+          font-size: var(--text-2xl);
         }
       }
     `,

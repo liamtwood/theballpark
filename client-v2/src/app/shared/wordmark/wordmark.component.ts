@@ -11,12 +11,9 @@ import { RouterLink } from '@angular/router';
   imports: [RouterLink],
   host: { class: 'inline-block' },
   template: `
-    <a
-      [routerLink]="link()"
-      style="font-family: var(--bp-font); font-size: 16px; font-weight: 600; line-height: 1; letter-spacing: 0; color: var(--bp-text-color); text-decoration: none"
-    >
-      Ballpark
-    </a>
+    <!-- Metrics live in styles.css .bp-wordmark (pV2-TYPE-01 — the one legal
+         site for the 16px brand literal). -->
+    <a [routerLink]="link()" class="bp-wordmark">Ballpark</a>
   `,
 })
 export class WordmarkComponent {

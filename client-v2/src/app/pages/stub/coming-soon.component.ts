@@ -13,7 +13,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
   template: `
     <app-page-hero [title]="feature()" subtitle="Coming soon — this surface lands in a later prompt." />
     <div class="bp-page-body">
-      <p class="text-sm text-secondary">
+      <p class="text-md text-secondary">
         The {{ feature() }} page isn't built yet. The route exists so the home launcher navigates
         somewhere real instead of 404ing.
       </p>

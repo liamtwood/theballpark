@@ -22,21 +22,21 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
     />
 
     <div class="min-w-0 flex-1">
-      <div class="truncate text-sm font-semibold">
+      <div class="truncate text-md font-semibold">
         {{ member().displayName ?? member().email }}
         @if (member().status === 'invited') {
-          <span class="ml-2 rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn">pending invite</span>
+          <span class="ml-2 rounded-full bg-warn-soft px-2 py-0.5 text-2xs font-medium text-warn">pending invite</span>
         }
         @if (member().status === 'suspended') {
-          <span class="ml-2 rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-danger">suspended</span>
+          <span class="ml-2 rounded-full bg-danger-soft px-2 py-0.5 text-2xs font-medium text-danger">suspended</span>
         }
       </div>
-      <div class="truncate text-xs text-secondary">{{ member().jobTitle ?? '—' }}</div>
-      <div class="truncate text-xs text-muted">{{ member().email }}</div>
+      <div class="truncate text-sm text-secondary">{{ member().jobTitle ?? '—' }}</div>
+      <div class="truncate text-sm text-muted">{{ member().email }}</div>
     </div>
 
     <div class="flex shrink-0 items-center gap-5" [title]="selfTooltip()">
-      <span class="flex items-center gap-2 text-xs text-secondary">
+      <span class="flex items-center gap-2 text-sm text-secondary">
         Admin
         <p-toggleswitch
           [ngModel]="member().isAdmin"
@@ -45,7 +45,7 @@ import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.com
           (onChange)="roleChanged.emit($event.checked === true)"
         />
       </span>
-      <span class="flex items-center gap-2 text-xs text-secondary">
+      <span class="flex items-center gap-2 text-sm text-secondary">
         Suspend
         <p-toggleswitch
           [ngModel]="member().status === 'suspended'"

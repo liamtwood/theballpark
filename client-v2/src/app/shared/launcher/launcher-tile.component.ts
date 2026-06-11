@@ -19,9 +19,9 @@ import { LucideAngularModule } from 'lucide-angular';
         <lucide-icon [name]="icon()" [size]="24" [strokeWidth]="1.5" />
       </span>
       <span class="min-w-0">
-        <span class="bp-launcher-tile__title">{{ label() }}</span>
+        <span class="bp-card-title bp-launcher-tile__title">{{ label() }}</span>
         @if (subtitle()) {
-          <span class="bp-launcher-tile__subtitle">{{ subtitle() }}</span>
+          <span class="bp-card-subtitle bp-launcher-tile__subtitle">{{ subtitle() }}</span>
         }
       </span>
     </a>
@@ -72,22 +72,14 @@ import { LucideAngularModule } from 'lucide-angular';
         background: var(--theme-soft);
         color: var(--theme-accent);
       }
+      /* Type comes from .bp-card-title / .bp-card-subtitle (pV2-TYPE-01);
+         these structural classes keep only layout. */
       .bp-launcher-tile__title {
         display: block;
-        font-family: var(--font-body);
-        font-size: 22px;
-        font-weight: 400;
-        line-height: 1.3;
-        color: var(--color-text);
       }
       .bp-launcher-tile__subtitle {
         display: block;
         margin-top: 4px;
-        font-family: var(--font-body);
-        font-size: 13px;
-        font-weight: 400;
-        line-height: 1.4;
-        color: var(--color-text-secondary);
       }
 
     `,

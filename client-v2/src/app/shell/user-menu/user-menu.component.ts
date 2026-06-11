@@ -37,8 +37,8 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
               [size]="36"
             />
             <div class="min-w-0">
-              <div class="truncate text-sm font-semibold">{{ user.displayName ?? user.email }}</div>
-              <div class="truncate text-xs text-secondary">
+              <div class="truncate text-md font-semibold">{{ user.displayName ?? user.email }}</div>
+              <div class="truncate text-sm text-secondary">
                 {{ user.role }} · {{ user.activeOrgName }}
               </div>
             </div>
@@ -48,7 +48,7 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
           @if (devUsers.value(); as devs) {
             @if (devs.length > 0) {
               <div class="border-t border-hairline pt-2">
-                <div class="px-1 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                <div class="px-1 pb-1 text-2xs font-medium uppercase tracking-wide text-muted">
                   Switch user (dev)
                 </div>
                 @for (dev of devs; track dev.id) {
@@ -60,8 +60,8 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
                   >
                     <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="24" />
                     <span class="min-w-0">
-                      <span class="block truncate text-sm">{{ dev.displayName }}</span>
-                      <span class="block truncate text-xs text-secondary">{{ dev.role }}</span>
+                      <span class="block truncate text-md">{{ dev.displayName }}</span>
+                      <span class="block truncate text-sm text-secondary">{{ dev.role }}</span>
                     </span>
                   </button>
                 }
@@ -73,7 +73,7 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
           <div class="mt-2 border-t border-hairline pt-2">
             <button
               type="button"
-              class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-sm text-text hover:bg-fill"
+              class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text hover:bg-fill"
               (click)="signOut(menu)"
             >
               Sign out

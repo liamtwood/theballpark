@@ -31,9 +31,9 @@ import { LauncherTile } from './launcher-tile.types';
       </div>
 
       <div class="bp-home-launcher__chrome">
-        <h1 class="bp-home-launcher__title">{{ title() }}</h1>
+        <h1 class="bp-home-title bp-home-launcher__title">{{ title() }}</h1>
         @if (subtitle()) {
-          <p class="bp-home-launcher__subtitle">{{ subtitle() }}</p>
+          <p class="bp-home-subtitle bp-home-launcher__subtitle">{{ subtitle() }}</p>
         }
       </div>
 
@@ -81,8 +81,7 @@ import { LauncherTile } from './launcher-tile.types';
         border: none;
         padding: 0;
         cursor: pointer;
-        font-family: var(--font-body);
-        font-size: 15px;
+        font-size: var(--text-md); /* family inherits --bp-font */
         color: var(--color-text-secondary);
         transition: color 0.15s;
       }
@@ -94,19 +93,12 @@ import { LauncherTile } from './launcher-tile.types';
         max-width: 720px;
         margin-bottom: 48px;
       }
+      /* Type comes from .bp-home-title / .bp-home-subtitle (pV2-TYPE-01);
+         these structural classes keep only spacing. */
       .bp-home-launcher__title {
-        font-family: var(--font-display);
-        font-size: 44px;
-        font-weight: 400;
-        line-height: 1.1;
-        letter-spacing: -0.01em;
-        color: var(--color-text);
         margin: 0 0 10px;
       }
       .bp-home-launcher__subtitle {
-        font-family: var(--font-body);
-        font-size: 17px;
-        color: var(--color-text-secondary);
         margin: 0;
       }
       /* 3-across, wrapping 3+2 left-aligned into the grid (v1 behaviour). */
@@ -133,10 +125,9 @@ import { LauncherTile } from './launcher-tile.types';
           grid-template-columns: repeat(2, minmax(260px, 340px));
         }
       }
+      /* Title size is responsive in the --text-greeting clamp() token —
+         no per-breakpoint font override needed. */
       @media (max-width: 640px) {
-        .bp-home-launcher__title {
-          font-size: 32px;
-        }
         .bp-home-launcher__backrow {
           margin-bottom: 32px;
         }

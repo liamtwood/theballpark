@@ -17,7 +17,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
     <app-wordmark link="/" />
     <button
       type="button"
-      class="cursor-pointer text-sm font-medium text-text hover:opacity-70"
+      class="cursor-pointer text-md font-medium text-text hover:opacity-70"
       (click)="auth.loginWithGoogle()"
     >
       Sign In

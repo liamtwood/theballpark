@@ -31,7 +31,7 @@ interface OnboardingForm {
   template: `
     <article class="w-full max-w-lg rounded-2xl bg-surface-alt p-8 shadow-sm">
       <h1 class="text-2xl font-semibold tracking-tight">Set up your organisation</h1>
-      <p class="mt-1 text-sm text-secondary">
+      <p class="mt-1 text-md text-secondary">
         Pick the type that fits, name it, and you're in. You can rename later in Settings.
       </p>
 
@@ -42,8 +42,8 @@ interface OnboardingForm {
             [class.type-tile--selected]="form.controls.orgType.value === 'agency'"
           >
             <input type="radio" formControlName="orgType" value="agency" class="sr-only" (change)="onTypeChange()" />
-            <strong class="block text-sm">Event Agency</strong>
-            <span class="mt-1 block text-xs text-secondary">
+            <strong class="block text-md">Event Agency</strong>
+            <span class="mt-1 block text-sm text-secondary">
               Produce events. Build estimates, browse suppliers, send leads.
             </span>
           </label>
@@ -52,22 +52,22 @@ interface OnboardingForm {
             [class.type-tile--selected]="form.controls.orgType.value === 'supplier'"
           >
             <input type="radio" formControlName="orgType" value="supplier" class="sr-only" (change)="onTypeChange()" />
-            <strong class="block text-sm">Supplier</strong>
-            <span class="mt-1 block text-xs text-secondary">
+            <strong class="block text-md">Supplier</strong>
+            <span class="mt-1 block text-sm text-secondary">
               Supply products or services. Upload your catalogue, receive leads.
             </span>
           </label>
         </fieldset>
 
         <label class="mt-5 block">
-          <span class="block text-sm font-medium">Organisation name</span>
+          <span class="block text-md font-medium">Organisation name</span>
           <input
             type="text"
             formControlName="orgName"
             maxlength="100"
-            class="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm"
+            class="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-md"
           />
-          <span class="mt-1 block text-xs text-secondary">
+          <span class="mt-1 block text-sm text-secondary">
             e.g. Anchor Events, Studio Volta, Webb &amp; Co.
           </span>
         </label>
