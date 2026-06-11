@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PopoverModule, Popover } from 'primeng/popover';
-import { AuthService, SessionUser } from '../../core/auth/auth.service';
-import { devPersonas } from '../../core/auth/dev-personas';
+import { AuthService, MyOrg, SessionUser } from '../../core/auth/auth.service';
+import { PersonaAction, devPersonas } from '../../core/auth/dev-personas';
 import { can } from '../../core/auth/permissions';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
@@ -60,22 +60,27 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             </div>
           }
 
-          <!-- Dev switcher — three ROLE personas (Liam 2026-06-11), each
-               backed by a representative seeded user. Hidden in prod. -->
+          <!-- Dev switcher — three ROLE personas (Liam 2026-06-11). Each
+               prefers the CURRENT user's own membership (switch-org — you
+               stay yourself, Liam 2026-06-12) and falls back to a seeded
+               user (impersonate, marked). Hidden in prod. -->
           @if (personas(); as roles) {
             @if (roles.length > 0) {
               <div class="border-t border-hairline pt-2">
                 <div class="px-1 pb-1 text-2xs font-medium uppercase tracking-wide text-muted">
                   View as (dev)
                 </div>
-                @for (p of roles; track p.role) {
+                @for (p of roles; track p.label) {
                   <button
                     type="button"
                     class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md hover:bg-fill"
                     [class.opacity-50]="p.role === user.role"
-                    (click)="switchUser(p.user.id, menu)"
+                    (click)="activatePersona(p.action, menu)"
                   >
                     {{ p.label }}
+                    @if (p.action.kind === 'impersonate') {
+                      <span class="text-2xs text-muted">(seed user)</span>
+                    }
                   </button>
                 }
               </div>
@@ -111,12 +116,24 @@ export class UserMenuComponent {
   /** Page-settings link mirrors the route's ballparkAdminGuard gate. */
   protected readonly canEditPageSettings = computed(() => can(this.auth.role(), 'admin.cross_org_view'));
 
-  /** The three role personas derived from the seeded users. */
-  protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
+  /** The current user's own memberships — preferred by the persona switcher
+   *  so Liam stays Liam (2026-06-12). Never rejects (empty on failure). */
+  protected readonly myOrgs = resource<MyOrg[], void>({
+    loader: () => this.auth.listMyOrgs(),
+  });
 
-  protected switchUser(userId: string, menu: Popover): void {
+  /** The three role personas: own membership first, seeded-user fallback. */
+  protected readonly personas = computed(() =>
+    devPersonas(this.devUsers.value() ?? [], this.myOrgs.value() ?? [])
+  );
+
+  protected activatePersona(action: PersonaAction, menu: Popover): void {
     menu.hide();
-    void this.auth.devLogin(userId); // cookie + hard reload
+    if (action.kind === 'switch-org') {
+      void this.auth.switchOrg(action.orgId); // stay yourself + hard reload
+    } else {
+      void this.auth.devLogin(action.userId); // impersonate seed + hard reload
+    }
   }
 
   protected signOut(menu: Popover): void {

@@ -4,6 +4,9 @@
 //                                 redirect to {WEB_BASE_URL}/auth/callback?login=ok
 //   POST /auth/logout           → clear cookie, 204
 //   GET  /auth/me               → SessionUser JSON (401 without valid cookie)
+//   GET  /auth/orgs             → current user's active memberships (v2.12)
+//   POST /auth/switch-org       → switch active org (own memberships only),
+//                                 re-signs the cookie, returns the session
 //   POST /auth/dev/login        → dev-only: cookie for a seeded (google_sub IS
 //                                 NULL) user. 403 in production.
 
@@ -11,7 +14,8 @@ const router = require('express').Router();
 const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const pool = require('../db/pool');
-const { upsertUserFromGoogle, buildSession } = require('../services/auth.service');
+const { upsertUserFromGoogle, buildSession, listUserOrgs, switchActiveOrg } = require('../services/auth.service');
+const { SwitchOrgSchema } = require('../schemas/switch-org.schema');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
 const { sessionCookieOptions, signSessionCookie } = require('../services/auth-cookie.service');
 const { authWriteLimit, authReadLimit, oauthLimit } = require('../middleware/rate-limits');
@@ -73,6 +77,30 @@ router.get('/me', authReadLimit, authenticate, async (req, res, next) => {
     // just need onboarding); 401 only when the user row itself is gone.
     const session = await buildSession(req.user.id);
     if (!session) return res.status(401).json({ error: 'Unknown user' });
+    res.json(session);
+  } catch (err) { next(err); }
+});
+
+// The current user's active memberships — feeds the org switcher (and the
+// dev persona switcher's stay-as-yourself preference, v2.12).
+router.get('/orgs', authReadLimit, authenticate, async (req, res, next) => {
+  try {
+    res.json(await listUserOrgs(req.user.id));
+  } catch (err) { next(err); }
+});
+
+// Switch the ACTIVE org for the current user. The service proves membership
+// inside the UPDATE statement; 404 otherwise — which also avoids revealing
+// whether the org exists.
+router.post('/switch-org', authWriteLimit, authenticate, async (req, res, next) => {
+  try {
+    const parsed = SwitchOrgSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid body', details: parsed.error.flatten() });
+    }
+    const session = await switchActiveOrg(req.user.id, parsed.data.orgId);
+    if (!session) return res.status(404).json({ error: 'No such membership' });
+    signSessionCookie(res, session);
     res.json(session);
   } catch (err) { next(err); }
 });

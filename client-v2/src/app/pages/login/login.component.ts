@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, resource 
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { AuthService, SessionUser } from '../../core/auth/auth.service';
-import { devPersonas } from '../../core/auth/dev-personas';
+import { PersonaAction, devPersonas } from '../../core/auth/dev-personas';
 import { PublicHeaderComponent } from '../../shared/public-header/public-header.component';
 
 /** Dev-picker surface (pV2-02b demoted this from primary entry to dev tool —
@@ -35,11 +35,11 @@ import { PublicHeaderComponent } from '../../shared/public-header/public-header.
             </div>
 
             <div class="mt-3 overflow-hidden rounded-xl border border-hairline bg-surface">
-              @for (p of personas(); track p.role) {
+              @for (p of personas(); track p.label) {
                 <button
                   type="button"
                   class="block w-full cursor-pointer border-b border-hairline px-4 py-2.5 text-left text-md font-medium last:border-b-0 hover:bg-fill"
-                  (click)="devLogin(p.user.id)"
+                  (click)="activatePersona(p.action)"
                 >
                   {{ p.label }}
                 </button>
@@ -63,7 +63,8 @@ export class LoginComponent {
     loader: () => this.auth.listDevUsers(),
   });
 
-  /** The three role personas derived from the seeded users. */
+  /** The three role personas derived from the seeded users. Signed-out
+   *  context: no own memberships, so every action is an impersonation. */
   protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
 
   constructor() {
@@ -77,7 +78,11 @@ export class LoginComponent {
     });
   }
 
-  protected devLogin(userId: string): void {
-    void this.auth.devLogin(userId); // sets cookie then hard-reloads to /home
+  protected activatePersona(action: PersonaAction): void {
+    if (action.kind === 'impersonate') {
+      void this.auth.devLogin(action.userId); // sets cookie then hard-reloads to /home
+    } else {
+      void this.auth.switchOrg(action.orgId); // unreachable signed-out; type-complete
+    }
   }
 }
