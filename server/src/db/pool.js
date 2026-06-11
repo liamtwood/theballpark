@@ -23,6 +23,13 @@ const pool = new Pool({
   // Set search_path so all queries target the correct schema
   // without needing to prefix every table name
   options: `-c search_path=${schema},public`,
+  // Supabase is remote: a fresh connect costs TCP+TLS+auth round trips that
+  // users experience as a 1-3s "slow page". The pg default dropped idle
+  // clients after 10s, so the FIRST request after any idle gap paid that
+  // cost (Liam's "profile loading is very slow, several times", 2026-06-12).
+  // Keep clients for 10 minutes and TCP-keepalive them instead.
+  idleTimeoutMillis: 600000,
+  keepAlive: true,
 });
 
 pool.on('connect', (client) => {
