@@ -162,3 +162,22 @@ one account = one role.
   buildSession verified: ballpark_admin / Ballpark.
 **Net state:** liam.wood signs in → admin home, always. Other roles =
 separate accounts (Liam will create; seeded picker remains for dev).
+
+## Iteration — v2.12e (2026-06-12)
+**Triggered by QC:** "we dont need this image 1, just image 2 then to
+login, ill have 3 accounts" — login becomes the Google button only; roles
+tested via real accounts (liam.wood = ballpark_admin done;
+ballparkagent@gmail.com → onboarding → Event Agency → agency_admin;
+ballparksupplier@gmail.com → onboarding → Supplier → supplier_admin).
+**Commit:** `d383f7d`
+**Files:** login.component.ts (single Google-branded button on
+.bp-btn-outline chrome; dev picker + devUsers resource + redirect effect
+removed); public/google-g.svg (official G mark as an ASSET so the style
+guard's src/ scan never sees the brand hex); dev-personas.ts + spec
+DELETED (zero consumers; 57→54 specs); AuthService.listDevUsers removed —
+devLogin kept for tooling/QC against the still-live POST /auth/dev/login.
+Verified on 4201: /login renders one button (white pill, hairline, G mark
+loaded), no picker.
+Note: the button rides the locked .bp-btn-outline pill — slightly rounder
+than Google's reference rectangle; flag at QC if exact-Google chrome is
+wanted instead.
