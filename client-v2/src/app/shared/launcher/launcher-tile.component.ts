@@ -1,13 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  CircleUser,
-  FolderOpen,
-  FolderPlus,
-  Inbox,
-  LucideAngularModule,
-  Store,
-} from 'lucide-angular';
+import { LucideAngularModule } from 'lucide-angular';
 
 /** pV2-04 — launcher tile (the v2 rebuild of v1's <app-action-tile>, p0019).
  *  A focusable button card: icon square above title + subtitle. `href` tiles
@@ -17,7 +10,7 @@ import {
   selector: 'app-launcher-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    LucideAngularModule.pick({ CircleUser, FolderOpen, FolderPlus, Inbox, Store }),
+    LucideAngularModule,
   ],
   host: { class: 'block' },
   template: `

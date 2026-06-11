@@ -1,12 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import {
-  Activity,
-  CalendarDays,
-  Coins,
-  Heart,
-  LucideAngularModule,
-  Zap,
-} from 'lucide-angular';
+import { LucideAngularModule } from 'lucide-angular';
 
 /** pV2-04 — the home section-card primitive: eyebrow row (Lucide icon +
  *  small-caps label) above projected body content. Extracted BEFORE the six
@@ -17,7 +10,7 @@ import {
   selector: 'app-section-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    LucideAngularModule.pick({ Activity, CalendarDays, Coins, Heart, Zap }),
+    LucideAngularModule,
   ],
   host: { class: 'bp-section-card block rounded-2xl bg-surface p-5' },
   template: `

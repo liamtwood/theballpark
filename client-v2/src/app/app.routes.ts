@@ -25,10 +25,11 @@ export const routes: Routes = [
     canActivate: [requiresOrgGuard], // signed-out → /login; orgless → /onboarding
     children: [
       {
-        // The authenticated home surface — was `/` before pV2-02b made the
-        // root public.
+        // The authenticated home surface (pV2-04 agent home; pV2-05 adds the
+        // supplier variant + role switch).
         path: 'home',
-        loadComponent: () => import('./pages/hello/hello.component').then((m) => m.HelloComponent),
+        loadComponent: () =>
+          import('./pages/home/home-agent.component').then((m) => m.HomeAgentComponent),
       },
       {
         // Settings → Team (pV2-03). Admin-only on top of the shell's requiresOrgGuard.
@@ -42,6 +43,28 @@ export const routes: Routes = [
         path: 'style/hero',
         loadComponent: () =>
           import('./pages/style/hero/hero-demo.component').then((m) => m.HeroDemoComponent),
+      },
+      // Launcher-tile targets — placeholders until their prompts land
+      // (pV2-05/06/07/08). Each renders the standard hero + "Coming soon".
+      {
+        path: 'projects',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Projects' },
+      },
+      {
+        path: 'inbox',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Inbox' },
+      },
+      {
+        path: 'marketplace',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Marketplace' },
+      },
+      {
+        path: 'settings/profile',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Profile' },
       },
       // future feature routes go here, all get the shell
     ],
