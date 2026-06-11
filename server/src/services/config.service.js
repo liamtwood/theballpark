@@ -12,8 +12,13 @@
  */
 
 const pool = require('../db/pool');
+const { normalizeOrgType } = require('./permissions.service');
 
-const VALID_ORG_TYPES = ['agency', 'supplier', 'admin'];
+// v1 says 'admin'; v2 says 'ballpark'. Both are valid INPUT; storage uses the
+// v2 vocabulary exclusively (the table CHECK allows agency/supplier/ballpark
+// since pV2-04b) — normalizeOrgType maps at this boundary so both apps share
+// one row.
+const VALID_ORG_TYPES = ['agency', 'supplier', 'admin', 'ballpark'];
 
 function isValid(orgType) {
   return VALID_ORG_TYPES.includes(orgType);
@@ -28,19 +33,20 @@ function isValid(orgType) {
  */
 async function get(orgType) {
   if (!isValid(orgType)) return null;
+  const stored = normalizeOrgType(orgType);
   try {
     const { rows } = await pool.query(
       `SELECT org_type, payload, updated_at, updated_by
          FROM org_type_config
         WHERE org_type = $1
         LIMIT 1`,
-      [orgType]
+      [stored]
     );
-    return rows[0] || { org_type: orgType, payload: {} };
+    return rows[0] || { org_type: stored, payload: {} };
   } catch (err) {
     // 42P01 = undefined_table — migration not yet applied. Degrade to empty.
     if (err && err.code === '42P01') {
-      return { org_type: orgType, payload: {} };
+      return { org_type: stored, payload: {} };
     }
     throw err;
   }
@@ -62,9 +68,41 @@ async function upsert(orgType, payload, userId) {
                      updated_by = EXCLUDED.updated_by,
                      updated_at = now()
        RETURNING org_type, payload, updated_at, updated_by`,
-    [orgType, JSON.stringify(safePayload), userId || null]
+    [normalizeOrgType(orgType), JSON.stringify(safePayload), userId || null]
   );
   return rows[0];
 }
 
-module.exports = { get, upsert, isValid, VALID_ORG_TYPES };
+/**
+ * pV2-04b — read the v2 home config slice. v2 settings live NAMESPACED under
+ * payload.v2Home so v1's flat payload fields and v2's never clobber each
+ * other (both apps share these rows).
+ */
+async function getV2Home(orgType) {
+  const row = await get(orgType);
+  if (!row) return null;
+  return (row.payload && row.payload.v2Home) || {};
+}
+
+/**
+ * pV2-04b — merge-write the v2Home slice in ONE statement (jsonb_set on the
+ * existing payload), so concurrent v1 writes to other payload keys are never
+ * lost and no read-modify-write race exists. Single statement → no
+ * transaction needed (ENGINEERING.md Rule 1 applies to multi-statement).
+ */
+async function setV2Home(orgType, v2Home, userId) {
+  if (!isValid(orgType)) throw new Error(`Invalid org_type: ${orgType}`);
+  const { rows } = await pool.query(
+    `INSERT INTO org_type_config (org_type, payload, updated_by, updated_at)
+          VALUES ($1, jsonb_build_object('v2Home', $2::jsonb), $3, now())
+     ON CONFLICT (org_type)
+       DO UPDATE SET payload    = jsonb_set(COALESCE(org_type_config.payload, '{}'::jsonb), '{v2Home}', $2::jsonb),
+                     updated_by = EXCLUDED.updated_by,
+                     updated_at = now()
+       RETURNING org_type, payload->'v2Home' AS v2_home, updated_at`,
+    [normalizeOrgType(orgType), JSON.stringify(v2Home || {}), userId || null]
+  );
+  return rows[0];
+}
+
+module.exports = { get, upsert, getV2Home, setV2Home, isValid, VALID_ORG_TYPES };

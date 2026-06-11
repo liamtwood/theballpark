@@ -50,6 +50,19 @@
      roles into one value. Deviation flagged in the ship report. */
   --color-text-muted: #9ca3af;
 
+  /* ── Typography roles (pV2-04b, per DESIGN.md §5) ───────────────────── */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Libre Franklin', ui-sans-serif, system-ui, sans-serif;
+  /* Fixed neutral body-text color (DESIGN.md structural neutrals) — distinct
+     from the themable --theme-text. */
+  --color-text: #111111;
+
+  /* ── Card / elevation tokens (pV2-04b) ──────────────────────────────── */
+  --radius-card: 16px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
+
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────
      PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
      `--p-*` here would be clobbered. The Ballpark→PrimeNG bridge therefore lives

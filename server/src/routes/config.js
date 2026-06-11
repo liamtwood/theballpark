@@ -16,8 +16,34 @@
  */
 
 const router = require('express').Router();
+const { z } = require('zod');
 const pool = require('../db/pool');
 const ConfigService = require('../services/config.service');
+const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
+const { requireActiveMembership } = require('../middleware/require-active-membership');
+const { normalizeOrgType } = require('../services/permissions.service');
+const { PageConfigSchema } = require('../schemas/page-config.schema');
+
+// ── v2 path detection (pV2-04b) ──────────────────────────────────────────────
+// This router serves BOTH apps on the same URLs. v2 callers are identified by
+// the bp_session cookie (v1 has no cookie; it sends x-bp-user-id). The v2
+// branch applies the real middleware chain (authenticate +
+// requireActiveMembership) — NOT a re-rolled check (ENGINEERING.md Rule 6).
+// This dual-auth shim dies with v1 (pV2-11).
+const isV2 = (req) => !!(req.cookies && req.cookies[COOKIE_NAME]);
+
+/** Run an express middleware chain only for v2 (cookie) callers. */
+const v2Only = (...chain) => (req, res, next) => {
+  if (!isV2(req)) return next();
+  let i = 0;
+  const step = (err) => {
+    if (err) return next(err);
+    const mw = chain[i++];
+    if (!mw) return next();
+    mw(req, res, step);
+  };
+  step();
+};
 
 // --- Platform-admin guard ---------------------------------------------------
 async function requirePlatformAdmin(req, res, next) {
@@ -46,8 +72,16 @@ async function requirePlatformAdmin(req, res, next) {
 }
 
 // --- Routes -----------------------------------------------------------------
-router.get('/:orgType', async (req, res, next) => {
+// GET — v1: open (legacy); v2 (cookie): authenticated + live membership, and
+// the response is the v2Home SLICE (flat PageConfigPayload), not v1's row.
+router.get('/:orgType', v2Only(authenticate, requireActiveMembership()), async (req, res, next) => {
   try {
+    if (isV2(req)) {
+      if (!ConfigService.isValid(req.params.orgType)) {
+        return res.status(400).json({ error: 'Invalid org_type' });
+      }
+      return res.json(await ConfigService.getV2Home(req.params.orgType));
+    }
     const row = await ConfigService.get(req.params.orgType);
     if (!row) {
       return res.status(400).json({ error: 'Invalid org_type' });
@@ -58,21 +92,45 @@ router.get('/:orgType', async (req, res, next) => {
   }
 });
 
-router.put('/:orgType', requirePlatformAdmin, async (req, res, next) => {
-  try {
-    if (!ConfigService.isValid(req.params.orgType)) {
-      return res.status(400).json({ error: 'Invalid org_type' });
+// PUT — v1: platform admin via x-bp-user-id (legacy, full-payload upsert).
+// v2 (cookie): org admins (org.invite_member — same gate as Settings → Team)
+// may write THEIR OWN org_type's v2Home slice only; Zod-validated.
+router.put(
+  '/:orgType',
+  v2Only(authenticate, requireActiveMembership('org.invite_member')),
+  (req, res, next) => (isV2(req) ? next() : requirePlatformAdmin(req, res, next)),
+  async (req, res, next) => {
+    try {
+      if (!ConfigService.isValid(req.params.orgType)) {
+        return res.status(400).json({ error: 'Invalid org_type' });
+      }
+      if (isV2(req)) {
+        // Own-orgType only: an agency admin must not author supplier config.
+        // (req.user.org_type is live DB truth via requireActiveMembership.)
+        if (normalizeOrgType(req.user.org_type) !== normalizeOrgType(req.params.orgType)) {
+          return res.status(403).json({ error: 'You can only edit your own organisation type\'s settings' });
+        }
+        const parsed = PageConfigSchema.safeParse(req.body && req.body.payload);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: 'Invalid input',
+            details: z.flattenError(parsed.error).fieldErrors,
+          });
+        }
+        const row = await ConfigService.setV2Home(req.params.orgType, parsed.data, req.user.id);
+        return res.json(row.v2_home);
+      }
+      const payload = req.body && req.body.payload;
+      const row = await ConfigService.upsert(
+        req.params.orgType,
+        payload,
+        req.platformAdminUserId
+      );
+      res.json(row);
+    } catch (err) {
+      next(err);
     }
-    const payload = req.body && req.body.payload;
-    const row = await ConfigService.upsert(
-      req.params.orgType,
-      payload,
-      req.platformAdminUserId
-    );
-    res.json(row);
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 module.exports = router;
