@@ -66,3 +66,72 @@ Chose the **dev-picker path** (option B in the prompt): no `seed-bootstrap-admin
 angular-developer skill: loaded this session (audit invocation) — its `resource()`/inputs/host/DI guidance directly shaped the client code.
 
 pV2-02 flipped to `Done` in `prompts/backlog.md`. Next per the plan: invite flow / onboarding / Settings-Team (pV2-03 territory).
+
+---
+
+## Concerns not in spec (added retroactively on 2026-06-11)
+
+This section was added during pV2-AUDIT-01's retroactive concerns pass. The
+original report was silent on these.
+
+### Multi-statement signup write is not transactional (Violation A)
+**Where:** `server/src/services/auth.service.js`, brand-new-signup branch of `upsertUserFromGoogle` (~lines 62-79)
+**What:** three sequential INSERTs (orgs → users → user_orgs) with no transaction. A failure after the first leaks an orphan `orgs` row (and after the second, an org+user with no membership). I matched the spec's pseudocode shape literally instead of applying the all-or-nothing standard.
+**Suggested fix:** wrap via the shared `withTransaction(fn)` helper (pV2-AUDIT-02 Fix 0+2) — NOT hand-rolled BEGIN/COMMIT, because `pool.js`'s per-statement wrapper owns the `app.current_user_id` audit GUC and a naive dedicated-client transaction silently loses attribution.
+**Severity:** HIGH
+
+### No rate limiting on any auth-touching endpoint (Violation C)
+**Where:** `server/src/routes/auth.js` (all five endpoints), `server/src/routes/dev.js`
+**What:** `/auth/google`, `/auth/google/callback`, `/auth/logout`, `/auth/me`, `/auth/dev/login`, `/api/dev/users` shipped with no rate limiting. NODE_ENV gating is not backoff.
+**Suggested fix:** `express-rate-limit` per the new WORKING_STANDARDS budgets, plus `app.set('trust proxy', 1)` so per-IP buckets work behind Railway (pV2-AUDIT-02 Fix 4).
+**Severity:** MEDIUM
+
+### JWT carries authority claims for 7 days (Violation D — structural, not live)
+**Where:** `server/src/routes/auth.js` `signSessionCookie` (~lines 38-49)
+**What:** the cookie embeds `role` + `is_admin` with 7-day expiry. Precise current state: **no existing endpoint authorises off the stale claims** — team routes re-read live membership, `/auth/me` re-derives via `buildSession`, dev gates are NODE_ENV-based — so today's blast radius is zero endpoints. The risk is structural: the next endpoint that trusts `req.user.is_admin` makes the staleness window real.
+**Suggested fix:** identity-only claims per the new rule; mark existing authority claims `// DEPRECATED` this pass, let `requireActiveMembership` overwrite with live truth (pV2-AUDIT-02 Fixes 1+3).
+**Severity:** MEDIUM (structural)
+
+### loadSession() collapses "signed out" and "server down" (Violation E)
+**Where:** `client-v2/src/app/core/auth/auth.service.ts`, `loadSession` catch
+**What:** all errors → `user = null`. Correct for 401; masks 5xx/network failure as "you're signed out". The spec's "never throws" collapsed two cases; my catch comment couldn't have been written truthfully for the 5xx case.
+**Suggested fix:** silent on 401, `console.error` (or future telemetry) on anything else (pV2-AUDIT-02 Fix 7).
+**Severity:** LOW
+
+### Permissions MATRIX duplicated with comment-only sync (Violation G)
+**Where:** `client-v2/src/app/core/auth/permissions.ts` + `server/src/services/permissions.service.js`
+**What:** the five-role × ten-permission map exists on both sides of the wire with a "keep the two in sync" comment and no enforcement. First uncoordinated edit drifts silently.
+**Suggested fix:** matrix-parity Vitest spec importing both sides (pV2-AUDIT-02 Fix 6); long-term, serve from the API like brand config.
+**Severity:** MEDIUM
+
+### Security-path pure functions shipped untested (Violation H)
+**Where:** `permissions.ts` / `permissions.service.js` (`can`, `effectiveRole`, `normalizeOrgType`), `user-avatar` (`deriveInitials`), `auth.guard.ts`
+**What:** all pure, all in the security boundary, zero specs despite Vitest being wired.
+**Suggested fix:** first spec batch incl. the parity test (pV2-AUDIT-02 Fix 6).
+**Severity:** MEDIUM
+
+### Hello page is the last imperative fetch (finding J)
+**Where:** `client-v2/src/app/pages/hello/hello.component.ts`
+**What:** `ngOnInit` + `subscribe` + manual status signal — the app's only raw `.subscribe`; everything else standardised on `resource()`.
+**Suggested fix:** `httpResource` conversion (~10 lines, pV2-AUDIT-02 Fix 8).
+**Severity:** LOW
+
+### Additional (spotted during this retroactive pass, beyond the audit list)
+
+### clearCookie options don't mirror the set options
+**Where:** `server/src/routes/auth.js`, `POST /auth/logout`
+**What:** the cookie is SET with `domain: process.env.JWT_COOKIE_DOMAIN || undefined` but CLEARED without the `domain` option. On localhost this is harmless; in any deployment that sets `JWT_COOKIE_DOMAIN`, logout would fail to clear the cookie (browsers match clear against name+domain+path).
+**Suggested fix:** pass the same `domain` (and `secure`) options to `clearCookie` — one line; fold into pV2-AUDIT-02.
+**Severity:** MEDIUM (latent — only bites when JWT_COOKIE_DOMAIN is configured)
+
+### Auto-created org names can collide
+**Where:** `upsertUserFromGoogle` branch 3
+**What:** `"{displayName}'s Workspace"` is not unique — two signups named "Sam Jones" produce two identically-named orgs (`orgs.name` has no unique constraint). Harmless today, confusing in admin views.
+**Suggested fix:** none needed now — the onboarding prompt (pV2-02b territory) removes auto-creation entirely; noting so the successor design accounts for name collisions.
+**Severity:** LOW (moot pending onboarding)
+
+### No session rotation/refresh
+**Where:** `signSessionCookie`
+**What:** fixed 7-day JWT, no sliding renewal and no revocation list — logout clears the cookie but the token itself stays valid if exfiltrated until expiry.
+**Suggested fix:** acceptable for v1 (httpOnly + Lax mitigates); revisit with a session table or shorter expiry + refresh when auth hardens.
+**Severity:** LOW

@@ -78,7 +78,27 @@ Read all three before writing a line of code.
 - `prompts/pNNNN-<slug>-mockup.html` — optional self-contained visual reference (open in any browser).
 - `prompts/pNNNN-<slug>-shipped.md` — your ship report (see below). Written by you when the prompt completes.
 - Same `pNNNN` prefix on every file in a pair.
-- When you finish a prompt: mark its row in `prompts/backlog.md` as `Done`. If you deferred sections, mark `Mostly Done` and leave `TODO(pNNNN-§N)` markers in code at each deferred site.
+- When you finish a prompt: mark its row in `prompts/backlog.md` as `Shipped` (NOT `Done` — see "The shipped status requires a code audit pass" below; chat/Liam flips to `Done` after the audit clears). If you deferred sections, leave `TODO(pNNNN-§N)` markers in code at each deferred site and say so in the ship report; the row becomes `Mostly Done` at audit time.
+
+### The shipped status requires a code audit pass
+
+After you write the ship report, **flip the backlog row to `Shipped` and
+post the ship report to Liam (or the calling agent) for review.**
+**DO NOT flip to `Done` immediately.** Wait for explicit confirmation that
+the chat-side audit pass found no blockers, at which point chat/Liam flips
+the row to `Done`.
+
+The audit pass:
+1. Chat reads the actual code you wrote (not just the ship report)
+2. Chat checks for WORKING_STANDARDS violations (especially §"Engineering
+   hygiene")
+3. Chat compares the "Concerns not in spec" section against what the code
+   actually contains — flags any missed concerns
+4. Chat either: clears for `Done`, requests a fix commit, or asks for more
+   detail in the ship report
+
+This is process, not bureaucracy. The audit catches what the ship report
+misses; the ship report catches what the audit misses. Both layers.
 
 ### Ship report — write one for every prompt you complete
 After you finish implementing a prompt (and before you tell Liam it's done), write `prompts/pNNNN-<slug>-shipped.md` next to the prompt file. Use this structure:
@@ -106,6 +126,49 @@ Net: **+X / -Y (net +/-Z)** — one-line summary of what dominated the diff.
 ```
 
 The ship report is the permanent record of what landed for this prompt. It lets future Claude chat / CC sessions audit past work by reading prompt + shipped side-by-side without re-spelunking git. Don't skip it. Don't make it a wall of prose — bullets, file paths, selectors, concrete deltas. Same tone as your reply to Liam, just persisted.
+
+### "Concerns not in spec" — mandatory ship-report section
+
+Every ship report MUST end with a section titled **"Concerns not in spec"**.
+List anything you noticed during implementation that:
+
+- The spec didn't ask about
+- A careful reviewer would want to know
+- Falls into one of these categories:
+  - Engineering hygiene rules from WORKING_STANDARDS §"Engineering hygiene"
+    that the spec didn't explicitly call out
+  - Production-readiness concerns (rate limiting, error logging, metrics,
+    health checks, retries, timeouts)
+  - Schema decisions that produce dual sources of truth or coupling
+  - Performance pitfalls (N+1 queries, unbatched HTTP, unbounded result sets)
+  - Security smells (missing input validation, log injection, secret in
+    response body)
+  - Code patterns that work but feel wrong
+
+Write the section even when empty:
+
+```
+## Concerns not in spec
+None.
+```
+
+When non-empty, format each concern as:
+
+```
+### <Short name>
+**Where:** file path + line range
+**What:** one-paragraph description
+**Suggested fix:** what you'd do (or note "deferred — needs design decision")
+**Severity:** HIGH / MEDIUM / LOW
+```
+
+Spec-mandated code that violates §"Engineering hygiene" goes under a
+sub-heading **"Spec-hygiene precedence deviations"** (see WORKING_STANDARDS
+§"Hygiene rules outrank spec-embedded code" — you implement the compliant
+version and record the delta here).
+
+The PR/spec author then decides: fix now, fix in a follow-up prompt, or
+formally defer. The choice is theirs; the SURFACING is yours.
 
 ### Never edit a prompt once shipped
 - If a prompt's interpretation drifts or a fix is needed, write a **new numbered prompt** that supersedes it. Update the original's status to `Superseded` with a pointer to the replacement.

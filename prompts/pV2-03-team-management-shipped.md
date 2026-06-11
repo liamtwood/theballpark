@@ -43,3 +43,54 @@
 - pV2-02 upsert DID need extending (linking + default_org_id backfill) — flagged here as the prompt requested.
 
 pV2-03 row added to `prompts/backlog.md` as Done (no row existed). Backlog: invite emails (Resend), undo toast, cross-org Ballpark view remain open per the prompt's out-of-scope list.
+
+---
+
+## Concerns not in spec (added retroactively on 2026-06-11)
+
+This section was added during pV2-AUDIT-01's retroactive concerns pass. The
+original report was silent on these.
+
+### Raw Tailwind color values in the team page (Violation B)
+**Where:** `client-v2/src/app/pages/settings/team/team.component.ts` (~7 places) + `team-member-row.component.ts`
+**What:** `border-black/10`, `border-black/20`, `text-slate-500`, `bg-white` (plus `text-slate-400/600`, `bg-amber-50`, `bg-red-50`, `text-emerald-700` in the row/badges) bake raw colors into the DOM, outside the token system. **Provenance:** the pV2-01b/01c spec templates themselves contained `text-slate-500`, `bg-white/80`, `border-black/5`; I extended the spec-established pattern under the then-current "visual decisions are settled in the prompt; don't relitigate" rule. The new §"Hygiene rules outrank spec-embedded code" precedence rule resolves this conflict going forward — compliant implementation becomes mandatory, recorded as a precedence deviation.
+**Suggested fix:** define the semantic token set + REPLACE the Tailwind palette (compile-time enforcement) and convert all v2 templates (pV2-AUDIT-02 Fix 5).
+**Severity:** MEDIUM
+
+### Live-membership gate is a per-route convention, not middleware (Violation F)
+**Where:** `server/src/routes/team.js` (router-level `router.use(...)` block)
+**What:** the per-request live `user_orgs` re-read (which makes suspension bite immediately) lives inline in the team router only. The next v2 endpoint must remember to copy it; if it forgets, a suspended user's 7-day JWT keeps working there. Allow-list where default-on is correct — the structural risk my original report described as a strength ("LIVE membership check per request") without flagging that it wasn't extracted.
+**Suggested fix:** extract `requireActiveMembership(perm?)` middleware, mount once at the v2 router level, delete the inline copy (pV2-AUDIT-02 Fix 1 — blocks pV2-04).
+**Severity:** HIGH (structural)
+
+### Twin resource() declarations (finding I)
+**Where:** `login.component.ts` + `user-menu.component.ts`
+**What:** identical `resource({ loader: listDevUsers().catch(() => []) })` declared in both. Fine at two call sites; a third consumer means extraction (a `devUsers` resource on AuthService).
+**Suggested fix:** extract on third consumer; no action now.
+**Severity:** LOW
+
+### User-menu popover is keyboard-incomplete (finding K)
+**Where:** `shell/user-menu/user-menu.component.ts`
+**What:** generic `<p-popover>` — no arrow-key navigation, no `role=menu`. Tab navigation + PrimeNG focus trap work today.
+**Suggested fix:** Angular Aria Menu pattern if/when a11y hardening becomes a priority; defer.
+**Severity:** LOW
+
+### Additional (spotted during this retroactive pass, beyond the audit list)
+
+### Invite endpoint lacks length limits on free-text fields
+**Where:** `server/src/routes/team.js`, `POST /invite`
+**What:** `displayName` and `jobTitle` are trimmed but unbounded — a megabyte job title inserts fine. Email is regex-validated; the others aren't length-checked.
+**Suggested fix:** cap at sane lengths (e.g. 200 chars) server-side; reject oversize with 400. Small add for pV2-AUDIT-02 or pV2-04.
+**Severity:** LOW
+
+### Suspended-invited member unsuspends to 'active', not 'invited'
+**Where:** `team.js` `PATCH /:userId/status` (noted in a code comment, never surfaced in the report)
+**What:** suspending a still-invited member then unsuspending lands them on `status='active'` without ever signing in — they'd appear as a full member who never joined (`joined_at` NULL).
+**Suggested fix:** restore to the prior status (store it, or derive: `joined_at IS NULL → 'invited'`). Cosmetic-to-minor; fix opportunistically.
+**Severity:** LOW
+
+### errorDetail() is a local helper in a page component
+**Where:** `team.component.ts` (bottom)
+**What:** the HttpErrorResponse-unwrapping helper will be wanted by every page that surfaces server guard messages; second consumer should trigger extraction to `core/`.
+**Suggested fix:** extract on second consumer.
+**Severity:** LOW

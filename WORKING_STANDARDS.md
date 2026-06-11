@@ -809,6 +809,200 @@ answer must be **one**.
 
 ---
 
+## Engineering hygiene — non-negotiable
+
+Added by pV2-AUDIT-01 after the post-pV2-03 audit. Each rule cites the past
+violation that motivated it. These bind CC **and** spec authors (see the
+precedence rule at the end).
+
+### Multi-statement DB writes are transactional — via the shared helper
+
+Any service function that performs more than one INSERT, UPDATE, or DELETE
+that must all-succeed-or-all-fail MUST wrap them in a single transaction
+using the shared `withTransaction(fn)` helper in `server/src/db/`. Hand-rolled
+`BEGIN`/`COMMIT`/`ROLLBACK` is FORBIDDEN — `pool.js`'s per-statement write
+wrapper sets `app.current_user_id` (the audit attribution GUC) on each
+statement individually, and a hand-rolled transaction with a dedicated client
+silently loses that attribution unless it re-establishes the GUC itself. The
+helper owns that interplay in one place (One Definition).
+
+If a function intentionally does NOT wrap writes in a transaction (because
+they're independent), the code MUST contain a comment explaining why.
+
+Past violation: pV2-02's `upsertUserFromGoogle` step 3 ran three INSERTs
+without a transaction, leaking orphan `orgs` rows on partial failure. The
+fix (pV2-AUDIT-02) builds the `withTransaction(fn)` helper FIRST so the
+violation fix doesn't itself recreate audit-attribution drift.
+
+### Tokens only — enforced at compile time, with a complete semantic set
+
+No hex codes, `rgb()`, `rgba()`, `hsl()`, OR Tailwind utility classes that
+resolve to raw color values in component templates or styles.
+
+This rule is enforced **at compile time**, not by grep policing: the
+`tailwind.config.js` `theme.colors` block REPLACES Tailwind's default
+palette (does not extend it) with the token-only set, so `text-slate-500`
+literally does not compile. Default-on, not allow-list — the same principle
+this section's "Shared security standards" rule applies, mapped to styling.
+
+Use either:
+- CSS custom properties: `color: var(--color-text-secondary)`
+- Custom Tailwind config tokens: `text-secondary`, `border-hairline`,
+  `bg-surface`, `text-success`, etc. — defined in `tailwind.config.js`
+  against the `--*` tokens
+
+**The token set MUST be complete enough that every visible UI state has a
+compliant choice.** A rule that's unsatisfiable is a rule that gets broken.
+Define the semantic state tokens (`--color-success`, `--color-warn`,
+`--color-danger`, `--color-info`) in the same pass as the rule — status
+dots, "pending invite" badges, "suspended" badges, danger trash hovers all
+need semantic-state colors, and a rule with no compliant alternative is
+worse than no rule.
+
+v1 already drew the right distinction (theme colors recolour with the
+admin preset; semantic colors don't). v2's token set carries it forward
+without invention.
+
+Past violation: pV2-03's team page used `border-black/10`, `text-slate-500`,
+`bg-white` in 7 places. The spec itself (pV2-01b/01c templates) contained
+similar raw colors — see the "precedence" rule below, which makes
+spec-embedded violations CC's mandatory delta, not a liberty.
+
+### Auth surfaces require rate limiting
+
+Every server endpoint that creates, validates, or destroys an
+authentication artifact (cookie, token, session) MUST have rate limiting
+middleware via `express-rate-limit` or equivalent. Default budgets:
+- Write endpoints (`POST /auth/*`, `POST /auth/dev/login`): 10 req/min per IP
+- Read endpoints (`GET /auth/me`, `GET /api/dev/users`): 30 req/min per IP
+- OAuth callbacks: 30 req/min per IP
+
+This applies in development too — dev environments get attacked.
+
+**Deploy precondition:** when the server runs behind a proxy (Railway,
+load balancer, CDN), `app.set('trust proxy', ...)` MUST be configured
+correctly. Otherwise `express-rate-limit` sees only the proxy's IP and
+every user shares one bucket — a self-DoS waiting to happen. Set this
+once in `index.js`, not per-route.
+
+Past violation: pV2-02 shipped 5 auth-touching endpoints with no rate limiting.
+
+### JWTs carry identity, not authority
+
+JWTs MUST contain identity claims only:
+- `sub` (user id)
+- `email`
+- `org_id` (ONLY if the user cannot switch orgs without re-authenticating —
+  fine today since v1 has no org switcher; moves out of the JWT or forces
+  re-auth when the multi-org switcher lands)
+
+JWTs MUST NOT contain authority claims that can change without the user
+re-authenticating:
+- `role`
+- `is_admin`
+- `permissions`
+
+Authority MUST be re-derived from the database on each protected request via
+a live read of `user_orgs` and `orgs`. The performance cost (one indexed
+query) is negligible compared to the cost of stale permissions surviving for
+the JWT lifetime.
+
+Past violation: pV2-02 put `role` and `is_admin` in the JWT with a 7-day
+lifetime; demoting an admin doesn't take effect until they re-sign-in.
+
+### Catch blocks justify themselves
+
+Any `catch { }` block that does not log, rethrow, or notify the user MUST
+have an inline comment explaining why the error is safely ignorable. If the
+comment cannot be written truthfully, the catch must log or rethrow.
+
+Distinguish "expected absence" (e.g., 404 / 401 on optional resource) from
+"unexpected server failure" (5xx, network error). Silent on the former,
+loud on the latter.
+
+Past violation: pV2-02's `AuthService.loadSession()` silently swallowed all
+errors including 5xx — masking server outages as "signed out".
+
+### Shared security standards live as middleware, not per-route conventions
+
+When a security-relevant check (authentication, authorization, audit
+attribution, live-membership validation) is needed on more than one route,
+it MUST live as middleware applied at the router or app level — NOT copied
+into each route handler.
+
+The allow-list pattern (opt-in per route) is forbidden for security checks
+where the safe default is on. The default for "verify the requester is
+still an active member with this permission" is ON, not OFF.
+
+Past violation: pV2-03's `team.js` re-reads live `user_orgs` per request
+to honour suspensions. `auth.js` re-derives via `buildSession`. No other
+v2 endpoint inherits the check — every new endpoint must remember to copy
+the pattern. Fix: extract `requireActiveMembership(perm?)` middleware,
+mount at v2 router level, delete inline copies.
+
+### Duplicate data across boundaries needs automated enforcement
+
+When data must be duplicated across boundaries (client/server, code/DB
+seed, two services, two schemas), the duplication MUST have an automated
+enforcement mechanism:
+
+- A test that imports both sides and asserts equivalence, OR
+- A codegen step that produces one side from the other at build time, OR
+- Serving the data from a single authoritative endpoint at runtime
+
+A comment that says "keep in sync" is NOT an enforcement mechanism. Drift
+is silent until production breaks.
+
+Past violation: pV2-02 mirrored the permissions MATRIX in
+`client-v2/src/app/core/auth/permissions.ts` and
+`server/src/services/permissions.service.js` with a comment "keep in sync"
+and no test. First uncoordinated edit silently desyncs them.
+
+### Pure functions in security paths are tested
+
+Pure functions in `core/auth/`, `services/permissions*`, security-relevant
+utilities, and route guards MUST have unit tests before the next prompt
+builds on them. Vitest is wired in `client-v2`; Node test runner or Jest is
+adequate on the server. The cost is minimal; the regression catch is real.
+
+Tests are not optional in these paths. They are not deferred to "when
+things stabilise." Security primitives stabilise BY having tests.
+
+Past violation: pV2-02 + pV2-03 shipped `can()`, `effectiveRole()`,
+`normalizeOrgType()`, `deriveInitials()`, `auth.guard`, `admin.guard` with
+zero specs. All pure. All in security paths.
+
+### Hygiene rules outrank spec-embedded code
+
+When a prompt's spec contains code, markup, or pseudocode that violates any
+rule in this §"Engineering hygiene" section, CC MUST implement the
+compliant version — NOT the literal spec — and MUST flag the deviation
+explicitly in the ship report's "Concerns not in spec" section under the
+heading "Spec-hygiene precedence deviations."
+
+This rule REVERSES `cc-onboarding.md`'s general "visual decisions are
+settled in the prompt; don't relitigate" guidance for the specific case of
+hygiene violations. The general rule still holds for design choices
+(colors, layouts, copy, component shapes). Hygiene rules are different:
+they encode invariants that the spec author must also obey, and the spec
+author benefits from CC's enforcement when they slip.
+
+This rule also binds the spec author (chat / Liam / anyone drafting a
+prompt). Prompts that contain `text-slate-500`, `border-black/10`, raw hex
+codes, `EventEmitter`, `*ngIf`, `BEGIN`/`COMMIT` hand-rolled, or any other
+hygiene violation are themselves non-compliant and CC's deviation in the
+ship report is the correction trail. Spec drift in the OTHER direction
+(spec demands a violation; CC implements the violation) is a compounded
+failure, not a follow-through.
+
+Past violation: pV2-01b and pV2-01c templates contained `text-slate-500`,
+`bg-white/80`, `border-black/5`. CC extended the pattern into pV2-03's
+team page because the existing cc-onboarding rule said "don't relitigate
+visual decisions." She wasn't taking liberty — she was following the rule
+that conflicted. This new rule resolves the conflict in favour of hygiene.
+
+---
+
 ## Data Audit — Universal Audit Columns + Soft Delete
 
 Enforced at the DB layer so no service can bypass it. See
