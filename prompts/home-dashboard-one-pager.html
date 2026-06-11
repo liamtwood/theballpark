@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ballpark — Home / Dashboard (1-pager)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border: 1px solid #e5e7eb;
+    --radius: 12px;
+    --radius-card: 12px;
+    --radius-button: 8px;
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --accent: #d63384;
+    --bp-gradient: linear-gradient(135deg, #d63384 0%, #16a34a 100%);
+    --bp-text-on-gradient: #ffffff;
+    --bp-font: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+    --bp-text-color: #1f2937;
+    --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
+  }
+  body {
+    margin: 0; padding: 28px 36px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .page { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 24px; font-size: 13px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 22px; }
+
+  /* Layout mockup card (a single home view) */
+  .mockup {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .mockup__label {
+    background: linear-gradient(180deg, #fbf7f4, #fff);
+    padding: 12px 18px;
+    border-bottom: var(--border);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .mockup__label small {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  .mockup__body {
+    padding: 0;
+    background: var(--bg);
+  }
+
+  /* Shell header reproduction */
+  .shell-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 18px;
+    background: transparent;
+  }
+  .wordmark {
+    font-family: var(--bp-font);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--bp-text-color);
+    letter-spacing: 0;
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bp-gradient);
+    color: var(--bp-text-on-gradient);
+    font-family: var(--bp-font);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Hero band */
+  .hero {
+    padding: 16px 18px 12px;
+    background: transparent;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px;
+  }
+  .hero h2 { font-size: 18px; font-weight: 700; margin: 0 0 2px; line-height: 1.2; }
+  .hero .sub { color: var(--text-secondary); font-size: 11px; }
+  .cog {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: var(--border);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  /* Stats strip */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 0 18px 12px;
+  }
+  .stat {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius-button);
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .stat__label { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat__value { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+  /* 3-column body */
+  .body3 {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 10px;
+    padding: 0 14px 18px;
+  }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Section card */
+  .card {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    padding: 12px;
+  }
+  .card__head {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .card__head svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .card__row {
+    font-size: 11px;
+    color: var(--text);
+    padding: 6px 0;
+    border-top: 1px solid #f3f4f6;
+    display: flex; justify-content: space-between;
+  }
+  .card__row:first-of-type { border-top: none; padding-top: 2px; }
+  .card__row small { color: var(--text-secondary); }
+  .card__big {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #d63384, #16a34a);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .card__sub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* Launcher tiles grid */
+  .launcher {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+    min-height: 220px;
+  }
+  .tile {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius-button);
+    padding: 12px 8px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-height: 72px;
+    justify-content: center;
+  }
+  .tile__icon {
+    width: 20px; height: 20px;
+    color: var(--accent);
+  }
+  .tile__icon svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .tile__label {
+    font-size: 10px;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .tile--primary {
+    background: var(--bp-gradient);
+    color: var(--bp-text-on-gradient);
+    border: none;
+  }
+  .tile--primary .tile__icon { color: var(--bp-text-on-gradient); }
+  .tile--primary .tile__label { color: var(--bp-text-on-gradient); }
+
+  /* Notes / legend */
+  .notes {
+    background: var(--surface);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow-xs);
+  }
+  .notes h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .notes ul { margin: 0; padding-left: 16px; font-size: 12px; }
+  .notes li { margin-bottom: 4px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Ballpark — Home / <code>/home</code></h1>
+  <p class="lead">The page-1 surface every signed-in user lands on. Shape: header + hero + stats + 3-column body (sections left/right, launcher centre). Same layout for both personas; section content + tiles differ.</p>
+
+  <!-- The two layouts side by side -->
+  <div class="grid-2">
+
+    <!-- AGENT -->
+    <div class="mockup">
+      <div class="mockup__label">
+        Agent (Creative Agency Ltd)
+        <small>org_type = agency · is_admin = true</small>
+      </div>
+      <div class="mockup__body">
+
+        <!-- shell header -->
+        <div class="shell-header">
+          <span class="wordmark">Ballpark</span>
+          <span class="avatar">SM</span>
+        </div>
+
+        <!-- hero -->
+        <div class="hero">
+          <div>
+            <h2>Hello, Sarah Mitchell</h2>
+            <div class="sub">Creative Agency Ltd</div>
+          </div>
+          <span class="cog">⚙</span>
+        </div>
+
+        <!-- stats -->
+        <div class="stats">
+          <div class="stat"><div class="stat__label">Active</div><div class="stat__value">12</div></div>
+          <div class="stat"><div class="stat__label">Open briefs</div><div class="stat__value">4</div></div>
+          <div class="stat"><div class="stat__label">Awaiting</div><div class="stat__value">2</div></div>
+          <div class="stat"><div class="stat__label">Credits</div><div class="stat__value">£8.2k</div></div>
+        </div>
+
+        <!-- 3-col body -->
+        <div class="body3">
+
+          <!-- LEFT -->
+          <div class="col">
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Upcoming</div>
+              <div class="card__row">Retail Pop-Up · Nike <small>12 Jul</small></div>
+              <div class="card__row">Awards Night <small>22 Jul</small></div>
+              <div class="card__row">Q3 Showcase <small>4 Aug</small></div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Quick Actions</div>
+              <div class="card__row">Invite supplier <small>→</small></div>
+              <div class="card__row">Browse Marketplace <small>→</small></div>
+              <div class="card__row">Invite team member <small>→</small></div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Recent Activity</div>
+              <div class="card__row">Studio Build Co accepted £47k <small>2m</small></div>
+              <div class="card__row">Bloom Co updated quote <small>1h</small></div>
+              <div class="card__row">SOW signed · LED Screen <small>3h</small></div>
+            </div>
+          </div>
+
+          <!-- CENTRE (launcher) -->
+          <div class="launcher">
+            <div class="tile tile--primary">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              <span class="tile__label">Add project</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><path d="M3 7h18l-2 13H5L3 7zM8 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/></svg></span>
+              <span class="tile__label">View Events</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
+              <span class="tile__label">Inbox</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M5 9h14v11H5z"/></svg></span>
+              <span class="tile__label">Marketplace</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 21a5 5 0 0 1 10 0"/></svg></span>
+              <span class="tile__label">Profile</span>
+            </div>
+          </div>
+
+          <!-- RIGHT -->
+          <div class="col">
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>Credits</div>
+              <div class="card__big">£8,200</div>
+              <div class="card__sub">available · 12 remaining</div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>Saved Suppliers</div>
+              <div class="card__row">Studio Build Co <small>★</small></div>
+              <div class="card__row">Bloom Co <small>★</small></div>
+              <div class="card__row">Rocket Food <small>★</small></div>
+              <div class="card__row">Unique Venues London <small>★</small></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPPLIER -->
+    <div class="mockup">
+      <div class="mockup__label">
+        Supplier (Rocket Food)
+        <small>org_type = supplier · is_admin = true</small>
+      </div>
+      <div class="mockup__body">
+
+        <!-- shell header -->
+        <div class="shell-header">
+          <span class="wordmark">Ballpark</span>
+          <span class="avatar">RC</span>
+        </div>
+
+        <!-- hero -->
+        <div class="hero">
+          <div>
+            <h2>Hello, Ryan Chen</h2>
+            <div class="sub">Rocket Food</div>
+          </div>
+          <span class="cog">⚙</span>
+        </div>
+
+        <!-- stats -->
+        <div class="stats">
+          <div class="stat"><div class="stat__label">Live</div><div class="stat__value">7</div></div>
+          <div class="stat"><div class="stat__label">Briefs in</div><div class="stat__value">3</div></div>
+          <div class="stat"><div class="stat__label">Awaiting pay</div><div class="stat__value">2</div></div>
+          <div class="stat"><div class="stat__label">YTD</div><div class="stat__value">£42k</div></div>
+        </div>
+
+        <!-- 3-col body -->
+        <div class="body3">
+
+          <!-- LEFT -->
+          <div class="col">
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Incoming briefs</div>
+              <div class="card__row">Creative Agency · Catering <small>2m</small></div>
+              <div class="card__row">Beth Pizey · Cocktails <small>1h</small></div>
+              <div class="card__row">Studio Build · Bar <small>5h</small></div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Quick Actions</div>
+              <div class="card__row">Update availability <small>→</small></div>
+              <div class="card__row">View catalogue <small>→</small></div>
+              <div class="card__row">Edit storefront <small>→</small></div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Recent Activity</div>
+              <div class="card__row">Cheese Platter accepted <small>2m</small></div>
+              <div class="card__row">Soft Drinks · SOW signed <small>1h</small></div>
+              <div class="card__row">Wine adjusted to £25 <small>3h</small></div>
+            </div>
+          </div>
+
+          <!-- CENTRE (launcher) -->
+          <div class="launcher">
+            <div class="tile tile--primary">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+              <span class="tile__label">Add item</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+              <span class="tile__label">Catalogue</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
+              <span class="tile__label">Inbox</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M5 9h14v11H5z"/></svg></span>
+              <span class="tile__label">Front</span>
+            </div>
+            <div class="tile">
+              <span class="tile__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 21a5 5 0 0 1 10 0"/></svg></span>
+              <span class="tile__label">Profile</span>
+            </div>
+          </div>
+
+          <!-- RIGHT -->
+          <div class="col">
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>Payouts</div>
+              <div class="card__big">£12,400</div>
+              <div class="card__sub">pending · 2 invoices</div>
+            </div>
+            <div class="card">
+              <div class="card__head"><svg viewBox="0 0 24 24"><polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8 12 2"/></svg>Top Items</div>
+              <div class="card__row">Cheese Platter <small>£12</small></div>
+              <div class="card__row">Working Lunch <small>£18</small></div>
+              <div class="card__row">Soft Drinks · day <small>£8</small></div>
+              <div class="card__row">Wine & Beer <small>£25</small></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Notes -->
+  <div class="notes">
+    <h2>How both homes work</h2>
+    <div class="notes-grid">
+      <div>
+        <ul>
+          <li><strong>Same layout:</strong> shell header → hero with cog → stats strip → 3-column body</li>
+          <li><strong>Hero title</strong> reads "Hello, {firstName}" by default; configurable via page-settings drawer (Greeting · Username · Org Name · fixed text)</li>
+          <li><strong>Stats strip:</strong> 4 quick numbers, persona-specific (agent: projects/briefs/credits; supplier: live/briefs/payouts/YTD)</li>
+          <li><strong>Cog (⚙)</strong> on the hero opens the page-settings drawer — toggles section visibility, edits hero title/subtitle, picks theme accent</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li><strong>Centre launcher:</strong> 5 tiles per persona, first tile is the primary "Add" CTA (vivid gradient like the avatar)</li>
+          <li><strong>Section cards</strong> are independently toggleable + each fetches its own data</li>
+          <li><strong>Settings persist per org_type</strong> via the existing <code>org_type_config</code> table — admin edits cascade to all users in their org</li>
+          <li><strong>Route is <code>/home</code></strong> — canonical, no aliases, no redirects from other paths</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
