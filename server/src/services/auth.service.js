@@ -5,6 +5,7 @@
 // populate BOTH name (v1 NOT NULL) and display_name so both apps read clean.
 
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction');
 const { effectiveRole, normalizeOrgType } = require('./permissions.service');
 
 /**
@@ -59,24 +60,29 @@ async function upsertUserFromGoogle(profile) {
   }
 
   // 3. brand-new signup → user + new agency org + admin membership.
-  const orgName = `${displayName}'s Workspace`;
-  const org = await pool.query(
-    `INSERT INTO orgs (name, type) VALUES ($1, 'agency') RETURNING id`,
-    [orgName]
-  );
-  const orgId = org.rows[0].id;
-  const user = await pool.query(
-    `INSERT INTO users (name, display_name, email, google_sub, avatar_url, default_org_id, role)
-     VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
-    [displayName, displayName, email, sub, avatarUrl, orgId]
-  );
-  const userId = user.rows[0].id;
-  await pool.query(
-    `INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
-     VALUES ($1, $2, true, 'active', NOW())`,
-    [userId, orgId]
-  );
-  return { userId };
+  // All-or-nothing via the shared helper per WORKING_STANDARDS
+  // §"Multi-statement DB writes are transactional — via the shared helper" —
+  // a partial failure must not leak an orphan org/user row.
+  return withTransaction(async (client) => {
+    const orgName = `${displayName}'s Workspace`;
+    const org = await client.query(
+      `INSERT INTO orgs (name, type) VALUES ($1, 'agency') RETURNING id`,
+      [orgName]
+    );
+    const orgId = org.rows[0].id;
+    const user = await client.query(
+      `INSERT INTO users (name, display_name, email, google_sub, avatar_url, default_org_id, role)
+       VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
+      [displayName, displayName, email, sub, avatarUrl, orgId]
+    );
+    const userId = user.rows[0].id;
+    await client.query(
+      `INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
+       VALUES ($1, $2, true, 'active', NOW())`,
+      [userId, orgId]
+    );
+    return { userId };
+  });
 }
 
 /**
