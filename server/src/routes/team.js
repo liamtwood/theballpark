@@ -1,41 +1,22 @@
-// pV2-03 — team management (/api/team/*). v2-only surface: every route runs
-// the JWT middleware + a LIVE membership check (fresh DB read each request, so
-// a suspension takes effect on the member's very next call — criterion 5).
-// Writes always scope to the requester's org from the verified JWT, never the
-// body. Admin-gated via can(orgType, isAdmin, 'org.invite_member').
+// pV2-03 — team management (/api/team/*). v2-only surface. Writes always
+// scope to the requester's org from the verified JWT, never the body.
+//
+// pV2-AUDIT-02 fix 1: the inline live-membership gate moved to the shared
+// requireActiveMembership middleware (WORKING_STANDARDS §"Shared security
+// standards live as middleware"). The v2 router in index.js already applies
+// authenticate + requireActiveMembership() to everything mounted in it; the
+// permission-specific instance below stacks the admin gate on top (and reuses
+// the cached fresh membership — one DB read per request, not two). Kept
+// in-file so team.js is safe even if mounted outside the gated router.
 
 const router = require('express').Router();
 const pool = require('../db/pool');
 const { authenticate } = require('../middleware/authenticate');
-const { can, effectiveRole, normalizeOrgType } = require('../services/permissions.service');
+const { requireActiveMembership } = require('../middleware/require-active-membership');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Fresh membership for (userId, orgId): { is_admin, status, org_type } or null. */
-async function liveMembership(userId, orgId) {
-  const r = await pool.query(
-    `SELECT uo.is_admin, uo.status, o.type AS org_type
-       FROM user_orgs uo JOIN orgs o ON o.id = uo.org_id
-      WHERE uo.user_id = $1 AND uo.org_id = $2 AND uo.deleted_at IS NULL`,
-    [userId, orgId]
-  );
-  return r.rows[0] || null;
-}
-
-// authenticate + live status/permission gate for the whole router.
-router.use(authenticate, async (req, res, next) => {
-  try {
-    const m = await liveMembership(req.user.id, req.user.org_id);
-    if (!m || m.status === 'suspended') {
-      return res.status(403).json({ error: 'Membership suspended or revoked' });
-    }
-    if (!can(m.org_type, m.is_admin, 'org.invite_member')) {
-      return res.status(403).json({ error: 'Admin permission required' });
-    }
-    req.membership = m;
-    next();
-  } catch (err) { next(err); }
-});
+router.use(authenticate, requireActiveMembership('org.invite_member'));
 
 const memberSelect = `
   SELECT u.id AS user_id, u.email, u.display_name, u.avatar_url,

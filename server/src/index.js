@@ -167,8 +167,6 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 // middleware/authenticate.js scope note.
 app.use('/auth', require('./routes/auth'));
 app.use('/api/dev', require('./routes/dev'));
-// pV2-03 — team management (v2-only; JWT + live membership gate inside).
-app.use('/api/team', require('./routes/team'));
 // Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
 app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));
@@ -222,6 +220,29 @@ app.get('/api/unsplash/search', async (req, res) => {
     res.json([]);
   }
 });
+
+// ── v2 GATED ROUTER (pV2-AUDIT-02 fix 1) ────────────────────────────────────
+// Every v2 feature endpoint mounts HERE and inherits authenticate +
+// requireActiveMembership() by DEFAULT (live user_orgs re-read per request —
+// suspension/demotion bites on the next call, never per-route opt-in). Per
+// WORKING_STANDARDS §"Shared security standards live as middleware".
+//
+// ORDERING IS LOAD-BEARING: this router is mounted at /api AFTER every v1
+// mount above, so v1 paths (used by client-angular on :4200, no JWT cookie)
+// match first and stay ungated. Unmatched /api/* now 401s here instead of
+// 404ing — acceptable. /auth/* stays outside (entry point — no membership
+// yet); /api/dev stays outside (the pre-auth login picker calls it; it has
+// its own NODE_ENV gate).
+{
+  const { authenticate } = require('./middleware/authenticate');
+  const { requireActiveMembership } = require('./middleware/require-active-membership');
+  const v2 = express.Router();
+  v2.use(authenticate, requireActiveMembership());
+  v2.use('/team', require('./routes/team'));
+  // future v2 endpoints: v2.use('/projects', ...), v2.use('/home', ...) — they
+  // inherit the gate automatically by being mounted here.
+  app.use('/api', v2);
+}
 
 // Centralised error handler
 app.use((err, req, res, next) => {
