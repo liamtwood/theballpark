@@ -99,3 +99,19 @@ matching `.bp-fld`'s chrome.
 **Files:** styles.css (`.bp-field-value` base→md); DESIGN.md §5 table row
 (+ convergence note); chip. Class has no consumers yet — doc/table truth fix;
 verified 14px computed via injected element on 4201.
+
+## Iteration — v2.11g (2026-06-11)
+**Triggered by QC:** Liam's 5-rank / 3-shade hierarchy for the edit-form
+pattern ("we will use the same pattern everywhere"), with CC's accepted
+pushback flipping sub/section sizes: hero title 40 > section 22 > sub 18 >
+value 14 > label 12.
+**Commit:** `9ff2a02`
+**Files:** styles.css (new --color-text-strong #374151 middle shade;
+.bp-page-subtitle lg→xl; .bp-edit-section-title 3xl→2xl/snug/strong;
+.bp-field-value→strong; --text-3xl retired); edit-field.component.ts
+(3 value-color pins →strong incl. PrimeNG select/inputnumber);
+tailwind.config.js (3xl removed, text-strong added); DESIGN.md §4 neutrals
+ramp + §5 token list + table; chip.
+Verified computed on 4201: 40/#111 · 18/#6b7280 · 22/#374151 · 12/#6b7280 ·
+14/#374151. Container headings (card ≡ drawer ≡ edit-section) now converge
+on the 2xl rank, differentiated by shade only.
