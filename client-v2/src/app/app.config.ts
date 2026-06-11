@@ -16,6 +16,7 @@ import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/runtime-config.service';
 import { BrandConfigService } from './core/brand-config.service';
 import { AuthService } from './core/auth/auth.service';
+import { PageConfigService } from './core/config/page-config.service';
 
 // Bridge the Ballpark brand into PrimeNG's Aura preset. PrimeNG styled mode
 // injects its design tokens at runtime, so a CSS `--p-*` override in styles.css
@@ -64,13 +65,17 @@ export const appConfig: ApplicationConfig = {
     // never throws (cosmetic — API down just keeps the styles.css fallbacks).
     // Then hydrate the auth session from the bp_session cookie (pV2-02), so
     // the auth guard sees a settled signal on the very first navigation.
+    // Then the page-settings config (pV2-04) — needs activeOrgType from the
+    // session; skips itself for signed-out/orgless users.
     provideAppInitializer(async () => {
       const rc = inject(RuntimeConfigService);
       const brand = inject(BrandConfigService);
       const auth = inject(AuthService);
+      const pageConfig = inject(PageConfigService);
       await rc.load();
       await brand.load();
       await auth.loadSession();
+      await pageConfig.load();
     }),
   ],
 };
