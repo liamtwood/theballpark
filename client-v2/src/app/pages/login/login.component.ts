@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, effect, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { AuthService, SessionUser } from '../../core/auth/auth.service';
+import { devPersonas } from '../../core/auth/dev-personas';
 import { PublicHeaderComponent } from '../../shared/public-header/public-header.component';
-import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
 /** Dev-picker surface (pV2-02b demoted this from primary entry to dev tool —
  *  the public landing page at `/` is the front door now). Lists seeded
@@ -14,7 +14,7 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonModule, PublicHeaderComponent, UserAvatarComponent],
+  imports: [ButtonModule, PublicHeaderComponent],
   host: { class: 'flex min-h-screen items-center justify-center px-6' },
   template: `
     <app-public-header />
@@ -30,24 +30,18 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
           <div class="mt-8">
             <div class="flex items-center gap-3 text-2xs uppercase tracking-wide text-muted">
               <span class="h-px flex-1 bg-hairline"></span>
-              or, for dev, pick a user
+              or, for dev, view as
               <span class="h-px flex-1 bg-hairline"></span>
             </div>
 
             <div class="mt-3 overflow-hidden rounded-xl border border-hairline bg-surface">
-              @for (dev of users; track dev.id) {
+              @for (p of personas(); track p.role) {
                 <button
                   type="button"
-                  class="flex w-full cursor-pointer items-center gap-3 border-b border-hairline px-4 py-2.5 text-left last:border-b-0 hover:bg-fill"
-                  (click)="devLogin(dev.id)"
+                  class="block w-full cursor-pointer border-b border-hairline px-4 py-2.5 text-left text-md font-medium last:border-b-0 hover:bg-fill"
+                  (click)="devLogin(p.user.id)"
                 >
-                  <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="28" />
-                  <span class="min-w-0">
-                    <span class="block truncate text-md font-medium">{{ dev.displayName }}</span>
-                    <span class="block truncate text-sm text-secondary">
-                      {{ dev.activeOrgType }} · {{ dev.isAdmin ? 'Admin' : 'Member' }}
-                    </span>
-                  </span>
+                  {{ p.label }}
                 </button>
               }
             </div>
@@ -68,6 +62,9 @@ export class LoginComponent {
   protected readonly devUsers = resource<SessionUser[], void>({
     loader: () => this.auth.listDevUsers(),
   });
+
+  /** The three role personas derived from the seeded users. */
+  protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
 
   constructor() {
     // No dev picker to show (prod, or no seeds) → this page has no purpose;

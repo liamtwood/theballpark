@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { PopoverModule, Popover } from 'primeng/popover';
 import { AuthService, SessionUser } from '../../core/auth/auth.service';
+import { devPersonas } from '../../core/auth/dev-personas';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
 /** Header avatar + dropdown: current identity, dev user switcher (hidden when
@@ -44,25 +45,22 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             </div>
           </div>
 
-          <!-- Dev switcher — renders only while the dev endpoint returns users -->
-          @if (devUsers.value(); as devs) {
-            @if (devs.length > 0) {
+          <!-- Dev switcher — three ROLE personas (Liam 2026-06-11), each
+               backed by a representative seeded user. Hidden in prod. -->
+          @if (personas(); as roles) {
+            @if (roles.length > 0) {
               <div class="border-t border-hairline pt-2">
                 <div class="px-1 pb-1 text-2xs font-medium uppercase tracking-wide text-muted">
-                  Switch user (dev)
+                  View as (dev)
                 </div>
-                @for (dev of devs; track dev.id) {
+                @for (p of roles; track p.role) {
                   <button
                     type="button"
-                    class="flex w-full cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 text-left hover:bg-fill"
-                    [class.opacity-50]="dev.id === user.id"
-                    (click)="switchUser(dev.id, menu)"
+                    class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md hover:bg-fill"
+                    [class.opacity-50]="p.role === user.role"
+                    (click)="switchUser(p.user.id, menu)"
                   >
-                    <app-user-avatar [displayName]="dev.displayName" [email]="dev.email" [size]="24" />
-                    <span class="min-w-0">
-                      <span class="block truncate text-md">{{ dev.displayName }}</span>
-                      <span class="block truncate text-sm text-secondary">{{ dev.role }}</span>
-                    </span>
+                    {{ p.label }}
                   </button>
                 }
               </div>
@@ -94,6 +92,9 @@ export class UserMenuComponent {
   protected readonly devUsers = resource<SessionUser[], void>({
     loader: () => this.auth.listDevUsers(),
   });
+
+  /** The three role personas derived from the seeded users. */
+  protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
 
   protected switchUser(userId: string, menu: Popover): void {
     menu.hide();
