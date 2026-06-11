@@ -14,6 +14,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 const { upsertUserFromGoogle, buildSession } = require('../services/auth.service');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
+const { authWriteLimit, authReadLimit, oauthLimit } = require('../middleware/rate-limits');
 
 const WEB = () => process.env.WEB_BASE_URL || 'http://localhost:4201';
 const IS_PROD = () => process.env.NODE_ENV === 'production';
@@ -64,12 +65,12 @@ function signSessionCookie(res, session) {
   });
 }
 
-router.get('/google', (req, res, next) => {
+router.get('/google', oauthLimit, (req, res, next) => {
   ensureStrategy();
   passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
 });
 
-router.get('/google/callback', (req, res, next) => {
+router.get('/google/callback', oauthLimit, (req, res, next) => {
   ensureStrategy();
   passport.authenticate('google', { session: false, failureRedirect: `${WEB()}/login?error=auth_failed` })(
     req, res, async () => {
@@ -84,12 +85,12 @@ router.get('/google/callback', (req, res, next) => {
   );
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', authWriteLimit, (req, res) => {
   res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax' });
   res.status(204).end();
 });
 
-router.get('/me', authenticate, async (req, res, next) => {
+router.get('/me', authReadLimit, authenticate, async (req, res, next) => {
   try {
     const session = await buildSession(req.user.id);
     if (!session) return res.status(401).json({ error: 'No active membership' });
@@ -99,7 +100,7 @@ router.get('/me', authenticate, async (req, res, next) => {
 
 // Dev-only login — impersonate a SEEDED user (google_sub IS NULL guards real
 // Google-authed accounts from impersonation even in dev). 403 in production.
-router.post('/dev/login', async (req, res, next) => {
+router.post('/dev/login', authWriteLimit, async (req, res, next) => {
   if (IS_PROD()) return res.status(403).json({ error: 'Disabled in production' });
   try {
     const { userId } = req.body || {};

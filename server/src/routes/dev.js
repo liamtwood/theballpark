@@ -8,8 +8,9 @@
 const router = require('express').Router();
 const pool = require('../db/pool');
 const { effectiveRole, normalizeOrgType } = require('../services/permissions.service');
+const { authReadLimit } = require('../middleware/rate-limits');
 
-router.get('/users', async (req, res, next) => {
+router.get('/users', authReadLimit, async (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ error: 'Disabled in production' });
   }

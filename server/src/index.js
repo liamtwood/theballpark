@@ -43,6 +43,12 @@ ensureBuckets().catch(err => console.error('[STORAGE] ensureBuckets error:', err
 
 const app = express();
 
+// Trust the first proxy hop (Railway's edge). If we ever sit behind multiple
+// proxies, set this to the exact hop count. Required for express-rate-limit's
+// per-IP buckets per WORKING_STANDARDS §"Auth surfaces require rate limiting"
+// — without it every user shares the proxy's IP (self-DoS).
+app.set('trust proxy', 1);
+
 // CORS — environment-driven origins. credentials:true so the bp_session
 // cookie flows on cross-origin XHR from the SPA origins (pV2-02 auth).
 const allowedOrigins = process.env.ALLOWED_ORIGINS
