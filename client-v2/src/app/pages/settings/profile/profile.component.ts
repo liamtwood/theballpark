@@ -47,7 +47,7 @@ interface ProfileForm {
       } @else {
         <div class="bp-settings-body">
           <app-edit-section
-            title="Organisation"
+            title="Company Information"
             [editable]="canEdit()"
             [(editing)]="editingOrg"
             [saving]="saving()"
