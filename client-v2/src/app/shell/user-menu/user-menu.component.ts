@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { PopoverModule, Popover } from 'primeng/popover';
 import { AuthService, SessionUser } from '../../core/auth/auth.service';
 import { devPersonas } from '../../core/auth/dev-personas';
+import { can } from '../../core/auth/permissions';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
 
 /** Header avatar + dropdown: current identity, dev user switcher (hidden when
@@ -10,7 +12,7 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
 @Component({
   selector: 'app-user-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PopoverModule, UserAvatarComponent],
+  imports: [RouterLink, PopoverModule, UserAvatarComponent],
   template: `
     @if (auth.user(); as user) {
       <button
@@ -44,6 +46,19 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
               </div>
             </div>
           </div>
+
+          <!-- Platform-admin links — same gate as the pages they open. -->
+          @if (canEditPageSettings()) {
+            <div class="border-t border-hairline pt-2">
+              <a
+                routerLink="/settings/pages"
+                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+                (click)="menu.hide()"
+              >
+                Page settings
+              </a>
+            </div>
+          }
 
           <!-- Dev switcher — three ROLE personas (Liam 2026-06-11), each
                backed by a representative seeded user. Hidden in prod. -->
@@ -92,6 +107,9 @@ export class UserMenuComponent {
   protected readonly devUsers = resource<SessionUser[], void>({
     loader: () => this.auth.listDevUsers(),
   });
+
+  /** Page-settings link mirrors the route's ballparkAdminGuard gate. */
+  protected readonly canEditPageSettings = computed(() => can(this.auth.role(), 'admin.cross_org_view'));
 
   /** The three role personas derived from the seeded users. */
   protected readonly personas = computed(() => devPersonas(this.devUsers.value() ?? []));
