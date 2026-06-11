@@ -58,7 +58,10 @@
   --color-text: #111111;
 
   /* ── Card / elevation tokens (pV2-04b) ──────────────────────────────── */
-  --radius-card: 16px;
+  /* 20px per Liam's QC ("increase the rounding on any boxes") — matches
+     v1's action-tile radius (p0019). Tiles + icon blocks + future cards
+     all ride this one token. */
+  --radius-card: 20px;
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
