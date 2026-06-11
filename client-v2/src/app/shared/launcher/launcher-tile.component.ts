@@ -3,17 +3,14 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 
 /** pV2-04b — launcher tile (the v2 rebuild of v1's action-tile, p0019): a
- *  routerLink card with a soft pastel icon block above title + subtitle
- *  (v1 proportions per pV2-04b1-qc). The primary variant wears the brand
- *  gradient + white text. */
+ *  white routerLink card with a brand-gradient icon block above title +
+ *  subtitle (v1 proportions per pV2-04b1-qc; gradient-on-icon-block per
+ *  Liam's follow-up QC — every tile identical, no primary variant). */
 @Component({
   selector: 'app-launcher-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, RouterLink],
-  host: {
-    class: 'bp-launcher-tile',
-    '[class.bp-launcher-tile--primary]': 'primary()',
-  },
+  host: { class: 'bp-launcher-tile' },
   template: `
     <a [routerLink]="href()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
       <span class="bp-launcher-tile__icon-block">
@@ -56,8 +53,9 @@ import { LucideAngularModule } from 'lucide-angular';
         color: var(--color-text);
         outline: none;
       }
-      /* Soft pastel icon square (v1 parity) — the gradient stays on
-         --theme-soft INSIDE the block, not across the tile. */
+      /* Brand-gradient icon square (Liam's QC call): the ONE --bp-gradient
+         token (styles.css fallback, DB-overridable via BrandConfigService) —
+         same treatment as the avatar initials circle. White icon on it. */
       .bp-launcher-tile__icon-block {
         display: flex;
         align-items: center;
@@ -65,8 +63,8 @@ import { LucideAngularModule } from 'lucide-angular';
         width: 64px;
         height: 64px;
         border-radius: 12px;
-        background: var(--theme-soft);
-        color: var(--theme-accent);
+        background: var(--bp-gradient);
+        color: var(--bp-text-on-gradient);
       }
       .bp-launcher-tile__title {
         display: block;
@@ -84,21 +82,6 @@ import { LucideAngularModule } from 'lucide-angular';
         color: var(--color-text-secondary);
       }
 
-      :host(.bp-launcher-tile--primary) {
-        background: var(--bp-gradient);
-        border: none;
-      }
-      :host(.bp-launcher-tile--primary) .bp-launcher-tile__link {
-        color: var(--bp-text-on-gradient);
-      }
-      :host(.bp-launcher-tile--primary) .bp-launcher-tile__icon-block {
-        background: var(--color-surface-alt);
-        color: var(--theme-accent);
-      }
-      :host(.bp-launcher-tile--primary) .bp-launcher-tile__subtitle {
-        color: var(--bp-text-on-gradient);
-        opacity: 0.85;
-      }
     `,
   ],
 })
@@ -107,5 +90,4 @@ export class LauncherTileComponent {
   readonly label = input.required<string>();
   readonly subtitle = input<string>('');
   readonly href = input.required<string>();
-  readonly primary = input<boolean>(false);
 }

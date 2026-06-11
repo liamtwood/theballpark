@@ -52,7 +52,6 @@ export class HomeAgentComponent {
         label: `Add ${lower}`,
         subtitle: `Start a new ${lower}`,
         href: '/projects',
-        primary: true,
       },
       {
         icon: 'folder-open',
