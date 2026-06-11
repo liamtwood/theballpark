@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../api.service';
@@ -27,6 +28,14 @@ export interface SessionUser {
   role: Role;
 }
 
+/** 401 from /auth/me just means "signed out" — the designed no-session
+ *  signal. Anything else (5xx, network, CORS) is a real fault that must not
+ *  be swallowed silently (WORKING_STANDARDS §"Catch blocks justify
+ *  themselves"). */
+function isUnexpectedSessionError(err: unknown): boolean {
+  return !(err instanceof HttpErrorResponse && err.status === 401);
+}
+
 /** Real auth (pV2-02) — session lives in the bp_session HTTP-only cookie;
  *  this service mirrors it into a signal via GET /auth/me. Same public
  *  surface the pV2-01b stub declared, so consumers didn't change shape. */
@@ -46,12 +55,16 @@ export class AuthService {
   readonly role = computed(() => this._user()?.role ?? null);
 
   /** Hydrate the session from the cookie (called at bootstrap + callback).
-   *  Never throws — no/expired cookie just means signed out. */
+   *  Never throws — a 401 just means signed out; anything else still resolves
+   *  to signed-out (the app must boot) but is logged, not swallowed. */
   async loadSession(): Promise<void> {
     try {
       const u = await firstValueFrom(this.api.get<SessionUser>('/auth/me'));
       this._user.set(u);
-    } catch {
+    } catch (err) {
+      if (isUnexpectedSessionError(err)) {
+        console.warn('[auth] /auth/me failed unexpectedly — treating as signed out', err);
+      }
       this._user.set(null);
     }
   }
@@ -71,10 +84,20 @@ export class AuthService {
     }
   }
 
-  /** Dev-only — seeded identities for the login picker. 403 (→ throw) in
-   *  prod; callers treat failure as an empty list. */
-  listDevUsers(): Promise<SessionUser[]> {
-    return firstValueFrom(this.api.get<SessionUser[]>('/api/dev/users'));
+  /** Dev-only — seeded identities for the login picker + header switcher.
+   *  Never rejects: 401/403 are the designed "picker off" signals (prod, or
+   *  the gated /api surface) → empty list, silently; any other failure also
+   *  yields an empty list but is logged. Error classification lives HERE so
+   *  the two resource consumers (login, user-menu) don't duplicate it. */
+  async listDevUsers(): Promise<SessionUser[]> {
+    try {
+      return await firstValueFrom(this.api.get<SessionUser[]>('/api/dev/users'));
+    } catch (err) {
+      if (!(err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403))) {
+        console.warn('[auth] dev user list failed unexpectedly', err);
+      }
+      return [];
+    }
   }
 
   /** Dev-only — cookie-login as a seeded user, then hard reload so the whole

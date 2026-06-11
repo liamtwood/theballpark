@@ -55,9 +55,11 @@ export class LoginComponent {
   protected readonly auth = inject(AuthService);
 
   /** Seeded dev identities — resource per the v2 fetch-into-state standard.
-   *  Loader failure (e.g. the endpoint's prod 403) → empty list → no section. */
+   *  listDevUsers never rejects (401/403 → empty list, faults logged there).
+   *  TODO(third-use): user-menu holds this resource's twin — a third consumer
+   *  extracts a shared devUsersResource() helper. */
   protected readonly devUsers = resource<SessionUser[], void>({
-    loader: () => this.auth.listDevUsers().catch(() => []),
+    loader: () => this.auth.listDevUsers(),
   });
 
   protected devLogin(userId: string): void {

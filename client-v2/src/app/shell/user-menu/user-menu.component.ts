@@ -88,9 +88,11 @@ export class UserMenuComponent {
   protected readonly auth = inject(AuthService);
 
   /** Seeded dev identities (resource per the v2 fetch-into-state standard);
-   *  prod 403 resolves to an empty list → switcher section hides. */
+   *  listDevUsers never rejects (401/403 → empty list, faults logged there).
+   *  TODO(third-use): login holds this resource's twin — a third consumer
+   *  extracts a shared devUsersResource() helper. */
   protected readonly devUsers = resource<SessionUser[], void>({
-    loader: () => this.auth.listDevUsers().catch(() => []),
+    loader: () => this.auth.listDevUsers(),
   });
 
   protected switchUser(userId: string, menu: Popover): void {
