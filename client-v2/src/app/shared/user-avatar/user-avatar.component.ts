@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 
 /** Initials from a display name ("Sarah Mitchell" → "SM"), falling back to the
  *  email's first letter, then "?". Exported for unit tests. */
@@ -26,13 +26,14 @@ export function deriveInitials(name: string | null, email: string | null): strin
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'inline-flex' },
   template: `
-    @if (imageUrl()) {
+    @if (imageUrl() && !imageFailed()) {
       <img
         [src]="imageUrl()"
         [alt]="displayName() ?? 'User avatar'"
         class="avatar avatar--img"
         [style.width.px]="size()"
         [style.height.px]="size()"
+        (error)="imageFailed.set(true)"
       />
     } @else {
       <div
@@ -79,6 +80,14 @@ export class UserAvatarComponent {
   readonly imageUrl = input<string | null>(null);
   /** Circle diameter in px (header 40, list rows 28, bubbles 20). */
   readonly size = input<number>(36);
+
+  /** Load-failure fallback (pV2-02b QC): a failed avatar request used to
+   *  leave a BLANK circle — now it degrades to the initials treatment.
+   *  linkedSignal so a new imageUrl gets a fresh attempt. */
+  protected readonly imageFailed = linkedSignal({
+    source: this.imageUrl,
+    computation: () => false,
+  });
 
   protected readonly initials = computed(() => deriveInitials(this.displayName(), this.email()));
   protected readonly fontSize = computed(() => Math.round(this.size() * 0.4));
