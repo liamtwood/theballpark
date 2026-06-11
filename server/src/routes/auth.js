@@ -35,6 +35,20 @@ function ensureStrategy() {
   strategyReady = true;
 }
 
+/** One Definition for the session-cookie attributes — referenced by BOTH the
+ *  set and clear paths. Browsers match clearCookie against name+domain+path,
+ *  so a clear that doesn't mirror the set options silently fails the moment
+ *  JWT_COOKIE_DOMAIN is configured (CC's AUDIT-01 finding, fix 4b). */
+function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.JWT_COOKIE_SECURE === 'true',
+    domain: process.env.JWT_COOKIE_DOMAIN || undefined,
+    path: '/',
+  };
+}
+
 function signSessionCookie(res, session) {
   const token = jwt.sign(
     {
@@ -57,10 +71,7 @@ function signSessionCookie(res, session) {
     { expiresIn: '7d' }
   );
   res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.JWT_COOKIE_SECURE === 'true',
-    domain: process.env.JWT_COOKIE_DOMAIN || undefined,
+    ...sessionCookieOptions(),
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
@@ -86,7 +97,8 @@ router.get('/google/callback', oauthLimit, (req, res, next) => {
 });
 
 router.post('/logout', authWriteLimit, (req, res) => {
-  res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax' });
+  // Mirror EVERY set option — see sessionCookieOptions() above.
+  res.clearCookie(COOKIE_NAME, sessionCookieOptions());
   res.status(204).end();
 });
 
