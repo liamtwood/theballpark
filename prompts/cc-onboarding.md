@@ -170,6 +170,33 @@ version and record the delta here).
 The PR/spec author then decides: fix now, fix in a follow-up prompt, or
 formally defer. The choice is theirs; the SURFACING is yours.
 
+### API audit checklist — required for every server route touched
+
+When a prompt touches any `server/src/routes/*.js` file, your ship report
+MUST include the API audit checklist from WORKING_STANDARDS §"API audit
+checklist — per-endpoint walk" filled in per endpoint.
+
+Format:
+
+```
+#### `POST /api/onboarding/create-org`
+- ✓ HTTP method semantics: POST creates a resource
+- ✓ Input validation: Zod schema CreateOrgSchema covers orgType, orgName
+- ✓ Authorization: authenticate (orgless user can hit this — documented exception to the v2 gate)
+- ✓ Status codes: 200 success, 400 invalid input, 401 no session, 409 existing membership
+- ✓ Response shape: returns SessionUser; error shape { error, details }
+- ✓ Information disclosure: error messages generic
+- ✓ Observability: 5xx path logs route + error
+- N/A Idempotency: POST is non-idempotent by design
+- ✓ Performance: single transaction, no loops
+```
+
+For routes you didn't touch, you don't need to walk the checklist — only the
+ones you wrote or modified.
+
+This is process, not bureaucracy. Five minutes per endpoint catches issues
+that take hours to debug post-deploy.
+
 ### Never edit a prompt once shipped
 - If a prompt's interpretation drifts or a fix is needed, write a **new numbered prompt** that supersedes it. Update the original's status to `Superseded` with a pointer to the replacement.
 - Exception: a prompt that hasn't been actioned yet can be edited in place during the same design conversation. Once you start implementing, the spec is frozen.

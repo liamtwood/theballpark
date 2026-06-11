@@ -1001,6 +1001,81 @@ team page because the existing cc-onboarding rule said "don't relitigate
 visual decisions." She wasn't taking liberty — she was following the rule
 that conflicted. This new rule resolves the conflict in favour of hygiene.
 
+### API audit checklist — per-endpoint walk
+
+When you write or modify any `server/src/routes/*.js` endpoint, walk this
+checklist BEFORE the ship report's "Concerns not in spec" section. Items
+that don't apply, mark N/A with a brief reason.
+
+**Endpoint shape**
+- [ ] HTTP method matches semantics: GET (idempotent read), POST (create / non-idempotent), PATCH (partial update), PUT (full replace), DELETE
+- [ ] URL path uses nouns + ids, no verbs (e.g. `/api/team/:userId/status`, not `/api/suspendUser`)
+- [ ] Routes follow the existing v2 mount convention (under the v2 router that applies `requireActiveMembership`); exceptions (pre-auth or orgless surfaces like `/api/dev`, `/api/onboarding`) are documented at the mount site
+
+**Input validation — every field, every source**
+- [ ] Every body field validated for type, length, allowed values (use Zod schema, no ad-hoc `if (!body.x) ...`)
+- [ ] Every URL slot (`:userId`) validated as UUID / expected shape
+- [ ] Every query param validated
+- [ ] Validation failure returns **400** with `{ error: "...", details: { fieldName: "what's wrong" } }`
+- [ ] No SQL injection surface — every query parameterised (`$1, $2 ...`); zero string interpolation
+- [ ] `req.body` size limits set at app level (Express default 100kb is fine for our shapes; flag if a route needs larger)
+
+**Authorization — who can hit this**
+- [ ] `authenticate` middleware applied (or explicit decision to allow anonymous)
+- [ ] `requireActiveMembership(perm?)` applied (post-AUDIT-02 Fix 1)
+- [ ] Permission name matches what `can()` defines — no typos, no missing entries in MATRIX
+- [ ] `org_id` ALWAYS sourced from `req.user.org_id`, NEVER from request body / query / URL
+- [ ] Cross-org reads: rows scoped to `req.user.org_id` in the WHERE clause — verified by trying to fetch another org's resource by id and getting 404 (not 403 — see "Information disclosure" below)
+- [ ] Cross-org writes: same rule, write target's `org_id` matches `req.user.org_id`
+
+**Status codes — correct, consistent**
+- [ ] 200 OK — read or update succeeded
+- [ ] 201 Created — POST that created a resource, response includes `Location` header with new URI
+- [ ] 204 No Content — successful action with no body to return (logout, delete)
+- [ ] 400 Bad Request — input failed validation
+- [ ] 401 Unauthorized — no/invalid session
+- [ ] 403 Forbidden — authenticated but no permission
+- [ ] 404 Not Found — resource doesn't exist OR caller doesn't have permission to know it exists (cross-org case)
+- [ ] 409 Conflict — duplicate / constraint violation (e.g. invite for email that's already a member)
+- [ ] 422 Unprocessable Entity — input syntactically valid but semantically wrong (rare, but if used, be deliberate)
+- [ ] 429 Too Many Requests — rate limit exceeded
+- [ ] 500 Internal Server Error — unexpected; logs the error, returns generic message
+
+**Response shape — consistent**
+- [ ] Success responses follow the established shape (`SessionUser`, `TeamMember`, etc.)
+- [ ] Error responses follow ONE shape: `{ error: "...", details?: { ... } }`
+- [ ] No PII / secrets in response (never echo back the JWT, never include passwords, never include other users' email in collection responses unless required)
+- [ ] No leaked schema details ("user_orgs row not found" → "Member not found")
+- [ ] Timestamps are ISO-8601 strings; UUIDs are strings; booleans are booleans
+
+**Information disclosure — what attackers learn**
+- [ ] 404 used for "exists but you can't access" (don't leak that the resource exists)
+- [ ] Error messages don't mention SQL, table names, column names
+- [ ] No stack traces in responses (Express default behaviour in prod is fine; verify NODE_ENV=production hides them)
+- [ ] Headers don't reveal versions (`X-Powered-By` removed by Helmet)
+
+**Observability — debugging future-you**
+- [ ] Unexpected errors (5xx path) log enough context to debug: route, params (no secrets), error message + stack
+- [ ] Security-relevant events log: failed auth attempts, permission denials, suspended-member access attempts
+- [ ] Logs are structured (JSON) where the platform supports it (Railway parses JSON logs)
+
+**Idempotency — safe to retry**
+- [ ] GET: always safe (no side effects)
+- [ ] PUT / PATCH: same body sent twice produces same end state
+- [ ] DELETE: sending DELETE twice returns 204 both times (or 404 the second — pick one and document)
+- [ ] POST: explicitly non-idempotent; if the client retries, duplicate creation is acceptable OR an idempotency key is supported
+
+**Performance — pre-emptive checks**
+- [ ] No N+1 query loops (any `for` over rows + per-row query → flag)
+- [ ] Indexes exist for WHERE columns on tables >10k rows expected
+- [ ] LIMIT applied to collection responses (paginate or cap at e.g. 100)
+- [ ] No SELECT * — explicit column list (lets indexes do covering scans)
+
+**Past violations to recognize**
+- pV2-02's `/auth/logout` didn't mirror `clearCookie` options to `set` options (status code was right; the bug was elsewhere — checklist item: "session-clearing endpoints mirror set options")
+- pV2-02's team endpoints inlined the membership re-read instead of using shared middleware (Violation F — covered by AUDIT-02 Fix 1, but still on this checklist to catch future cases)
+- pV2-03's invite endpoint had no length bound on `displayName` / `jobTitle` (caught in CC's AUDIT-01 retroactive concerns finding #4)
+
 ---
 
 ## Data Audit — Universal Audit Columns + Soft Delete
