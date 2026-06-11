@@ -1,22 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
-import { can } from '../../core/auth/permissions';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
 import { LauncherTile } from '../../shared/launcher/launcher-tile.types';
-import { PageSettingsDrawerComponent } from '../../shell/page-settings-drawer/page-settings-drawer.component';
+import { ShellContextService } from '../../shell/shell-context.service';
 import { heroTitle } from './hero-title';
 
 /** pV2-04b — the launcher-only agent home at /home (the port of v1's
  *  HomeComponent, NOT v1's /dashboard): centred title + subtitle + 5 tiles,
- *  no page-hero band — the launcher master owns the chrome. Cog (admins
- *  only) opens the page-settings drawer. Supplier variant lands in pV2-05. */
+ *  no page-hero band — the launcher master owns the chrome. The settings cog
+ *  + drawer live in the SHELL since pV2-04b1-qc; this page just registers
+ *  its settings surface. Supplier variant lands in pV2-05. */
 @Component({
   selector: 'app-home-agent',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, HomeLauncherComponent, PageSettingsDrawerComponent],
-  host: { class: 'bp-home-agent relative block' },
+  imports: [HomeLauncherComponent],
+  host: { class: 'bp-home-agent block' },
   template: `
     <app-home-launcher
       [title]="title()"
@@ -24,73 +23,46 @@ import { heroTitle } from './hero-title';
       [align]="config.heroAlign()"
       [tiles]="tiles()"
     />
-
-    @if (canEditSettings()) {
-      <button
-        type="button"
-        class="bp-home-agent__cog"
-        aria-label="Page settings"
-        (click)="settingsOpen.set(true)"
-      >
-        <lucide-icon name="settings" [size]="18" />
-      </button>
-    }
-
-    <app-page-settings-drawer [(visible)]="settingsOpen" />
   `,
-  styles: [
-    `
-      .bp-home-agent__cog {
-        position: absolute;
-        top: 24px; /* host sits below the shell header already */
-        right: 24px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 18px;
-        background: transparent;
-        border: 1px solid var(--color-border-hairline);
-        color: var(--color-text-secondary);
-        cursor: pointer;
-      }
-      .bp-home-agent__cog:hover {
-        background: var(--color-fill);
-      }
-      .bp-home-agent__cog:focus-visible {
-        outline: 2px solid var(--theme-accent);
-        outline-offset: 2px;
-      }
-    `,
-  ],
 })
 export class HomeAgentComponent {
   private readonly auth = inject(AuthService);
   protected readonly config = inject(PageConfigService);
 
-  protected readonly settingsOpen = signal(false);
-
-  /** Cog matches the SERVER's PUT gate (org.invite_member), not bare
-   *  isAdmin — a ballpark_admin has isAdmin=true but cannot author org
-   *  config, and a mismatched cog would open a drawer whose saves 403. */
-  protected readonly canEditSettings = computed(() => can(this.auth.role(), 'org.invite_member'));
+  constructor() {
+    // Register this page's settings surface with the shell (the shell owns
+    // the cog + the one drawer instance); unregister on destroy.
+    const shellContext = inject(ShellContextService);
+    shellContext.setPageSettings({ pageKey: 'v2Home', label: 'Customise your home' });
+    inject(DestroyRef).onDestroy(() => shellContext.setPageSettings(null));
+  }
 
   protected readonly title = computed(() =>
     heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
   );
 
-  /** The agent tile set (p0019). Add/View interpolate the configurable
-   *  events label live. */
+  /** The agent tile set (p0019) with the v1 subtitle copy. Add/View
+   *  interpolate the configurable events label live. */
   protected readonly tiles = computed<LauncherTile[]>(() => {
     const label = this.config.eventLabel();
     const lower = label.toLowerCase();
     return [
-      { icon: 'folder-plus', label: `Add ${lower}`, href: '/projects', primary: true },
-      { icon: 'folder-open', label: `View ${lower}s`, href: '/projects' },
-      { icon: 'inbox', label: 'Inbox', href: '/inbox' },
-      { icon: 'store', label: 'Marketplace', href: '/marketplace' },
-      { icon: 'circle-user', label: 'Profile', href: '/settings/profile' },
+      {
+        icon: 'folder-plus',
+        label: `Add ${lower}`,
+        subtitle: `Start a new ${lower}`,
+        href: '/projects',
+        primary: true,
+      },
+      {
+        icon: 'folder-open',
+        label: `View ${lower}s`,
+        subtitle: `Browse all your ${lower}s`,
+        href: '/projects',
+      },
+      { icon: 'inbox', label: 'Inbox', subtitle: 'Supplier replies and threads', href: '/inbox' },
+      { icon: 'store', label: 'Marketplace', subtitle: 'Browse items and suppliers', href: '/marketplace' },
+      { icon: 'circle-user', label: 'Profile', subtitle: 'Your account and settings', href: '/settings/profile' },
     ];
   });
 }
