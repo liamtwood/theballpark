@@ -46,6 +46,21 @@ module.exports = {
       ...theme('colors'),
       DEFAULT: 'var(--color-border-hairline)',
     }),
+    // pV2-TYPE-01 — REPLACE Tailwind's size ramp with the Layer-1 type
+    // tokens (One Definition: styles.css owns the values). Old names that
+    // don't map (text-xs/lg/3xl/4xl…) no longer compile to CSS; arbitrary
+    // text-[Npx] values fail the style guard. Line-height comes from the
+    // .bp-* type classes / --leading-* tokens, not the size utility.
+    fontSize: {
+      '2xs': 'var(--text-2xs)',
+      sm: 'var(--text-sm)',
+      base: 'var(--text-base)',
+      md: 'var(--text-md)',
+      xl: 'var(--text-xl)',
+      '2xl': 'var(--text-2xl)',
+      hero: 'var(--text-hero)',
+      greeting: 'var(--text-greeting)',
+    },
     extend: {
       // Spacing / radius / shadow extensions stay additive — only colors is replaced.
     },

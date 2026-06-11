@@ -6,11 +6,10 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <!-- Editorial type pair per DESIGN.md §5 (pV2-04b): Playfair Display
-       (--font-display) + Libre Franklin (--font-body). Same pair v1 loads. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+  <!-- pV2-TYPE-01: ONE font family app-wide, DB-driven via
+       bp_brand_config.font_pair (--bp-font). The static Playfair/Libre
+       Franklin pair is gone; runtime loading of an admin-picked webfont
+       lands in pV2-TYPE-02. -->
 </head>
 <body>
   <app-root></app-root>
