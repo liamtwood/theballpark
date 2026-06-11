@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './shell/app-shell.component';
-import { authGuard } from './core/auth/auth.guard';
+import { requiresOrgGuard } from './core/auth/requires-org.guard';
+import { needsOnboardingGuard } from './core/auth/needs-onboarding.guard';
 import { adminGuard } from './core/auth/admin.guard';
 
 export const routes: Routes = [
@@ -12,9 +13,16 @@ export const routes: Routes = [
       import('./pages/landing/landing.component').then((m) => m.LandingComponent),
   },
   {
+    // ORGLESS (signed in, no membership yet) — pure-bleed, outside the shell.
+    path: 'onboarding',
+    canActivate: [needsOnboardingGuard],
+    loadComponent: () =>
+      import('./pages/onboarding/onboarding.component').then((m) => m.OnboardingComponent),
+  },
+  {
     path: '',
     component: AppShellComponent, // header + outlet — every feature route gets the shell
-    canActivate: [authGuard], // signed-out → /login (login + callback live outside)
+    canActivate: [requiresOrgGuard], // signed-out → /login; orgless → /onboarding
     children: [
       {
         // The authenticated home surface — was `/` before pV2-02b made the
@@ -23,7 +31,7 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/hello/hello.component').then((m) => m.HelloComponent),
       },
       {
-        // Settings → Team (pV2-03). Admin-only on top of the shell's authGuard.
+        // Settings → Team (pV2-03). Admin-only on top of the shell's requiresOrgGuard.
         path: 'settings/team',
         canActivate: [adminGuard],
         loadComponent: () =>

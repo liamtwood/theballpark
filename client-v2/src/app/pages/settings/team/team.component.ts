@@ -6,6 +6,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
+import { errorDetail } from '../../../core/http-error';
 import { TeamMember, TeamService } from '../../../core/team/team.service';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 import { TeamMemberRowComponent } from './team-member-row.component';
@@ -180,15 +181,4 @@ export class TeamComponent {
       this.toast.add({ severity: 'error', summary: 'Remove rejected', detail: errorDetail(e), life: 4000 });
     }
   }
-}
-
-/** Pull the API's { error } message out of an HttpErrorResponse-ish unknown. */
-function errorDetail(e: unknown): string {
-  if (e && typeof e === 'object' && 'error' in e) {
-    const inner = (e as { error: unknown }).error;
-    if (inner && typeof inner === 'object' && 'error' in inner) {
-      return String((inner as { error: unknown }).error);
-    }
-  }
-  return 'Request failed';
 }

@@ -30,21 +30,21 @@ describe('adminGuard', () => {
     expect(runGuard('supplier_admin')).toBe(true);
   });
 
-  it('bounces agency_member to /', () => {
+  it('bounces agency_member to /home', () => {
     const result = runGuard('agency_member');
     expect(result).toBeInstanceOf(UrlTree);
-    expect(String(result)).toBe('/');
+    expect(String(result)).toBe('/home');
   });
 
-  it('bounces supplier_member to /', () => {
-    expect(String(runGuard('supplier_member'))).toBe('/');
+  it('bounces supplier_member to /home', () => {
+    expect(String(runGuard('supplier_member'))).toBe('/home');
   });
 
-  it('bounces ballpark_admin to / (cross-org admin ≠ org admin)', () => {
-    expect(String(runGuard('ballpark_admin'))).toBe('/');
+  it('bounces ballpark_admin to /home (cross-org admin ≠ org admin)', () => {
+    expect(String(runGuard('ballpark_admin'))).toBe('/home');
   });
 
-  it('bounces a signed-out user to /', () => {
-    expect(String(runGuard(null))).toBe('/');
+  it('bounces a signed-out user to /home', () => {
+    expect(String(runGuard(null))).toBe('/home');
   });
 });

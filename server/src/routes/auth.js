@@ -10,10 +10,10 @@
 const router = require('express').Router();
 const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
-const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 const { upsertUserFromGoogle, buildSession } = require('../services/auth.service');
 const { authenticate, COOKIE_NAME } = require('../middleware/authenticate');
+const { sessionCookieOptions, signSessionCookie } = require('../services/auth-cookie.service');
 const { authWriteLimit, authReadLimit, oauthLimit } = require('../middleware/rate-limits');
 
 const WEB = () => process.env.WEB_BASE_URL || 'http://localhost:4201';
@@ -35,46 +35,9 @@ function ensureStrategy() {
   strategyReady = true;
 }
 
-/** One Definition for the session-cookie attributes — referenced by BOTH the
- *  set and clear paths. Browsers match clearCookie against name+domain+path,
- *  so a clear that doesn't mirror the set options silently fails the moment
- *  JWT_COOKIE_DOMAIN is configured (CC's AUDIT-01 finding, fix 4b). */
-function sessionCookieOptions() {
-  return {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.JWT_COOKIE_SECURE === 'true',
-    domain: process.env.JWT_COOKIE_DOMAIN || undefined,
-    path: '/',
-  };
-}
-
-function signSessionCookie(res, session) {
-  const token = jwt.sign(
-    {
-      sub: session.id,
-      email: session.email,
-      // org_id is identity-adjacent and acceptable WHILE the user can't switch
-      // orgs without re-authenticating (no org switcher in v1). It moves out of
-      // the JWT — or switching forces re-auth — when multi-org UX lands.
-      org_id: session.activeOrgId,
-      // DEPRECATED — authority claims kept for backward-compat only.
-      // See WORKING_STANDARDS §"JWTs carry identity, not authority".
-      // The requireActiveMembership middleware overwrites these on every
-      // protected request with fresh truth from the DB; nothing may
-      // authorize off these values directly.
-      org_type: session.activeOrgType,
-      is_admin: session.isAdmin,
-      role: session.role,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-  res.cookie(COOKIE_NAME, token, {
-    ...sessionCookieOptions(),
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-}
+// Cookie signing + options live in services/auth-cookie.service.js (pV2-02b
+// extraction — onboarding refreshes the cookie too). Newly signed JWTs carry
+// identity only; the deprecated authority claims are gone.
 
 router.get('/google', oauthLimit, (req, res, next) => {
   ensureStrategy();
@@ -87,6 +50,8 @@ router.get('/google/callback', oauthLimit, (req, res, next) => {
     req, res, async () => {
       try {
         const { userId } = await upsertUserFromGoogle(req.user);
+        // buildSession returns a partial (org-null) session for orgless users
+        // since pV2-02b — null only for truly unknown/deleted users.
         const session = await buildSession(userId);
         if (!session) return res.redirect(`${WEB()}/login?error=no_membership`);
         signSessionCookie(res, session);
@@ -104,8 +69,10 @@ router.post('/logout', authWriteLimit, (req, res) => {
 
 router.get('/me', authReadLimit, authenticate, async (req, res, next) => {
   try {
+    // Orgless users get a 200 with org fields null (they're signed in, they
+    // just need onboarding); 401 only when the user row itself is gone.
     const session = await buildSession(req.user.id);
-    if (!session) return res.status(401).json({ error: 'No active membership' });
+    if (!session) return res.status(401).json({ error: 'Unknown user' });
     res.json(session);
   } catch (err) { next(err); }
 });

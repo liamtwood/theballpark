@@ -27,7 +27,8 @@ export class AuthCallbackComponent implements OnInit {
       const wait = Math.max(0, 1000 - (Date.now() - start));
       setTimeout(() => {
         if (this.auth.isLoggedIn()) {
-          void this.router.navigate(['/home']);
+          // Orgless signups go straight to onboarding; has-org users to home.
+          void this.router.navigate([this.auth.hasActiveOrg() ? '/home' : '/onboarding']);
         } else {
           void this.router.navigate(['/login'], { queryParams: { error: 'auth_failed' } });
         }

@@ -12,7 +12,9 @@ const { effectiveRole, normalizeOrgType } = require('./permissions.service');
  * Upsert a user from a Google OAuth profile.
  *  1. by google_sub → refresh display fields.
  *  2. by email      → link google_sub to the existing row.
- *  3. else          → create user + a new agency org + admin membership.
+ *  3. else          → create the user row ONLY (orgless) — the user picks
+ *                     Agency/Supplier at /onboarding, which creates the org
+ *                     + membership via POST /api/onboarding/create-org.
  * Returns { userId } — callers then buildSession(userId).
  */
 async function upsertUserFromGoogle(profile) {
@@ -59,36 +61,29 @@ async function upsertUserFromGoogle(profile) {
     return { userId };
   }
 
-  // 3. brand-new signup → user + new agency org + admin membership.
-  // All-or-nothing via the shared helper per WORKING_STANDARDS
-  // §"Multi-statement DB writes are transactional — via the shared helper" —
-  // a partial failure must not leak an orphan org/user row.
+  // 3. brand-new signup → user row ONLY (pV2-02b replaced the auto-created
+  // "{name}'s Workspace" magic — AUDIT-01's behavioral MUST-FIX #2). The org
+  // + membership land at onboarding. role and default_org_id stay NULL: v2
+  // reads authority from user_orgs.is_admin exclusively. Still wrapped in
+  // withTransaction although it's a single insert today, so future additions
+  // don't reintroduce hand-rolled writes.
   return withTransaction(async (client) => {
-    const orgName = `${displayName}'s Workspace`;
-    const org = await client.query(
-      `INSERT INTO orgs (name, type) VALUES ($1, 'agency') RETURNING id`,
-      [orgName]
-    );
-    const orgId = org.rows[0].id;
+    // role is EXPLICITLY null — the column carries v1's DEFAULT 'member',
+    // which would silently re-grant the legacy authority this prompt removes.
     const user = await client.query(
-      `INSERT INTO users (name, display_name, email, google_sub, avatar_url, default_org_id, role)
-       VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
-      [displayName, displayName, email, sub, avatarUrl, orgId]
+      `INSERT INTO users (name, display_name, email, google_sub, avatar_url, role)
+       VALUES ($1, $2, $3, $4, $5, NULL) RETURNING id`,
+      [displayName, displayName, email, sub, avatarUrl]
     );
-    const userId = user.rows[0].id;
-    await client.query(
-      `INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
-       VALUES ($1, $2, true, 'active', NOW())`,
-      [userId, orgId]
-    );
-    return { userId };
+    return { userId: user.rows[0].id };
   });
 }
 
 /**
  * Build the SessionUser payload for a user id: profile + active org
  * (default_org_id, else first active membership) + derived role.
- * Returns null if the user has no usable membership.
+ * Orgless users (signed in, pre-onboarding) get the user shape with all org
+ * fields null — pV2-02b. Returns null only for unknown/deleted users.
  */
 async function buildSession(userId) {
   const r = await pool.query(
@@ -102,7 +97,27 @@ async function buildSession(userId) {
       LIMIT 1`,
     [userId]
   );
-  if (!r.rows.length) return null;
+  if (!r.rows.length) {
+    // No active membership — orgless authenticated user (needs onboarding).
+    const u = await pool.query(
+      `SELECT id, email, COALESCE(display_name, name) AS display_name, avatar_url
+         FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+    if (!u.rows.length) return null; // truly unknown user
+    const row = u.rows[0];
+    return {
+      id: row.id,
+      email: row.email,
+      displayName: row.display_name,
+      avatarUrl: row.avatar_url,
+      activeOrgId: null,
+      activeOrgName: null,
+      activeOrgType: null,
+      isAdmin: false,
+      role: null,
+    };
+  }
   const row = r.rows[0];
   return {
     id: row.id,

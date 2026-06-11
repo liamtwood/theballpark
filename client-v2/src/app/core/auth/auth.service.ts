@@ -15,17 +15,19 @@ export type Role =
   | 'supplier_admin'
   | 'supplier_member';
 
-/** The signed-in user as the UI consumes it — flattened to the active org. */
+/** The signed-in user as the UI consumes it — flattened to the active org.
+ *  Org fields are null until onboarding completes (pV2-02b): an orgless
+ *  authenticated user is first-class and gets routed to /onboarding. */
 export interface SessionUser {
   id: string;
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
-  activeOrgId: string;
-  activeOrgName: string;
-  activeOrgType: OrgType;
+  activeOrgId: string | null;
+  activeOrgName: string | null;
+  activeOrgType: OrgType | null;
   isAdmin: boolean;
-  role: Role;
+  role: Role | null;
 }
 
 /** 401 from /auth/me just means "signed out" — the designed no-session
@@ -51,8 +53,11 @@ export class AuthService {
   readonly user = this._user.asReadonly();
   /** True while a session user is present. */
   readonly isLoggedIn = computed(() => this._user() !== null);
-  /** The active membership role, or null when signed out. */
+  /** The active membership role; null when signed out OR orgless. */
   readonly role = computed(() => this._user()?.role ?? null);
+  /** True when the session user belongs to an active org — orgless users
+   *  (signed in, pre-onboarding) are routed to /onboarding instead. */
+  readonly hasActiveOrg = computed(() => !!this._user()?.activeOrgId);
 
   /** Hydrate the session from the cookie (called at bootstrap + callback).
    *  Never throws — a 401 just means signed out; anything else still resolves

@@ -173,6 +173,10 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 // middleware/authenticate.js scope note.
 app.use('/auth', require('./routes/auth'));
 app.use('/api/dev', require('./routes/dev'));
+// pV2-02b — onboarding (orgless authenticated users create their org here).
+// Same shape as /api/dev: registered BEFORE the gated v2 router because
+// requireActiveMembership must NOT apply — orgless is the whole point.
+app.use('/api/onboarding', require('./routes/onboarding'));
 // Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
 app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));

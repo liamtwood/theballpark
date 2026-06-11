@@ -5,9 +5,10 @@ import { can } from './permissions';
 
 /** Functional guard for admin-only surfaces (Settings → Team): requires the
  *  org.invite_member permission — practically agency/supplier admins.
- *  Non-admins bounce to `/`. Runs after authGuard on the same route. */
+ *  Non-admins bounce to /home (the root went public in pV2-02b). Runs after
+ *  requiresOrgGuard on the same route. */
 export const adminGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  return can(auth.role(), 'org.invite_member') ? true : router.createUrlTree(['/']);
+  return can(auth.role(), 'org.invite_member') ? true : router.createUrlTree(['/home']);
 };
