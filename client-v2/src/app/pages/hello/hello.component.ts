@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { ApiService } from '../../core/api.service';
@@ -63,20 +63,20 @@ type ApiStatus = 'checking' | 'connected' | 'unreachable';
     </div>
   `,
 })
-export class HelloComponent implements OnInit {
+export class HelloComponent {
   private readonly api = inject(ApiService);
   protected readonly auth = inject(AuthService);
 
+  /** Health probe as an httpResource (pV2-AUDIT-02 fix 8) — last raw
+   *  .subscribe in v2 gone; status/error arrive as signals. */
+  private readonly health = this.api.getResource<{ status: string }>('/api/health');
+
   /** Live API reachability — drives the status dot. */
-  protected readonly apiStatus = signal<ApiStatus>('checking');
+  protected readonly apiStatus = computed<ApiStatus>(() => {
+    if (this.health.hasValue()) return 'connected';
+    return this.health.error() ? 'unreachable' : 'checking';
+  });
 
   /** TEMP (criterion 10) — can() proof against the live role signal. */
   protected readonly hasCheckout = computed(() => can(this.auth.role(), 'cart.checkout'));
-
-  ngOnInit(): void {
-    this.api.get<{ status: string }>('/api/health').subscribe({
-      next: () => this.apiStatus.set('connected'),
-      error: () => this.apiStatus.set('unreachable'),
-    });
-  }
 }

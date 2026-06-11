@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResourceRef, httpResource } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RuntimeConfigService } from './runtime-config.service';
 
@@ -17,6 +17,17 @@ export class ApiService {
   /** GET `{apiBaseUrl}{path}`. withCredentials so the bp_session cookie flows. */
   get<T>(path: string): Observable<T> {
     return this.http.get<T>(`${this.base()}${path}`, { withCredentials: true });
+  }
+
+  /** GET `{apiBaseUrl}{path}` as an httpResource — the signal-native variant
+   *  of get() for fetch-into-state consumers (status/value/error as signals,
+   *  no subscribe). Must be called in an injection context (e.g. a component
+   *  field initializer), same as httpResource itself. */
+  getResource<T>(path: string): HttpResourceRef<T | undefined> {
+    return httpResource<T>(() => ({
+      url: `${this.base()}${path}`,
+      withCredentials: true,
+    }));
   }
 
   /** POST `{apiBaseUrl}{path}`. */
