@@ -97,8 +97,11 @@ export const appConfig: ApplicationConfig = {
       const auth = inject(AuthService);
       const pageConfig = inject(PageConfigService);
       await rc.load();
-      await brand.load();
-      await auth.loadSession();
+      // Brand and session are independent — run them CONCURRENTLY (each leg
+      // is a remote-DB roundtrip; serial chaining was ~40% of boot time,
+      // Liam's "performance on initial login is bad", 2026-06-12). Only
+      // page-config truly depends on the session (activeOrgType).
+      await Promise.all([brand.load(), auth.loadSession()]);
       await pageConfig.load();
     }),
   ],
