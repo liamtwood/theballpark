@@ -39,7 +39,15 @@ function signSessionCookie(res, session) {
     {
       sub: session.id,
       email: session.email,
+      // org_id is identity-adjacent and acceptable WHILE the user can't switch
+      // orgs without re-authenticating (no org switcher in v1). It moves out of
+      // the JWT — or switching forces re-auth — when multi-org UX lands.
       org_id: session.activeOrgId,
+      // DEPRECATED — authority claims kept for backward-compat only.
+      // See WORKING_STANDARDS §"JWTs carry identity, not authority".
+      // The requireActiveMembership middleware overwrites these on every
+      // protected request with fresh truth from the DB; nothing may
+      // authorize off these values directly.
       org_type: session.activeOrgType,
       is_admin: session.isAdmin,
       role: session.role,
