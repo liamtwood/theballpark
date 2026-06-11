@@ -2003,35 +2003,6 @@ const migrate = async () => {
     }
     console.log('  users re-signup unblock: users_email_key dropped; google_sub uidx rebuilt with deleted_at filter (v2.07a QC fix, all schemas).');
 
-    // ─────────────────────────────────────────────────────────────────
-    // v2.09a (pV2-04) — org_type_config: per-org_type page-settings
-    // payload (JSONB). The p0021 migration file existed in database/ but
-    // was NEVER applied — ConfigService has been degrading to {} via its
-    // 42P01 catch since p0021 (v1 page settings silently rode
-    // localStorage). This block makes migrate-schemas.js the single
-    // source of truth per The Test. Config registry: rows never go away
-    // → no deleted_at (same exemption as bp_brand_config). v2 home
-    // config nests under payload.v2Home so v1's flat payload fields are
-    // never clobbered by v2 writes (and vice versa).
-    // ─────────────────────────────────────────────────────────────────
-    for (const schema of ['public', 'preview', 'master']) {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS ${schema}.org_type_config (
-          org_type   TEXT PRIMARY KEY
-                       CHECK (org_type IN ('agency', 'supplier', 'admin')),
-          payload    JSONB       NOT NULL DEFAULT '{}'::jsonb,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_by UUID
-        );
-      `);
-      await client.query(`
-        INSERT INTO ${schema}.org_type_config (org_type, payload) VALUES
-          ('agency', '{}'::jsonb), ('supplier', '{}'::jsonb), ('admin', '{}'::jsonb)
-        ON CONFLICT (org_type) DO NOTHING;
-      `);
-    }
-    console.log('  org_type_config installed + seeded (v2.09a — p0021 migration finally applied, all schemas).');
-
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');

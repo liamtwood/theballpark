@@ -10,29 +10,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
-import {
-  LucideAngularModule,
-  Activity,
-  CalendarDays,
-  ChevronLeft,
-  CircleUser,
-  Coins,
-  FolderOpen,
-  FolderPlus,
-  Heart,
-  Inbox,
-  Rocket,
-  Settings,
-  Store,
-  Trash2,
-  Zap,
-} from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, Rocket, Trash2 } from 'lucide-angular';
 
 import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/runtime-config.service';
 import { BrandConfigService } from './core/brand-config.service';
 import { AuthService } from './core/auth/auth.service';
-import { PageConfigService } from './core/config/page-config.service';
 
 // Bridge the Ballpark brand into PrimeNG's Aura preset. PrimeNG styled mode
 // injects its design tokens at runtime, so a CSS `--p-*` override in styles.css
@@ -73,15 +56,7 @@ export const appConfig: ApplicationConfig = {
     // the app level because `.pick()` returns a ModuleWithProviders, which is
     // valid via importProvidersFrom but not inside a standalone component's
     // `imports`. Components import the bare module for the <lucide-icon> directive.
-    importProvidersFrom(
-      LucideAngularModule.pick({
-        // Shell + sandbox
-        ChevronLeft, Rocket, Trash2,
-        // pV2-04 home: hero cog, launcher tiles, section eyebrows
-        Settings, FolderPlus, FolderOpen, Inbox, Store, CircleUser,
-        CalendarDays, Activity, Zap, Coins, Heart,
-      })
-    ),
+    importProvidersFrom(LucideAngularModule.pick({ ChevronLeft, Rocket, Trash2 })),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
     // an undefined API URL (self-host: API endpoint is editable post-build).
     // Then load brand config (pV2-01e) — the --bp-* tokens land on :root
@@ -89,17 +64,13 @@ export const appConfig: ApplicationConfig = {
     // never throws (cosmetic — API down just keeps the styles.css fallbacks).
     // Then hydrate the auth session from the bp_session cookie (pV2-02), so
     // the auth guard sees a settled signal on the very first navigation.
-    // Then the page-settings config (pV2-04) — needs activeOrgType from the
-    // session; skips itself for signed-out/orgless users.
     provideAppInitializer(async () => {
       const rc = inject(RuntimeConfigService);
       const brand = inject(BrandConfigService);
       const auth = inject(AuthService);
-      const pageConfig = inject(PageConfigService);
       await rc.load();
       await brand.load();
       await auth.loadSession();
-      await pageConfig.load();
     }),
   ],
 };

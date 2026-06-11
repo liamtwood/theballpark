@@ -67,36 +67,4 @@ async function upsert(orgType, payload, userId) {
   return rows[0];
 }
 
-/**
- * pV2-04 — read the v2 home config slice. v2 settings live NAMESPACED under
- * payload.v2Home so v1's flat payload fields and v2's never clobber each
- * other (both apps share these rows).
- */
-async function getV2Home(orgType) {
-  const row = await get(orgType);
-  if (!row) return null;
-  return (row.payload && row.payload.v2Home) || {};
-}
-
-/**
- * pV2-04 — merge-write the v2Home slice in ONE statement (jsonb_set on the
- * existing payload), so concurrent v1 writes to other payload keys are never
- * lost and no read-modify-write race exists. Single statement → no
- * transaction needed (ENGINEERING.md Rule 1 applies to multi-statement).
- */
-async function setV2Home(orgType, v2Home, userId) {
-  if (!isValid(orgType)) throw new Error(`Invalid org_type: ${orgType}`);
-  const { rows } = await pool.query(
-    `INSERT INTO org_type_config (org_type, payload, updated_by, updated_at)
-          VALUES ($1, jsonb_build_object('v2Home', $2::jsonb), $3, now())
-     ON CONFLICT (org_type)
-       DO UPDATE SET payload    = jsonb_set(COALESCE(org_type_config.payload, '{}'::jsonb), '{v2Home}', $2::jsonb),
-                     updated_by = EXCLUDED.updated_by,
-                     updated_at = now()
-       RETURNING org_type, payload->'v2Home' AS v2_home, updated_at`,
-    [orgType, JSON.stringify(v2Home || {}), userId || null]
-  );
-  return rows[0];
-}
-
-module.exports = { get, upsert, getV2Home, setV2Home, isValid, VALID_ORG_TYPES };
+module.exports = { get, upsert, isValid, VALID_ORG_TYPES };
