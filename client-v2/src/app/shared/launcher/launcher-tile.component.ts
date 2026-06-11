@@ -37,8 +37,11 @@ import { LucideAngularModule } from 'lucide-angular';
         box-shadow: var(--shadow-md);
         transition: transform 0.12s ease, box-shadow 0.12s ease;
       }
+      /* Rest moved xs → md in pV2-04b2, which collapsed the old hover delta
+         (md → lg + 1px reads as nothing). Stronger lift restores a visible
+         animation against the lifted rest state. */
       :host(:hover) {
-        transform: translateY(-1px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-lg);
       }
       :host(:focus-within) {
