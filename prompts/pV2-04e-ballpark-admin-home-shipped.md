@@ -181,3 +181,8 @@ loaded), no picker.
 Note: the button rides the locked .bp-btn-outline pill — slightly rounder
 than Google's reference rectangle; flag at QC if exact-Google chrome is
 wanted instead.
+
+## QC notes — addendum (2026-06-12)
+**Liam:** "qc - ballparkadmin - good" — the v2.12d/e end state verified:
+liam.wood signs in via the Google button, lands the admin home, one role.
+Agent + supplier flows pending his new test accounts.
