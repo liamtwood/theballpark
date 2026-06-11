@@ -116,3 +116,28 @@ no supplier membership — see Concerns).
   insert awaiting his explicit approval.
 - users.default_org_id doubles as "active org" until a session-scoped
   active org exists (pre-existing design, now load-bearing for switching).
+
+## Iteration — v2.12c (2026-06-12)
+**Triggered by QC:** "the performance on initial login is bad too" + the
+supplier round-trip identity bug ("change to supplier and then agent again
+it makes me ryan and then sarah").
+**Commit:** `0df12f2`
+**Perf:** boot initializers were a 4-leg SERIAL waterfall (rc → brand →
+auth/me → page-config), each leg a remote-DB roundtrip. Brand and session
+are independent — now Promise.all'd; only page-config waits for the
+session. Measured boot API chain: 983ms → 238ms (combined with the pool
+keepalive fix).
+**Round-trip identity bug — root cause, fix BLOCKED on approval:**
+impersonation is a one-way door: switching to Supplier replaces Liam's
+session with RYAN's, so the next "Agent" click resolves from Ryan's
+(membership-less) world → seeded Sarah. Liam has no supplier membership,
+so Supplier can't be a stay-yourself switch. The fix is ONE row:
+
+  INSERT INTO user_orgs (user_id, org_id, is_admin, status, joined_at)
+  VALUES ('c7643cde-…caa0c0' /* liam.wood */,
+          '5488cde0-…655e' /* Rocket Food (Ryan's supplier org) */,
+          true, 'active', NOW());
+
+The permission classifier (correctly) refused the shared-DB insert without
+Liam's explicit approval — asked in chat; once granted, all three personas
+switch HIS active org and impersonation never triggers for him.
