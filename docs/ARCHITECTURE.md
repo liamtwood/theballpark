@@ -173,7 +173,7 @@ Mirrored in `client-v2/src/app/core/auth/permissions.ts` AND
 ```
                        agency_admin  agency_member  supplier_admin  supplier_member  ballpark_admin
 org.invite_member          ✓             —              ✓                —                —
-org.manage_billing         ✓             —              ✓                —                —
+org.manage_billing         ✓             —              ✓                —                ✓
 project.create             ✓             ✓              —                —                —
 project.delete             ✓             —              —                —                —
 item.create                ✓             ✓              ✓                ✓                —

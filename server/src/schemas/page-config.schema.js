@@ -17,6 +17,21 @@ const PageConfigSchema = z
     creditLabel: z.string().trim().min(1).max(30).optional(),
     eventLabel: z.string().trim().min(1).max(30).optional(),
     clientLabel: z.string().trim().min(1).max(30).optional(),
+
+    // Per-page hero overrides (title2/subtitle2 roles). Explicit page keys —
+    // a new configurable page adds its key here, not a free-form record.
+    pages: z
+      .object({
+        profile: z
+          .object({
+            title: z.string().trim().max(80).optional(),
+            subtitle: z.string().trim().max(120).optional(),
+          })
+          .strip()
+          .optional(),
+      })
+      .strip()
+      .optional(),
   })
   // Unknown keys are stripped, not errored — retired fields from older
   // clients must not brick the drawer; the schema defines what PERSISTS.

@@ -7,7 +7,7 @@ import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** The two customer org types whose page settings the table edits. */
-const ROLES = ['agency', 'supplier'] as const;
+const ROLES = ['agency', 'supplier', 'ballpark'] as const;
 type RoleType = (typeof ROLES)[number];
 
 /** pV2-04c-pre — /settings/pages: the simple TABLE view of page settings
@@ -76,7 +76,7 @@ type RoleType = (typeof ROLES)[number];
               (valueChange)="save(role, { heroSubtitle: $event })"
             />
           </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span></span>
             <span class="bp-field-label">Position</span>
             <app-edit-field
@@ -86,6 +86,31 @@ type RoleType = (typeof ROLES)[number];
               [value]="cfg?.heroAlign ?? 'center'"
               [editing]="true"
               (valueChange)="save(role, { heroAlign: $event === 'left' ? 'left' : 'center' })"
+            />
+          </div>
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
+            <span></span>
+            <span class="bp-field-label">Profile title</span>
+            <app-edit-field
+              label=""
+              type="text"
+              [value]="cfg?.pages?.profile?.title ?? ''"
+              placeholder="Profile"
+              [maxLength]="80"
+              [editing]="true"
+              (valueChange)="saveProfileHero(role, 'title', $event)"
+            />
+          </div>
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
+            <span></span>
+            <span class="bp-field-label">Profile subtitle</span>
+            <app-edit-field
+              label=""
+              type="text"
+              [value]="cfg?.pages?.profile?.subtitle ?? ''"
+              placeholder="Defaults to the organisation name"
+              [editing]="true"
+              (valueChange)="saveProfileHero(role, 'subtitle', $event)"
             />
           </div>
         }
@@ -119,6 +144,7 @@ export class PagesSettingsComponent {
   private readonly configs = {
     agency: signal<PageConfigPayload | null>(null),
     supplier: signal<PageConfigPayload | null>(null),
+    ballpark: signal<PageConfigPayload | null>(null),
   };
 
   private readonly loader = resource<void, void>({
@@ -144,6 +170,15 @@ export class PagesSettingsComponent {
   protected asTitleMode(v: string): PageConfigPayload['heroTitleMode'] {
     const valid = ['greeting', 'username', 'orgName', 'fixed'] as const;
     return valid.find((m) => m === v) ?? 'greeting';
+  }
+
+  /** Per-page hero fields nest under pages.<page> — mergeConfig is shallow,
+   *  so build the nested object from current state before saving. */
+  protected saveProfileHero(role: RoleType, key: 'title' | 'subtitle', value: string): void {
+    const current = this.configs[role]()?.pages?.profile ?? {};
+    void this.save(role, {
+      pages: { profile: { ...current, [key]: value || undefined } },
+    });
   }
 
   protected async save(role: RoleType, patch: Partial<PageConfigPayload>): Promise<void> {

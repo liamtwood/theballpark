@@ -25,6 +25,10 @@ export class PageConfigService {
   readonly eventLabel = computed(() => this._config()?.eventLabel ?? CONFIG_DEFAULTS.eventLabel);
   readonly clientLabel = computed(() => this._config()?.clientLabel ?? CONFIG_DEFAULTS.clientLabel);
 
+  /** Profile-page hero overrides (title2/subtitle2) — unset = page defaults. */
+  readonly profileTitle = computed(() => this._config()?.pages?.profile?.title ?? '');
+  readonly profileSubtitle = computed(() => this._config()?.pages?.profile?.subtitle ?? '');
+
   /** Load the org_type's config. Called from the bootstrap initializer chain
    *  AFTER AuthService.loadSession (needs activeOrgType); orgless / signed-out
    *  users skip — they never see /home. Never throws (boot must proceed). */

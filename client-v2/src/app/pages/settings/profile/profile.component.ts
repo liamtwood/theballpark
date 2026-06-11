@@ -5,6 +5,7 @@ import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { can } from '../../../core/auth/permissions';
 import { errorDetail } from '../../../core/http-error';
+import { PageConfigService } from '../../../core/config/page-config.service';
 import { OrgProfile, OrganisationService } from '../../../core/organisation.service';
 import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
@@ -36,7 +37,7 @@ interface ProfileForm {
   providers: [MessageService],
   host: { class: 'block' },
   template: `
-    <app-page-hero title="Profile" [subtitle]="auth.user()?.activeOrgName ?? ''" />
+    <app-page-hero [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
     <div class="bp-page-body">
       @if (profile.isLoading()) {
@@ -91,6 +92,14 @@ export class ProfileComponent {
   protected readonly auth = inject(AuthService);
   private readonly orgs = inject(OrganisationService);
   private readonly toast = inject(MessageService);
+  private readonly pageConfig = inject(PageConfigService);
+
+  /** Hero (title2/subtitle2 roles): /settings/pages overrides win;
+   *  defaults are "Profile" / the org name. */
+  protected readonly heroTitle = computed(() => this.pageConfig.profileTitle() || 'Profile');
+  protected readonly heroSubtitle = computed(
+    () => this.pageConfig.profileSubtitle() || (this.auth.user()?.activeOrgName ?? '')
+  );
 
   protected readonly String = String;
 

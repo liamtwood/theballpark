@@ -12,6 +12,17 @@ export interface PageConfigPayload {
   creditLabel?: string;
   eventLabel?: string;
   clientLabel?: string;
+
+  /** Per-page hero overrides (title2/subtitle2 roles). Explicit page keys. */
+  pages?: {
+    profile?: PageHeroOverride;
+  };
+}
+
+/** A page's configurable hero pair (defaults apply when unset). */
+export interface PageHeroOverride {
+  title?: string;
+  subtitle?: string;
 }
 
 /** Non-persisted defaults, applied at read time. */
