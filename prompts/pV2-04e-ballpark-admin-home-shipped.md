@@ -186,3 +186,12 @@ wanted instead.
 **Liam:** "qc - ballparkadmin - good" — the v2.12d/e end state verified:
 liam.wood signs in via the Google button, lands the admin home, one role.
 Agent + supplier flows pending his new test accounts.
+
+## QC notes — addendum 2 (2026-06-12)
+**Liam:** all 3 role accounts created (liam.wood / ballparkagent /
+ballparksupplier). Initial login still feels slow — PARKED by Liam ("lets
+do nothing for now"). Candidates when picked back up: the Google OAuth
+redirect chain itself (3 cross-origin hops before our code runs), the
+remaining serial boot legs (rc → [brand ∥ auth] → config), and dev-server
+on-demand chunk compilation, none addressed by the pool/parallelization
+fixes. Measure the OAuth callback → first-paint window first.
