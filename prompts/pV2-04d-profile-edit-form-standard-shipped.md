@@ -90,3 +90,12 @@ Note: landing h1 rides the same `--text-hero` token (now 40px). Hero subtitle
 **Triggered by QC:** Profile card "Organisation" retitled "Company Information".
 **Commit:** `31fd74e`
 **Files:** profile.component.ts (title input string); chip.
+
+## Iteration — v2.11f (2026-06-11)
+**Triggered by QC:** Liam's converge call on the flagged `.bp-field-value`
+divergence — option (b): promote the table row to `--text-md` (14px),
+matching `.bp-fld`'s chrome.
+**Commit:** `8ad9035`
+**Files:** styles.css (`.bp-field-value` base→md); DESIGN.md §5 table row
+(+ convergence note); chip. Class has no consumers yet — doc/table truth fix;
+verified 14px computed via injected element on 4201.
