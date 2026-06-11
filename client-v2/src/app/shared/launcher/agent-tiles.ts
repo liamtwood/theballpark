@@ -24,7 +24,24 @@ export const AGENT_TILES: readonly LauncherTile[] = [
   { icon: 'circle-user', label: 'Profile', subtitle: 'Manage your portfolio, pricing and account.', href: '/settings/profile' },
 ];
 
+/** The ballpark-admin launcher tile set (Liam, 2026-06-12): platform admins
+ *  get just the two real admin surfaces — no agent project chrome. */
+export const BALLPARK_TILES: readonly LauncherTile[] = [
+  {
+    icon: 'circle-user',
+    label: 'Profile',
+    subtitle: 'Manage company information, team members and business details.',
+    href: '/settings/profile',
+  },
+  {
+    icon: 'settings',
+    label: 'Page Settings',
+    subtitle: 'Edit page heroes and labels per customer role.',
+    href: '/settings/pages',
+  },
+];
+
 /** First tile whose href matches the given path (stub heroes). */
 export function tileForPath(path: string): LauncherTile | undefined {
-  return AGENT_TILES.find((t) => t.href === path);
+  return [...AGENT_TILES, ...BALLPARK_TILES].find((t) => t.href === path);
 }
