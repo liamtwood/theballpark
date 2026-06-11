@@ -258,8 +258,11 @@ app.get('/api/unsplash/search', async (req, res) => {
   const v2 = express.Router();
   v2.use(authenticate, requireActiveMembership());
   v2.use('/team', require('./routes/team'));
-  // future v2 endpoints: v2.use('/projects', ...), v2.use('/home', ...) — they
-  // inherit the gate automatically by being mounted here.
+  // pV2-04 — agent home reads (stats / upcoming / activity / credits /
+  // saved-suppliers). Inherits the gate; org scoping via req.user.org_id.
+  v2.use('/dashboard', require('./routes/dashboard'));
+  // future v2 endpoints: v2.use('/projects', ...) — they inherit the gate
+  // automatically by being mounted here.
   app.use('/api', v2);
 }
 
