@@ -258,6 +258,8 @@ app.get('/api/unsplash/search', async (req, res) => {
   const v2 = express.Router();
   v2.use(authenticate, requireActiveMembership());
   v2.use('/team', require('./routes/team'));
+  // pV2 Profile — the org's own profile (GET any member / PUT org admins).
+  v2.use('/organisation', require('./routes/organisation'));
   // future v2 endpoints: v2.use('/projects', ...), v2.use('/home', ...) — they
   // inherit the gate automatically by being mounted here.
   app.use('/api', v2);

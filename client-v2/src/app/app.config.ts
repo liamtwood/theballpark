@@ -13,6 +13,7 @@ import Aura from '@primeuix/themes/aura';
 import {
   LucideAngularModule,
   ArrowLeft,
+  Check,
   ChevronLeft,
   CircleUser,
   FolderOpen,
@@ -20,6 +21,7 @@ import {
   Inbox,
   Rocket,
   Settings,
+  SquarePen,
   Store,
   Trash2,
   X,
@@ -76,6 +78,8 @@ export const appConfig: ApplicationConfig = {
         ChevronLeft, Rocket, Trash2,
         // pV2-04b home: cog, drawer close, launcher tiles, Back link
         Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
+        // Profile: section edit lifecycle
+        SquarePen, Check,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

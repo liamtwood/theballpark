@@ -179,3 +179,34 @@ body {
     --text-hero: 28px;
   }
 }
+
+/* Settings-page field grids (pV2 Profile — the v1 bp-field-grid standard).
+   edit-fields lay out 2- or 3-up; span2 stretches a field across both
+   columns of the 2-up grid. Single column under 640px. */
+.bp-field-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+.bp-field-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px 20px;
+}
+.bp-field-grid-2 .bp-edit-field--span2 {
+  grid-column: 1 / -1;
+}
+@media (max-width: 640px) {
+  .bp-field-grid-2,
+  .bp-field-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Settings-page section stack. */
+.bp-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+}

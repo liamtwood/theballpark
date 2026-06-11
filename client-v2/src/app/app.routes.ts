@@ -72,9 +72,12 @@ export const routes: Routes = [
         data: { feature: 'Marketplace' },
       },
       {
+        // Profile — the org's own profile + financial defaults (the v2 port
+        // of v1's /settings/organisation; reference consumer of
+        // edit-section + page-density edit-field).
         path: 'settings/profile',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Profile' },
+        loadComponent: () =>
+          import('./pages/settings/profile/profile.component').then((m) => m.ProfileComponent),
       },
       // future feature routes go here, all get the shell
     ],
