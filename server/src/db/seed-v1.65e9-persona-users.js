@@ -8,8 +8,11 @@
 //   beth@ballpark.test   → Beth Pizey      · Ballpark        · admin
 //   ryan@rocketfood.test → Ryan Foster     · Rocket Food     · admin
 //
-// Idempotent: ON CONFLICT (email) DO UPDATE so re-running just
-// patches the name/org/role if anything drifted.
+// Idempotent: ON CONFLICT (lower(email)) WHERE deleted_at IS NULL
+// DO UPDATE so re-running just patches the name/org/role if anything
+// drifted. (v2.07a QC fix: targets the partial users_email_uidx — the legacy
+// users_email_key constraint was dropped so soft-deleted users can
+// re-sign-up.)
 //
 // Usage:
 //   node server/src/db/seed-v1.65e9-persona-users.js
@@ -55,7 +58,7 @@ const PERSONA_USERS = [
       const r = await client.query(
         `INSERT INTO users (email, name, org_id, role, is_active)
          VALUES ($1, $2, $3, $4, true)
-         ON CONFLICT (email) DO UPDATE
+         ON CONFLICT (lower(email)) WHERE deleted_at IS NULL DO UPDATE
            SET name = EXCLUDED.name,
                org_id = EXCLUDED.org_id,
                role = EXCLUDED.role,

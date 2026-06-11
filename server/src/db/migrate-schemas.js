@@ -1928,7 +1928,8 @@ const migrate = async () => {
       await client.query(`SELECT audit.add_audit_columns('${schema}', 'users')`);
       await client.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx
-          ON ${schema}.users (google_sub) WHERE google_sub IS NOT NULL;
+          ON ${schema}.users (google_sub)
+          WHERE google_sub IS NOT NULL AND deleted_at IS NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx
           ON ${schema}.users (lower(email)) WHERE deleted_at IS NULL;
       `);
@@ -1957,6 +1958,50 @@ const migrate = async () => {
       await client.query(`SELECT audit.add_audit_columns('${schema}', 'user_orgs')`);
     }
     console.log('  users reshape (google_sub/display_name/default_org_id) + user_orgs installed (v2.04a, all schemas).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v2.07a (pV2-02b QC) — users: free soft-deleted identifiers for
+    // re-signup.
+    // A soft-deleted users row still occupied its email (legacy
+    // NON-partial users_email_key constraint, pre-dates soft-delete) and
+    // google_sub (the v2.04a index above originally shipped without a
+    // deleted_at filter), so upsertUserFromGoogle step 3's INSERT hit a
+    // unique violation and the OAuth callback 500'd — a soft-deleted
+    // user could never sign up again (caught in pV2-02b QC). Fix: drop
+    // users_email_key (live-row uniqueness is still enforced — and
+    // case-insensitively, which the old constraint wasn't — by
+    // users_email_uidx) and rebuild users_google_sub_uidx with the
+    // deleted_at IS NULL predicate; the v2.04a CREATE above now carries
+    // the same shape for fresh databases. Deliberately NOT
+    // tombstone-scrubbing (renaming email / nulling google_sub on
+    // delete): the partial indexes free the identifiers while the
+    // tombstone keeps its real values for audit. Idempotent — the
+    // conditional drop fires only while the old index shape exists; the
+    // drop + recreate run in one client.query() call, so they share one
+    // implicit transaction and uniqueness never has a gap. The only
+    // consumer of users_email_key was seed-v1.65e9-persona-users.js's
+    // ON CONFLICT (email) — repointed at users_email_uidx in the same
+    // commit.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.users DROP CONSTRAINT IF EXISTS users_email_key;
+        DO $fix$ BEGIN
+          IF EXISTS (
+            SELECT 1 FROM pg_indexes
+             WHERE schemaname = '${schema}' AND tablename = 'users'
+               AND indexname = 'users_google_sub_uidx'
+               AND indexdef NOT LIKE '%deleted_at IS NULL%'
+          ) THEN
+            EXECUTE 'DROP INDEX ${schema}.users_google_sub_uidx';
+          END IF;
+        END $fix$;
+        CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx
+          ON ${schema}.users (google_sub)
+          WHERE google_sub IS NOT NULL AND deleted_at IS NULL;
+      `);
+    }
+    console.log('  users re-signup unblock: users_email_key dropped; google_sub uidx rebuilt with deleted_at filter (v2.07a QC fix, all schemas).');
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
