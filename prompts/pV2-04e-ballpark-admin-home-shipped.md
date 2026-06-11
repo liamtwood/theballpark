@@ -141,3 +141,24 @@ so Supplier can't be a stay-yourself switch. The fix is ONE row:
 The permission classifier (correctly) refused the shared-DB insert without
 Liam's explicit approval — asked in chat; once granted, all three personas
 switch HIS active org and impersonation never triggers for him.
+
+## Iteration — v2.12d (2026-06-12)
+**Triggered by QC:** "in as liam but wrong home (agent not admin)... it
+should be admin" → design question "are we making it too complex?" →
+Liam's ruling: "when i login as admin, only allow one role, admin, ill
+create other accounts to test with."
+**Commit:** `fc7118d` (net −216 lines)
+**What happened:** the v2.12b switcher had ALSO drifted Liam's sign-in
+default to his agency (switch-org wrote default_org_id). Rather than the
+session-scoped-org fix (coded, then discarded), Liam simplified the model:
+one account = one role.
+- Header View-as (dev) switcher removed from user-menu.
+- /auth/orgs + /auth/switch-org + schema + service fns removed
+  (resurrect from e7b4bd5 if a real customer org switcher lands).
+- devPersonas reverted to the seeded mapping; only the login page's dev
+  picker consumes it (full sign-ins — no mid-session identity swaps).
+- DB (Liam-directed, in-chat instruction): liam.wood's agency membership
+  soft-deleted (deleted_at — reversible); default_org_id → Ballpark.
+  buildSession verified: ballpark_admin / Ballpark.
+**Net state:** liam.wood signs in → admin home, always. Other roles =
+separate accounts (Liam will create; seeded picker remains for dev).
