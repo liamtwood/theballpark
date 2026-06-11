@@ -209,7 +209,7 @@ compositions, free to diverge later — the values live once, in Layer 1.
 | | `.bp-drawer-section-title` | md | 500 | — | snug | `--color-text` |
 | | `.bp-drawer-section-subtitle` | sm | 400 | — | normal | `--color-text-secondary` |
 | Field | `.bp-field-label` | sm | 500 | — | normal | `--color-text-secondary` |
-| | `.bp-field-value` | base | 400 | — | normal | `--color-text` |
+| | `.bp-field-value` | md | 400 | — | normal | `--color-text` — converged with edit-field's `.bp-fld` chrome (Liam, 2026-06-11) |
 | | `.bp-field-help` | sm | 400 | — | normal | `--color-text-muted` |
 | Body | `.bp-body` | md | 400 | — | normal | `--color-text` |
 | | `.bp-body-small` | base | 400 | — | normal | `--color-text` |
