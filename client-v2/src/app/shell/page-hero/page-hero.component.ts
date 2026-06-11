@@ -108,9 +108,8 @@ import { LucideAngularModule } from 'lucide-angular';
             'back    actions'
             'text    text';
         }
-        .bp-page-hero__title {
-          font-size: var(--text-2xl);
-        }
+        /* Title shrinks via the ROOT --text-hero mobile override (28px) —
+           no per-component re-declaration (DESIGN.md §5 rule 5). */
       }
     `,
   ],

@@ -63,10 +63,12 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Layer 1 — size scale (One Definition of every size) */
+  --text-xs: 10px; /* micro-meta — capsule chip captions */
   --text-2xs: 11px;
   --text-sm: 12px;
   --text-base: 13px;
   --text-md: 14px;
+  --text-lg: 16px; /* large body — marketing paragraph */
   --text-xl: 18px;
   --text-2xl: 22px;
   --text-hero: 36px;
@@ -167,4 +169,13 @@ body {
   background: var(--theme-bg);
   color: var(--theme-text);
   font-family: var(--bp-font);
+}
+
+/* Mobile type overrides at the ROOT (pV2-TYPE-01 / DESIGN.md §5 rule 5:
+   update the token in a media query — never re-declare per-component).
+   --text-greeting needs none (clamp() is responsive by itself). */
+@media (max-width: 640px) {
+  :root {
+    --text-hero: 28px;
+  }
 }

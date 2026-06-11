@@ -6,7 +6,7 @@ module.exports = {
     // WORKING_STANDARDS §"Tokens only — enforced at compile time".
     // text-slate-500 / bg-white / border-black/10 generate NO css (Tailwind
     // ignores unknown utilities), and `npm run lint` greps them as errors —
-    // see scripts/check-raw-colors.js.
+    // see scripts/check-style-guards.js.
     colors: {
       transparent: 'transparent',
       current: 'currentColor',
@@ -52,10 +52,12 @@ module.exports = {
     // text-[Npx] values fail the style guard. Line-height comes from the
     // .bp-* type classes / --leading-* tokens, not the size utility.
     fontSize: {
+      xs: 'var(--text-xs)',
       '2xs': 'var(--text-2xs)',
       sm: 'var(--text-sm)',
       base: 'var(--text-base)',
       md: 'var(--text-md)',
+      lg: 'var(--text-lg)',
       xl: 'var(--text-xl)',
       '2xl': 'var(--text-2xl)',
       hero: 'var(--text-hero)',
