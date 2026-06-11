@@ -168,6 +168,7 @@ bridge needed; PrimeNG controls follow `--bp-font` automatically.
 --text-lg:       16px;   /* large body — marketing paragraph */
 --text-xl:       18px;   /* section titles, home subtitle */
 --text-2xl:      22px;   /* card / drawer titles */
+--text-3xl:      28px;   /* edit-form card titles */
 --text-hero:     36px;   /* page titles (28px under 640px via ROOT media override) */
 --text-greeting: clamp(40px, 5vw, 60px);  /* home greeting — responsive in the token */
 
@@ -200,6 +201,7 @@ compositions, free to diverge later — the values live once, in Layer 1.
 | | `.bp-page-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
 | Section | `.bp-section-title` | xl | 500 | — | snug | `--color-text` |
 | | `.bp-section-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
+| Edit-form card | `.bp-edit-section-title` | 3xl | 400 | — | tight | `--color-text` — `<app-edit-section>` bakes it in; NOT `.bp-card-title` (tiles) nor `.bp-section-title` (generic) |
 | Card / tile | `.bp-card-title` | 2xl | 400 | — | snug | `--color-text` |
 | | `.bp-card-subtitle` | base | 400 | — | normal | `--color-text-secondary` |
 | Drawer | `.bp-drawer-label` | 2xs | 600 | UPPER+track | normal | `--theme-text` ¹ |
@@ -347,21 +349,24 @@ p-button-text         → Transparent, accent text. Hover: theme-soft tint
 p-button-danger       → White bg, red text. Hover: light red tint
 .bp-btn-cancel        → Parchment-ish bg (modal / drawer footer)
 .bp-btn-save          → Parchment-ish bg (modal / drawer footer). Both hover: accent
+.bp-btn-outline       → White pill, hairline border, neutral text. The quiet
+                        action: edit-form "Edit" + "Cancel" (§10).
 .bp-btn-grad          → Vivid gradient fill (--bp-gradient), white text.
-                        BRAND CTA only — sign-up, hero CTAs, "new project" primary
-                        moments. NOT for everyday in-app primary actions
-                        (that's plain p-button).
+                        BRAND CTA — sign-up, hero CTAs, AND the edit-form
+                        "Save changes" (§10, the v1 standard). NOT for other
+                        everyday in-app primaries (that's plain p-button).
 ```
 
-### `.bp-btn-grad` — locked spec
+### `.bp-btn-grad` — locked spec (shipped v2.11c)
 
 Lives in `client-v2/src/styles.css`. Reach for it on:
 
+- The edit-form card's **Save changes** (via `<app-edit-section>` — §10)
 - Marketing/landing Sign Up CTA (primary)
 - Hero CTAs that need brand expression
 - "Create new project" if/when promoted to a hero-level CTA
 
-Do NOT use for routine page primaries (save, send, confirm) — those stay as
+Outside those, routine page primaries (send, confirm, dialog OK) stay as
 plain themed `p-button` so the brand gradient stays scarce and meaningful.
 
 ```css
@@ -408,15 +413,17 @@ plain themed `p-button` so the brand gradient stays scarce and meaningful.
 }
 ```
 
-**Required new token** (introduce in `client-v2/src/styles.css` as part of
-this lock-in):
+**Supporting tokens** (live in `client-v2/src/styles.css` since v2.11c):
 
 ```css
+--radius-pill: 999px;                     /* button pills — never inline 9999px */
 --bp-gradient-shadow-rgb: 214, 51, 132;   /* pink stop of --bp-gradient, as r,g,b */
 ```
 
-Mirrors v1's `--theme-accent-rgb` pattern. Source for every brand-glow shadow
-or focus ring; never inline the rgba in components.
+`--bp-gradient-shadow-rgb` mirrors v1's `--theme-accent-rgb` pattern — the
+source for every brand-glow shadow or focus ring; never inline the rgba in
+components. `.bp-btn-outline` rides `--color-surface` / `--color-border-hairline`
+/ `--color-text` / `--shadow-xs` (hover `--shadow-md`).
 
 ### Sizes (v2 PrimeNG)
 
@@ -530,14 +537,29 @@ select only). Extend to page density in pV2-04c.
 
 ## 10. Edit patterns
 
-### Single record (settings, profile)
+### Single record — the edit-form card standard (locked v2.11c)
+
+**Profile (`/settings/profile`) is the reference.** Every future edit
+surface uses this template; the hover-pencil + tick/cross pattern is
+retired.
 
 ```
-View mode:  Read-only text fields
-            Hover section → pencil icon (square-pen, Lucide) appears
-            Click pencil → fields switch to parchment inputs
-            Tick (check) to save, X to cancel
-When to use: Settings/Organisation, any single-record page
+Card chrome:  --color-surface bg, --color-border-hairline border,
+              --radius-card (20px), p-6
+Title:        .bp-edit-section-title (3xl/400/tight) at the top —
+              <app-edit-section> bakes it in; consumers never type the class
+Fields:       .bp-field-grid-2 / .bp-field-grid-3 of <app-edit-field>
+              (zero view→edit shift)
+Buttons:      bottom-left .bp-card-foot row (mt-6, gap 10px)
+  View:       "Edit"  — .bp-btn-outline + square-pen icon (16)
+  Editing:    "Cancel" — .bp-btn-outline
+              "Save changes" — .bp-btn-grad + check icon (16),
+              both disabled while saving
+Lifecycle:    owned by <app-edit-section> — (edit) → consumer snapshots,
+              (cancelled) → consumer restores, (save) → consumer persists
+              then flips [(editing)] off itself (no optimistic close).
+              editLabel / saveLabel inputs override the copy.
+When to use:  Profile, any single-record settings page
 ```
 
 ### Multiple items (catalogue, team, categories)

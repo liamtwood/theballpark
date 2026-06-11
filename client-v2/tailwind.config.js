@@ -60,6 +60,7 @@ module.exports = {
       lg: 'var(--text-lg)',
       xl: 'var(--text-xl)',
       '2xl': 'var(--text-2xl)',
+      '3xl': 'var(--text-3xl)',
       hero: 'var(--text-hero)',
       greeting: 'var(--text-greeting)',
     },

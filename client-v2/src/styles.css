@@ -71,6 +71,7 @@
   --text-lg: 16px; /* large body — marketing paragraph */
   --text-xl: 18px;
   --text-2xl: 22px;
+  --text-3xl: 28px; /* edit-form card titles */
   --text-hero: 36px;
   --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
 
@@ -89,6 +90,11 @@
      v1's action-tile radius (p0019). Tiles + icon blocks + future cards
      all ride this one token. */
   --radius-card: 20px;
+  --radius-pill: 999px; /* button pills — never inline 9999px */
+  /* Glow under the gradient CTA — pairs with --bp-gradient (pink head of
+     the ramp). Static fallback like the gradient itself; the brand admin
+     surface (pV2-TYPE-02 era) updates both together. */
+  --bp-gradient-shadow-rgb: 214, 51, 132;
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
@@ -128,6 +134,10 @@
 /* Section */
 .bp-section-title    { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
 .bp-section-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Edit-form card (the v2 edit-form standard — Profile is the reference).
+   New role: NOT .bp-card-title (22, tiles) nor .bp-section-title (18). */
+.bp-edit-section-title { font-family: var(--bp-font); font-size: var(--text-3xl); font-weight: 400; line-height: var(--leading-tight); letter-spacing: -0.01em; color: var(--color-text); }
 
 /* Card / tile */
 .bp-card-title    { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text); }
@@ -209,4 +219,78 @@ body {
   flex-direction: column;
   gap: 20px;
   max-width: 720px;
+}
+
+/* ═══ Buttons (DESIGN.md §8 — locked spec, defined ONCE here) ════════════
+   .bp-btn-outline — the quiet pill (Edit / Cancel).
+   .bp-btn-grad    — the vivid brand CTA (edit-form Save changes per the v1
+                     standard; landing/hero CTAs). Scarce on purpose. */
+.bp-btn-outline,
+.bp-btn-grad {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 400;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+}
+
+.bp-btn-outline {
+  background: var(--color-surface);
+  border-color: var(--color-border-hairline);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+.bp-btn-outline:hover {
+  box-shadow: var(--shadow-md);
+}
+.bp-btn-outline:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.bp-btn-outline:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+.bp-btn-grad {
+  background: var(--bp-gradient);
+  color: var(--bp-text-on-gradient);
+  /* Brand-glow shadow uses --bp-gradient-shadow-rgb (pink stop) */
+  box-shadow:
+    0 2px 6px rgba(var(--bp-gradient-shadow-rgb), 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.bp-btn-grad:hover {
+  box-shadow:
+    0 8px 20px rgba(var(--bp-gradient-shadow-rgb), 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.bp-btn-grad:active {
+  transform: translateY(0);
+}
+.bp-btn-grad:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+.bp-btn-grad:focus-visible {
+  outline: 2px solid rgba(var(--bp-gradient-shadow-rgb), 1);
+  outline-offset: 2px;
+}
+
+/* Drawer density — when inside .bp-card--drawer or a drawer footer */
+.bp-card--drawer .bp-btn-outline,
+.bp-card--drawer .bp-btn-grad {
+  padding: 8px 16px;
+  font-size: var(--text-base);
 }
