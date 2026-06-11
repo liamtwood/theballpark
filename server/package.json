@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "node --test \"src/**/*.test.js\"",
     "db:migrate:schemas": "node src/db/migrate-schemas.js",
     "db:seed:preview": "node src/db/seed-preview.js",
     "check:icons": "node scripts/check-icons.js",

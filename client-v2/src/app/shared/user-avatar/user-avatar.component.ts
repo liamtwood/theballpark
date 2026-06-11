@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /** Initials from a display name ("Sarah Mitchell" → "SM"), falling back to the
- *  email's first letter, then "?". */
-function deriveInitials(name: string | null, email: string | null): string {
+ *  email's first letter, then "?". Exported for unit tests. */
+export function deriveInitials(name: string | null, email: string | null): string {
   if (name) {
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {

@@ -15,7 +15,10 @@ export type Permission =
   | 'cart.checkout'
   | 'admin.cross_org_view';
 
-const MATRIX: Record<Role, Permission[]> = {
+/** Exported for the cross-boundary parity spec (permissions.parity.spec.ts),
+ *  which diffs this against the server's MATRIX — the enforced check behind
+ *  the "keep the two in sync" comment above. */
+export const MATRIX: Record<Role, Permission[]> = {
   ballpark_admin: ['admin.cross_org_view'],
   agency_admin: ['org.invite_member', 'org.manage_billing', 'project.create', 'project.delete', 'item.create', 'item.delete', 'inbox.reply', 'inbox.adjust_cost', 'cart.checkout'],
   agency_member: ['project.create', 'item.create', 'inbox.reply', 'inbox.adjust_cost', 'cart.checkout'],
