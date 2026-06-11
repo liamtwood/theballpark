@@ -312,6 +312,13 @@ CatalogueGridComponent  → Reusable grid for browse pages
 <app-version-chip />              ← fixed bottom-right
 ```
 
+**LOCKED — the v2 page standard (Liam QC, 2026-06-11, pV2-04d).** Every
+feature page composes exactly this: `<app-page-hero>` (back link above the
+title via `.bp-page-back`, title 40 / subtitle 18 on the §5 ladder) +
+`.bp-page-body`; editable content uses `<app-edit-section>` +
+`<app-edit-field>` per §10. **Profile (`/settings/profile`) is the living
+reference** — when in doubt, open it and match it. Don't invent page chrome.
+
 ### v1 page composition
 
 ```

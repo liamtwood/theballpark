@@ -69,7 +69,13 @@ converge call (either `.bp-fld` → 13 or table row → 14).
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
+**2026-06-11 (Liam, via CC chat — recorded verbatim):** "qc hero looks
+great, back is great, profile page qc accepted, we have our standard page
+hero, and standard page editable section. let this be the standard going
+forward."
+QC ACCEPTED through iteration v2.11h. Locked as the v2 page standard —
+DESIGN.md §7 (page composition) + §10 (edit-form card) carry the lock;
+Profile is the living reference.
 
 ## Chat audit
 **Audit pass: 2026-06-11, chat** — verified across v2.11c-g (5 chips, 8 commits).
