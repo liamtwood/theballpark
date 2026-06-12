@@ -672,6 +672,12 @@ body {
   color: var(--theme-accent);
   border-color: var(--theme-accent);
 }
+/* Second overlay slot — the customer-proposed "+" add button sits left
+   of the heart (v2.20q; replaced the gradient foot CTA per the
+   BUTTONS.md scarcity rule). */
+.bp-fav-btn--second {
+  right: 44px;
+}
 .bp-fav-btn--on svg {
   fill: currentColor;
 }

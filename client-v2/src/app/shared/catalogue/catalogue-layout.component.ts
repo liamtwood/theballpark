@@ -44,7 +44,10 @@ const STRIP_STORE_KEY = 'bp-strip-width';
         (dblclick)="resetWidth()"
       ></div>
     </div>
-    <div class="min-h-0 min-w-0 md:overflow-y-auto">
+    <!-- pr-1 keeps cards just off the column scrollbar; beyond the bar
+         the outer whitespace then matches the left gutter (48/48 —
+         QC 2026-06-12). -->
+    <div class="min-h-0 min-w-0 md:overflow-y-auto md:pr-1">
       <ng-content />
     </div>
     @if (railVisible()) {

@@ -165,6 +165,14 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 **Commit:** chip v2.20p
 - Shell bottom padding pb-6 → pb-2; vpfit body bottom 16 → 8; height calc updated to 5.5rem. Bottom band 44 → 16px (breathing room, not a footer); columns +24px (497 → 521 at 1280×800); page still never scrolls.
 
+## Iteration — v2.20q (2026-06-12)
+**Triggered by:** CC's three-point critique of `Screenshot 2026-06-12 174400.png`, all three accepted by Liam.
+**Commit:** chip v2.20q
+- **Gradient foot CTA RETIRED** ("ditch the rainbow") — a grid of brand CTAs broke the BUTTONS.md scarcity rule ("1× per surface"). Back to the customer-proposed **"+" overlay next to the heart** (v1 lineage): same `.bp-fav-btn` chrome, `--second` slot at right 44px, plus ↔ check two-state. TRANSITIONAL: wired to favourites until 06f's quote flow. Cards 50px shorter (408 → 358) — fold margin improves again. `.bp-cta-foot` + `--added` classes stay in styles.css (supplier card + future quote-rail feet use them).
+- **`/ unit` suffix removed** from the card price (v1 parity) — it stays in the preview rail + future detail view.
+- **Gutters evened**: middle scroller gets pr-1 so cards sit just off the column scrollbar; beyond the bar the outer whitespace matches the left's 48px.
+- Verified at 1280×800: two overlay buttons, foot CTA + unit gone, whole card visible, page never scrolls.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

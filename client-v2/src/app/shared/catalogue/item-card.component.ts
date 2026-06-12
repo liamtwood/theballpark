@@ -48,18 +48,30 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
     >
       <lucide-icon name="heart" [size]="15" />
     </button>
+    <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
+         foot CTA (v2.20q: a grid of brand CTAs broke the BUTTONS.md
+         scarcity rule). TRANSITIONAL: wired to favourites until pV2-06f
+         lands the quote flow. -->
+    <button
+      type="button"
+      class="bp-fav-btn bp-fav-btn--second"
+      [class.bp-fav-btn--on]="favourited()"
+      [attr.aria-label]="favourited() ? 'Added to quote' : 'Add to quote'"
+      (click)="onFavClick($event)"
+    >
+      <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="15" />
+    </button>
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
       <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
       @if (item().subcategoryName || item().categoryName; as chip) {
         <span class="bp-tag-chip mt-1.5">{{ chip }}</span>
       }
+      <!-- No unit suffix on the card (v1 parity) — it lives in the
+           preview rail + detail view. -->
       <div class="mt-2 flex items-baseline gap-1.5">
         @if (item().basePrice !== null) {
           <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-          @if (item().unit) {
-            <span class="bp-meta">/ {{ item().unit }}</span>
-          }
         } @else {
           <span class="bp-caption">Price on request</span>
         }
@@ -68,18 +80,6 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
         <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
-      <!-- BEM modifier rides the base class (base chrome stays).
-           TRANSITIONAL: labelled "Add to Quote" per the locked design but
-           WIRED to favourites until pV2-06f lands the quote flow. -->
-      <button
-        type="button"
-        class="bp-btn-grad bp-cta-foot mt-3 w-full"
-        [class.bp-btn-grad--added]="favourited()"
-        (click)="onCtaClick($event)"
-      >
-        <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="14" />
-        {{ favourited() ? 'Added to Quote' : 'Add to Quote' }}
-      </button>
     </div>
   `,
 })
@@ -98,12 +98,6 @@ export class ItemCardComponent {
 
   protected onFavClick(e: Event): void {
     e.stopPropagation(); // the host click selects the card
-    this.favouriteToggled.emit(this.item().id);
-  }
-
-  /** The foot CTA — favourites for now (pV2-CARDS-01); quote in 06f. */
-  protected onCtaClick(e: Event): void {
-    e.stopPropagation();
     this.favouriteToggled.emit(this.item().id);
   }
 }
