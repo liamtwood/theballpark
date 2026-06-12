@@ -109,6 +109,12 @@
      all ride this one token. */
   --radius-card: 20px;
   --radius-pill: 999px; /* button pills — never inline 9999px */
+  /* Form-control family radius (pV2-CARDS-01 QC): ONE token for the
+     search box + .bp-fld + the p-select trigger — same family, same
+     rhythm, zero drift. Anchored to the search bar's pill (the most
+     prominent control on /marketplace). FIELDS.md doc capture queued
+     to name the full chrome contract (radius + padding + focus ring). */
+  --radius-field: var(--radius-pill);
   /* Glow under the gradient CTA — pairs with --bp-gradient (pink head of
      the ramp). Static fallback like the gradient itself; the brand admin
      surface (pV2-TYPE-02 era) updates both together. */

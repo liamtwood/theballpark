@@ -123,6 +123,14 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - `.bp-tag-chip` → `--text-sm` (12px) globally. Convergence comments on BOTH rules: the 12px rank is deliberate (proportional weight against `.bp-price-large`) — keep the two in step.
 - Verified live: label, 12px/8-16 CTA, 12px chip.
 
+## Iteration — v2.20k (2026-06-12)
+**Triggered by QC:** dropdown rounding off vs the search bar on both pages.
+**Commit:** chip v2.20k
+- New **`--radius-field`** token, aliased to `--radius-pill` (chat's lean: anchor to the search bar — the most prominent control on /marketplace). One token, three consumers: the search box, `.bp-fld`, and the p-select/p-inputnumber triggers all ride it — the value changes in ONE place if the family ever moves off pill.
+- `.bp-fld` horizontal padding 10 → 12px so text clears the pill curve (view + edit share the class — the zero-shift law holds, both states moved identically).
+- Verified live: search + select triggers both compute 999px.
+- FIELDS.md doc capture queued (chat's, post-freeze): name search + .bp-fld + p-select as one family with the shared radius/padding/focus-ring contract.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

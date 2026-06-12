@@ -15,7 +15,7 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [LucideAngularModule],
   host: { class: 'block' },
   template: `
-    <div class="flex h-[38px] items-center gap-2 rounded-[var(--radius-pill)] border border-hairline bg-surface px-4 shadow-[var(--shadow-xs)] focus-within:border-accent">
+    <div class="flex h-[38px] items-center gap-2 rounded-[var(--radius-field)] border border-hairline bg-surface px-4 shadow-[var(--shadow-xs)] focus-within:border-accent">
       <lucide-icon name="search" [size]="15" class="text-muted" />
       <input
         type="search"

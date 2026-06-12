@@ -112,12 +112,14 @@ export interface EditFieldOption {
         align-items: center;
         width: 100%;
         height: 34px;
-        padding: 0 10px;
+        padding: 0 12px;
         font-size: var(--text-md);
         color: var(--color-text-strong);
         background: transparent;
         border: 1px solid transparent;
-        border-radius: 10px;
+        /* One form-control radius family: search + .bp-fld + p-select
+           trigger all ride --radius-field (pV2-CARDS-01 QC). */
+        border-radius: var(--radius-field);
         box-shadow: none;
         transition: none;
       }
@@ -143,7 +145,7 @@ export interface EditFieldOption {
       :host ::ng-deep .p-select.bp-fld,
       :host ::ng-deep .p-inputnumber.bp-fld {
         height: 34px;
-        border-radius: 10px;
+        border-radius: var(--radius-field);
         align-items: center;
       }
       :host(.bp-edit-field--page) ::ng-deep .p-select.bp-fld,
