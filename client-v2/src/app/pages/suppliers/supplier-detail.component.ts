@@ -37,7 +37,10 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
-  host: { class: 'block' },
+  /* The Store tab is viewport-fit like /marketplace (same engine, same
+     scroll mechanics — RP-06); the Storefront tab scrolls naturally
+     (grouped subcat grids can be long). */
+  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'store'" },
   template: `
     @if (detail.value(); as sup) {
       <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">

@@ -92,6 +92,15 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Verified live: Rocket Food returns the screenshot's exact data — Catering group, 8 rows incl. "Catering (3)" catch-all; Construct & Co. renders the grouped header + 7 cards.
 - For chat: per your note, this archetype REPLACES "Storefront cell" in CARDS.md with the screenshot as canonical reference — leaving that doc edit to you at the styling-pass fold-in.
 
+## Iteration — v2.20g (2026-06-12)
+**Triggered by QC:** laptop screenshot (`Screenshot 2026-06-12 152623.png`) — cards clipped at the viewport edge, no column scroll, right rail squeezing the grid, cat rail running past the fold. Chat's intent spec: "page never scrolls; columns do; rails responsive."
+**Commit:** chip v2.20g
+- **`.bp-vpfit`** (styles.css, md+ only): the page fills the viewport exactly (`100dvh` minus the shell's 8rem chrome) — hero + filter band stay anchored; `.bp-page-body` becomes the flex column that hands remaining height to the layout. Mobile keeps natural page scroll.
+- **catalogue-layout** (one definition, both consumers): each region wraps in its own `min-h-0 overflow-y-auto` scroller — left rail, middle grid, right rail scroll independently. Responsive: mobile (<md) single column with NO rails (full marketplace becomes a list); right rail 260px at xl (laptop), 300px at 2xl (wide).
+- **Consumers**: /marketplace is always viewport-fit; supplier-detail applies it ONLY on the Store tab (the Storefront's grouped grids scroll naturally — RP-06 both-surfaces rule held with one class binding).
+- Verified live at 1280×800 (page never scrolls; strip + middle columns scroll internally; rail 260px), 375×812 (single column, rails hidden, natural scroll, vpfit off), 1536×864 (store tab vpfit on / storefront tab natural).
+- The "small fixes ride the same ship" note: price prefix / card height / subcat chip had already landed in v2.20c.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

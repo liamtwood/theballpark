@@ -36,7 +36,9 @@ import { RightRailComponent } from './rail/right-rail.component';
     ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
-  host: { class: 'block' },
+  /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
+     band anchored, the catalogue columns scroll independently. */
+  host: { class: 'block bp-vpfit' },
   template: `
     <app-page-hero
       [back]="{ label: 'Back', href: '/home' }"

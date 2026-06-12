@@ -130,6 +130,27 @@
   padding: 32px;
 }
 
+/* Viewport-fit page (pV2-CARDS-01 QC laptop pass): the PAGE never scrolls
+   — the hero + filter band stay anchored and each catalogue column scrolls
+   within itself (catalogue-layout owns the per-column overflow). md+ only:
+   mobile keeps the natural single-column page scroll. Height = viewport
+   minus the shell's pt-20 (5rem) + pb-12 (3rem). */
+@media (min-width: 768px) {
+  .bp-vpfit {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 8rem);
+    min-height: 0;
+  }
+  .bp-vpfit > .bp-page-body,
+  .bp-vpfit .bp-vpfit__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
 /* ═══ Layer 2 — the type-class table (pV2-TYPE-01) ═══════════════════════
    Surface-keyed names; each class is a one-line composition of the Layer-1
    tokens above. Where two classes coincide (card-title ≡ drawer-title)
