@@ -124,3 +124,7 @@ option (a); GETs stay for v1's browse reads until pV2-11. Removed verbs
 now fall through to the gated v2 catch-all → 401 (verified: POST/PUT/
 DELETE 401, GETs 200). Accepted v1 breakage (superseded surfaces):
 ballpark-settings category admin + category cover-image PATCH.
+
+## QC notes — addendum (2026-06-12)
+**Liam:** "logged and back in, search is like lightning now even after a
+cold start" — v2.14c search fix VERIFIED by QC.
