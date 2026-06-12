@@ -70,7 +70,29 @@ surface changed from "non-top-level" to "non-catalogue".
 **Severity:** LOW (documented)
 
 ## QC notes
-(Liam fills this in)
+**2026-06-12 (Liam):** "works on marketplace, but not supplier store
+(feels like not reusing again), it is very slow first time... search
+works when subcat is selected" — search×subcat composition ACCEPTED; two
+defects (chat audit: RP-06 + unindexed parent_id) fixed in v2.16b below.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## Iteration — v2.16b (2026-06-12)
+**Triggered by:** Liam QC + chat audit (RP-06 confirmed; RP-01-family
+index diagnosis — correctly index-shaped this time, the pool fix already
+being in place).
+**Commit:** `8246a46`
+- **RP-06 → CLOSED BY EXTRACTION:** `<app-subcategory-strip>` shared
+  primitive (joins view-toggle + catalogue-layout); mounted on the
+  supplier Store tab — the shared store already loaded the data, only
+  the UI was missing. Ledger row added with the standing rule: store-fed
+  UI ships as a primitive mounted on EVERY MarketplaceStore provider
+  page, same commit.
+- **Slow first load:** `categories.parent_id` + `items.subcategory_id`
+  partial indexes via migrate-schemas.js (all three schemas,
+  column-existence-guarded — preview/master carry older shapes).
+  Applied; EXPLAIN now bitmap-index-scans.
+Verified live: Rocket store → Catering → chips render; Bar Service → 2
+items (3 globally — pinned supplier scope filtering correctly); ?sub
+round-trips; marketplace strip unchanged on the shared primitive.
