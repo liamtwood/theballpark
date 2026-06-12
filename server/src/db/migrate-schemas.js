@@ -550,6 +550,13 @@ const migrate = async () => {
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
       ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
 
+      -- v2.19a (pV2-CODELISTS-02): the org's default currency — Profile
+      -- "Financial defaults" select, fed by the currency codelist. ISO
+      -- 4217 alpha-3 code; GBP matches the platform's v1-era assumption.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
@@ -1363,26 +1370,28 @@ const migrate = async () => {
       -- and the dashboard project-card pill colour. Colour is stored on
       -- meta JSONB so the consumer reads it via
       -- CodelistService.getMeta('project_status', code).color.
+      -- v2.19a (RP-09): token refs, not hex — each app's styles.css owns
+      -- the hue (--color-state-* set, identical hex in v1 + v2 today).
       INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
-        ('project_status', 'draft',     'Draft',     1, '{"color":"#F59E0B"}'::jsonb, true),
-        ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
-        ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
-        ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+        ('project_status', 'draft',     'Draft',     1, '{"color":"--color-state-amber"}'::jsonb, true),
+        ('project_status', 'active',    'Active',    2, '{"color":"--color-state-emerald"}'::jsonb, true),
+        ('project_status', 'completed', 'Completed', 3, '{"color":"--color-state-gray"}'::jsonb, true),
+        ('project_status', 'archived',  'Archived',  4, '{"color":"--color-state-gray-light"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
 
       -- v1.53: category_status drives the Brief-tab per-category status
       -- pill + dropdown. meta.color is read by the pill via
       -- CodelistService.getMeta('category_status', code).color.
       INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
-        ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
-        ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
-        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"#F97316"}'::jsonb, true),
-        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"#6366F1"}'::jsonb, true),
-        ('category_status', 'quoted',         'Quoted',          5, '{"color":"#0EA5E9"}'::jsonb, true),
-        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"#22C55E"}'::jsonb, true),
-        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"#F59E0B"}'::jsonb, true),
-        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"#8B5CF6"}'::jsonb, true),
-        ('category_status', 'na',             'N/A',             9, '{"color":"#9CA3AF"}'::jsonb, true)
+        ('category_status', 'draft',          'Draft',           1, '{"color":"--color-state-gray"}'::jsonb, true),
+        ('category_status', 'briefed',        'Briefed',         2, '{"color":"--color-state-blue"}'::jsonb, true),
+        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"--color-state-orange"}'::jsonb, true),
+        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"--color-state-indigo"}'::jsonb, true),
+        ('category_status', 'quoted',         'Quoted',          5, '{"color":"--color-state-sky"}'::jsonb, true),
+        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"--color-state-green"}'::jsonb, true),
+        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"--color-state-amber"}'::jsonb, true),
+        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"--color-state-violet"}'::jsonb, true),
+        ('category_status', 'na',             'N/A',             9, '{"color":"--color-state-gray-light"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');

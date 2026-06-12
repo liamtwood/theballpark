@@ -173,6 +173,46 @@ async function seedCodelists(client) {
      WHERE c.list_name IS NULL;
   `);
 
+  // ── v2.19a (RP-09): v1-era hex meta colors → token refs ─────────────
+  // Each app's styles.css owns the hue (--color-state-* set seeded with
+  // the ORIGINAL v1 hex in both apps — zero visual change). Idempotent:
+  // rows already on token refs don't match the hex keys.
+  // Acceptance (AUDIT_LEDGER RP-09): meta->>'color' LIKE '#%' → 0 rows.
+  const HEX_TO_TOKEN = {
+    '#F59E0B': '--color-state-amber',
+    '#10B981': '--color-state-emerald',
+    '#22C55E': '--color-state-green',
+    '#6B7280': '--color-state-gray',
+    '#9CA3AF': '--color-state-gray-light',
+    '#3B82F6': '--color-state-blue',
+    '#F97316': '--color-state-orange',
+    '#6366F1': '--color-state-indigo',
+    '#0EA5E9': '--color-state-sky',
+    '#8B5CF6': '--color-state-violet',
+  };
+  for (const [hex, token] of Object.entries(HEX_TO_TOKEN)) {
+    await client.query(
+      `UPDATE shared.reference_codelist_values
+          SET meta = jsonb_set(meta, '{color}', to_jsonb($2::text)), updated_at = NOW()
+        WHERE upper(meta->>'color') = $1`,
+      [hex, token]
+    );
+  }
+  const hexLeft = await client.query(
+    `SELECT COUNT(*) AS n FROM shared.reference_codelist_values WHERE meta->>'color' LIKE '#%'`
+  );
+  if (Number(hexLeft.rows[0].n) > 0) {
+    console.warn(`  WARNING: ${hexLeft.rows[0].n} codelist meta color(s) still hex — extend HEX_TO_TOKEN (RP-09).`);
+  }
+
+  // ── v2.19a: currency now has a consumer (orgs.default_currency) ─────
+  await client.query(`
+    UPDATE shared.reference_codelists
+       SET consumer_table = 'orgs', consumer_column = 'default_currency', updated_at = NOW()
+     WHERE list_name = 'currency'
+       AND (consumer_table IS DISTINCT FROM 'orgs' OR consumer_column IS DISTINCT FROM 'default_currency');
+  `);
+
   // ── Layer 3: seed-time invariant assertion (fail LOUDLY) ────────────
   const drift = await client.query(`
     SELECT c.list_name, c.default_code,

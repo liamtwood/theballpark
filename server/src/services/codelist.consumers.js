@@ -15,6 +15,7 @@ const CONSUMER_WHITELIST = new Set([
   'messages.status',
   'user_orgs.status',
   'orgs.country',
+  'orgs.default_currency',
 ]);
 
 function consumerRef(parent) {

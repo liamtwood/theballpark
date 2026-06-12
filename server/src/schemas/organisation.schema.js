@@ -20,6 +20,10 @@ const OrganisationUpdateSchema = z
     defaultVatPct: z.coerce.number().min(0).max(100).optional(),
     defaultMarginPct: z.coerce.number().min(0).max(100).optional(),
     defaultContingencyPct: z.coerce.number().min(0).max(100).optional(),
+    // pV2-CODELISTS-02: codelist-fed selects (country / currency codelists).
+    // Shape-validated here; the VALUE space lives in the codelist rows.
+    country: z.string().trim().regex(/^[A-Z]{2}$/).optional().or(z.literal('')),
+    defaultCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   })
   .strip();
 

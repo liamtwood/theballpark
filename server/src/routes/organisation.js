@@ -12,8 +12,8 @@ const { requireActiveMembership } = require('../middleware/require-active-member
 const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 
 /** Shared projection — explicit columns, camelCase out. */
-const SELECT = `SELECT id, name, address, city, email, phone, ref_prefix, ref_counter,
-       default_vat_pct, default_margin_pct, default_contingency_pct
+const SELECT = `SELECT id, name, address, city, country, email, phone, ref_prefix, ref_counter,
+       default_vat_pct, default_margin_pct, default_contingency_pct, default_currency
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
 
 function toProfile(row) {
@@ -24,8 +24,10 @@ function toProfile(row) {
     city: row.city,
     email: row.email,
     phone: row.phone,
+    country: row.country,
     refPrefix: row.ref_prefix,
     refCounter: Number(row.ref_counter ?? 0),
+    defaultCurrency: row.default_currency ?? 'GBP',
     defaultVatPct: Number(row.default_vat_pct ?? 0),
     defaultMarginPct: Number(row.default_margin_pct ?? 0),
     defaultContingencyPct: Number(row.default_contingency_pct ?? 0),
@@ -60,6 +62,8 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
       email: p.email,
       phone: p.phone,
       ref_prefix: p.refPrefix === '' ? null : p.refPrefix,
+      country: p.country === '' ? null : p.country,
+      default_currency: p.defaultCurrency,
       default_vat_pct: p.defaultVatPct,
       default_margin_pct: p.defaultMarginPct,
       default_contingency_pct: p.defaultContingencyPct,
