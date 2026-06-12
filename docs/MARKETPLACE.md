@@ -120,7 +120,7 @@ their own prompts; skipping v1's item-drawer (2,210 lines) + cart-drawer
 | **pV2-06c** | Filter rail — dimension groups + live counts |
 | **pV2-06d** | Suppliers mode + supplier detail — supplier cards, `/suppliers/:id` route, favourites |
 | **pV2-06e** | **Right-rail category mode** — panel renders cat summary + that category's supplier list when a category is selected (v1's `category-context-panel` port, simplified). |
-| **pV2-06f** | **Right-rail cart mode + checkout page** — panel renders Quote list (default state when "All" selected) with Remove buttons, "Checkout" CTA → new `/projects/:id/checkout` page. `QuoteService`, "Add to Quote" / "Added to Quote" CTA states. End of marketplace arc; checkout page itself is a separate prompt. |
+| **pV2-06f** | **Right-rail cart mode + checkout page** — panel renders Quote list (default state when "All" selected) with Remove buttons, "Checkout" CTA → new `/quote-checkout/:projectId` page (flat route — focused flow, deliberately OUTSIDE the future projects tab shell; aligned 2026-06-12, was inconsistently `/projects/:id/checkout` here). `QuoteService`, "Add to Quote" / "Added to Quote" CTA states. End of marketplace arc; checkout page itself is a separate prompt. |
 
 ## Audit reference
 

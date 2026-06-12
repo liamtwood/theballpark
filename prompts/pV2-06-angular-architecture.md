@@ -60,10 +60,15 @@ itemCount }`, `RailMode = 'empty' | 'category' | 'item' | 'quote'`.
 mounted on the v2 cookie path):
 
 ```
-GET /api/marketplace/categories            → CategoryInfo[] (with counts)
-GET /api/marketplace/items?cat&sub&q       → CatalogueItem[]
-GET /api/marketplace/suppliers?cat&q       → CatalogueSupplier[]
-GET /api/marketplace/suppliers/:id         → supplier + categories + items
+GET /api/marketplace/categories              → CategoryInfo[] (with counts)
+GET /api/marketplace/items?cat&sub&q&offset  → { items: CatalogueItem[],  total: number, hasMore: boolean }
+GET /api/marketplace/suppliers?cat&q&offset  → { items: CatalogueSupplier[], total: number, hasMore: boolean }
+GET /api/marketplace/suppliers/:id           → supplier + categories + items (single entity — no envelope)
+
+List endpoints share ONE paginated envelope ({ items, total, hasMore })
+so future UX shifts (virtual/infinite scroll) never touch the contract.
+CatalogueItem carries ownedByActiveOrg: boolean (server-derived — see
+MARKETPLACE.md ownership model).
 ```
 
 `requireActiveMembership()` (any role per the MARKETPLACE.md access
@@ -122,6 +127,13 @@ cached choke point.**
 | Category click | once per (params) per session | `CatalogueService` keeps a Map cache keyed by the query string; revisits are cache hits. `resource()` cancels stale in-flight requests. |
 | Search | debounced, settled term only | Component debounces before writing the `q` param. |
 | Categories rail + counts | once per page load | Slow-moving; one GROUP BY at mount + `Cache-Control`/ETag so refreshes can 304. |
+
+**Cache invalidation** — the Map cache busts on (a) page reload (it's
+in-memory, route-scoped), (b) any successful WRITE through
+CatalogueService, and (c) an explicit `invalidate()` called by the
+/store (item edits) and /settings/categories (curation) services —
+otherwise a supplier editing an item, or an admin curating categories,
+would read stale lists in an open marketplace tab.
 
 Worst case = one small indexed query per category per session — same
 order as the auth middleware's per-request membership query. If traffic
