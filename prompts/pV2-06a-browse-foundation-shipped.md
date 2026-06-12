@@ -128,3 +128,18 @@ ballpark-settings category admin + category cover-image PATCH.
 ## QC notes — addendum (2026-06-12)
 **Liam:** "logged and back in, search is like lightning now even after a
 cold start" — v2.14c search fix VERIFIED by QC.
+
+## Iteration — v2.14d (2026-06-12)
+**Triggered by QC:** "did you plan the page settings for marketplace?" —
+a real gap (hero was hardcoded). Scope ruling: HERO ONLY (title +
+subtitle, the standard pattern) — v1's many marketplace view settings
+deliberately ignored.
+**Commit:** `fc2659a`
+**Files:** page-config.types/.service (pages.marketplace +
+marketplaceTitle/Subtitle); page-config.schema.js (shared
+PageHeroOverrideSchema for all pages.* keys); pages-settings (Marketplace
+title/subtitle rows per role; saveProfileHero → savePageHero building the
+FULL pages object so saves never drop sibling page keys);
+marketplace-page (hero binds overrides + shipped defaults); chip.
+Verified live: PUT override → hero "The Bazaar"/custom subtitle →
+revert → defaults; /settings/pages renders both new rows. 64/64 + 39/39.
