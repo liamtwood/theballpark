@@ -85,16 +85,16 @@ export const routes: Routes = [
           import('./pages/supplier/projects-hub.component').then((m) => m.ProjectsHubComponent),
       },
       {
-        // Supplier sub-hub (v2.13a — v1.68o port): the storefront trio.
-        path: 'marketplace-profile',
+        // Supplier sub-hub (v2.13a — v1.68o port; renamed v2.13b per §14:
+        // storefront = the public-face hub, "Marketplace Profile" retired).
+        path: 'storefront',
         loadComponent: () =>
-          import('./pages/supplier/marketplace-profile.component').then(
-            (m) => m.MarketplaceProfileComponent
-          ),
+          import('./pages/supplier/storefront.component').then((m) => m.StorefrontComponent),
       },
       {
-        // Marketplace Profile hub tile target — the storefront editor stub.
-        path: 'my-shop',
+        // Storefront hub tile target — the catalogue stub (§14 internal name
+        // /store; "My Shop" is UI copy only).
+        path: 'store',
         loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
         data: { feature: 'My Shop' },
       },

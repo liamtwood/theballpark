@@ -85,7 +85,7 @@ export const appConfig: ApplicationConfig = {
         Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
         // Profile: section edit lifecycle
         SquarePen, Check,
-        // v2.13a supplier sub-hubs: projects-hub stages + marketplace-profile trio
+        // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
         FileText, Zap, CircleCheck, Package, Building2,
       })
     ),

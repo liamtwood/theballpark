@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
-import { PROJECTS_HUB_TILES } from '../../shared/launcher/agent-tiles';
+import { PROJECTS_HUB_TILES } from '../../shared/launcher/launcher-tiles';
 
 /** v2.13a — the supplier Projects hub (v1.68t port): the launcher master
  *  with three stage-bucket tiles drilling into the pre-filtered /projects

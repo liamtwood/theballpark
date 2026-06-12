@@ -49,11 +49,13 @@ export const SUPPLIER_TILES: readonly LauncherTile[] = [
     href: '/inbox',
   },
   {
+    // v2.13b — "Marketplace Profile" read as one thing; it's a hub of three.
+    // §14 vocabulary: storefront = the public-face hub.
     icon: 'store',
-    label: 'Marketplace Profile',
+    label: 'Storefront',
     subtitle:
       'Manage how your company appears in Ballpark Marketplace. Update categories, pricing, portfolio and company information.',
-    href: '/marketplace-profile',
+    href: '/storefront',
   },
 ];
 
@@ -102,10 +104,12 @@ export const PROJECTS_HUB_TILES: readonly LauncherTile[] = [
   },
 ];
 
-/** The supplier Marketplace Profile hub (v2.13a — v1.68o port). The Profile
- *  tile lands on the REAL /settings/profile; the rest stub until their
- *  arcs (v1 targets were /shop, /store, /storefront). */
-export const MARKETPLACE_PROFILE_TILES: readonly LauncherTile[] = [
+/** The supplier Storefront hub (v2.13a as "Marketplace Profile", renamed
+ *  v2.13b per §14: storefront = the public-face hub). The Profile tile
+ *  lands on the REAL /settings/profile; the rest stub until their arcs.
+ *  "My Shop" is UI copy over the §14 internal /store route (store =
+ *  catalogue) — never hard-code customer labels as routes. */
+export const STOREFRONT_TILES: readonly LauncherTile[] = [
   {
     icon: 'store',
     label: 'Marketplace',
@@ -117,7 +121,7 @@ export const MARKETPLACE_PROFILE_TILES: readonly LauncherTile[] = [
     label: 'My Shop',
     subtitle:
       'Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile.',
-    href: '/my-shop',
+    href: '/store',
   },
   {
     icon: 'building-2',
@@ -146,7 +150,7 @@ export function tileForPath(path: string, orgType?: OrgType | null): LauncherTil
       ...SUPPLIER_TILES,
       ...BALLPARK_TILES,
       ...PROJECTS_HUB_TILES,
-      ...MARKETPLACE_PROFILE_TILES,
+      ...STOREFRONT_TILES,
     ].find((t) => t.href === path)
   );
 }

@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/auth/auth.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { tileForPath } from '../../shared/launcher/agent-tiles';
+import { tileForPath } from '../../shared/launcher/launcher-tiles';
 
 /** pV2-04b — placeholder for launcher targets that land in later prompts.
  *  The hero (title2/subtitle2 roles via page-hero) derives from the SAME

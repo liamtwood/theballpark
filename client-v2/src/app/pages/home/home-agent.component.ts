@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
-import { tilesForOrgType } from '../../shared/launcher/agent-tiles';
+import { tilesForOrgType } from '../../shared/launcher/launcher-tiles';
 import { heroTitle } from './hero-title';
 
 /** pV2-04b — the launcher-only agent home at /home (the port of v1's
