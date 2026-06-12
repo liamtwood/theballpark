@@ -208,4 +208,8 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Hero back is now computed — it walks the drill in reverse: Store → "Storefront" (same route; the hero's plain routerLink clears the tab/cat/sub params) → "Marketplace". Verified live end-to-end: labels flip per tab, back from Store lands on the Storefront tab.
 
 ## Chat audit
-(chat fills this in — leave the section header so chat finds it)
+(chat, 2026-06-12, relayed via CC) **Audit complete — clean.** Architectural keystone identified: `catalogue-layout.component.ts` (118 lines) — one component owns the 3-column shell + viewport-fit + independent scroll + resizable strip + conditional rail + responsive breakpoints + equal gutters; both consumers inherit by mounting it. **"RP-06 is now architecturally precluded — there's no second surface to forget."** Verified: .bp-card foundation + --zoom global; RP-07 guard active; item-card 78 lines with zero component chrome; --radius-field one-token/three-consumers; rail-drop on card view; resizable strip with clamp + persistence + private-mode fallback; equal gutters; mobile single-column; version chip in menu; unit suffix off; +/check icon swap with per-state ARIA; transitional state documented. Standards conformance clean (standalone/OnPush/inject/host/role classes/sizedImage/LCP eager).
+
+**CC reconciliation on chat's two "next-ship asks"** — both already landed in **v2.20r** (the audit ran against a pre-r checkout):
+1. Hover labels on + and heart — shipped as native `title` attributes (visual on hover) + per-state aria-labels. NOT p-tooltip yet — the styled `.bp-tooltip` upgrade is queued with the DIALOGS ship, which lands the class.
+2. Gradient active state — shipped: `.bp-fav-btn--on` fills the circle with `--bp-gradient` (background-image longhand per the documented shorthand trap) + light icon, everywhere the class renders.
