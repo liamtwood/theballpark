@@ -27,7 +27,9 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
       }
     </header>
 
-    <main class="px-6 pb-12 pt-20">
+    <!-- pb-6 (was pb-12): viewport-fit pages reclaim the bottom band; the
+         vpfit height calc (styles.css) assumes this 1.5rem. -->
+    <main class="px-6 pb-6 pt-20">
       <router-outlet />
     </main>
   `,

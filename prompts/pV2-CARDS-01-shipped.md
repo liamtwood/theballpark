@@ -101,6 +101,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Verified live at 1280×800 (page never scrolls; strip + middle columns scroll internally; rail 260px), 375×812 (single column, rails hidden, natural scroll, vpfit off), 1536×864 (store tab vpfit on / storefront tab natural).
 - The "small fixes ride the same ship" note: price prefix / card height / subcat chip had already landed in v2.20c.
 
+## Iteration — v2.20h (2026-06-12)
+**Triggered by QC:** v2.20g better but still "a huge amount of white space" (`Screenshot 2026-06-12 154233.png`) — the vertical chrome (shell paddings + standard hero + body paddings) ate ~half a laptop screen before content.
+**Commit:** chip v2.20h
+- Compression SCOPED to `.bp-vpfit` pages — settings/profile keep the standard rhythm: hero padding 28/24 → 12/12 + tighter row gap (type ranks untouched); page-body padding 32 → 16/24/20; search row mb-5 → mb-4.
+- Shell bottom padding pb-12 → pb-6 (all pages; the vpfit height calc updated to 6.5rem) — reclaims the dead bottom band.
+- Measured at 1280×800: middle column 389 → 479px (+90), hero 170 → 125px, first card row fully visible, page still never scrolls.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

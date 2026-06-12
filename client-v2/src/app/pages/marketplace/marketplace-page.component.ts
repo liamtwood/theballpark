@@ -55,7 +55,7 @@ import { RightRailComponent } from './rail/right-rail.component';
 
     <div class="bp-page-body">
       <!-- Search row: box + filter selects + view toggle -->
-      <div class="mb-5 flex flex-wrap items-center gap-3">
+      <div class="mb-4 flex flex-wrap items-center gap-3">
         <div class="w-full max-w-md">
           <app-catalogue-search
             [value]="store.search()"

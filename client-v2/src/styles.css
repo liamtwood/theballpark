@@ -139,7 +139,8 @@
   .bp-vpfit {
     display: flex;
     flex-direction: column;
-    height: calc(100dvh - 8rem);
+    /* shell pt-20 (5rem) + pb-6 (1.5rem) */
+    height: calc(100dvh - 6.5rem);
     min-height: 0;
   }
   .bp-vpfit > .bp-page-body,
@@ -148,6 +149,14 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
+    padding: 16px 24px 20px;
+  }
+  /* Compressed hero on viewport-fit pages (laptop QC 2026-06-12: the
+     standard hero + body paddings left the columns ~half the screen).
+     Type ranks unchanged — only the vertical air tightens. */
+  .bp-vpfit .bp-page-hero {
+    padding: 12px 32px 12px;
+    gap: 6px 20px;
   }
 }
 
