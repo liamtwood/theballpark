@@ -43,7 +43,7 @@ clamp + "read more" if QC objects.
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
+**2026-06-12 (Liam):** "qc complete looks good" — ACCEPTED.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
