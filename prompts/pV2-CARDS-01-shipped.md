@@ -145,6 +145,14 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Shared shell — marketplace + supplier Store tab both resizable, one persisted width across them.
 - Verified live: drag +80 → 210→290, persisted, double-click reset → 210.
 
+## Iteration — v2.20n (2026-06-12)
+**Triggered by QC:** the fold pass — "whole item card above the fold at laptop" (screenshots 172644/172732: CTA cut off at 1280×800; subcat rows reading too heavy next to a widened rail).
+**Commit:** chip v2.20n
+- **Subcat rows denser**: 4px vertical padding (26px rows vs 34px parents), already 12px — visually subordinate + more rail rows unscrolled.
+- **Hero + search rhythm**: vpfit hero 12→10 padding + gap 6→4; vpfit body top 16→12 / bottom 20→16; band margin mb-4→mb-3; search box 38→34px (matches the band's selects — one control rhythm).
+- **2xl goes 4-up** in the card grid — the rail is hidden in card view, so the wide middle would otherwise stretch cards past the fold. (At xl the 3-up + rhythm savings suffice.)
+- **FOLD GOAL MET**, measured at 1280×800 card view: whole card (image → name → chip → price → Add to Quote) above the fold with 104px to spare (card 408px in a 497px column). Both engine consumers inherit everything (shared shell/band/grid — RP-06).
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

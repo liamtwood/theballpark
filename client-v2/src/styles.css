@@ -155,14 +155,14 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding: 16px 24px 20px;
+    padding: 12px 24px 16px;
   }
   /* Compressed hero on viewport-fit pages (laptop QC 2026-06-12: the
      standard hero + body paddings left the columns ~half the screen).
      Type ranks unchanged — only the vertical air tightens. */
   .bp-vpfit .bp-page-hero {
-    padding: 12px 32px 12px;
-    gap: 6px 20px;
+    padding: 10px 32px 10px;
+    gap: 4px 20px;
   }
 }
 
@@ -720,9 +720,11 @@ body {
   color: var(--color-text);
 }
 
-/* Category-rail subtree rows (v2.16c tree rail). */
+/* Category-rail subtree rows (v2.16c tree rail). Denser than parents
+   (pV2-CARDS-01 fold pass): 12px + tight vertical padding — visually
+   subordinate AND the rail shows more rows unscrolled. */
 .bp-catstrip-row--sub {
-  padding-left: 28px;
+  padding: 4px 12px 4px 28px;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }

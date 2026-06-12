@@ -18,7 +18,7 @@ import { PRICE_BRACKETS } from './catalogue.types';
   selector: 'app-catalogue-filter-band',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CatalogueSearchComponent, EditFieldComponent, ViewToggleComponent],
-  host: { class: 'mb-4 flex flex-wrap items-center gap-3' },
+  host: { class: 'mb-3 flex flex-wrap items-center gap-3' },
   template: `
     <div class="w-full max-w-md">
       <app-catalogue-search

@@ -14,7 +14,9 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
   template: `
     @switch (viewMode()) {
       @case ('card') {
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <!-- 2xl goes 4-up: the rail is hidden in card view, so the wide
+             middle would otherwise stretch cards past the fold. -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           @for (item of items(); track item.id; let i = $index) {
             <app-item-card
               [item]="item"
