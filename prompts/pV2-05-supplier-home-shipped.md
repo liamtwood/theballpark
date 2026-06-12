@@ -58,15 +58,12 @@ strings. Wire to `eventLabel` config if per-role labels matter.
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
-
-## Chat audit
-(chat fills this in — leave the section header so chat finds it)
-
-## QC notes
 **2026-06-12 (Liam):** "qc supplier good, admin good" — supplier + admin
 homes ACCEPTED. Agent issue raised: both project tiles targeted /projects
 → fixed in the v2.12g iteration below.
+
+## Chat audit
+(chat fills this in — leave the section header so chat finds it)
 
 ## Iteration — v2.12g (2026-06-12)
 **Triggered by QC:** "New Projects go to New Project and Past Project
