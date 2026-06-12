@@ -5,10 +5,11 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
+import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { PRICE_BRACKETS, ViewMode } from '../../shared/catalogue/catalogue.types';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
-import { SupplierCardComponent } from '../../shared/catalogue/supplier-card.component';
+import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { MarketplaceStore } from './marketplace-store';
 import { RightRailComponent } from './rail/right-rail.component';
@@ -26,9 +27,10 @@ import { RightRailComponent } from './rail/right-rail.component';
     CatalogueSearchComponent,
     CategoryStripComponent,
     CatalogueGridComponent,
+    CatalogueLayoutComponent,
     EditFieldComponent,
     RightRailComponent,
-    SupplierCardComponent,
+    SupplierGridComponent,
     TabBandComponent,
   ],
   providers: [MarketplaceStore],
@@ -110,31 +112,29 @@ import { RightRailComponent } from './rail/right-rail.component';
         </div>
       </div>
 
-      <!-- Three regions: category rail / grid / right rail -->
-      <div class="grid grid-cols-[210px_1fr] gap-6 xl:grid-cols-[210px_1fr_300px]">
+      <!-- Three regions on the shared layout shell -->
+      <app-catalogue-layout>
         <app-category-strip
+          strip
           [categories]="store.categories()"
           [activeId]="store.categoryId()"
           [totalCount]="allItemsCount()"
           (categorySelected)="store.setCategory($event)"
         />
 
-        <div class="min-w-0">
+        <div>
           @if (store.mode() === 'suppliers') {
             @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
               <p class="bp-body-small text-secondary">Loading…</p>
             } @else if (store.supplierRows().length === 0) {
               <p class="bp-body-small text-secondary">No suppliers match.</p>
             } @else {
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                @for (sup of store.supplierRows(); track sup.id) {
-                  <app-supplier-card
-                    [supplier]="sup"
-                    [favourited]="favs.suppliers().has(sup.id)"
-                    (favouriteToggled)="favs.toggle('supplier', $event)"
-                  />
-                }
-              </div>
+              <app-supplier-grid
+                [suppliers]="store.supplierRows()"
+                [viewMode]="store.viewMode()"
+                [favouriteIds]="favs.suppliers()"
+                (favouriteToggled)="favs.toggle('supplier', $event)"
+              />
               @if (store.suppliersHasMore()) {
                 <div class="mt-6 flex justify-center">
                   <button type="button" class="bp-btn-outline" (click)="store.showMore()">Show more</button>
@@ -166,10 +166,8 @@ import { RightRailComponent } from './rail/right-rail.component';
           }
         </div>
 
-        <div class="hidden xl:block">
-          <app-right-rail />
-        </div>
-      </div>
+        <app-right-rail rail />
+      </app-catalogue-layout>
     </div>
   `,
 })

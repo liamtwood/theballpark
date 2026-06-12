@@ -32,6 +32,15 @@ export class MarketplaceStore {
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
+  private readonly params = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+
+  /** CatalogueScope (architecture §2): when the host route carries a
+   *  supplier :id (supplier-detail's Store tab), the store is PINNED to
+   *  that supplier — items queries scope to it and suppliers mode stays
+   *  idle. Provided per route, so each context gets its own instance. */
+  readonly pinnedSupplierId = computed(() => this.params().get('id'));
 
   // ── Selection (URL) ──────────────────────────────────────────────────
   readonly categoryId = computed(() => this.query().get('cat'));
@@ -52,7 +61,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.mode()}|${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -87,7 +96,7 @@ export class MarketplaceStore {
         priceMin: bracket?.min ?? null,
         priceMax: bracket?.max ?? null,
         tier: this.tier(),
-        supplier: this.supplierId(),
+        supplier: this.pinnedSupplierId() ?? this.supplierId(),
         offset: this.offset(),
       };
     },
@@ -109,7 +118,7 @@ export class MarketplaceStore {
 
   readonly suppliersRes = resource({
     params: () =>
-      this.mode() === 'suppliers'
+      this.mode() === 'suppliers' && !this.pinnedSupplierId()
         ? { cat: this.categoryId(), q: this.search() || null, offset: this.offset() }
         : undefined,
     loader: async ({ params }) => {

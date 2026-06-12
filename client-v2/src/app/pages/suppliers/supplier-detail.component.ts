@@ -1,24 +1,38 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
+import { MarketplaceStore } from '../marketplace/marketplace-store';
+import { RightRailComponent } from '../marketplace/rail/right-rail.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
-import { CatalogueItem, SupplierDetail } from '../../shared/catalogue/catalogue.types';
+import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
+import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
+import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 
 /** pV2-06d — /suppliers/:id (the v1.65dm supplier detail, decomposed):
  *  hero (name + city + favourite heart + tab band) over two tabs —
  *  STOREFRONT (brand panel, category chips with counts, contact card) and
- *  STORE (the supplier's items on the catalogue engine, reusing
- *  /items?supplier= — one list path). Tab + category drill live in the
- *  URL (?tab=store&cat=). */
+ *  STORE: the SAME engine + store + rail the marketplace mounts
+ *  (v2.15b chat-audit fix — MarketplaceStore is PROVIDED here with its
+ *  pinned-supplier scope from :id; the mini-store duplication is gone).
+ *  Tab + drill live in the URL (?tab=store&cat=&item=). */
 @Component({
   selector: 'app-supplier-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, PageHeroComponent, TabBandComponent, CatalogueGridComponent],
+  imports: [
+    LucideAngularModule,
+    PageHeroComponent,
+    TabBandComponent,
+    CatalogueGridComponent,
+    CatalogueLayoutComponent,
+    CategoryStripComponent,
+    RightRailComponent,
+  ],
+  providers: [MarketplaceStore],
   host: { class: 'block' },
   template: `
     @if (detail.value(); as sup) {
@@ -98,28 +112,38 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
             </section>
           </div>
         } @else {
-          <!-- STORE — the supplier's catalogue on the shared engine -->
-          @if (storeCat(); as activeCat) {
-            <p class="bp-caption mb-3">
-              Filtered to {{ categoryName(sup, activeCat) }} ·
-              <button type="button" class="cursor-pointer border-none bg-transparent p-0 text-secondary underline hover:text-text" (click)="openStore(null)">show all</button>
-            </p>
-          }
-          @if (items().length === 0 && !itemsRes.isLoading()) {
-            <p class="bp-body-small text-secondary">No items.</p>
-          } @else {
-            <app-catalogue-grid
-              [items]="items()"
-              viewMode="card"
-              [favouriteIds]="favs.items()"
-              (favouriteToggled)="favs.toggle('item', $event)"
+          <!-- STORE — the marketplace engine, pinned to this supplier. -->
+          <app-catalogue-layout>
+            <app-category-strip
+              strip
+              [categories]="storeCategories(sup)"
+              [activeId]="store.categoryId()"
+              [totalCount]="supplierTotal(sup)"
+              (categorySelected)="store.setCategory($event)"
             />
-            @if (hasMore()) {
-              <div class="mt-6 flex justify-center">
-                <button type="button" class="bp-btn-outline" (click)="showMore()">Show more</button>
-              </div>
+
+            @if (store.items().length === 0 && !store.itemsRes.isLoading()) {
+              <p class="bp-body-small text-secondary">No items.</p>
+            } @else {
+              <app-catalogue-grid
+                [items]="store.items()"
+                viewMode="card"
+                [selectedId]="store.itemId()"
+                [favouriteIds]="favs.items()"
+                (entitySelected)="toggleItem($event)"
+                (favouriteToggled)="favs.toggle('item', $event)"
+              />
+              @if (store.hasMore()) {
+                <div class="mt-6 flex justify-center">
+                  <button type="button" class="bp-btn-outline" [disabled]="store.loadingMore()" (click)="store.showMore()">
+                    {{ store.loadingMore() ? 'Loading…' : 'Show more' }}
+                  </button>
+                </div>
+              }
             }
-          }
+
+            <app-right-rail rail />
+          </app-catalogue-layout>
         }
       </div>
     } @else if (detail.error()) {
@@ -134,55 +158,29 @@ export class SupplierDetailComponent {
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
   protected readonly favs = inject(FavouritesStore);
+  /** The SAME store class the marketplace provides — pinned via :id. */
+  protected readonly store = inject(MarketplaceStore);
 
   protected readonly tabs: TabBandTab[] = [
     { key: 'storefront', label: 'Storefront' },
     { key: 'store', label: 'Store' },
   ];
 
-  private readonly params = toSignal(this.route.paramMap, {
-    initialValue: this.route.snapshot.paramMap,
-  });
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
-  protected readonly supplierId = computed(() => this.params().get('id') ?? '');
   protected readonly tab = computed(() => (this.query().get('tab') === 'store' ? 'store' : 'storefront'));
-  protected readonly storeCat = computed(() => this.query().get('cat'));
 
-  protected readonly detail = resource<SupplierDetail, string>({
-    params: () => this.supplierId(),
+  protected readonly detail = resource({
+    params: () => this.store.pinnedSupplierId() ?? '',
     loader: ({ params }) => this.catalogue.supplierDetail(params),
-  });
-
-  // Store-tab items: the shared /items path scoped to this supplier.
-  protected readonly items = signal<CatalogueItem[]>([]);
-  protected readonly hasMore = signal(false);
-  private readonly storeKey = computed(() => `${this.supplierId()}|${this.storeCat() ?? ''}`);
-  private readonly offset = linkedSignal<string, number>({
-    source: this.storeKey,
-    computation: () => 0,
-  });
-
-  protected readonly itemsRes = resource({
-    params: () =>
-      this.tab() === 'store'
-        ? { supplier: this.supplierId(), cat: this.storeCat(), offset: this.offset() }
-        : undefined,
-    loader: async ({ params }) => {
-      const page = await this.catalogue.items(params);
-      if (params.offset === 0) this.items.set(page.items);
-      else this.items.update((list) => [...list, ...page.items]);
-      this.hasMore.set(page.hasMore);
-      return page;
-    },
   });
 
   protected setTab(tab: string): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tab: tab === 'store' ? 'store' : null, cat: null },
+      queryParams: { tab: tab === 'store' ? 'store' : null, cat: null, item: null },
       queryParamsHandling: 'merge',
     });
   }
@@ -190,13 +188,30 @@ export class SupplierDetailComponent {
   protected openStore(catId: string | null): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tab: 'store', cat: catId },
+      queryParams: { tab: 'store', cat: catId, item: null },
       queryParamsHandling: 'merge',
     });
   }
 
-  protected showMore(): void {
-    this.offset.set(this.items().length);
+  protected toggleItem(id: string): void {
+    this.store.selectItem(this.store.itemId() === id ? null : id);
+  }
+
+  /** The strip wants CategoryInfo-ish rows — adapt the detail's counts. */
+  protected storeCategories(sup: SupplierDetail) {
+    return sup.categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      count: c.count,
+      tagline: null,
+      iconName: null,
+      isActive: true,
+      sortOrder: null,
+    }));
+  }
+
+  protected supplierTotal(sup: SupplierDetail): number {
+    return sup.categories.reduce((sum, c) => sum + c.count, 0);
   }
 
   protected location(sup: SupplierDetail): string {
@@ -205,9 +220,5 @@ export class SupplierDetailComponent {
 
   protected initial(sup: SupplierDetail): string {
     return (sup.name || '?').charAt(0).toUpperCase();
-  }
-
-  protected categoryName(sup: SupplierDetail, id: string): string {
-    return sup.categories.find((c) => c.id === id)?.name ?? 'category';
   }
 }
