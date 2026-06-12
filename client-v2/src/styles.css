@@ -530,3 +530,29 @@ body {
 .bp-cat-chip:hover {
   background: var(--color-fill);
 }
+
+/* Subcategory strip active state (pV2-06-subcats). */
+.bp-cat-chip--active {
+  background: var(--theme-soft);
+  border-color: var(--theme-accent);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Curation table subcategory expander (pV2-06-subcats). */
+.bp-subcat-expander {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-subcat-expander:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}

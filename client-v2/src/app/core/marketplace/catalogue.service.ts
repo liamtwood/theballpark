@@ -73,6 +73,13 @@ export class CatalogueService {
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
   }
 
+  /** Active subcategories of a category + live counts (browse strip). */
+  subcategories(categoryId: string): Promise<CategoryInfo[]> {
+    return this.cached(`/api/marketplace/categories/${categoryId}/subcategories`, () =>
+      this.api.get<CategoryInfo[]>(`/api/marketplace/categories/${categoryId}/subcategories`)
+    );
+  }
+
   /** One page of the suppliers browse (pV2-06d — same envelope). */
   suppliers(query: { cat?: string | null; q?: string | null; offset?: number }): Promise<Paginated<CatalogueSupplier>> {
     const params = new URLSearchParams();
@@ -110,8 +117,11 @@ export class CatalogueService {
   /** Every top-level category incl. inactive — the curation table
    *  (server-gated to platform admins). Uncached: the table is the live
    *  editing surface. */
-  adminCategories(): Observable<CategoryInfo[]> {
-    return this.api.get<CategoryInfo[]>('/api/marketplace/categories/all');
+  adminCategories(parent?: string): Observable<CategoryInfo[]> {
+    const url = parent
+      ? `/api/marketplace/categories/all?parent=${parent}`
+      : '/api/marketplace/categories/all';
+    return this.api.get<CategoryInfo[]>(url);
   }
 
   /** Curation update; resolves to the fresh row (with live count). Busts

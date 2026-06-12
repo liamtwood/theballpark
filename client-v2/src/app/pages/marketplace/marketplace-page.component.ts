@@ -113,6 +113,30 @@ import { RightRailComponent } from './rail/right-rail.component';
         />
 
         <div>
+          <!-- Subcategory strip (pV2-06-subcats) — items mode, category set -->
+          @if (store.mode() === 'items' && store.categoryId() && store.subcategories().length) {
+            <div class="mb-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="bp-cat-chip"
+                [class.bp-cat-chip--active]="!store.subcategoryId()"
+                (click)="store.setSubcategory(null)"
+              >
+                All {{ store.selectedCategory()?.name }}
+              </button>
+              @for (sub of store.subcategories(); track sub.id) {
+                <button
+                  type="button"
+                  class="bp-cat-chip"
+                  [class.bp-cat-chip--active]="store.subcategoryId() === sub.id"
+                  (click)="store.setSubcategory(sub.id)"
+                >
+                  {{ sub.name }}
+                  <span class="bp-meta">{{ sub.count }}</span>
+                </button>
+              }
+            </div>
+          }
           @if (store.mode() === 'suppliers') {
             @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
               <p class="bp-body-small text-secondary">Loading…</p>

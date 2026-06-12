@@ -15,6 +15,8 @@ import {
   ArrowLeft,
   Check,
   ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   CircleUser,
   FolderOpen,
   FolderPlus,
@@ -103,6 +105,8 @@ export const appConfig: ApplicationConfig = {
         Search, LayoutGrid, List, Table,
         // pV2-06d — favourites + storefront contact
         Heart, Globe, Phone, Mail, MapPin,
+        // pV2-06-subcats — curation expanders
+        ChevronDown, ChevronRight,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

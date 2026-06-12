@@ -67,6 +67,22 @@ router.get(
   requireActiveMembership('admin.cross_org_view'),
   async (req, res, next) => {
     try {
+      const parent = req.query.parent === undefined ? null : z.uuid().safeParse(req.query.parent);
+      if (parent && !parent.success) return res.status(400).json({ error: 'Invalid parent' });
+      if (parent) {
+        // Subcategory curation rows (pV2-06-subcats): counts by subcategory_id.
+        const r = await pool.query(
+          `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
+                  COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active) AS item_count
+             FROM categories c
+             LEFT JOIN items i ON i.subcategory_id = c.id
+            WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue' AND c.parent_id = $1
+            GROUP BY c.id
+            ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
+          [parent.data]
+        );
+        return res.json(r.rows.map(toCategory));
+      }
       const r = await pool.query(SELECT_CATEGORIES.replace('%ACTIVE%', ''));
       res.json(r.rows.map(toCategory));
     } catch (err) { next(err); }
@@ -109,20 +125,50 @@ router.patch(
       const r = await pool.query(
         `UPDATE categories SET ${sets.join(', ')}, updated_at = NOW()
           WHERE id = $${vals.length} AND deleted_at IS NULL
-            AND parent_id IS NULL AND namespace = 'catalogue'
-          RETURNING id`,
+            AND namespace = 'catalogue'
+          RETURNING id, parent_id`,
         vals
       );
       if (!r.rows.length) return res.status(404).json({ error: 'Category not found' });
-      // Return the fresh row WITH its live count (the table re-renders it).
+      // Return the fresh row WITH its live count — count axis depends on the
+      // level (top-level: items.category_id; subcat: items.subcategory_id).
+      const isSub = !!r.rows[0].parent_id;
       const fresh = await pool.query(
-        SELECT_CATEGORIES.replace('%ACTIVE%', 'AND c.id = $1'),
+        `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
+                COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active) AS item_count
+           FROM categories c
+           LEFT JOIN items i ON ${isSub ? 'i.subcategory_id' : 'i.category_id'} = c.id
+          WHERE c.id = $1
+          GROUP BY c.id`,
         [id.data]
       );
       res.json(toCategory(fresh.rows[0]));
     } catch (err) { next(err); }
   }
 );
+
+/** GET /api/marketplace/categories/:id/subcategories — the browse strip
+ *  (pV2-06-subcats): ACTIVE subcategories of a top-level category with
+ *  live item counts (items point at subcats via subcategory_id). */
+router.get('/categories/:id/subcategories', async (req, res, next) => {
+  try {
+    const id = z.uuid().safeParse(req.params.id);
+    if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    const r = await pool.query(
+      `SELECT c.id, c.name, c.tagline, c.icon_name, c.is_active, c.sort_order,
+              COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL AND i.is_active
+                                    AND i.approval_status = 'approved') AS item_count
+         FROM categories c
+         LEFT JOIN items i ON i.subcategory_id = c.id
+        WHERE c.deleted_at IS NULL AND c.namespace = 'catalogue'
+          AND c.parent_id = $1 AND c.is_active
+        GROUP BY c.id
+        ORDER BY c.sort_order ASC NULLS LAST, c.name ASC`,
+      [id.data]
+    );
+    res.json(r.rows.map(toCategory));
+  } catch (err) { next(err); }
+});
 
 // ── Items (pV2-06a) ─────────────────────────────────────────────────────────
 

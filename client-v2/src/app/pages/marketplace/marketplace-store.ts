@@ -43,17 +43,20 @@ export class MarketplaceStore {
   readonly pinnedSupplierId = computed(() => this.params().get('id'));
 
   // ── Selection (URL) ──────────────────────────────────────────────────
-  readonly categoryId = computed(() => this.query().get('cat'));
+  readonly categoryId = computed(() => this.query().get('cat') || null); // '' normalised
   readonly search = computed(() => this.query().get('q') ?? '');
   readonly viewMode = computed<ViewMode>(() => asViewMode(this.query().get('view')));
-  readonly itemId = computed(() => this.query().get('item'));
+  readonly itemId = computed(() => this.query().get('item') || null);
   /** Items (default) or suppliers — the hero tab band (pV2-06d). */
   readonly mode = computed<BrowseMode>(() => asBrowseMode(this.query().get('mode')));
 
+  /** Subcategory drill (?sub=) — only meaningful with a category set. */
+  readonly subcategoryId = computed(() => this.query().get('sub') || null);
+
   // pV2-06c filters (URL: ?price= bracket key, ?tier=, ?sup=)
-  readonly priceBracket = computed(() => this.query().get('price'));
+  readonly priceBracket = computed(() => this.query().get('price') || null);
   readonly tier = computed(() => asTier(this.query().get('tier')));
-  readonly supplierId = computed(() => this.query().get('sup'));
+  readonly supplierId = computed(() => this.query().get('sup') || null);
   readonly hasFilters = computed(
     () => !!(this.priceBracket() || this.tier() || this.supplierId())
   );
@@ -61,7 +64,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -75,6 +78,14 @@ export class MarketplaceStore {
     loader: () => this.catalogue.categories(),
   });
   readonly categories = computed(() => this.categoriesRes.value() ?? []);
+
+  /** The selected category's subcategory strip (cached reads; skips when
+   *  no category is selected). */
+  readonly subcategoriesRes = resource({
+    params: () => this.categoryId() ?? undefined,
+    loader: ({ params }) => this.catalogue.subcategories(params),
+  });
+  readonly subcategories = computed(() => this.subcategoriesRes.value() ?? []);
 
   readonly supplierOptionsRes = resource<SupplierOption[], void>({
     loader: () => this.catalogue.supplierOptions(),
@@ -92,6 +103,7 @@ export class MarketplaceStore {
       const bracket = bracketFor(this.priceBracket());
       return {
         cat: this.categoryId(),
+        sub: this.subcategoryId(),
         q: this.search() || null,
         priceMin: bracket?.min ?? null,
         priceMax: bracket?.max ?? null,
@@ -152,7 +164,11 @@ export class MarketplaceStore {
 
   // ── Writers (navigate — never set state) ─────────────────────────────
   setCategory(id: string | null): void {
-    this.merge({ cat: id, item: null });
+    // Changing category invalidates the subcategory drill.
+    this.merge({ cat: id, sub: null, item: null });
+  }
+  setSubcategory(id: string | null): void {
+    this.merge({ sub: id, item: null });
   }
   setMode(mode: string): void {
     // Item-only filters don't apply to suppliers — drop them on switch.
