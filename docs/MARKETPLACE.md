@@ -91,6 +91,12 @@ The decomposition. v1 file → how it contributes to v2.
 - **Favourites endpoint** — pV2-06b
 - **Filter dimension model** — the gnarliest data piece; worth a server-side look before pV2-06c is drafted
 
+Resolved (2026-06-12, Liam + CC): server-side filtering at the DB, with
+EVERY list query paginated from day one — page size 24, "Show more"
+appends, All stays the default landing. Selection never fetches (rail
+preview hydrates from the loaded list); list fetches go through one
+cached service choke point. Detail in pV2-06-angular-architecture.md.
+
 ## Prompt arc
 
 CC locked this plan at commit `90ffa3b` (2026-06-12). Panel modes ship as
