@@ -16,6 +16,21 @@ export class FavouritesStore {
   readonly items = this.itemIds.asReadonly();
   readonly suppliers = this.supplierIds.asReadonly();
 
+  /** TRANSITIONAL (pV2-CARDS-01 QC): the item card's "+" needs its OWN
+   *  state — sharing the wishlist state lit both buttons on one click.
+   *  SESSION-LOCAL draft until pV2-06f lands the real quote store (no
+   *  server write exists yet); lost on reload BY DESIGN — it marks
+   *  intent, it isn't a quote. 06f replaces this wholesale. */
+  private readonly quoteDraftIds = signal<ReadonlySet<string>>(new Set());
+  readonly quoteDraft = this.quoteDraftIds.asReadonly();
+
+  toggleQuoteDraft(itemId: string): void {
+    const next = new Set(this.quoteDraftIds());
+    if (next.has(itemId)) next.delete(itemId);
+    else next.add(itemId);
+    this.quoteDraftIds.set(next);
+  }
+
   /** Convenience predicates for templates. */
   readonly isItemFav = computed(() => (id: string) => this.itemIds().has(id));
 

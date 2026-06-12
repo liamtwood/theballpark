@@ -50,18 +50,18 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       <lucide-icon name="heart" [size]="15" />
     </button>
     <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
-         foot CTA (v2.20q: a grid of brand CTAs broke the BUTTONS.md
-         scarcity rule). TRANSITIONAL: wired to favourites until pV2-06f
-         lands the quote flow. -->
+         foot CTA (v2.20q). OWN state, independent of the heart (QC: one
+         click was lighting both). TRANSITIONAL: session-local draft mark
+         until pV2-06f lands the real quote flow. -->
     <button
       type="button"
       class="bp-fav-btn bp-fav-btn--second"
-      [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Added to Quote' : 'Add to Quote'"
-      [attr.title]="favourited() ? 'Added to Quote' : 'Add to Quote'"
-      (click)="onFavClick($event)"
+      [class.bp-fav-btn--on]="quoted()"
+      [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+      [attr.title]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+      (click)="onQuoteClick($event)"
     >
-      <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="15" />
+      <lucide-icon [name]="quoted() ? 'check' : 'plus'" [size]="15" />
     </button>
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
@@ -91,8 +91,11 @@ export class ItemCardComponent {
   /** Above-the-fold cards load eagerly (LCP); the grid sets this. */
   readonly eager = input<boolean>(false);
   readonly favourited = input<boolean>(false);
+  /** Draft-quote mark (session-local until 06f) — independent of the heart. */
+  readonly quoted = input<boolean>(false);
   readonly clicked = output<string>();
   readonly favouriteToggled = output<string>();
+  readonly quoteToggled = output<string>();
 
   protected cardSrc(): string | null {
     return sizedImage(this.item().coverUrl, 480);
@@ -101,5 +104,10 @@ export class ItemCardComponent {
   protected onFavClick(e: Event): void {
     e.stopPropagation(); // the host click selects the card
     this.favouriteToggled.emit(this.item().id);
+  }
+
+  protected onQuoteClick(e: Event): void {
+    e.stopPropagation();
+    this.quoteToggled.emit(this.item().id);
   }
 }

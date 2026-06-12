@@ -193,6 +193,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - **F-8 — noted, binding:** `marketplace.js` at 467 lines is past the 300-line route ALARM — **extraction required before the next ship touches that file** (favourites routes are the natural split). Logged here so the next marketplace prompt starts with it.
 **Greens after fixes:** build/lint/guard + 67/67; shell tokens verified live.
 
+## Iteration — v2.20t (2026-06-12)
+**Triggered by QC:** clicking either overlay lit BOTH — the v2.20q transitional wiring shared the one favourites state across heart + plus (architect F-4 had flagged exactly this UX).
+**Commit:** chip v2.20t
+- The "+" now carries its OWN state: a **session-local draft-quote set** on FavouritesStore (`quoteDraft` + `toggleQuoteDraft`). Heart = wishlist (server-persisted, unchanged); plus = draft-quote mark — independent toggles, both can be on. Threaded dumb through item-card → catalogue-grid → both page consumers.
+- DELIBERATE SEMANTICS: the draft set is lost on reload — it marks intent, it isn't a quote (no server write exists until 06f, which replaces this wholesale). Documented on the store.
+- Verified live: plus-only → only plus on; heart too → both on; both revert; heart still round-trips the server.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

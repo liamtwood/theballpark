@@ -23,8 +23,10 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               [selected]="item.id === selectedId()"
               [eager]="i < 6"
               [favourited]="favouriteIds().has(item.id)"
+              [quoted]="quoteDraftIds().has(item.id)"
               (clicked)="entitySelected.emit($event)"
               (favouriteToggled)="favouriteToggled.emit($event)"
+              (quoteToggled)="quoteToggled.emit($event)"
             />
           }
         </div>
@@ -88,8 +90,11 @@ export class CatalogueGridComponent {
   readonly selectedId = input<string | null>(null);
   /** Favourited item ids (org-scoped) — hearts on the card view. */
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
+  /** Draft-quote item ids (session-local until 06f) — the "+" marks. */
+  readonly quoteDraftIds = input<ReadonlySet<string>>(new Set<string>());
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
+  readonly quoteToggled = output<string>();
 
   protected thumb(url: string | null): string | null {
     return sizedImage(url, 160);
