@@ -83,7 +83,10 @@ Cosmetic until someone asks where their item went.
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
+**2026-06-12 (Liam):** "tested the filters, all worked... searched rocket
+food in venue (none as expect) then catering and it showed (13) and 13
+were displayed all rocket food. QC good" — ACCEPTED, incl. combined
+supplier×category filtering with counts matching the displayed grid.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
