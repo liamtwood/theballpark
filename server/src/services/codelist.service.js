@@ -106,6 +106,10 @@ async function inUseCount(listName, code) {
   const ref = consumerRef(parent);
   if (!ref) return null; // no consumer pointer → no gate count available
   const [table, column] = ref.split('.');
+  // Audit F-1: identifiers can't be parameterised — the whitelist is the
+  // gate, this regex makes its contract EXPLICIT (a future whitelist entry
+  // that isn't a bare lowercase identifier fails closed, not into SQL).
+  if (!/^[a-z_][a-z0-9_]*$/.test(table) || !/^[a-z_][a-z0-9_]*$/.test(column)) return null;
   try {
     // Not every v1-era consumer table carries deleted_at — detect once.
     const hasDeletedAt = await pool.query(

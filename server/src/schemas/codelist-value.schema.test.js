@@ -7,7 +7,7 @@ const {
   CodelistValuePatchSchema,
   ListNameSchema,
 } = require('./codelist-value.schema');
-const { consumerRef } = require('../services/codelist.consumers');
+const { consumerRef, CONSUMER_WHITELIST } = require('../services/codelist.consumers');
 
 test('create: accepts a clean value and strips unknowns', () => {
   const r = CodelistValueCreateSchema.safeParse({ code: 'SGD', label: 'SGD (S$)', symbol: 'S$', evil: 1 });
@@ -31,6 +31,12 @@ test('list-name param: snake_case only', () => {
   assert.equal(ListNameSchema.safeParse('item_unit').success, true);
   assert.equal(ListNameSchema.safeParse('Item Unit').success, false);
   assert.equal(ListNameSchema.safeParse('items;drop').success, false);
+});
+
+test('whitelist entries are bare lowercase identifiers (audit F-1 contract)', () => {
+  for (const ref of CONSUMER_WHITELIST) {
+    assert.match(ref, /^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$/, `bad whitelist entry: ${ref}`);
+  }
 });
 
 test('consumerRef: whitelist gates identifiers (Rule 8)', () => {

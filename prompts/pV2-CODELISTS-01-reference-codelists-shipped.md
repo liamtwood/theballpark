@@ -87,6 +87,18 @@
 **What:** Pre-dates this ship (PrimeNG initial chunk); the 6 new Lucide icons add ~2 kB. Logged so it isn't mistaken for codelists fallout.
 **Severity:** LOW
 
+## Iteration — v2.18c (2026-06-12)
+**Triggered by:** end-of-module architect audit — report saved to `docs/audits/2026-06-12-codelists-arc-architect-audit.md`
+**Commit:** see chip v2.18c
+**Triage (7 findings):**
+- **F-1 HIGH — accepted.** inUseCount now validates split identifiers against `^[a-z_][a-z0-9_]*$` (fails closed to null), + a new spec asserts every CONSUMER_WHITELIST entry is identifier-shaped. Server tests 48/48.
+- **F-2 MEDIUM — accepted** (option 2). 409 message no longer suggests "pick a different default" (no such affordance exists); now states defaults can't be deactivated and changing one requires a data change. Verified live.
+- **F-3 LOW — accepted as comment.** Status-pill now documents the per-instance-resource / service-level fetch dedup so it isn't misread as N+1.
+- **F-4 LOW — rejected.** Refetching valuesAll after every save doubles request volume on a save-on-change surface for an edge case (cross-tab staleness) the cache invalidation already handles for OTHER consumers; the server's returned fresh row is authoritative for THIS surface. Same pattern as categories-settings.
+- **F-5 LOW — accepted.** Gate note now reads "Advisory: N records… The value was hidden." — mode explicit.
+- **F-6 LOW — rejected.** The seed assertion already halts loudly with the offending list named, and the migration is idempotent — a pre-check is the same outcome with more code.
+- **F-7 LOW — noted, no change.** 248/250 lines; extract `CodelistValueRowComponent` when the page is next touched.
+
 ## QC notes
 (Liam fills this in)
 

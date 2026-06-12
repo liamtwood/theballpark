@@ -236,7 +236,7 @@ export class CodelistsSettingsComponent {
         const { count } = await firstValueFrom(this.codelists.usage(parent.listName, v.code));
         if (count !== null && count > 0) {
           this.gateNote.set(
-            `${count} record${count === 1 ? '' : 's'} currently use "${v.label}" — they keep displaying it, but no new records can select it.`
+            `Advisory: ${count} record${count === 1 ? '' : 's'} currently use "${v.label}" — they keep displaying it, but no new records can select it. The value was hidden.`
           );
         }
       } catch {

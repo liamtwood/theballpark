@@ -35,6 +35,9 @@ export class StatusPillComponent {
   /** The value code (e.g. 'sent'). */
   readonly code = input.required<string>();
 
+  // N pills on one list share ONE fetch: list() memoises the in-flight
+  // promise per list, so per-instance resources dedupe at the service
+  // (audit F-3 — deliberate, not N+1).
   private readonly valuesRes = resource({
     params: () => this.list(),
     loader: ({ params }) => this.codelists.list(params),

@@ -108,7 +108,10 @@ router.patch('/:list/values/:code', admin, async (req, res, next) => {
     if (result.error === 404) return res.status(404).json({ error: 'Value not found' });
     if (result.error === 'default') {
       return res.status(409).json({
-        error: "This value is the list's default — pick a different default before deactivating it.",
+        // Audit F-2: don't suggest an action this surface can't do —
+        // changing default_code is a code/data change until a CODELISTS-02
+        // era affordance exists.
+        error: "This value is the list's default and must stay selectable — defaults can't be deactivated here. Changing a list's default currently requires a data change.",
       });
     }
     res.json(result.value);
