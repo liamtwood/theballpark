@@ -9,7 +9,7 @@ import { RightRailComponent } from '../marketplace/rail/right-rail.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
-import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
+import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
@@ -57,7 +57,11 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
 
       <div class="bp-page-body">
         @if (tab() === 'storefront') {
-          <app-storefront-panel [supplier]="sup" (categorySelected)="openStore($event)" />
+          <app-storefront-panel
+            [supplier]="sup"
+            [subcategories]="subcats.value() ?? []"
+            (subcategorySelected)="openStoreSubcat($event)"
+          />
         } @else {
           <!-- STORE — the marketplace engine, pinned to this supplier. -->
           <app-catalogue-layout>
@@ -131,6 +135,12 @@ export class SupplierDetailComponent {
     loader: ({ params }) => this.catalogue.supplierDetail(params),
   });
 
+  /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
+  protected readonly subcats = resource({
+    params: () => this.store.pinnedSupplierId() ?? undefined,
+    loader: ({ params }) => this.catalogue.supplierSubcategories(params),
+  });
+
   protected setTab(tab: string): void {
     this.router
       .navigate([], {
@@ -146,6 +156,17 @@ export class SupplierDetailComponent {
       .navigate([], {
         relativeTo: this.route,
         queryParams: { tab: 'store', cat: catId, item: null },
+        queryParamsHandling: 'merge',
+      })
+      .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
+  }
+
+  /** Subcat-card drill: Store tab pre-filtered to cat + sub (QC #5). */
+  protected openStoreSubcat(sub: SupplierSubcategory): void {
+    this.router
+      .navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'store', cat: sub.parentId, sub: sub.id, item: null },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));

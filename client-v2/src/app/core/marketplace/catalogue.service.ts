@@ -11,6 +11,7 @@ import {
   Paginated,
   SupplierDetail,
   SupplierOption,
+  SupplierSubcategory,
 } from '../../shared/catalogue/catalogue.types';
 
 /** pV2-MARKET-00/06a — catalogue reads + platform-admin curation writes.
@@ -94,6 +95,13 @@ export class CatalogueService {
   supplierDetail(id: string): Promise<SupplierDetail> {
     return this.cached(`/api/marketplace/suppliers/${id}`, () =>
       this.api.get<SupplierDetail>(`/api/marketplace/suppliers/${id}`)
+    );
+  }
+
+  /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
+  supplierSubcategories(id: string): Promise<SupplierSubcategory[]> {
+    return this.cached(`/api/marketplace/suppliers/${id}/subcategories`, () =>
+      this.api.get<SupplierSubcategory[]>(`/api/marketplace/suppliers/${id}/subcategories`)
     );
   }
 

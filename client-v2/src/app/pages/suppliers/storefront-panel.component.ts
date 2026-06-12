@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
+import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
+import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.component';
 
 /** pV2-06d (v2.15c audit fix M7) — the Storefront tab content extracted
- *  from supplier-detail (was pushing the shell toward the 250-line warn):
- *  brand panel (logo letter, name, description, category chips) +
- *  contact card. Category chips emit — the shell owns the Store drill. */
+ *  from supplier-detail: brand panel + contact card + (pV2-CARDS-01 QC #5)
+ *  the subcat-card grid per CARDS.md image 7 — one card per subcategory
+ *  the supplier sells in, covered by their first item's image. Cards
+ *  emit — the shell owns the Store drill. */
 @Component({
   selector: 'app-storefront-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, SubcatCardComponent],
   host: { class: 'grid max-w-4xl grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]' },
   template: `
     <!-- Brand panel -->
@@ -25,17 +27,6 @@ import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
         <p class="bp-body mt-4 text-secondary">{{ supplier().description }}</p>
       }
 
-      @if (supplier().categories.length) {
-        <h3 class="bp-field-label mt-6 uppercase tracking-wide">Categories</h3>
-        <div class="mt-2 flex flex-wrap gap-2">
-          @for (cat of supplier().categories; track cat.id) {
-            <button type="button" class="bp-cat-chip" (click)="categorySelected.emit(cat.id)">
-              {{ cat.name }}
-              <span class="bp-meta">{{ cat.count }}</span>
-            </button>
-          }
-        </div>
-      }
     </section>
 
     <!-- Contact card -->
@@ -68,11 +59,24 @@ import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
         }
       </dl>
     </section>
+
+    <!-- Subcat-card grid (image 7) — spans both panel columns. -->
+    @if (subcategories().length) {
+      <section class="lg:col-span-2">
+        <h3 class="bp-field-label uppercase tracking-wide">Browse the store</h3>
+        <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          @for (sub of subcategories(); track sub.id) {
+            <app-subcat-card [subcat]="sub" (clicked)="subcategorySelected.emit($event)" />
+          }
+        </div>
+      </section>
+    }
   `,
 })
 export class StorefrontPanelComponent {
   readonly supplier = input.required<SupplierDetail>();
-  readonly categorySelected = output<string>();
+  readonly subcategories = input<SupplierSubcategory[]>([]);
+  readonly subcategorySelected = output<SupplierSubcategory>();
 
   protected initial(): string {
     return (this.supplier().name || '?').charAt(0).toUpperCase();

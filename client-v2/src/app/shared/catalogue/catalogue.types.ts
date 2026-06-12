@@ -91,6 +91,17 @@ export interface CatalogueSupplier {
   count: number;
 }
 
+/** One storefront subcat card (pV2-CARDS-01 QC #5, image 7): a
+ *  subcategory the supplier has live items in; cover = first item image.
+ *  parentId drills the Store tab to cat+sub in one navigation. */
+export interface SupplierSubcategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+  count: number;
+  coverUrl: string | null;
+}
+
 /** The storefront projection (GET /suppliers/:id) — marketplace-public
  *  fields only; items come from /items?supplier=. */
 export interface SupplierDetail {

@@ -67,8 +67,25 @@
 ### Marketplace tier filter still hardcoded
 Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an `item_tier` codelist when the /store arc touches items. No change this ship.
 
+## Iteration — v2.20c (2026-06-12)
+**Triggered by QC:** items 1–3 of Liam's five-point pass (item-card itself ✓ against the image-2 element table)
+**Commit:** `fc61dd0`
+- **QC 1** — item-preview rail mirrors the card's price treatment (`From` + `.bp-price-large` gradient + `/ unit`; "Price on request" fallback). One template edit, same primitive.
+- **QC 2** — portrait card: `.bp-item-card__img` fixed 132px → `aspect-ratio: 4/3` (hero scales with column width). At desktop: card 273×399 (1.46 h/w), hero 51% of card — image-2 proportions.
+- **QC 3** — chip shows the SUBCATEGORY: items query joins `categories sc` on `subcategory_id` → `subcategoryName` in the payload; the chip binds `subcategoryName ?? categoryName` (defensive fallback). Preview: "Print & Stationery" / "Branded Merchandise".
+- **QC 4** — home unchanged ✓ (no action).
+
+## Iteration — v2.20d (2026-06-12)
+**Triggered by QC:** item 5 — storefront subcat-card grid. The reference image already existed: CARDS.md maps "Storefront cell" to **image 7 (Bar Service)** in bp-cards.docx — no need to wait.
+**Commit:** chip v2.20d
+- **Server**: `GET /api/marketplace/suppliers/:id/subcategories` → `{ id, name, parentId, count, coverUrl }` — one row per subcat the supplier has live items in; `coverUrl` = the first non-null `image_url` for that supplier+subcat (correlated subquery, same active/approved filters as the browse). `parentId` lets the client drill cat+sub in one navigation.
+- **`<app-subcat-card>`** (new, shared/catalogue): `.bp-card .bp-card--zoom` + cover (or soft empty block) + name + "N items" per image 7. Emits; the shell owns navigation.
+- **Storefront panel**: the generic category chip-list REPLACED by the grid (2/3/4-up responsive, spans both panel columns under brand+contact). Old `categorySelected` output retired.
+- **Shell**: `subcats` resource (session-cached service read) + `openStoreSubcat()` → `?tab=store&cat=<parent>&sub=<id>` — the URL-is-state store picks both up.
+- Verified in preview: 7 cards for Construct & Co. (covers where images exist), click drills to the Store tab pre-filtered (`sub` param set). Build/lint/guard green, 67/67.
+
 ## QC notes
-(Liam fills this in)
+(Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d. Home unchanged ✓ (4).
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
