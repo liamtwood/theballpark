@@ -43,18 +43,15 @@ the no-silent-caps rule.
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
-
-## Chat audit
-(chat fills this in — leave the section header so chat finds it)
-
-## QC notes
 **2026-06-12 (Liam):** marketplace card ACCEPTED ("displays including the
 subtitle from cats table"); reported the card "does not appear on store".
 Fresh-session verification showed it DOES render there (his blank =
 the recurring dev-server stale-chunk; hard refresh cures) — but the check
 exposed a REAL bug underneath: the store rail showed the GLOBAL count
 (22) instead of the supplier-scoped count (13). Fixed in v2.17b.
+
+## Chat audit
+(chat fills this in — leave the section header so chat finds it)
 
 ## Iteration — v2.17b (2026-06-12)
 **Triggered by:** Liam's QC + the module CLOSING audit (all 6 findings
