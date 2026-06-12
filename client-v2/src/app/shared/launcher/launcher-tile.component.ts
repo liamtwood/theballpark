@@ -14,7 +14,7 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [LucideAngularModule, RouterLink],
   host: { class: 'bp-launcher-tile' },
   template: `
-    <a [routerLink]="href()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
+    <a [routerLink]="href()" [queryParams]="query()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
       <span class="bp-launcher-tile__icon-block">
         <lucide-icon [name]="icon()" [size]="24" [strokeWidth]="1.5" />
       </span>
@@ -90,4 +90,6 @@ export class LauncherTileComponent {
   readonly label = input.required<string>();
   readonly subtitle = input<string>('');
   readonly href = input.required<string>();
+  /** Optional query params for the routerLink (null = none). */
+  readonly query = input<Record<string, string> | null>(null);
 }

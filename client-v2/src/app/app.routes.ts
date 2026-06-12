@@ -79,10 +79,24 @@ export const routes: Routes = [
         data: { feature: 'Marketplace' },
       },
       {
-        // Supplier-home tile target (v2.12f) — the supplier's storefront hub.
+        // Supplier sub-hub (v2.13a — v1.68t port): stage tiles over /projects.
+        path: 'projects-hub',
+        loadComponent: () =>
+          import('./pages/supplier/projects-hub.component').then((m) => m.ProjectsHubComponent),
+      },
+      {
+        // Supplier sub-hub (v2.13a — v1.68o port): the storefront trio.
         path: 'marketplace-profile',
+        loadComponent: () =>
+          import('./pages/supplier/marketplace-profile.component').then(
+            (m) => m.MarketplaceProfileComponent
+          ),
+      },
+      {
+        // Marketplace Profile hub tile target — the storefront editor stub.
+        path: 'my-shop',
         loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Marketplace Profile' },
+        data: { feature: 'My Shop' },
       },
       {
         // Profile — the org's own profile + financial defaults (the v2 port

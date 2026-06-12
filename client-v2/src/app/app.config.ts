@@ -22,6 +22,11 @@ import {
   Rocket,
   Settings,
   SquarePen,
+  FileText,
+  Zap,
+  CircleCheck,
+  Package,
+  Building2,
   Store,
   Trash2,
   X,
@@ -80,6 +85,8 @@ export const appConfig: ApplicationConfig = {
         Settings, X, FolderPlus, FolderOpen, Inbox, Store, CircleUser, ArrowLeft,
         // Profile: section edit lifecycle
         SquarePen, Check,
+        // v2.13a supplier sub-hubs: projects-hub stages + marketplace-profile trio
+        FileText, Zap, CircleCheck, Package, Building2,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

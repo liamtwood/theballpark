@@ -44,6 +44,7 @@ import { LauncherTile } from './launcher-tile.types';
             [label]="tile.label"
             [subtitle]="tile.subtitle ?? ''"
             [href]="tile.href"
+            [query]="tile.query ?? null"
           />
         }
       </div>

@@ -38,7 +38,9 @@ export const SUPPLIER_TILES: readonly LauncherTile[] = [
     icon: 'folder-open',
     label: 'Projects',
     subtitle: 'Manage active opportunities, confirmed projects and ongoing work.',
-    href: '/projects',
+    // v2.13a — lands on the Projects hub (stage tiles), which drills into
+    // the /projects list. Was /projects directly (v1.68t parity).
+    href: '/projects-hub',
   },
   {
     icon: 'inbox',
@@ -72,6 +74,59 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
   },
 ];
 
+/** The supplier Projects hub (v2.13a — v1.68t port): three stage buckets
+ *  drilling into the one /projects list pre-filtered. Live counts in the
+ *  tile footers are DEFERRED until a v2 projects count endpoint exists
+ *  (v1 fetched every project and bucketed client-side). */
+export const PROJECTS_HUB_TILES: readonly LauncherTile[] = [
+  {
+    icon: 'file-text',
+    label: 'Quoting',
+    subtitle: 'Projects currently progressing through the approval workflow.',
+    href: '/projects',
+    query: { bucket: 'quoting' },
+  },
+  {
+    icon: 'zap',
+    label: 'Live Projects',
+    subtitle: 'Active projects currently in production.',
+    href: '/projects',
+    query: { bucket: 'live' },
+  },
+  {
+    icon: 'circle-check',
+    label: 'Completed Projects',
+    subtitle: 'Finished projects and delivery history.',
+    href: '/projects',
+    query: { bucket: 'completed' },
+  },
+];
+
+/** The supplier Marketplace Profile hub (v2.13a — v1.68o port). The Profile
+ *  tile lands on the REAL /settings/profile; the rest stub until their
+ *  arcs (v1 targets were /shop, /store, /storefront). */
+export const MARKETPLACE_PROFILE_TILES: readonly LauncherTile[] = [
+  {
+    icon: 'store',
+    label: 'Marketplace',
+    subtitle: 'Browse the Ballpark Marketplace, explore suppliers and discover opportunities.',
+    href: '/marketplace',
+  },
+  {
+    icon: 'package',
+    label: 'My Shop',
+    subtitle:
+      'Manage how your company appears within Ballpark Marketplace. Update your storefront, branding and profile.',
+    href: '/my-shop',
+  },
+  {
+    icon: 'building-2',
+    label: 'Profile',
+    subtitle: 'Manage company information, payment details, team members and account settings.',
+    href: '/settings/profile',
+  },
+];
+
 /** The launcher set for an org type (home-launcher + stub heroes). */
 export function tilesForOrgType(orgType: OrgType | null | undefined): readonly LauncherTile[] {
   if (orgType === 'ballpark') return BALLPARK_TILES;
@@ -86,6 +141,12 @@ export function tileForPath(path: string, orgType?: OrgType | null): LauncherTil
   const preferred = tilesForOrgType(orgType);
   return (
     preferred.find((t) => t.href === path) ??
-    [...AGENT_TILES, ...SUPPLIER_TILES, ...BALLPARK_TILES].find((t) => t.href === path)
+    [
+      ...AGENT_TILES,
+      ...SUPPLIER_TILES,
+      ...BALLPARK_TILES,
+      ...PROJECTS_HUB_TILES,
+      ...MARKETPLACE_PROFILE_TILES,
+    ].find((t) => t.href === path)
   );
 }
