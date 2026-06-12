@@ -122,16 +122,70 @@ their own prompts; skipping v1's item-drawer (2,210 lines) + cart-drawer
 | **pV2-06e** | **Right-rail category mode** — panel renders cat summary + that category's supplier list when a category is selected (v1's `category-context-panel` port, simplified). |
 | **pV2-06f** | **Right-rail cart mode + checkout page** — panel renders Quote list (default state when "All" selected) with Remove buttons, "Checkout" CTA → new `/quote-checkout/:projectId` page (flat route — focused flow, deliberately OUTSIDE the future projects tab shell; aligned 2026-06-12, was inconsistently `/projects/:id/checkout` here). `QuoteService`, "Add to Quote" / "Added to Quote" CTA states. End of marketplace arc; checkout page itself is a separate prompt. |
 
+## Future product surfaces (deferred, with shapes sketched)
+
+Recorded so the architectural shape is on the queue when these arcs land —
+saves re-deriving from scratch.
+
+### Supplier "hidden storefront" tier (paid feature)
+
+**Customer signal (Liam, 2026-06-12 customer session):** suppliers may
+prefer storefronts that hide competitors. Customer himself unsure. Liam's
+ruling: "better for us if they compete — let 'em look. Maybe offer a
+'hidden tier' at a cost."
+
+**Architectural shape:**
+- Default behaviour stays **B** (architecturally honest — same engine, same
+  rendering, competitors visible on storefront)
+- "Hidden mode" = supplier-org feature flag (`suppliers.show_competitors_on_store BOOLEAN DEFAULT true` or wherever org metadata lives). When false:
+  - Storefront suppresses the suppliers list
+  - Category summary card scopes its count to that supplier only
+  - This is exactly the behaviour CC originally shipped — gets recycled as the paid feature, not the default
+- **Variation is data-driven, not code-driven** — engine still renders identically; it just reads a flag and conditionally narrows scope. One Definition holds.
+
+**Wires into billing arc when it lands:**
+- `budget_tier` codelist already exists for agency-side; supplier-side equivalent (`supplier_subscription_tier` or similar) needs to land
+- "Hidden visibility" becomes one entitlement in a tier-feature matrix
+- Once 2-3 tier features exist (hidden / featured placement / extra items / custom styling / analytics), the tier-feature mapping itself likely wants to be a codelist or join table — not hardcoded
+
+### Other deferred surfaces
+
+- **pV2-06f — Quote + Checkout** — parked at the projects boundary. Right-rail Quote mode + "Add to Quote" / "Added to Quote" CTA states + `QuoteService` + new `/quote-checkout/:projectId` page. Lands when projects arc starts (needs project entity to anchor the quote against).
+- **Storefront styling polish** — informal pass; not blocking
+- **v1 favourites gating** — feature-parity check from closing audit
+- **`/store` supplier-side catalogue management** — ownership-derived edit/delete affordances + add-item flow; future arc
+- **Recommend / "you might also like"** — surfaces the marketplace can grow once item-level signal accrues
+
 ## Audit reference
 
-See `docs/AUDIT_LEDGER.md` for the per-file audit state. Marketplace
-components will land here as the pV2-06 prompts ship.
+See `docs/AUDIT_LEDGER.md` for the per-file audit state. Relevant rows:
+
+- `client-v2/src/app/pages/settings/categories/categories-settings.component.ts` — 129 lines, audited 2026-06-12 (chat), SHA `b87508e`, `✓ clean` — TYPE-01 role classes used, edit-field primitive, optimistic save with rollback (Rule 5)
+- `server/src/routes/marketplace.js` — 184 lines, audited 2026-06-12 (chat), SHA `26210f6` — properly gated (`requireActiveMembership('admin.cross_org_view')`), Zod-validated, ownership server-derived, parameterized queries
+- `server/src/services/category.service.js` — 96 lines, `2a0457f`
+- `server/src/schemas/category-admin.schema.js` — 18 lines, `d235576`
+
+**Risk patterns surfaced during this arc** — full detail in `docs/AUDIT_LEDGER.md`:
+
+- **RP-01 (cold-path latency)** — surfaced as slow-first-search; root cause was pg pool growing on demand (not non-indexed ILIKE). Closed at v2.14c by `min: 2` floor + boot warm-up pair. Learning logged: when first-request is slow with pg/Supabase, check pool growth before reaching for index hypotheses.
+- **RP-03 (legacy v1 routes ungated)** — `routes/categories.js` exposed POST/PUT/PATCH/DELETE without any auth. Closed at v2.14c by deleting the 4 write verbs (GETs remain until pV2-11). Router fall-through now delivers 401. Same pattern likely affects other v1 routers; sweep candidate.
+- **RP-05 (component-local `.bp-*` definitions)** — 8 marketplace classes violated the one-definition rule; closed at v2.14f. All moved to `styles.css §Marketplace utilities`. `check-style-guards.js` extended to fail builds on any new component-local `.bp-*` selector. Legacy BEM files (edit-field, home-launcher, launcher-tile, page-hero) on shrink-only allowlist.
 
 ## Version history
 
-| Version | Date | What changed | Ship | Re-audit |
-|---|---|---|---|---|
-| — | — | (Empty; pV2-MARKET-00 / pV2-06a have not landed yet) | — | — |
+| Version | Date | What changed | Ship | QC | Audit |
+|---|---|---|---|---|---|
+| **v2.14a** | 2026-06-12 | **pV2-MARKET-00** — Categories backend + `/settings/categories` ballpark-admin curation table. v2 marketplace router (`/api/marketplace/*`) gated, Zod, ownership-derived. Subcategory curation deferred until pV2-06a. | `bb57393` | accepted | ✓ clean — RP-03 surfaced (closed v2.14c) |
+| **v2.14b** | 2026-06-12 | **pV2-06a** — Browse foundation. Server `GET /api/marketplace/items` (born-paginated `{items, total, hasMore}`, PAGE_SIZE 48). `MarketplaceStore` (route-scoped, URL-is-state, `linkedSignal` for offset reset, railMode derived). Engine in `shared/catalogue/` — catalogue-search, category-strip, catalogue-grid (PURE; `@switch` card/list/table), item-card. `CatalogueService` session cache with concurrent-flight dedup + failed-flight eviction + mutation bust. | `b4ffc63` | accepted | ✓ clean — RP-05 surfaced (closed v2.14f) |
+| **v2.14c** | 2026-06-12 | **RP-01 + RP-03 closures.** Pool `min: 2` + boot warm-up (slow-first-search fix). Ungated legacy category write verbs deleted. | `508612d` | search-cold verified instant; deletion verified 401 on writes | ✓ clean |
+| **v2.14d** | 2026-06-12 | Marketplace hero driven by `/settings/pages` (hero only; v1's other marketplace settings deliberately ignored). | `fc2659a` | accepted | ✓ clean |
+| **v2.14e** | 2026-06-12 | **pV2-06b** — Right-rail item preview becomes real. Image + name + price/unit + supplier + category + description + close. Pure preview over loaded row (zero `/items` fetches on selection verified). | `d10ec58` | accepted | ✓ clean — RP-05 grew here (closed v2.14f) |
+| **v2.14f** | 2026-06-12 | **RP-05 closure** — 8 marketplace `.bp-*` declarations moved to `styles.css`; style guard extended to fail any component-local `.bp-*` definition; legacy BEM allowlist (shrink-only) for 4 pre-existing files. | `c11dfc3` | guard plant-fail-revert drilled | ✓ closed by prevention |
+| **v2.14g** | 2026-06-12 | **pV2-06c** — Filter row (price / tier / supplier). Combined filters narrow server-side. | `89b27e1` | accepted — Rocket Food walk verified search × cat filter combine correctly (catering → 13 results all Rocket Food, venue → 0) | ✓ clean |
+| **v2.15a** | 2026-06-12 | **pV2-06d** — Suppliers mode + `/suppliers/:id` supplier detail + favourites. Favourites persist across navigation (cache bust on write verified). | `81503bc` | two defects flagged (view toggle stuck on cards in suppliers mode; supplier-detail single-column instead of 3-rail) | superseded by v2.15b |
+| **v2.15b** | 2026-06-12 | **pV2-06d QC fix** — Both defects addressed via proper extraction (not branch): new `<app-supplier-grid>` mirrors catalogue-grid's `@switch` for card/list/table; new `<app-catalogue-layout>` is the 3-region shell (ONE definition, `ng-content` slots); MarketplaceStore extended with `pinnedSupplierId()` scope so supplier-detail mounts the SAME store class via `:id` — ~70 lines of mini-store duplication deleted. | `5db73dc` | accepted ("just need subcat and styling next") | ✓ clean with two non-blocking flags: supplier-detail at 224/250 lines; `viewMode="card"` hardcoded on supplier-detail's grid |
+| **v2.17b** | 2026-06-12 | **Marketplace module CLOSED.** Three things in one ship: (1) supplier-store category-card scoping fix — was showing global count (Catering·22) instead of supplier-scoped (·13); rail now takes a `categoryOverride` so each surface feeds its own count + tagline. Liam's QC blank was actually a dev-server stale-chunk (hard refresh) — but chasing it exposed the real per-supplier-count bug underneath. (2) End-of-module closing audit done, saved to `docs/audits/2026-06-12-marketplace-module-closing-audit.md` — 6 findings all accepted + fixed same-day (URL-builder consistency, silent pinned-suppression [predicted Liam's QC confusion verbatim], sizedImage observability, keyboard edge on chevron). (3) RP-05 + RP-06 confirmed clean by the closing audit; verdict: "structurally sound and production-ready." | `c70cf3e` | hard-refresh required first; then Rocket's store → Catering → card reads "Catering · 13 items" | ✓ end-of-module audit clean. **Module close summary: 7 prompts shipped, ~20 QC/audit iterations.** pV2-06f (Quote + checkout) deferred to projects arc boundary. |
+| **v2.15c** | 2026-06-12 | **pV2-06d architect-audit pass** — angular-architect skill returned 9 findings; CC triaged with rationale. **7 fixed:** `<app-storefront-panel>` extracted (supplier-detail 224→172); `<app-view-toggle>` extracted as shared primitive (Store tab toggle now works with `?view=` bound — chat + architect cross-validated finding); defensive resource skip until `:id` resolves; cache keys param-sorted (genuine future fragility); favourites cross-tab race window documented; navigation failure logging added (closes chat's earlier LOW flag too). **2 rejected with rationale:** "stale suppliers on mode toggle" misreads `resource()` (mode = params dependency, flips re-run loader; same-params from session cache by design); "partial-response mutation" mechanically impossible (`await` resolves only with complete bodies). Rebuttals captured in shipped file. **Architect's done-well list independently validated** load-bearing choices: route-scoped DI + pinned scope, `linkedSignal` offset reset, URL-is-state consistency, cache eviction rules, zoneless cleanliness, born-paginated envelope. | `05217c0` + `5917228` | accepted | ✓ clean. 64/64 client + 42/42 server green. Two audit lenses (chat pattern eye + architect correctness eye) converged on the same M7/M8 extractions — meaningful signal that those were the right fixes. |
 
 ## When to update this doc
 
