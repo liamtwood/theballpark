@@ -127,3 +127,8 @@ No redirects: the old URLs never shipped beyond dev.
 **Verified on 4201 as Ryan:** home shows Storefront → /storefront; hub
 titled Storefront with Marketplace / My Shop (/store) / Profile; /store
 stub hero "My Shop". Build, lint, guards green; 54/54.
+
+## QC notes — final (2026-06-12)
+**Liam:** "works for me" — v2.13b Storefront rename ACCEPTED. Customer
+review of the supplier surface planned next week; the hub-depth watch item
+(two clicks to a bucket) is the thing to listen for there.
