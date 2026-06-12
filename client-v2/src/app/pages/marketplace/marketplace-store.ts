@@ -6,8 +6,11 @@ import {
   CatalogueItem,
   CategoryInfo,
   RailMode,
+  SupplierOption,
   ViewMode,
+  asTier,
   asViewMode,
+  bracketFor,
 } from '../../shared/catalogue/catalogue.types';
 
 /** pV2-06a — the marketplace browse store. ROUTE-scoped (provided by the
@@ -33,8 +36,19 @@ export class MarketplaceStore {
   readonly viewMode = computed<ViewMode>(() => asViewMode(this.query().get('view')));
   readonly itemId = computed(() => this.query().get('item'));
 
+  // pV2-06c filters (URL: ?price= bracket key, ?tier=, ?sup=)
+  readonly priceBracket = computed(() => this.query().get('price'));
+  readonly tier = computed(() => asTier(this.query().get('tier')));
+  readonly supplierId = computed(() => this.query().get('sup'));
+  readonly hasFilters = computed(
+    () => !!(this.priceBracket() || this.tier() || this.supplierId())
+  );
+
   /** The filter signature — offset + accumulation reset on ANY change. */
-  private readonly filterKey = computed(() => `${this.categoryId() ?? ''}|${this.search()}`);
+  private readonly filterKey = computed(
+    () =>
+      `${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+  );
 
   /** Local page offset; snaps back to 0 when the filters change. */
   private readonly offset = linkedSignal<string, number>({
@@ -48,6 +62,11 @@ export class MarketplaceStore {
   });
   readonly categories = computed(() => this.categoriesRes.value() ?? []);
 
+  readonly supplierOptionsRes = resource<SupplierOption[], void>({
+    loader: () => this.catalogue.supplierOptions(),
+  });
+  readonly supplierOptions = computed(() => this.supplierOptionsRes.value() ?? []);
+
   /** Accumulated grid rows (page 0 replaces, later pages append — set by
    *  the loader, the established fetch-into-state pattern). */
   readonly items = signal<CatalogueItem[]>([]);
@@ -55,11 +74,18 @@ export class MarketplaceStore {
   readonly hasMore = signal(false);
 
   readonly itemsRes = resource({
-    params: () => ({
-      cat: this.categoryId(),
-      q: this.search() || null,
-      offset: this.offset(),
-    }),
+    params: () => {
+      const bracket = bracketFor(this.priceBracket());
+      return {
+        cat: this.categoryId(),
+        q: this.search() || null,
+        priceMin: bracket?.min ?? null,
+        priceMax: bracket?.max ?? null,
+        tier: this.tier(),
+        supplier: this.supplierId(),
+        offset: this.offset(),
+      };
+    },
     loader: async ({ params }) => {
       const page = await this.catalogue.items(params);
       if (params.offset === 0) this.items.set(page.items);
@@ -101,6 +127,18 @@ export class MarketplaceStore {
   }
   selectItem(id: string | null): void {
     this.merge({ item: id });
+  }
+  setPriceBracket(key: string | null): void {
+    this.merge({ price: key, item: null });
+  }
+  setTier(tier: string | null): void {
+    this.merge({ tier: tier, item: null });
+  }
+  setSupplier(id: string | null): void {
+    this.merge({ sup: id, item: null });
+  }
+  clearFilters(): void {
+    this.merge({ price: null, tier: null, sup: null, item: null });
   }
   showMore(): void {
     // Next page starts where the accumulated list ends.

@@ -5,7 +5,8 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
-import { ViewMode } from '../../shared/catalogue/catalogue.types';
+import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
+import { PRICE_BRACKETS, ViewMode } from '../../shared/catalogue/catalogue.types';
 import { MarketplaceStore } from './marketplace-store';
 import { RightRailComponent } from './rail/right-rail.component';
 
@@ -22,6 +23,7 @@ import { RightRailComponent } from './rail/right-rail.component';
     CatalogueSearchComponent,
     CategoryStripComponent,
     CatalogueGridComponent,
+    EditFieldComponent,
     RightRailComponent,
   ],
   providers: [MarketplaceStore],
@@ -34,8 +36,8 @@ import { RightRailComponent } from './rail/right-rail.component';
     />
 
     <div class="bp-page-body">
-      <!-- Search row: box + view toggle -->
-      <div class="mb-5 flex items-center gap-3">
+      <!-- Search row: box + filter selects + view toggle -->
+      <div class="mb-5 flex flex-wrap items-center gap-3">
         <div class="w-full max-w-md">
           <app-catalogue-search
             [value]="store.search()"
@@ -43,6 +45,42 @@ import { RightRailComponent } from './rail/right-rail.component';
             (valueChange)="store.setSearch($event)"
           />
         </div>
+
+        <!-- pV2-06c filters — the dimensions with real data (price / tier /
+             supplier); category-specific attribute filters deferred. -->
+        <app-edit-field
+          label=""
+          type="select"
+          class="w-40"
+          [options]="priceOptions"
+          [value]="store.priceBracket() ?? 'any'"
+          [editing]="true"
+          (valueChange)="store.setPriceBracket($event === 'any' ? null : $event)"
+        />
+        <app-edit-field
+          label=""
+          type="select"
+          class="w-32"
+          [options]="tierOptions"
+          [value]="store.tier() ?? 'any'"
+          [editing]="true"
+          (valueChange)="store.setTier($event === 'any' ? null : $event)"
+        />
+        <app-edit-field
+          label=""
+          type="select"
+          class="w-44"
+          [options]="supplierOptions()"
+          [value]="store.supplierId() ?? 'any'"
+          [editing]="true"
+          (valueChange)="store.setSupplier($event === 'any' ? null : $event)"
+        />
+        @if (store.hasFilters()) {
+          <button type="button" class="bp-caption cursor-pointer border-none bg-transparent text-secondary underline hover:text-text" (click)="store.clearFilters()">
+            Clear filters
+          </button>
+        }
+
         <div class="ml-auto flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
           @for (v of views; track v.mode) {
             <button
@@ -97,29 +135,6 @@ import { RightRailComponent } from './rail/right-rail.component';
       </div>
     </div>
   `,
-  styles: [
-    `
-      .bp-viewtoggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 30px;
-        height: 30px;
-        border: none;
-        border-radius: var(--radius-pill);
-        background: transparent;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-      }
-      .bp-viewtoggle:hover {
-        background: var(--color-fill);
-      }
-      .bp-viewtoggle--active {
-        background: var(--theme-soft);
-        color: var(--color-text);
-      }
-    `,
-  ],
 })
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
@@ -146,6 +161,23 @@ export class MarketplacePageComponent {
   protected allItemsCount(): number {
     return this.store.categories().reduce((sum, c) => sum + c.count, 0);
   }
+
+  protected readonly priceOptions: EditFieldOption[] = [
+    { label: 'Any price', value: 'any' },
+    ...PRICE_BRACKETS.map((b) => ({ label: b.label, value: b.key })),
+  ];
+
+  protected readonly tierOptions: EditFieldOption[] = [
+    { label: 'Any tier', value: 'any' },
+    { label: 'Basic', value: 'basic' },
+    { label: 'Mid', value: 'mid' },
+    { label: 'Premium', value: 'premium' },
+  ];
+
+  protected readonly supplierOptions = computed<EditFieldOption[]>(() => [
+    { label: 'Any supplier', value: 'any' },
+    ...this.store.supplierOptions().map((s) => ({ label: `${s.name} (${s.count})`, value: s.id })),
+  ]);
 
   protected onItemClicked(id: string): void {
     // Toggle: clicking the selected card clears the selection.

@@ -139,11 +139,15 @@ router.get('/items', async (req, res, next) => {
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { cat, sub, q, offset } = parsed.data;
+    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier } = parsed.data;
     const where = [`i.deleted_at IS NULL`, `i.is_active`, `i.approval_status = 'approved'`];
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
     if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
     if (sub) { vals.push(sub); where.push(`i.subcategory_id = $${vals.length}`); }
+    if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }
+    if (priceMax !== undefined) { vals.push(priceMax); where.push(`i.base_price <= $${vals.length}`); }
+    if (tier) { vals.push(tier); where.push(`i.tier = $${vals.length}`); }
+    if (supplier) { vals.push(supplier); where.push(`i.org_id = $${vals.length}`); }
     if (q) {
       vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
       where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);
@@ -177,6 +181,24 @@ router.get('/items', async (req, res, next) => {
       ownedByActiveOrg: !!row.owned_by_active_org,
     }));
     res.json({ items, total, hasMore: offset + items.length < total });
+  } catch (err) { next(err); }
+});
+
+/** GET /api/marketplace/suppliers/options — lightweight supplier list for
+ *  the filter dropdown (id, name, active-item count). The full suppliers
+ *  browse (cards + envelope) lands in pV2-06d. */
+router.get('/suppliers/options', async (req, res, next) => {
+  try {
+    const r = await pool.query(
+      `SELECT o.id, o.name, COUNT(i.id) AS item_count
+         FROM orgs o
+         JOIN items i ON i.org_id = o.id
+        WHERE o.deleted_at IS NULL
+          AND i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
+        GROUP BY o.id
+        ORDER BY o.name ASC`
+    );
+    res.json(r.rows.map((row) => ({ id: row.id, name: row.name, count: Number(row.item_count) })));
   } catch (err) { next(err); }
 });
 

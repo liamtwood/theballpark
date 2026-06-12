@@ -7,6 +7,7 @@ import {
   CategoryUpdate,
   ItemsQuery,
   Paginated,
+  SupplierOption,
 } from '../../shared/catalogue/catalogue.types';
 
 /** pV2-MARKET-00/06a — catalogue reads + platform-admin curation writes.
@@ -52,10 +53,21 @@ export class CatalogueService {
     if (query.cat) params.set('cat', query.cat);
     if (query.sub) params.set('sub', query.sub);
     if (query.q) params.set('q', query.q);
+    if (query.priceMin != null) params.set('priceMin', String(query.priceMin));
+    if (query.priceMax != null) params.set('priceMax', String(query.priceMax));
+    if (query.tier) params.set('tier', query.tier);
+    if (query.supplier) params.set('supplier', query.supplier);
     if (query.offset) params.set('offset', String(query.offset));
     const qs = params.toString();
     const url = `/api/marketplace/items${qs ? `?${qs}` : ''}`;
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
+  }
+
+  /** Suppliers with active items — the filter dropdown (pV2-06c). */
+  supplierOptions(): Promise<SupplierOption[]> {
+    return this.cached('/api/marketplace/suppliers/options', () =>
+      this.api.get<SupplierOption[]>('/api/marketplace/suppliers/options')
+    );
   }
 
   /** Every top-level category incl. inactive — the curation table

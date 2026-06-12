@@ -51,7 +51,39 @@ export interface ItemsQuery {
   cat?: string | null;
   sub?: string | null;
   q?: string | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  tier?: ItemTier | null;
+  supplier?: string | null;
   offset?: number;
+}
+
+/** pV2-06c — the filter dimensions with real data behind them
+ *  (items.attributes is empty; category-specific dimensions deferred). */
+export type ItemTier = 'basic' | 'mid' | 'premium';
+
+export function asTier(v: string | null): ItemTier | null {
+  return v === 'basic' || v === 'mid' || v === 'premium' ? v : null;
+}
+
+/** One supplier as the filter dropdown sees it. */
+export interface SupplierOption {
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** Price brackets for the filter (data: £5–£14k, median £500). The KEY is
+ *  what lives in ?price= — labels can change without breaking URLs. */
+export const PRICE_BRACKETS: readonly { key: string; label: string; min?: number; max?: number }[] = [
+  { key: 'lt100', label: 'Under £100', max: 100 },
+  { key: '100-500', label: '£100 – £500', min: 100, max: 500 },
+  { key: '500-2000', label: '£500 – £2,000', min: 500, max: 2000 },
+  { key: 'gt2000', label: 'Over £2,000', min: 2000 },
+];
+
+export function bracketFor(key: string | null): (typeof PRICE_BRACKETS)[number] | null {
+  return PRICE_BRACKETS.find((b) => b.key === key) ?? null;
 }
 
 /** Middle-region presentation. */
