@@ -32,6 +32,14 @@ export class CatalogueService {
     this.cache.clear();
   }
 
+  /** Stable cache key: sort params so logically identical queries never
+   *  double-cache (audit H5 — fragile under future param reordering). */
+  private stableUrl(path: string, params: URLSearchParams): string {
+    const sorted = new URLSearchParams([...params.entries()].sort(([a], [b]) => a.localeCompare(b)));
+    const qs = sorted.toString();
+    return qs ? path + '?' + qs : path;
+  }
+
   private cached<T>(url: string, fetcher: () => Observable<T>): Promise<T> {
     let hit = this.cache.get(url) as Promise<T> | undefined;
     if (!hit) {
@@ -61,8 +69,7 @@ export class CatalogueService {
     if (query.tier) params.set('tier', query.tier);
     if (query.supplier) params.set('supplier', query.supplier);
     if (query.offset) params.set('offset', String(query.offset));
-    const qs = params.toString();
-    const url = `/api/marketplace/items${qs ? `?${qs}` : ''}`;
+    const url = this.stableUrl('/api/marketplace/items', params);
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
   }
 
@@ -72,8 +79,7 @@ export class CatalogueService {
     if (query.cat) params.set('cat', query.cat);
     if (query.q) params.set('q', query.q);
     if (query.offset) params.set('offset', String(query.offset));
-    const qs = params.toString();
-    const url = `/api/marketplace/suppliers${qs ? `?${qs}` : ''}`;
+    const url = this.stableUrl('/api/marketplace/suppliers', params);
     return this.cached(url, () => this.api.get<Paginated<CatalogueSupplier>>(url));
   }
 

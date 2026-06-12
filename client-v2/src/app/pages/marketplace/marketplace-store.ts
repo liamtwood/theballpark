@@ -191,10 +191,10 @@ export class MarketplaceStore {
   }
 
   private merge(queryParams: Record<string, string | null>): void {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-      queryParamsHandling: 'merge',
-    });
+    // Navigation rarely fails, but a silent failure leaves the UI lying
+    // about its own URL state (audit L9) — log it.
+    this.router
+      .navigate([], { relativeTo: this.route, queryParams, queryParamsHandling: 'merge' })
+      .catch((err) => console.warn('[MarketplaceStore] navigation failed', err));
   }
 }

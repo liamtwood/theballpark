@@ -7,7 +7,8 @@ import { CategoryStripComponent } from '../../shared/catalogue/category-strip.co
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
-import { PRICE_BRACKETS, ViewMode } from '../../shared/catalogue/catalogue.types';
+import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
+import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -32,6 +33,7 @@ import { RightRailComponent } from './rail/right-rail.component';
     RightRailComponent,
     SupplierGridComponent,
     TabBandComponent,
+    ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
   host: { class: 'block' },
@@ -97,19 +99,7 @@ import { RightRailComponent } from './rail/right-rail.component';
         }
         }
 
-        <div class="ml-auto flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
-          @for (v of views; track v.mode) {
-            <button
-              type="button"
-              class="bp-viewtoggle"
-              [class.bp-viewtoggle--active]="store.viewMode() === v.mode"
-              [attr.aria-label]="v.label"
-              (click)="store.setViewMode(v.mode)"
-            >
-              <lucide-icon [name]="v.icon" [size]="15" />
-            </button>
-          }
-        </div>
+        <app-view-toggle class="ml-auto" [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
       </div>
 
       <!-- Three regions on the shared layout shell -->
@@ -190,12 +180,6 @@ export class MarketplacePageComponent {
       this.pageConfig.marketplaceSubtitle() ||
       'Browse suppliers, products and services to build your project.'
   );
-
-  protected readonly views: { mode: ViewMode; icon: string; label: string }[] = [
-    { mode: 'card', icon: 'layout-grid', label: 'Card view' },
-    { mode: 'list', icon: 'list', label: 'List view' },
-    { mode: 'table', icon: 'table', label: 'Table view' },
-  ];
 
   /** "All Categories" count = sum of the rail counts (matches the grid's
    *  unfiltered total without an extra request). */

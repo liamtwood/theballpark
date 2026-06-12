@@ -27,6 +27,11 @@ export class FavouritesStore {
     },
   });
 
+  /** KNOWN race window (audit H3, acknowledged): two in-flight toggles of
+   *  the SAME ref from different tabs can land out of order; the later
+   *  response's adopt-server-truth wins, which may briefly contradict the
+   *  earlier tab. Single-user toggling is consistent; cross-tab eventual
+   *  consistency is acceptable for favourites. */
   async toggle(type: 'item' | 'supplier', refId: string): Promise<void> {
     const sig = type === 'item' ? this.itemIds : this.supplierIds;
     const before = sig();
