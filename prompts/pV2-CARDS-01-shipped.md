@@ -97,5 +97,12 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 
 (Liam, 2026-06-12, post-v2.20c) Card height + subcat chip confirmed — **look great**.
 
+(Liam, 2026-06-12, post-v2.20e) Grouped storefront "brilliant"; the click-through to the right subcat in the Store was a nice surprise (v1 didn't do that). One issue: Back from the Store went to /marketplace instead of the Storefront. → fixed v2.20f.
+
+## Iteration — v2.20f (2026-06-12)
+**Triggered by QC:** Back from the Store tab skipped the Storefront.
+**Commit:** chip v2.20f
+- Hero back is now computed — it walks the drill in reverse: Store → "Storefront" (same route; the hero's plain routerLink clears the tab/cat/sub params) → "Marketplace". Verified live end-to-end: labels flip per tab, back from Store lands on the Storefront tab.
+
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)

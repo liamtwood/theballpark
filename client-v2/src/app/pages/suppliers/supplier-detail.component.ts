@@ -40,7 +40,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   host: { class: 'block' },
   template: `
     @if (detail.value(); as sup) {
-      <app-page-hero [back]="{ label: 'Marketplace', href: '/marketplace' }" [title]="sup.name" [subtitle]="sup.city ?? ''">
+      <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
         <div hero-actions class="flex items-center gap-3">
           <button
             type="button"
@@ -128,6 +128,14 @@ export class SupplierDetailComponent {
   });
 
   protected readonly tab = computed(() => (this.query().get('tab') === 'store' ? 'store' : 'storefront'));
+
+  /** Back walks the drill in reverse (QC): Store → Storefront (same route,
+   *  params cleared by the hero's plain routerLink) → Marketplace. */
+  protected readonly heroBack = computed(() =>
+    this.tab() === 'store'
+      ? { label: 'Storefront', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}` }
+      : { label: 'Marketplace', href: '/marketplace' }
+  );
 
   /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */
   protected readonly detail = resource({
