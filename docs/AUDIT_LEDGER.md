@@ -22,6 +22,16 @@ by Claude Code; `both` = audited and re-verified.
 
 ---
 
+## Diagnostic learnings — read before every audit
+
+Patterns where chat's initial hypothesis turned out wrong; root cause was
+something else. Captured so future audits don't repeat the misdiagnosis.
+
+| Symptom | Initial hypothesis (wrong) | Actual root cause | Learning |
+|---|---|---|---|
+| First request slow with pg/Supabase | non-indexed ILIKE / missing trigram index | pool `min: 0` + grow-on-demand → second concurrent request paid TCP+TLS+auth | When seeing "first request slow" with pg, check pool `min:` / growth before reaching for index hypotheses. Closed v2.14c (pool `min: 2` + warm-up pair). |
+| Dropdown opens UNDER the table (`p-select` in /settings/codelists) | overlay z-index — preset-level fix | overflow clipping (`overflow-hidden` on rounded wrapper + `opacity-60` stacking contexts on rows) — z-index can't escape clipping or stacking contexts | When an overlay "renders below" a container with `overflow-hidden` ancestors, the answer is usually portaling (`appendTo="body"`), not z-index. Fix lives at the equivalent "one place" though — `<app-edit-field>` is the choke for every dropdown app-wide. Closed v2.18d. |
+
 ## Risk patterns — read before every audit
 
 QC findings sharpen the next audit. When a bug class emerges, log it here
