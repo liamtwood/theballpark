@@ -45,6 +45,7 @@ export interface EditFieldOption {
         @if (editing()) {
           <p-select
             [styleClass]="'w-full bp-fld' + (editing() ? ' is-edit' : '')"
+            appendTo="body"
             [options]="options()"
             optionLabel="label"
             optionValue="value"

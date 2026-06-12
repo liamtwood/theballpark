@@ -35,6 +35,8 @@ out any pattern it disproves.
 | RP-06 | Marketplace surface features ship to `/marketplace` but miss `/suppliers/:id` Store tab — same engine, two consumers; second consumer routinely lags. The reuse infrastructure exists (`<app-catalogue-layout>`, pinned `MarketplaceStore`, `<app-category-strip>`); the gap is a checklist gap. | v2.15a view toggle + 3-rail layout missing on supplier-detail (closed v2.15b/c); v2.16a subcat strip missing on supplier-detail Store tab | OPEN — second occurrence. | Before any marketplace-feature ship, grep both consumer templates (`marketplace-page.component.ts` + `supplier-detail.component.ts`) for the new component/binding. Long-term: extract `<app-subcategory-strip>` as a shared primitive both surfaces mount (same pattern as `<app-view-toggle>` extraction at v2.15c). |
 | RP-05 | Component-local `.bp-*` class declarations violating the one-definition rule. `.bp-*` prefix is reserved for global semantic classes in `styles.css`; defining them inside a component's `styles: [...]` array makes the inventory untrackable + makes reuse impossible. | `.bp-viewtoggle`/`.bp-viewtoggle--active` in `marketplace-page.component.ts` (v2.14b); `.bp-itemprev-img`/`.bp-itemprev-img--empty`/`.bp-itemprev-close` in `item-preview.component.ts` (v2.14e) | **CLOSED BY PREVENTION** v2.14f — all 8 marketplace-arc definitions (viewtoggle ×2, itemprev ×3, rail-empty, catstrip ×2, item-card__img ×2) moved to styles.css §Marketplace utilities; `check-style-guards.js` now FAILS any `.bp-*` selector definition in component .ts files (plant-fail-revert drilled). Pre-RP-05 BEM-element files ratchet-allowlisted (edit-field, home-launcher, launcher-tile, page-hero) — shrink-only list. | Guard enforces; sweep the 4 allowlisted legacy files opportunistically on their next touch. |
 
+| RP-09 | v1-inherited codelist meta carries LITERAL hex colors (`#22c55e`-style) instead of token refs — a deliberate transition state (the metaColor fn passes hex through; net-new lists seed token refs like `--color-info`). If CODELISTS-02 forgets the sweep, status pills on v1-era lists bypass the token system permanently. | codelists-seed.js comment + chat audit pass (2026-06-12, pV2-CODELISTS-01) | OPEN — scheduled to close in pV2-CODELISTS-02 (consumer sweep migrates v1-era meta colors to token refs). | `SELECT list_name, code, meta->>'color' FROM shared.reference_codelist_values WHERE meta->>'color' LIKE '#%'` — must return 0 rows after CODELISTS-02. |
+
 | RP-06 | Engine features wired in the STORE but not mounted on every consumer surface — marketplace gets the UI, supplier-detail (same store, same data) silently lacks it. Three instances in one arc: view-toggle (v2.15a), layout shell (v2.15b), subcat strip (v2.16a). | subcat strip missing on supplier Store tab (Liam QC + chat audit 2026-06-12) | **CLOSED BY EXTRACTION** v2.16b — `<app-subcategory-strip>` shared primitive mounted on both surfaces (joins view-toggle + catalogue-layout). Standing rule: any store-fed UI feature ships as a shared/catalogue primitive and is mounted on EVERY page that provides MarketplaceStore, same commit. | When adding any marketplace UI feature: grep `providers: [MarketplaceStore]` and verify each provider page mounts it. |
 
 Each future audit pass reads this section first and verifies every open
@@ -147,12 +149,35 @@ row's check against the current ship's surface area.
 | File | Lines | Cap | Action |
 |---|---|---|---|
 | `client-v2/src/app/shared/edit-field/edit-field.component.ts` | 205 | 250 (component) | At warning. Extract type-specific bodies (text / select / number) into sub-components when next touched. Not blocking. |
+| `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` (or wherever the codelist admin page lives) | 248 | 250 (component) | **At warning, 2 lines from cap.** F-7 from CODELISTS-01 architect audit notes "extract a value-row component when next touched" — required, not optional. Without extraction, one more feature pushes past 400 (alarm) and forces emergency refactor. |
 
 (None at Alarm.)
 
 ## Bonus — styles.css
 
 Not formally tracked above (rules vary widely) but worth noting: `client-v2/src/styles.css` is at **299 lines** as of v2.11g, SHA `aa8bb13`. Layer-1 tokens + ~25 Layer-2 role classes + §8 button chrome + drawer density variants. Healthy — central source of truth, no per-component CSS bloat.
+
+## Codelists arc files (pV2-CODELISTS-01)
+
+| File | Lines | Last audited | By | Status | Notes |
+|---|---|---|---|---|---|
+| `client-v2/src/app/core/codelists/codelist.service.ts` | 82 | 2026-06-12 | chat | ✓ clean | Same cache discipline as CatalogueService — promise-dedup + failed-flight eviction + `tap(() => invalidate())` on writes. Read path `/values`; admin paths gated server-side. |
+| `client-v2/src/app/core/codelists/codelist.types.ts` | (small) | 2026-06-12 | chat | ✓ clean | Types + `metaColor()` helper for resolving token references vs literal hex |
+| `client-v2/src/app/shared/status-pill/status-pill.component.ts` | 58 | 2026-06-12 | chat | ✓ clean | The locked primitive. Signal-driven, `resource()` for cached fetch, F-3 dedup explicitly commented. Inline style is the One Sanctioned Dynamic Style Case (codelist meta colors = data). Unknown codes render raw code on neutral chrome — never blank. |
+| `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` | 248 | 2026-06-12 | chat | ✓ flagged | Master/detail curation page, ballparkAdminGuard'd. Uses role classes throughout (`.bp-field-label`, `.bp-meta`, `.bp-table-column-header`, `.bp-body-small`, `.bp-caption`, `.bp-type-badge`). **At warning cap (248/250) — F-7: extract value-row component on next touch is required, not optional.** Without it, one more feature pushes past 400 (alarm) and forces emergency refactor. |
+| `server/src/routes/codelists-v2.js` | 131 | 2026-06-12 | chat | ✓ clean | Mounted on gated v2 router. `admin.cross_org_view` on curation routes. parseList/parseCode Zod validators (F-1 contract). System-list write attempt → 403 with locked-rule pointer. Default deactivate attempt → 409 with reworded F-2 message. **DELETE → 405 with educational rationale + docs/CODELISTS.md pointer.** |
+| `server/src/services/codelist.service.js` | (need to verify) | 2026-06-12 | chat | ✓ clean (sampled) | Houses `inUseCount`, `values`, `valuesAll`, `addValue`, `patchValue`, `lists`. F-1 whitelist + regex per audit triage. |
+| `server/src/schemas/codelist-value.schema.js` | (small) | 2026-06-12 | chat | ✓ clean | Zod for `ListName`, `CodeParam`, `CodelistValueCreate`, `CodelistValuePatch` |
+| `server/src/db/codelists-seed.js` | 60+ | 2026-06-12 | chat | ✓ clean | 12 locked parents present. message_status verbatim from CODELISTS.md worked example. Country = full ISO 3166-1 alpha-2 (249 entries, Intl-resolved labels). Three-layer no-DELETE documented in header. `default_code ↔ is_default` invariant noted. v1-inherited status lists keep hex `.color` until CODELISTS-02 migrates consumers (deliberate transition state — see RP-09 below). |
+| `client-v2/src/styles.css` (`.bp-type-badge` at line 597 + 610) | n/a | 2026-06-12 | chat | ✓ clean | New utility class, properly global per RP-05 enforcement |
+
+### Architect audit verdict (CC, 2026-06-12)
+
+"Ships with strong architectural discipline and excellent safety guardrails" — production-ready, no new risk patterns. Full report: `docs/audits/2026-06-12-codelists-arc-architect-audit.md`. 4 accepted / 2 rejected with rationale / 1 noted (F-7 bloat).
+
+### Chat audit verdict (2026-06-12)
+
+✓ Clean. Aligns with locked `CODELISTS.md` spec. Adopts marketplace patterns (cache discipline, gated routes, role classes, edit-field reuse, Zod-validated params, ballparkAdminGuard). Three-layer no-DELETE enforcement verified at API + DB + seed. All audit F-1/F-2/F-3 fixes present in code. F-7 bloat watch tracked. RP-04 (inline option arrays) closure prep landed — primitive exists; consumer sweep is CODELISTS-02.
 
 ## Marketplace arc files (pV2-MARKET-00 + pV2-06a)
 
