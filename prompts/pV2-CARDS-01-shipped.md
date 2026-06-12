@@ -131,6 +131,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Verified live: search + select triggers both compute 999px.
 - FIELDS.md doc capture queued (chat's, post-freeze): name search + .bp-fld + p-select as one family with the shared radius/padding/focus-ring contract.
 
+## Iteration — v2.20l (2026-06-12)
+**Triggered by:** Liam's idea — in card view the cards ARE the preview; the right rail only earns its width over list/table rows.
+**Commit:** chip v2.20l
+- catalogue-layout now injects the page's route-scoped MarketplaceStore and drops the rail region entirely when `viewMode() === 'card'` — the grid template loses the third column so the middle takes the freed width. List + table keep the rail. Both consumers inherit (shared shell — no per-page wiring).
+- Verified live at desktop: card view rail gone, middle 666 → 950px; list view rail returns; toggling back hides it again.
+- Note: card-view clicks still SELECT (ring shows; state kept in the URL) — switching to list/table after selecting shows that item in the rail. Felt right to keep selection state consistent across view modes.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
