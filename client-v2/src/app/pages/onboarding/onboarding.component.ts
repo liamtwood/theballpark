@@ -82,7 +82,7 @@ interface OnboardingForm {
       </form>
     </article>
 
-    <p-toast position="bottom-right" />
+    <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
   styles: [
     `

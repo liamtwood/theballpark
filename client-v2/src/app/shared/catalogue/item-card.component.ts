@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
+import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
@@ -13,7 +14,7 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
 @Component({
   selector: 'app-item-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [CurrencyPipe, LucideAngularModule, TooltipModule],
   host: {
     class: 'bp-card bp-card--zoom cursor-pointer',
     '[class.bp-card--selected]': 'selected()',
@@ -44,7 +45,9 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       class="bp-fav-btn"
       [class.bp-fav-btn--on]="favourited()"
       [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      [attr.title]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      tooltipStyleClass="bp-tooltip"
+      tooltipPosition="top"
       (click)="onFavClick($event)"
     >
       <lucide-icon name="heart" [size]="15" />
@@ -58,7 +61,9 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       class="bp-fav-btn bp-fav-btn--second"
       [class.bp-fav-btn--on]="quoted()"
       [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-      [attr.title]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+      [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+      tooltipStyleClass="bp-tooltip"
+      tooltipPosition="top"
       (click)="onQuoteClick($event)"
     >
       <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —

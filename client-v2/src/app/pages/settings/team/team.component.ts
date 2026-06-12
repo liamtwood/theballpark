@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { LucideAngularModule } from 'lucide-angular';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
@@ -24,7 +25,7 @@ interface InviteForm {
 @Component({
   selector: 'app-team',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonModule, DialogModule, ToastModule, PageHeroComponent, TeamMemberRowComponent],
+  imports: [ReactiveFormsModule, ButtonModule, DialogModule, LucideAngularModule, ToastModule, PageHeroComponent, TeamMemberRowComponent],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
@@ -55,7 +56,7 @@ interface InviteForm {
     </div>
 
     <!-- Invite modal -->
-    <p-dialog header="Invite a team member" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [style]="{ width: '380px' }">
+    <p-dialog header="Invite a team member" styleClass="bp-modal" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [style]="{ width: '380px' }">
       <form class="flex flex-col gap-3" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
         <label class="text-sm font-medium text-secondary">
           Email *
@@ -80,21 +81,42 @@ interface InviteForm {
       </form>
     </p-dialog>
 
-    <!-- Remove confirmation -->
-    <p-dialog header="Remove member?" [visible]="removeTarget() !== null" (visibleChange)="!$event && removeTarget.set(null)" [modal]="true" [style]="{ width: '380px' }">
-      @if (removeTarget(); as t) {
-        <p class="text-md text-secondary">
-          Remove <strong>{{ t.displayName ?? t.email }}</strong>? They'll lose access to this org.
-          Reversible — you can re-invite them by email.
-        </p>
-        <div class="mt-4 flex justify-end gap-2">
-          <p-button label="Cancel" severity="secondary" [text]="true" size="small" (onClick)="removeTarget.set(null)" />
-          <p-button label="Remove" severity="danger" size="small" (onClick)="doRemove(t)" />
+    <!-- Remove confirmation — the DIALOGS.md locked confirm template +
+         the FIRST .bp-btn-danger consumer (the pairing rule holds from
+         day one). ESC + backdrop dismiss = Cancel per the interaction
+         table. -->
+    <p-dialog
+      styleClass="bp-modal bp-modal--confirm"
+      [visible]="removeTarget() !== null"
+      (visibleChange)="!$event && removeTarget.set(null)"
+      [modal]="true"
+      [closable]="false"
+      [closeOnEscape]="true"
+      [dismissableMask]="true"
+      [style]="{ width: '420px' }"
+    >
+      <ng-template pTemplate="header">
+        <div>
+          <div class="bp-modal__icon">
+            <lucide-icon name="trash-2" [size]="20" />
+          </div>
+          <h2 class="bp-card-title">Remove {{ removeTarget()?.displayName ?? removeTarget()?.email }}?</h2>
         </div>
+      </ng-template>
+      @if (removeTarget(); as t) {
+        <p class="bp-body text-secondary">
+          They'll lose access to this org. Reversible — you can re-invite them by email.
+        </p>
       }
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="removeTarget.set(null)">Cancel</button>
+        @if (removeTarget(); as t) {
+          <button type="button" class="bp-btn-danger" (click)="doRemove(t)">Remove</button>
+        }
+      </ng-template>
     </p-dialog>
 
-    <p-toast position="bottom-right" />
+    <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
 export class TeamComponent {
@@ -136,7 +158,8 @@ export class TeamComponent {
       }));
       this.inviteOpen.set(false);
       this.members.reload();
-      this.toast.add({ severity: 'success', summary: 'Invite created', detail: v.email, life: 3000 });
+      // Locked toast copy (DIALOGS.md standard messages).
+      this.toast.add({ severity: 'success', summary: 'Sent.', detail: v.email, life: 3000 });
     } catch (e) {
       this.toast.add({ severity: 'error', summary: 'Invite failed', detail: errorDetail(e), life: 4000 });
     } finally {

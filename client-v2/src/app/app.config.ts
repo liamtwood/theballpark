@@ -51,6 +51,8 @@ import {
   Plus,
   ArrowRight,
   Folder,
+  Info,
+  CircleAlert,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -122,6 +124,8 @@ export const appConfig: ApplicationConfig = {
         // pV2-CARDS-01 — card foot CTAs (Add/Added, View supplier) +
         // storefront category-group headers
         Plus, ArrowRight, Folder,
+        // pV2-DIALOGS-01 — inline alert severity icons
+        Info, CircleAlert,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

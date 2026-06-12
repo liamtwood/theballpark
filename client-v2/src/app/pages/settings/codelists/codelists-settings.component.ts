@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { CodelistService } from '../../../core/codelists/codelist.service';
 import {
@@ -20,7 +21,7 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
 @Component({
   selector: 'app-codelists-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodelistValueRowComponent, EditFieldComponent, PageHeroComponent],
+  imports: [CodelistValueRowComponent, EditFieldComponent, LucideAngularModule, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -99,11 +100,25 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
               }
             </div>
 
+            <!-- DIALOGS.md inline alerts (pV2-DIALOGS-01): persist until
+                 the state changes — advisories info, failures danger. -->
             @if (gateNote()) {
-              <p class="bp-caption mt-3 text-secondary">{{ gateNote() }}</p>
+              <div class="bp-alert bp-alert--info mt-3" role="status">
+                <lucide-icon name="info" [size]="16" class="bp-alert__icon" />
+                <span class="bp-alert__body">{{ gateNote() }}</span>
+                <button type="button" class="bp-alert__dismiss" (click)="gateNote.set('')" aria-label="Dismiss">
+                  <lucide-icon name="x" [size]="14" />
+                </button>
+              </div>
             }
             @if (error()) {
-              <p class="bp-caption mt-3 text-danger">{{ error() }}</p>
+              <div class="bp-alert bp-alert--danger mt-3" role="alert">
+                <lucide-icon name="circle-alert" [size]="16" class="bp-alert__icon" />
+                <span class="bp-alert__body">{{ error() }}</span>
+                <button type="button" class="bp-alert__dismiss" (click)="error.set('')" aria-label="Dismiss">
+                  <lucide-icon name="x" [size]="14" />
+                </button>
+              </div>
             }
           } @else {
             <p class="bp-body-small text-secondary">Select a codelist.</p>

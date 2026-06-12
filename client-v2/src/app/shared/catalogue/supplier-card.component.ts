@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueSupplier, sizedImage } from './catalogue.types';
 
 /** pV2-CARDS-01 — the catalog supplier card per CARDS.md image 3 (Rocket
@@ -11,7 +12,7 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
 @Component({
   selector: 'app-supplier-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink, LucideAngularModule, TooltipModule],
   host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
@@ -41,7 +42,9 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       class="bp-fav-btn"
       [class.bp-fav-btn--on]="favourited()"
       [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      [attr.title]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      tooltipStyleClass="bp-tooltip"
+      tooltipPosition="top"
       (click)="favouriteToggled.emit(supplier().id)"
     >
       <lucide-icon name="heart" [size]="15" />

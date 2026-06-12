@@ -90,7 +90,7 @@ interface ProfileForm {
       }
     </div>
 
-    <p-toast position="bottom-right" />
+    <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
 export class ProfileComponent {
@@ -190,9 +190,10 @@ export class ProfileComponent {
       this.refCounter.set(fresh.refCounter);
       if (section === 'org') this.editingOrg.set(false);
       else this.editingFin.set(false);
-      this.toast.add({ severity: 'success', summary: 'Saved', life: 2500 });
+      // Locked toast copy (DIALOGS.md standard messages).
+      this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
     } catch (e) {
-      this.toast.add({ severity: 'error', summary: 'Could not save', detail: errorDetail(e), life: 4000 });
+      this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {
       this.saving.set(false);
     }
