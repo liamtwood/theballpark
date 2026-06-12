@@ -3,11 +3,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import {
+  BrowseMode,
   CatalogueItem,
+  CatalogueSupplier,
   CategoryInfo,
   RailMode,
   SupplierOption,
   ViewMode,
+  asBrowseMode,
   asTier,
   asViewMode,
   bracketFor,
@@ -35,6 +38,8 @@ export class MarketplaceStore {
   readonly search = computed(() => this.query().get('q') ?? '');
   readonly viewMode = computed<ViewMode>(() => asViewMode(this.query().get('view')));
   readonly itemId = computed(() => this.query().get('item'));
+  /** Items (default) or suppliers — the hero tab band (pV2-06d). */
+  readonly mode = computed<BrowseMode>(() => asBrowseMode(this.query().get('mode')));
 
   // pV2-06c filters (URL: ?price= bracket key, ?tier=, ?sup=)
   readonly priceBracket = computed(() => this.query().get('price'));
@@ -47,7 +52,7 @@ export class MarketplaceStore {
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+      `${this.mode()}|${this.categoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -96,6 +101,27 @@ export class MarketplaceStore {
     },
   });
 
+  /** Suppliers mode data (pV2-06d) — same accumulate-by-offset shape.
+   *  The resource SKIPS while mode=items (params → undefined). */
+  readonly supplierRows = signal<CatalogueSupplier[]>([]);
+  readonly suppliersTotal = signal(0);
+  readonly suppliersHasMore = signal(false);
+
+  readonly suppliersRes = resource({
+    params: () =>
+      this.mode() === 'suppliers'
+        ? { cat: this.categoryId(), q: this.search() || null, offset: this.offset() }
+        : undefined,
+    loader: async ({ params }) => {
+      const page = await this.catalogue.suppliers(params);
+      if (params.offset === 0) this.supplierRows.set(page.items);
+      else this.supplierRows.update((list) => [...list, ...page.items]);
+      this.suppliersTotal.set(page.total);
+      this.suppliersHasMore.set(page.hasMore);
+      return page;
+    },
+  });
+
   /** First-page load only — appends keep the grid on screen. */
   readonly loadingFirstPage = computed(() => this.itemsRes.isLoading() && this.offset() === 0);
   readonly loadingMore = computed(() => this.itemsRes.isLoading() && this.offset() > 0);
@@ -119,6 +145,14 @@ export class MarketplaceStore {
   setCategory(id: string | null): void {
     this.merge({ cat: id, item: null });
   }
+  setMode(mode: string): void {
+    // Item-only filters don't apply to suppliers — drop them on switch.
+    this.merge({
+      mode: mode === 'suppliers' ? 'suppliers' : null,
+      item: null,
+      ...(mode === 'suppliers' ? { price: null, tier: null, sup: null } : {}),
+    });
+  }
   setSearch(q: string): void {
     this.merge({ q: q || null, item: null });
   }
@@ -141,8 +175,10 @@ export class MarketplaceStore {
     this.merge({ price: null, tier: null, sup: null, item: null });
   }
   showMore(): void {
-    // Next page starts where the accumulated list ends.
-    this.offset.set(this.items().length);
+    // Next page starts where the accumulated list ends (per mode).
+    this.offset.set(
+      this.mode() === 'suppliers' ? this.supplierRows().length : this.items().length
+    );
   }
 
   private merge(queryParams: Record<string, string | null>): void {

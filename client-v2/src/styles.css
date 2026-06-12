@@ -406,3 +406,127 @@ body {
   justify-content: center;
   min-height: 120px;
 }
+
+/* Hero tab band (pV2-06d primitive) — marketplace Items|Suppliers,
+   supplier-detail Storefront|Store, future project tabs. */
+.bp-tab-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+.bp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--bp-font);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-tab:hover {
+  background: var(--color-fill);
+}
+.bp-tab--active {
+  background: var(--theme-soft);
+  color: var(--color-text);
+  font-weight: 500;
+}
+.bp-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+/* Supplier card (suppliers mode) + favourite heart (pV2-06d). */
+.bp-supplier-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.bp-supplier-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.bp-supplier-card__link {
+  display: block;
+  text-decoration: none;
+  color: var(--color-text);
+}
+.bp-supplier-card__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.bp-fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+}
+.bp-fav-btn:hover {
+  color: var(--theme-accent);
+}
+.bp-fav-btn--on {
+  color: var(--theme-accent);
+  border-color: var(--theme-accent);
+}
+.bp-fav-btn--on svg {
+  fill: currentColor;
+}
+
+/* Storefront category chip (pV2-06d). */
+.bp-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+.bp-cat-chip:hover {
+  background: var(--color-fill);
+}

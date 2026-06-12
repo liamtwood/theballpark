@@ -84,6 +84,14 @@ export const routes: Routes = [
         data: { feature: 'Inbox' },
       },
       {
+        // pV2-06d — supplier storefront + store.
+        path: 'suppliers/:id',
+        loadComponent: () =>
+          import('./pages/suppliers/supplier-detail.component').then(
+            (m) => m.SupplierDetailComponent
+          ),
+      },
+      {
         // pV2-06a — the browse foundation (was a coming-soon stub).
         path: 'marketplace',
         loadComponent: () =>

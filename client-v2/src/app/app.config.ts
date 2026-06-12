@@ -23,6 +23,11 @@ import {
   Settings,
   SquarePen,
   Tags,
+  Heart,
+  Globe,
+  Phone,
+  Mail,
+  MapPin,
   LayoutGrid,
   List,
   Search,
@@ -96,6 +101,8 @@ export const appConfig: ApplicationConfig = {
         Tags,
         // pV2-06a — marketplace browse (search box + view toggle)
         Search, LayoutGrid, List, Table,
+        // pV2-06d — favourites + storefront contact
+        Heart, Globe, Phone, Mail, MapPin,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

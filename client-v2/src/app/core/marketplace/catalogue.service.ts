@@ -3,10 +3,13 @@ import { Observable, firstValueFrom, tap } from 'rxjs';
 import { ApiService } from '../api.service';
 import {
   CatalogueItem,
+  CatalogueSupplier,
   CategoryInfo,
   CategoryUpdate,
+  FavouriteIds,
   ItemsQuery,
   Paginated,
+  SupplierDetail,
   SupplierOption,
 } from '../../shared/catalogue/catalogue.types';
 
@@ -61,6 +64,34 @@ export class CatalogueService {
     const qs = params.toString();
     const url = `/api/marketplace/items${qs ? `?${qs}` : ''}`;
     return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
+  }
+
+  /** One page of the suppliers browse (pV2-06d — same envelope). */
+  suppliers(query: { cat?: string | null; q?: string | null; offset?: number }): Promise<Paginated<CatalogueSupplier>> {
+    const params = new URLSearchParams();
+    if (query.cat) params.set('cat', query.cat);
+    if (query.q) params.set('q', query.q);
+    if (query.offset) params.set('offset', String(query.offset));
+    const qs = params.toString();
+    const url = `/api/marketplace/suppliers${qs ? `?${qs}` : ''}`;
+    return this.cached(url, () => this.api.get<Paginated<CatalogueSupplier>>(url));
+  }
+
+  /** The storefront projection (pV2-06d). */
+  supplierDetail(id: string): Promise<SupplierDetail> {
+    return this.cached(`/api/marketplace/suppliers/${id}`, () =>
+      this.api.get<SupplierDetail>(`/api/marketplace/suppliers/${id}`)
+    );
+  }
+
+  /** The active org's favourite ids. UNCACHED — toggles must read fresh. */
+  favourites(): Observable<FavouriteIds> {
+    return this.api.get<FavouriteIds>('/api/marketplace/favourites');
+  }
+
+  /** Toggle a favourite for the active org; resolves the new state. */
+  toggleFavourite(type: 'item' | 'supplier', refId: string): Observable<{ favourited: boolean }> {
+    return this.api.post<{ favourited: boolean }>('/api/marketplace/favourites', { type, refId });
   }
 
   /** Suppliers with active items — the filter dropdown (pV2-06c). */

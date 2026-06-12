@@ -73,6 +73,47 @@ export interface SupplierOption {
   count: number;
 }
 
+/** One supplier as the suppliers-mode grid sees it (pV2-06d). */
+export interface CatalogueSupplier {
+  id: string;
+  name: string;
+  city: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  count: number;
+}
+
+/** The storefront projection (GET /suppliers/:id) — marketplace-public
+ *  fields only; items come from /items?supplier=. */
+export interface SupplierDetail {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  categories: { id: string; name: string; count: number }[];
+}
+
+/** The org's favourite ids (org-scoped, server-derived). */
+export interface FavouriteIds {
+  items: string[];
+  suppliers: string[];
+}
+
+/** Middle-region entity mode (?mode=) — items (default) or suppliers. */
+export type BrowseMode = 'items' | 'suppliers';
+
+export function asBrowseMode(v: string | null): BrowseMode {
+  return v === 'suppliers' ? 'suppliers' : 'items';
+}
+
 /** Price brackets for the filter (data: £5–£14k, median £500). The KEY is
  *  what lives in ?price= — labels can change without breaking URLs. */
 export const PRICE_BRACKETS: readonly { key: string; label: string; min?: number; max?: number }[] = [

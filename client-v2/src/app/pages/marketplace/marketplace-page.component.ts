@@ -7,6 +7,9 @@ import { CategoryStripComponent } from '../../shared/catalogue/category-strip.co
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { PRICE_BRACKETS, ViewMode } from '../../shared/catalogue/catalogue.types';
+import { FavouritesStore } from '../../core/marketplace/favourites.store';
+import { SupplierCardComponent } from '../../shared/catalogue/supplier-card.component';
+import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { MarketplaceStore } from './marketplace-store';
 import { RightRailComponent } from './rail/right-rail.component';
 
@@ -25,6 +28,8 @@ import { RightRailComponent } from './rail/right-rail.component';
     CatalogueGridComponent,
     EditFieldComponent,
     RightRailComponent,
+    SupplierCardComponent,
+    TabBandComponent,
   ],
   providers: [MarketplaceStore],
   host: { class: 'block' },
@@ -33,7 +38,14 @@ import { RightRailComponent } from './rail/right-rail.component';
       [back]="{ label: 'Back', href: '/home' }"
       [title]="heroTitle()"
       [subtitle]="heroSubtitle()"
-    />
+    >
+      <app-tab-band
+        hero-actions
+        [tabs]="modeTabs"
+        [active]="store.mode()"
+        (activeChange)="store.setMode($event)"
+      />
+    </app-page-hero>
 
     <div class="bp-page-body">
       <!-- Search row: box + filter selects + view toggle -->
@@ -46,8 +58,9 @@ import { RightRailComponent } from './rail/right-rail.component';
           />
         </div>
 
-        <!-- pV2-06c filters — the dimensions with real data (price / tier /
-             supplier); category-specific attribute filters deferred. -->
+        <!-- pV2-06c filters — items mode only (price/tier/supplier don't
+             apply to supplier rows). -->
+        @if (store.mode() === 'items') {
         <app-edit-field
           label=""
           type="select"
@@ -80,6 +93,7 @@ import { RightRailComponent } from './rail/right-rail.component';
             Clear filters
           </button>
         }
+        }
 
         <div class="ml-auto flex items-center gap-1 rounded-[var(--radius-pill)] border border-hairline bg-surface p-1">
           @for (v of views; track v.mode) {
@@ -106,7 +120,28 @@ import { RightRailComponent } from './rail/right-rail.component';
         />
 
         <div class="min-w-0">
-          @if (store.loadingFirstPage()) {
+          @if (store.mode() === 'suppliers') {
+            @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
+              <p class="bp-body-small text-secondary">Loading…</p>
+            } @else if (store.supplierRows().length === 0) {
+              <p class="bp-body-small text-secondary">No suppliers match.</p>
+            } @else {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                @for (sup of store.supplierRows(); track sup.id) {
+                  <app-supplier-card
+                    [supplier]="sup"
+                    [favourited]="favs.suppliers().has(sup.id)"
+                    (favouriteToggled)="favs.toggle('supplier', $event)"
+                  />
+                }
+              </div>
+              @if (store.suppliersHasMore()) {
+                <div class="mt-6 flex justify-center">
+                  <button type="button" class="bp-btn-outline" (click)="store.showMore()">Show more</button>
+                </div>
+              }
+            }
+          } @else if (store.loadingFirstPage()) {
             <p class="bp-body-small text-secondary">Loading…</p>
           } @else if (store.itemsRes.error()) {
             <p class="bp-body-small text-warn">Couldn't load the marketplace.</p>
@@ -117,7 +152,9 @@ import { RightRailComponent } from './rail/right-rail.component';
               [items]="store.items()"
               [viewMode]="store.viewMode()"
               [selectedId]="store.itemId()"
+              [favouriteIds]="favs.items()"
               (entitySelected)="onItemClicked($event)"
+              (favouriteToggled)="favs.toggle('item', $event)"
             />
             @if (store.hasMore()) {
               <div class="mt-6 flex justify-center">
@@ -138,6 +175,12 @@ import { RightRailComponent } from './rail/right-rail.component';
 })
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
+  protected readonly favs = inject(FavouritesStore);
+
+  protected readonly modeTabs: TabBandTab[] = [
+    { key: 'items', label: 'Items' },
+    { key: 'suppliers', label: 'Suppliers' },
+  ];
   private readonly pageConfig = inject(PageConfigService);
 
   /** Hero rides the standard per-page settings (HERO ONLY — v1's other

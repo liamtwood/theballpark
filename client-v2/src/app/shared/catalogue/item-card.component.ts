@@ -34,6 +34,15 @@ import { CatalogueItem } from './catalogue.types';
         <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
       </div>
     }
+    <button
+      type="button"
+      class="bp-fav-btn"
+      [class.bp-fav-btn--on]="favourited()"
+      [attr.aria-label]="favourited() ? 'Remove favourite' : 'Add favourite'"
+      (click)="onFavClick($event)"
+    >
+      <lucide-icon name="heart" [size]="15" />
+    </button>
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
       <div class="truncate text-md font-medium text-text">{{ item().name }}</div>
       <div class="bp-caption truncate">{{ item().supplierName }}</div>
@@ -50,6 +59,7 @@ import { CatalogueItem } from './catalogue.types';
   styles: [
     `
       :host {
+        position: relative;
         display: block;
         overflow: hidden;
         background: var(--color-surface);
@@ -79,5 +89,12 @@ export class ItemCardComponent {
   readonly selected = input<boolean>(false);
   /** Above-the-fold cards load eagerly (LCP); the grid sets this. */
   readonly eager = input<boolean>(false);
+  readonly favourited = input<boolean>(false);
   readonly clicked = output<string>();
+  readonly favouriteToggled = output<string>();
+
+  protected onFavClick(e: Event): void {
+    e.stopPropagation(); // the host click selects the card
+    this.favouriteToggled.emit(this.item().id);
+  }
 }
