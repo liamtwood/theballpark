@@ -63,6 +63,11 @@ Design rules that undo the monolith:
 - Agent /marketplace is read-only browse. Item EDITING + image uploads
   belong to the supplier My Shop arc (= the supplier-store scope with an
   edit flag — same engine, one flag, two roadmap items in one build).
+- **No QUICK ACTIONS block on the project marketplace** (2026-06-12).
+  v1's sidebar "Event detail" / "View estimate" buttons (which opened
+  drawers) are RETIRED — Project Details and Estimate are sibling TABS in
+  the project tab band; the tab band is the navigation. The project
+  marketplace sidebar keeps only search (+ Recommend when that ports).
 
 ## New shared primitive required first
 
