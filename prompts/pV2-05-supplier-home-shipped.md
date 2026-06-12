@@ -62,3 +62,22 @@ strings. Wire to `eventLabel` config if per-role labels matter.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## QC notes
+**2026-06-12 (Liam):** "qc supplier good, admin good" — supplier + admin
+homes ACCEPTED. Agent issue raised: both project tiles targeted /projects
+→ fixed in the v2.12g iteration below.
+
+## Iteration — v2.12g (2026-06-12)
+**Triggered by QC:** "New Projects go to New Project and Past Project
+change to Projects and the target remains /projects."
+**Commit:** `8b367ab`
+**Files:** agent-tiles.ts (New Project → /projects/new, subtitle "Start a
+new project."; "Past Projects" relabeled "Projects", keeps /projects with
+the old New-Project subtitle which always described the list; stale
+FIRST-match note removed); app.routes.ts (+/projects/new stub, feature
+"New Project"); chip.
+Verified on 4201 as Sarah: tiles [New Project → /projects/new, Projects →
+/projects, Inbox, Marketplace, Profile]; both stubs render their own hero
+copy. NOTE: subtitle realignment was CC judgment (Liam specified labels +
+targets only) — flag at QC if different copy is wanted.
