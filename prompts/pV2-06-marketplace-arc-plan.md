@@ -47,19 +47,30 @@ Design rules that undo the monolith:
    (briefs, budget, status, estimate, scope toggles) through the grid. In
    v2 those belong to the PROJECT SHELL around the engine (sidebar slots /
    context components). The grid never knows what a brief is.
-2. **Cart = §9 drawer + CartStore.** Two lists (SELECTED / WISHLIST from
-   project_items.selection_type) + totals (per-attendee units cover/head ×
-   guest_count) + promote/remove. Card +/♡ badges and the grid-header cart
-   icon subscribe to the same store.
+2. **NO drawers in the marketplace (Liam, 2026-06-12).** The right
+   PREVIEW PANEL is the one contextual surface, with three modes driven
+   by the current selection:
+   - **item selected** → item preview (replaces v1's item-drawer view)
+   - **category selected** → category summary + supplier list for that
+     category (port of v1's category-context-panel supplier list)
+   - **"All" selected** → THE CART: a plain list of the project's
+     selected items with a remove option + a **Checkout** button →
+     navigates to a SEPARATE checkout page (/projects/:id/checkout, new
+     v2 surface — not in v1).
+   v1's cart-drawer (3,307 lines) and item-drawer view mode (2,210
+   lines) are NOT ported into this arc. Item editing was already out
+   (My Shop arc).
 3. **Every component under the ledger caps** (component warn 250 / alarm
    400). catalogue-grid is 10× over — decompose, don't port.
 
 ## Locked rulings (Liam)
 
 - **ONE cart per project — no per-category carts** (2026-06-12). v1's
-  CartDrawerService category-context scoping (drawer title + filtered list
-  per category) is RETIRED. Category narrowing happens in the grid;
-  the cart drawer always shows the whole project's selected + wishlist.
+  CartDrawerService category-context scoping is RETIRED.
+- **No cart drawer / no item drawer — the preview panel is the surface**
+  (2026-06-12): select item → preview; select category → category summary
+  + suppliers; select All → cart list (remove option) → Checkout → a
+  separate checkout page. See design rule 2.
 - Agent /marketplace is read-only browse. Item EDITING + image uploads
   belong to the supplier My Shop arc (= the supplier-store scope with an
   edit flag — same engine, one flag, two roadmap items in one build).
@@ -81,17 +92,17 @@ the pages.
 | # | Prompt | Depends on |
 |---|---|---|
 | 06a | Browse engine + global /marketplace: gated reads (items/suppliers/categories + counts), MarketplaceStore, page shell, search, category strip, grid + cards | — |
-| 06b | Item drawer (view) + favourites (gated endpoint, ⋯ menu skeleton) | 06a |
+| 06b | Preview panel — ITEM mode (item preview replaces the v1 item-drawer view) + favourites (gated endpoint, ⋯ menu skeleton) | 06a |
 | 06c-pre | Hero tab-band primitive (+ badge) | — |
 | 06c | Supplier detail: Storefront + Store tabs on the scoped engine | 06a, 06c-pre |
 | 06d | Filter rail: 4 dimension groups (price / category attrs / supplier / event) + live counts | 06a |
 | — | *Projects arc (separate): project CRUD, project_categories, project_items, estimate endpoints* | — |
-| 06e | Project marketplace tab: project scope (category rail from project_categories), add/remove, card +/♡ | projects arc, 06c-pre |
-| 06f | Cart drawer: CartStore, selected/wishlist, totals (unit rules), promote/remove — ONE per project | 06e |
+| 06e | Project marketplace tab: project scope (category rail from project_categories), add/remove, card +/♡, panel CATEGORY mode (summary + supplier list) | projects arc, 06c-pre |
+| 06f | Panel CART mode (All view: item list + remove, CartStore, totals w/ unit rules) + **checkout page** (/projects/:id/checkout — new v2 surface, scope TBD with chat) | 06e |
 
 Deferred OUT of the arc: image-upload panels, category admin,
-Recommend (AI endpoint port), outreach hooks, category-context-panel
-(projects/Build arc), item editing (My Shop arc).
+Recommend (AI endpoint port), outreach hooks, item editing (My Shop arc),
+ALL drawers (cart-drawer + item-drawer are not ported).
 
 ## Open questions for chat before drafting
 
