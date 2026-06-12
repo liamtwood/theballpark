@@ -11,7 +11,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import { ProjectService } from '../../../core/services/project.service';
-import { CodelistService } from '../../../core/services/codelist.service';
+import { CodelistService, resolveMetaColor } from '../../../core/services/codelist.service';
 import { ClientService } from '../../../core/services/client.service';
 import { ApiService } from '../../../core/services/api.service';
 import { Project, Codelist, Client } from '../../../models';
@@ -326,7 +326,7 @@ export class ProjectEventFormComponent implements OnChanges {
   statusColor(): string {
     const code = (this.form as any).status_code || 'draft';
     const meta = this.codelistSvc.getMeta('project_status', code);
-    return meta?.['color'] || '#F59E0B';
+    return resolveMetaColor(meta?.['color'], 'var(--color-state-amber)');
   }
   /** Tier label for view mode (resolved against the budget_tier
       codelist; falls back to the raw code for legacy values). */

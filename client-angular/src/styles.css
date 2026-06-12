@@ -162,6 +162,21 @@
   --color-success-dark: #065F46;
   --theme-soft: var(--color-fill);
 
+  /* v2.19 (pV2-CODELISTS-02 / RP-09): codelist meta colors became token
+     refs ('--color-state-*') resolved per-app via resolveMetaColor().
+     These carry the ORIGINAL v1 status hex — zero visual change. Same
+     names exist in client-v2/styles.css. */
+  --color-state-blue: #3B82F6;
+  --color-state-indigo: #6366F1;
+  --color-state-sky: #0EA5E9;
+  --color-state-violet: #8B5CF6;
+  --color-state-orange: #F97316;
+  --color-state-amber: #F59E0B;
+  --color-state-green: #22C55E;
+  --color-state-emerald: #10B981;
+  --color-state-gray: #6B7280;
+  --color-state-gray-light: #9CA3AF;
+
   /* p0003 — three-stop contrast set per preset. Overridden by
      ConfigService.applyTheme() when the preset changes. Defaults
      below are the amber-preset values. */

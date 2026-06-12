@@ -25,7 +25,7 @@ import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
-import { CodelistService } from '../../core/services/codelist.service';
+import { CodelistService, resolveMetaColor } from '../../core/services/codelist.service';
 import { PersonaService } from '../../core/services/persona.service';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
 
@@ -741,7 +741,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     const code = (p.status_name || 'draft').toLowerCase();
     const label = this.codelistSvc.getLabel('project_status', code) || 'Draft';
     const meta  = this.codelistSvc.getMeta('project_status', code);
-    return { key: code, label, color: meta?.['color'] || '#F59E0B' };
+    return { key: code, label, color: resolveMetaColor(meta?.['color'], 'var(--color-state-amber)') };
   }
 
   // ── v1.65hQ (p0019 §2) — launcher-tile action wiring ───────────────

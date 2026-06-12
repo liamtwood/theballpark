@@ -27,7 +27,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { Subscription } from 'rxjs';
 
 import { ProjectService } from '../../core/services/project.service';
-import { CodelistService } from '../../core/services/codelist.service';
+import { CodelistService, resolveMetaColor } from '../../core/services/codelist.service';
 import { EstimateDrawerService } from '../../core/services/estimate-drawer.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -457,7 +457,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     const code = (p.status_name || 'draft').toLowerCase();
     const label = this.codelistSvc.getLabel('project_status', code) || 'Draft';
     const meta  = this.codelistSvc.getMeta('project_status', code);
-    return { key: code, label, color: meta?.['color'] || '#F59E0B' };
+    return { key: code, label, color: resolveMetaColor(meta?.['color'], 'var(--color-state-amber)') };
   }
 
   openNewProject() {

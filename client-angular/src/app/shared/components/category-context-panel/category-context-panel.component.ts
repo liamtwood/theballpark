@@ -15,7 +15,7 @@ import {
 } from 'lucide-angular';
 import { Router } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
-import { CodelistService } from '../../../core/services/codelist.service';
+import { CodelistService, resolveMetaColor } from '../../../core/services/codelist.service';
 import { GbpPipe } from '../../pipes/gbp.pipe';
 import { ProjectItemRowComponent } from '../project-item-row/project-item-row.component';
 import { ProjectItem } from '../../../models';
@@ -772,7 +772,7 @@ export class CategoryContextPanelComponent implements OnChanges {
   }
   statusColor(): string {
     const code = this.statusCode || 'draft';
-    return this.categoryStatuses.find(s => s.code === code)?.meta?.color || '';
+    return resolveMetaColor(this.categoryStatuses.find(s => s.code === code)?.meta?.color);
   }
 
   // ── v1.65w — click-to-edit handlers ──────────────────────────────────

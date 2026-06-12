@@ -5,6 +5,16 @@ import { Codelist } from '../../models';
 
 const DEFAULT_DISPLAY_LISTS = ['item_unit', 'item_time_unit'];
 
+/** v2.19 (pV2-CODELISTS-02): codelist meta colors are now TOKEN REFS
+    ('--color-state-amber') instead of literal hex — each app's styles.css
+    owns the hue (v1 defines the state set with the original v1 hex, so
+    nothing changes visually). This resolves a ref to CSS; legacy hex (or
+    any literal color) passes through untouched. */
+export function resolveMetaColor(value: string | null | undefined, fallback = ''): string {
+  if (!value) return fallback;
+  return value.startsWith('--') ? `var(${value})` : value;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CodelistService {
   private cache = new Map<string, Codelist[]>();
