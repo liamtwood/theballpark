@@ -133,3 +133,9 @@ All view loads 48 Unsplash images at w=1080 for 340px cards (~5–15MB).
 `sizedImage()` helper now rewrites the width per surface — cards 480,
 list thumbs 160, rail preview keeps full size — plus decoding=async.
 ~70% image-byte reduction; ask Liam to re-test All.
+
+## QC notes — final (2026-06-12)
+**Liam:** "looks great" — v2.16d tree collapse + All-performance fix
+ACCEPTED. Bonus regression check: favourites still persist and render
+hearts across marketplace + supplier store after the tree/image refactors.
+pV2-06-subcats CLOSED through 4 iterations (v2.16a–d).
