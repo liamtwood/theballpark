@@ -138,6 +138,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Verified live at desktop: card view rail gone, middle 666 → 950px; list view rail returns; toggling back hides it again.
 - Note: card-view clicks still SELECT (ring shows; state kept in the URL) — switching to list/table after selecting shows that item in the rail. Felt right to keep selection state consistent across view modes.
 
+## Iteration — v2.20m (2026-06-12)
+**Triggered by:** Liam — user-resizable left strip ("increasing the width may help (oddly); a nice feature anyway"). Also noted for 06f: in card view a card click will open the DETAIL view (the rail stays a list/table affordance).
+**Commit:** chip v2.20m
+- Drag handle on the strip's right edge: 160–400px clamp, double-click resets to 210, width persisted per browser (localStorage; falls back to session-local when storage is unavailable). The grid columns ride a `--bp-strip-w` CSS var so all breakpoint variants follow the drag.
+- Shared shell — marketplace + supplier Store tab both resizable, one persisted width across them.
+- Verified live: drag +80 → 210→290, persisted, double-click reset → 210.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
