@@ -143,3 +143,6 @@ FULL pages object so saves never drop sibling page keys);
 marketplace-page (hero binds overrides + shipped defaults); chip.
 Verified live: PUT override → hero "The Bazaar"/custom subtitle →
 revert → defaults; /settings/pages renders both new rows. 64/64 + 39/39.
+
+## QC notes — addendum 2 (2026-06-12)
+**Liam:** "tested works well" — v2.14d marketplace hero settings ACCEPTED.
