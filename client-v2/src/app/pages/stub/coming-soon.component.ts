@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from '../../core/auth/auth.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { tileForPath } from '../../shared/launcher/agent-tiles';
 
@@ -26,9 +27,12 @@ import { tileForPath } from '../../shared/launcher/agent-tiles';
 export class ComingSoonComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly data = toSignal(this.route.data, { initialValue: {} as Record<string, unknown> });
 
-  private readonly tile = computed(() => tileForPath(this.router.url.split('?')[0]));
+  private readonly tile = computed(() =>
+    tileForPath(this.router.url.split('?')[0], this.auth.user()?.activeOrgType)
+  );
 
   protected readonly title = computed(
     () => this.tile()?.label ?? String(this.data()['feature'] ?? 'This page')

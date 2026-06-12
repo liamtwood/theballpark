@@ -72,6 +72,12 @@ export const routes: Routes = [
         data: { feature: 'Marketplace' },
       },
       {
+        // Supplier-home tile target (v2.12f) — the supplier's storefront hub.
+        path: 'marketplace-profile',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Marketplace Profile' },
+      },
+      {
         // Profile — the org's own profile + financial defaults (the v2 port
         // of v1's /settings/organisation; reference consumer of
         // edit-section + page-density edit-field).

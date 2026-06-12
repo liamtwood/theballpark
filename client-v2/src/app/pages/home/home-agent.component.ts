@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { AuthService } from '../../core/auth/auth.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { HomeLauncherComponent } from '../../shared/launcher/home-launcher.component';
-import { AGENT_TILES, BALLPARK_TILES } from '../../shared/launcher/agent-tiles';
+import { tilesForOrgType } from '../../shared/launcher/agent-tiles';
 import { heroTitle } from './hero-title';
 
 /** pV2-04b — the launcher-only agent home at /home (the port of v1's
@@ -33,10 +33,8 @@ export class HomeAgentComponent {
     heroTitle(this.config.heroTitleMode(), this.auth.user(), this.config.heroTitleFixed())
   );
 
-  /** Role-keyed tile set (Liam, 2026-06-12): ballpark admins get just
-   *  Profile + Page Settings; everyone else the agent registry until the
-   *  supplier variant lands (pV2-05). Same registry feeds stub heroes. */
-  protected readonly tiles = computed(() =>
-    this.auth.role() === 'ballpark_admin' ? BALLPARK_TILES : AGENT_TILES
-  );
+  /** Org-type-keyed tile set: ballpark admins get the two admin surfaces
+   *  (v2.12a), suppliers the v1.68w three-tile port (v2.12f), agencies the
+   *  five-tile registry. The same registry feeds the stub heroes. */
+  protected readonly tiles = computed(() => tilesForOrgType(this.auth.user()?.activeOrgType));
 }
