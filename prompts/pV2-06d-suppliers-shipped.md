@@ -92,7 +92,35 @@ next server security pass.
 **Severity:** MEDIUM (recommend same option-(a) fix)
 
 ## QC notes
-(Liam fills this in)
+**2026-06-12 (Liam):** favourites ACCEPTED ("added favourites, check they
+saved when i moved away and came back, same with unlove"); storefront
+"looks good (needs styling)" — styling pass awaiting specifics. Two bugs:
+(1) view toggle inert in suppliers mode (cards only); (2) supplier Store
+tab missing the left + right rails. Both fixed in v2.15b below.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## Iteration — v2.15b (2026-06-12)
+**Triggered by:** Liam's QC (two bugs above) + chat's architecture flag —
+"Both should reuse shared/catalogue/* and marketplace-store patterns...
+the engine works for items in supplier-detail but the layout shell wasn't
+reused."
+**Commit:** `5db73dc`
+**What changed:**
+- `supplier-grid` (new): card/list/table @switch — all 3 view modes work
+  in suppliers mode (verified: 12 cards / 12 list rows / table headers).
+- `MarketplaceStore` gains the PINNED-SUPPLIER scope (the architecture's
+  CatalogueScope): a `:id` route param pins items queries and idles the
+  suppliers resource; pinned id folded into filterKey.
+- supplier-detail Store tab now PROVIDES MarketplaceStore and mounts the
+  SAME category-strip / catalogue-grid / right-rail as the marketplace —
+  its hand-rolled mini-store (~70 lines: items/offset/hasMore/selection)
+  is deleted. Preview, ?item= selection, Show more, category drill all
+  come from the shared pieces now.
+- `catalogue-layout` (new): the 3-region grid shell, one definition,
+  mounted by both pages.
+Verified live: 3 supplier view modes; Rocket Store tab renders
+strip(2 rows incl. All) | 13 cards | right rail; card click → preview
+"Bowl Food Dinner" in the SHARED rail; strip filter scoped to the
+pinned supplier; URL carries ?tab=store&cat=&item=.
