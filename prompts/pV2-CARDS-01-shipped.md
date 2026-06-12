@@ -173,6 +173,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - **Gutters evened**: middle scroller gets pr-1 so cards sit just off the column scrollbar; beyond the bar the outer whitespace matches the left's 48px.
 - Verified at 1280×800: two overlay buttons, foot CTA + unit gone, whole card visible, page never scrolls.
 
+## Iteration — v2.20r (2026-06-12)
+**Triggered by QC:** hover labels + active treatment for the overlay buttons; whole-card-on-laptop confirmed (`Screenshot 2026-06-12 175704.png`).
+**Commit:** chip v2.20r
+- Hover titles: heart = "Add to Wishlist" (↔ Remove), plus = "Add to Quote" (↔ Added) — native `title` + matching aria-labels, item + supplier cards. Upgrade path: `.bp-tooltip` (p-tooltip) when the DIALOGS ship lands the class.
+- Active state: `.bp-fav-btn--on` fills the circle with the brand gradient + light icon (background-image longhand — the shorthand-over-gradient trap documented at `--added`). Applies everywhere the class renders (cards + the supplier-detail hero heart).
+- Verified live: titles flip with state, active circle computes the gradient + white icon.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

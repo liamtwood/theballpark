@@ -669,8 +669,15 @@ body {
   color: var(--theme-accent);
 }
 .bp-fav-btn--on {
-  color: var(--theme-accent);
-  border-color: var(--theme-accent);
+  /* Active = the brand gradient fills the circle, icon goes light
+     (Liam, 2026-06-12). background-image longhand — the shorthand-over-
+     gradient trap is documented at .bp-btn-grad--added. */
+  background-image: var(--bp-gradient);
+  border-color: transparent;
+  color: var(--bp-text-on-gradient);
+}
+.bp-fav-btn--on:hover {
+  color: var(--bp-text-on-gradient);
 }
 /* Second overlay slot — the customer-proposed "+" add button sits left
    of the heart (v2.20q; replaced the gradient foot CTA per the

@@ -40,7 +40,8 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
       type="button"
       class="bp-fav-btn"
       [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Remove favourite' : 'Add favourite'"
+      [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      [attr.title]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
       (click)="favouriteToggled.emit(supplier().id)"
     >
       <lucide-icon name="heart" [size]="15" />

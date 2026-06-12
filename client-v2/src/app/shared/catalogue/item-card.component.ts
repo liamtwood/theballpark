@@ -43,7 +43,8 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       type="button"
       class="bp-fav-btn"
       [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Remove favourite' : 'Add favourite'"
+      [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+      [attr.title]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
       (click)="onFavClick($event)"
     >
       <lucide-icon name="heart" [size]="15" />
@@ -56,7 +57,8 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       type="button"
       class="bp-fav-btn bp-fav-btn--second"
       [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Added to quote' : 'Add to quote'"
+      [attr.aria-label]="favourited() ? 'Added to Quote' : 'Add to Quote'"
+      [attr.title]="favourited() ? 'Added to Quote' : 'Add to Quote'"
       (click)="onFavClick($event)"
     >
       <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="15" />
