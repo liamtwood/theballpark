@@ -86,7 +86,7 @@
 **Greens after fixes:** v2 build/lint/guard + 67/67; server 48/48; fin-section save round-trip verified live.
 
 ## QC notes
-(Liam fills this in)
+(Liam, 2026-06-12, relayed via CC) Pending and Approved pills render; Profile edit and the LOV (country/currency selects) behaved lovely. **QC passed.**
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
