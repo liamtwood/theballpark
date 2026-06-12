@@ -6,8 +6,9 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { can } from '../../../core/auth/permissions';
 import { errorDetail } from '../../../core/http-error';
 import { PageConfigService } from '../../../core/config/page-config.service';
+import { CodelistService } from '../../../core/codelists/codelist.service';
 import { OrgProfile, OrganisationService } from '../../../core/organisation.service';
-import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
+import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
@@ -15,6 +16,7 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
 interface ProfileForm {
   name: string;
   city: string;
+  country: string;
   address: string;
   email: string;
   phone: string;
@@ -22,6 +24,7 @@ interface ProfileForm {
   vat: string;
   margin: string;
   contingency: string;
+  currency: string;
 }
 
 /** pV2 Profile — /settings/profile: the v2 port of v1's
@@ -58,7 +61,8 @@ interface ProfileForm {
             <div class="bp-field-grid-2">
               <app-edit-field label="Organisation name" density="page" [editing]="editingOrg()" [value]="form().name" (valueChange)="patch({ name: $event })" />
               <app-edit-field label="City" density="page" [editing]="editingOrg()" [value]="form().city" (valueChange)="patch({ city: $event })" />
-              <app-edit-field label="Address" density="page" [span2]="true" [editing]="editingOrg()" [value]="form().address" (valueChange)="patch({ address: $event })" />
+              <app-edit-field label="Country" type="select" density="page" [filter]="true" [options]="countryOptions()" [editing]="editingOrg()" [value]="form().country" (valueChange)="patch({ country: $event })" />
+              <app-edit-field label="Address" density="page" [editing]="editingOrg()" [value]="form().address" (valueChange)="patch({ address: $event })" />
               <app-edit-field label="Email" type="email" density="page" [editing]="editingOrg()" [value]="form().email" (valueChange)="patch({ email: $event })" />
               <app-edit-field label="Phone" type="tel" density="page" [editing]="editingOrg()" [value]="form().phone" (valueChange)="patch({ phone: $event })" />
               <app-edit-field label="Project reference prefix" density="page" [maxLength]="4" placeholder="e.g. WA" [editing]="editingOrg()" [value]="form().refPrefix" (valueChange)="patch({ refPrefix: $event.toUpperCase() })" />
@@ -76,6 +80,7 @@ interface ProfileForm {
             (save)="save('fin')"
           >
             <div class="bp-field-grid-3">
+              <app-edit-field label="Currency" type="select" density="page" [options]="currencyOptions()" [editing]="editingFin()" [value]="form().currency" (valueChange)="patch({ currency: $event })" />
               <app-edit-field label="VAT" type="number" suffix="%" density="page" [editing]="editingFin()" [value]="form().vat" (valueChange)="patch({ vat: $event })" />
               <app-edit-field label="Margin" type="number" suffix="%" density="page" [editing]="editingFin()" [value]="form().margin" (valueChange)="patch({ margin: $event })" />
               <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="editingFin()" [value]="form().contingency" (valueChange)="patch({ contingency: $event })" />
@@ -93,6 +98,22 @@ export class ProfileComponent {
   private readonly orgs = inject(OrganisationService);
   private readonly toast = inject(MessageService);
   private readonly pageConfig = inject(PageConfigService);
+  private readonly codelists = inject(CodelistService);
+
+  /** Codelist-fed selects (pV2-CODELISTS-02 — RP-04: no inline arrays).
+   *  Country labels show the name; the stored value is the ISO-2 code. */
+  private readonly countryRes = resource({
+    loader: () => this.codelists.list('country'),
+  });
+  private readonly currencyRes = resource({
+    loader: () => this.codelists.list('currency'),
+  });
+  protected readonly countryOptions = computed<EditFieldOption[]>(
+    () => this.countryRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
+  protected readonly currencyOptions = computed<EditFieldOption[]>(
+    () => this.currencyRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
 
   /** Hero (title2/subtitle2 roles): /settings/pages overrides win;
    *  defaults are "Profile" / the org name. */
@@ -147,6 +168,8 @@ export class ProfileComponent {
           name: f.name,
           address: f.address,
           city: f.city,
+          country: f.country,
+          defaultCurrency: f.currency || 'GBP',
           email: f.email,
           phone: f.phone,
           refPrefix: f.refPrefix.trim().toUpperCase(),
@@ -173,6 +196,7 @@ function toForm(org: OrgProfile | null): ProfileForm {
   return {
     name: org?.name ?? '',
     city: org?.city ?? '',
+    country: org?.country ?? '',
     address: org?.address ?? '',
     email: org?.email ?? '',
     phone: org?.phone ?? '',
@@ -180,5 +204,6 @@ function toForm(org: OrgProfile | null): ProfileForm {
     vat: String(org?.defaultVatPct ?? 20),
     margin: String(org?.defaultMarginPct ?? 20),
     contingency: String(org?.defaultContingencyPct ?? 5),
+    currency: org?.defaultCurrency ?? 'GBP',
   };
 }

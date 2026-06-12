@@ -8,6 +8,8 @@ export interface OrgProfile {
   name: string;
   address: string | null;
   city: string | null;
+  /** ISO 3166-1 alpha-2 — fed by the `country` codelist (pV2-CODELISTS-02). */
+  country: string | null;
   email: string | null;
   phone: string | null;
   refPrefix: string | null;
@@ -15,6 +17,8 @@ export interface OrgProfile {
   defaultVatPct: number;
   defaultMarginPct: number;
   defaultContingencyPct: number;
+  /** ISO 4217 alpha-3 — fed by the `currency` codelist (pV2-CODELISTS-02). */
+  defaultCurrency: string;
 }
 
 export type OrgProfileUpdate = Partial<

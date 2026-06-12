@@ -42,6 +42,22 @@
   --color-action: #6d28d9; /* purple — Payment Processing / Quoted */
   --color-action-soft: #ede9fe;
 
+  /* ── Extended state-hue tokens (pV2-CODELISTS-02 / RP-09) — referenced by
+     codelist meta ('--color-state-*' refs in shared.reference_codelist_values;
+     project_status + category_status). Hex matches the original v1 palette so
+     the token sweep changed NOTHING visually; v1 styles.css defines the same
+     names. Retire/remap when a styling pass rationalises the status hues. */
+  --color-state-blue: #3b82f6; /* briefed */
+  --color-state-indigo: #6366f1; /* out for quote */
+  --color-state-sky: #0ea5e9; /* quoted */
+  --color-state-violet: #8b5cf6; /* client managed */
+  --color-state-orange: #f97316; /* need supplier */
+  --color-state-amber: #f59e0b; /* draft (project) / awaiting client */
+  --color-state-green: #22c55e; /* confirmed */
+  --color-state-emerald: #10b981; /* active (project) */
+  --color-state-gray: #6b7280; /* draft (category) / completed */
+  --color-state-gray-light: #9ca3af; /* archived / n.a. */
+
   /* ── Surface / structure tokens ──────────────────────────────────────── */
   --color-surface: #ffffff;
   --color-surface-alt: rgba(255, 255, 255, 0.8); /* glassy card (login) */

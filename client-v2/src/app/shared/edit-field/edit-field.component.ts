@@ -49,6 +49,8 @@ export interface EditFieldOption {
             [options]="options()"
             optionLabel="label"
             optionValue="value"
+            [filter]="filter()"
+            filterBy="label"
             [ngModel]="value()"
             (ngModelChange)="valueChange.emit($event)"
             [ariaLabel]="label()"
@@ -173,6 +175,8 @@ export class EditFieldComponent {
   readonly type = input<EditFieldType>('text');
   readonly value = input<string>('');
   readonly options = input<EditFieldOption[]>([]);
+  /** Type-ahead filter on the select panel — for long lists (countries). */
+  readonly filter = input<boolean>(false);
   readonly placeholder = input<string>('');
   readonly maxLength = input<number>(120);
   readonly density = input<EditFieldDensity>('drawer');

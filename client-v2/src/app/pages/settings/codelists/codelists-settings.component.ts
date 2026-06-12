@@ -6,9 +6,9 @@ import {
   CodelistValue,
   CodelistValuePatch,
 } from '../../../core/codelists/codelist.types';
-import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
+import { EditFieldComponent } from '../../../shared/edit-field/edit-field.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
-import { StatusPillComponent } from '../../../shared/status-pill/status-pill.component';
+import { CodelistValueRowComponent } from './codelist-value-row.component';
 
 /** pV2-CODELISTS-01 — /settings/codelists: master/detail curation
  *  (ballparkAdminGuard). Left: parents grouped by application (type
@@ -20,7 +20,7 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 @Component({
   selector: 'app-codelists-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [EditFieldComponent, PageHeroComponent, StatusPillComponent],
+  imports: [CodelistValueRowComponent, EditFieldComponent, PageHeroComponent],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -75,38 +75,13 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
               </div>
 
               @for (v of values(); track v.code) {
-                <div
-                  class="grid grid-cols-[110px_1fr_80px_70px_120px_110px] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0"
-                  [class.opacity-60]="!v.isActive"
-                >
-                  <span class="bp-body-small truncate" [title]="v.code">
-                    {{ v.code }}@if (v.isDefault) {<span class="bp-meta"> ★</span>}
-                  </span>
-                  @if (parent.type === 'ballpark') {
-                    <app-edit-field label="" type="text" [maxLength]="100" [value]="v.label" [editing]="true" (valueChange)="save(v, { label: $event })" />
-                    <app-edit-field label="" type="text" [maxLength]="20" [value]="v.symbol ?? ''" [editing]="true" (valueChange)="save(v, { symbol: $event })" />
-                    <app-edit-field label="" type="number" [value]="String(v.sortOrder ?? 0)" [editing]="true" (valueChange)="save(v, { sortOrder: Number($event) || 0 })" />
-                  } @else {
-                    <span class="bp-body-small truncate">{{ v.label }}</span>
-                    <span class="bp-body-small text-secondary">{{ v.symbol ?? '—' }}</span>
-                    <span class="bp-body-small text-secondary">{{ v.sortOrder ?? '—' }}</span>
-                  }
-                  <span>
-                    @if (v.meta.color) {
-                      <app-status-pill [list]="parent.listName" [code]="v.code" />
-                    } @else {
-                      <span class="bp-meta">—</span>
-                    }
-                  </span>
-                  <app-edit-field
-                    label=""
-                    type="select"
-                    [options]="visibility"
-                    [value]="v.isActive ? 'visible' : 'hidden'"
-                    [editing]="true"
-                    (valueChange)="toggleActive(parent, v, $event === 'visible')"
-                  />
-                </div>
+                <app-codelist-value-row
+                  [listName]="parent.listName"
+                  [value]="v"
+                  [editable]="parent.type === 'ballpark'"
+                  (save)="save(v, $event)"
+                  (toggleActive)="toggleActive(parent, v, $event)"
+                />
               }
 
               <!-- Add value — ballpark lists only (locked rule 1) -->
@@ -141,15 +116,8 @@ import { StatusPillComponent } from '../../../shared/status-pill/status-pill.com
 export class CodelistsSettingsComponent {
   private readonly codelists = inject(CodelistService);
 
-  protected readonly String = String;
-  protected readonly Number = Number;
   protected readonly error = signal('');
   protected readonly gateNote = signal('');
-
-  protected readonly visibility: EditFieldOption[] = [
-    { label: 'Visible', value: 'visible' },
-    { label: 'Hidden', value: 'hidden' },
-  ];
 
   protected readonly parents = signal<Codelist[]>([]);
   protected readonly selected = signal<string | null>(null);
@@ -208,7 +176,7 @@ export class CodelistsSettingsComponent {
       this.error.set('');
     } catch (err) {
       console.warn('[Codelists] add failed', err);
-      this.error.set('Could not add the value (duplicate code?).');
+      this.error.set("Couldn't add — a value with this code already exists in this list.");
     }
   }
 

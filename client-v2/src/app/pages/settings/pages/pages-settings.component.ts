@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
+import { CodelistService } from '../../../core/codelists/codelist.service';
 import { PageConfigPayload, mergeConfig } from '../../../core/config/page-config.types';
 import { PageConfigService } from '../../../core/config/page-config.service';
 import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
@@ -44,7 +45,7 @@ type RoleType = (typeof ROLES)[number];
             <app-edit-field
               label=""
               type="select"
-              [options]="titleModes"
+              [options]="titleModes()"
               [value]="cfg?.heroTitleMode ?? 'greeting'"
               [editing]="true"
               (valueChange)="save(role, { heroTitleMode: asTitleMode($event) })"
@@ -83,7 +84,7 @@ type RoleType = (typeof ROLES)[number];
             <app-edit-field
               label=""
               type="select"
-              [options]="aligns"
+              [options]="aligns()"
               [value]="cfg?.heroAlign ?? 'center'"
               [editing]="true"
               (valueChange)="save(role, { heroAlign: $event === 'left' ? 'left' : 'center' })"
@@ -151,20 +152,25 @@ type RoleType = (typeof ROLES)[number];
 export class PagesSettingsComponent {
   private readonly api = inject(ApiService);
   private readonly pageConfig = inject(PageConfigService);
+  private readonly codelists = inject(CodelistService);
 
   protected readonly roles = ROLES;
   protected readonly error = signal('');
 
-  protected readonly titleModes: EditFieldOption[] = [
-    { label: 'Greeting', value: 'greeting' },
-    { label: 'Username', value: 'username' },
-    { label: 'Org name', value: 'orgName' },
-    { label: 'Fixed text', value: 'fixed' },
-  ];
-  protected readonly aligns: EditFieldOption[] = [
-    { label: 'Center', value: 'center' },
-    { label: 'Left', value: 'left' },
-  ];
+  /** Codelist-fed dropdowns (pV2-CODELISTS-02 — closes RP-04 here): the
+   *  option space lives in page_title_mode / hero_align rows, not code. */
+  private readonly titleModeRes = resource({
+    loader: () => this.codelists.list('page_title_mode'),
+  });
+  private readonly alignRes = resource({
+    loader: () => this.codelists.list('hero_align'),
+  });
+  protected readonly titleModes = computed<EditFieldOption[]>(
+    () => this.titleModeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
+  protected readonly aligns = computed<EditFieldOption[]>(
+    () => this.alignRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
 
   /** One config resource per customer role; optimistic local edits. */
   private readonly configs = {
