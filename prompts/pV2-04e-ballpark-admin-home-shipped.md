@@ -52,7 +52,30 @@ several times; (2) switching roles turned him into Beth — "i should always
 be liam". Both addressed in the iterations below.
 
 ## Chat audit
-(chat fills this in — leave the section header so chat finds it)
+**Audit pass: 2026-06-12, chat** — covers v2.12a through v2.12e (5 chips, 6 commits).
+
+### Verified ✓
+
+- **v2.12a ballpark-admin home** — role-keyed launcher is clean. `home-agent` computes tiles via a signal on `auth.role()`; ballpark_admin → 2 tiles. No parallel home component, no role-specific routing — One Definition holds.
+- **v2.12b switcher (later reverted)** — API audit checklist completed for both `/auth/orgs` + `/auth/switch-org` with concrete pass criteria (membership proved inside the UPDATE, Zod validation, 404 for both absent + foreign org cases). Good discipline even on code that didn't survive.
+- **v2.12c boot perf** — RP-01 partial fix. Serial 4-leg waterfall (rc → brand → auth/me → page-config, each remote-DB round trip) is now rc → [brand ∥ auth] → page-config. Measured 983ms → 238ms — substantial.
+- **v2.12c pool fix** (`server/src/db/pool.js`) — `idleTimeoutMillis: 600000` + `keepAlive: true` with clear comment explaining why (Liam's 1-3s "slow page" QC). RP-01 partial fix on the server side.
+- **v2.12d revert** (-216 lines net) — clean removal: header switcher gone, `/auth/orgs` + `/auth/switch-org` + schema + service fns removed, `dev-personas` reverted to seeded mapping. Liam's agency membership soft-deleted (deleted_at, reversible); default_org_id → Ballpark. One-account-one-role model is the architectural simplification of the session.
+- **v2.12e login simplification** — single Google button on `.bp-btn-outline` chrome; G-mark as ASSET (not inline SVG) so style guard never scans the brand hex. `dev-personas.ts` deleted (zero consumers, 57→54 specs). Shrunk 83→36 lines.
+
+### Risk patterns updated
+
+- **RP-01 partial fix** — server-side idle reconnect resolved; client-side boot parallelization landed. Cold-start login still slow (PARKED by Liam per his explicit "lets do nothing for now"). When revisited, candidates: OAuth callback chain itself (3 cross-origin hops before our code runs), the remaining rc → [brand ∥ auth] → page-config serial leg, dev-server on-demand chunk compilation.
+- **RP-02 CLOSED BY REMOVAL** — the entire impersonation surface that produced "Beth", "Ryan → Sarah", and the default-org drift is gone. Surface eliminated, class of bug structurally impossible at this layer. Discovery preserved in ledger as a learning even though the code is removed.
+
+### Concerns flagged
+
+- **`users.default_org_id` doubles as "active org"** until a session-scoped active org exists (pre-existing design, now load-bearing for any future switching). If a real customer org switcher ever lands, this needs proper session-scoped state separate from `default_org_id` (`session.active_org_id`, set on /auth/switch-org, preserved across re-signs but distinct from user prefs). Flagged for that future arc.
+- **Cold-start initial-login perf parked** — Liam's call. Re-open when picked back up.
+
+### Verdict
+
+**Done.** Backlog row added + flipped Shipped → Done. The arc resolved cleanly through QC iterations; the simplification call ("one account = one role") removed the entire RP-02 surface area, which is the right architectural move.
 
 ## Iteration — server pool fix (2026-06-12)
 **Triggered by QC:** "profile loading is very slow i have noticed several

@@ -289,6 +289,27 @@ anything needs follow-up.
 The shipped file is the permanent record. Bullets + file paths + selectors
 + concrete deltas — same tone as your reply to Liam, just persisted.
 
+### Audit cadence — read AUDIT_LEDGER.md first
+
+Every audit pass starts with:
+
+1. **Read `docs/AUDIT_LEDGER.md`** — particularly the **Risk patterns**
+   section at the top. Each pattern is an open class of bug we've already
+   surfaced once; the audit re-checks every pattern against the ship's
+   touched files.
+2. **Walk the ship report's "Files touched"** and verify each one against
+   the relevant standards (TYPE-01 / role classes, no raw colors, audit
+   columns, two-layer permission enforcement, etc.) — and against every
+   open risk pattern.
+3. **If QC surfaces a new bug class**, log it as a new RP-NN row in the
+   Risk patterns table. Every future audit then checks against it too.
+4. **Close patterns** when they're disproved or systemically prevented
+   (e.g. a lint rule lands that makes the class impossible).
+
+This makes audits *compound* — each ship sharpens the next audit instead
+of each audit starting from scratch. Patterns we've already paid the
+discovery cost on get re-checked for free.
+
 ### "Concerns not in spec" — mandatory section
 
 Every ship report MUST end with a section titled **"Concerns not in spec"**.
