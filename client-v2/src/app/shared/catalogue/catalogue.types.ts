@@ -33,6 +33,10 @@ export interface CatalogueItem {
   subcategoryId: string | null;
   supplierId: string;
   supplierName: string;
+  /** Supplier's city — the item card's pin row (pV2-CARDS-01, image 2). */
+  supplierCity: string | null;
+  /** Category display name — the item card's tag chip (image 2). */
+  categoryName: string | null;
   /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
    *  edit/delete affordances in later arcs. Never computed client-side. */
   ownedByActiveOrg: boolean;
