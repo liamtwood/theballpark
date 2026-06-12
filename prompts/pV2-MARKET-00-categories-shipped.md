@@ -91,12 +91,6 @@ constants only.
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
-
-## Chat audit
-(chat fills this in — leave the section header so chat finds it)
-
-## QC notes
 **2026-06-12 (Liam):** "looks good, i update a couple of taglines and
 changed sort, works well" — ACCEPTED. Question raised: subcategories not
 visible in the table. Answer: by design — 15 top-level rows curated;
@@ -104,3 +98,6 @@ visible in the table. Answer: by design — 15 top-level rows curated;
 customer-visible via 06a's subcategory strip (?sub= param). DEFERRED:
 subcat curation extends this table (same endpoints + ?parent= variant,
 indented/drill-down rows) once 06a gives them a visible surface.
+
+## Chat audit
+(chat fills this in — leave the section header so chat finds it)
