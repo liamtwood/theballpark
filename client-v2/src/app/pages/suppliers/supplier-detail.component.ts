@@ -7,10 +7,10 @@ import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
 import { RightRailComponent } from '../marketplace/rail/right-rail.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
+import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
-import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -33,8 +33,8 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     CatalogueLayoutComponent,
     CategoryStripComponent,
     RightRailComponent,
+    CatalogueFilterBandComponent,
     StorefrontPanelComponent,
-    ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
   /* The Store tab is viewport-fit like /marketplace (same engine, same
@@ -67,6 +67,9 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           />
         } @else {
           <!-- STORE — the marketplace engine, pinned to this supplier. -->
+          <!-- The shared search/filter band (RP-06 extraction) — supplier
+               select off (the store is already pinned to one). -->
+          <app-catalogue-filter-band />
           <app-catalogue-layout>
             <app-category-strip
               strip
@@ -79,9 +82,6 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
               (subcategorySelected)="store.setSubcategory($event)"
             />
 
-            <div class="mb-4 flex justify-end">
-              <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
-            </div>
             @if (store.items().length === 0 && !store.itemsRes.isLoading()) {
               <p class="bp-body-small text-secondary">No items.</p>
             } @else {

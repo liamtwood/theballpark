@@ -2,13 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { LucideAngularModule } from 'lucide-angular';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
+import { CatalogueFilterBandComponent } from '../../shared/catalogue/filter-band.component';
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
-import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
-import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
-import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { SupplierGridComponent } from '../../shared/catalogue/supplier-grid.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
@@ -25,15 +22,13 @@ import { RightRailComponent } from './rail/right-rail.component';
   imports: [
     LucideAngularModule,
     PageHeroComponent,
-    CatalogueSearchComponent,
     CategoryStripComponent,
+    CatalogueFilterBandComponent,
     CatalogueGridComponent,
     CatalogueLayoutComponent,
-    EditFieldComponent,
     RightRailComponent,
     SupplierGridComponent,
     TabBandComponent,
-    ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
   /* bp-vpfit (md+): the page fills the viewport exactly — hero + filter
@@ -54,55 +49,9 @@ import { RightRailComponent } from './rail/right-rail.component';
     </app-page-hero>
 
     <div class="bp-page-body">
-      <!-- Search row: box + filter selects + view toggle -->
-      <div class="mb-4 flex flex-wrap items-center gap-3">
-        <div class="w-full max-w-md">
-          <app-catalogue-search
-            [value]="store.search()"
-            [count]="store.total()"
-            (valueChange)="store.setSearch($event)"
-          />
-        </div>
-
-        <!-- pV2-06c filters — items mode only (price/tier/supplier don't
-             apply to supplier rows). -->
-        @if (store.mode() === 'items') {
-        <app-edit-field
-          label=""
-          type="select"
-          class="w-40"
-          [options]="priceOptions"
-          [value]="store.priceBracket() ?? 'any'"
-          [editing]="true"
-          (valueChange)="store.setPriceBracket($event === 'any' ? null : $event)"
-        />
-        <app-edit-field
-          label=""
-          type="select"
-          class="w-32"
-          [options]="tierOptions"
-          [value]="store.tier() ?? 'any'"
-          [editing]="true"
-          (valueChange)="store.setTier($event === 'any' ? null : $event)"
-        />
-        <app-edit-field
-          label=""
-          type="select"
-          class="w-44"
-          [options]="supplierOptions()"
-          [value]="store.supplierId() ?? 'any'"
-          [editing]="true"
-          (valueChange)="store.setSupplier($event === 'any' ? null : $event)"
-        />
-        @if (store.hasFilters()) {
-          <button type="button" class="bp-caption cursor-pointer border-none bg-transparent text-secondary underline hover:text-text" (click)="store.clearFilters()">
-            Clear filters
-          </button>
-        }
-        }
-
-        <app-view-toggle class="ml-auto" [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
-      </div>
+      <!-- Search + filters + view toggle — the SHARED band (RP-06: every
+           MarketplaceStore consumer mounts it). -->
+      <app-catalogue-filter-band [showSupplier]="true" />
 
       <!-- Three regions on the shared layout shell -->
       <app-catalogue-layout>
@@ -191,23 +140,6 @@ export class MarketplacePageComponent {
   protected allItemsCount(): number {
     return this.store.categories().reduce((sum, c) => sum + c.count, 0);
   }
-
-  protected readonly priceOptions: EditFieldOption[] = [
-    { label: 'Any price', value: 'any' },
-    ...PRICE_BRACKETS.map((b) => ({ label: b.label, value: b.key })),
-  ];
-
-  protected readonly tierOptions: EditFieldOption[] = [
-    { label: 'Any tier', value: 'any' },
-    { label: 'Basic', value: 'basic' },
-    { label: 'Mid', value: 'mid' },
-    { label: 'Premium', value: 'premium' },
-  ];
-
-  protected readonly supplierOptions = computed<EditFieldOption[]>(() => [
-    { label: 'Any supplier', value: 'any' },
-    ...this.store.supplierOptions().map((s) => ({ label: `${s.name} (${s.count})`, value: s.id })),
-  ]);
 
   protected onItemClicked(id: string): void {
     // Toggle: clicking the selected card clears the selection.

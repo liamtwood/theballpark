@@ -108,6 +108,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Shell bottom padding pb-12 → pb-6 (all pages; the vpfit height calc updated to 6.5rem) — reclaims the dead bottom band.
 - Measured at 1280×800: middle column 389 → 479px (+90), hero 170 → 125px, first card row fully visible, page still never scrolls.
 
+## Iteration — v2.20i (2026-06-12)
+**Triggered by QC:** the supplier Store tab is missing the search bar + filters. Not a regression — the band was only ever built inline on marketplace-page (the textbook RP-06 shape: store-fed UI on one consumer).
+**Commit:** chip v2.20i
+- **`<app-catalogue-filter-band>` extracted** (shared/catalogue): search + price/tier selects + clear + view toggle, injecting the page's route-scoped MarketplaceStore. Mounted by BOTH consumers per the standing RP-06 rule — marketplace with `[showSupplier]="true"`, the pinned Store tab without (a supplier filter is meaningless when pinned).
+- marketplace-page sheds the inline band + three option arrays; the Store tab's lone view-toggle row retired (the band carries it).
+- Verified live: Store tab search filters the pinned store (`q=bar` → 1 item, URL param set), 2 selects + toggle; marketplace unchanged (search + 3 selects + toggle, 48 cards).
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
