@@ -110,5 +110,7 @@
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Tested: added a test currency, set it not visible — everything worked. Grouping etc. look good. One issue: the dropdown opened under the table (bring to front) — same root cause as the pV2-04c floating p-select overlay thread. → fixed in v2.18d above. Some styling still wanted but accepted.
 
+(Liam, 2026-06-12, post-v2.18d) Confirmed the fix — dropdown now renders over the table. Also exercised the duplicate-code path ("Could not add the value (duplicate code?)") — behaves as expected. **QC passed.**
+
 ## Chat audit
 (chat, 2026-06-12, relayed via CC) **Audit pass complete.** Verified: architecture conformance (RC/RCV split, status-pill signal-driven + resource-cached + sanctioned dynamic-style case, CodelistService cache discipline matches CatalogueService, v2 routes gate + Zod + catch-all DELETE 405); three-layer no-DELETE confirmed in code; audit-finding fixes F-1/F-2/F-3/F-7 verified in code; seed inventory matches locked spec (12 parents, message_status verbatim, 249 Intl-resolved countries, defaults correct); standards conformance (standalone/OnPush/inject/host, role classes, no raw colors, TYPE-01 holding). Two non-blocking notes: (1) v1-inherited hex meta colors are a deliberate transition state — **track as RP-09** → logged, closes with CODELISTS-02; (2) verify `.bp-type-badge` is defined in styles.css not component-local → confirmed: defined in styles.css §codelists (RP-05 guard would fail the build otherwise).
