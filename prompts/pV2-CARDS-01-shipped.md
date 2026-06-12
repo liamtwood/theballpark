@@ -93,7 +93,9 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - For chat: per your note, this archetype REPLACES "Storefront cell" in CARDS.md with the screenshot as canonical reference — leaving that doc edit to you at the styling-pass fold-in.
 
 ## QC notes
-(Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d. Home unchanged ✓ (4).
+(Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
+
+(Liam, 2026-06-12, post-v2.20c) Card height + subcat chip confirmed — **look great**.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
