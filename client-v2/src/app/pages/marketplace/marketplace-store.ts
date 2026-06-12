@@ -87,6 +87,17 @@ export class MarketplaceStore {
   });
   readonly subcategories = computed(() => this.subcategoriesRes.value() ?? []);
 
+  /** Suppliers serving the selected category — the rail's CATEGORY mode
+   *  (pV2-06e). Skipped in the pinned-supplier scope (listing OTHER
+   *  suppliers inside one supplier's store would be wrong) and when no
+   *  category is selected. Cached read; first page is plenty for a rail. */
+  readonly categorySuppliersRes = resource({
+    params: () =>
+      this.categoryId() && !this.pinnedSupplierId() ? { cat: this.categoryId() } : undefined,
+    loader: async ({ params }) => (await this.catalogue.suppliers(params)).items,
+  });
+  readonly categorySuppliers = computed(() => this.categorySuppliersRes.value() ?? []);
+
   readonly supplierOptionsRes = resource<SupplierOption[], void>({
     loader: () => this.catalogue.supplierOptions(),
   });

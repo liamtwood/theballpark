@@ -1,17 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { MarketplaceStore } from '../marketplace-store';
+import { CategorySummaryComponent } from './category-summary.component';
 import { ItemPreviewComponent } from './item-preview.component';
 
 /** pV2-06a/b — the polymorphic right rail, `@switch`ed on the DERIVED
- *  store.railMode(). Item mode is REAL since 06b (item-preview over the
- *  loaded row — selection never fetches); category summary lands 06e,
- *  the Project Quote 06f (MARKETPLACE.md: the rail IS the surface; no
+ *  store.railMode(). Item mode real since 06b; category summary real
+ *  since 06e (suppliers list global-scope only); the Project Quote 06f (MARKETPLACE.md: the rail IS the surface; no
  *  drawers). */
 @Component({
   selector: 'app-right-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ItemPreviewComponent],
+  imports: [LucideAngularModule, CategorySummaryComponent, ItemPreviewComponent],
   host: { class: 'block rounded-[var(--radius-card)] border border-hairline bg-surface p-5' },
   template: `
     @switch (store.railMode()) {
@@ -25,10 +25,9 @@ import { ItemPreviewComponent } from './item-preview.component';
         }
       }
       @case ('category') {
-        <div class="bp-rail-empty">
-          <span class="text-md font-medium text-text">{{ store.selectedCategory()?.name }}</span>
-          <p class="bp-caption mt-1">Category summary + suppliers land in pV2-06e.</p>
-        </div>
+        @if (store.selectedCategory(); as cat) {
+          <app-category-summary [category]="cat" [suppliers]="store.categorySuppliers()" />
+        }
       }
       @default {
         <div class="bp-rail-empty items-center text-center">
