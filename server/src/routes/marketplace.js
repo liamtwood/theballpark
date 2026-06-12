@@ -20,6 +20,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const { requireActiveMembership } = require('../middleware/require-active-membership');
 const { CategoryUpdateSchema } = require('../schemas/category-admin.schema');
+const { ItemsQuerySchema, PAGE_SIZE } = require('../schemas/marketplace-query.schema');
 
 /** Top-level catalogue categories + live item counts. Counts roll up from
  *  active, non-deleted items (items point at TOP-LEVEL categories via
@@ -120,5 +121,63 @@ router.patch(
     } catch (err) { next(err); }
   }
 );
+
+// ── Items (pV2-06a) ─────────────────────────────────────────────────────────
+
+/** GET /api/marketplace/items?cat&sub&q&offset — the browse grid. Born
+ *  paginated ({ items, total, hasMore } envelope, PAGE_SIZE 48); marketplace
+ *  shows ACTIVE + APPROVED items only (the v1 "144"). ownedByActiveOrg is
+ *  server-derived from req.user.org_id (MARKETPLACE.md ownership model) —
+ *  the client never compares org ids. Zod-validated params; every value
+ *  reaches SQL as a bound parameter. */
+router.get('/items', async (req, res, next) => {
+  try {
+    const parsed = ItemsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid query',
+        details: z.flattenError(parsed.error).fieldErrors,
+      });
+    }
+    const { cat, sub, q, offset } = parsed.data;
+    const where = [`i.deleted_at IS NULL`, `i.is_active`, `i.approval_status = 'approved'`];
+    const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
+    if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
+    if (sub) { vals.push(sub); where.push(`i.subcategory_id = $${vals.length}`); }
+    if (q) {
+      vals.push(`%${q.replace(/[%_\\]/g, '\\$&')}%`);
+      where.push(`(i.name ILIKE $${vals.length} OR i.description ILIKE $${vals.length})`);
+    }
+    vals.push(PAGE_SIZE, offset);
+    const r = await pool.query(
+      `SELECT i.id, i.name, i.description, i.base_price, i.unit, i.image_url,
+              i.category_id, i.subcategory_id,
+              i.org_id AS supplier_id, o.name AS supplier_name,
+              (i.org_id = $1) AS owned_by_active_org,
+              COUNT(*) OVER() AS total
+         FROM items i
+         JOIN orgs o ON o.id = i.org_id AND o.deleted_at IS NULL
+        WHERE ${where.join(' AND ')}
+        ORDER BY i.name ASC
+        LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
+      vals
+    );
+    const total = r.rows.length ? Number(r.rows[0].total) : 0;
+    const items = r.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      basePrice: row.base_price === null ? null : Number(row.base_price),
+      unit: row.unit,
+      coverUrl: row.image_url,
+      categoryId: row.category_id,
+      subcategoryId: row.subcategory_id,
+      supplierId: row.supplier_id,
+      supplierName: row.supplier_name,
+      ownedByActiveOrg: !!row.owned_by_active_org,
+    }));
+    res.json({ items, total, hasMore: offset + items.length < total });
+  } catch (err) { next(err); }
+});
 
 module.exports = router;

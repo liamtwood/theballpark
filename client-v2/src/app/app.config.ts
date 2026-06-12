@@ -23,6 +23,10 @@ import {
   Settings,
   SquarePen,
   Tags,
+  LayoutGrid,
+  List,
+  Search,
+  Table,
   FileText,
   Zap,
   CircleCheck,
@@ -90,6 +94,8 @@ export const appConfig: ApplicationConfig = {
         FileText, Zap, CircleCheck, Package, Building2,
         // pV2-MARKET-00 — admin Categories tile
         Tags,
+        // pV2-06a — marketplace browse (search box + view toggle)
+        Search, LayoutGrid, List, Table,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

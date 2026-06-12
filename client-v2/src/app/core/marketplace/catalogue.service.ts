@@ -1,28 +1,75 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom, tap } from 'rxjs';
 import { ApiService } from '../api.service';
-import { CategoryInfo, CategoryUpdate } from '../../shared/catalogue/catalogue.types';
+import {
+  CatalogueItem,
+  CategoryInfo,
+  CategoryUpdate,
+  ItemsQuery,
+  Paginated,
+} from '../../shared/catalogue/catalogue.types';
 
-/** pV2-MARKET-00 — catalogue reads + platform-admin curation writes. The
- *  ONE choke point for marketplace HTTP (the pV2-06a Map cache + busting
- *  rules land here — see pV2-06-angular-architecture.md §4). */
+/** pV2-MARKET-00/06a — catalogue reads + platform-admin curation writes.
+ *  The ONE marketplace HTTP choke point, with the §4 session cache:
+ *  reads are memoised by URL; the cache busts on (a) page reload (it's
+ *  in-memory), (b) any successful WRITE through this service, (c) an
+ *  explicit invalidate() from future write surfaces (/store, image
+ *  uploads). See pV2-06-angular-architecture.md §"Roundtrip budget". */
 @Injectable({ providedIn: 'root' })
 export class CatalogueService {
   private readonly api = inject(ApiService);
 
+  /** Session cache: URL → resolved payload. Promise-based so concurrent
+   *  identical requests share one flight. */
+  private readonly cache = new Map<string, Promise<unknown>>();
+
+  /** Bust every cached read — call after ANY catalogue write. */
+  invalidate(): void {
+    this.cache.clear();
+  }
+
+  private cached<T>(url: string, fetcher: () => Observable<T>): Promise<T> {
+    let hit = this.cache.get(url) as Promise<T> | undefined;
+    if (!hit) {
+      hit = firstValueFrom(fetcher());
+      // A failed flight must not poison the cache — evict on rejection.
+      hit.catch(() => this.cache.delete(url));
+      this.cache.set(url, hit);
+    }
+    return hit;
+  }
+
   /** Active top-level categories + counts — the browse rail. */
-  categories(): Observable<CategoryInfo[]> {
-    return this.api.get<CategoryInfo[]>('/api/marketplace/categories');
+  categories(): Promise<CategoryInfo[]> {
+    return this.cached('/api/marketplace/categories', () =>
+      this.api.get<CategoryInfo[]>('/api/marketplace/categories')
+    );
+  }
+
+  /** One page of the browse grid (born paginated — PAGE_SIZE 48). */
+  items(query: ItemsQuery): Promise<Paginated<CatalogueItem>> {
+    const params = new URLSearchParams();
+    if (query.cat) params.set('cat', query.cat);
+    if (query.sub) params.set('sub', query.sub);
+    if (query.q) params.set('q', query.q);
+    if (query.offset) params.set('offset', String(query.offset));
+    const qs = params.toString();
+    const url = `/api/marketplace/items${qs ? `?${qs}` : ''}`;
+    return this.cached(url, () => this.api.get<Paginated<CatalogueItem>>(url));
   }
 
   /** Every top-level category incl. inactive — the curation table
-   *  (server-gated to platform admins). */
+   *  (server-gated to platform admins). Uncached: the table is the live
+   *  editing surface. */
   adminCategories(): Observable<CategoryInfo[]> {
     return this.api.get<CategoryInfo[]>('/api/marketplace/categories/all');
   }
 
-  /** Curation update; resolves to the fresh row (with live count). */
+  /** Curation update; resolves to the fresh row (with live count). Busts
+   *  the read cache so an open marketplace tab refetches truth. */
   updateCategory(id: string, patch: CategoryUpdate): Observable<CategoryInfo> {
-    return this.api.patch<CategoryInfo>(`/api/marketplace/categories/${id}`, patch);
+    return this.api
+      .patch<CategoryInfo>(`/api/marketplace/categories/${id}`, patch)
+      .pipe(tap(() => this.invalidate()));
   }
 }

@@ -84,9 +84,12 @@ export const routes: Routes = [
         data: { feature: 'Inbox' },
       },
       {
+        // pV2-06a — the browse foundation (was a coming-soon stub).
         path: 'marketplace',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Marketplace' },
+        loadComponent: () =>
+          import('./pages/marketplace/marketplace-page.component').then(
+            (m) => m.MarketplacePageComponent
+          ),
       },
       {
         // Supplier sub-hub (v2.13a — v1.68t port): stage tiles over /projects.

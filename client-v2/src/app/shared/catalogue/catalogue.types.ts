@@ -1,6 +1,5 @@
-/** pV2-MARKET-00 — catalogue domain types (the engine's shared contract;
- *  items/suppliers + the paginated envelope join in pV2-06a). Mirrors the
- *  server's marketplace.js projections. */
+/** pV2-MARKET-00/06a — catalogue domain types (the engine's shared
+ *  contract). Mirrors the server's marketplace.js projections. */
 
 /** One top-level catalogue category as the rail + curation table see it. */
 export interface CategoryInfo {
@@ -20,4 +19,48 @@ export interface CategoryUpdate {
   tagline?: string;
   isActive?: boolean;
   sortOrder?: number;
+}
+
+/** One marketplace item as the browse grid sees it (pV2-06a). */
+export interface CatalogueItem {
+  id: string;
+  name: string;
+  description: string | null;
+  basePrice: number | null;
+  unit: string | null;
+  coverUrl: string | null;
+  categoryId: string;
+  subcategoryId: string | null;
+  supplierId: string;
+  supplierName: string;
+  /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
+   *  edit/delete affordances in later arcs. Never computed client-side. */
+  ownedByActiveOrg: boolean;
+}
+
+/** The shared paginated list envelope — stable contract regardless of
+ *  future UX (Show more today, virtual scroll someday). */
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  hasMore: boolean;
+}
+
+/** Items list query (URL-is-state — see MarketplaceStore). */
+export interface ItemsQuery {
+  cat?: string | null;
+  sub?: string | null;
+  q?: string | null;
+  offset?: number;
+}
+
+/** Middle-region presentation. */
+export type ViewMode = 'card' | 'list' | 'table';
+
+/** Right-rail mode, DERIVED from selection ('quote' joins in 06f). */
+export type RailMode = 'empty' | 'category' | 'item' | 'quote';
+
+/** Parse an untrusted ?view= param (pure — unit tested). */
+export function asViewMode(v: string | null): ViewMode {
+  return v === 'list' || v === 'table' ? v : 'card';
 }
