@@ -115,6 +115,14 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - marketplace-page sheds the inline band + three option arrays; the Store tab's lone view-toggle row retired (the band carries it).
 - Verified live: Store tab search filters the pinned store (`q=bar` → 1 item, URL param set), 2 selects + toggle; marketplace unchanged (search + 3 selects + toggle, 48 cards).
 
+## Iteration — v2.20j (2026-06-12)
+**Triggered by:** chat's three card-foot tweaks.
+**Commit:** chip v2.20j
+- Item-card CTA labelled **"Add to Quote" ↔ "Added to Quote"** — TRANSITIONAL comment in the template: the wire stays favourites until pV2-06f lands the quote flow (the heart overlay remains the explicit favourites affordance).
+- `.bp-cta-foot` modifier (styles.css): card-foot brand CTA drops to `--text-sm` (12px) + 8/16 padding; icon 14.
+- `.bp-tag-chip` → `--text-sm` (12px) globally. Convergence comments on BOTH rules: the 12px rank is deliberate (proportional weight against `.bp-price-large`) — keep the two in step.
+- Verified live: label, 12px/8-16 CTA, 12px chip.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

@@ -68,15 +68,17 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
         <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
-      <!-- BEM modifier rides the base class (base chrome stays). -->
+      <!-- BEM modifier rides the base class (base chrome stays).
+           TRANSITIONAL: labelled "Add to Quote" per the locked design but
+           WIRED to favourites until pV2-06f lands the quote flow. -->
       <button
         type="button"
-        class="bp-btn-grad mt-3 w-full"
+        class="bp-btn-grad bp-cta-foot mt-3 w-full"
         [class.bp-btn-grad--added]="favourited()"
         (click)="onCtaClick($event)"
       >
-        <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="16" />
-        {{ favourited() ? 'Added to favourites' : 'Add to favourites' }}
+        <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="14" />
+        {{ favourited() ? 'Added to Quote' : 'Add to Quote' }}
       </button>
     </div>
   `,

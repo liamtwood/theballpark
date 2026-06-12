@@ -338,6 +338,16 @@ body {
   outline-offset: 2px;
 }
 
+/* Card-foot CTA density (pV2-CARDS-01 tweak pass): inside a card foot the
+   brand CTA drops to --text-sm (12px) + tighter padding. The 12px rank
+   DELIBERATELY converges with .bp-tag-chip so the card foot carries
+   proportional weight against the prominent .bp-price-large — keep the
+   two in step, don't drift them apart. */
+.bp-btn-grad.bp-cta-foot {
+  padding: 8px 16px;
+  font-size: var(--text-sm);
+}
+
 /* The brand CTA's "done" twin (BUTTONS.md two-state pattern, pV2-CARDS-01):
    visually muted but NOT hidden — acknowledgment, usually unclickable. */
 .bp-btn-grad--added {
@@ -571,7 +581,9 @@ body {
   padding: 2px 10px;
   border-radius: var(--radius-pill);
   font-family: var(--bp-font);
-  font-size: var(--text-base);
+  /* --text-sm (12px) converges with .bp-cta-foot — the card foot's
+     deliberate lighter rank against .bp-price-large (keep in step). */
+  font-size: var(--text-sm);
   font-weight: 400;
   background: var(--theme-soft);
   color: var(--theme-text);
