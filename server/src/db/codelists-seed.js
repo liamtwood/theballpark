@@ -198,8 +198,10 @@ async function seedCodelists(client) {
       [hex, token]
     );
   }
+  // upper() mirrors the sweep's matching (audit 02-F-1) — any case of
+  // surviving hex is caught, not just the seed contract's uppercase.
   const hexLeft = await client.query(
-    `SELECT COUNT(*) AS n FROM shared.reference_codelist_values WHERE meta->>'color' LIKE '#%'`
+    `SELECT COUNT(*) AS n FROM shared.reference_codelist_values WHERE upper(meta->>'color') LIKE '#%'`
   );
   if (Number(hexLeft.rows[0].n) > 0) {
     console.warn(`  WARNING: ${hexLeft.rows[0].n} codelist meta color(s) still hex — extend HEX_TO_TOKEN (RP-09).`);

@@ -73,6 +73,18 @@
 **What:** Same logic, two codebases — intentional (no shared package between apps; v1 dies at pV2-11). Not extractable without cross-app tooling.
 **Severity:** LOW (transitional duplication with a death date, not a shared-piece violation)
 
+## Iteration — v2.19c (2026-06-12)
+**Triggered by:** end-of-module architect audit — report saved to `docs/audits/2026-06-12-codelists-02-consumer-sweep-architect-audit.md`. Verdict: "production-ready"; RP-09/RP-04 closures and the F-7 extraction independently verified sound.
+**Triage (7 findings):**
+- **F-1 MEDIUM — accepted.** The RP-09 survivor check now `upper()`s to mirror the sweep's case-handling (any case of surviving hex is caught).
+- **F-2 MEDIUM — accepted.** Profile `save()` now builds per-section payloads — Company Information saves no longer write possibly-stale Financial values back (and vice versa). The PUT was already partial-capable; the component now uses it that way.
+- **F-3 LOW — accepted as documentation.** `defaultCurrency` is deliberately never-clearable (an org always has one) — the asymmetry with clearable `country` is now a schema comment, not an accident.
+- **F-4 LOW — accepted.** RP-04 ledger grep note clarified: raw matches are expected (binary mappings, data-derived); the bar is "no match mirrors a codelist namespace".
+- **F-5 LOW — rejected.** No loading gate on the two codelist selects: the session cache makes the empty window one network round-trip on first visit only, and selects populate in place. A form-wide gate for a sub-second cosmetic state isn't worth the complexity.
+- **F-6 LOW — rejected (deferred).** `filterBy` stays hardcoded to 'label' until a consumer needs code-search — YAGNI; the input is a 2-line addition when needed.
+- **F-7 LOW — noted.** edit-field (~213) and codelists-settings (~200) in the warning band; watch on next touch.
+**Greens after fixes:** v2 build/lint/guard + 67/67; server 48/48; fin-section save round-trip verified live.
+
 ## QC notes
 (Liam fills this in)
 

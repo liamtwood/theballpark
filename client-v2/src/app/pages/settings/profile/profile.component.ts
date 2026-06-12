@@ -162,22 +162,28 @@ export class ProfileComponent {
   protected async save(section: 'org' | 'fin'): Promise<void> {
     this.saving.set(true);
     const f = this.form();
+    // Per-section payloads (audit 02-F-2): saving Company Information must
+    // not write possibly-stale Financial values back, and vice versa — the
+    // PUT is partial; only the edited section's fields travel.
+    const patch =
+      section === 'org'
+        ? {
+            name: f.name,
+            address: f.address,
+            city: f.city,
+            country: f.country,
+            email: f.email,
+            phone: f.phone,
+            refPrefix: f.refPrefix.trim().toUpperCase(),
+          }
+        : {
+            defaultCurrency: f.currency || 'GBP',
+            defaultVatPct: Number(f.vat) || 0,
+            defaultMarginPct: Number(f.margin) || 0,
+            defaultContingencyPct: Number(f.contingency) || 0,
+          };
     try {
-      const fresh = await firstValueFrom(
-        this.orgs.update({
-          name: f.name,
-          address: f.address,
-          city: f.city,
-          country: f.country,
-          defaultCurrency: f.currency || 'GBP',
-          email: f.email,
-          phone: f.phone,
-          refPrefix: f.refPrefix.trim().toUpperCase(),
-          defaultVatPct: Number(f.vat) || 0,
-          defaultMarginPct: Number(f.margin) || 0,
-          defaultContingencyPct: Number(f.contingency) || 0,
-        })
-      );
+      const fresh = await firstValueFrom(this.orgs.update(patch));
       this.form.set(toForm(fresh));
       this.refCounter.set(fresh.refCounter);
       if (section === 'org') this.editingOrg.set(false);
