@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { ItemCardComponent } from './item-card.component';
-import { CatalogueItem, ViewMode } from './catalogue.types';
+import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
 
 /** pV2-06a — the PURE middle grid: entities in, selection events out,
  *  zero fetching. `@switch` on the view mode — card grid / list rows /
@@ -37,7 +37,7 @@ import { CatalogueItem, ViewMode } from './catalogue.types';
               (click)="entitySelected.emit(item.id)"
             >
               @if (item.coverUrl) {
-                <img class="h-9 w-11 rounded-md object-cover" [src]="item.coverUrl" alt="" loading="lazy" />
+                <img class="h-9 w-11 rounded-md object-cover" [src]="thumb(item.coverUrl)" alt="" loading="lazy" decoding="async" />
               } @else {
                 <div class="h-9 w-11 rounded-md bg-fill"></div>
               }
@@ -88,4 +88,8 @@ export class CatalogueGridComponent {
   readonly favouriteIds = input<ReadonlySet<string>>(new Set<string>());
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
+
+  protected thumb(url: string | null): string | null {
+    return sizedImage(url, 160);
+  }
 }

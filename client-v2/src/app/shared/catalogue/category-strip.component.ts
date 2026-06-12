@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, linkedSignal, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { CategoryInfo } from './catalogue.types';
 
@@ -37,17 +37,28 @@ import { CategoryInfo } from './catalogue.types';
           <span class="truncate">{{ cat.name }}</span>
           <span class="flex items-center gap-1.5">
             <span class="bp-meta">{{ cat.count }}</span>
-            <lucide-icon
-              [name]="activeId() === cat.id ? 'chevron-down' : 'chevron-right'"
-              [size]="13"
-              class="text-muted"
-            />
+            <!-- Chevron toggles COLLAPSE independently of selection
+                 (v2.16d QC: an expanded category could not be closed). -->
+            <span
+              class="bp-catstrip-chevron"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="(isOpen(cat.id) ? 'Collapse ' : 'Expand ') + cat.name"
+              (click)="toggleChevron($event, cat.id)"
+              (keydown.enter)="toggleChevron($event, cat.id)"
+            >
+              <lucide-icon
+                [name]="isOpen(cat.id) ? 'chevron-down' : 'chevron-right'"
+                [size]="13"
+                class="text-muted"
+              />
+            </span>
           </span>
         </button>
 
         <!-- Subtree — the ACTIVE category's subcategories (v1 rail style:
              indented names; counts stay in the data, off the rail). -->
-        @if (activeId() === cat.id && subcategories().length) {
+        @if (isOpen(cat.id) && subcategories().length) {
           <div class="mb-1 flex flex-col gap-0.5">
             @for (sub of subcategories(); track sub.id) {
               <button
@@ -74,4 +85,23 @@ export class CategoryStripComponent {
   readonly activeSubId = input<string | null>(null);
   readonly categorySelected = output<string | null>();
   readonly subcategorySelected = output<string | null>();
+
+  /** Expansion follows selection (auto-open on select) but the chevron
+   *  can collapse without deselecting; re-selecting reopens. */
+  private readonly collapsed = linkedSignal<string | null, boolean>({
+    source: this.activeId,
+    computation: () => false,
+  });
+
+  protected isOpen(catId: string): boolean {
+    return this.activeId() === catId && !this.collapsed();
+  }
+
+  protected toggleChevron(e: Event, catId: string): void {
+    if (this.activeId() === catId) {
+      e.stopPropagation(); // collapse/expand without re-selecting
+      this.collapsed.update((c) => !c);
+    }
+    // Non-active: let the row click select (chevron = same affordance).
+  }
 }

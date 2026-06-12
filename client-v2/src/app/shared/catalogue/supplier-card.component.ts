@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { CatalogueSupplier } from './catalogue.types';
+import { CatalogueSupplier, sizedImage } from './catalogue.types';
 
 /** pV2-06d — one supplier card (suppliers mode): cover (or soft block),
  *  logo-letter + name + city, item count, favourite heart. The card IS a
@@ -14,7 +14,7 @@ import { CatalogueSupplier } from './catalogue.types';
   template: `
     <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
       @if (supplier().coverUrl) {
-        <img class="bp-item-card__img" [src]="supplier().coverUrl" [alt]="''" loading="lazy" />
+        <img class="bp-item-card__img" [src]="coverSrc()" [alt]="''" loading="lazy" decoding="async" />
       } @else {
         <div class="bp-item-card__img bp-item-card__img--empty">
           <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
@@ -48,6 +48,10 @@ export class SupplierCardComponent {
   readonly supplier = input.required<CatalogueSupplier>();
   readonly favourited = input<boolean>(false);
   readonly favouriteToggled = output<string>();
+
+  protected coverSrc(): string | null {
+    return sizedImage(this.supplier().coverUrl, 480);
+  }
 
   protected initial(): string {
     return (this.supplier().name || '?').charAt(0).toUpperCase();

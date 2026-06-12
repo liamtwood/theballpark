@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { CatalogueItem } from './catalogue.types';
+import { CatalogueItem, sizedImage } from './catalogue.types';
 
 /** pV2-06a — one item card (card view). Image (or soft placeholder),
  *  name, supplier, price + unit. Dumb: selection in, click out. Quote CTA
@@ -25,9 +25,10 @@ import { CatalogueItem } from './catalogue.types';
            previews, fine in real browsers. -->
       <img
         class="bp-item-card__img"
-        [src]="item().coverUrl"
+        [src]="cardSrc()"
         [alt]="item().name"
         [attr.loading]="eager() ? 'eager' : 'lazy'"
+        decoding="async"
       />
     } @else {
       <div class="bp-item-card__img bp-item-card__img--empty">
@@ -92,6 +93,10 @@ export class ItemCardComponent {
   readonly favourited = input<boolean>(false);
   readonly clicked = output<string>();
   readonly favouriteToggled = output<string>();
+
+  protected cardSrc(): string | null {
+    return sizedImage(this.item().coverUrl, 480);
+  }
 
   protected onFavClick(e: Event): void {
     e.stopPropagation(); // the host click selects the card

@@ -133,6 +133,24 @@ export type ViewMode = 'card' | 'list' | 'table';
 /** Right-rail mode, DERIVED from selection ('quote' joins in 06f). */
 export type RailMode = 'empty' | 'category' | 'item' | 'quote';
 
+/** Size a remote image URL for its surface (pure — unit tested).
+ *  Unsplash-style URLs carry ?w=1080; cards need ~480, list thumbs ~160.
+ *  Non-parameterised URLs pass through untouched (v2.16d — Liam's "All
+ *  is a disaster": 48 × 1080px sources for 340px cards). */
+export function sizedImage(url: string | null, width: number): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.searchParams.has('w')) {
+      u.searchParams.set('w', String(width));
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 /** Parse an untrusted ?view= param (pure — unit tested). */
 export function asViewMode(v: string | null): ViewMode {
   return v === 'list' || v === 'table' ? v : 'card';

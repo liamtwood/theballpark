@@ -566,3 +566,16 @@ body {
 .bp-catstrip-row--sub.bp-catstrip-row--active {
   color: var(--color-text);
 }
+
+/* Rail chevron hit-target (v2.16d collapse fix). */
+.bp-catstrip-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+.bp-catstrip-chevron:hover {
+  background: var(--color-fill);
+}
