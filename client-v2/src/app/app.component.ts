@@ -1,16 +1,13 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { VersionChipComponent } from './shell/version-chip/version-chip.component';
 
-/** Root — routed content plus the always-visible build chip (rendered here,
- *  outside the shell, so it shows on full-bleed pages like /login too). */
+/** Root — routed content. The build chip moved off the floating footer
+ *  into the user menu, above Sign out (Liam, 2026-06-12) — the footer
+ *  fought the viewport-fit pages for the bottom edge. */
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, VersionChipComponent],
-  template: `
-    <router-outlet />
-    <app-version-chip />
-  `,
+  imports: [RouterOutlet],
+  template: `<router-outlet />`,
 })
 export class AppComponent {}

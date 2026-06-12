@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PopoverModule, Popover } from 'primeng/popover';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
 import { can } from '../../core/auth/permissions';
 import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.component';
@@ -61,8 +62,10 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
             </div>
           }
 
-          <!-- Sign out -->
+          <!-- Build chip + sign out (the chip moved here off the floating
+               footer — Liam, 2026-06-12). -->
           <div class="mt-2 border-t border-hairline pt-2">
+            <div class="bp-meta px-1 pb-1">{{ versionChip }}</div>
             <button
               type="button"
               class="w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text hover:bg-fill"
@@ -78,6 +81,9 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
 })
 export class UserMenuComponent {
   protected readonly auth = inject(AuthService);
+
+  /** The build chip — lives here since the floating footer retired. */
+  protected readonly versionChip = environment.versionChip;
 
   /** Page-settings link mirrors the route's ballparkAdminGuard gate. */
   protected readonly canEditPageSettings = computed(() => can(this.auth.role(), 'admin.cross_org_view'));

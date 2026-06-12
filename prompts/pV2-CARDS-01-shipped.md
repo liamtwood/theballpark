@@ -153,6 +153,13 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - **2xl goes 4-up** in the card grid — the rail is hidden in card view, so the wide middle would otherwise stretch cards past the fold. (At xl the 3-up + rhythm savings suffice.)
 - **FOLD GOAL MET**, measured at 1280×800 card view: whole card (image → name → chip → price → Add to Quote) above the fold with 104px to spare (card 408px in a 497px column). Both engine consumers inherit everything (shared shell/band/grid — RP-06).
 
+## Iteration — v2.20o (2026-06-12)
+**Triggered by:** Liam — retire the floating version footer; show the chip in the user menu above Sign out.
+**Commit:** chip v2.20o
+- `<app-version-chip>` (fixed bottom-right) DELETED; the chip now renders as a quiet `bp-meta` line in the user-menu popover, directly above Sign out. The footer was also fighting the viewport-fit pages for the bottom edge.
+- TRADE-OFF noted: the chip no longer shows on full-bleed pages (login/callback) — it lived at root precisely for those. If build identity on login matters for QC screenshots, say so and it can return there only.
+- Verified live: footer gone, "[Dev v2] v2.20n" above Sign out in the menu.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
