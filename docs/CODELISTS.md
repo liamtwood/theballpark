@@ -137,7 +137,7 @@ assigns each list a v2 type.
 | `project_status` | 4 | `system` | Project status dropdown + pill — code reacts to specific codes |
 | `category_status` | 9 | `system` | Brief-tab per-category status pill — code reacts to specific codes |
 | `message_status` (NEW) | 4 | `system` | Inbox messages — Draft / Sent / Read / Deleted (the worked example below) |
-| `country` (NEW, future) | (ISO-2) | `system` | Profile / org country — fixed list, not extensible |
+| `country` | 249 | `system` | Profile org country select (`orgs.country`) — full ISO 3166-1 alpha-2, not extensible |
 
 **Separate (legacy):** `shared.statuses` is an older statuses table for
 project/lead/item statuses, distinct from codelists. v1 was migrating
@@ -185,10 +185,77 @@ Draft ──[send]──→ Sent ──[mark-read]──→ Read
 | Unit / measurement / cadence | **YES** |
 | Tier / plan / package level | **YES** |
 | Language / locale | **YES** |
+| **Platform-wide config setting** (single deployment-level value) | **YES — codelist namespace, not a new table** (see Hindsight section below) |
 | Role enum (`agency_admin`, `supplier_member`, …) | **NO** — derived from (org.type, is_admin); see `auth/permissions.ts`. Roles are computed, not stored data |
 | Free text fields (name, address, email, description) | **NO** |
 | One-off boolean (is_active, is_admin) | **NO** — use a boolean column |
 | User-owned arbitrary lists (project names, custom tags) | **NO** — model as proper tables |
+| **Per-org-type / per-tenant config payload** | **NO** — use a typed JSONB column (e.g. `org_type_config.payload`). Codelists are global; per-tenant settings need per-tenant rows. |
+
+## What belongs in a codelist — including the platform-config reach (hindsight, 2026-06-12)
+
+**Honest retrospective.** Three of v2's existing settings surfaces —
+`/settings/pages` (via `org_type_config`), the brand config (via
+`bp_brand_config`), and the codelist admin itself — could have been
+built as **one unified codelist machinery** if CODELISTS-01 had landed
+before PAGES-01.
+
+In hindsight, the simpler shape was:
+
+| What we built | What codelists would have given us |
+|---|---|
+| `bp_brand_config` (single-deployment key/value table) + its own service | A `system_config` codelist namespace; admin curation page already exists |
+| `org_type_config` (per-org-type typed JSONB payload) + `/settings/pages` | A `page_config` namespace (for global options) + per-org-type override rows |
+| 3 admin surfaces (`/settings/codelists`, `/settings/pages`, `/settings/categories`) | 1 (`/settings/codelists` covers everything) |
+
+**The train has left the station** for `org_type_config` and
+`bp_brand_config` — both shipped, audited clean, consumed by multiple v2
+surfaces. Refactoring them now would be meaningful work for minimal
+user-visible benefit; **they stay as-is.**
+
+**The forward-looking rule** (effective immediately):
+
+> Any new system-level setting that emerges should default to a codelist
+> namespace, not a new table. Reach for a specialised table only when:
+> (a) the setting needs per-tenant variation that can't be modelled as
+> codelist rows; or (b) the payload has strong typing requirements that
+> Zod-validated `meta.value` can't satisfy. Otherwise, the codelist
+> namespace + the already-built admin UI + the audit trail + the
+> activation/deactivation + the description column do the job for free.
+
+**Decision criteria when adding a new setting:**
+
+| Question | If YES → codelist namespace | If YES → specialised table |
+|---|---|---|
+| Does the setting have ONE value for the whole platform? | ✓ (`system_config` row) | |
+| Does the setting vary per tenant / org type? | (codelist row per type, OR override pattern) | ✓ (specialised JSONB column) |
+| Does the payload have many nested fields that interact (e.g. `{ items: [...], rules: {...} }`)? | | ✓ (typed JSONB with Zod schema) |
+| Is the setting a simple key/value the admin curates rarely? | ✓ | |
+| Does the setting need its own custom admin UI (drag-drop, image upload, complex form)? | | ✓ (specialised page) |
+
+**Examples that should reach for codelist namespace going forward:**
+
+- Default upload size limit
+- Email-template subject prefix
+- Default project retention period
+- Marketplace category sort order policy
+- Notification cadence default
+- Feature toggle flags
+
+**Examples that should stay specialised:**
+
+- `org_type_config.payload` (per-tenant, nested fields, Zod-validated)
+- `bp_brand_config` — stays as-is (already shipped); would have been a codelist if rebuilt
+- Project-level settings (per-project, owned by the project entity)
+
+**Lesson source:** Oracle Clinical (mid-1990s, John's design) used the
+reference codelist machinery as both the LOV store AND the system
+configuration store. One table type, one curation UI, two functional
+roles. Single-tenant by nature, so the unified pattern worked
+beautifully. v2 partially adopts it — codelist options for our
+dropdowns (after CODELISTS-02) — but the per-tenant config layer needs
+its own machinery. The forward-looking rule above captures where the
+unified pattern still applies in our multi-tenant world.
 
 **The test:** if you find yourself writing `enum` or a hardcoded
 `Option[]` array in component CSS/TS, ask: *will this list ever change
@@ -239,43 +306,35 @@ protected readonly meta = computed(() =>
 </span>
 ```
 
-## Audit — current v2 usage
+## Audit — current v2 usage (post pV2-CODELISTS-02)
 
-**Profile (`/settings/profile`) — uses ZERO codelists today.**
-
-Fields are all free text or number primitives: name, city, address,
-email, phone, refPrefix, vat (number), margin (number), contingency
-(number). None reference `CodelistService`.
-
-This is **correct for the current shape** — the fields are open-ended
-inputs, not enumerated choices.
-
-**Where Profile MUST use codelists when extended:**
-
-| Future field | Codelist | Status |
-|---|---|---|
-| Country | `country` (NEW — ISO-2 codes) | column exists in DB; codelist not seeded; UI not built |
-| Currency default | `currency` (existing) | not surfaced on Profile yet; lives on Event drawer in v1 |
-| Default tax rate | depends on country; possibly `country_tax_default` (NEW) | future |
+**Profile (`/settings/profile`)** — Country (codelist `country`, 249
+ISO-2 entries, type-ahead filtered select) and Currency (codelist
+`currency`) both live, persisted on `orgs.country` /
+`orgs.default_currency` via /api/organisation. Remaining fields are
+free-text/number primitives — correct. Future: default tax rate
+(possibly `country_tax_default`, depends on country).
 
 **Other v2 surfaces:**
 
-- `/settings/pages` — title mode dropdown is currently a hardcoded
-  inline `[{label:'Greeting', value:'greeting'}, …]` array. **This is a
-  codelist smell** — title modes are a fixed product enum today but
-  could extend (personalised, brand-quote, custom-html, …). Worth
-  promoting to a `page_title_mode` codelist when next touched. Low
-  priority; the inline list works for now.
-- `/settings/categories` — visibility is a boolean (`is_active`), not a
-  codelist. Correct — it's binary.
-- `<app-edit-field>` — type='select' takes an `options` input. The
-  primitive itself doesn't know about codelists; consumers wire them in.
+- `/settings/pages` — title-mode + hero-align dropdowns read the
+  `page_title_mode` / `hero_align` codelists (v2.19b).
+- `/settings/categories` + `/settings/codelists` visibility — boolean
+  (`is_active`) UI mappings, not codelists. Correct — binary.
+- `/marketplace` filters — supplier + price options are DATA-derived;
+  the tier filter targets `items.tier` (basic/mid/premium), a DIFFERENT
+  enum from `budget_tier` — `item_tier` codelist candidate when the
+  /store arc touches items.
+- `<app-edit-field>` — type='select' takes an `options` input (+
+  optional `filter` for long lists, v2.19b). The primitive itself
+  doesn't know about codelists; consumers wire them in.
 
-## Risk pattern (RP-04 candidate)
+## Risk pattern (RP-04 — CLOSED v2.19b)
 
-Logged: **hardcoded inline option arrays where a codelist would extend
-better**. Sweep when next touching a settings/form surface; promote to
-codelist if the list is expected to grow or vary by customer.
+**Hardcoded inline option arrays where a codelist would extend better.**
+Closed by the consumer sweep: every literal `EditFieldOption[]` left in
+v2 is either a boolean UI mapping or data-derived — never a codelist
+namespace. Ledger row carries the standing grep check.
 
 ## Version history
 
@@ -290,7 +349,7 @@ in the **Detail** table below.
 | v2.18a/b | 2026-06-12 | pV2-CODELISTS-01 SHIPPED — RC/RCV split, 12 locked parents seeded, `<app-status-pill>` primitive, three-layer no-DELETE, `/settings/codelists` admin UI | dev | ✓ accepted (1 styling nit) | ✓ clean |
 | v2.18c | 2026-06-12 | Architect audit triage — 4 fixes accepted, 2 rejected with rationale, 1 noted (F-7 bloat) | (per shipped file) | n/a | ✓ clean |
 | v2.18d | 2026-06-12 | QC fix — `appendTo="body"` on edit-field p-select (overlay was CLIPPED by `overflow-hidden`, not z-fought; closes pV2-04c thread app-wide) + RP-09 ledger row | dev `f4e6a05` | ✓ confirmed (dropdown over table; duplicate-code path exercised) | n/a |
-| target | post-CODELISTS-01 | pV2-CODELISTS-02 — Sweep Profile / Items / page-settings onto codelist machinery; closes RP-04 | — | — | — |
+| v2.19a/b + v1.70b | 2026-06-12 | **pV2-CODELISTS-02 SHIPPED** — consumer sweep: Profile Country + Currency selects (new `orgs.default_currency`); pages title-mode + hero-align codelist-fed; RP-04 + RP-09 CLOSED (13 hex → `--color-state-*` refs, tokens in both apps at original hues, v1 `resolveMetaColor()` at 4 sites); F-7 value-row extracted (248 → 198 + 63); 409 add copy confident | dev `7aa7986` / `415fbf2` / `72020d8` | — | — |
 
 ### Detail — QC + Audit findings per version
 
@@ -310,9 +369,9 @@ lands.
 
 | Item | Deferred from | Why | Lands in |
 |---|---|---|---|
-| v1-inherited status lists retain literal hex `.color` (instead of token refs) | pV2-CODELISTS-01 seed | Deliberate transition state — switching them mid-migration risks breaking v1 dropdowns that still read the rows. Token-ref sweep belongs with the consumer sweep. | pV2-CODELISTS-02 |
+| ~~v1-inherited status lists retain literal hex `.color`~~ **RESOLVED v2.19a/v1.70b** | pV2-CODELISTS-01 seed | 13 rows migrated to `--color-state-*` refs; tokens live in BOTH apps' styles.css at the original v1 hues (zero visual change); v1's 4 raw `meta.color` consumers wrapped with `resolveMetaColor()`. RP-09 SQL check returns 0 rows. | shipped |
 | ~~Dropdown z-index — `p-select` overlay opens UNDER the table~~ **RESOLVED v2.18d (`f4e6a05`)** | pV2-CODELISTS-01 QC (also pV2-04c thread) | **Root cause was NOT z-index** — it was overflow clipping. The `overflow-hidden` on the rounded table wrapper + `opacity-60` stacking contexts on inactive rows mean a preset-level z-index tweak (chat's original lean) would have changed nothing. Fixed with the OTHER option from the pV2-04c thread: `appendTo="body"` on `<p-select>` inside `<app-edit-field>` — panel portals out of the clipping container; every dropdown app-wide inherits (Profile / page settings / categories / codelists). **pV2-04c overlay concern now closed.** | shipped |
-| Extract value-row component | pV2-CODELISTS-01 F-7 (architect audit) | codelists-settings.component.ts at 248/250 lines — required (not optional) on next touch to avoid the 400-line alarm threshold. | when codelists-settings next changes (CODELISTS-02 sweep is likely trigger) |
+| ~~Extract value-row component~~ **RESOLVED v2.19b** | pV2-CODELISTS-01 F-7 (architect audit) | `<app-codelist-value-row>` extracted — codelists-settings 248 → 198 lines (+63-line row component). Row emits save/toggleActive; parent owns data + the deactivation gate. | shipped |
 | `messages.status` consumer pointer (`consumer_table` / `consumer_column`) on `message_status` parent row | pV2-CODELISTS-01 seed | The `messages` table doesn't exist yet (inbox arc). | Inbox arc lands `messages` → update parent row |
 | `projects.status` consumer pointer on `project_status` parent row | pV2-CODELISTS-01 seed | Projects still ride legacy `shared.statuses` FK — pointer lands with the projects-arc consolidation. | Projects arc |
 | Transition enforcement (`canTransition()` helper using `meta.allowed_next_codes`) | pV2-CODELISTS-01 (data only, no enforcement yet) | First writer's choice — most likely the inbox arc when setting message status. | Inbox arc |
