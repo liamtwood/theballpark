@@ -51,8 +51,8 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
       <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
-      @if (item().categoryName) {
-        <span class="bp-tag-chip mt-1.5">{{ item().categoryName }}</span>
+      @if (item().subcategoryName || item().categoryName; as chip) {
+        <span class="bp-tag-chip mt-1.5">{{ chip }}</span>
       }
       <div class="mt-2 flex items-baseline gap-1.5">
         @if (item().basePrice !== null) {

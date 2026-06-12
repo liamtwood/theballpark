@@ -33,10 +33,15 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
       </div>
     }
 
+    <!-- Mirrors the item card's price treatment (pV2-CARDS-01 QC #1). -->
     <div class="mt-3 flex items-baseline gap-1.5">
-      <span class="bp-card-title">{{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
-      @if (item().unit) {
-        <span class="bp-meta">/ {{ item().unit }}</span>
+      @if (item().basePrice !== null) {
+        <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+        @if (item().unit) {
+          <span class="bp-meta">/ {{ item().unit }}</span>
+        }
+      } @else {
+        <span class="bp-caption">Price on request</span>
       }
     </div>
 

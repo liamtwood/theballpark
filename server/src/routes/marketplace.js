@@ -205,12 +205,13 @@ router.get('/items', async (req, res, next) => {
       `SELECT i.id, i.name, i.description, i.base_price, i.unit, i.image_url,
               i.category_id, i.subcategory_id,
               i.org_id AS supplier_id, o.name AS supplier_name, o.city AS supplier_city,
-              c.name AS category_name,
+              c.name AS category_name, sc.name AS subcategory_name,
               (i.org_id = $1) AS owned_by_active_org,
               COUNT(*) OVER() AS total
          FROM items i
          JOIN orgs o ON o.id = i.org_id AND o.deleted_at IS NULL
          LEFT JOIN categories c ON c.id = i.category_id
+         LEFT JOIN categories sc ON sc.id = i.subcategory_id
         WHERE ${where.join(' AND ')}
         ORDER BY i.name ASC
         LIMIT $${vals.length - 1} OFFSET $${vals.length}`,
@@ -230,6 +231,7 @@ router.get('/items', async (req, res, next) => {
       supplierName: row.supplier_name,
       supplierCity: row.supplier_city,
       categoryName: row.category_name,
+      subcategoryName: row.subcategory_name,
       ownedByActiveOrg: !!row.owned_by_active_org,
     }));
     res.json({ items, total, hasMore: offset + items.length < total });
