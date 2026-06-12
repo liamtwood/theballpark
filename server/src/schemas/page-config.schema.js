@@ -7,6 +7,15 @@
 
 const { z } = require('zod');
 
+// One page's hero pair — shared by every pages.* key (hero ONLY; v1's
+// other per-page marketplace settings are deliberately not modelled).
+const PageHeroOverrideSchema = z
+  .object({
+    title: z.string().trim().max(80).optional(),
+    subtitle: z.string().trim().max(120).optional(),
+  })
+  .strip();
+
 const PageConfigSchema = z
   .object({
     heroTitleMode: z.enum(['greeting', 'username', 'orgName', 'fixed']).optional(),
@@ -22,13 +31,8 @@ const PageConfigSchema = z
     // a new configurable page adds its key here, not a free-form record.
     pages: z
       .object({
-        profile: z
-          .object({
-            title: z.string().trim().max(80).optional(),
-            subtitle: z.string().trim().max(120).optional(),
-          })
-          .strip()
-          .optional(),
+        profile: PageHeroOverrideSchema.optional(),
+        marketplace: PageHeroOverrideSchema.optional(),
       })
       .strip()
       .optional(),

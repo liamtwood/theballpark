@@ -99,10 +99,10 @@ type RoleType = (typeof ROLES)[number];
               placeholder="Profile"
               [maxLength]="80"
               [editing]="true"
-              (valueChange)="saveProfileHero(role, 'title', $event)"
+              (valueChange)="savePageHero(role, 'profile', 'title', $event)"
             />
           </div>
-          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
             <span></span>
             <span class="bp-field-label">Profile subtitle</span>
             <app-edit-field
@@ -111,7 +111,32 @@ type RoleType = (typeof ROLES)[number];
               [value]="cfg?.pages?.profile?.subtitle ?? ''"
               placeholder="Defaults to the organisation name"
               [editing]="true"
-              (valueChange)="saveProfileHero(role, 'subtitle', $event)"
+              (valueChange)="savePageHero(role, 'profile', 'subtitle', $event)"
+            />
+          </div>
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5">
+            <span></span>
+            <span class="bp-field-label">Marketplace title</span>
+            <app-edit-field
+              label=""
+              type="text"
+              [value]="cfg?.pages?.marketplace?.title ?? ''"
+              placeholder="Marketplace"
+              [maxLength]="80"
+              [editing]="true"
+              (valueChange)="savePageHero(role, 'marketplace', 'title', $event)"
+            />
+          </div>
+          <div class="grid grid-cols-[120px_160px_1fr] items-center gap-x-4 border-b border-hairline px-4 py-1.5 last:border-b-0">
+            <span></span>
+            <span class="bp-field-label">Marketplace subtitle</span>
+            <app-edit-field
+              label=""
+              type="text"
+              [value]="cfg?.pages?.marketplace?.subtitle ?? ''"
+              placeholder="Browse suppliers, products and services…"
+              [editing]="true"
+              (valueChange)="savePageHero(role, 'marketplace', 'subtitle', $event)"
             />
           </div>
         }
@@ -174,11 +199,17 @@ export class PagesSettingsComponent {
   }
 
   /** Per-page hero fields nest under pages.<page> — mergeConfig is shallow,
-   *  so build the nested object from current state before saving. */
-  protected saveProfileHero(role: RoleType, key: 'title' | 'subtitle', value: string): void {
-    const current = this.configs[role]()?.pages?.profile ?? {};
+   *  so build the FULL pages object from current state before saving (a
+   *  marketplace save must not drop the profile keys, and vice versa). */
+  protected savePageHero(
+    role: RoleType,
+    page: 'profile' | 'marketplace',
+    key: 'title' | 'subtitle',
+    value: string
+  ): void {
+    const pages = this.configs[role]()?.pages ?? {};
     void this.save(role, {
-      pages: { profile: { ...current, [key]: value || undefined } },
+      pages: { ...pages, [page]: { ...(pages[page] ?? {}), [key]: value || undefined } },
     });
   }
 

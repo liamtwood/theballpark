@@ -16,6 +16,7 @@ export interface PageConfigPayload {
   /** Per-page hero overrides (title2/subtitle2 roles). Explicit page keys. */
   pages?: {
     profile?: PageHeroOverride;
+    marketplace?: PageHeroOverride;
   };
 }
 

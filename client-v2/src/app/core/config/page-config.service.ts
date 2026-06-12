@@ -29,6 +29,11 @@ export class PageConfigService {
   readonly profileTitle = computed(() => this._config()?.pages?.profile?.title ?? '');
   readonly profileSubtitle = computed(() => this._config()?.pages?.profile?.subtitle ?? '');
 
+  /** Marketplace-page hero overrides (HERO ONLY — v1's other marketplace
+   *  view settings are deliberately ignored, Liam 2026-06-12). */
+  readonly marketplaceTitle = computed(() => this._config()?.pages?.marketplace?.title ?? '');
+  readonly marketplaceSubtitle = computed(() => this._config()?.pages?.marketplace?.subtitle ?? '');
+
   /** Load the org_type's config. Called from the bootstrap initializer chain
    *  AFTER AuthService.loadSession (needs activeOrgType); orgless / signed-out
    *  users skip — they never see /home. Never throws (boot must proceed). */

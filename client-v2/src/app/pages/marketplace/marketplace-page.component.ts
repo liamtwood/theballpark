@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { PageConfigService } from '../../core/config/page-config.service';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { CatalogueSearchComponent } from '../../shared/catalogue/catalogue-search.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
@@ -28,8 +29,8 @@ import { RightRailComponent } from './rail/right-rail.component';
   template: `
     <app-page-hero
       [back]="{ label: 'Back', href: '/home' }"
-      title="Marketplace"
-      subtitle="Browse suppliers, products and services to build your project."
+      [title]="heroTitle()"
+      [subtitle]="heroSubtitle()"
     />
 
     <div class="bp-page-body">
@@ -122,6 +123,17 @@ import { RightRailComponent } from './rail/right-rail.component';
 })
 export class MarketplacePageComponent {
   protected readonly store = inject(MarketplaceStore);
+  private readonly pageConfig = inject(PageConfigService);
+
+  /** Hero rides the standard per-page settings (HERO ONLY — v1's other
+   *  marketplace view settings deliberately ignored, Liam 2026-06-12);
+   *  /settings/pages overrides win, defaults below. */
+  protected readonly heroTitle = computed(() => this.pageConfig.marketplaceTitle() || 'Marketplace');
+  protected readonly heroSubtitle = computed(
+    () =>
+      this.pageConfig.marketplaceSubtitle() ||
+      'Browse suppliers, products and services to build your project.'
+  );
 
   protected readonly views: { mode: ViewMode; icon: string; label: string }[] = [
     { mode: 'card', icon: 'layout-grid', label: 'Card view' },
