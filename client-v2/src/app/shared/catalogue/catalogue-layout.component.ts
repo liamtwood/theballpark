@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { MarketplaceStore } from '../../pages/marketplace/marketplace-store';
 
 /** Strip width bounds (px) — clamped while dragging. */
@@ -77,6 +77,16 @@ export class CatalogueLayoutComponent {
         : '')
   );
 
+  private readonly destroyRef = inject(DestroyRef);
+  /** Active drag teardown — also runs on component destroy (audit
+   *  cards-F-2: navigating away mid-drag must not strand window
+   *  listeners). */
+  private endDrag: (() => void) | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.endDrag?.());
+  }
+
   protected startResize(start: PointerEvent): void {
     start.preventDefault();
     const startX = start.clientX;
@@ -85,13 +95,17 @@ export class CatalogueLayoutComponent {
       this.stripWidth.set(Math.min(STRIP_MAX, Math.max(STRIP_MIN, startW + e.clientX - startX)));
     };
     const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+      this.endDrag?.();
       try {
         localStorage.setItem(STRIP_STORE_KEY, String(this.stripWidth()));
       } catch {
         // storage may be unavailable (private mode) — width stays session-local
       }
+    };
+    this.endDrag = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      this.endDrag = null;
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);

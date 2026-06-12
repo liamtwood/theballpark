@@ -91,7 +91,11 @@ export class StorefrontPanelComponent {
       .categories.map((cat) => ({
         id: cat.id,
         name: cat.name,
-        cards: this.subcategories().filter((s) => s.parentId === cat.id),
+        // Defensive per-group sort (audit cards-F-7) — the visual order
+        // must not silently shift if the endpoint's ORDER BY changes.
+        cards: this.subcategories()
+          .filter((s) => s.parentId === cat.id)
+          .sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .filter((g) => g.cards.length > 0)
   );

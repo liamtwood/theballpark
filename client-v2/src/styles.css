@@ -123,6 +123,13 @@
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
 
+  /* Shell vertical chrome (audit cards-F-1): the SINGLE source for the
+     app-shell main paddings AND the .bp-vpfit height calc — change a
+     value here and both stay in step (a banner/tray bumps --shell-pt
+     once, every viewport-fit page follows). */
+  --shell-pt: 5rem;
+  --shell-pb: 0.5rem;
+
   /* ── PrimeNG bridge ───────────────────────────────────────────────────────
      PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
      `--p-*` here would be clobbered. The Ballpark→PrimeNG bridge therefore lives
@@ -145,8 +152,8 @@
   .bp-vpfit {
     display: flex;
     flex-direction: column;
-    /* shell pt-20 (5rem) + pb-2 (0.5rem) */
-    height: calc(100dvh - 5.5rem);
+    /* Shell chrome from the single-source tokens (audit cards-F-1). */
+    height: calc(100dvh - var(--shell-pt) - var(--shell-pb));
     min-height: 0;
   }
   .bp-vpfit > .bp-page-body,

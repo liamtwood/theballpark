@@ -27,10 +27,10 @@ import { UserMenuComponent } from './user-menu/user-menu.component';
       }
     </header>
 
-    <!-- pb-2: the columns own the bottom edge on viewport-fit pages (QC
-         "there is still a footer"); the vpfit height calc (styles.css)
-         assumes this 0.5rem. -->
-    <main class="px-6 pb-2 pt-20">
+    <!-- Vertical paddings ride the --shell-pt/--shell-pb tokens — the
+         SAME pair the vpfit height calc consumes (audit cards-F-1:
+         change the token, both stay in step). -->
+    <main class="px-6 pb-[var(--shell-pb)] pt-[var(--shell-pt)]">
       <router-outlet />
     </main>
   `,

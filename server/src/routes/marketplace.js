@@ -356,7 +356,11 @@ router.get('/suppliers/:id', async (req, res, next) => {
  *  subcat-card grid (pV2-CARDS-01 QC #5, CARDS.md image 7): one row per
  *  subcategory the supplier has live items in, with the first item's
  *  image as the card cover. parentId lets the client drill the Store
- *  tab to cat+sub in one navigation. */
+ *  tab to cat+sub in one navigation.
+ *  PERF (audit cards-F-3): the first-image lookups are correlated
+ *  subqueries — O(rows) against items, fine at the typical 10–50
+ *  subcats per supplier. If a supplier ever carries 100+, precompute a
+ *  cover column on categories instead of widening this query. */
 router.get('/suppliers/:id/subcategories', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);

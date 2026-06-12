@@ -180,6 +180,19 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - Active state: `.bp-fav-btn--on` fills the circle with the brand gradient + light icon (background-image longhand — the shorthand-over-gradient trap documented at `--added`). Applies everywhere the class renders (cards + the supplier-detail hero heart).
 - Verified live: titles flip with state, active circle computes the gradient + white icon.
 
+## Iteration — v2.20s (2026-06-12)
+**Triggered by:** end-of-module architect audit (Liam: "do the audit when finished") — report saved to `docs/audits/2026-06-12-cards-arc-architect-audit.md`. **Verdict: "strong architectural discipline and production-ready implementation; no critical blockers."** All key conformances independently verified: RP-07 one-definition (guard enforced, zero component-local card chrome), RP-06 parity (band/layout/strip/grid shared, no drift), sub-primitives global, SQL safety, all component line budgets green.
+**Triage (8 findings — 4 accepted, 2 rejected, 2 noted):**
+- **F-1 MEDIUM — accepted.** Viewport-fit height no longer hardcodes the shell paddings: new `--shell-pt`/`--shell-pb` tokens feed BOTH the shell main's paddings (Tailwind arbitrary-value vars) and the vpfit calc — change the token, both stay in step. Verified live (712px = viewport − 88).
+- **F-2 LOW — accepted.** Resize-drag teardown now also runs on component destroy (`DestroyRef`) — navigating away mid-drag can't strand window listeners.
+- **F-3 LOW — accepted as documentation.** The subcategories endpoint's correlated first-image subqueries carry a PERF comment: fine at 10–50 subcats; precompute a cover column if a supplier ever carries 100+.
+- **F-7 LOW — accepted.** Storefront groups defensively sort cards by name — a server ORDER BY change can't silently shift the visual hierarchy.
+- **F-5 LOW — rejected.** `railVisible` stays store-derived, not an input: both engine consumers share the store BY DESIGN, and an input would let a consumer drift from the locked card-view behaviour. A future non-store consumer is a design conversation, not a flag.
+- **F-6 LOW — rejected.** No warn on localStorage fallback — storage failure is EXPECTED in private mode and the degradation (session-local width) is the designed behaviour; a warn per drag-end is console noise.
+- **F-4 — already accepted as transitional** (dual overlay → 06f rewires the plus to quote).
+- **F-8 — noted, binding:** `marketplace.js` at 467 lines is past the 300-line route ALARM — **extraction required before the next ship touches that file** (favourites routes are the natural split). Logged here so the next marketplace prompt starts with it.
+**Greens after fixes:** build/lint/guard + 67/67; shell tokens verified live.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
