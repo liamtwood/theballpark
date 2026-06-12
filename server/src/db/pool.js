@@ -30,7 +30,19 @@ const pool = new Pool({
   // Keep clients for 10 minutes and TCP-keepalive them instead.
   idleTimeoutMillis: 600000,
   keepAlive: true,
+  // Hold at least 2 warm clients: the pool starts EMPTY and grows on
+  // demand, so the first time two requests overlap (a debounced search
+  // firing next to anything else — Liam's "search is very slow the first
+  // time", 2026-06-12) the second one paid a cold TCP+TLS connect.
+  min: 2,
 });
+
+// Pre-establish the warm pair at boot — `min` only prevents reaping; it
+// doesn't connect eagerly. Fire-and-forget: a failed warm-up just means
+// the first requests pay the connect like before.
+Promise.all([pool.query('SELECT 1'), pool.query('SELECT 1')]).catch((err) =>
+  console.warn('[DB] pool warm-up failed (non-fatal):', err.message)
+);
 
 pool.on('connect', (client) => {
   client.query(`SET search_path TO ${schema}, public`);

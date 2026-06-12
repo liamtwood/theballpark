@@ -99,7 +99,28 @@ but no UI renders subcategories yet — that's the deferred subcat surface
 **Severity:** LOW
 
 ## QC notes
-(Liam fills this in)
+**2026-06-12 (Liam):** "the basic structure is there, the all and cats
+show a card in preview, and select an item get preview, show more works
+well, 3 modes works as expected... no subcats yet but looks great for 1st
+iteration" — ACCEPTED. One issue: "search is very slow the first time" →
+diagnosed + fixed in the v2.14c iteration below (pool grew from zero, so
+the first OVERLAPPING request paid a cold TCP+TLS connect to Supabase).
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## Iteration — v2.14c (2026-06-12)
+**Triggered by QC:** "search is very slow the first time" + chat's
+pV2-MARKET-00 audit finding (ungated legacy /api/categories writes).
+**Commit:** see v2.14c
+**Search fix:** db/pool.js — `min: 2` + boot warm-up pair. The pool
+started EMPTY and grew on demand; the first time two requests overlapped
+(debounced search next to anything else), the second paid a cold
+TCP+TLS+auth connect (~1-2s). Verified post-fix: two parallel fresh-URL
+queries complete in 76ms total.
+**Security fix (chat audit 🔴):** routes/categories.js write verbs
+(POST/PUT/PATCH/DELETE — zero auth, zero validation) RETIRED per chat's
+option (a); GETs stay for v1's browse reads until pV2-11. Removed verbs
+now fall through to the gated v2 catch-all → 401 (verified: POST/PUT/
+DELETE 401, GETs 200). Accepted v1 breakage (superseded surfaces):
+ballpark-settings category admin + category cover-image PATCH.

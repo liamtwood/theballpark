@@ -100,4 +100,20 @@ subcat curation extends this table (same endpoints + ?parent= variant,
 indented/drill-down rows) once 06a gives them a visible surface.
 
 ## Chat audit
-(chat fills this in — leave the section header so chat finds it)
+**Audit pass: 2026-06-12, chat (relayed via Liam):** "Quick audit — page
+itself is clean. One significant security finding."
+- ✓ categories-settings.component.ts (129 lines) — clean against
+  standards: TYPE-01 role classes, edit-field primitive, page-hero +
+  back, optimistic save w/ rollback (Rule 5), under bloat caps.
+- ✓ routes/marketplace.js — properly gated, Zod-validated, ownership
+  server-derived, whitelisted dynamic UPDATE, no info disclosure.
+- 🔴 SIGNIFICANT: legacy v1 router still mounted ungated at
+  /api/categories with open POST/PUT/PATCH/DELETE — anyone could mutate
+  or soft-delete catalogue categories. Chat's lean: retire (option a).
+  **FIXED in v2.14c** — write verbs deleted from routes/categories.js
+  (GETs retained for v1 reads until pV2-11); removed verbs 401 via the
+  gated v2 catch-all. Verified live.
+- Minor (not blocking, no action): no hero eyebrow (consistent with the
+  /settings/pages sibling — deliberate); Visibility select maps
+  'visible'/'hidden' → isActive (works; a toggle would be marginally
+  cleaner).
