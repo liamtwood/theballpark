@@ -104,3 +104,9 @@ Marketplace Profile... see from v1" → "yes please".
 marketplace-profile trio renders with icons; My Shop stub hero correct;
 Profile tile lands the real Profile (Company Information / Financial
 defaults). Build, lint, guards green; 54/54 specs.
+
+## QC notes — addendum (2026-06-12)
+**Liam:** "qc - will need some discussion but what you did was perfect" —
+v2.13a sub-hubs ACCEPTED as built (faithful v1 port); the hub structure
+itself is open for a design discussion with chat before the projects /
+marketplace arcs build on it.
