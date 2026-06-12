@@ -116,3 +116,20 @@ items." Per-supplier subcat narrowing parks with the storefront pass.
 Verified live both surfaces: Catering → 11 subs; Bar Service → 3
 (marketplace) / scoped in store; accordion flip to Venue → 10 subs
 ("Exhibition Centre"... matching the v1 screenshot); ?sub round-trips.
+
+## Iteration — v2.16d (2026-06-12)
+**Triggered by QC:** "performance on 'all' a disaster... once you expand
+a cat you cannot collapse it."
+**Commit:** `3f6cc60`
+**Collapse:** expansion decoupled from selection — the chevron is its own
+hit-target (linkedSignal `collapsed`, resets when selection changes);
+collapsing keeps the category selected and the grid untouched; re-click
+or re-select reopens. Verified live: collapse → 0 sub rows, row stays
+active, cards + URL unchanged; reopen → 11.
+**"All" performance:** measured before fixing — the API is innocent
+(EXPLAIN: 4.2ms plan, 29KB payload, 130–330ms requests; ONE 11.5s
+transient observed, logged as RP-01-family watch). The real weight: the
+All view loads 48 Unsplash images at w=1080 for 340px cards (~5–15MB).
+`sizedImage()` helper now rewrites the width per surface — cards 480,
+list thumbs 160, rail preview keeps full size — plus decoding=async.
+~70% image-byte reduction; ask Liam to re-test All.
