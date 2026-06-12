@@ -92,7 +92,7 @@ The decomposition. v1 file → how it contributes to v2.
 - **Filter dimension model** — the gnarliest data piece; worth a server-side look before pV2-06c is drafted
 
 Resolved (2026-06-12, Liam + CC): server-side filtering at the DB, with
-EVERY list query paginated from day one — page size 24, "Show more"
+EVERY list query paginated from day one — page size 48 (most users never page), "Show more"
 appends, All stays the default landing. Selection never fetches (rail
 preview hydrates from the loaded list); list fetches go through one
 cached service choke point. Detail in pV2-06-angular-architecture.md.

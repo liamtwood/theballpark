@@ -132,8 +132,8 @@ headers / server cache), zero component changes.
 
 EVERY list query carries `LIMIT/OFFSET`, including the All landing —
 the point of server-side filtering is that every payload is bounded,
-not that All is avoided. Page size **24** (one `PAGE_SIZE` constant; 8
-rows of 3, divides into 2/3/4-col layouts), familiar **"Show more"**
+not that All is avoided. Page size **48** (one `PAGE_SIZE` constant — generous enough that most
+users never page; Liam 2026-06-12), familiar **"Show more"**
 button appends the next page (no virtual/infinite scroll). All stays
 the DEFAULT landing (discovery + the 06f Quote-rail home state). The
 items endpoint returns `{ items, total }` so "Show more" can hide
