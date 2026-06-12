@@ -200,6 +200,11 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - DELIBERATE SEMANTICS: the draft set is lost on reload — it marks intent, it isn't a quote (no server write exists until 06f, which replaces this wholesale). Documented on the store.
 - Verified live: plus-only → only plus on; heart too → both on; both revert; heart still round-trips the server.
 
+## Iteration — v2.20u (2026-06-12)
+**Triggered by QC:** the check icon on the added "+" read as a Nike swoosh at 15px.
+**Commit:** chip v2.20u
+- The plus STAYS a plus when added — the gradient circle alone carries the state (title/aria still flip to "Added to Quote"). Verified live.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

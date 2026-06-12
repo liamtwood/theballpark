@@ -61,7 +61,9 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       [attr.title]="quoted() ? 'Added to Quote' : 'Add to Quote'"
       (click)="onQuoteClick($event)"
     >
-      <lucide-icon [name]="quoted() ? 'check' : 'plus'" [size]="15" />
+      <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
+           the gradient circle alone carries the added state. -->
+      <lucide-icon name="plus" [size]="15" />
     </button>
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
