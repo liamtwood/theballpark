@@ -95,3 +95,12 @@ constants only.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## QC notes
+**2026-06-12 (Liam):** "looks good, i update a couple of taglines and
+changed sort, works well" — ACCEPTED. Question raised: subcategories not
+visible in the table. Answer: by design — 15 top-level rows curated;
+~131 subcategories (parent_id set) exist in the data and become
+customer-visible via 06a's subcategory strip (?sub= param). DEFERRED:
+subcat curation extends this table (same endpoints + ?parent= variant,
+indented/drill-down rows) once 06a gives them a visible surface.
