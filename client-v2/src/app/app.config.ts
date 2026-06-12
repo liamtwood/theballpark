@@ -22,6 +22,7 @@ import {
   Rocket,
   Settings,
   SquarePen,
+  Tags,
   FileText,
   Zap,
   CircleCheck,
@@ -87,6 +88,8 @@ export const appConfig: ApplicationConfig = {
         SquarePen, Check,
         // v2.13a supplier sub-hubs: projects-hub stages + storefront trio
         FileText, Zap, CircleCheck, Package, Building2,
+        // pV2-MARKET-00 — admin Categories tile
+        Tags,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

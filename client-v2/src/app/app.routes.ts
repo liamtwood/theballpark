@@ -50,6 +50,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Settings → Categories (pV2-MARKET-00) — marketplace category
+        // curation. PLATFORM admins only (matches the server's PATCH gate).
+        path: 'settings/categories',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/settings/categories/categories-settings.component').then(
+            (m) => m.CategoriesSettingsComponent
+          ),
+      },
+      {
         // Dev-only style sandbox — visual QC for shared chrome components.
         path: 'style/hero',
         loadComponent: () =>

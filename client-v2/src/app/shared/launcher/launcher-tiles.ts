@@ -74,6 +74,13 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     subtitle: 'Edit page heroes and labels per customer role.',
     href: '/settings/pages',
   },
+  {
+    // pV2-MARKET-00 — marketplace category curation.
+    icon: 'tags',
+    label: 'Categories',
+    subtitle: 'Curate marketplace categories — names, visibility and order.',
+    href: '/settings/categories',
+  },
 ];
 
 /** The supplier Projects hub (v2.13a — v1.68t port): three stage buckets
