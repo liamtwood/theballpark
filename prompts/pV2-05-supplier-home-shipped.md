@@ -63,7 +63,32 @@ homes ACCEPTED. Agent issue raised: both project tiles targeted /projects
 → fixed in the v2.12g iteration below.
 
 ## Chat audit
-(chat fills this in — leave the section header so chat finds it)
+**Audit pass: 2026-06-12, chat** — covers v2.12f through v2.13b (4 chips, 4 commits).
+
+### Verified ✓
+
+- **v2.12f supplier home** — three-tile port of v1.68w via `SUPPLIER_TILES` in the launcher registry. `tilesForOrgType(orgType)` replaces the role ternary in `home-agent` — cleaner one-switch dispatch (ballpark→2 / supplier→3 / agency→5). `tileForPath(path, orgType?)` is org-aware so shared routes (`/projects`, `/inbox`) render per-role copy without separate routes. One Definition + role-aware rendering — the right shape we discussed in chat.
+- **v2.12g agent tile split** — New Project → `/projects/new` and Projects → `/projects`. CC's subtitle realignment (judgment call when Liam specified labels + targets only) flagged in iteration log — good ship-report discipline.
+- **v2.13a sub-hubs** — both v1 supplier sub-hubs ported: `/projects-hub` (Quoting / Live / Completed via `?bucket=` query) and `/marketplace-profile` (later → `/storefront`). New optional `query` input on `<app-launcher-tile>` for cases where routerLink can't carry `?bucket=`. Hub depth = two clicks to a bucket; recorded as watch item for supplier QC (would flatten by promoting buckets to home grid if QC surfaces it).
+- **v2.13b renames + §14 enforcement** — `agent-tiles.ts` → `launcher-tiles.ts` (`git mv`, history preserved, 4 imports repointed). "Marketplace Profile" → "Storefront" across tile label / hub title / route / component, per DESIGN.md §14. **Bonus catch:** the same §14 read surfaced `/my-shop` as a hard-coded customer label in an internal route → fixed to `/store` (UI label "My Shop" preserved). This is the audit discipline working — reading the canonical reference and noticing past slips.
+
+### Standards conformance
+
+- All new components (`StorefrontComponent`, `ProjectsHubComponent`) are standalone + OnPush per v2 hygiene.
+- All tile chrome resolves through the locked TYPE-01 role classes (no raw font/size literals would have compiled past the guard).
+- §14 internal naming honored — `storefront` for public-face hubs, `store` for catalogue routes.
+- `<app-launcher-tile>` extension (optional `query`) is additive — no breaking change to existing consumers.
+
+### Concerns flagged
+
+- **Inbox unread badge deferred** — supplier v1 had a count badge on the Inbox tile, counted client-side off the FULL message list (unbounded fetch). Needs a v2 `GET /api/inbox/unread-count` endpoint when the inbox arc lands. Flagged in shipped file; ledger note.
+- **Tile labels are fixed copy** — v1 derived "Projects" from configurable `eventLabel` (pluralised); v2 ships fixed copy. Wire to `eventLabel` config if per-role labels matter. Low.
+- **Live counts on `/projects-hub` deferred** — needs v2 projects count endpoint (v1 fetched every project + bucketed client-side, an unbounded fetch). Same pattern as inbox badge — both await proper count endpoints.
+- **Hub depth (2 clicks to a bucket)** — watch item for customer-supplier QC next week per shipped file. If "too many clicks" surfaces, flatten by promoting buckets to home grid.
+
+### Verdict
+
+**Done.** Backlog row added + flipped Shipped → Done. Three role-typed homes now live (ballpark / agent / supplier) with sub-hubs on the supplier surface. The launcher master + single registry + org-aware tile resolution combine into a clean foundation for the page arcs that build on top (projects, inbox, marketplace, store).
 
 ## Iteration — v2.12g (2026-06-12)
 **Triggered by QC:** "New Projects go to New Project and Past Project
@@ -132,3 +157,20 @@ stub hero "My Shop". Build, lint, guards green; 54/54.
 **Liam:** "works for me" — v2.13b Storefront rename ACCEPTED. Customer
 review of the supplier surface planned next week; the hub-depth watch item
 (two clicks to a bucket) is the thing to listen for there.
+
+## Iteration — v2.13c (2026-06-12, evening housekeeping)
+**Triggered by:** Liam ("you have more to do this week ;)") — autonomous
+pass over the parked chores.
+**Commits:** `544db43` (test + fix), `9c26b62` (server audit)
+- launcher-tiles.spec.ts written (7 specs — the registry lost coverage
+  when dev-personas died). Writing it SURFACED a real regression: since
+  the supplier home tile moved to /projects-hub, a supplier on /projects
+  fell back to AGENT copy, and bucket drills showed the generic hero.
+- Fix: tileForPath matches declared query params (precedence: org set >
+  query-specific > plain); coming-soon passes route queryParams.
+  Verified live: /projects?bucket=quoting renders the "Quoting" hero.
+  62/62 specs.
+- chore(server): npm audit fix — 10 vulnerabilities → 0 (2 high ReDoS:
+  path-to-regexp, picomatch). Non-breaking only; 29/29 server tests; live
+  API verified post-bump. v1-client audit deferred (retires pV2-11; its
+  remaining advisories need --force).
