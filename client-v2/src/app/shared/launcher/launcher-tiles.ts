@@ -81,6 +81,13 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     subtitle: 'Curate marketplace categories — names, visibility and order.',
     href: '/settings/categories',
   },
+  {
+    // pV2-CODELISTS-01 — reference-data curation (RC/RCV).
+    icon: 'list-checks',
+    label: 'Codelists',
+    subtitle: 'Curate reference data — statuses, units, currencies and more.',
+    href: '/settings/codelists',
+  },
 ];
 
 /** The supplier Projects hub (v2.13a — v1.68t port): three stage buckets

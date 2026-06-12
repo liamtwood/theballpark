@@ -60,6 +60,16 @@ export const routes: Routes = [
           ),
       },
       {
+        // Settings → Codelists (pV2-CODELISTS-01) — reference-data curation
+        // (RC/RCV). PLATFORM admins only (matches the server's write gate).
+        path: 'settings/codelists',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/settings/codelists/codelists-settings.component').then(
+            (m) => m.CodelistsSettingsComponent
+          ),
+      },
+      {
         // Dev-only style sandbox — visual QC for shared chrome components.
         path: 'style/hero',
         loadComponent: () =>

@@ -42,6 +42,12 @@ import {
   Store,
   Trash2,
   X,
+  ListChecks,
+  PencilLine,
+  Send,
+  CheckCheck,
+  CircleOff,
+  Clock,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -107,6 +113,9 @@ export const appConfig: ApplicationConfig = {
         Heart, Globe, Phone, Mail, MapPin,
         // pV2-06-subcats — curation expanders
         ChevronDown, ChevronRight,
+        // pV2-CODELISTS-01 — admin Codelists tile + status-pill meta icons
+        // (icons referenced by value meta in shared.reference_codelist_values)
+        ListChecks, PencilLine, Send, CheckCheck, CircleOff, Clock,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
