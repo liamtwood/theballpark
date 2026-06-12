@@ -95,7 +95,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
               }
             }
 
-            <app-right-rail rail [categoryOverride]="railCategory(sup)" />
+            <app-right-rail rail />
           </app-catalogue-layout>
         }
       </div>
@@ -170,26 +170,6 @@ export class SupplierDetailComponent {
 
   protected categoryName(sup: SupplierDetail, id: string): string {
     return sup.categories.find((c) => c.id === id)?.name ?? '';
-  }
-
-  /** The selected category as THIS supplier's storefront sees it —
-   *  per-supplier count, global tagline (the detail endpoint doesn't
-   *  carry taglines; the global rail list does). */
-  protected railCategory(sup: SupplierDetail) {
-    const id = this.store.categoryId();
-    if (!id) return null;
-    const own = sup.categories.find((c) => c.id === id);
-    const global = this.store.selectedCategory();
-    if (!own) return global;
-    return {
-      id: own.id,
-      name: own.name,
-      count: own.count,
-      tagline: global?.tagline ?? null,
-      iconName: global?.iconName ?? null,
-      isActive: true,
-      sortOrder: null,
-    };
   }
 
   protected supplierTotal(sup: SupplierDetail): number {
