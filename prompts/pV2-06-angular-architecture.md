@@ -194,6 +194,14 @@ for a CTA slot.
 
 ## 9. Open items inherited from MARKETPLACE.md
 
-Filter dimension model (pre-06c server look), checkout page definition
-(post-06f prompt), pagination cut-over threshold, supplier
-"competitive view" semantics for supplier-role browsing.
+Filter dimension model (pre-06c server look); checkout page definition
+(post-06f prompt).
+
+**Resolved (Liam, 2026-06-12):**
+- Pagination cut-over — retired by pagination-from-day-one (§4).
+- Supplier "competitive view" — retired. **Same marketplace + same store
+  for every role; differentiation is ownership-derived per item.** Edit /
+  delete affordances render when `item.supplier_org_id === active_org_id`
+  (or active user is `ballpark_admin`). One catalogue, one view, chrome
+  varies by item ownership. Items endpoint returns the ownership flag
+  (e.g. `ownedByActiveOrg: boolean`) rather than filtering by role.

@@ -20,16 +20,25 @@ foundations.
 
 ## Who can use it
 
-| Role | `/marketplace` | Add to Quote | Checkout |
-|---|---|---|---|
-| `agency_admin` | ✓ browse | ✓ | ✓ |
-| `agency_member` | ✓ browse | ✓ | ✓ |
-| `supplier_admin` | ✓ browse (their listings + competitive view) | — | — |
-| `supplier_member` | ✓ browse | — | — |
-| `ballpark_admin` | ✓ browse + curate (categories live in `/settings/categories`) | — | — |
+**`/marketplace` is the same for every role.** Same data, same view, same
+browse. Differentiation is per-item, not per-role.
 
-Item / supplier EDITING lives elsewhere — supplier-side at `/store` (the
-catalogue arc); category management at `/settings/categories`
+| Role | `/marketplace` | Add to Quote | Checkout | Edit / delete own items |
+|---|---|---|---|---|
+| `agency_admin` | ✓ browse | ✓ | ✓ | — (no items) |
+| `agency_member` | ✓ browse | ✓ | ✓ | — (no items) |
+| `supplier_admin` | ✓ browse | — | — | ✓ on items owned by their org |
+| `supplier_member` | ✓ browse | — | — | ✓ on items owned by their org |
+| `ballpark_admin` | ✓ browse | — | — | ✓ on any item (cross-org) |
+
+**Ownership-derived affordances** — edit / delete buttons render on
+item cards + previews when `item.supplier_org_id === active_org_id` (or
+the active user is `ballpark_admin`). No separate competitive-view
+endpoint, no per-role filtering of the catalogue. The same items render
+for everyone; the chrome differs by ownership.
+
+Item / supplier EDITING flows lives at `/store` (supplier catalogue arc);
+add-item lives there too. Category management at `/settings/categories`
 (ballpark-admin only).
 
 ## Layout — five regions
