@@ -310,6 +310,21 @@ This makes audits *compound* — each ship sharpens the next audit instead
 of each audit starting from scratch. Patterns we've already paid the
 discovery cost on get re-checked for free.
 
+### End-of-module architect audit (Liam, 2026-06-12)
+
+At the END of each module/arc, CC runs an independent architect audit
+(background agent, read-only, against the module's architecture doc +
+framework idioms), then:
+
+1. Saves the full report to `docs/audits/YYYY-MM-DD-<module>-<kind>-audit.md`.
+2. Triages every finding HONESTLY — accept+fix, or reject WITH rationale
+   (agents are wrong sometimes; rebuttals are recorded, not silently
+   dropped).
+3. Records the triage as an iteration in the module's shipped file and
+   cross-links report ↔ shipped file.
+
+First instance: `docs/audits/2026-06-12-marketplace-arc-angular-architect-audit.md`.
+
 ### "Concerns not in spec" — mandatory section
 
 Every ship report MUST end with a section titled **"Concerns not in spec"**.
