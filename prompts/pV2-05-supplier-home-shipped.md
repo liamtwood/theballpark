@@ -110,3 +110,20 @@ defaults). Build, lint, guards green; 54/54 specs.
 v2.13a sub-hubs ACCEPTED as built (faithful v1 port); the hub structure
 itself is open for a design discussion with chat before the projects /
 marketplace arcs build on it.
+
+## Iteration — v2.13b (2026-06-12)
+**Triggered by:** chat's three flags (pasted by Liam).
+**Commit:** `aa6ab80`
+1. agent-tiles.ts → **launcher-tiles.ts** (git mv — holds all role sets).
+2. "Marketplace Profile" → **"Storefront"** (tile label, hub title, route
+   /marketplace-profile → /storefront, StorefrontComponent). §14:
+   storefront = the public-face hub.
+3. Bonus §14 fix surfaced by the same pass: /my-shop → **/store** (internal
+   names never hard-code customer labels; "My Shop" stays as UI copy).
+4. Flag 3 (hub = two clicks to a bucket) — WATCH ITEM for supplier QC; if
+   "too many clicks" surfaces, promote the stage buckets onto the home
+   grid directly.
+No redirects: the old URLs never shipped beyond dev.
+**Verified on 4201 as Ryan:** home shows Storefront → /storefront; hub
+titled Storefront with Marketplace / My Shop (/store) / Profile; /store
+stub hero "My Shop". Build, lint, guards green; 54/54.
