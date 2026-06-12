@@ -5,19 +5,22 @@ import { LauncherTile } from './launcher-tile.types';
  *  definition: home-agent renders these as tiles AND the stub pages derive
  *  their hero title/subtitle from the same strings (Liam, 2026-06-11 —
  *  "use the title and subtitle strings from the action cards").
- *  NOTE: two tiles target /projects until the projects arc splits their
- *  destinations; the stub page for /projects uses the FIRST match. */
+ *  Destinations split in v2.12g: New Project → /projects/new (create flow),
+ *  Projects → /projects (the list). */
 export const AGENT_TILES: readonly LauncherTile[] = [
+  // v2.12g (Liam QC): the two project tiles had the SAME target. New Project
+  // now opens the create flow's stub; "Past Projects" became plain Projects
+  // and keeps the /projects list. Subtitles realigned to match.
   {
     icon: 'folder-plus',
     label: 'New Project',
-    subtitle: 'Manage active projects and supplier conversations.',
-    href: '/projects',
+    subtitle: 'Start a new project.',
+    href: '/projects/new',
   },
   {
     icon: 'folder-open',
-    label: 'Past Projects',
-    subtitle: 'View completed and archived work.',
+    label: 'Projects',
+    subtitle: 'Manage active projects and supplier conversations.',
     href: '/projects',
   },
   { icon: 'inbox', label: 'Inbox', subtitle: 'Messages, supplier responses and updates.', href: '/inbox' },

@@ -57,6 +57,13 @@ export const routes: Routes = [
       },
       // Launcher-tile targets — placeholders until their prompts land.
       {
+        // The agent New Project tile's create flow (v2.12g split — was the
+        // same /projects target as the list tile).
+        path: 'projects/new',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'New Project' },
+      },
+      {
         path: 'projects',
         loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
         data: { feature: 'Projects' },
