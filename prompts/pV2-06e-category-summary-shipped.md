@@ -65,3 +65,20 @@ accepted — docs/audits/2026-06-12-marketplace-module-closing-audit.md).
   warns on parse failure; first-page-only comment on
   categorySuppliersRes; chevron preventDefault (keyboard double-activate
   edge).
+
+## Iteration — v2.17c (2026-06-12)
+**Triggered by QC:** Liam's screenshots — store card (scoped, 13, no
+suppliers) vs marketplace card (22 + suppliers): "shouldnt they be the
+same? ... i just expected them to be the same as it was a shared
+definition."
+**Commit:** see v2.17c
+**Ruling:** ONE card everywhere — the v2.17b pinned-scope variant
+(my design call, twice over) is reverted; the store rail renders the
+identical marketplace card incl. the suppliers list. categoryOverride +
+railCategory deleted; categorySuppliersRes unconditional on category.
+**WATCH ITEM (Liam):** "i do wonder if suppliers will love it or hate
+it" — competitor visibility inside a supplier's own store; listen in
+next week's customer review.
+Verified live: Rocket store rail = "Catering · 22 items · Suppliers:
+ProBuild 5 / Rocket Food 13 / The Food Crowd 4" — identical to the
+marketplace card.
