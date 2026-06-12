@@ -160,6 +160,11 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - TRADE-OFF noted: the chip no longer shows on full-bleed pages (login/callback) — it lived at root precisely for those. If build identity on login matters for QC screenshots, say so and it can return there only.
 - Verified live: footer gone, "[Dev v2] v2.20n" above Sign out in the menu.
 
+## Iteration — v2.20p (2026-06-12)
+**Triggered by QC:** "the version is gone but there is still a footer" (`Screenshot 2026-06-12 174223.png`) — the remaining bottom band was the padding stack: shell pb-6 (24px) + vpfit body bottom 16px = 40px reading as a footer.
+**Commit:** chip v2.20p
+- Shell bottom padding pb-6 → pb-2; vpfit body bottom 16 → 8; height calc updated to 5.5rem. Bottom band 44 → 16px (breathing room, not a footer); columns +24px (497 → 521 at 1280×800); page still never scrolls.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 

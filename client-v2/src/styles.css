@@ -145,8 +145,8 @@
   .bp-vpfit {
     display: flex;
     flex-direction: column;
-    /* shell pt-20 (5rem) + pb-6 (1.5rem) */
-    height: calc(100dvh - 6.5rem);
+    /* shell pt-20 (5rem) + pb-2 (0.5rem) */
+    height: calc(100dvh - 5.5rem);
     min-height: 0;
   }
   .bp-vpfit > .bp-page-body,
@@ -155,7 +155,7 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding: 12px 24px 16px;
+    padding: 12px 24px 8px;
   }
   /* Compressed hero on viewport-fit pages (laptop QC 2026-06-12: the
      standard hero + body paddings left the columns ~half the screen).
