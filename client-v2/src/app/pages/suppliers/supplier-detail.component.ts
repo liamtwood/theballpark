@@ -10,6 +10,7 @@ import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.co
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { CategoryStripComponent } from '../../shared/catalogue/category-strip.component';
 import { SupplierDetail } from '../../shared/catalogue/catalogue.types';
+import { SubcategoryStripComponent } from '../../shared/catalogue/subcategory-strip.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { StorefrontPanelComponent } from './storefront-panel.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
@@ -34,6 +35,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     CategoryStripComponent,
     RightRailComponent,
     StorefrontPanelComponent,
+    SubcategoryStripComponent,
     ViewToggleComponent,
   ],
   providers: [MarketplaceStore],
@@ -69,7 +71,19 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
               (categorySelected)="store.setCategory($event)"
             />
 
-            <div class="mb-4 flex justify-end">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <!-- Subcategory strip (v2.16b RP-06 fix — same primitive as
+                   the marketplace; the SHARED store already loads it). -->
+              @if (store.categoryId() && store.subcategories().length) {
+                <app-subcategory-strip
+                  [subcategories]="store.subcategories()"
+                  [activeId]="store.subcategoryId()"
+                  [allLabel]="categoryName(sup, store.categoryId()!)"
+                  (selected)="store.setSubcategory($event)"
+                />
+              } @else {
+                <span></span>
+              }
               <app-view-toggle [active]="store.viewMode()" (activeChange)="store.setViewMode($event)" />
             </div>
             @if (store.items().length === 0 && !store.itemsRes.isLoading()) {
@@ -163,6 +177,10 @@ export class SupplierDetailComponent {
       isActive: true,
       sortOrder: null,
     }));
+  }
+
+  protected categoryName(sup: SupplierDetail, id: string): string {
+    return sup.categories.find((c) => c.id === id)?.name ?? '';
   }
 
   protected supplierTotal(sup: SupplierDetail): number {

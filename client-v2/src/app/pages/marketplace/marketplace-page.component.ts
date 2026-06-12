@@ -7,6 +7,7 @@ import { CategoryStripComponent } from '../../shared/catalogue/category-strip.co
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
+import { SubcategoryStripComponent } from '../../shared/catalogue/subcategory-strip.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
@@ -31,6 +32,7 @@ import { RightRailComponent } from './rail/right-rail.component';
     CatalogueLayoutComponent,
     EditFieldComponent,
     RightRailComponent,
+    SubcategoryStripComponent,
     SupplierGridComponent,
     TabBandComponent,
     ViewToggleComponent,
@@ -113,29 +115,15 @@ import { RightRailComponent } from './rail/right-rail.component';
         />
 
         <div>
-          <!-- Subcategory strip (pV2-06-subcats) — items mode, category set -->
+          <!-- Subcategory strip (pV2-06-subcats; shared since v2.16b) -->
           @if (store.mode() === 'items' && store.categoryId() && store.subcategories().length) {
-            <div class="mb-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="bp-cat-chip"
-                [class.bp-cat-chip--active]="!store.subcategoryId()"
-                (click)="store.setSubcategory(null)"
-              >
-                All {{ store.selectedCategory()?.name }}
-              </button>
-              @for (sub of store.subcategories(); track sub.id) {
-                <button
-                  type="button"
-                  class="bp-cat-chip"
-                  [class.bp-cat-chip--active]="store.subcategoryId() === sub.id"
-                  (click)="store.setSubcategory(sub.id)"
-                >
-                  {{ sub.name }}
-                  <span class="bp-meta">{{ sub.count }}</span>
-                </button>
-              }
-            </div>
+            <app-subcategory-strip
+              class="mb-4"
+              [subcategories]="store.subcategories()"
+              [activeId]="store.subcategoryId()"
+              [allLabel]="store.selectedCategory()?.name ?? ''"
+              (selected)="store.setSubcategory($event)"
+            />
           }
           @if (store.mode() === 'suppliers') {
             @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {

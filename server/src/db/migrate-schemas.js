@@ -2050,6 +2050,40 @@ const migrate = async () => {
     }
     console.log('  org_type_config installed + seeded (v2.09c — p0021 migration finally applied, all schemas).');
 
+    // ── pV2-06-subcats (v2.16b) — taxonomy browse indexes ─────────────────
+    // chat audit (RP-01 continuation): GET /categories/:id/subcategories
+    // filters WHERE parent_id = ? (seq-scan without this — Liam's
+    // "very slow first time" on the subcat strip), and the items count
+    // joins through items.subcategory_id. Partial indexes keep them tight.
+    // Guarded per schema/table/column — preview/master carry older table
+    // shapes (some lack deleted_at); index only where the columns exist.
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        DO $idx$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'categories'
+                        AND column_name = 'deleted_at')
+             AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'categories'
+                        AND column_name = 'parent_id') THEN
+            CREATE INDEX IF NOT EXISTS ${schema}_categories_parent_id_idx
+              ON ${schema}.categories (parent_id) WHERE deleted_at IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'items'
+                        AND column_name = 'deleted_at')
+             AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'items'
+                        AND column_name = 'subcategory_id') THEN
+            CREATE INDEX IF NOT EXISTS ${schema}_items_subcategory_id_idx
+              ON ${schema}.items (subcategory_id) WHERE deleted_at IS NULL;
+          END IF;
+        END $idx$;
+      `);
+    }
+    console.log('  taxonomy browse indexes installed (v2.16b — categories.parent_id + items.subcategory_id, all schemas).');
+
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');
     console.log('   preview → run npm run db:seed:preview to populate');
