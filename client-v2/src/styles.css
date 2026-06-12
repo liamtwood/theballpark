@@ -308,6 +308,21 @@ body {
   outline-offset: 2px;
 }
 
+/* The brand CTA's "done" twin (BUTTONS.md two-state pattern, pV2-CARDS-01):
+   visually muted but NOT hidden — acknowledgment, usually unclickable. */
+.bp-btn-grad--added {
+  /* Longhands, not the shorthand — `background: var(--x)` over the base's
+     gradient image computes invalid and resets EVERYTHING to transparent. */
+  background-image: none;
+  background-color: var(--color-text-muted);
+  color: #fff;
+  box-shadow: none;
+}
+.bp-btn-grad--added:hover {
+  box-shadow: none;
+  transform: none;
+}
+
 /* Drawer density — when inside .bp-card--drawer or a drawer footer */
 .bp-card--drawer .bp-btn-outline,
 .bp-card--drawer .bp-btn-grad {
@@ -469,21 +484,101 @@ body {
   font-weight: 600;
 }
 
-/* Supplier card (suppliers mode) + favourite heart (pV2-06d). */
-.bp-supplier-card {
-  position: relative;
+/* ═══ Cards (CARDS.md — locked chrome foundation, pV2-CARDS-01) ══════════
+   ONE chrome foundation for every card-shaped surface. Components consume
+   via host/class — internal layout stays bespoke per archetype; chrome and
+   the interaction patterns (lift / zoom / selection / focus) live here
+   only (RP-07: the style guard fails component-local card chrome). */
+.bp-card {
+  position: relative; /* overlay anchors: .bp-fav-btn, tag chips, badges */
   display: block;
-  overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  overflow: hidden;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
-.bp-supplier-card:hover {
+.bp-card:hover {
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+.bp-card:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.bp-card--selected {
+  border-color: var(--theme-accent);
   box-shadow: var(--shadow-md);
 }
+/* Image zoom on hover (item / supplier / project / storefront cells). */
+.bp-card--zoom img {
+  transition: transform 0.4s ease;
+}
+.bp-card--zoom:hover img {
+  transform: scale(1.04);
+}
+/* Lifted rest state — the launcher tile's Figma look (pV2-04b2: md at
+   rest, lg + -3px on hover so the lift stays visible). */
+.bp-card--lifted {
+  box-shadow: var(--shadow-md);
+}
+.bp-card--lifted:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+/* ── Card content sub-primitives (CARDS.md table) ──────────────────────── */
+/* Soft pastel pill with themed-accent text — category subtitle on item
+   cards (image 2), brand pill overlay on project cards (image 8). */
+.bp-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  font-weight: 400;
+  background: var(--theme-soft);
+  color: var(--theme-text);
+  line-height: 1.4;
+}
+/* Prominent accent price — "From £2,000" (image 2), "£0 Ballpark"
+   (image 8). The gradient clip carries the brand on the number. */
+.bp-price-large {
+  font-family: var(--bp-font);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  background: var(--bp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Small uppercase tracked accent reference — WA-026 (image 8). */
+.bp-ref-eyebrow {
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--theme-text);
+}
+/* Soft pastel rounded square holding a Lucide icon — launcher tile
+   (image 9), rail category rows (image 1). Size is layout — the consumer
+   sets width/height (Tailwind or structural CSS). */
+.bp-icon-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-card);
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+}
+
+/* Supplier card internals (pV2-06d; chrome now from .bp-card). The
+   logo-letter circle stays — list rows (supplier-grid / storefront-panel /
+   category-summary) still render it; the CARD dropped it per image 3. */
 .bp-supplier-card__link {
   display: block;
   text-decoration: none;

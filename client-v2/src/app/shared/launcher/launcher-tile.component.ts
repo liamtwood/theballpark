@@ -12,10 +12,10 @@ import { LucideAngularModule } from 'lucide-angular';
   selector: 'app-launcher-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, RouterLink],
-  host: { class: 'bp-launcher-tile' },
+  host: { class: 'bp-card bp-card--lifted bp-launcher-tile' },
   template: `
     <a [routerLink]="href()" [queryParams]="query()" class="bp-launcher-tile__link" [attr.aria-label]="label()">
-      <span class="bp-launcher-tile__icon-block">
+      <span class="bp-icon-block h-16 w-16">
         <lucide-icon [name]="icon()" [size]="24" [strokeWidth]="1.5" />
       </span>
       <span class="min-w-0">
@@ -28,22 +28,9 @@ import { LucideAngularModule } from 'lucide-angular';
   `,
   styles: [
     `
-      :host {
-        display: block;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border-hairline);
-        border-radius: var(--radius-card);
-        /* md at rest (Figma lifted-card; xs was flagged as drift from v1) */
-        box-shadow: var(--shadow-md);
-        transition: transform 0.12s ease, box-shadow 0.12s ease;
-      }
-      /* Rest moved xs → md in pV2-04b2, which collapsed the old hover delta
-         (md → lg + 1px reads as nothing). Stronger lift restores a visible
-         animation against the lifted rest state. */
-      :host(:hover) {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-lg);
-      }
+      /* Chrome comes from .bp-card .bp-card--lifted (pV2-CARDS-01 — the
+         md-rest / lg-hover Figma look is the --lifted modifier; the icon
+         square is the global .bp-icon-block). Only LAYOUT remains here. */
       :host(:focus-within) {
         outline: 2px solid var(--theme-accent);
         outline-offset: 2px;
@@ -59,19 +46,6 @@ import { LucideAngularModule } from 'lucide-angular';
         color: var(--color-text);
         outline: none;
       }
-      /* Soft pastel icon square (--theme-soft wash) with the pink accent
-         icon stroke — the calm tier of the two gradient tokens; the vivid
-         --bp-gradient stays on brand marks only (DESIGN.md §2). */
-      .bp-launcher-tile__icon-block {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        border-radius: var(--radius-card);
-        background: var(--theme-soft);
-        color: var(--theme-accent);
-      }
       /* Type comes from .bp-card-title / .bp-card-subtitle (pV2-TYPE-01);
          these structural classes keep only layout. */
       .bp-launcher-tile__title {
@@ -81,7 +55,6 @@ import { LucideAngularModule } from 'lucide-angular';
         display: block;
         margin-top: 4px;
       }
-
     `,
   ],
 })

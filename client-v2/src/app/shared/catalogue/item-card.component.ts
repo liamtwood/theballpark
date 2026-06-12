@@ -3,16 +3,20 @@ import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueItem, sizedImage } from './catalogue.types';
 
-/** pV2-06a — one item card (card view). Image (or soft placeholder),
- *  name, supplier, price + unit. Dumb: selection in, click out. Quote CTA
- *  + ownership affordances join in later arcs. */
+/** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
+ *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
+ *  `.bp-price-large` ("From £2,000"), pin + city row, full-width bottom
+ *  CTA with the Add ↔ Added two-state. Chrome comes from `.bp-card
+ *  .bp-card--zoom` (one-definition; RP-07 guard enforces). Dumb:
+ *  selection in, clicks out. The CTA wires to FAVOURITES for now —
+ *  the quote CTA replaces it in pV2-06f. */
 @Component({
   selector: 'app-item-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, LucideAngularModule],
   host: {
-    class: 'bp-item-card',
-    '[class.bp-item-card--selected]': 'selected()',
+    class: 'bp-card bp-card--zoom cursor-pointer',
+    '[class.bp-card--selected]': 'selected()',
     '(click)': 'clicked.emit(item().id)',
     tabindex: '0',
     role: 'button',
@@ -44,46 +48,38 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
     >
       <lucide-icon name="heart" [size]="15" />
     </button>
+
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
-      <div class="truncate text-md font-medium text-text">{{ item().name }}</div>
-      <div class="bp-caption truncate">{{ item().supplierName }}</div>
-      <div class="mt-1.5 flex items-baseline gap-1">
-        <span class="text-md font-medium text-text">
-          {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}
-        </span>
-        @if (item().unit) {
-          <span class="bp-meta">/ {{ item().unit }}</span>
+      <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
+      @if (item().categoryName) {
+        <span class="bp-tag-chip mt-1.5">{{ item().categoryName }}</span>
+      }
+      <div class="mt-2 flex items-baseline gap-1.5">
+        @if (item().basePrice !== null) {
+          <span class="bp-price-large">From {{ item().basePrice | currency: 'GBP' : 'symbol' : '1.0-0' }}</span>
+          @if (item().unit) {
+            <span class="bp-meta">/ {{ item().unit }}</span>
+          }
+        } @else {
+          <span class="bp-caption">Price on request</span>
         }
       </div>
+      <div class="mt-1.5 flex items-center gap-1 text-secondary">
+        <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
+        <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
+      </div>
+      <!-- BEM modifier rides the base class (base chrome stays). -->
+      <button
+        type="button"
+        class="bp-btn-grad mt-3 w-full"
+        [class.bp-btn-grad--added]="favourited()"
+        (click)="onCtaClick($event)"
+      >
+        <lucide-icon [name]="favourited() ? 'check' : 'plus'" [size]="16" />
+        {{ favourited() ? 'Added to favourites' : 'Add to favourites' }}
+      </button>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        position: relative;
-        display: block;
-        overflow: hidden;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border-hairline);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-xs);
-        cursor: pointer;
-        transition: transform 0.12s ease, box-shadow 0.12s ease;
-      }
-      :host(:hover) {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
-      :host(:focus-visible) {
-        outline: 2px solid var(--theme-accent);
-        outline-offset: 2px;
-      }
-      :host(.bp-item-card--selected) {
-        border-color: var(--theme-accent);
-        box-shadow: var(--shadow-md);
-      }
-    `,
-  ],
 })
 export class ItemCardComponent {
   readonly item = input.required<CatalogueItem>();
@@ -100,6 +96,12 @@ export class ItemCardComponent {
 
   protected onFavClick(e: Event): void {
     e.stopPropagation(); // the host click selects the card
+    this.favouriteToggled.emit(this.item().id);
+  }
+
+  /** The foot CTA — favourites for now (pV2-CARDS-01); quote in 06f. */
+  protected onCtaClick(e: Event): void {
+    e.stopPropagation();
     this.favouriteToggled.emit(this.item().id);
   }
 }

@@ -3,14 +3,16 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueSupplier, sizedImage } from './catalogue.types';
 
-/** pV2-06d — one supplier card (suppliers mode): cover (or soft block),
- *  logo-letter + name + city, item count, favourite heart. The card IS a
- *  routerLink to /suppliers/:id (v1's "View supplier"). */
+/** pV2-CARDS-01 — the catalog supplier card per CARDS.md image 3 (Rocket
+ *  Food): brand hero image, name, pin + city row, full-width gradient
+ *  "View supplier" CTA, heart top-right. Chrome from `.bp-card
+ *  .bp-card--zoom`. The whole card IS the link; the CTA is the visual
+ *  affordance inside it (one tab stop, v1 parity). */
 @Component({
   selector: 'app-supplier-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAngularModule],
-  host: { class: 'bp-supplier-card' },
+  host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/suppliers', supplier().id]" class="bp-supplier-card__link" [attr.aria-label]="supplier().name">
       @if (supplier().coverUrl) {
@@ -21,16 +23,17 @@ import { CatalogueSupplier, sizedImage } from './catalogue.types';
         </div>
       }
       <div class="min-w-0 px-3.5 pb-3.5 pt-3">
-        <div class="flex items-center gap-2">
-          <span class="bp-supplier-card__logo">{{ initial() }}</span>
-          <span class="min-w-0">
-            <span class="block truncate text-md font-medium text-text">{{ supplier().name }}</span>
-            <span class="bp-caption block truncate">{{ supplier().city ?? '' }}</span>
-          </span>
+        <div class="truncate text-md font-semibold text-text">{{ supplier().name }}</div>
+        <div class="mt-1 flex items-center gap-1 text-secondary">
+          <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
+          <span class="bp-caption min-w-0 truncate">{{ supplier().city ?? '—' }}</span>
+          <span class="bp-meta ml-auto shrink-0">{{ supplier().count }} item{{ supplier().count === 1 ? '' : 's' }}</span>
         </div>
-        <div class="mt-2 flex items-center justify-between">
-          <span class="bp-meta">{{ supplier().count }} item{{ supplier().count === 1 ? '' : 's' }}</span>
-        </div>
+        <!-- Visual CTA only — the wrapping <a> carries the navigation. -->
+        <span class="bp-btn-grad mt-3 w-full">
+          <lucide-icon name="arrow-right" [size]="16" />
+          View supplier
+        </span>
       </div>
     </a>
     <button
@@ -51,9 +54,5 @@ export class SupplierCardComponent {
 
   protected coverSrc(): string | null {
     return sizedImage(this.supplier().coverUrl, 480);
-  }
-
-  protected initial(): string {
-    return (this.supplier().name || '?').charAt(0).toUpperCase();
   }
 }

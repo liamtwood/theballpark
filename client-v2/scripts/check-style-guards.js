@@ -35,6 +35,12 @@ const TEXT_ARBITRARY = /\btext-\[[0-9.]+(?:px|rem|em)\]/;
 // impossible. Consumption is fine (class="bp-foo", [class.bp-foo]=,
 // :host(.bp-foo)) — this matches only selector-position definitions.
 const BP_CLASS_DEF = /^\s*\.bp-[a-z0-9_-]/;
+
+// RP-07 (pV2-CARDS-01): card CHROME declarations belong to .bp-card in
+// styles.css — a component declaring the card radius or a shadow token in
+// its own styles block is re-deriving chrome (CARDS.md one-definition).
+// Consume `.bp-card` (+ modifiers) instead.
+const CARD_CHROME = /border-radius:\s*var\(--radius-card\)|box-shadow:\s*var\(--shadow-/;
 // Ratchet allowlist: pre-RP-05 components carrying BEM-element classes
 // (.bp-<component>__el). Shrink this list, never grow it.
 const BP_DEF_LEGACY = [
@@ -72,6 +78,9 @@ function walk(dir) {
         check(line, p, i, TEXT_ARBITRARY, 'arbitrary text-[N]');
         if (name.endsWith('.ts') && !BP_DEF_LEGACY.some((e) => p.endsWith(e))) {
           check(line, p, i, BP_CLASS_DEF, 'RP-05 .bp-* defined outside styles.css');
+        }
+        if (name.endsWith('.ts')) {
+          check(line, p, i, CARD_CHROME, 'RP-07 card chrome outside styles.css — consume .bp-card');
         }
       });
     }
