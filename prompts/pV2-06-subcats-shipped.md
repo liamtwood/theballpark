@@ -96,3 +96,23 @@ being in place).
 Verified live: Rocket store → Catering → chips render; Bar Service → 2
 items (3 globally — pinned supplier scope filtering correctly); ?sub
 round-trips; marketplace strip unchanged on the shared primitive.
+
+## Iteration — v2.16c (2026-06-12)
+**Triggered by QC:** Liam's v1 rail screenshot — "change the cat filter
+to be a tree so > on catering and subcats under."
+**Commit:** `5a379e6` (net −14 lines)
+**What changed:** the SHARED category-strip became the tree — chevron
+per category (right/down), active category expands to indented subcat
+rows (single-expand accordion, v1 parity), subcat click drills ?sub=,
+re-click clears. Chip strip retired: subcategory-strip.component (one
+day old) DELETED — both surfaces inherit the tree from the shared rail,
+so RP-06 stays closed by removal-of-surface (chat's pre-analysis).
+Chat's two pre-decisions both matched the build: LAZY subcat fetch
+(cached service + the new parent_id index) and SINGLE-expand per the
+v1 image. Subcat rows are name-only per the image; counts stay in data.
+**Note:** the supplier store's tree lists ALL the category's subcats
+(global), not just ones this supplier stocks — empty drills show "No
+items." Per-supplier subcat narrowing parks with the storefront pass.
+Verified live both surfaces: Catering → 11 subs; Bar Service → 3
+(marketplace) / scoped in store; accordion flip to Venue → 10 subs
+("Exhibition Centre"... matching the v1 screenshot); ?sub round-trips.
