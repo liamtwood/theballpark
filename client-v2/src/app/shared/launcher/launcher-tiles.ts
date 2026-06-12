@@ -138,19 +138,31 @@ export function tilesForOrgType(orgType: OrgType | null | undefined): readonly L
   return AGENT_TILES;
 }
 
-/** First tile whose href matches the given path (stub heroes). The viewer's
- *  org type wins when sets share an href (/projects, /inbox carry different
- *  copy for agents vs suppliers); other sets are the fallback. */
-export function tileForPath(path: string, orgType?: OrgType | null): LauncherTile | undefined {
-  const preferred = tilesForOrgType(orgType);
+/** Stub-hero resolution (v2.13c): the tile whose href — and, when the tile
+ *  declares query params, whose params — match the visited URL. Precedence:
+ *  1. the viewer's org-type set (per-role copy on shared hrefs)
+ *  2. any tile whose DECLARED query matches (hub bucket drills:
+ *     /projects?bucket=quoting → the "Quoting" tile, not the generic list)
+ *  3. any plain href match across all sets. */
+export function tileForPath(
+  path: string,
+  orgType?: OrgType | null,
+  query: Record<string, string> = {}
+): LauncherTile | undefined {
+  const matches = (t: LauncherTile): boolean =>
+    t.href === path &&
+    (!t.query || Object.entries(t.query).every(([k, v]) => query[k] === v));
+
+  const all = [
+    ...AGENT_TILES,
+    ...SUPPLIER_TILES,
+    ...BALLPARK_TILES,
+    ...PROJECTS_HUB_TILES,
+    ...STOREFRONT_TILES,
+  ];
   return (
-    preferred.find((t) => t.href === path) ??
-    [
-      ...AGENT_TILES,
-      ...SUPPLIER_TILES,
-      ...BALLPARK_TILES,
-      ...PROJECTS_HUB_TILES,
-      ...STOREFRONT_TILES,
-    ].find((t) => t.href === path)
+    tilesForOrgType(orgType).find(matches) ??
+    all.find((t) => !!t.query && matches(t)) ??
+    all.find(matches)
   );
 }

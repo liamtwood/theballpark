@@ -29,9 +29,14 @@ export class ComingSoonComponent {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly data = toSignal(this.route.data, { initialValue: {} as Record<string, unknown> });
+  private readonly queryParams = toSignal(this.route.queryParams, {
+    initialValue: {} as Record<string, string>,
+  });
 
+  /** Query-aware (v2.13c): hub bucket drills (/projects?bucket=quoting)
+   *  resolve to their bucket tile's copy, not the generic list tile. */
   private readonly tile = computed(() =>
-    tileForPath(this.router.url.split('?')[0], this.auth.user()?.activeOrgType)
+    tileForPath(this.router.url.split('?')[0], this.auth.user()?.activeOrgType, this.queryParams())
   );
 
   protected readonly title = computed(
