@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.component';
@@ -60,12 +60,18 @@ import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.componen
       </dl>
     </section>
 
-    <!-- Subcat-card grid (image 7) — spans both panel columns. -->
-    @if (subcategories().length) {
+    <!-- Subcat cards GROUPED per category (screenshot reference,
+         2026-06-12): folder + uppercase accent category header + count,
+         mini-card grid beneath. Only cats/subcats with live items. -->
+    @for (group of groups(); track group.id) {
       <section class="lg:col-span-2">
-        <h3 class="bp-field-label uppercase tracking-wide">Browse the store</h3>
+        <div class="flex items-center gap-2">
+          <lucide-icon name="folder" [size]="14" class="text-accent" />
+          <h3 class="bp-ref-eyebrow">{{ group.name }}</h3>
+          <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
+        </div>
         <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          @for (sub of subcategories(); track sub.id) {
+          @for (sub of group.cards; track sub.id) {
             <app-subcat-card [subcat]="sub" (clicked)="subcategorySelected.emit($event)" />
           }
         </div>
@@ -77,6 +83,18 @@ export class StorefrontPanelComponent {
   readonly supplier = input.required<SupplierDetail>();
   readonly subcategories = input<SupplierSubcategory[]>([]);
   readonly subcategorySelected = output<SupplierSubcategory>();
+
+  /** One group per category the supplier sells in (supplier.categories is
+   *  already items-only), holding its subcat cards + the catch-all. */
+  protected readonly groups = computed(() =>
+    this.supplier()
+      .categories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        cards: this.subcategories().filter((s) => s.parentId === cat.id),
+      }))
+      .filter((g) => g.cards.length > 0)
+  );
 
   protected initial(): string {
     return (this.supplier().name || '?').charAt(0).toUpperCase();

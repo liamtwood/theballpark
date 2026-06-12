@@ -161,12 +161,18 @@ export class SupplierDetailComponent {
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));
   }
 
-  /** Subcat-card drill: Store tab pre-filtered to cat + sub (QC #5). */
+  /** Subcat-card drill: Store tab pre-filtered to cat + sub (QC #5).
+   *  Catch-all cards (items with no subcat) drill cat-only. */
   protected openStoreSubcat(sub: SupplierSubcategory): void {
     this.router
       .navigate([], {
         relativeTo: this.route,
-        queryParams: { tab: 'store', cat: sub.parentId, sub: sub.id, item: null },
+        queryParams: {
+          tab: 'store',
+          cat: sub.parentId,
+          sub: sub.isCatchAll ? null : sub.id,
+          item: null,
+        },
         queryParamsHandling: 'merge',
       })
       .catch((err) => console.warn('[SupplierDetail] navigation failed', err));

@@ -84,6 +84,14 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 - **Shell**: `subcats` resource (session-cached service read) + `openStoreSubcat()` → `?tab=store&cat=<parent>&sub=<id>` — the URL-is-state store picks both up.
 - Verified in preview: 7 cards for Construct & Co. (covers where images exist), click drills to the Store tab pre-filtered (`sub` param set). Build/lint/guard green, 67/67.
 
+## Iteration — v2.20e (2026-06-12)
+**Triggered by QC:** corrected storefront spec + screenshot reference (`screenshots/Screenshot 2026-06-12 151027.png`) — the flat grid was wrong; v1 shows subcat cards GROUPED per category. Cards themselves accepted as-built.
+**Commit:** chip v2.20e
+- **Grouping**: one group per category the supplier sells in — folder icon + uppercase accent header (`.bp-ref-eyebrow`) + right-aligned "N categories" counter, mini-card grid beneath. Only cats/subcats with live items (supplier.categories was already items-only; groups with zero cards filtered).
+- **Catch-all card**: the screenshot's "Catering / 3 items" card is the supplier's items WITH a category but NO subcat — the endpoint now UNIONs a per-category catch-all row (`isCatchAll`, carries the category's own name/id + first-item cover). Drills cat-only (`sub=null`); real subcat cards drill cat+sub.
+- Verified live: Rocket Food returns the screenshot's exact data — Catering group, 8 rows incl. "Catering (3)" catch-all; Construct & Co. renders the grouped header + 7 cards.
+- For chat: per your note, this archetype REPLACES "Storefront cell" in CARDS.md with the screenshot as canonical reference — leaving that doc edit to you at the styling-pass fold-in.
+
 ## QC notes
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d. Home unchanged ✓ (4).
 

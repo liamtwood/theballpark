@@ -361,8 +361,12 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
   try {
     const id = z.uuid().safeParse(req.params.id);
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
+    // Two row kinds, one shape: real subcats + a CATCH-ALL row per category
+    // for the supplier's items that have a category but no subcat (the
+    // screenshot's "Catering / 3 items" card). Catch-all drills cat-only.
     const r = await pool.query(
-      `SELECT sc.id, sc.name, sc.parent_id, COUNT(i.id) AS item_count,
+      `SELECT sc.id, sc.name, sc.parent_id, false AS is_catch_all,
+              COUNT(i.id) AS item_count,
               (SELECT i2.image_url FROM items i2
                 WHERE i2.org_id = $1 AND i2.subcategory_id = sc.id
                   AND i2.deleted_at IS NULL AND i2.is_active
@@ -373,7 +377,21 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
         WHERE i.org_id = $1 AND i.deleted_at IS NULL
           AND i.is_active AND i.approval_status = 'approved'
         GROUP BY sc.id, sc.name, sc.parent_id
-        ORDER BY sc.name ASC`,
+       UNION ALL
+       SELECT c.id, c.name, c.id AS parent_id, true AS is_catch_all,
+              COUNT(i.id) AS item_count,
+              (SELECT i2.image_url FROM items i2
+                WHERE i2.org_id = $1 AND i2.category_id = c.id
+                  AND i2.subcategory_id IS NULL
+                  AND i2.deleted_at IS NULL AND i2.is_active
+                  AND i2.approval_status = 'approved' AND i2.image_url IS NOT NULL
+                ORDER BY i2.name ASC LIMIT 1) AS cover_url
+         FROM items i
+         JOIN categories c ON c.id = i.category_id
+        WHERE i.org_id = $1 AND i.subcategory_id IS NULL
+          AND i.deleted_at IS NULL AND i.is_active AND i.approval_status = 'approved'
+        GROUP BY c.id, c.name
+        ORDER BY name ASC`,
       [id.data]
     );
     res.json(
@@ -381,6 +399,7 @@ router.get('/suppliers/:id/subcategories', async (req, res, next) => {
         id: row.id,
         name: row.name,
         parentId: row.parent_id,
+        isCatchAll: row.is_catch_all,
         count: Number(row.item_count),
         coverUrl: row.cover_url,
       }))
