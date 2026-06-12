@@ -82,3 +82,25 @@ targets only) — flag at QC if different copy is wanted.
 ## QC notes — addendum (2026-06-12)
 **Liam:** "qc - perfect" — v2.12g agent tile split ACCEPTED. All three
 homes (admin / agent / supplier) QC-passed.
+
+## Iteration — v2.13a (2026-06-12)
+**Triggered by QC:** "supplier we have sub pages for project and
+Marketplace Profile... see from v1" → "yes please".
+**Commit:** `c222e38`
+**What shipped:** both v1 supplier sub-hubs, on the launcher master:
+- /projects-hub (v1.68t): title = configurable event label pluralised
+  ("Projects"), three stage tiles — Quoting / Live Projects / Completed
+  Projects — drilling into /projects?bucket=quoting|live|completed.
+  Live tile counts DEFERRED (needs a v2 projects count endpoint; v1
+  fetched every project and bucketed client-side).
+- /marketplace-profile (v1.68o, replaces the stub): Marketplace →
+  /marketplace, My Shop → /my-shop (new stub), Profile → the REAL
+  /settings/profile.
+- LauncherTile gained optional `query` (string routerLink can't carry
+  ?bucket=); supplier home Projects tile retargeted → /projects-hub;
+  tileForPath fallback includes the hub sets so /my-shop's stub hero
+  carries the tile copy; +5 Lucide icons in the global pick.
+**Verified on 4201 as Ryan:** home → hub → stage tiles with query params;
+marketplace-profile trio renders with icons; My Shop stub hero correct;
+Profile tile lands the real Profile (Company Information / Financial
+defaults). Build, lint, guards green; 54/54 specs.
