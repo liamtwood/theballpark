@@ -7,7 +7,6 @@ import { CategoryStripComponent } from '../../shared/catalogue/category-strip.co
 import { CatalogueGridComponent } from '../../shared/catalogue/catalogue-grid.component';
 import { CatalogueLayoutComponent } from '../../shared/catalogue/catalogue-layout.component';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
-import { SubcategoryStripComponent } from '../../shared/catalogue/subcategory-strip.component';
 import { ViewToggleComponent } from '../../shared/catalogue/view-toggle.component';
 import { PRICE_BRACKETS } from '../../shared/catalogue/catalogue.types';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
@@ -32,7 +31,6 @@ import { RightRailComponent } from './rail/right-rail.component';
     CatalogueLayoutComponent,
     EditFieldComponent,
     RightRailComponent,
-    SubcategoryStripComponent,
     SupplierGridComponent,
     TabBandComponent,
     ViewToggleComponent,
@@ -111,20 +109,13 @@ import { RightRailComponent } from './rail/right-rail.component';
           [categories]="store.categories()"
           [activeId]="store.categoryId()"
           [totalCount]="allItemsCount()"
+          [subcategories]="store.mode() === 'items' ? store.subcategories() : []"
+          [activeSubId]="store.subcategoryId()"
           (categorySelected)="store.setCategory($event)"
+          (subcategorySelected)="store.setSubcategory($event)"
         />
 
         <div>
-          <!-- Subcategory strip (pV2-06-subcats; shared since v2.16b) -->
-          @if (store.mode() === 'items' && store.categoryId() && store.subcategories().length) {
-            <app-subcategory-strip
-              class="mb-4"
-              [subcategories]="store.subcategories()"
-              [activeId]="store.subcategoryId()"
-              [allLabel]="store.selectedCategory()?.name ?? ''"
-              (selected)="store.setSubcategory($event)"
-            />
-          }
           @if (store.mode() === 'suppliers') {
             @if (store.suppliersRes.isLoading() && store.supplierRows().length === 0) {
               <p class="bp-body-small text-secondary">Loading…</p>

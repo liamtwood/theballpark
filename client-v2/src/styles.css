@@ -556,3 +556,13 @@ body {
   background: var(--color-fill);
   color: var(--color-text);
 }
+
+/* Category-rail subtree rows (v2.16c tree rail). */
+.bp-catstrip-row--sub {
+  padding-left: 28px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.bp-catstrip-row--sub.bp-catstrip-row--active {
+  color: var(--color-text);
+}
