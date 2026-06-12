@@ -78,3 +78,7 @@ Verified on 4201 as Sarah: tiles [New Project → /projects/new, Projects →
 /projects, Inbox, Marketplace, Profile]; both stubs render their own hero
 copy. NOTE: subtitle realignment was CC judgment (Liam specified labels +
 targets only) — flag at QC if different copy is wanted.
+
+## QC notes — addendum (2026-06-12)
+**Liam:** "qc - perfect" — v2.12g agent tile split ACCEPTED. All three
+homes (admin / agent / supplier) QC-passed.
