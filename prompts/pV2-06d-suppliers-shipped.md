@@ -124,3 +124,41 @@ Verified live: 3 supplier view modes; Rocket Store tab renders
 strip(2 rows incl. All) | 13 cards | right rail; card click → preview
 "Bowl Food Dinner" in the SHARED rail; strip filter scoped to the
 pinned supplier; URL carries ?tab=store&cat=&item=.
+
+## Iteration — v2.15c (2026-06-12)
+**Triggered by:** Liam's request for an independent Angular-architect
+audit of the arc (run as a background agent) + chat's two v2.15b flags.
+**Commit:** `05217c0`
+
+### Audit triage (9 findings)
+ACCEPTED + FIXED:
+- C1 defensive: detail resource skips until :id resolves (no empty-id
+  fetch). Real-but-theoretical — the route only matches with an id.
+- H5: CatalogueService cache keys now param-SORTED (stableUrl) — kills
+  the future double-cache fragility.
+- M7 (= chat flag 1): <app-storefront-panel> extracted; supplier-detail
+  224 → 172 lines.
+- M8 (= chat flag 2, Liam decision (a)): <app-view-toggle> extracted as
+  a shared primitive; supplier Store tab gains the toggle with BOUND
+  viewMode (?view= works there now).
+- H3: favourites cross-tab race window documented as ACCEPTED in-code
+  (single-user consistent; cross-tab eventually consistent).
+- L9: navigation failures logged (store.merge + supplier-detail navs).
+- M6: parent @if guard stands; input.required contract kept.
+
+REJECTED (assessed not bugs, rationale recorded):
+- "C2" stale suppliers on mode toggle — mode() is a params dependency;
+  flipping recomputes params (new object) → loader re-runs; same-params
+  data then comes from the SESSION CACHE by design (busted on writes).
+  The freshness model is the cache contract, not a staleness bug.
+- "H4" partial-response mutation — `await catalogue.items()` resolves
+  only with a fully parsed body; rejection happens BEFORE any signal
+  mutation. No partial-accumulation path exists.
+
+Audit also confirmed (done-well list): route-scoped DI + pinned scope,
+linkedSignal offset reset, URL-is-state consistency, cache eviction
+rules, OnPush/zoneless cleanliness, a11y baseline, born-paginated
+envelope, pure presentation components.
+Verified live: supplier Store tab toggle → table view renders +
+?view=table; storefront panel intact. 64/64 + 42/42; supplier-detail
+well under budget.
