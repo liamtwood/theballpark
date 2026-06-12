@@ -110,6 +110,24 @@ Debounce search input in the component (signal + effect or a small
 `debounced()` helper) before writing the query param. `mergeConfig`-style
 pure helpers + the mode derivation get unit specs.
 
+### Roundtrip budget & caching (Liam's "are we hammering the DB?" check)
+
+Rule: **selection never fetches; only list changes fetch — through one
+cached choke point.**
+
+| Interaction | DB roundtrip? | Mechanism |
+|---|---|---|
+| Item click → rail preview | NO | Rail hydrates from the in-memory list by id. The items payload carries every field the preview shows (incl. description) precisely so this stays a pure signal flip. |
+| View toggle (card/list/table) | NO | Presentation-only signal. |
+| Category click | once per (params) per session | `CatalogueService` keeps a Map cache keyed by the query string; revisits are cache hits. `resource()` cancels stale in-flight requests. |
+| Search | debounced, settled term only | Component debounces before writing the `q` param. |
+| Categories rail + counts | once per page load | Slow-moving; one GROUP BY at mount + `Cache-Control`/ETag so refreshes can 304. |
+
+Worst case = one small indexed query per category per session — same
+order as the auth middleware's per-request membership query. If traffic
+ever runs hot, the fix lands in ONE place (the service cache / HTTP
+headers / server cache), zero component changes.
+
 ## 5. Component contracts (all OnPush, host:-binding, input()/output())
 
 | Component | Inputs | Outputs | Notes / budget |
