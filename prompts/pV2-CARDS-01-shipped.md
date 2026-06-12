@@ -108,6 +108,8 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 
 (Liam, 2026-06-12, post-v2.20e) Grouped storefront "brilliant"; the click-through to the right subcat in the Store was a nice surprise (v1 didn't do that). One issue: Back from the Store went to /marketplace instead of the Storefront. → fixed v2.20f.
 
+(Liam, 2026-06-12, post-v2.20f) Back confirmed — Storefront → Store (subcat) → back to Storefront works well. v2.20g laptop layout pass QC in progress.
+
 ## Iteration — v2.20f (2026-06-12)
 **Triggered by QC:** Back from the Store tab skipped the Storefront.
 **Commit:** chip v2.20f
