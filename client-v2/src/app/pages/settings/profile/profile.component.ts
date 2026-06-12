@@ -177,6 +177,8 @@ export class ProfileComponent {
             refPrefix: f.refPrefix.trim().toUpperCase(),
           }
         : {
+            // defaultCurrency is never-clearable BY DESIGN (an org always
+            // has one — unlike country, '' is not accepted server-side).
             defaultCurrency: f.currency || 'GBP',
             defaultVatPct: Number(f.vat) || 0,
             defaultMarginPct: Number(f.margin) || 0,
