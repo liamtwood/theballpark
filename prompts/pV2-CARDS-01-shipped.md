@@ -205,7 +205,9 @@ Carried from CODELISTS-02 (RP-04 closed row notes it): `items.tier` enum gets an
 **Commit:** chip v2.20u
 - The plus STAYS a plus when added — the gradient circle alone carries the state (title/aria still flip to "Added to Quote"). Verified live.
 
-## QC notes
+## QC notes — FINAL
+(Liam, 2026-06-12) "Looks good now, this is done." Full sweep passed across 21 iterations: image-2/3 card fidelity, fold at laptop, grouped storefront, viewport-fit + resizable strip, independent overlay states, plus-stays-plus. **Row → Done on Liam's word.**
+
 (Liam, 2026-06-12, relayed via CC) Marketplace item card matches the image-2 spec element-by-element (cover/name/chip/price/pin/CTA/heart all ✓). Asked for: preview-rail price parity (1), taller portrait cards (2), subcat in the chip (3) — all landed in v2.20c; storefront subcat-card grid (5) landed in v2.20d, regrouped per category + catch-all in v2.20e per the screenshot reference.
 
 (Liam, 2026-06-12, post-v2.20c) Card height + subcat chip confirmed — **look great**.
