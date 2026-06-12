@@ -2,6 +2,10 @@
 
 **Status:** Ready
 **Spec:** `docs/CODELISTS.md` (locked 2026-06-12 — read end-to-end first)
+**Amendment (chat-approved post-draft):** table names are
+`shared.reference_codelists` + `shared.reference_codelist_values` —
+the `reference_` prefix is deliberate (Oracle RC/RCV lineage; signals
+"reference data, never transactional"). Names below updated in place.
 **Chip target:** `[Dev v2] v2.18a` (multi-commit arc, letters per commit)
 **Process:** shipped-file contract (one `pV2-CODELISTS-01-*-shipped.md`,
 QC iterations stack); end-of-module architect audit when the module lands.
@@ -10,9 +14,9 @@ QC iterations stack); end-of-module architect audit when the module lands.
 
 v1 holds every reference list in a single `shared.codelists` table
 (list_name/code/label/symbol/meta/sort/is_active/is_system). The locked
-v2 shape (Oracle RC/RCV pattern) splits it: a parent `codelists` table
-describing each LIST (type, default, application, consumer pointers) and
-a `codelist_values` table holding the entries — plus the rich `meta`
+v2 shape (Oracle RC/RCV pattern) splits it: a parent `reference_codelists`
+table describing each LIST (type, default, application, consumer pointers)
+and a `reference_codelist_values` table holding the entries — plus the rich `meta`
 convention so status pills + future transition helpers stay generic.
 
 This prompt builds the machinery + seeds + admin UI. Consumer refactors
@@ -23,12 +27,12 @@ sweep that closes RP-04) are **pV2-CODELISTS-02 — out of scope here**.
 
 ### 1. Schema migration (`migrate-schemas.js` — all three schemas)
 
-- **Rename** `shared.codelists` → `shared.codelist_values` (the existing
-  table IS the RCV; one server service reads it — repoint it same
+- **Rename** `shared.codelists` → `shared.reference_codelist_values` (the
+  existing table IS the RCV; one server service reads it — repoint it same
   commit so v1 never breaks). Idempotent: guard with to_regclass checks.
-- **Extend** `codelist_values`: + `is_default BOOLEAN DEFAULT false`,
+- **Extend** `reference_codelist_values`: + `is_default BOOLEAN DEFAULT false`,
   + `description TEXT`. Existing columns unchanged.
-- **Create** parent `shared.codelists` per the locked shape:
+- **Create** parent `shared.reference_codelists` per the locked shape:
   `list_name` PK, `description`, `is_active`, `default_code`,
   `type` (`system`|`ballpark` — CHECK constraint, not a PG enum),
   `application`, `consumer_table`, `consumer_column`,
@@ -86,7 +90,7 @@ the new data.
 
 ### 3. Server
 
-- `services/codelist.service.js`: repoint to `codelist_values`; add
+- `services/codelist.service.js`: repoint to `reference_codelist_values`; add
   parent-aware reads: `lists()` (parents + value counts),
   `values(list_name)` (active, sorted), `valuesAll(list_name)` (incl.
   inactive — curation), `inUseCount(list_name)` (COUNT against
@@ -98,8 +102,10 @@ the new data.
   consumers exist).
 - New gated v2 router `v2.use('/codelists', …)`:
   - `GET /api/codelists` → parents + counts (any member)
-  - `GET /api/codelists/:list` → values incl. meta (any member; this is
-    what `CodelistService` consumes)
+  - `GET /api/codelists/:list/values` → active values incl. meta (any
+    member; this is what `CodelistService` consumes). NOT bare `/:list` —
+    that single-segment path belongs to v1's ungated read (mounted first)
+    until v1 retires; a v2 route there would be shadowed.
   - `POST /api/codelists/:list/values` → add value (ballpark_admin via
     `admin.cross_org_view`; **ballpark-type lists only** — system lists
     403 with a clear message; Zod: code snake/upper ≤50 unique-in-list,

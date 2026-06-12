@@ -2,10 +2,15 @@
 
 One-pager. The principle: **never hardcode a list of values that varies
 by customer, market, or product evolution.** Reference data lives in
-`shared.codelists`; components consume it via `CodelistService`. Adding
-or changing a value is a SQL row, not a code change.
+`shared.reference_codelists` + `shared.reference_codelist_values`;
+components consume it via `CodelistService`. Adding or changing a value
+is a SQL row, not a code change.
 
-## What it is
+The `reference_` prefix is deliberate, not verbosity — it marks these as
+reference data (Oracle RC/RCV lineage), never transactional tables, so
+future readers don't shorten the names to `codelist*`.
+
+## What it was (v1 — renamed to `reference_codelist_values` in v2.18a)
 
 A single key/value lookup table holding every platform-wide reference
 list — statuses, units, currencies, tiers, etc. One row per (list_name,
@@ -13,7 +18,7 @@ code) tuple, with display label, symbol, sort order, optional JSONB
 `meta` (colors, flags, etc.), and audit fields.
 
 ```
-shared.codelists (
+shared.codelists (   -- now shared.reference_codelist_values
   id          UUID PK,
   list_name   VARCHAR(100),     -- the namespace ("project_status", "currency", …)
   code        VARCHAR(50),      -- machine code ("active", "GBP", …)
@@ -35,7 +40,7 @@ Schema + seed in `server/src/db/migrate-schemas.js` (~line 1293).
 Two-table model, inspired by Oracle Clinical's reference-codelist pattern
 (thanks to Liam's old boss, mid-90s):
 
-### Parent — `codelists` (RC, new)
+### Parent — `reference_codelists` (RC, new)
 
 | Column | Notes |
 |---|---|
@@ -53,7 +58,7 @@ Two-table model, inspired by Oracle Clinical's reference-codelist pattern
 `data_type`, `max_short_len`, `max_long_len`, schema reference. TypeScript
 types + Zod schemas cover the data shape at the right layer today.
 
-### Values — `codelist_values` (RCV, extends existing)
+### Values — `reference_codelist_values` (RCV, extends existing)
 
 Keeps current shape (`list_name`, `code`, `label`, `symbol`, `sort_order`,
 `is_active`, `is_system`, `meta`) plus two new columns:
@@ -277,7 +282,7 @@ codelist if the list is expected to grow or vary by customer.
 | Version | Date | What changed | Ship | QC | Audit |
 |---|---|---|---|---|---|
 | v1.29–v1.53 | v1 era | Single-table `shared.codelists` + seeds (item_unit, currency, budget_tier, project_status, category_status) | v1 | n/a | inherited |
-| **target** | TBD post-marketplace | **pV2-CODELISTS-01** — Split to parent `codelists` (RC) + values (RCV). Add `type` (system/ballpark), `default_code`, `consumer_table/column`, `application`, `description` on values, `is_default` on values. Rich `meta` for status (color / color_soft / icon / is_terminal / allowed_next_codes / required_permission — data only, no transitions enforced yet). Seed `message_status` as worked example. `<app-status-pill>` primitive. "No DELETE" rule enforced (Add / Deactivate / Reactivate only). | — | — | — |
+| v2.18a/b | 2026-06-12 | **pV2-CODELISTS-01 SHIPPED** — Split to parent `reference_codelists` (RC) + values `reference_codelist_values` (RCV; renamed from `shared.codelists`). Add `type` (system/ballpark), `default_code`, `consumer_table/column`, `application`, `description` on values, `is_default` on values. Rich `meta` for status (color / color_soft / icon / is_terminal / allowed_next_codes / required_permission — data only, no transitions enforced yet). Seed `message_status` as worked example. `<app-status-pill>` primitive. "No DELETE" rule enforced three-layer (API 405 / DB trigger / seed assertion). v1 write verbs retired. `/settings/codelists` admin UI. | dev | — | — |
 | **target** | TBD post-CODELISTS-01 | **pV2-CODELISTS-02** — Refactor Profile (country dropdown), Items (units / status / approval_status), `/settings/pages` (title-mode) onto codelist machinery. Sweep `EditFieldOption[]` arrays. RP-04 closed. | — | — | — |
 
 ## When to update this doc

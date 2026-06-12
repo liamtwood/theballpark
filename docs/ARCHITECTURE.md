@@ -438,6 +438,46 @@ favourites            → user ↔ item wishlist
 org_type_config       → per-org-type page-settings (v1 page-settings drawer storage)
 ```
 
+### Reference codelists (RC/RCV — pV2-CODELISTS-01, v2.18a)
+
+Reference data lives in TWO shared-schema tables (full spec:
+`docs/CODELISTS.md` — the `reference_` prefix is deliberate, Oracle
+RC/RCV lineage):
+
+```
+shared.reference_codelists        (RC — one row per LIST)
+  list_name PK, description, is_active, default_code,
+  type ('system' read-only | 'ballpark' admin-curatable — CHECK),
+  application (groups the admin UI), consumer_table/consumer_column
+  (nullable pointers powering the deactivation in-use count),
+  created_at / updated_at / updated_by
+
+shared.reference_codelist_values  (RCV — renamed from shared.codelists)
+  id, list_name, code, label, symbol, description, sort_order,
+  is_active, is_system, is_default (one per list — partial unique idx),
+  meta JSONB (rich status meta: color/color_soft tokens, icon,
+  is_terminal, allowed_next_codes — data only, nothing enforces
+  transitions yet), created_at, updated_at
+```
+
+Server: `services/codelist.service.js` (v1 reads + v2 RC-aware fns);
+`services/codelist.consumers.js` (PURE whitelist gating consumer-pointer
+identifiers — Rule 8, pool-free specs); routes: v1 `/api/codelists`
+read-only (write verbs retired v2.18a — RP-03 class), v2 gated router
+`/api/codelists` on the v2 chain (parents+counts / `:list/values`
+consumer read / `:list/all` / usage / POST / PATCH; DELETE → 405 always).
+NOTE: the single-segment `GET /api/codelists/:list` belongs to the v1
+router (mounted first) until v1 retires — the v2 consumer read is
+`/:list/values`.
+
+No-DELETE is three-layer: API 405 + forbid-hard-delete trigger (where
+the audit helper is installed) + seed-time default-invariant assertion
+in `db/codelists-seed.js` (called from migrate-schemas.js §4f).
+
+Client: `core/codelists/` (types + metaColor, session-cached
+CodelistService with invalidate-on-write), `shared/status-pill/`
+(meta-driven pill), `/settings/codelists` admin UI (ballparkAdminGuard).
+
 ### Universal audit columns + soft delete
 
 Every business table has 6 audit columns (`created_at` / `created_by` /

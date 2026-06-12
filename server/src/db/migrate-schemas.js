@@ -1288,9 +1288,22 @@ const migrate = async () => {
             'pass', 'fail', 'skip', 'todo', 'draft', 'agreed'
           ));
 
-      -- Codelists — shared key/value lookup table for platform-wide reference
-      -- data (item units, time units, future: event_type, tier, visibility).
-      CREATE TABLE IF NOT EXISTS shared.codelists (
+      -- pV2-CODELISTS-01: the v1 single table shared.codelists became
+      -- shared.reference_codelist_values (RCV). The reference_ prefix is
+      -- deliberate (see docs/CODELISTS.md) — rename BEFORE the idempotent
+      -- create below so live DBs carry their data across and fresh DBs
+      -- simply create the new name.
+      DO $rcv$
+      BEGIN
+        IF to_regclass('shared.codelists') IS NOT NULL
+           AND to_regclass('shared.reference_codelist_values') IS NULL THEN
+          ALTER TABLE shared.codelists RENAME TO reference_codelist_values;
+        END IF;
+      END $rcv$;
+
+      -- Codelist VALUES (RCV) — one row per (list_name, code); the parent
+      -- reference_codelists table (RC) is created in section 4f below.
+      CREATE TABLE IF NOT EXISTS shared.reference_codelist_values (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         list_name VARCHAR(100) NOT NULL,
         code VARCHAR(50) NOT NULL,
@@ -1304,7 +1317,7 @@ const migrate = async () => {
         UNIQUE(list_name, code)
       );
 
-      INSERT INTO shared.codelists (list_name, code, label, symbol, sort_order, is_system) VALUES
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, symbol, sort_order, is_system) VALUES
         ('item_unit',      'unit',      'Units',          NULL, 1, true),
         ('item_unit',      'cover',     'Covers',         NULL, 2, true),
         ('item_unit',      'head',      'Head',           NULL, 3, true),
@@ -1350,7 +1363,7 @@ const migrate = async () => {
       -- and the dashboard project-card pill colour. Colour is stored on
       -- meta JSONB so the consumer reads it via
       -- CodelistService.getMeta('project_status', code).color.
-      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
         ('project_status', 'draft',     'Draft',     1, '{"color":"#F59E0B"}'::jsonb, true),
         ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
         ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
@@ -1360,7 +1373,7 @@ const migrate = async () => {
       -- v1.53: category_status drives the Brief-tab per-category status
       -- pill + dropdown. meta.color is read by the pill via
       -- CodelistService.getMeta('category_status', code).color.
-      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
         ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
         ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
         ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"#F97316"}'::jsonb, true),
@@ -2083,6 +2096,15 @@ const migrate = async () => {
       `);
     }
     console.log('  taxonomy browse indexes installed (v2.16b — categories.parent_id + items.subcategory_id, all schemas).');
+
+    // ── 4f. pV2-CODELISTS-01 — RC/RCV split + the locked 12-list seed ────
+    // Table rename happened in section 4b (before the idempotent create).
+    // The inventory + meta + three-layer integrity posture live in
+    // db/codelists-seed.js (reviewable without scrolling this file).
+    console.log('  Seeding reference codelists (pV2-CODELISTS-01)...');
+    const { seedCodelists } = require('./codelists-seed');
+    const parentCount = await seedCodelists(client);
+    console.log(`  reference_codelists installed — ${parentCount} parents seeded, default invariant asserted (v2.18a).`);
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

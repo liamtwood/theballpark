@@ -263,6 +263,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   // pV2-MARKET-00 — categories: browse rail (any member) + platform-admin
   // curation (admin.cross_org_view). Items/suppliers join in pV2-06a.
   v2.use('/marketplace', require('./routes/marketplace'));
+  // pV2-CODELISTS-01 — reference codelists (reads any member; value
+  // curation platform admins; DELETE always 405 — locked rule 2).
+  v2.use('/codelists', require('./routes/codelists-v2'));
   // future v2 endpoints: v2.use('/projects', ...), v2.use('/home', ...) — they
   // inherit the gate automatically by being mounted here.
   app.use('/api', v2);
