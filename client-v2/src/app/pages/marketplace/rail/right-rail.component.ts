@@ -38,16 +38,6 @@ import { ItemPreviewComponent } from './item-preview.component';
       }
     }
   `,
-  styles: [
-    `
-      .bp-rail-empty {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        min-height: 120px;
-      }
-    `,
-  ],
 })
 export class RightRailComponent {
   protected readonly store = inject(MarketplaceStore);

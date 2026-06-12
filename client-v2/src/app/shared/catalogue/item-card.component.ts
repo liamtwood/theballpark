@@ -71,20 +71,6 @@ import { CatalogueItem } from './catalogue.types';
         border-color: var(--theme-accent);
         box-shadow: var(--shadow-md);
       }
-      .bp-item-card__img {
-        display: block;
-        width: 100%;
-        height: 132px;
-        object-fit: cover;
-        background: var(--color-fill);
-      }
-      .bp-item-card__img--empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--color-text-muted);
-        background: var(--theme-soft);
-      }
     `,
   ],
 })

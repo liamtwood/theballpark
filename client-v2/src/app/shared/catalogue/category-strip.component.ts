@@ -32,33 +32,6 @@ import { CategoryInfo } from './catalogue.types';
       }
     </nav>
   `,
-  styles: [
-    `
-      .bp-catstrip-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        width: 100%;
-        padding: 7px 12px;
-        border: none;
-        border-radius: 10px;
-        background: transparent;
-        font-size: var(--text-base);
-        color: var(--color-text-strong);
-        text-align: left;
-        cursor: pointer;
-      }
-      .bp-catstrip-row:hover {
-        background: var(--color-fill);
-      }
-      .bp-catstrip-row--active {
-        background: var(--theme-soft);
-        color: var(--color-text);
-        font-weight: 500;
-      }
-    `,
-  ],
 })
 export class CategoryStripComponent {
   readonly categories = input.required<readonly CategoryInfo[]>();

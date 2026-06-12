@@ -30,8 +30,9 @@ out any pattern it disproves.
 
 | # | Pattern | First seen | Status | Grep / check |
 |---|---|---|---|---|
-| RP-01 | Sequential fetch chains in component init AND idle-DB-pool reconnect stalls (TCP+TLS+auth after node-postgres drops idle conns) | Profile slow load (v2.11g QC) | partial fix v2.12 (pool keepalive 10min in `server/src/db/pool.js`) + v2.12c (boot initializers parallel: rc → [brand ∥ auth] → page-config; 983ms → 238ms). Cold-start login still slow — PARKED by Liam. | grep `firstValueFrom` inside `resource()` loaders without `Promise.all`; if cold-start picked back up, measure OAuth callback → first-paint window |
+| RP-01 | Cold-path latency family — sequential fetch chains, idle-pool reconnect, AND **pool-grows-on-demand stalls** (when concurrent requests overlap and the pool is below its capacity, the Nth request pays a fresh TCP+TLS+auth handshake) | Profile slow load (v2.11g QC); search-slow-first-time on `/marketplace` (pV2-06a QC 2026-06-12) | **RP-01 substantially closed.** v2.12 pool keepalive (10min) + v2.12c boot initializers parallel (983ms → 238ms) + v2.14c `min: 2` pool floor + boot warm-up pair. Search-cold-query root cause was NOT non-indexed ILIKE (chat's initial hypothesis) — it was pool concurrency: keepalive kept connection #1 warm, but the FIRST time two requests overlapped (debounced search firing next to anything else), request #2 paid TCP+TLS+auth (~1-2s). Verified post-fix: two parallel never-cached queries complete in 76ms total. Cold-start login still PARKED. | grep `firstValueFrom` inside `resource()` loaders without `Promise.all`; if cold-start picked back up, measure OAuth callback → first-paint window. **Learning: when seeing "first request slow" with pg/Supabase, check pool `min:`/growth before reaching for index hypotheses.** |
 | RP-02 | "Simplifications" wrapped over deeper plumbing that lose the user's intended semantic | Persona switcher Liam→Beth (v2.11g QC); persona-chain Liam → Ryan → Sarah (v2.12b QC) | **CLOSED BY REMOVAL** v2.12d. Surface eliminated — header switcher gone, `/auth/orgs` + `/auth/switch-org` removed, `dev-personas.ts` deleted, one-account-one-role model adopted. Discovery preserved as learning. | re-open if a future real org-switcher surfaces customer-side |
+| RP-05 | Component-local `.bp-*` class declarations violating the one-definition rule. `.bp-*` prefix is reserved for global semantic classes in `styles.css`; defining them inside a component's `styles: [...]` array makes the inventory untrackable + makes reuse impossible. | `.bp-viewtoggle`/`.bp-viewtoggle--active` in `marketplace-page.component.ts` (v2.14b); `.bp-itemprev-img`/`.bp-itemprev-img--empty`/`.bp-itemprev-close` in `item-preview.component.ts` (v2.14e) | **CLOSED BY PREVENTION** v2.14f — all 8 marketplace-arc definitions (viewtoggle ×2, itemprev ×3, rail-empty, catstrip ×2, item-card__img ×2) moved to styles.css §Marketplace utilities; `check-style-guards.js` now FAILS any `.bp-*` selector definition in component .ts files (plant-fail-revert drilled). Pre-RP-05 BEM-element files ratchet-allowlisted (edit-field, home-launcher, launcher-tile, page-hero) — shrink-only list. | Guard enforces; sweep the 4 allowlisted legacy files opportunistically on their next touch. |
 
 Each future audit pass reads this section first and verifies every open
 row's check against the current ship's surface area.
@@ -149,6 +150,46 @@ row's check against the current ship's surface area.
 ## Bonus — styles.css
 
 Not formally tracked above (rules vary widely) but worth noting: `client-v2/src/styles.css` is at **299 lines** as of v2.11g, SHA `aa8bb13`. Layer-1 tokens + ~25 Layer-2 role classes + §8 button chrome + drawer density variants. Healthy — central source of truth, no per-component CSS bloat.
+
+## Marketplace arc files (pV2-MARKET-00 + pV2-06a)
+
+| File | Lines | SHA | Last audited | By | Status | Notes |
+|---|---|---|---|---|---|---|
+| `client-v2/src/app/pages/marketplace/marketplace-page.component.ts` | 154 | `c55da31` | 2026-06-12 | chat | ✓ flagged | Route shell mounts hero + search + 3 regions. Page hero pulls from PageConfigService (integrates with /settings/pages — `marketplaceTitle`/`marketplaceSubtitle` getters needed). **`.bp-viewtoggle` defined as component-local style — should promote to styles.css per the `.bp-*` one-definition rule.** allItemsCount derived from category counts sum (no extra request). |
+| `client-v2/src/app/pages/marketplace/marketplace-store.ts` | 117 | `7571438` | 2026-06-12 | chat | ✓ clean | Route-scoped (no `providedIn:'root'`), URL-is-state via `toSignal(queryParamMap)`, `linkedSignal` for offset reset on filter change (right Angular 21 pattern), selection derived from already-loaded data (selection never fetches — architecture guarantee holds), railMode derived computed. Writers navigate via `merge()`; `void router.navigate(...)` discards promise (LOW — fire-and-forget for nav is fine). |
+| `client-v2/src/app/pages/marketplace/rail/right-rail.component.ts` | 51 | `5b21a39` | 2026-06-12 | chat | ✓ clean | Polymorphic host; `@switch` on `store.railMode()` to mode component. Item/cat/quote placeholders for 06b/e/f. |
+| `client-v2/src/app/pages/marketplace/rail/item-preview.component.ts` | 104 | `51d740b` | 2026-06-12 | chat | ✓ flagged | v2.14e (pV2-06b): real preview, not placeholder. Pure preview over loaded row (`input.required<CatalogueItem>` + categoryName input); zero `/items` fetches on selection verified by CC. Uses role classes (`.bp-card-title`, `.bp-meta`, `.bp-field-label/value`, `.bp-body-small`). **RP-05: 3 `.bp-*` classes defined component-local** (`.bp-itemprev-img`, `.bp-itemprev-img--empty`, `.bp-itemprev-close`) — promote to styles.css. |
+| `client-v2/src/app/pages/marketplace/rail/right-rail.component.ts` (v2.14e update) | ~73 | `51d740b` | 2026-06-12 | chat | ✓ clean | Wired item-preview into the `railMode === 'item'` case; passes selectedItem + categoryName from the store. |
+| `client-v2/src/app/shared/catalogue/catalogue-grid.component.ts` | 86 | `2b08823` | 2026-06-12 | chat | ✓ clean | Pure presentation (entities in / selection events out, zero fetching). `@switch` on viewMode → card grid / list rows / table. Uses TYPE-01 role classes + token-mapped Tailwind. First 6 cards eager-loaded for above-the-fold; rest lazy. |
+| `client-v2/src/app/shared/catalogue/catalogue-search.component.ts` | 46 | `a4d5d88` | 2026-06-12 | chat | ✓ clean | Dumb input + count display. 300ms debounce in component before writing the `q` URL param. |
+| `client-v2/src/app/shared/catalogue/category-strip.component.ts` | 68 | `2f61940` | 2026-06-12 | chat | ✓ clean | Port of v1 category-circles as the left rail. Counts baked into CategoryInfo from server GROUP BY. All + per-cat selection states. |
+| `client-v2/src/app/shared/catalogue/item-card.component.ts` | 97 | `6874a2c` | 2026-06-12 | chat | ✓ clean | Card chrome via tokens + role classes. `eager` input for above-the-fold images. |
+| `client-v2/src/app/shared/catalogue/catalogue.types.ts` | 66 | `aa5b65d` | 2026-06-12 | chat | ✓ clean | CatalogueItem, CategoryInfo, RailMode union, ViewMode + asViewMode parser (fail-safes to 'card' on garbage), Paginated envelope type. |
+| `client-v2/src/app/core/marketplace/catalogue.service.ts` | 75 | `eb0954f` | 2026-06-12 | chat | ✓ clean | Session cache by URL with promise-keyed concurrent-request dedup. Failed flights evict (no cache poisoning). `invalidate()` busts everything; `updateCategory` busts via `tap()`. `adminCategories` bypasses cache (live editing surface). Matches architecture §4 spec verbatim. |
+| `server/src/routes/marketplace.js` | 183 | `da65ee4` | 2026-06-12 | chat | ✓ clean | Mounted on the GATED v2 router. `requireActiveMembership('admin.cross_org_view')` on curation endpoints. Items endpoint: Zod-validated query (`uuid` cat/sub, q≤80, offset), born-paginated `{items, total, hasMore}` envelope (`PAGE_SIZE` 48), `ownedByActiveOrg` derived from `req.user.org_id` server-side (no client trust), ILIKE search with escaped wildcards (no LIKE injection), every value $n-bound, `COUNT(*) OVER()` for total in one query. |
+| `server/src/routes/categories.js` | 32 | `f8e00b8` | 2026-06-12 | chat | ✓ clean | v2.14c: 4 ungated write verbs deleted (RP-03 closed). GETs remain for v1 browse until pV2-11 retirement window. Router fall-through delivers 401 on removed verbs (verified live). |
+| `server/src/db/pool.js` | 98 | `0858895` | 2026-06-12 | chat | ✓ clean | v2.14c: `min: 2` floor + boot warm-up pair fix the slow-first-search RP-01 root cause (pool-grows-on-demand on overlapping requests). Audit-attribution wrap intact. |
+| `server/src/schemas/marketplace-query.schema.js` | 18 | `be17ebd` | 2026-06-12 | chat | ✓ clean | `ItemsQuerySchema` (uuid cat/sub, q max 80, offset coerced int min 0). `PAGE_SIZE` constant exported. |
+
+### Findings from the consolidated marketplace audit
+
+| Severity | Finding | Action |
+|---|---|---|
+| MEDIUM | `.bp-viewtoggle` defined in `marketplace-page.component.ts` `styles: [...]` block. The `.bp-*` prefix is reserved for global semantic classes per ENGINEERING.md one-definition rule. Defining a `.bp-` class component-local conflicts with that contract. | Promote to `client-v2/src/styles.css` so future surfaces (supplier detail, project list) can reuse the view toggle without re-deriving the chrome. New row in DESIGN.md §5 if appropriate (likely an INLINE / utility role, not a type role). |
+| LOW | `void this.router.navigate(...)` in `marketplace-store.merge()` discards the navigation promise. | Not blocking — fire-and-forget for navigation rarely fails. Worth a Rule 5 awareness note if errors ever surface. |
+
+### Architecture conformance — all guarantees verified in code
+
+- ✓ Route-scoped store (`@Injectable()` no `providedIn`, provided in `MarketplacePageComponent.providers`)
+- ✓ URL is state (every selection signal `computed` from `toSignal(queryParamMap)`)
+- ✓ Selection never fetches (`selectedItem`/`selectedCategory` derived `find()` over loaded data)
+- ✓ railMode derived, never stored (single computed source of truth)
+- ✓ List fetches through one cached choke point (CatalogueService session cache; failed flights evict; mutations bust)
+- ✓ Pagination born-paginated (`{ items, total, hasMore }` envelope; `linkedSignal` resets offset on filter change)
+- ✓ Server-side filtering + ownership-derived (`req.user.org_id` → `ownedByActiveOrg`; no `org_id` from client)
+- ✓ Zod-validated query params with field-error mapping
+- ✓ All standalone + OnPush + `inject()` + `input()`/`output()` + `host: { class: 'block' }`
+- ✓ TYPE-01 role classes + token-mapped Tailwind utilities throughout
 
 ---
 

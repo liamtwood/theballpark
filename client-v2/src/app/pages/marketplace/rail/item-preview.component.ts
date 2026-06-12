@@ -59,42 +59,6 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
       </p>
     }
   `,
-  styles: [
-    `
-      .bp-itemprev-img {
-        display: block;
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 12px;
-        background: var(--color-fill);
-      }
-      .bp-itemprev-img--empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--color-text-muted);
-        background: var(--theme-soft);
-      }
-      .bp-itemprev-close {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        width: 24px;
-        height: 24px;
-        border: none;
-        border-radius: var(--radius-pill);
-        background: transparent;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-      }
-      .bp-itemprev-close:hover {
-        background: var(--color-fill);
-        color: var(--color-text);
-      }
-    `,
-  ],
 })
 export class ItemPreviewComponent {
   readonly item = input.required<CatalogueItem>();

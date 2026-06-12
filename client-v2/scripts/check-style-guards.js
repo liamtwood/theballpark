@@ -29,6 +29,21 @@ const FONT_SIZE_LITERAL = /font-size:\s*[0-9.]+(?:px|rem|em|%)/;
 // Tailwind arbitrary size utility
 const TEXT_ARBITRARY = /\btext-\[[0-9.]+(?:px|rem|em)\]/;
 
+// RP-05 (chat audit 2026-06-12): .bp-* class DEFINITIONS belong in
+// styles.css only (one-definition rule) — a `.bp-foo {` selector inside a
+// component's styles block makes the inventory untrackable and reuse
+// impossible. Consumption is fine (class="bp-foo", [class.bp-foo]=,
+// :host(.bp-foo)) — this matches only selector-position definitions.
+const BP_CLASS_DEF = /^\s*\.bp-[a-z0-9_-]/;
+// Ratchet allowlist: pre-RP-05 components carrying BEM-element classes
+// (.bp-<component>__el). Shrink this list, never grow it.
+const BP_DEF_LEGACY = [
+  join('shared', 'edit-field', 'edit-field.component.ts'),
+  join('shared', 'launcher', 'home-launcher.component.ts'),
+  join('shared', 'launcher', 'launcher-tile.component.ts'),
+  join('shell', 'page-hero', 'page-hero.component.ts'),
+];
+
 const ROOT = join(__dirname, '..', 'src');
 // app.config.ts hosts the ONE sanctioned literal palette (BallparkPreset).
 const EXEMPT = [join('app', 'app.config.ts')];
@@ -55,6 +70,9 @@ function walk(dir) {
         }
         check(line, p, i, FONT_SIZE_LITERAL, 'literal font-size');
         check(line, p, i, TEXT_ARBITRARY, 'arbitrary text-[N]');
+        if (name.endsWith('.ts') && !BP_DEF_LEGACY.some((e) => p.endsWith(e))) {
+          check(line, p, i, BP_CLASS_DEF, 'RP-05 .bp-* defined outside styles.css');
+        }
       });
     }
   }
