@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { CategoryInfo } from '../../../shared/catalogue/catalogue.types';
 import { MarketplaceStore } from '../marketplace-store';
 import { CategorySummaryComponent } from './category-summary.component';
 import { ItemPreviewComponent } from './item-preview.component';
@@ -25,7 +26,7 @@ import { ItemPreviewComponent } from './item-preview.component';
         }
       }
       @case ('category') {
-        @if (store.selectedCategory(); as cat) {
+        @if (displayCategory(); as cat) {
           <app-category-summary [category]="cat" [suppliers]="store.categorySuppliers()" />
         }
       }
@@ -40,6 +41,15 @@ import { ItemPreviewComponent } from './item-preview.component';
 })
 export class RightRailComponent {
   protected readonly store = inject(MarketplaceStore);
+
+  /** Pinned-scope override (v2.17b QC fix): the supplier store passes its
+   *  OWN per-supplier category info (count 13, not the global 22) —
+   *  global marketplace leaves this unset and uses the store's. */
+  readonly categoryOverride = input<CategoryInfo | null>(null);
+
+  protected readonly displayCategory = computed(
+    () => this.categoryOverride() ?? this.store.selectedCategory()
+  );
 
   /** The selected item's category name — resolved from the rail list the
    *  store already holds (selection never fetches). */

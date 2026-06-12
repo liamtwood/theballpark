@@ -47,3 +47,24 @@ the no-silent-caps rule.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
+
+## QC notes
+**2026-06-12 (Liam):** marketplace card ACCEPTED ("displays including the
+subtitle from cats table"); reported the card "does not appear on store".
+Fresh-session verification showed it DOES render there (his blank =
+the recurring dev-server stale-chunk; hard refresh cures) — but the check
+exposed a REAL bug underneath: the store rail showed the GLOBAL count
+(22) instead of the supplier-scoped count (13). Fixed in v2.17b.
+
+## Iteration — v2.17b (2026-06-12)
+**Triggered by:** Liam's QC + the module CLOSING audit (all 6 findings
+accepted — docs/audits/2026-06-12-marketplace-module-closing-audit.md).
+**Commit:** see v2.17b
+- Pinned-scope category card now shows THIS supplier's count: right-rail
+  gained a categoryOverride input; supplier-detail passes its
+  per-supplier category (count from sup.categories, tagline from the
+  global rail list). Verified: "Catering · 13 items" in Rocket's store.
+- Closing-audit fixes: adminCategories → URLSearchParams; sizedImage
+  warns on parse failure; first-page-only comment on
+  categorySuppliersRes; chevron preventDefault (keyboard double-activate
+  edge).

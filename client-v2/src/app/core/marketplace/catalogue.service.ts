@@ -118,10 +118,12 @@ export class CatalogueService {
    *  (server-gated to platform admins). Uncached: the table is the live
    *  editing surface. */
   adminCategories(parent?: string): Observable<CategoryInfo[]> {
-    const url = parent
-      ? `/api/marketplace/categories/all?parent=${parent}`
-      : '/api/marketplace/categories/all';
-    return this.api.get<CategoryInfo[]>(url);
+    // URLSearchParams like every other builder (closing audit: raw
+    // interpolation was the one inconsistent URL in this service).
+    const path = '/api/marketplace/categories/all';
+    if (!parent) return this.api.get<CategoryInfo[]>(path);
+    const params = new URLSearchParams([['parent', parent]]);
+    return this.api.get<CategoryInfo[]>(`${path}?${params.toString()}`);
   }
 
   /** Curation update; resolves to the fresh row (with live count). Busts

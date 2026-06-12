@@ -99,7 +99,10 @@ export class CategoryStripComponent {
 
   protected toggleChevron(e: Event, catId: string): void {
     if (this.activeId() === catId) {
-      e.stopPropagation(); // collapse/expand without re-selecting
+      // preventDefault too: Enter on the focused chevron span must not
+      // also trigger the parent button's activation (closing audit M3).
+      e.preventDefault();
+      e.stopPropagation();
       this.collapsed.update((c) => !c);
     }
     // Non-active: let the row click select (chevron = same affordance).

@@ -94,6 +94,8 @@ export class MarketplaceStore {
   readonly categorySuppliersRes = resource({
     params: () =>
       this.categoryId() && !this.pinnedSupplierId() ? { cat: this.categoryId() } : undefined,
+    // First page only by design — a read-only rail list (12 suppliers
+    // total today; no-silent-caps note lives in the 06e ship report).
     loader: async ({ params }) => (await this.catalogue.suppliers(params)).items,
   });
   readonly categorySuppliers = computed(() => this.categorySuppliersRes.value() ?? []);

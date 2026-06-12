@@ -146,7 +146,10 @@ export function sizedImage(url: string | null, width: number): string | null {
       return u.toString();
     }
     return url;
-  } catch {
+  } catch (err) {
+    // DB-sourced URLs only — a parse failure means truncated/garbage data;
+    // surface it rather than silently passing through (closing audit).
+    console.warn('[sizedImage] URL parse failed:', url, err);
     return url;
   }
 }
