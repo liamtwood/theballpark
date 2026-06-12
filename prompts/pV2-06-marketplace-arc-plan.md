@@ -1,5 +1,11 @@
 # pV2-06 — Marketplace arc plan (CC investigation, 2026-06-12)
 
+> **SUPERSEDED for product decisions by `docs/MARKETPLACE.md`** (Liam's
+> one-pager, 2026-06-12) — vocabulary (Quote, not cart), arc ordering,
+> region layout, and access table live THERE. The Angular technical
+> design lives in `pV2-06-angular-architecture.md`. This file is retained
+> for the v1 investigation detail (line counts, surface walkthroughs).
+
 Status: PLAN — input for chat's pV2-06x prompt drafting. Not a prompt.
 Sources: v1 code read (all four surfaces + cart) + live walkthrough on :4200
 (/shop, /suppliers/:id Storefront+Store, /projects/:id/marketplace) with Liam.
