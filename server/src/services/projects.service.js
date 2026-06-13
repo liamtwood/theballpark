@@ -77,6 +77,88 @@ async function listForOrg(orgId) {
   return r.rows.map(toCard);
 }
 
+/** The full editable detail projection (PROJECTS-02 — Project Details tab). */
+function toDetail(row) {
+  return {
+    id: row.id,
+    ref: row.ref,
+    name: row.name,
+    status: row.status ?? DEFAULT_STATUS,
+    description: row.description,
+    eventType: row.event_type,
+    eventDate: row.event_date,
+    venueName: row.venue_name,
+    venueCity: row.venue_city,
+    venueAddress: row.venue_address,
+    guestCount: row.guest_count,
+    durationDays: row.duration_days,
+    projectBudget: row.project_budget === null ? null : Number(row.project_budget),
+    currency: row.currency ?? 'GBP',
+    tier: row.tier,
+    coverUrl: row.cover_image_url,
+    totalBallparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
+    createdAt: row.created_at,
+  };
+}
+
+/** One project by id, scoped to the org (JWT). Null when not found / not
+ *  this org / soft-deleted — the route turns that into a 404. */
+async function getDetail(orgId, id) {
+  const r = await pool.query(
+    `SELECT * FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [id, orgId]
+  );
+  return r.rows.length ? toDetail(r.rows[0]) : null;
+}
+
+/** Editable columns the Project Details tab can PUT — code↔column map kept
+ *  explicit so a stray body key can never reach SQL. */
+const EDITABLE = {
+  name: 'name',
+  description: 'description',
+  eventType: 'event_type',
+  eventDate: 'event_date',
+  venueName: 'venue_name',
+  venueCity: 'venue_city',
+  venueAddress: 'venue_address',
+  guestCount: 'guest_count',
+  durationDays: 'duration_days',
+  projectBudget: 'project_budget',
+  currency: 'currency',
+  tier: 'tier',
+};
+
+/** Partial update, org-scoped. Status is dual-written (code + status_id)
+ *  when `status` is supplied. Returns the fresh detail, or null if the
+ *  row isn't this org's. */
+async function updateDetail(orgId, id, patch) {
+  const sets = [];
+  const vals = [];
+  for (const [key, col] of Object.entries(EDITABLE)) {
+    if (patch[key] !== undefined) {
+      vals.push(patch[key]);
+      sets.push(`${col} = $${vals.length}`);
+    }
+  }
+  if (patch.status !== undefined) {
+    const { status, statusId } = await resolveStatus(patch.status);
+    vals.push(status);
+    sets.push(`status = $${vals.length}`);
+    vals.push(statusId);
+    sets.push(`status_id = $${vals.length}`);
+  }
+  if (!sets.length) return getDetail(orgId, id);
+  vals.push(id);
+  vals.push(orgId);
+  const r = await pool.query(
+    `UPDATE projects SET ${sets.join(', ')}, updated_at = NOW()
+      WHERE id = $${vals.length - 1} AND org_id = $${vals.length} AND deleted_at IS NULL
+      RETURNING *`,
+    vals
+  );
+  return r.rows.length ? toDetail(r.rows[0]) : null;
+}
+
 /** Create a project from an AI-parsed brief (pV2-PROJECTS-03 scoped — no
  *  items/categories). orgId is the JWT org (never client). Atomic
  *  (Rule 1): the ref-counter bump + the insert are one transaction.
@@ -134,4 +216,4 @@ async function create(orgId, data) {
   });
 }
 
-module.exports = { listForOrg, create, resolveStatus, DEFAULT_STATUS, toCard };
+module.exports = { listForOrg, getDetail, updateDetail, create, resolveStatus, DEFAULT_STATUS, toCard };

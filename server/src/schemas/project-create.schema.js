@@ -23,4 +23,23 @@ const ProjectCreateSchema = z.object({
   parsedBrief: z.unknown().optional(),
 });
 
-module.exports = { ProjectCreateSchema };
+/** Partial update for the Project Details tab (PROJECTS-02). Every field
+ *  optional; status is a codelist code (dual-written by the service).
+ *  org_id NEVER accepted — the route scopes by JWT. */
+const ProjectUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(4000).nullable().optional(),
+  eventType: z.string().trim().max(100).nullable().optional(),
+  eventDate: z.string().trim().max(100).nullable().optional(),
+  venueName: z.string().trim().max(200).nullable().optional(),
+  venueCity: z.string().trim().max(100).nullable().optional(),
+  venueAddress: z.string().trim().max(400).nullable().optional(),
+  guestCount: z.number().int().nonnegative().nullable().optional(),
+  durationDays: z.number().int().nonnegative().nullable().optional(),
+  projectBudget: z.number().nonnegative().nullable().optional(),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
+  tier: z.enum(['starter', 'professional', 'premium']).nullable().optional(),
+  status: z.enum(['draft', 'active', 'completed', 'archived']).optional(),
+});
+
+module.exports = { ProjectCreateSchema, ProjectUpdateSchema };

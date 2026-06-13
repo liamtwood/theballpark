@@ -15,7 +15,7 @@
 const router = require('express').Router();
 const { z } = require('zod');
 const projects = require('../services/projects.service');
-const { ProjectCreateSchema } = require('../schemas/project-create.schema');
+const { ProjectCreateSchema, ProjectUpdateSchema } = require('../schemas/project-create.schema');
 
 // GET / — org-scoped project list. org_id is sacred: JWT only.
 router.get('/', async (req, res, next) => {
@@ -35,6 +35,34 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
     }
     res.status(201).json(await projects.create(req.user.org_id, parsed.data));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /:id — one project's full detail, org-scoped (JWT). 404 if not the
+// caller's org / missing / soft-deleted.
+router.get('/:id', async (req, res, next) => {
+  try {
+    const detail = await projects.getDetail(req.user.org_id, req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Project not found' });
+    res.json(detail);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /:id — partial update (Project Details tab). org from JWT; status
+// dual-written. 404 when the row isn't this org's.
+router.put('/:id', async (req, res, next) => {
+  try {
+    const parsed = ProjectUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const detail = await projects.updateDetail(req.user.org_id, req.params.id, parsed.data);
+    if (!detail) return res.status(404).json({ error: 'Project not found' });
+    res.json(detail);
   } catch (err) {
     next(err);
   }
