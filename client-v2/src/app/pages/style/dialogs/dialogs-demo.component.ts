@@ -74,8 +74,19 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       </section>
     </div>
 
-    <!-- Confirmation modal (paired with .bp-btn-danger per BUTTONS.md) -->
-    <p-dialog [(visible)]="confirmModel" styleClass="bp-modal bp-modal--confirm" [closable]="false" [modal]="true" [style]="{ width: '420px' }">
+    <!-- Confirmation modal (paired with .bp-btn-danger per BUTTONS.md).
+         Mirrors the team remove-confirm exactly: closable=false (explicit
+         choice only, no silent X) + ESC/backdrop = Cancel (rule 5). -->
+    <p-dialog
+      [visible]="confirmOpen()"
+      (visibleChange)="confirmOpen.set($event)"
+      styleClass="bp-modal bp-modal--confirm"
+      [closable]="false"
+      [closeOnEscape]="true"
+      [dismissableMask]="true"
+      [modal]="true"
+      [style]="{ width: '420px' }"
+    >
       <ng-template pTemplate="header">
         <div>
           <div class="bp-modal__icon"><lucide-icon name="trash-2" [size]="20" /></div>
@@ -89,28 +100,35 @@ import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component'
       </ng-template>
     </p-dialog>
 
-    <!-- Info modal -->
-    <p-dialog [(visible)]="infoModel" styleClass="bp-modal bp-modal--info" [modal]="true" [style]="{ width: '420px' }" header="Terms updated">
+    <!-- Info modal — ESC/backdrop dismiss = OK (rule 5). -->
+    <p-dialog
+      [visible]="infoOpen()"
+      (visibleChange)="infoOpen.set($event)"
+      styleClass="bp-modal bp-modal--info"
+      [modal]="true"
+      [closeOnEscape]="true"
+      [dismissableMask]="true"
+      [style]="{ width: '420px' }"
+      header="Terms updated"
+    >
       <p class="bp-body text-secondary">We’ve updated our terms of service. Continued use constitutes acceptance.</p>
       <ng-template pTemplate="footer">
         <button type="button" class="bp-btn-grad" (click)="infoOpen.set(false)">OK</button>
       </ng-template>
     </p-dialog>
 
+    <!-- MessageService supplies aria-live by severity (polite success/info,
+         assertive error) — no explicit role needed (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
 export class DialogsDemoComponent {
   private readonly messages = inject(MessageService);
 
+  // Explicit [visible]/(visibleChange) split (like the team consumer) —
+  // no getter/setter bridge needed for local signal state.
   protected readonly confirmOpen = signal(false);
   protected readonly infoOpen = signal(false);
-
-  // p-dialog needs a two-way model; bridge the signals.
-  protected get confirmModel(): boolean { return this.confirmOpen(); }
-  protected set confirmModel(v: boolean) { this.confirmOpen.set(v); }
-  protected get infoModel(): boolean { return this.infoOpen(); }
-  protected set infoModel(v: boolean) { this.infoOpen.set(v); }
 
   protected toast(severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail?: string): void {
     this.messages.add({ severity, summary, detail, life: severity === 'error' || severity === 'warn' ? 5000 : 3000 });

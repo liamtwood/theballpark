@@ -84,6 +84,19 @@
 - **Architecture:** toast and inline alert now SHARE chrome, differ only in lifecycle (toast auto-dismisses; alert persists until state change). DIALOGS.md to reflect this when freeze lifts.
 - Greens: build / lint / guard / 67. QC the four severities on `/style/dialogs`.
 
+## Iteration — v2.21f (2026-06-13)
+**Triggered by:** end-of-module architect audit — report saved to `docs/audits/2026-06-13-dialogs-arc-architect-audit.md`. **Verdict: production-ready, non-blocking refinements.** Independently verified: RP-08 clean (only `.bp-btn-danger` sits inside the team confirm), toast/alert/dialog split principled, `.bp-modal.p-dialog` compound workaround sound, tooltip claim accurate (cards on `pTooltip`).
+**Triage (11 findings — 6 accepted, 1 accepted-as-doc, 1 rejected-as-noted, 3 clean):**
+- **F-2 MEDIUM — accepted (real-consumer fix).** Team invite modal now wires `closeOnEscape` + `dismissableMask` — was Cancel-only, inconsistent with the remove confirm (DIALOGS.md rule 5).
+- **F-1 MEDIUM — accepted.** Sandbox confirm + info modals now wire ESC/backdrop dismiss, mirroring the team confirm.
+- **F-3 LOW — accepted.** Sandbox confirm modal sets `[closable]="false"` (no silent X — explicit choice only).
+- **F-5 LOW — accepted (better than suggested).** Dropped the getter/setter `[(visible)]` bridge for the explicit `[visible]`/`(visibleChange)` signal split the team consumer uses — `model()` is for inputs, not local state, so this matches the real pattern.
+- **F-10 LOW — accepted.** aria-live comment on each `<p-toast>` (sandbox/team/codelists/profile) noting MessageService supplies it by severity — so future readers don't assume it's missing.
+- **F-6 / F-7 LOW — accepted (ledger).** codelists-settings logged at 254/250 (drifted back over warning after v2.21b toasts); profile 218 watch item.
+- **F-4 LOW — accepted as documentation.** Toast + alert severity palettes are textually identical but can't share one rule across PrimeNG's selector + ours without selector algebra; intentional, to be noted in DIALOGS.md.
+- **F-8 / F-9 / F-11 — clean** (no action): locked-rule conformance, compound-selector workaround, sandbox purity.
+**Greens after fixes:** build / lint / guard / 67 tests.
+
 ## QC notes
 (Liam, 2026-06-13, relayed via CC) Tested the save + error toasts live on /settings/codelists; checked the remaining archetypes (modals, alert severities, tooltip, all four toast severities) on `/style/dialogs` since their real consumer surfaces don't exist yet. **Happy with all of them — QC passed.** Arc: v2.21a primitives → v2.21b codelists outcome toasts → v2.21c sandbox + toast inner polish → v2.21d duplicate-toast de-dupe → v2.21e toast adopts the alert flood chrome.
 

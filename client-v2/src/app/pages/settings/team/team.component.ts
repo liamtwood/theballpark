@@ -55,8 +55,9 @@ interface InviteForm {
       }
     </div>
 
-    <!-- Invite modal -->
-    <p-dialog header="Invite a team member" styleClass="bp-modal" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [style]="{ width: '380px' }">
+    <!-- Invite modal — ESC + backdrop dismiss = Cancel (DIALOGS.md rule 5;
+         audit 02-F-2 — was Cancel-only, inconsistent with the remove confirm). -->
+    <p-dialog header="Invite a team member" styleClass="bp-modal" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [closeOnEscape]="true" [dismissableMask]="true" [style]="{ width: '380px' }">
       <form class="flex flex-col gap-3" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
         <label class="text-sm font-medium text-secondary">
           Email *
@@ -116,6 +117,8 @@ interface InviteForm {
       </ng-template>
     </p-dialog>
 
+    <!-- MessageService supplies aria-live by severity (polite success/info,
+         assertive error) — no explicit role needed (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })

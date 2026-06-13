@@ -90,6 +90,8 @@ interface ProfileForm {
       }
     </div>
 
+    <!-- MessageService supplies aria-live by severity (polite success/info,
+         assertive error) — no explicit role needed (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })

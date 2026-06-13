@@ -160,7 +160,10 @@ row's check against the current ship's surface area.
 | File | Lines | Cap | Action |
 |---|---|---|---|
 | `client-v2/src/app/shared/edit-field/edit-field.component.ts` | 205 | 250 (component) | At warning. Extract type-specific bodies (text / select / number) into sub-components when next touched. Not blocking. |
-| `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` (or wherever the codelist admin page lives) | 248 | 250 (component) | **At warning, 2 lines from cap.** F-7 from CODELISTS-01 architect audit notes "extract a value-row component when next touched" — required, not optional. Without extraction, one more feature pushes past 400 (alarm) and forces emergency refactor. |
+| `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` | ~~248~~ → 216 → **254** | 250 (component) | Resolved at v2.19b (value-row extraction, 248 → 216), drifted back over warning at v2.21b (toast outcome wiring → 254; dialogs audit F-6). Just over warning. Next growth → extract a values-grid subcomponent or a shared toast-message helper. |
+| `client-v2/src/app/pages/settings/pages/pages-settings.component.ts` | 223 | 250 (component) | At warning (grew 162 → 223 in CODELISTS-02 sweep — codelist resources + computeds). Watch next touch; if title/subtitle for other pages multiply, extract a per-role-block component. |
+| `client-v2/src/app/shared/edit-field/edit-field.component.ts` | 204 | 250 (component) | Stable in warning band. Architect's F-7 (CODELISTS-02 audit) restated: extract type-specific bodies (text / select / number) when next touched. |
+| `client-v2/src/app/pages/settings/profile/profile.component.ts` | 218 | 250 (component) | Below warning after v2.21a toast wiring (dialogs audit F-7) — watch item; opportunistic extraction if financial-section controls multiply. |
 
 (None at Alarm.)
 
