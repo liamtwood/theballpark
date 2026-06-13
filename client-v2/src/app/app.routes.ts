@@ -90,9 +90,10 @@ export const routes: Routes = [
         data: { feature: 'New Project' },
       },
       {
+        // pV2-PROJECTS-01 — the agency project list (was a coming-soon stub).
         path: 'projects',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'Projects' },
+        loadComponent: () =>
+          import('./pages/projects/projects-page.component').then((m) => m.ProjectsPageComponent),
       },
       {
         path: 'inbox',
