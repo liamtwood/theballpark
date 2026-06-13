@@ -54,6 +54,15 @@
 **What:** The info-dialog variant ships as chrome only; first consumer when an acknowledgment flow lands (terms update, account hold). Dead-CSS-until-used, accepted — it is two rules riding the bp-modal base.
 **Severity:** LOW
 
+## Iteration — v2.21b (2026-06-13)
+**Triggered by QC:** Profile save toast worked ("Saved." bottom-right); Team has no UI yet; on /settings/codelists, **add a row / toggle visible-hidden / add a duplicate produced NO message.**
+**Root cause:** codelists only ever set INLINE signals — and only on the unhappy paths: a successful add and a clean visibility toggle set nothing, and the duplicate-add `bp-alert--danger` renders at the bottom of the detail column, below the values table (off-screen on a long list). DIALOGS.md rule 2: action OUTCOMES are toasts.
+**Commit:** chip v2.21b
+- Codelists now toasts every write outcome (MessageService + `<p-toast styleClass="bp-toast" position="bottom-right">`, same as Profile): add success → `Added "<label>".`; add duplicate (409) → `Couldn't add — a value with this code already exists in this list.`; row edit / clean visibility toggle → `Saved.`; any save failure → `Couldn't save — please try again.` (+ detail).
+- The in-use deactivation gate STAYS an inline `bp-alert--info` (DIALOGS.md rule 3 — persistent context, not a transient outcome); when it fires, the save runs `silent` so the advisory isn't doubled by a "Saved." toast.
+- The inline `bp-alert--danger` is now reserved for a values-LOAD failure (persistent — the page can't show data); renamed `error` → `loadError` for intent.
+- Greens: build / lint / guard / 67 tests. **Live preview QC blocked** — the preview session expired to /login and the sandbox can't complete Google OAuth or reach cross-origin dev-login (CORS); pattern is identical to Profile's verified toast. Liam to confirm the three paths live.
+
 ## QC notes
 (Liam fills this in)
 

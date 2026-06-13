@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
+import { errorDetail } from '../../../core/http-error';
 import { CodelistService } from '../../../core/codelists/codelist.service';
 import {
   Codelist,
@@ -21,7 +24,8 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
 @Component({
   selector: 'app-codelists-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodelistValueRowComponent, EditFieldComponent, LucideAngularModule, PageHeroComponent],
+  imports: [CodelistValueRowComponent, EditFieldComponent, LucideAngularModule, PageHeroComponent, ToastModule],
+  providers: [MessageService],
   host: { class: 'block' },
   template: `
     <app-page-hero
@@ -100,8 +104,9 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
               }
             </div>
 
-            <!-- DIALOGS.md inline alerts (pV2-DIALOGS-01): persist until
-                 the state changes — advisories info, failures danger. -->
+            <!-- The in-use gate is a PERSISTENT advisory (DIALOGS.md rule
+                 3 — context that stays until the state changes), so it's
+                 an inline alert; action OUTCOMES (add/save) are toasts. -->
             @if (gateNote()) {
               <div class="bp-alert bp-alert--info mt-3" role="status">
                 <lucide-icon name="info" [size]="16" class="bp-alert__icon" />
@@ -111,13 +116,10 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
                 </button>
               </div>
             }
-            @if (error()) {
+            @if (loadError()) {
               <div class="bp-alert bp-alert--danger mt-3" role="alert">
                 <lucide-icon name="circle-alert" [size]="16" class="bp-alert__icon" />
-                <span class="bp-alert__body">{{ error() }}</span>
-                <button type="button" class="bp-alert__dismiss" (click)="error.set('')" aria-label="Dismiss">
-                  <lucide-icon name="x" [size]="14" />
-                </button>
+                <span class="bp-alert__body">{{ loadError() }}</span>
               </div>
             }
           } @else {
@@ -126,12 +128,17 @@ import { CodelistValueRowComponent } from './codelist-value-row.component';
         </div>
       </div>
     </div>
+
+    <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
 })
 export class CodelistsSettingsComponent {
   private readonly codelists = inject(CodelistService);
+  private readonly toast = inject(MessageService);
 
-  protected readonly error = signal('');
+  /** Inline alert ONLY for a values-load failure (persistent context —
+   *  the page can't show data). Action outcomes go to toasts. */
+  protected readonly loadError = signal('');
   protected readonly gateNote = signal('');
 
   protected readonly parents = signal<Codelist[]>([]);
@@ -162,13 +169,13 @@ export class CodelistsSettingsComponent {
   protected async select(listName: string): Promise<void> {
     this.selected.set(listName);
     this.gateNote.set('');
-    this.error.set('');
+    this.loadError.set('');
     this.values.set([]);
     try {
       this.values.set(await firstValueFrom(this.codelists.valuesAll(listName)));
     } catch (err) {
       console.warn('[Codelists] values load failed', err);
-      this.error.set('Could not load values.');
+      this.loadError.set('Could not load values.');
     }
   }
 
@@ -188,14 +195,21 @@ export class CodelistsSettingsComponent {
       );
       this.values.update((list) => [...list, created]);
       this.draft.set({ code: '', label: '', symbol: '' });
-      this.error.set('');
+      this.toast.add({ severity: 'success', summary: `Added "${created.label}".`, life: 3000 });
     } catch (err) {
       console.warn('[Codelists] add failed', err);
-      this.error.set("Couldn't add — a value with this code already exists in this list.");
+      this.toast.add({
+        severity: 'error',
+        summary: "Couldn't add — a value with this code already exists in this list.",
+        detail: errorDetail(err),
+        life: 5000,
+      });
     }
   }
 
-  protected async save(v: CodelistValue, patch: CodelistValuePatch): Promise<void> {
+  /** `silent` lets the visibility gate own the messaging when it shows an
+   *  inline advisory (otherwise a clean save toasts "Saved."). */
+  protected async save(v: CodelistValue, patch: CodelistValuePatch, silent = false): Promise<void> {
     const list = this.selected();
     if (!list) return;
     const before = this.values();
@@ -203,21 +217,28 @@ export class CodelistsSettingsComponent {
     try {
       const fresh = await firstValueFrom(this.codelists.patchValue(list, v.code, patch));
       this.values.update((arr) => arr.map((x) => (x.code === v.code ? fresh : x)));
-      this.error.set('');
+      if (!silent) this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
     } catch (err) {
       console.warn('[Codelists] save failed', err);
       this.values.set(before);
-      this.error.set(`Couldn't save "${v.code}" — change reverted.`);
+      this.toast.add({
+        severity: 'error',
+        summary: "Couldn't save — please try again.",
+        detail: errorDetail(err),
+        life: 5000,
+      });
     }
   }
 
   /** Deactivation runs the in-use gate first (locked rule 2 UI copy). */
   protected async toggleActive(parent: Codelist, v: CodelistValue, makeVisible: boolean): Promise<void> {
     this.gateNote.set('');
+    let advisory = false;
     if (!makeVisible) {
       try {
         const { count } = await firstValueFrom(this.codelists.usage(parent.listName, v.code));
         if (count !== null && count > 0) {
+          advisory = true;
           this.gateNote.set(
             `Advisory: ${count} record${count === 1 ? '' : 's'} currently use "${v.label}" — they keep displaying it, but no new records can select it. The value was hidden.`
           );
@@ -226,6 +247,7 @@ export class CodelistsSettingsComponent {
         // Gate count is advisory — its absence must not block curation.
       }
     }
-    await this.save(v, { isActive: makeVisible });
+    // The inline advisory IS the feedback when shown; otherwise toast.
+    await this.save(v, { isActive: makeVisible }, advisory);
   }
 }
