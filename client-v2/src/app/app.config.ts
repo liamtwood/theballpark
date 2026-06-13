@@ -54,6 +54,8 @@ import {
   Info,
   CircleAlert,
   TriangleAlert,
+  Upload,
+  Sparkles,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -127,6 +129,8 @@ export const appConfig: ApplicationConfig = {
         Plus, ArrowRight, Folder,
         // pV2-DIALOGS-01 — inline alert severity icons
         Info, CircleAlert, TriangleAlert,
+        // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
+        Upload, Sparkles,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

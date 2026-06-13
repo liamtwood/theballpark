@@ -20,6 +20,59 @@ export interface ProjectCard {
 /** Which statuses land in the Completed tab; everything else is Current. */
 export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 
+/** The create body the gated POST /api/projects-v2 accepts (server:
+ *  ProjectCreateSchema). org_id is NOT here — the server uses the JWT. */
+export interface ProjectCreatePayload {
+  name?: string;
+  description?: string;
+  eventType?: string;
+  eventDate?: string;
+  venueName?: string;
+  venueCity?: string;
+  guestCount?: number | null;
+  durationDays?: number | null;
+  tier?: 'starter' | 'professional' | 'premium';
+  currency?: string;
+  rawBriefText?: string;
+  parsedBrief?: unknown;
+}
+
+const VALID_TIERS = new Set(['starter', 'professional', 'premium']);
+
+/** Map a parsed brief (+ the raw text) to the create payload. The parser's
+ *  capitalised budgetSignal lowercases to the tier enum; 'Unknown' (and
+ *  anything off-enum) drops to undefined (the tier CHECK has no 'unknown').
+ *  Accepts `parsed` loosely-typed to avoid a hard import cycle with AiService. */
+export function parsedBriefToCreate(
+  parsed: {
+    projectName?: string;
+    summary?: string;
+    eventType?: string;
+    dates?: string;
+    location?: string;
+    city?: string;
+    guestCount?: number | null;
+    durationDays?: number | null;
+    budgetSignal?: string;
+  },
+  rawBriefText: string
+): ProjectCreatePayload {
+  const tier = (parsed.budgetSignal ?? '').toLowerCase();
+  return {
+    name: parsed.projectName?.trim() || undefined,
+    description: parsed.summary?.trim() || undefined,
+    eventType: parsed.eventType?.trim() || undefined,
+    eventDate: parsed.dates?.trim() || undefined,
+    venueName: parsed.location?.trim() || undefined,
+    venueCity: parsed.city?.trim() || undefined,
+    guestCount: parsed.guestCount ?? undefined,
+    durationDays: parsed.durationDays ?? undefined,
+    tier: VALID_TIERS.has(tier) ? (tier as ProjectCreatePayload['tier']) : undefined,
+    rawBriefText: rawBriefText.trim() || undefined,
+    parsedBrief: parsed,
+  };
+}
+
 /** Compact relative age for the card meta row ("3 days ago"). Pure. */
 export function relativeAge(iso: string | null | undefined, now: number): string {
   if (!iso) return '';

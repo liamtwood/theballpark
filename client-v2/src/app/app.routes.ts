@@ -86,8 +86,8 @@ export const routes: Routes = [
         // The agent New Project tile's create flow (v2.12g split — was the
         // same /projects target as the list tile).
         path: 'projects/new',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'New Project' },
+        loadComponent: () =>
+          import('./pages/projects/projects-new.component').then((m) => m.ProjectsNewComponent),
       },
       {
         // pV2-PROJECTS-01 — the agency project list (was a coming-soon stub).
