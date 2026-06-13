@@ -262,6 +262,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   v2.use('/organisation', require('./routes/organisation'));
   // pV2-MARKET-00 — categories: browse rail (any member) + platform-admin
   // curation (admin.cross_org_view). Items/suppliers join in pV2-06a.
+  // Favourites extracted from marketplace.js (cards-audit F-8) — mounted
+  // BEFORE /marketplace so the more-specific path matches first.
+  v2.use('/marketplace/favourites', require('./routes/marketplace-favourites'));
   v2.use('/marketplace', require('./routes/marketplace'));
   // pV2-CODELISTS-01 — reference codelists (reads any member; value
   // curation platform admins; DELETE always 405 — locked rule 2).
