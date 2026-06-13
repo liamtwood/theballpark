@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { ProjectCard, ProjectCreatePayload } from './project.types';
+import { ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate } from './project.types';
 
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
@@ -19,5 +19,15 @@ export class ProjectService {
    *  list card. org from JWT — never sent. */
   create(payload: ProjectCreatePayload): Observable<ProjectCard> {
     return this.api.post<ProjectCard>('/api/projects-v2', payload);
+  }
+
+  /** One project's full detail (inside-project view). */
+  getDetail(id: string): Observable<ProjectDetail> {
+    return this.api.get<ProjectDetail>(`/api/projects-v2/${id}`);
+  }
+
+  /** Partial update (Project Details tab). Returns the fresh detail. */
+  update(id: string, patch: ProjectUpdate): Observable<ProjectDetail> {
+    return this.api.put<ProjectDetail>(`/api/projects-v2/${id}`, patch);
   }
 }

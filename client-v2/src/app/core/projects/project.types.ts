@@ -20,6 +20,45 @@ export interface ProjectCard {
 /** Which statuses land in the Completed tab; everything else is Current. */
 export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 
+/** Full project detail (PROJECTS-02 — the inside-project view). */
+export interface ProjectDetail {
+  id: string;
+  ref: string | null;
+  name: string;
+  status: string;
+  description: string | null;
+  eventType: string | null;
+  eventDate: string | null;
+  venueName: string | null;
+  venueCity: string | null;
+  venueAddress: string | null;
+  guestCount: number | null;
+  durationDays: number | null;
+  projectBudget: number | null;
+  currency: string;
+  tier: string | null;
+  coverUrl: string | null;
+  totalBallparkCost: number | null;
+  createdAt: string;
+}
+
+/** Partial update body for the Project Details tab (server: ProjectUpdateSchema). */
+export type ProjectUpdate = Partial<{
+  name: string;
+  description: string | null;
+  eventType: string | null;
+  eventDate: string | null;
+  venueName: string | null;
+  venueCity: string | null;
+  venueAddress: string | null;
+  guestCount: number | null;
+  durationDays: number | null;
+  projectBudget: number | null;
+  currency: string;
+  tier: 'starter' | 'professional' | 'premium' | null;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+}>;
+
 /** The create body the gated POST /api/projects-v2 accepts (server:
  *  ProjectCreateSchema). org_id is NOT here — the server uses the JWT. */
 export interface ProjectCreatePayload {
