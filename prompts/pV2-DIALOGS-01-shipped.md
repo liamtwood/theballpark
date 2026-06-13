@@ -76,6 +76,14 @@
 **Commit:** chip v2.21d
 - Dropped `detail` on the add-duplicate toast; the confident summary stands alone. (`save()` keeps its detail — a generic "please try again" benefits from the server specifics.)
 
+## Iteration — v2.21e (2026-06-13)
+**Triggered by:** Liam — the white-card-with-stripe toast read too quiet; colour should carry the signal. Proposal: keep the toast LIFECYCLE (auto-dismiss, bottom-right slide-in, MessageService) but swap the internal chrome to the `.bp-alert--*` flood.
+**Commit:** chip v2.21e
+- `.bp-toast .p-toast-message` now mirrors `.bp-alert--*`: severity-soft background flood, severity-colour icon + summary + detail, 30%-mix hairline border (replaces the white card + 4px left stripe). Icon/summary/detail inherit the severity colour; detail at 0.85 opacity so it's quieter but same hue.
+- KEPT: the float shadow (a toast is a layer above content; the inline alert is flat in the flow) and the full lifecycle.
+- **Architecture:** toast and inline alert now SHARE chrome, differ only in lifecycle (toast auto-dismisses; alert persists until state change). DIALOGS.md to reflect this when freeze lifts.
+- Greens: build / lint / guard / 67. QC the four severities on `/style/dialogs`.
+
 ## QC notes
 (Liam fills this in)
 
