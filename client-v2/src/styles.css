@@ -916,10 +916,46 @@ body {
   font-family: var(--bp-font);
   font-size: var(--text-base);
 }
+/* Inner rhythm (v2.21c QC "ugly"): the skin above only styled the outer
+   card — these tame PrimeNG's default content (icon size, padding,
+   summary/detail ranks, close button). */
+.bp-toast .p-toast-message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.bp-toast .p-toast-message-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+.bp-toast .p-toast-message-text { min-width: 0; }
+.bp-toast .p-toast-summary {
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: var(--leading-snug);
+}
+.bp-toast .p-toast-detail {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.bp-toast .p-toast-close-button,
+.bp-toast .p-toast-icon-close {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+/* Severity colours: left border + matching icon stroke. */
 .bp-toast .p-toast-message-success { border-left: 4px solid var(--color-success); }
+.bp-toast .p-toast-message-success .p-toast-message-icon { color: var(--color-success); }
 .bp-toast .p-toast-message-info    { border-left: 4px solid var(--color-info); }
+.bp-toast .p-toast-message-info    .p-toast-message-icon { color: var(--color-info); }
 .bp-toast .p-toast-message-warn    { border-left: 4px solid var(--color-warn); }
+.bp-toast .p-toast-message-warn    .p-toast-message-icon { color: var(--color-warn); }
 .bp-toast .p-toast-message-error   { border-left: 4px solid var(--color-danger); }
+.bp-toast .p-toast-message-error   .p-toast-message-icon { color: var(--color-danger); }
 
 /* Hover help — never decision-critical content (locked rule 4). */
 .bp-tooltip .p-tooltip-text {

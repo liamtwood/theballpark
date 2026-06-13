@@ -75,6 +75,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/style/hero/hero-demo.component').then((m) => m.HeroDemoComponent),
       },
+      {
+        // Dev-only DIALOGS.md sandbox — every dialog archetype on one page.
+        path: 'style/dialogs',
+        loadComponent: () =>
+          import('./pages/style/dialogs/dialogs-demo.component').then((m) => m.DialogsDemoComponent),
+      },
       // Launcher-tile targets — placeholders until their prompts land.
       {
         // The agent New Project tile's create flow (v2.12g split — was the

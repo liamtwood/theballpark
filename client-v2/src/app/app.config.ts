@@ -53,6 +53,7 @@ import {
   Folder,
   Info,
   CircleAlert,
+  TriangleAlert,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -125,7 +126,7 @@ export const appConfig: ApplicationConfig = {
         // storefront category-group headers
         Plus, ArrowRight, Folder,
         // pV2-DIALOGS-01 — inline alert severity icons
-        Info, CircleAlert,
+        Info, CircleAlert, TriangleAlert,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

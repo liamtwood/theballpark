@@ -63,6 +63,14 @@
 - The inline `bp-alert--danger` is now reserved for a values-LOAD failure (persistent — the page can't show data); renamed `error` → `loadError` for intent.
 - Greens: build / lint / guard / 67 tests. **Live preview QC blocked** — the preview session expired to /login and the sandbox can't complete Google OAuth or reach cross-origin dev-login (CORS); pattern is identical to Profile's verified toast. Liam to confirm the three paths live.
 
+## Iteration — v2.21c (2026-06-13)
+**Triggered by QC:** Liam confirmed the codelists "Saved." toast renders ("green tick, ugly but there") and asked how to see the OTHER archetypes — they had no live trigger (modal/info on Team remove which has no UI; alerts only on codelists' unhappy paths; tooltip on cards).
+**Commit:** chip v2.21c
+- **`/style/dialogs` dev sandbox** (sibling of `/style/hero`, no guard): every archetype on one page — 4 toast severities (buttons), the 4 inline alert variants, a destructive confirmation modal (`bp-modal--confirm` + `.bp-btn-danger` + trash icon block), an info modal, and a tooltip. Lets each be QC'd before its real consumer surface exists.
+- **Toast polish ("ugly"):** the v2.21a skin only styled the outer card; added inner rhythm — `p-toast-message-content` padding/flex, 18px severity-coloured icon, summary (500/text) + detail (sm/secondary) ranks, close-button colour.
+- Icon `TriangleAlert` registered (warn alert).
+- Greens: build / lint / guard / 67 tests. QC surface: **`/style/dialogs`** on your running :4201.
+
 ## QC notes
 (Liam fills this in)
 
