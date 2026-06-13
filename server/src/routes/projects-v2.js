@@ -13,12 +13,28 @@
 // Inside-project detail + writes land in pV2-PROJECTS-02/03.
 
 const router = require('express').Router();
+const { z } = require('zod');
 const projects = require('../services/projects.service');
+const { ProjectCreateSchema } = require('../schemas/project-create.schema');
 
 // GET / — org-scoped project list. org_id is sacred: JWT only.
 router.get('/', async (req, res, next) => {
   try {
     res.json(await projects.listForOrg(req.user.org_id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST / — create a project from an AI-parsed brief (no items). org_id
+// from JWT, NEVER the body; status dual-written 'draft'.
+router.post('/', async (req, res, next) => {
+  try {
+    const parsed = ProjectCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    res.status(201).json(await projects.create(req.user.org_id, parsed.data));
   } catch (err) {
     next(err);
   }

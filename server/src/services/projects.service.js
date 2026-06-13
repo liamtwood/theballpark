@@ -11,6 +11,7 @@
 // codelist, so the mapping is exact.
 
 const pool = require('../db/pool');
+const { withTransaction } = require('../db/with-transaction');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -76,4 +77,61 @@ async function listForOrg(orgId) {
   return r.rows.map(toCard);
 }
 
-module.exports = { listForOrg, resolveStatus, DEFAULT_STATUS, toCard };
+/** Create a project from an AI-parsed brief (pV2-PROJECTS-03 scoped — no
+ *  items/categories). orgId is the JWT org (never client). Atomic
+ *  (Rule 1): the ref-counter bump + the insert are one transaction.
+ *  Dual-writes status (codelist code) AND status_id (legacy FK) so v1
+ *  stays consistent. Returns the new project's list-card shape. */
+async function create(orgId, data) {
+  const { status, statusId } = await resolveStatus(DEFAULT_STATUS);
+  const name = (data.name && data.name.trim()) || 'Untitled project';
+
+  return withTransaction(async (client) => {
+    // Atomic ref allocation — UPDATE…RETURNING ticks the org counter and
+    // hands back the prefix in one statement (no two-create race).
+    const counter = await client.query(
+      `UPDATE orgs SET ref_counter = COALESCE(ref_counter, 0) + 1
+        WHERE id = $1 RETURNING ref_prefix, ref_counter, name`,
+      [orgId]
+    );
+    let ref = null;
+    if (counter.rows.length) {
+      const row = counter.rows[0];
+      const prefix =
+        (row.ref_prefix || '').trim() ||
+        ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
+      ref = `${prefix.toUpperCase()}-${String(row.ref_counter).padStart(3, '0')}`;
+    }
+
+    const r = await client.query(
+      `INSERT INTO projects (
+         org_id, name, description, event_type, event_date,
+         venue_name, venue_city, guest_count, duration_days,
+         tier, currency, raw_brief_text, parsed_brief_json,
+         status, status_id, ref
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       RETURNING *`,
+      [
+        orgId,
+        name,
+        data.description ?? null,
+        data.eventType ?? null,
+        data.eventDate ?? null,
+        data.venueName ?? null,
+        data.venueCity ?? null,
+        data.guestCount ?? null,
+        data.durationDays ?? null,
+        data.tier ?? null,
+        data.currency ?? 'GBP',
+        data.rawBriefText ?? null,
+        data.parsedBrief ? JSON.stringify(data.parsedBrief) : null,
+        status,
+        statusId,
+        ref,
+      ]
+    );
+    return toCard(r.rows[0]);
+  });
+}
+
+module.exports = { listForOrg, create, resolveStatus, DEFAULT_STATUS, toCard };
