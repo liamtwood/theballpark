@@ -96,6 +96,15 @@ export const routes: Routes = [
           import('./pages/projects/projects-page.component').then((m) => m.ProjectsPageComponent),
       },
       {
+        // pV2-PROJECTS-01 click-target STUB — the project card routes here;
+        // the real inside-project view (3 tabs) lands in PROJECTS-02. Must
+        // sit AFTER 'projects/new' so that matches first, and exist so the
+        // card doesn't fall through the ** wildcard to the landing page.
+        path: 'projects/:id',
+        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
+        data: { feature: 'Project details' },
+      },
+      {
         path: 'inbox',
         loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
         data: { feature: 'Inbox' },
