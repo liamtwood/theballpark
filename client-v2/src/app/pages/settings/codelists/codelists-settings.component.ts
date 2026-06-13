@@ -198,10 +198,11 @@ export class CodelistsSettingsComponent {
       this.toast.add({ severity: 'success', summary: `Added "${created.label}".`, life: 3000 });
     } catch (err) {
       console.warn('[Codelists] add failed', err);
+      // No detail — the summary already says it (the server's "Code
+      // already exists in this list" just doubled the line).
       this.toast.add({
         severity: 'error',
         summary: "Couldn't add — a value with this code already exists in this list.",
-        detail: errorDetail(err),
         life: 5000,
       });
     }

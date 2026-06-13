@@ -71,6 +71,11 @@
 - Icon `TriangleAlert` registered (warn alert).
 - Greens: build / lint / guard / 67 tests. QC surface: **`/style/dialogs`** on your running :4201.
 
+## Iteration — v2.21d (2026-06-13)
+**Triggered by QC:** the duplicate-add toast doubled the line — summary "Couldn't add — a value with this code already exists in this list." over the server detail "Code already exists in this list."
+**Commit:** chip v2.21d
+- Dropped `detail` on the add-duplicate toast; the confident summary stands alone. (`save()` keeps its detail — a generic "please try again" benefits from the server specifics.)
+
 ## QC notes
 (Liam fills this in)
 
