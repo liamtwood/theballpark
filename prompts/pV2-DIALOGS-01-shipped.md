@@ -85,7 +85,7 @@
 - Greens: build / lint / guard / 67. QC the four severities on `/style/dialogs`.
 
 ## QC notes
-(Liam fills this in)
+(Liam, 2026-06-13, relayed via CC) Tested the save + error toasts live on /settings/codelists; checked the remaining archetypes (modals, alert severities, tooltip, all four toast severities) on `/style/dialogs` since their real consumer surfaces don't exist yet. **Happy with all of them — QC passed.** Arc: v2.21a primitives → v2.21b codelists outcome toasts → v2.21c sandbox + toast inner polish → v2.21d duplicate-toast de-dupe → v2.21e toast adopts the alert flood chrome.
 
 ## Chat audit
 (chat fills this in — leave the section header so chat finds it)
