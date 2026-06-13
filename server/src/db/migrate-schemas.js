@@ -440,6 +440,29 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
+      -- v2.22a (pV2-PROJECTS-01): projects.status — the project_status
+      -- CODELIST code (draft/active/completed/archived). Dual-model with
+      -- the legacy status_id FK (kept for v1 compat until pV2-11): the v2
+      -- ProjectsService dual-writes both. statuses.name for
+      -- entity_type='project' maps 1:1 to the codelist codes, so the
+      -- backfill is exact; NULL status_id → the codelist default 'draft'.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS status TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS status TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS status TEXT;
+
+      UPDATE public.projects  p SET status = s.name FROM public.statuses  s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+      UPDATE preview.projects p SET status = s.name FROM preview.statuses s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+      UPDATE master.projects  p SET status = s.name FROM master.statuses  s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+
+      UPDATE public.projects  SET status = 'draft' WHERE status IS NULL;
+      UPDATE preview.projects SET status = 'draft' WHERE status IS NULL;
+      UPDATE master.projects  SET status = 'draft' WHERE status IS NULL;
+
+      -- Wire the project_status codelist consumer pointer now that the
+      -- column exists (was NULL at CODELISTS-01 — the column didn't exist
+      -- yet). Drives the deactivation in-use gate in /settings/codelists.
+      UPDATE shared.reference_codelists SET consumer_table = 'projects', consumer_column = 'status' WHERE list_name = 'project_status';
+
       -- estimate_items drift reconciliation. The legacy CREATE block had
       -- unit VARCHAR(50) and is_active BOOLEAN columns that were dropped
       -- in dev out-of-band; shortlisted + status_id were added at the
