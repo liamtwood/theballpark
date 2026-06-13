@@ -185,7 +185,7 @@ ship; end-of-module audit after the arc closes.
 |---|---|---|
 | **pV2-PROJECTS-01** | List view at `/projects` — Current | Completed tabs + project card grid + status pill wiring + `project_status` codelist consumer pointer | **SHIPPED** v2.22a/b (`0812b05`/`39afb99`) — see pV2-PROJECTS-01-shipped.md |
 | **pV2-PROJECTS-02** | Inside-project view at `/projects/:id` — three tabs (Marketplace / Estimate / Project Details) + Marketplace tab's project-scoped catalogue + Project Quote right rail (RailMode gains 'quote' pinned state). Cards unchanged from CARDS-01. | queued |
-| **pV2-PROJECTS-03** | Add Project flow — `/projects/new` entry page (Upload Brief / Write Brief / Skip AI), `/projects/new/ai-result` accordion page ("Your ballpark is ready" — biggest design lift; v1's old build screen is the reference), AI brief parser server endpoint | queued |
+| **pV2-PROJECTS-03** | Add Project flow — `/projects/new` entry page (Upload Brief / Write Brief / Skip AI), `/projects/new/ai-result` accordion page ("Your ballpark is ready" — biggest design lift; v1's old build screen is the reference), AI brief parser server endpoint | **PARTIAL** — scoped spine SHIPPED v2.23a/b (`072c8eb`/`2da7e3d`): brief→AI→project create, NO items. "Ballpark is ready" accordion (add-project-2.png) + Skip-AI branch still queued. See pV2-PROJECTS-03-shipped.md |
 | **pV2-06f** | Quote arc — `QuoteService`, "Add to Quote" / "Added to Quote" CTA wiring inside the project context, "See Final Project Quote" → `/quote-checkout/:projectId` flow | queued after PROJECTS-02 |
 
 ## What's deferred from this arc
