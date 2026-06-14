@@ -18,30 +18,48 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
   host: { class: 'block' },
   template: `
     <div class="mx-auto max-w-2xl">
+      <h2 class="bp-edit-section-title">Project Quote</h2>
+
       <!-- Summary cards (add-project-2): Date / Location / Duration /
-           Budget — from the project, shown regardless of the quote. -->
-      <div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="bp-card p-3">
-          <span class="bp-icon-block h-8 w-8"><lucide-icon name="calendar" [size]="15" [strokeWidth]="1.75" /></span>
-          <div class="bp-field-label mt-2">Date</div>
-          <div class="bp-body-small truncate text-text">{{ project().eventDate || '—' }}</div>
+           Budget — icon beside text, 2-up wider columns. -->
+      <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="bp-card flex items-center gap-3 p-3.5">
+          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="calendar" [size]="18" [strokeWidth]="1.75" /></span>
+          <span class="min-w-0">
+            <span class="bp-field-label block">Date</span>
+            <span class="bp-body-small block truncate text-text">{{ project().eventDate || '—' }}</span>
+          </span>
         </div>
-        <div class="bp-card p-3">
-          <span class="bp-icon-block h-8 w-8"><lucide-icon name="map-pin" [size]="15" [strokeWidth]="1.75" /></span>
-          <div class="bp-field-label mt-2">Location</div>
-          <div class="bp-body-small truncate text-text">{{ project().venueCity || project().venueName || '—' }}</div>
+        <div class="bp-card flex items-center gap-3 p-3.5">
+          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="map-pin" [size]="18" [strokeWidth]="1.75" /></span>
+          <span class="min-w-0">
+            <span class="bp-field-label block">Location</span>
+            <span class="bp-body-small block truncate text-text">{{ project().venueCity || project().venueName || '—' }}</span>
+          </span>
         </div>
-        <div class="bp-card p-3">
-          <span class="bp-icon-block h-8 w-8"><lucide-icon name="clock" [size]="15" [strokeWidth]="1.75" /></span>
-          <div class="bp-field-label mt-2">Duration</div>
-          <div class="bp-body-small truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</div>
+        <div class="bp-card flex items-center gap-3 p-3.5">
+          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="clock" [size]="18" [strokeWidth]="1.75" /></span>
+          <span class="min-w-0">
+            <span class="bp-field-label block">Duration</span>
+            <span class="bp-body-small block truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</span>
+          </span>
         </div>
-        <div class="bp-card p-3">
-          <span class="bp-icon-block h-8 w-8"><lucide-icon name="wallet" [size]="15" [strokeWidth]="1.75" /></span>
-          <div class="bp-field-label mt-2">Budget</div>
-          <div class="bp-body-small truncate text-text">{{ project().projectBudget ? (project().projectBudget | currency: cur() : 'symbol' : '1.0-0') : '—' }}</div>
+        <div class="bp-card flex items-center gap-3 p-3.5">
+          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="wallet" [size]="18" [strokeWidth]="1.75" /></span>
+          <span class="min-w-0">
+            <span class="bp-field-label block">Budget</span>
+            <span class="bp-body-small block truncate text-text">{{ project().projectBudget ? (project().projectBudget | currency: cur() : 'symbol' : '1.0-0') : '—' }}</span>
+          </span>
         </div>
       </div>
+
+      <!-- Estimated Ballpark Cost banner (the headline = client total). -->
+      <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
+        <div class="bp-body-small opacity-90">Estimated Ballpark Cost</div>
+        <div class="mt-1 text-3xl font-semibold">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
+      </div>
+
+      <div class="mt-5"></div>
 
       @if (lines.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>

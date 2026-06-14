@@ -787,6 +787,14 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+/* Estimate "Estimated Ballpark Cost" banner — the add-project-2 brand
+   moment: the vivid gradient earns its scarcity (DESIGN.md §2). */
+.bp-quote-banner {
+  border-radius: var(--radius-card);
+  background: var(--bp-gradient);
+  color: var(--bp-text-on-gradient);
+}
+
 /* Estimate line-item thumb — the home action-card rounded square holding
    the item image (pV2-PROJECTS-02 slice 3, Liam 2026-06-14). */
 .bp-est-thumb {
