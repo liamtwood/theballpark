@@ -277,6 +277,22 @@ function toQuoteLine(row) {
   };
 }
 
+/** One quote line WITH its joined category, by project_items id. Works on a
+ *  pool or a transaction client. Returns the category-complete line so the
+ *  add/patch responses group correctly (no "Uncategorised" until refresh). */
+const QUOTE_LINE_JOIN = `
+  SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+         i.category_id, c.name AS category_name,
+         c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
+    FROM project_items pi
+    LEFT JOIN items i ON i.id = pi.item_id
+    LEFT JOIN categories c ON c.id = i.category_id`;
+
+async function lineById(db, id) {
+  const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = $1`, [id]);
+  return r.rows.length ? toQuoteLine(r.rows[0]) : null;
+}
+
 /** The project's quote lines (snapshot fields on project_items). Returns
  *  null if the project isn't the org's (→ 404). */
 async function listItems(orgId, projectId) {
@@ -286,12 +302,7 @@ async function listItems(orgId, projectId) {
   );
   if (!owns.rows.length) return null;
   const r = await pool.query(
-    `SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
-            i.category_id, c.name AS category_name,
-            c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
-       FROM project_items pi
-       LEFT JOIN items i ON i.id = pi.item_id
-       LEFT JOIN categories c ON c.id = i.category_id
+    `${QUOTE_LINE_JOIN}
       WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
       ORDER BY c.name NULLS LAST, pi.created_at ASC`,
     [projectId]
@@ -339,19 +350,17 @@ async function addItem(orgId, projectId, itemId) {
       [projectId, orgId]
     );
     if (!owns.rows.length) return null;
+    // Look at ANY row for this (project, item) — incl. soft-deleted. The
+    // unique index spans deleted rows, so a previously-removed item must be
+    // REVIVED, not re-inserted (else duplicate-key on re-add).
     const existing = await client.query(
-      `SELECT id FROM project_items
-        WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      `SELECT id, deleted_at FROM project_items
+        WHERE project_id = $1 AND item_id = $2
         FOR UPDATE`,
       [projectId, itemId]
     );
-    if (existing.rows.length) {
-      const r = await client.query(
-        `SELECT id, item_id, name, base_price, unit, image_url, quantity
-           FROM project_items WHERE id = $1`,
-        [existing.rows[0].id]
-      );
-      return toQuoteLine(r.rows[0]);
+    if (existing.rows.length && existing.rows[0].deleted_at === null) {
+      return lineById(client, existing.rows[0].id); // already live in the quote
     }
     const snap = await client.query(
       `SELECT name, base_price, unit, image_url, serves FROM items WHERE id = $1 AND deleted_at IS NULL`,
@@ -360,13 +369,28 @@ async function addItem(orgId, projectId, itemId) {
     if (!snap.rows.length) return null; // unknown item → 404
     const s = snap.rows[0];
     const qty = await defaultQuantity(client, s.unit, s.serves, owns.rows[0]);
-    const ins = await client.query(
-      `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected')
-       RETURNING id, item_id, name, base_price, unit, image_url, quantity`,
-      [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty]
-    );
-    return toQuoteLine(ins.rows[0]);
+
+    let rowId;
+    if (existing.rows.length) {
+      // Revive the soft-deleted row: re-snapshot + reset qty/selection.
+      const up = await client.query(
+        `UPDATE project_items
+            SET deleted_at = NULL, name = $2, base_price = $3, unit = $4,
+                image_url = $5, quantity = $6, selection_type = 'selected'
+          WHERE id = $1 RETURNING id`,
+        [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty]
+      );
+      rowId = up.rows[0].id;
+    } else {
+      const ins = await client.query(
+        `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected')
+         RETURNING id`,
+        [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty]
+      );
+      rowId = ins.rows[0].id;
+    }
+    return lineById(client, rowId);
   });
 }
 
@@ -381,11 +405,11 @@ async function updateItemQuantity(orgId, projectId, itemId, quantity) {
   const r = await pool.query(
     `UPDATE project_items SET quantity = $3
       WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
-      RETURNING id, item_id, name, base_price, unit, image_url, quantity`,
+      RETURNING id`,
     [projectId, itemId, quantity]
   );
   if (!r.rows.length) return false; // no live line for this item
-  return toQuoteLine(r.rows[0]);
+  return lineById(pool, r.rows[0].id);
 }
 
 /** Soft-remove an item from the project's quote. Returns true if a row was
