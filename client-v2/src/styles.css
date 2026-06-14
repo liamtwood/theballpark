@@ -868,6 +868,20 @@ body {
   outline: none;
 }
 
+/* Cart category band — a centered, soft-fill strip heading each category's
+   group of lines in the Project Quote rail (pV2-QUANTITY-01). */
+.bp-cart-cat-band {
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: var(--radius-field);
+  background: var(--color-fill);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-strong);
+}
+
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
 .bp-projcard__total {
