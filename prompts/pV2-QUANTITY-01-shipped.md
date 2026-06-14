@@ -86,6 +86,11 @@
 **Commit:** `08f28be6`
 **Files:** qty-input.component.ts (rebuilt as a −/+ stepper around a centered, still-typeable field; steppers commit immediately, clamp ≥1), styles.css (new `.bp-qty-stepper` / `.bp-qty-step`; `.bp-qty-input` centered + borderless), app.config.ts (Minus icon), project-quote-rail + project-estimate (removed the unit label after the amount). Reverses v2.26b's unit-beside-qty.
 
+## Iteration — v2.26d (2026-06-14)
+**Triggered by QC:** "i need to see more of the items name … remove the image, move the counter down so the name gets the width … name and the cost/unit can increase its font."
+**Commit:** `fbfc2356`
+**Files:** project-quote-rail.component.ts — cart line is now two rows: name full-width (text-lg semibold, 2-line clamp) + remove on row 1; price/unit (`.bp-body-small`, was tiny `.bp-meta`) + qty stepper on row 2. Thumbnail dropped from the rail only (Estimate accordion keeps its thumbs — wider column, helps category scanning).
+
 ## QC notes
 (Liam fills this in)
 
