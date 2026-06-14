@@ -64,6 +64,8 @@ import {
   Tv,
   User,
   Utensils,
+  Calendar,
+  Wallet,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -141,6 +143,8 @@ export const appConfig: ApplicationConfig = {
         Upload, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
         Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
+        // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Budget)
+        Calendar, Wallet,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
