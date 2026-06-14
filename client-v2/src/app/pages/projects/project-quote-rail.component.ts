@@ -41,6 +41,9 @@ import { QtyInputComponent } from './qty-input.component';
               [label]="l.name"
               (qtyCommit)="qtyChanged.emit({ itemId: l.itemId, quantity: $event })"
             />
+            @if (l.unit) {
+              <span class="bp-meta w-12 shrink-0 truncate">{{ l.unit }}</span>
+            }
             <button type="button" class="shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.itemId)">
               <lucide-icon name="x" [size]="15" />
             </button>
