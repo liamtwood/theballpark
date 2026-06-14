@@ -81,6 +81,11 @@
 **Commit:** `3d31038e`
 **Files:** project-quote-rail.component.ts, project-estimate.component.ts — unit label rendered next to the qty input on both surfaces (estimate showed no unit; rail only had it in the price meta). No server/codelist change; unit stays the snapshot, display-only.
 
+## Iteration — v2.26c (2026-06-14)
+**Triggered by QC:** "center the value and add a toggle to go up and down (but leave it as an editable field …), remove the Head label after the amount".
+**Commit:** `08f28be6`
+**Files:** qty-input.component.ts (rebuilt as a −/+ stepper around a centered, still-typeable field; steppers commit immediately, clamp ≥1), styles.css (new `.bp-qty-stepper` / `.bp-qty-step`; `.bp-qty-input` centered + borderless), app.config.ts (Minus icon), project-quote-rail + project-estimate (removed the unit label after the amount). Reverses v2.26b's unit-beside-qty.
+
 ## QC notes
 (Liam fills this in)
 
