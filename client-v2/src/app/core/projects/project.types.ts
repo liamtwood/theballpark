@@ -37,6 +37,8 @@ export interface ProjectDetail {
   projectBudget: number | null;
   currency: string;
   tier: string | null;
+  /** Read-only display (joined from clients) — v1 Event details parity. */
+  clientName: string | null;
   coverUrl: string | null;
   totalBallparkCost: number | null;
   createdAt: string;

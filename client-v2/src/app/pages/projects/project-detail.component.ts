@@ -18,19 +18,19 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
 type Tab = 'marketplace' | 'estimate' | 'details';
 const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
 
-/** The editable detail form (strings — edit-field's surface). */
+/** The three editable Details sections (v1 parity). */
+type Section = 'event' | 'type' | 'logistics';
+
+/** The editable detail form (strings — edit-field's surface). Ref, Status
+ *  and Client are read-only (rendered from the loaded detail, not here). */
 interface DetailForm {
   name: string;
-  status: string;
   eventType: string;
   eventDate: string;
   venueName: string;
   venueCity: string;
-  venueAddress: string;
   guestCount: string;
   durationDays: string;
-  projectBudget: string;
-  currency: string;
   tier: string;
 }
 
@@ -66,6 +66,9 @@ interface DetailForm {
         @switch (tab()) {
           @case ('details') {
             <div class="bp-settings-body">
+              <!-- Event details (v1 parity): Ref + Status read-only header,
+                   then editable name / venue / city. Client is read-only
+                   (changing it needs a picker — out of this slice). -->
               <app-edit-section
                 title="Event details"
                 [editable]="true"
@@ -76,30 +79,46 @@ interface DetailForm {
                 (save)="save('event')"
               >
                 <div class="bp-field-grid-2">
-                  <app-edit-field label="Name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-                  <app-edit-field label="Event type" type="select" [options]="eventTypeOptions()" density="page" [editing]="editingEvent()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
-                  <app-edit-field label="Event date" density="page" [editing]="editingEvent()" [value]="form().eventDate" (valueChange)="patch({ eventDate: $event })" />
-                  <app-edit-field label="Venue name" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
-                  <app-edit-field label="Venue city" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
-                  <app-edit-field label="Venue address" density="page" [span2]="true" [editing]="editingEvent()" [value]="form().venueAddress" (valueChange)="patch({ venueAddress: $event })" />
-                  <app-edit-field label="Guest count" type="number" density="page" [editing]="editingEvent()" [value]="form().guestCount" (valueChange)="patch({ guestCount: $event })" />
-                  <app-edit-field label="Duration (days)" type="number" density="page" [editing]="editingEvent()" [value]="form().durationDays" (valueChange)="patch({ durationDays: $event })" />
+                  <app-edit-field label="Ref" density="page" [readonlyAlways]="true" [value]="p.ref ?? '—'" />
+                  <div>
+                    <span class="bp-field-label">Status</span>
+                    <div class="mt-1"><app-status-pill list="project_status" [code]="p.status" /></div>
+                  </div>
+                  <app-edit-field label="Event name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
+                  <app-edit-field label="Client" density="page" [readonlyAlways]="true" [value]="p.clientName ?? '—'" />
+                  <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
+                  <app-edit-field label="City" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
                 </div>
               </app-edit-section>
 
               <app-edit-section
-                title="Budget"
+                title="Event type"
                 [editable]="true"
-                [(editing)]="editingBudget"
+                [(editing)]="editingType"
                 [saving]="saving()"
-                (edit)="snapshot('budget')"
-                (cancelled)="restore('budget')"
-                (save)="save('budget')"
+                (edit)="snapshot('type')"
+                (cancelled)="restore('type')"
+                (save)="save('type')"
               >
-                <div class="bp-field-grid-3">
-                  <app-edit-field label="Project budget" type="number" density="page" [editing]="editingBudget()" [value]="form().projectBudget" (valueChange)="patch({ projectBudget: $event })" />
-                  <app-edit-field label="Currency" type="select" [options]="currencyOptions()" density="page" [editing]="editingBudget()" [value]="form().currency" (valueChange)="patch({ currency: $event })" />
-                  <app-edit-field label="Tier" type="select" [options]="tierOptions" density="page" [editing]="editingBudget()" [value]="form().tier" (valueChange)="patch({ tier: $event })" />
+                <div class="bp-field-grid-2">
+                  <app-edit-field label="Event type" type="select" [options]="eventTypeOptions()" density="page" [editing]="editingType()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
+                  <app-edit-field label="Tier" type="select" [options]="tierOptions" density="page" [editing]="editingType()" [value]="form().tier" (valueChange)="patch({ tier: $event })" />
+                </div>
+              </app-edit-section>
+
+              <app-edit-section
+                title="Logistics"
+                [editable]="true"
+                [(editing)]="editingLogistics"
+                [saving]="saving()"
+                (edit)="snapshot('logistics')"
+                (cancelled)="restore('logistics')"
+                (save)="save('logistics')"
+              >
+                <div class="bp-field-grid-2">
+                  <app-edit-field label="Event date" density="page" [editing]="editingLogistics()" [value]="form().eventDate" (valueChange)="patch({ eventDate: $event })" />
+                  <app-edit-field label="Duration (days)" type="number" density="page" [editing]="editingLogistics()" [value]="form().durationDays" (valueChange)="patch({ durationDays: $event })" />
+                  <app-edit-field label="Guest count" type="number" density="page" [editing]="editingLogistics()" [value]="form().guestCount" (valueChange)="patch({ guestCount: $event })" />
                 </div>
               </app-edit-section>
             </div>
@@ -162,9 +181,10 @@ export class ProjectDetailComponent {
 
   protected readonly form = signal<DetailForm>(toForm(null));
   protected readonly editingEvent = signal(false);
-  protected readonly editingBudget = signal(false);
+  protected readonly editingType = signal(false);
+  protected readonly editingLogistics = signal(false);
   protected readonly saving = signal(false);
-  private snapshots: { event?: DetailForm; budget?: DetailForm } = {};
+  private snapshots: Partial<Record<Section, DetailForm>> = {};
 
   protected readonly tierOptions: EditFieldOption[] = [
     { label: 'Starter', value: 'starter' },
@@ -172,15 +192,8 @@ export class ProjectDetailComponent {
     { label: 'Premium', value: 'premium' },
   ];
 
-  // Status shows as a pill in the hero (Liam QC) — transitions get a
-  // dedicated allowed_next_codes control later, not a free dropdown here.
-  private readonly currencyRes = resource({
-    loader: () => this.codelists.list('currency'),
-  });
-  protected readonly currencyOptions = computed<EditFieldOption[]>(
-    () => this.currencyRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
-  );
-
+  // Status shows as a pill (hero + Event details, v1 parity); transitions
+  // get a dedicated allowed_next_codes control later, not a free dropdown.
   private readonly eventTypeRes = resource({
     loader: () => this.codelists.list('event_type'),
   });
@@ -198,18 +211,24 @@ export class ProjectDetailComponent {
     this.form.update((f) => ({ ...f, ...p }));
   }
 
-  protected snapshot(section: 'event' | 'budget'): void {
+  protected snapshot(section: Section): void {
     this.snapshots[section] = { ...this.form() };
   }
 
-  protected restore(section: 'event' | 'budget'): void {
+  protected restore(section: Section): void {
     const snap = this.snapshots[section];
     if (snap) this.form.set({ ...snap });
   }
 
+  private readonly editingFlags: Record<Section, ReturnType<typeof signal<boolean>>> = {
+    event: this.editingEvent,
+    type: this.editingType,
+    logistics: this.editingLogistics,
+  };
+
   /** Per-section save (audit 02-F-2 lesson) — only the edited section's
-   *  fields travel; status dual-written server-side. */
-  protected async save(section: 'event' | 'budget'): Promise<void> {
+   *  fields travel. Match v1's three sections. */
+  protected async save(section: Section): Promise<void> {
     const id = this.id();
     if (!id) return;
     this.saving.set(true);
@@ -218,25 +237,21 @@ export class ProjectDetailComponent {
       section === 'event'
         ? {
             name: f.name.trim() || undefined,
-            eventType: nullable(f.eventType),
-            eventDate: nullable(f.eventDate),
             venueName: nullable(f.venueName),
             venueCity: nullable(f.venueCity),
-            venueAddress: nullable(f.venueAddress),
-            guestCount: numOrNull(f.guestCount),
-            durationDays: numOrNull(f.durationDays),
           }
-        : {
-            projectBudget: numOrNull(f.projectBudget),
-            currency: f.currency || 'GBP',
-            tier: asTier(f.tier),
-          };
+        : section === 'type'
+          ? { eventType: nullable(f.eventType), tier: asTier(f.tier) }
+          : {
+              eventDate: nullable(f.eventDate),
+              durationDays: numOrNull(f.durationDays),
+              guestCount: numOrNull(f.guestCount),
+            };
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
       this.form.set(toForm(fresh));
       this.detail.set(fresh);
-      if (section === 'event') this.editingEvent.set(false);
-      else this.editingBudget.set(false);
+      this.editingFlags[section].set(false);
       this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(err), life: 5000 });
@@ -260,16 +275,12 @@ function asTier(v: string): ProjectUpdate['tier'] {
 function toForm(d: ProjectDetail | null): DetailForm {
   return {
     name: d?.name ?? '',
-    status: d?.status ?? 'draft',
     eventType: d?.eventType ?? '',
     eventDate: d?.eventDate ?? '',
     venueName: d?.venueName ?? '',
     venueCity: d?.venueCity ?? '',
-    venueAddress: d?.venueAddress ?? '',
     guestCount: d?.guestCount != null ? String(d.guestCount) : '',
     durationDays: d?.durationDays != null ? String(d.durationDays) : '',
-    projectBudget: d?.projectBudget != null ? String(d.projectBudget) : '',
-    currency: d?.currency ?? 'GBP',
     tier: d?.tier ?? '',
   };
 }

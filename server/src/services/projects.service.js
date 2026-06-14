@@ -95,6 +95,8 @@ function toDetail(row) {
     projectBudget: row.project_budget === null ? null : Number(row.project_budget),
     currency: row.currency ?? 'GBP',
     tier: row.tier,
+    eventName: row.event_name,
+    clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,
     totalBallparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
     createdAt: row.created_at,
@@ -102,10 +104,14 @@ function toDetail(row) {
 }
 
 /** One project by id, scoped to the org (JWT). Null when not found / not
- *  this org / soft-deleted — the route turns that into a 404. */
+ *  this org / soft-deleted — the route turns that into a 404. Joins the
+ *  client name (read-only display in the Details tab). */
 async function getDetail(orgId, id) {
   const r = await pool.query(
-    `SELECT * FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    `SELECT p.*, c.name AS client_name
+       FROM projects p
+       LEFT JOIN clients c ON c.id = p.client_id
+      WHERE p.id = $1 AND p.org_id = $2 AND p.deleted_at IS NULL`,
     [id, orgId]
   );
   return r.rows.length ? toDetail(r.rows[0]) : null;
@@ -153,10 +159,12 @@ async function updateDetail(orgId, id, patch) {
   const r = await pool.query(
     `UPDATE projects SET ${sets.join(', ')}, updated_at = NOW()
       WHERE id = $${vals.length - 1} AND org_id = $${vals.length} AND deleted_at IS NULL
-      RETURNING *`,
+      RETURNING id`,
     vals
   );
-  return r.rows.length ? toDetail(r.rows[0]) : null;
+  // Re-fetch through getDetail so the returned projection carries the
+  // joined client name (RETURNING * wouldn't have it).
+  return r.rows.length ? getDetail(orgId, id) : null;
 }
 
 /** Create a project from an AI-parsed brief (pV2-PROJECTS-03 scoped — no
