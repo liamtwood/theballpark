@@ -25,25 +25,24 @@ import { QtyInputComponent } from './qty-input.component';
     } @else {
       <ul class="mt-3 flex flex-col">
         @for (l of lines(); track l.id) {
-          <li class="flex items-center gap-2.5 border-b border-hairline py-2 last:border-b-0">
-            @if (l.imageUrl) {
-              <img [src]="l.imageUrl" alt="" class="h-9 w-9 shrink-0 rounded-md object-cover" />
-            } @else {
-              <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
-            }
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-medium text-text">{{ l.name }}</span>
-              <span class="bp-meta">{{ l.basePrice === null ? 'POA' : (l.basePrice | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
-            </span>
-            <app-qty-input
-              class="shrink-0"
-              [value]="l.quantity"
-              [label]="l.name"
-              (qtyCommit)="qtyChanged.emit({ itemId: l.itemId, quantity: $event })"
-            />
-            <button type="button" class="shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.itemId)">
-              <lucide-icon name="x" [size]="15" />
-            </button>
+          <!-- Name gets the full column width on its own row (no thumb — the
+               cart is narrow); price + qty stepper sit on the row below. -->
+          <li class="flex flex-col gap-1.5 border-b border-hairline py-2.5 last:border-b-0">
+            <div class="flex items-start justify-between gap-2">
+              <span class="line-clamp-2 text-lg font-semibold leading-snug text-text">{{ l.name }}</span>
+              <button type="button" class="-mr-1 shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.itemId)">
+                <lucide-icon name="x" [size]="15" />
+              </button>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="bp-body-small text-secondary">{{ l.basePrice === null ? 'POA' : (l.basePrice | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
+              <app-qty-input
+                class="shrink-0"
+                [value]="l.quantity"
+                [label]="l.name"
+                (qtyCommit)="qtyChanged.emit({ itemId: l.itemId, quantity: $event })"
+              />
+            </div>
           </li>
         }
       </ul>
