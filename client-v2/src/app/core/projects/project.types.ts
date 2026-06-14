@@ -50,6 +50,10 @@ export interface ProjectDetail {
   projectBudget: number | null;
   currency: string;
   tier: string | null;
+  /** Financial defaults — the Estimate tab breakdown (v1 formula). */
+  defaultMarginPct: number | null;
+  defaultContingencyPct: number | null;
+  defaultVatPct: number | null;
   /** Read-only display (joined from clients) — v1 Event details parity. */
   clientName: string | null;
   coverUrl: string | null;

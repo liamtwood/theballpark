@@ -101,6 +101,10 @@ function toDetail(row) {
     projectBudget: row.project_budget === null ? null : Number(row.project_budget),
     currency: row.currency ?? 'GBP',
     tier: row.tier,
+    // Financial defaults for the Estimate tab breakdown (v1 formula).
+    defaultMarginPct: row.default_margin_pct === null ? null : Number(row.default_margin_pct),
+    defaultContingencyPct: row.default_contingency_pct === null ? null : Number(row.default_contingency_pct),
+    defaultVatPct: row.default_vat_pct === null ? null : Number(row.default_vat_pct),
     eventName: row.event_name,
     clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,

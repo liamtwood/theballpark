@@ -15,6 +15,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
+import { ProjectEstimateComponent } from './project-estimate.component';
 
 type Tab = 'marketplace' | 'estimate' | 'details';
 const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
@@ -52,6 +53,7 @@ interface DetailForm {
     EditFieldComponent,
     StatusPillComponent,
     ProjectMarketplaceComponent,
+    ProjectEstimateComponent,
   ],
   providers: [MessageService],
   /* Marketplace tab is viewport-fit like the global marketplace (hero +
@@ -129,7 +131,7 @@ interface DetailForm {
             </div>
           }
           @case ('estimate') {
-            <p class="bp-body-small text-secondary">Estimate lands in the next slice of this arc (v1 estimate port).</p>
+            <app-project-estimate [projectId]="p.id" [project]="p" />
           }
           @default {
             <app-project-marketplace [projectId]="p.id" />
