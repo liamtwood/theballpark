@@ -820,6 +820,32 @@ body {
   overflow: hidden;
 }
 
+/* Quantity input on cart + quote lines (pV2-QUANTITY-01). Compact, right-
+   aligned, sized for 4-digit numbers; native spinner suppressed so it reads
+   as a clean field, not a stepper (qty is typed for event scale). */
+.bp-qty-input {
+  width: 56px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.bp-qty-input::-webkit-outer-spin-button,
+.bp-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.bp-qty-input:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+}
+
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
 .bp-projcard__total {

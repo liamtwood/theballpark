@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { QuoteLine } from '../../core/projects/project.types';
+import { QtyInputComponent } from './qty-input.component';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail: a simple list of the
  *  items added to this project (thumb + name + price + remove), a running
@@ -11,7 +12,7 @@ import { QuoteLine } from '../../core/projects/project.types';
 @Component({
   selector: 'app-project-quote-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: { class: 'bp-card block p-4' },
   template: `
     <div class="flex items-baseline justify-between">
@@ -34,6 +35,12 @@ import { QuoteLine } from '../../core/projects/project.types';
               <span class="block truncate text-sm font-medium text-text">{{ l.name }}</span>
               <span class="bp-meta">{{ l.basePrice === null ? 'POA' : (l.basePrice | currency: 'GBP' : 'symbol' : '1.0-0') }}{{ l.unit ? ' / ' + l.unit : '' }}</span>
             </span>
+            <app-qty-input
+              class="shrink-0"
+              [value]="l.quantity"
+              [label]="l.name"
+              (qtyCommit)="qtyChanged.emit({ itemId: l.itemId, quantity: $event })"
+            />
             <button type="button" class="shrink-0 rounded-md p-1 text-muted hover:bg-fill hover:text-text" [attr.aria-label]="'Remove ' + l.name" (click)="removed.emit(l.itemId)">
               <lucide-icon name="x" [size]="15" />
             </button>
@@ -55,6 +62,7 @@ import { QuoteLine } from '../../core/projects/project.types';
 export class ProjectQuoteRailComponent {
   readonly lines = input.required<QuoteLine[]>();
   readonly removed = output<string>();
+  readonly qtyChanged = output<{ itemId: string; quantity: number }>();
   readonly checkout = output<void>();
 
   /** Indicative only — real pricing (margin/contingency/VAT) is 06f. */

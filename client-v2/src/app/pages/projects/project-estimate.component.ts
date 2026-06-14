@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
+import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
+import { errorDetail } from '../../core/http-error';
+import { QtyInputComponent } from './qty-input.component';
 
 /** pV2-PROJECTS-02 slice 3 — the Estimate tab. Ports the v1 estimate
  *  breakdown (Subtotal → Contingency → Your cost → Margin → VAT → Client
@@ -14,7 +17,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 @Component({
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [CurrencyPipe, LucideAngularModule, QtyInputComponent],
   host: { class: 'block' },
   template: `
     <div>
@@ -122,7 +125,8 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
                         <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
                       }
                       <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
-                      <span class="bp-body-small shrink-0 text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                      <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
+                      <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
                 </div>
@@ -178,15 +182,36 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 })
 export class ProjectEstimateComponent {
   private readonly projects = inject(ProjectService);
+  private readonly toast = inject(MessageService);
 
   readonly projectId = input.required<string>();
   readonly project = input.required<ProjectDetail>();
 
+  /** Quote lines as writable state (seeded from the resource load) so qty
+   *  edits can update optimistically + revert on failure. */
+  protected readonly rows = signal<QuoteLine[]>([]);
   protected readonly lines = resource<QuoteLine[], string>({
     params: () => this.projectId(),
-    loader: ({ params }) => firstValueFrom(this.projects.quoteItems(params)),
+    loader: async ({ params }) => {
+      const ls = await firstValueFrom(this.projects.quoteItems(params));
+      this.rows.set(ls);
+      return ls;
+    },
   });
-  protected readonly rows = computed(() => this.lines.value() ?? []);
+
+  /** Inline quantity edit on a quote line — optimistic, revert + toast on
+   *  failure. The cascade (subtotal → … → client total) and the category
+   *  totals are qty-weighted via lineCost(), so they recompute automatically. */
+  protected async onQtyChange(itemId: string, quantity: number): Promise<void> {
+    const before = this.rows();
+    this.rows.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
+    try {
+      await firstValueFrom(this.projects.setQuoteItemQuantity(this.projectId(), itemId, quantity));
+    } catch (err) {
+      this.rows.set(before);
+      this.toast.add({ severity: 'error', summary: "Couldn't update the quantity — please try again.", detail: errorDetail(err), life: 4000 });
+    }
+  }
 
   /** Quote lines grouped by category — one card per category, with its
    *  summed total + the first item's image as the cover. */

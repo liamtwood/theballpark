@@ -43,4 +43,9 @@ export class ProjectService {
   removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
     return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${itemId}`);
   }
+
+  /** pV2-QUANTITY-01 — set a quote line's quantity (positive integer). */
+  setQuoteItemQuantity(projectId: string, itemId: string, quantity: number): Observable<QuoteLine> {
+    return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { quantity });
+  }
 }

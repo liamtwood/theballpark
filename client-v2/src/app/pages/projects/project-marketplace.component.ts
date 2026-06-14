@@ -80,6 +80,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
         <app-project-quote-rail
           [lines]="quoteLines()"
           (removed)="onQuoteToggle($event)"
+          (qtyChanged)="onQtyChange($event.itemId, $event.quantity)"
           (checkout)="onCheckout()"
         />
       </div>
@@ -128,6 +129,20 @@ export class ProjectMarketplaceComponent {
     } catch (err) {
       this.quoteLines.set(before);
       this.toast.add({ severity: 'error', summary: "Couldn't update the quote — please try again.", detail: errorDetail(err), life: 4000 });
+    }
+  }
+
+  /** Inline quantity edit on a quote line — optimistic, revert + toast on
+   *  failure (pV2-QUANTITY-01). */
+  protected async onQtyChange(itemId: string, quantity: number): Promise<void> {
+    const id = this.projectId();
+    const before = this.quoteLines();
+    this.quoteLines.update((ls) => ls.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
+    try {
+      await firstValueFrom(this.projects.setQuoteItemQuantity(id, itemId, quantity));
+    } catch (err) {
+      this.quoteLines.set(before);
+      this.toast.add({ severity: 'error', summary: "Couldn't update the quantity — please try again.", detail: errorDetail(err), life: 4000 });
     }
   }
 
