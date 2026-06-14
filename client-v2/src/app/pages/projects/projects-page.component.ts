@@ -17,7 +17,7 @@ import { ProjectCardComponent } from './project-card.component';
   imports: [PageHeroComponent, TabBandComponent, ProjectCardComponent],
   host: { class: 'block bp-vpfit' },
   template: `
-    <app-page-hero [title]="heroTitle()" [subtitle]="heroSubtitle()">
+    <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="heroTitle()" [subtitle]="heroSubtitle()">
       <app-tab-band hero-actions [tabs]="tabs()" [active]="bucket()" (activeChange)="bucket.set($event === 'completed' ? 'completed' : 'current')" />
     </app-page-hero>
 
