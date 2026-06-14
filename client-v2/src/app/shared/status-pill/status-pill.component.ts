@@ -49,10 +49,11 @@ export class StatusPillComponent {
 
   protected readonly label = computed(() => this.value()?.label ?? this.code());
   protected readonly icon = computed(() => this.value()?.meta?.icon ?? null);
-  protected readonly fg = computed(
-    () => metaColor(this.value()?.meta?.color) ?? 'var(--color-text-secondary)'
-  );
+  // SOLID pill (Liam, v1 parity): meta.color fills the background, text +
+  // icon are white. color_soft is no longer used by the pill. Unknown
+  // codes fall back to a neutral solid (never blank).
   protected readonly bg = computed(
-    () => metaColor(this.value()?.meta?.color_soft) ?? 'var(--color-fill)'
+    () => metaColor(this.value()?.meta?.color) ?? 'var(--color-text-muted)'
   );
+  protected readonly fg = computed(() => 'var(--bp-text-on-gradient)');
 }
