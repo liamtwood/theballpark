@@ -740,7 +740,10 @@ body {
    allowed in styles.css — this is the token layer, not a component.) */
 .bp-projcard__cover {
   position: relative;
-  height: 200px;
+  width: 100%;
+  /* Same 4:3 as the marketplace item card (.bp-item-card__img) — scales
+     with column width instead of a fixed height (Liam, 2026-06-13). */
+  aspect-ratio: 4 / 3;
   overflow: hidden;
 }
 /* Separate image layer so it zooms while the chip stays put (v1). */
