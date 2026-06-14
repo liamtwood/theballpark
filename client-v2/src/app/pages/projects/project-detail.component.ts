@@ -54,7 +54,10 @@ interface DetailForm {
     ProjectMarketplaceComponent,
   ],
   providers: [MessageService],
-  host: { class: 'block' },
+  /* Marketplace tab is viewport-fit like the global marketplace (hero +
+     filter band anchored, columns scroll independently — RP-06 standard);
+     Details/Estimate scroll naturally. */
+  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'marketplace'" },
   template: `
     @if (detail.value(); as p) {
       <app-page-hero [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''">

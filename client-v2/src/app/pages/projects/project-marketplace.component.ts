@@ -28,22 +28,29 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
     ProjectQuoteRailComponent,
   ],
   providers: [MarketplaceStore],
-  host: { class: 'block' },
+  /* Viewport-fit, independent column scroll — same structure as the global
+     marketplace (catalogue-layout): filter band anchored, three columns
+     each scroll within themselves. The quote rail is ALWAYS visible (a
+     cart, not the hide-in-card preview), so this is a bespoke 3-col grid
+     rather than catalogue-layout's slot. */
+  host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
     <app-catalogue-filter-band [showSupplier]="true" />
 
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[210px_1fr_320px]">
-      <app-category-strip
-        [categories]="store.categories()"
-        [activeId]="store.categoryId()"
-        [totalCount]="allItemsCount()"
-        [subcategories]="store.subcategories()"
-        [activeSubId]="store.subcategoryId()"
-        (categorySelected)="store.setCategory($event)"
-        (subcategorySelected)="store.setSubcategory($event)"
-      />
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 xl:grid-cols-[210px_1fr_320px]">
+      <div class="hidden min-h-0 xl:block xl:overflow-y-auto">
+        <app-category-strip
+          [categories]="store.categories()"
+          [activeId]="store.categoryId()"
+          [totalCount]="allItemsCount()"
+          [subcategories]="store.subcategories()"
+          [activeSubId]="store.subcategoryId()"
+          (categorySelected)="store.setCategory($event)"
+          (subcategorySelected)="store.setSubcategory($event)"
+        />
+      </div>
 
-      <div class="min-w-0">
+      <div class="min-h-0 min-w-0 xl:overflow-y-auto xl:pr-1">
         @if (store.loadingFirstPage()) {
           <p class="bp-body-small text-secondary">Loading…</p>
         } @else if (store.items().length === 0) {
@@ -69,11 +76,13 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
         }
       </div>
 
-      <app-project-quote-rail
-        [lines]="quoteLines()"
-        (removed)="onQuoteToggle($event)"
-        (checkout)="onCheckout()"
-      />
+      <div class="min-h-0 xl:overflow-y-auto">
+        <app-project-quote-rail
+          [lines]="quoteLines()"
+          (removed)="onQuoteToggle($event)"
+          (checkout)="onCheckout()"
+        />
+      </div>
     </div>
   `,
 })
