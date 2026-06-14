@@ -82,6 +82,9 @@ export type ProjectUpdate = Partial<{
   currency: string;
   tier: 'starter' | 'professional' | 'premium' | null;
   status: 'draft' | 'active' | 'completed' | 'archived';
+  defaultMarginPct: number | null;
+  defaultContingencyPct: number | null;
+  defaultVatPct: number | null;
 }>;
 
 /** The create body the gated POST /api/projects-v2 accepts (server:

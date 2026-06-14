@@ -142,6 +142,9 @@ const EDITABLE = {
   projectBudget: 'project_budget',
   currency: 'currency',
   tier: 'tier',
+  defaultMarginPct: 'default_margin_pct',
+  defaultContingencyPct: 'default_contingency_pct',
+  defaultVatPct: 'default_vat_pct',
 };
 
 /** Partial update, org-scoped. Status is dual-written (code + status_id)

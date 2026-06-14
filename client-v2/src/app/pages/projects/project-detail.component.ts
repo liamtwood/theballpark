@@ -19,8 +19,8 @@ import { ProjectEstimateComponent } from './project-estimate.component';
 type Tab = 'marketplace' | 'estimate' | 'details';
 const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
 
-/** The three editable Details sections (v1 parity). */
-type Section = 'event' | 'type' | 'logistics';
+/** The editable Details sections (v1 parity + per-project Financials). */
+type Section = 'event' | 'type' | 'logistics' | 'financials';
 
 /** The editable detail form (strings — edit-field's surface). Ref, Status
  *  and Client are read-only (rendered from the loaded detail, not here). */
@@ -33,6 +33,9 @@ interface DetailForm {
   guestCount: string;
   durationDays: string;
   tier: string;
+  marginPct: string;
+  contingencyPct: string;
+  vatPct: string;
 }
 
 /** pV2-PROJECTS-02 (slice 1) — /projects/:id inside-project view: hero +
@@ -121,6 +124,24 @@ interface DetailForm {
                   <app-edit-field label="Guest count" type="number" density="page" [editing]="editingLogistics()" [value]="form().guestCount" (valueChange)="patch({ guestCount: $event })" />
                 </div>
               </app-edit-section>
+
+              <!-- Financials — the per-project rates that drive the Estimate
+                   cascade (seeded from the org's Profile defaults at create). -->
+              <app-edit-section
+                title="Financials"
+                [editable]="true"
+                [(editing)]="editingFinancials"
+                [saving]="saving()"
+                (edit)="snapshot('financials')"
+                (cancelled)="restore('financials')"
+                (save)="save('financials')"
+              >
+                <div class="bp-field-grid-2">
+                  <app-edit-field label="Margin (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().marginPct" (valueChange)="patch({ marginPct: $event })" />
+                  <app-edit-field label="Contingency (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().contingencyPct" (valueChange)="patch({ contingencyPct: $event })" />
+                  <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
+                </div>
+              </app-edit-section>
             </div>
           }
           @case ('estimate') {
@@ -183,6 +204,7 @@ export class ProjectDetailComponent {
   protected readonly editingEvent = signal(false);
   protected readonly editingType = signal(false);
   protected readonly editingLogistics = signal(false);
+  protected readonly editingFinancials = signal(false);
   protected readonly saving = signal(false);
   private snapshots: Partial<Record<Section, DetailForm>> = {};
 
@@ -224,6 +246,7 @@ export class ProjectDetailComponent {
     event: this.editingEvent,
     type: this.editingType,
     logistics: this.editingLogistics,
+    financials: this.editingFinancials,
   };
 
   /** Per-section save (audit 02-F-2 lesson) — only the edited section's
@@ -242,11 +265,17 @@ export class ProjectDetailComponent {
           }
         : section === 'type'
           ? { eventType: nullable(f.eventType), tier: asTier(f.tier) }
-          : {
-              eventDate: nullable(f.eventDate),
-              durationDays: numOrNull(f.durationDays),
-              guestCount: numOrNull(f.guestCount),
-            };
+          : section === 'logistics'
+            ? {
+                eventDate: nullable(f.eventDate),
+                durationDays: numOrNull(f.durationDays),
+                guestCount: numOrNull(f.guestCount),
+              }
+            : {
+                defaultMarginPct: numOrNull(f.marginPct),
+                defaultContingencyPct: numOrNull(f.contingencyPct),
+                defaultVatPct: numOrNull(f.vatPct),
+              };
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
       this.form.set(toForm(fresh));
@@ -282,5 +311,8 @@ function toForm(d: ProjectDetail | null): DetailForm {
     guestCount: d?.guestCount != null ? String(d.guestCount) : '',
     durationDays: d?.durationDays != null ? String(d.durationDays) : '',
     tier: d?.tier ?? '',
+    marginPct: d?.defaultMarginPct != null ? String(d.defaultMarginPct) : '',
+    contingencyPct: d?.defaultContingencyPct != null ? String(d.defaultContingencyPct) : '',
+    vatPct: d?.defaultVatPct != null ? String(d.defaultVatPct) : '',
   };
 }

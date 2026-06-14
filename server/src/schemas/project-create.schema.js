@@ -40,6 +40,10 @@ const ProjectUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   tier: z.enum(['starter', 'professional', 'premium']).nullable().optional(),
   status: z.enum(['draft', 'active', 'completed', 'archived']).optional(),
+  // Per-project financial rates (Estimate cascade). NUMERIC(5,2) → ≤ 999.99.
+  defaultMarginPct: z.number().nonnegative().max(999.99).nullable().optional(),
+  defaultContingencyPct: z.number().nonnegative().max(999.99).nullable().optional(),
+  defaultVatPct: z.number().nonnegative().max(999.99).nullable().optional(),
 });
 
 module.exports = { ProjectCreateSchema, ProjectUpdateSchema };
