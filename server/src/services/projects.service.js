@@ -456,28 +456,30 @@ async function recommend(orgId, projectId) {
   const brief = pr.rows[0].parsed_brief_json;
   const cats = Array.isArray(brief?.categories) ? brief.categories : [];
 
-  const results = [];
-  let totalAdded = 0;
-  for (const c of cats) {
+  // Match every category CONCURRENTLY — each is one Haiku round-trip (~7-8s);
+  // serial was sum-of-categories (40-50s for a full brief), parallel is ~the
+  // slowest single one. matchItems holds no pg connection across the AI call,
+  // so the pool isn't starved. projectId=null skips the per-category match
+  // cache (we add the items directly; nothing reads that cache here).
+  const tasks = cats.map(async (c) => {
     const dbName = AI_TO_DB[c.categoryId];
-    if (!dbName) continue;
+    if (!dbName) return null;
     const catRow = await pool.query(
       `SELECT id FROM categories
         WHERE name = $1 AND namespace = 'catalogue' AND parent_id IS NULL
         LIMIT 1`,
       [dbName]
     );
-    if (!catRow.rows.length) continue;
+    if (!catRow.rows.length) return null;
     const categoryId = catRow.rows[0].id;
     const catBrief = (c.oneLiner || c.categoryLabel || dbName).trim();
     const budget = lowOfBand(c.budgetEstimate);
 
     let match;
     try {
-      match = await taxonomy.matchItems(catBrief, categoryId, budget, projectId);
+      match = await taxonomy.matchItems(catBrief, categoryId, budget, null);
     } catch (err) {
-      results.push({ category: dbName, added: 0, error: err.message });
-      continue;
+      return { category: dbName, added: 0, error: err.message };
     }
     const picks = (match.matched_items || []).slice(0, RECOMMEND_PER_CATEGORY);
     let added = 0;
@@ -485,9 +487,10 @@ async function recommend(orgId, projectId) {
       const line = await addItem(orgId, projectId, it.item_id);
       if (line) added += 1;
     }
-    totalAdded += added;
-    results.push({ category: dbName, added });
-  }
+    return { category: dbName, added };
+  });
+  const results = (await Promise.all(tasks)).filter(Boolean);
+  const totalAdded = results.reduce((sum, r) => sum + (r.added || 0), 0);
   return { categories: results, totalAdded };
 }
 
