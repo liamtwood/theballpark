@@ -91,6 +91,11 @@
 **Commit:** `fbfc2356`
 **Files:** project-quote-rail.component.ts — cart line is now two rows: name full-width (text-lg semibold, 2-line clamp) + remove on row 1; price/unit (`.bp-body-small`, was tiny `.bp-meta`) + qty stepper on row 2. Thumbnail dropped from the rail only (Estimate accordion keeps its thumbs — wider column, helps category scanning).
 
+## Iteration — v2.26e (2026-06-14)
+**Triggered by QC:** "group them by category as well, maybe have a band with the cat name centered" → Liam: "i love it actually".
+**Commit:** `e0ecf2bf`
+**Files:** project-quote-rail.component.ts (`groups()` by category, same grouping as the Estimate tab; lines arrive category-ordered from the server), styles.css (`.bp-cart-cat-band` — centered soft-fill strip heading each group).
+
 ## QC notes
 (Liam fills this in)
 
