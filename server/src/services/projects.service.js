@@ -279,13 +279,37 @@ async function listItems(orgId, projectId) {
   return r.rows.map(toQuoteLine);
 }
 
+/** pV2-QUANTITY-01 — smart auto-fill: the item's unit can map (via the
+ *  item_unit codelist's auto_fill_field) to a project field, so adding it
+ *  seeds a sensible default quantity (per-head → guest_count, per-day →
+ *  duration_days). Falls back to 1 when there's no mapping or the project
+ *  field is unset. Always ≥ 1. The user overrides via the qty input. */
+async function defaultQuantity(client, unit, project) {
+  if (!unit) return 1;
+  const m = await client.query(
+    `SELECT auto_fill_field FROM shared.reference_codelist_values
+      WHERE list_name = 'item_unit' AND code = $1`,
+    [unit]
+  );
+  const field = m.rows[0]?.auto_fill_field;
+  if (field === 'guest_count') return toPositiveInt(project.guest_count);
+  if (field === 'duration_days') return toPositiveInt(project.duration_days);
+  return 1;
+}
+function toPositiveInt(v) {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
 /** Add an item to the project's quote (idempotent — a live row for the
  *  same item is reused, not duplicated). Snapshots name/price/unit/image
- *  from the catalogue item. Returns the line, or null if not the org's. */
+ *  from the catalogue item, and seeds a smart default quantity from the
+ *  unit↔project-field mapping. Returns the line, or null if not the org's. */
 async function addItem(orgId, projectId, itemId) {
   return withTransaction(async (client) => {
     const owns = await client.query(
-      `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+      `SELECT guest_count, duration_days FROM projects
+        WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
       [projectId, orgId]
     );
     if (!owns.rows.length) return null;
@@ -309,14 +333,33 @@ async function addItem(orgId, projectId, itemId) {
     );
     if (!snap.rows.length) return null; // unknown item → 404
     const s = snap.rows[0];
+    const qty = await defaultQuantity(client, s.unit, owns.rows[0]);
     const ins = await client.query(
       `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
-       VALUES ($1, $2, $3, $4, $5, $6, 1, 'selected')
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected')
        RETURNING id, item_id, name, base_price, unit, image_url, quantity`,
-      [projectId, itemId, s.name, s.base_price, s.unit, s.image_url]
+      [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty]
     );
     return toQuoteLine(ins.rows[0]);
   });
+}
+
+/** pV2-QUANTITY-01 — set the quantity on a live quote line. Returns the
+ *  updated line, false if no such live line, null if not the org's. */
+async function updateItemQuantity(orgId, projectId, itemId, quantity) {
+  const owns = await pool.query(
+    `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!owns.rows.length) return null;
+  const r = await pool.query(
+    `UPDATE project_items SET quantity = $3
+      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      RETURNING id, item_id, name, base_price, unit, image_url, quantity`,
+    [projectId, itemId, quantity]
+  );
+  if (!r.rows.length) return false; // no live line for this item
+  return toQuoteLine(r.rows[0]);
 }
 
 /** Soft-remove an item from the project's quote. Returns true if a row was
@@ -338,6 +381,6 @@ async function removeItem(orgId, projectId, itemId) {
 
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, addItem, removeItem,
+  listItems, addItem, removeItem, updateItemQuantity,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

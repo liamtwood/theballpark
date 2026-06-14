@@ -97,6 +97,25 @@ router.post('/:id/items', async (req, res, next) => {
   }
 });
 
+// PATCH /:id/items/:itemId — set the line quantity (positive integer).
+const QuoteQtySchema = z.object({ quantity: z.number().int().positive() });
+router.patch('/:id/items/:itemId', async (req, res, next) => {
+  try {
+    const parsed = QuoteQtySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const line = await projects.updateItemQuantity(
+      req.user.org_id, req.params.id, req.params.itemId, parsed.data.quantity
+    );
+    if (line === null) return res.status(404).json({ error: 'Project not found' });
+    if (line === false) return res.status(404).json({ error: 'Item not in quote' });
+    res.json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /:id/items/:itemId — remove an item from the quote.
 router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
