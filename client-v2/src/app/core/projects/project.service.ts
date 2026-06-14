@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../api.service';
-import { ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate } from './project.types';
+import { ProjectCard, ProjectCreatePayload, ProjectDetail, ProjectUpdate, QuoteLine } from './project.types';
 
 /** pV2-PROJECTS-01 — the v2 projects read path. INTERIM base
  *  `/api/projects-v2`: v1 owns the live ungated `/api/projects` until
@@ -29,5 +29,18 @@ export class ProjectService {
   /** Partial update (Project Details tab). Returns the fresh detail. */
   update(id: string, patch: ProjectUpdate): Observable<ProjectDetail> {
     return this.api.put<ProjectDetail>(`/api/projects-v2/${id}`, patch);
+  }
+
+  // ── Project Quote (slice 2) — minimal add/remove ──────────────────────
+  quoteItems(projectId: string): Observable<QuoteLine[]> {
+    return this.api.get<QuoteLine[]>(`/api/projects-v2/${projectId}/items`);
+  }
+
+  addQuoteItem(projectId: string, itemId: string): Observable<QuoteLine> {
+    return this.api.post<QuoteLine>(`/api/projects-v2/${projectId}/items`, { itemId });
+  }
+
+  removeQuoteItem(projectId: string, itemId: string): Observable<{ removed: boolean }> {
+    return this.api.delete<{ removed: boolean }>(`/api/projects-v2/${projectId}/items/${itemId}`);
   }
 }

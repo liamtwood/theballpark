@@ -14,6 +14,7 @@ import { EditSectionComponent } from '../../shared/edit-section/edit-section.com
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { ProjectMarketplaceComponent } from './project-marketplace.component';
 
 type Tab = 'marketplace' | 'estimate' | 'details';
 const TABS: Tab[] = ['marketplace', 'estimate', 'details'];
@@ -50,6 +51,7 @@ interface DetailForm {
     EditSectionComponent,
     EditFieldComponent,
     StatusPillComponent,
+    ProjectMarketplaceComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -127,9 +129,7 @@ interface DetailForm {
             <p class="bp-body-small text-secondary">Estimate lands in the next slice of this arc (v1 estimate port).</p>
           }
           @default {
-            <p class="bp-body-small text-secondary">
-              The project marketplace + Quote rail land in the next slice of this arc.
-            </p>
+            <app-project-marketplace [projectId]="p.id" />
           }
         }
       </div>
@@ -155,11 +155,11 @@ export class ProjectDetailComponent {
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   protected readonly id = computed(() => this.params().get('id') ?? '');
 
-  /** Slice 1 default = details (the working tab); Marketplace becomes the
-   *  default when slice 2 lands the project catalogue. */
+  /** Marketplace is the default tab (PROJECTS.md) — it's where you build
+   *  the project's quote. */
   protected readonly tab = computed<Tab>(() => {
     const t = this.query().get('tab');
-    return (TABS as string[]).includes(t ?? '') ? (t as Tab) : 'details';
+    return (TABS as string[]).includes(t ?? '') ? (t as Tab) : 'marketplace';
   });
 
   protected readonly label = computed(() => this.pageConfig.eventLabel());

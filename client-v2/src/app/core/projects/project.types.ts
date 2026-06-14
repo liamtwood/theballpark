@@ -22,6 +22,17 @@ export interface ProjectCard {
 /** Which statuses land in the Completed tab; everything else is Current. */
 export const COMPLETED_STATUSES = new Set(['completed', 'archived']);
 
+/** One line in a project's quote (server: project_items snapshot). */
+export interface QuoteLine {
+  id: string;
+  itemId: string;
+  name: string | null;
+  basePrice: number | null;
+  unit: string | null;
+  imageUrl: string | null;
+  quantity: number;
+}
+
 /** Full project detail (PROJECTS-02 — the inside-project view). */
 export interface ProjectDetail {
   id: string;
