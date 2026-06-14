@@ -304,7 +304,13 @@ async function listItems(orgId, projectId) {
  *  seeds a sensible default quantity (per-head → guest_count, per-day →
  *  duration_days). Falls back to 1 when there's no mapping or the project
  *  field is unset. Always ≥ 1. The user overrides via the qty input. */
-async function defaultQuantity(client, unit, project) {
+async function defaultQuantity(client, unit, serves, project) {
+  // Pack size wins: a platter that serves 10 → ceil(guests / 10). Needs a
+  // guest count; falls back to 1 when the project hasn't set one.
+  if (serves && Number(serves) > 0) {
+    const g = Number(project.guest_count);
+    return Number.isFinite(g) && g >= 1 ? Math.ceil(g / Number(serves)) : 1;
+  }
   if (!unit) return 1;
   const m = await client.query(
     `SELECT auto_fill_field FROM shared.reference_codelist_values
@@ -348,12 +354,12 @@ async function addItem(orgId, projectId, itemId) {
       return toQuoteLine(r.rows[0]);
     }
     const snap = await client.query(
-      `SELECT name, base_price, unit, image_url FROM items WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT name, base_price, unit, image_url, serves FROM items WHERE id = $1 AND deleted_at IS NULL`,
       [itemId]
     );
     if (!snap.rows.length) return null; // unknown item → 404
     const s = snap.rows[0];
-    const qty = await defaultQuantity(client, s.unit, owns.rows[0]);
+    const qty = await defaultQuantity(client, s.unit, s.serves, owns.rows[0]);
     const ins = await client.query(
       `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected')

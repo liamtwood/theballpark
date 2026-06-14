@@ -601,6 +601,14 @@ const migrate = async () => {
       -- units (flat / dimensional) have no mapping and default to 1.
       ALTER TABLE shared.reference_codelist_values ADD COLUMN IF NOT EXISTS auto_fill_field TEXT;
 
+      -- pV2-QUANTITY-01b: per-item pack size. How many guests ONE unit serves
+      -- (a platter that "feeds 10", a "coffee for 50"). Nullable — most items
+      -- have no pack size. On add-to-quote, qty = ceil(guest_count / serves)
+      -- when set, so a platter serving 10 lands at 25 for a 250-guest event.
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS serves INT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS serves INT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS serves INT;
+
       -- Units consolidation (Liam 2026-06-14, single-list model). The dead
       -- item_time_unit list/column (150/152 NULL) is retired; its live codes
       -- already leaked into items.unit (event 41, day 25), so we adopt
