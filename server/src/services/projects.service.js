@@ -191,16 +191,28 @@ async function create(orgId, data) {
     // hands back the prefix in one statement (no two-create race).
     const counter = await client.query(
       `UPDATE orgs SET ref_counter = COALESCE(ref_counter, 0) + 1
-        WHERE id = $1 RETURNING ref_prefix, ref_counter, name`,
+        WHERE id = $1
+        RETURNING ref_prefix, ref_counter, name,
+                  default_margin_pct, default_contingency_pct, default_vat_pct`,
       [orgId]
     );
     let ref = null;
+    // Each project carries its own financial defaults, seeded from the org's
+    // (Profile → Financial defaults). Falls back to the v1 house rates when
+    // the org hasn't set one. Stored on the project so it can be overridden
+    // per-project later without disturbing the org default or other projects.
+    let marginPct = 20;
+    let contingencyPct = 10;
+    let vatPct = 20;
     if (counter.rows.length) {
       const row = counter.rows[0];
       const prefix =
         (row.ref_prefix || '').trim() ||
         ((row.name || 'BP').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'BP').toUpperCase();
       ref = `${prefix.toUpperCase()}-${String(row.ref_counter).padStart(3, '0')}`;
+      if (row.default_margin_pct !== null) marginPct = Number(row.default_margin_pct);
+      if (row.default_contingency_pct !== null) contingencyPct = Number(row.default_contingency_pct);
+      if (row.default_vat_pct !== null) vatPct = Number(row.default_vat_pct);
     }
 
     const r = await client.query(
@@ -208,8 +220,9 @@ async function create(orgId, data) {
          org_id, name, description, event_type, event_date,
          venue_name, venue_city, guest_count, duration_days,
          tier, currency, raw_brief_text, parsed_brief_json,
-         status, status_id, ref
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         status, status_id, ref,
+         default_margin_pct, default_contingency_pct, default_vat_pct
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [
         orgId,
@@ -228,6 +241,9 @@ async function create(orgId, data) {
         status,
         statusId,
         ref,
+        marginPct,
+        contingencyPct,
+        vatPct,
       ]
     );
     return toCard(r.rows[0]);

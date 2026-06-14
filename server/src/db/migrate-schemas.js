@@ -463,6 +463,31 @@ const migrate = async () => {
       -- yet). Drives the deactivation in-use gate in /settings/codelists.
       UPDATE shared.reference_codelists SET consumer_table = 'projects', consumer_column = 'status' WHERE list_name = 'project_status';
 
+      -- Each project carries its own financial defaults (margin/contingency/
+      -- VAT), seeded from the org's Profile defaults. AI-created projects
+      -- landed NULL (create didn't seed them) → the Estimate fell back to the
+      -- house rates instead of the org's. Backfill any NULL from the org,
+      -- falling back to the v1 house rates (20/10/20). Only touches NULL rows,
+      -- so per-project overrides + already-seeded projects are preserved.
+      UPDATE public.projects  p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM public.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+      UPDATE preview.projects p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM preview.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+      UPDATE master.projects  p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM master.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+
       -- estimate_items drift reconciliation. The legacy CREATE block had
       -- unit VARCHAR(50) and is_active BOOLEAN columns that were dropped
       -- in dev out-of-band; shortlisted + status_id were added at the
