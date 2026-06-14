@@ -17,13 +17,14 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
   imports: [CurrencyPipe, LucideAngularModule],
   host: { class: 'block' },
   template: `
-    <div class="mx-auto max-w-2xl">
+    <div>
       <h2 class="bp-page-title pt-2 text-center">Project Quote</h2>
 
-      <!-- Summary tiles (add-project-2): icon beside text, compact 4-up at
-           desktop. The flex sits on an INNER div — .bp-card is display:block
-           and would beat a flex utility on the card itself. -->
-      <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <!-- Summary tiles span the full page width as one row (Liam 2026-06-14):
+           5 cards — Date / Location / Duration / Guest count / Budget. The rest
+           of the quote keeps the narrower max-w-2xl column below. flex sits on
+           an INNER div — .bp-card is display:block and beats a flex utility. -->
+      <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
         <div class="bp-card p-3.5">
           <div class="flex items-start gap-3">
             <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="calendar" [size]="18" [strokeWidth]="1.75" /></span>
@@ -48,7 +49,14 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
             <span class="min-w-0">
               <span class="bp-field-label block">Duration</span>
               <span class="bp-body-small block truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</span>
-              <span class="bp-field-label mt-1.5 block">Guest count</span>
+            </span>
+          </div>
+        </div>
+        <div class="bp-card p-3.5">
+          <div class="flex items-start gap-3">
+            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="users" [size]="18" [strokeWidth]="1.75" /></span>
+            <span class="min-w-0">
+              <span class="bp-field-label block">Guest count</span>
               <span class="bp-body-small block truncate text-text">{{ project().guestCount ?? '—' }}</span>
             </span>
           </div>
@@ -63,6 +71,9 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
           </div>
         </div>
       </div>
+
+      <!-- The rest of the quote keeps the narrower reading column. -->
+      <div class="mx-auto max-w-2xl">
 
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
@@ -161,6 +172,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 
         <p class="bp-caption mt-4">Indicative — based on marketplace base prices. Final supplier quotes and the priced rollup land with checkout.</p>
       }
+      </div>
     </div>
   `,
 })

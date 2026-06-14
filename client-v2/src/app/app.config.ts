@@ -63,6 +63,7 @@ import {
   Spotlight,
   Tv,
   User,
+  Users,
   Utensils,
   Calendar,
   Wallet,
@@ -143,8 +144,8 @@ export const appConfig: ApplicationConfig = {
         Upload, Sparkles,
         // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
         Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
-        // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Budget)
-        Calendar, Wallet,
+        // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
+        Calendar, Users, Wallet,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
