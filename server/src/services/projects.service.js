@@ -12,6 +12,7 @@
 
 const pool = require('../db/pool');
 const { withTransaction } = require('../db/with-transaction');
+const taxonomy = require('./taxonomy.service');
 
 /** The project_status codelist default — used when a code is unknown/absent. */
 const DEFAULT_STATUS = 'draft';
@@ -398,8 +399,100 @@ async function removeItem(orgId, projectId, itemId) {
   return r.rows.length > 0;
 }
 
+// ── pV2-RECOMMEND: brief → recommended items (ported from v1) ─────────────
+// The AI parse-brief returns category slugs; map them to the DB catalogue
+// category NAMES (v1's AI_TO_DB), then run the v1 matchItems matcher per
+// category and add its picks to the project's quote. The Estimate tab then
+// displays them grouped by category — no separate "ballpark" screen needed.
+const AI_TO_DB = {
+  'set-build': 'Stand Structure',
+  print: 'Graphics & Signage',
+  av: 'AV & Technology',
+  floral: 'Florals',
+  venues: 'Venue',
+  catering: 'Catering',
+  photography: 'Photography',
+  staffing: 'Staffing',
+  'h-and-s': 'Health & Safety',
+  furniture: 'Furniture & Fixtures',
+  logistics: 'Logistics & Transport',
+  entertainment: 'Entertainment',
+  lighting: 'Lighting',
+};
+
+/** A starting set, not the whole catalogue — the human curates on the
+ *  Estimate/Marketplace. Top N matched items (score-sorted) per category. */
+const RECOMMEND_PER_CATEGORY = 5;
+
+/** LOW end of a budget band (v1 lowOfBand) — "£15k–£20k" → 15000; null when
+ *  unknown. Keeps the per-category budget conservative for the matcher. */
+function lowOfBand(s) {
+  if (!s) return null;
+  const norm = String(s).replace(/[£,]/g, '').replace(/–|—/g, '-');
+  if (/unknown|tbc/i.test(norm)) return null;
+  const range = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?\s*-\s*(\d+(?:\.\d+)?)\s*([kKmM])?/);
+  const toNum = (n, sfx) => {
+    const base = parseFloat(n);
+    if ((sfx || '').toLowerCase() === 'k') return base * 1000;
+    if ((sfx || '').toLowerCase() === 'm') return base * 1_000_000;
+    return base;
+  };
+  if (range) return Math.round(toNum(range[1], range[2]));
+  const single = norm.match(/(\d+(?:\.\d+)?)\s*([kKmM])?/);
+  return single ? Math.round(toNum(single[1], single[2])) : null;
+}
+
+/** Recommend + add items for a project from its stored parsed brief. For each
+ *  briefed category: resolve the DB category, run matchItems, add the top
+ *  picks to the quote (via addItem — idempotent, snapshots + smart-fill qty).
+ *  Returns a per-category summary. null if the project isn't the org's. */
+async function recommend(orgId, projectId) {
+  const pr = await pool.query(
+    `SELECT parsed_brief_json FROM projects
+      WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!pr.rows.length) return null;
+  const brief = pr.rows[0].parsed_brief_json;
+  const cats = Array.isArray(brief?.categories) ? brief.categories : [];
+
+  const results = [];
+  let totalAdded = 0;
+  for (const c of cats) {
+    const dbName = AI_TO_DB[c.categoryId];
+    if (!dbName) continue;
+    const catRow = await pool.query(
+      `SELECT id FROM categories
+        WHERE name = $1 AND namespace = 'catalogue' AND parent_id IS NULL
+        LIMIT 1`,
+      [dbName]
+    );
+    if (!catRow.rows.length) continue;
+    const categoryId = catRow.rows[0].id;
+    const catBrief = (c.oneLiner || c.categoryLabel || dbName).trim();
+    const budget = lowOfBand(c.budgetEstimate);
+
+    let match;
+    try {
+      match = await taxonomy.matchItems(catBrief, categoryId, budget, projectId);
+    } catch (err) {
+      results.push({ category: dbName, added: 0, error: err.message });
+      continue;
+    }
+    const picks = (match.matched_items || []).slice(0, RECOMMEND_PER_CATEGORY);
+    let added = 0;
+    for (const it of picks) {
+      const line = await addItem(orgId, projectId, it.item_id);
+      if (line) added += 1;
+    }
+    totalAdded += added;
+    results.push({ category: dbName, added });
+  }
+  return { categories: results, totalAdded };
+}
+
 module.exports = {
   listForOrg, getDetail, updateDetail, create,
-  listItems, addItem, removeItem, updateItemQuantity,
+  listItems, addItem, removeItem, updateItemQuantity, recommend,
   resolveStatus, DEFAULT_STATUS, toCard,
 };

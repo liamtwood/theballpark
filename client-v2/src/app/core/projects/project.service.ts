@@ -48,4 +48,15 @@ export class ProjectService {
   setQuoteItemQuantity(projectId: string, itemId: string, quantity: number): Observable<QuoteLine> {
     return this.api.patch<QuoteLine>(`/api/projects-v2/${projectId}/items/${itemId}`, { quantity });
   }
+
+  /** Recommend + add items from the project's stored brief (v1 matcher per
+   *  category). The Estimate tab then displays the grouped quote. */
+  recommend(projectId: string): Observable<RecommendResult> {
+    return this.api.post<RecommendResult>(`/api/projects-v2/${projectId}/recommend`, {});
+  }
+}
+
+export interface RecommendResult {
+  categories: { category: string; added: number; error?: string }[];
+  totalAdded: number;
 }

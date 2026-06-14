@@ -68,6 +68,19 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+// POST /:id/recommend — find + add recommended items from the project's
+// stored brief (v1 matcher per category). org from JWT. Returns a per-
+// category summary; the Estimate tab then shows the grouped quote.
+router.post('/:id/recommend', async (req, res, next) => {
+  try {
+    const result = await projects.recommend(req.user.org_id, req.params.id);
+    if (result === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Project Quote (slice 2) — minimal add/remove on project_items ────────
 const QuoteAddSchema = z.object({ itemId: z.string().uuid() });
 
