@@ -39,8 +39,16 @@ export class MarketplaceStore {
   /** CatalogueScope (architecture §2): when the host route carries a
    *  supplier :id (supplier-detail's Store tab), the store is PINNED to
    *  that supplier — items queries scope to it and suppliers mode stays
-   *  idle. Provided per route, so each context gets its own instance. */
-  readonly pinnedSupplierId = computed(() => this.params().get('id'));
+   *  idle. Provided per route, so each context gets its own instance.
+   *
+   *  Gated to the suppliers route (PROJECTS-02 fix): /projects/:id ALSO
+   *  carries an :id, but that's a project, not a supplier — leaking it as
+   *  a supplier filter emptied the inside-project grid. Only pin when the
+   *  host route is actually suppliers/:id. */
+  readonly pinnedSupplierId = computed(() => {
+    const path = this.route.snapshot.routeConfig?.path ?? '';
+    return path.startsWith('suppliers/') ? this.params().get('id') || null : null;
+  });
 
   // ── Selection (URL) ──────────────────────────────────────────────────
   readonly categoryId = computed(() => this.query().get('cat') || null); // '' normalised
