@@ -280,13 +280,16 @@ function toQuoteLine(row) {
 /** One quote line WITH its joined category, by project_items id. Works on a
  *  pool or a transaction client. Returns the category-complete line so the
  *  add/patch responses group correctly (no "Uncategorised" until refresh). */
+// Category is SNAPSHOT (pi.category_id, frozen at add) so a line stays in the
+// category it was added under even if the item is later recategorised; the
+// NAME/visuals live-join from categories so a category RENAME still
+// propagates. (Relies on categories being soft-delete-only.)
 const QUOTE_LINE_JOIN = `
   SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
-         i.category_id, c.name AS category_name,
+         pi.category_id, c.name AS category_name,
          c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
     FROM project_items pi
-    LEFT JOIN items i ON i.id = pi.item_id
-    LEFT JOIN categories c ON c.id = i.category_id`;
+    LEFT JOIN categories c ON c.id = pi.category_id`;
 
 async function lineById(db, id) {
   const r = await db.query(`${QUOTE_LINE_JOIN} WHERE pi.id = $1`, [id]);
@@ -363,7 +366,7 @@ async function addItem(orgId, projectId, itemId) {
       return lineById(client, existing.rows[0].id); // already live in the quote
     }
     const snap = await client.query(
-      `SELECT name, base_price, unit, image_url, serves FROM items WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT name, base_price, unit, image_url, serves, category_id FROM items WHERE id = $1 AND deleted_at IS NULL`,
       [itemId]
     );
     if (!snap.rows.length) return null; // unknown item → 404
@@ -376,17 +379,17 @@ async function addItem(orgId, projectId, itemId) {
       const up = await client.query(
         `UPDATE project_items
             SET deleted_at = NULL, name = $2, base_price = $3, unit = $4,
-                image_url = $5, quantity = $6, selection_type = 'selected'
+                image_url = $5, quantity = $6, selection_type = 'selected', category_id = $7
           WHERE id = $1 RETURNING id`,
-        [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty]
+        [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id]
       );
       rowId = up.rows[0].id;
     } else {
       const ins = await client.query(
-        `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected')
+        `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type, category_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'selected', $8)
          RETURNING id`,
-        [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty]
+        [projectId, itemId, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id]
       );
       rowId = ins.rows[0].id;
     }

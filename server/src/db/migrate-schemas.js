@@ -595,6 +595,20 @@ const migrate = async () => {
       ALTER TABLE preview.project_items ALTER COLUMN quantity TYPE INT USING ROUND(quantity)::int, ALTER COLUMN quantity SET DEFAULT 1, ALTER COLUMN quantity SET NOT NULL;
       ALTER TABLE master.project_items  ALTER COLUMN quantity TYPE INT USING ROUND(quantity)::int, ALTER COLUMN quantity SET DEFAULT 1, ALTER COLUMN quantity SET NOT NULL;
 
+      -- pV2-QUANTITY-01c: snapshot the item's category onto the quote line.
+      -- We snapshot the category_id ONLY (no FK — a snapshot must survive
+      -- independent of the catalogue) and live-join categories for the
+      -- name/visuals. This keeps a line in the category it was added under if
+      -- the item is later RECATEGORISED, while a category RENAME still
+      -- propagates (live name). Relies on categories being soft-delete-only.
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS category_id UUID;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS category_id UUID;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS category_id UUID;
+
+      UPDATE public.project_items  pi SET category_id = i.category_id FROM public.items  i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+      UPDATE preview.project_items pi SET category_id = i.category_id FROM preview.items i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+      UPDATE master.project_items  pi SET category_id = i.category_id FROM master.items  i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+
       -- Smart auto-fill mapping on the units codelist: a unit can point at a
       -- project field so add-to-cart seeds a sensible default quantity
       -- (per-head → guest_count, per-day → duration_days). Nullable — most
