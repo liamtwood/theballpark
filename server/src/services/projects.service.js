@@ -248,6 +248,9 @@ function toQuoteLine(row) {
     unit: row.unit,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
+    // Category (joined via the live item) — the Estimate tab groups by it.
+    categoryId: row.category_id ?? null,
+    categoryName: row.category_name ?? null,
   };
 }
 
@@ -260,10 +263,13 @@ async function listItems(orgId, projectId) {
   );
   if (!owns.rows.length) return null;
   const r = await pool.query(
-    `SELECT id, item_id, name, base_price, unit, image_url, quantity
-       FROM project_items
-      WHERE project_id = $1 AND deleted_at IS NULL
-      ORDER BY created_at ASC`,
+    `SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
+            i.category_id, c.name AS category_name
+       FROM project_items pi
+       LEFT JOIN items i ON i.id = pi.item_id
+       LEFT JOIN categories c ON c.id = i.category_id
+      WHERE pi.project_id = $1 AND pi.deleted_at IS NULL
+      ORDER BY c.name NULLS LAST, pi.created_at ASC`,
     [projectId]
   );
   return r.rows.map(toQuoteLine);

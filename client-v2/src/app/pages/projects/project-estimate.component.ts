@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
@@ -23,22 +23,43 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
       } @else if (rows().length === 0) {
         <p class="bp-body-small text-secondary">No items in the quote yet — add some from the Marketplace tab.</p>
       } @else {
-        <p class="bp-field-label uppercase tracking-wide">Line items</p>
+        <p class="bp-field-label uppercase tracking-wide">Categories</p>
         <div class="mt-2 flex flex-col gap-2.5">
-          @for (l of rows(); track l.id) {
-            <!-- Card row (add-project-2 style): image left in the home
-                 action-card rounded square, name, total on the right. -->
-            <div class="bp-card flex items-center gap-3.5 p-3">
-              @if (l.imageUrl) {
-                <img [src]="l.imageUrl" alt="" class="bp-est-thumb shrink-0 object-cover" />
-              } @else {
-                <span class="bp-icon-block bp-est-thumb shrink-0"><lucide-icon name="store" [size]="20" [strokeWidth]="1.5" /></span>
+          @for (g of groups(); track g.id) {
+            <!-- Category card (add-project-2 style): cat image left in the
+                 home action-card rounded square, name, cat total right, a
+                 chevron that expands the items underneath. -->
+            <div class="bp-card overflow-hidden">
+              <button type="button" class="flex w-full items-center gap-3.5 p-3 text-left" (click)="toggle(g.id)">
+                @if (g.image) {
+                  <img [src]="g.image" alt="" class="bp-est-thumb shrink-0 object-cover" />
+                } @else {
+                  <span class="bp-icon-block bp-est-thumb shrink-0"><lucide-icon name="folder-open" [size]="20" [strokeWidth]="1.5" /></span>
+                }
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-md font-medium text-text">{{ g.name }}</span>
+                  <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
+                </span>
+                <span class="shrink-0 text-md font-semibold text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                <lucide-icon [name]="expanded().has(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
+              </button>
+
+              @if (expanded().has(g.id)) {
+                <div class="border-t border-hairline">
+                  @for (l of g.items; track l.id) {
+                    <!-- Item row — the marketplace list-view shape (thumb + name + price). -->
+                    <div class="flex items-center gap-3 border-b border-hairline px-3 py-2 last:border-b-0">
+                      @if (l.imageUrl) {
+                        <img [src]="l.imageUrl" alt="" class="h-9 w-9 shrink-0 rounded-md object-cover" />
+                      } @else {
+                        <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
+                      }
+                      <span class="min-w-0 flex-1 truncate text-md text-text">{{ l.name }}</span>
+                      <span class="bp-body-small shrink-0 text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                    </div>
+                  }
+                </div>
               }
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-md font-medium text-text">{{ l.name }}</span>
-                <span class="bp-meta">Estimated cost{{ l.unit ? ' · per ' + l.unit : '' }}</span>
-              </span>
-              <span class="shrink-0 text-md font-semibold text-text">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
           }
         </div>
@@ -98,6 +119,37 @@ export class ProjectEstimateComponent {
     loader: ({ params }) => firstValueFrom(this.projects.quoteItems(params)),
   });
   protected readonly rows = computed(() => this.lines.value() ?? []);
+
+  /** Quote lines grouped by category — one card per category, with its
+   *  summed total + the first item's image as the cover. */
+  protected readonly groups = computed(() => {
+    const byCat = new Map<string, { id: string; name: string; items: QuoteLine[] }>();
+    for (const l of this.rows()) {
+      const id = l.categoryId ?? '__none';
+      const name = l.categoryName ?? 'Uncategorised';
+      let g = byCat.get(id);
+      if (!g) {
+        g = { id, name, items: [] };
+        byCat.set(id, g);
+      }
+      g.items.push(l);
+    }
+    return [...byCat.values()].map((g) => ({
+      ...g,
+      total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
+      image: g.items.find((l) => l.imageUrl)?.imageUrl ?? null,
+    }));
+  });
+
+  protected readonly expanded = signal<ReadonlySet<string>>(new Set());
+  protected toggle(catId: string): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  }
 
   protected lineCost(l: QuoteLine): number {
     return (l.basePrice ?? 0) * (l.quantity ?? 1);

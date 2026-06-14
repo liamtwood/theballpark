@@ -31,6 +31,9 @@ export interface QuoteLine {
   unit: string | null;
   imageUrl: string | null;
   quantity: number;
+  /** Category (joined via the live item) — the Estimate tab groups by it. */
+  categoryId: string | null;
+  categoryName: string | null;
 }
 
 /** Full project detail (PROJECTS-02 — the inside-project view). */
