@@ -56,7 +56,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
         <div class="bp-body-small opacity-90">Estimated Ballpark Cost</div>
-        <div class="mt-1 text-3xl font-semibold">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
+        <div class="bp-amount-hero mt-1">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
       </div>
 
       <div class="mt-5"></div>
@@ -82,10 +82,10 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
                   </span>
                 }
                 <span class="min-w-0 flex-1">
-                  <span class="block truncate text-md font-medium text-text">{{ g.name }}</span>
+                  <span class="bp-list-title block truncate">{{ g.name }}</span>
                   <span class="bp-meta">{{ g.items.length }} item{{ g.items.length === 1 ? '' : 's' }}</span>
                 </span>
-                <span class="shrink-0 text-md font-semibold text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
+                <span class="bp-amount shrink-0 text-text">{{ g.total | currency: cur() : 'symbol' : '1.0-0' }}</span>
                 <lucide-icon [name]="expanded().has(g.id) ? 'chevron-down' : 'chevron-right'" [size]="18" class="shrink-0 text-muted" />
               </button>
 
@@ -99,7 +99,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
                       } @else {
                         <span class="bp-icon-block h-9 w-9 shrink-0"><lucide-icon name="store" [size]="14" /></span>
                       }
-                      <span class="min-w-0 flex-1 truncate text-md text-text">{{ l.name }}</span>
+                      <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
                       <span class="bp-body-small shrink-0 text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }
@@ -118,7 +118,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
         </div>
         <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
           <span class="bp-field-label">Your cost</span>
-          <span class="text-md font-semibold text-text">{{ ourCost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
+          <span class="bp-amount text-text">{{ ourCost() | currency: cur() : 'symbol' : '1.0-0' }}</span>
         </div>
 
         <!-- Margin → VAT → client total. -->
@@ -129,7 +129,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
           }
         </div>
         <div class="mt-3 flex items-baseline justify-between border-t border-hairline pt-3">
-          <span class="bp-card-title text-md">Client total</span>
+          <span class="bp-list-title">Client total</span>
           <span class="bp-price-large">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</span>
         </div>
 
@@ -137,7 +137,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
           <div class="bp-card mt-5 p-4">
             <div class="flex items-center justify-between">
               <span class="bp-field-label">{{ clientTotal() <= budget() ? 'Within budget' : 'Over budget' }}</span>
-              <span class="text-md font-semibold" [class.text-success]="clientTotal() <= budget()" [class.text-danger]="clientTotal() > budget()">
+              <span class="bp-amount" [class.text-success]="clientTotal() <= budget()" [class.text-danger]="clientTotal() > budget()">
                 {{ budgetDiff() | currency: cur() : 'symbol' : '1.0-0' }}
               </span>
             </div>

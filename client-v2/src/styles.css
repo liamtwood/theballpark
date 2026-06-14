@@ -90,6 +90,7 @@
   --text-lg: 16px; /* large body — marketing paragraph */
   --text-xl: 18px;
   --text-2xl: 22px; /* all container headings: card / drawer / edit-section titles */
+  --text-3xl: 30px; /* hero amount — the Ballpark cost banner + project-card total */
   --text-hero: 40px;
   --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
 
@@ -221,6 +222,16 @@
 .bp-body       { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text); }
 .bp-body-small { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text); }
 .bp-caption    { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
+
+/* List title + amounts (pV2-PROJECTS-02 — quote/estimate standardisation).
+   .bp-list-title — a list-row name (cat name, item name). .bp-amount — a
+   money figure (cat total, your cost, budget diff). .bp-amount-hero — the
+   big banner / card headline figure. amounts set TYPE only; colour stays
+   with the consumer (default text, or success/danger on a budget diff,
+   or the gradient clip on the project card). */
+.bp-list-title  { font-family: var(--bp-font); font-size: var(--text-md);  font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-amount      { font-family: var(--bp-font); font-size: var(--text-md);  font-weight: 600; line-height: var(--leading-snug); }
+.bp-amount-hero { font-family: var(--bp-font); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-snug); }
 
 /* Inline — pill sets type only; shape (padding/radius) and the per-state
    colors stay with the consumer (semantic tokens). */
@@ -808,7 +819,7 @@ body {
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
 .bp-projcard__total {
   font-family: var(--bp-font);
-  font-size: 30px;
+  font-size: var(--text-3xl);
   font-weight: 400;
   line-height: 1;
   background: var(--bp-gradient);
