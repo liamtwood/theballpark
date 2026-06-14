@@ -76,6 +76,11 @@
 **What:** unit × time (rooms × nights) is not modelled — single quantity + single unit only. Documented in CODELISTS.md with the path back. Deferred per Liam 2026-06-14.
 **Severity:** LOW (explicit deferral).
 
+## Iteration — v2.26b (2026-06-14)
+**Triggered by QC:** "i was expecting the cart and the estimate to show the unit and be able to change it" → clarified: number editable, **unit shown but NOT editable**.
+**Commit:** `3d31038e`
+**Files:** project-quote-rail.component.ts, project-estimate.component.ts — unit label rendered next to the qty input on both surfaces (estimate showed no unit; rail only had it in the price meta). No server/codelist change; unit stays the snapshot, display-only.
+
 ## QC notes
 (Liam fills this in)
 
