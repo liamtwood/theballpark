@@ -35,6 +35,10 @@ const PARENTS = [
   { list: 'item_time_unit',       type: 'ballpark', app: 'catalogue', def: 'day',     desc: 'Controls the time-unit options on time-billable items',     ct: 'items',              cc: 'time_unit' },
   { list: 'currency',             type: 'ballpark', app: 'core',      def: 'GBP',     desc: 'Controls the currency options platform-wide',               ct: 'projects',           cc: 'currency' },
   { list: 'budget_tier',          type: 'ballpark', app: 'project',   def: 'unknown', desc: 'Controls the budget-tier options on projects',              ct: 'projects',           cc: 'tier' },
+  // pV2-PROJECTS-02: event_type LOV (ballpark — admins curate it). Seed
+  // includes the 3 values already in projects data (activation/gala/pop-up)
+  // so existing rows resolve to a codelist value.
+  { list: 'event_type',           type: 'ballpark', app: 'project',   def: 'conference', desc: 'Controls the event-type options on projects',            ct: 'projects',           cc: 'event_type' },
   // projects still ride the legacy shared.statuses FK (status_id) — the
   // consumer pointer lands with the projects-arc consolidation.
   { list: 'project_status',       type: 'system',   app: 'project',   def: 'draft',   desc: 'Controls what status is supported by a project',            ct: null,                 cc: null },
@@ -74,6 +78,20 @@ const NEW_VALUES = {
     { code: 'active',    label: 'Active',    sort: 1, def: true,  meta: { color: '--color-success', color_soft: '--color-success-soft', icon: 'check',      is_terminal: false, allowed_next_codes: ['suspended'] } },
     { code: 'invited',   label: 'Invited',   sort: 2, def: false, meta: { color: '--color-warn',    color_soft: '--color-warn-soft',    icon: 'mail',       is_terminal: false, allowed_next_codes: ['active'] } },
     { code: 'suspended', label: 'Suspended', sort: 3, def: false, meta: { color: '--color-danger',  color_soft: '--color-danger-soft',  icon: 'circle-off', is_terminal: false, allowed_next_codes: ['active'] } },
+  ],
+  // Decorative LOV (not a status) — no rich meta. Codes 'activation' /
+  // 'gala' / 'pop-up' match existing projects.event_type data.
+  event_type: [
+    { code: 'conference', label: 'Conference',     sort: 1, def: true },
+    { code: 'launch',     label: 'Product launch', sort: 2, def: false },
+    { code: 'activation', label: 'Brand activation', sort: 3, def: false },
+    { code: 'exhibition', label: 'Exhibition',     sort: 4, def: false },
+    { code: 'gala',       label: 'Gala',           sort: 5, def: false },
+    { code: 'awards',     label: 'Awards',         sort: 6, def: false },
+    { code: 'party',      label: 'Party',          sort: 7, def: false },
+    { code: 'pop-up',     label: 'Pop-up',         sort: 8, def: false },
+    { code: 'dinner',     label: 'Dinner',         sort: 9, def: false },
+    { code: 'other',      label: 'Other',          sort: 10, def: false },
   ],
   item_approval_status: [
     { code: 'pending',  label: 'Pending',  sort: 1, def: true,  meta: { color: '--color-warn',    color_soft: '--color-warn-soft',    icon: 'clock',  is_terminal: false, allowed_next_codes: ['approved', 'rejected'] } },

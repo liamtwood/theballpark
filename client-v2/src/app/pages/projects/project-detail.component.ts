@@ -77,7 +77,7 @@ interface DetailForm {
               >
                 <div class="bp-field-grid-2">
                   <app-edit-field label="Name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-                  <app-edit-field label="Event type" density="page" [editing]="editingEvent()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
+                  <app-edit-field label="Event type" type="select" [options]="eventTypeOptions()" density="page" [editing]="editingEvent()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
                   <app-edit-field label="Event date" density="page" [editing]="editingEvent()" [value]="form().eventDate" (valueChange)="patch({ eventDate: $event })" />
                   <app-edit-field label="Venue name" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
                   <app-edit-field label="Venue city" density="page" [editing]="editingEvent()" [value]="form().venueCity" (valueChange)="patch({ venueCity: $event })" />
@@ -179,6 +179,13 @@ export class ProjectDetailComponent {
   });
   protected readonly currencyOptions = computed<EditFieldOption[]>(
     () => this.currencyRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
+  );
+
+  private readonly eventTypeRes = resource({
+    loader: () => this.codelists.list('event_type'),
+  });
+  protected readonly eventTypeOptions = computed<EditFieldOption[]>(
+    () => this.eventTypeRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
   );
 
   protected setTab(t: string): void {
