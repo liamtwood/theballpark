@@ -130,8 +130,8 @@ assigns each list a v2 type.
 
 | list_name | Entries | v2 type | Drives |
 |---|---|---|---|
-| `item_unit` | 19 | `ballpark` | Item unit dropdown (Units / Covers / Head / m² / ft² / Linear m / Each / Package / Set / Project / Item / Pair / Panel / Platter / Letter / Load / Pallet / m³ / Table) |
-| `item_time_unit` | 5 | `ballpark` | Time-billable items (Days / Hours / Event / Half Day / Month) |
+| `item_unit` | 6 active (+13 deactivated) | `ballpark` | Item unit dropdown + quote-line qty auto-fill. Consolidated to **Head / Day / Event / Hour / Each / m²** in pV2-QUANTITY-01 (single-list model — see note below). Carries `auto_fill_field` (Head→`guest_count`, Day→`duration_days`). |
+| `item_time_unit` | 5 (parent **retired**) | `ballpark` | RETIRED in pV2-QUANTITY-01 — its codes leaked into `items.unit` and the column was 150/152 NULL. Parent `is_active=false`; values left intact. |
 | `currency` | 6 | `ballpark` | Currency dropdown on Project Event drawer — admins extend (SGD/JPY/etc.) without dev |
 | `budget_tier` | 4 | `ballpark` | Tier dropdown (Starter / Professional / Premium / Unknown) → `projects.tier` |
 | `project_status` | 4 | `system` | Project status dropdown + pill — code reacts to specific codes |
@@ -142,6 +142,26 @@ assigns each list a v2 type.
 **Separate (legacy):** `shared.statuses` is an older statuses table for
 project/lead/item statuses, distinct from codelists. v1 was migrating
 off it; flagged for consolidation when projects arc lands.
+
+### Units — single-list model + the multi-dimensional deferral (pV2-QUANTITY-01, 2026-06-14)
+
+v1 carried **two** unit lists (`item_unit` + `item_time_unit`) intending to
+support a unit × time rate (e.g. *hotel room × nights*: 2 rooms, 3 nights).
+The audit found that never materialised: `items.time_unit` was 150/152 NULL,
+and the time codes (`day` 25, `event` 41) had instead leaked into
+`items.unit`. So QUANTITY-01 **collapsed to a single list** (`item_unit` is
+the source of truth), folded `day`/`event`/`hour` in, retired the
+`item_time_unit` parent, and merged the long tail (countable → `each`,
+`project` → `event`, `sqft`/`linear_m`/`cbm` deactivated). The keeper set is
+**Head / Day / Event / Hour / Each / m²**.
+
+**DEFERRED — multi-dimensional units (unit × time).** A line that is genuinely
+*per-unit-per-time* (rooms × nights, crew × days) is **not** modelled. The
+single `quantity` field + a single unit covers the common case; users bump
+the number for scale. If a real per-unit-per-time item resurfaces, the path
+back is: reinstate a second dimension (re-activate `item_time_unit` or add a
+`project_items.time_quantity`), not a code change buried elsewhere. Liam's
+call (2026-06-14): defer until a real item needs it.
 
 ## Worked example — `message_status` (the template for every status codelist)
 
@@ -349,7 +369,8 @@ in the **Detail** table below.
 | v2.18a/b | 2026-06-12 | pV2-CODELISTS-01 SHIPPED — RC/RCV split, 12 locked parents seeded, `<app-status-pill>` primitive, three-layer no-DELETE, `/settings/codelists` admin UI | dev | ✓ accepted (1 styling nit) | ✓ clean |
 | v2.18c | 2026-06-12 | Architect audit triage — 4 fixes accepted, 2 rejected with rationale, 1 noted (F-7 bloat) | (per shipped file) | n/a | ✓ clean |
 | v2.18d | 2026-06-12 | QC fix — `appendTo="body"` on edit-field p-select (overlay was CLIPPED by `overflow-hidden`, not z-fought; closes pV2-04c thread app-wide) + RP-09 ledger row | dev `f4e6a05` | ✓ confirmed (dropdown over table; duplicate-code path exercised) | n/a |
-| v2.19a/b + v1.70b | 2026-06-12 | **pV2-CODELISTS-02 SHIPPED** — consumer sweep: Profile Country + Currency selects (new `orgs.default_currency`); pages title-mode + hero-align codelist-fed; RP-04 + RP-09 CLOSED (13 hex → `--color-state-*` refs, tokens in both apps at original hues, v1 `resolveMetaColor()` at 4 sites); F-7 value-row extracted (248 → 198 + 63); 409 add copy confident | dev `7aa7986` / `415fbf2` / `72020d8` | — | — |
+| v2.19a/b + v1.70b | 2026-06-12 | **pV2-CODELISTS-02 SHIPPED** — consumer sweep: Profile Country + Currency selects (new `orgs.default_currency`); pages title-mode + hero-align codelist-fed; RP-04 + RP-09 CLOSED (13 hex → `--color-state-*` refs, tokens in both apps at original hues, v1 `resolveMetaColor()` at 4 sites); F-7 value-row extracted (248 → 198 + 63); 409 add copy confident | dev `7aa7986` / `415fbf2` / `72020d8` | ✓ accepted ("lov behaved lovely") — pending/approved pills render, Profile country/currency + /settings/pages dropdowns confirmed | ✓ clean |
+| v2.19c | 2026-06-12 | Architect audit triage — 4 fixes accepted (the real catch was F-2: Profile save now per-section payloads — Company Info save no longer overwrites stale Financial values), 2 rejected with rationale, 1 noted (edit-field + codelists-settings + pages-settings in bloat watch) | (per shipped file) | n/a | ✓ clean |
 
 ### Detail — QC + Audit findings per version
 
@@ -360,6 +381,8 @@ phrasing all live here.
 |---|---|---|
 | v2.18a/b | Liam: tested currency add + visibility toggle on /settings/codelists; everything worked. **One styling nit:** select dropdown opens UNDER the table — z-index issue, related to deferred p-select overlay concern from pV2-04c. Bundle into the next styling pass at preset level (one `BallparkPreset.overlay.z-index` tweak; every dropdown inherits). | Server 48/48 + client 67/67 tests green. |
 | v2.18c | (audit-only iteration — no functional change to QC) | **Architect (CC):** 7 findings; CC triaged with rationale. **4 accepted:** F-1 HIGH (`inUseCount` table/column identifiers now regex-validated `^[a-z_][a-z0-9_]*$` after whitelist check, fail-closed to null; whitelist-contract spec asserts every entry is identifier-shaped). F-2 MEDIUM (reworded 409 — "defaults can't be deactivated here; changing a list's default requires a data change" vs old misleading "pick a different default first"). F-3 LOW (comment documenting N pills share ONE fetch via service cache — not N+1). F-5 LOW (deactivation gate note leads with "Advisory:" + confirms hidden). **2 rejected with rationale:** F-4 (refetching whole list after save would double traffic; server's returned fresh row is authoritative for this surface). F-6 (seed assertion already halts loudly naming offending list; idempotent migration). **1 noted:** F-7 codelists-settings.component.ts at 248/250 lines — extract value-row component when next touched. Full report: `docs/audits/2026-06-12-codelists-arc-architect-audit.md`. Architect verdict: **"ships with strong architectural discipline and excellent safety guardrails"** — production-ready, no new risk patterns. **Chat audit:** ✓ clean. Verified architecture conformance (cache discipline + gating + Zod patterns mirror marketplace), three-layer no-DELETE (API 405 / DB trigger / seed assertion), F-1/F-2/F-3 fixes present in code, role classes used throughout, `.bp-type-badge` properly global (RP-05 holding). |
+| v2.19a/b | Liam: "lov behaved lovely." Tested Profile → edit Company Information → pick a country (filter works by typing); edit Financial defaults → currency; /settings/pages dropdowns still behave; pending/approved status pills render (item_approval_status). | v2 build/lint/guard + 67/67 client, 48/48 server. |
+| v2.19c | (audit-only iteration — no functional change to QC) | **Architect (CC):** 7 findings; production-ready verdict; independently re-verified the three closure claims (RP-09 sweep idempotent + case-normalized + jsonb_set NULL-safe; RP-04 walked every remaining EditFieldOption[] literal; F-7 emit-only row without state duplication). **4 accepted:** F-2 MEDIUM (the real catch — Profile's `save()` was sending the whole form regardless of section, so a Company Info save could write stale Financial values back; now builds per-section payloads). F-1 MEDIUM (RP-09 survivor check upper()s the hex match — mirrors the sweep, catches any case). F-3 LOW (`defaultCurrency` deliberately never-clearable, asymmetry with clearable `country` now schema-commented). F-4 LOW (RP-04 ledger grep note reworded — raw matches expected; bar is "no match mirrors a codelist namespace"). **2 rejected with rationale:** F-5/F-6 (no loading gate for codelist selects since session-cached + sub-second cosmetic window; `filterBy` stays 'label' until a consumer actually needs code-search). **1 noted:** F-7 — edit-field + codelists-settings + pages-settings sit in the warning band; watch on next touch. Full report: `docs/audits/2026-06-12-codelists-02-consumer-sweep-architect-audit.md`. Architect verdict: **"production-ready"**. **Chat audit:** ✓ clean. F-2 per-section save verified in `profile.component.ts:162`. F-7 extraction verified — `codelist-value-row.component.ts` exists as emit-only 67-line component; codelists-settings dropped 248 → 216 (out of warning band). RP-04 closure verified — every remaining `EditFieldOption[]` is either a `computed<>` mapping from codelist data or a boolean UI mapping; zero hardcoded arrays mirror a codelist namespace. Standards conformance clean. |
 
 ### Deferred — items pushed to a later prompt / arc
 
