@@ -77,7 +77,6 @@ interface DetailForm {
               >
                 <div class="bp-field-grid-2">
                   <app-edit-field label="Name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
-                  <app-edit-field label="Status" type="select" [options]="statusOptions()" density="page" [editing]="editingEvent()" [value]="form().status" (valueChange)="patch({ status: $event })" />
                   <app-edit-field label="Event type" density="page" [editing]="editingEvent()" [value]="form().eventType" (valueChange)="patch({ eventType: $event })" />
                   <app-edit-field label="Event date" density="page" [editing]="editingEvent()" [value]="form().eventDate" (valueChange)="patch({ eventDate: $event })" />
                   <app-edit-field label="Venue name" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
@@ -173,13 +172,8 @@ export class ProjectDetailComponent {
     { label: 'Premium', value: 'premium' },
   ];
 
-  private readonly statusRes = resource({
-    loader: () => this.codelists.list('project_status'),
-  });
-  protected readonly statusOptions = computed<EditFieldOption[]>(
-    () => this.statusRes.value()?.map((v) => ({ label: v.label, value: v.code })) ?? []
-  );
-
+  // Status shows as a pill in the hero (Liam QC) — transitions get a
+  // dedicated allowed_next_codes control later, not a free dropdown here.
   private readonly currencyRes = resource({
     loader: () => this.codelists.list('currency'),
   });
@@ -217,7 +211,6 @@ export class ProjectDetailComponent {
       section === 'event'
         ? {
             name: f.name.trim() || undefined,
-            status: asStatus(f.status),
             eventType: nullable(f.eventType),
             eventDate: nullable(f.eventDate),
             venueName: nullable(f.venueName),
@@ -252,9 +245,6 @@ function nullable(v: string): string | null {
 function numOrNull(v: string): number | null {
   const n = Number(v);
   return v.trim() === '' || Number.isNaN(n) ? null : n;
-}
-function asStatus(v: string): ProjectUpdate['status'] {
-  return (['draft', 'active', 'completed', 'archived'] as const).find((s) => s === v) ?? undefined;
 }
 function asTier(v: string): ProjectUpdate['tier'] {
   return (['starter', 'professional', 'premium'] as const).find((t) => t === v) ?? null;
