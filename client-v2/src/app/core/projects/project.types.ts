@@ -2,19 +2,21 @@
  *  services/projects.service.js toCard). */
 export interface ProjectCard {
   id: string;
+  /** v1 card title = event_name || name (resolved server-side). */
   name: string;
   ref: string | null;
   /** project_status codelist code (draft/active/completed/archived). */
   status: string;
-  /** Optional brand / event-type chip overlay (image 8 "Nike"). */
-  eventType: string | null;
-  venueCity: string | null;
   coverUrl: string | null;
-  /** "£X Ballpark" — null when not yet estimated. */
+  /** Client name → the cover chip (v1 "Nike"); logo overlays the cover. */
+  clientName: string | null;
+  clientLogoUrl: string | null;
+  /** Headline "£X Ballpark" (v1 = total_client_cost) — null when unestimated. */
   ballparkCost: number | null;
   currency: string;
   supplierCount: number;
-  createdAt: string;
+  /** Relative-time source (v1 uses updated_at). */
+  updatedAt: string;
 }
 
 /** Which statuses land in the Completed tab; everything else is Current. */

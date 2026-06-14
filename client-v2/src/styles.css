@@ -733,6 +733,70 @@ body {
   fill: currentColor;
 }
 
+/* ═══ Project card (pV2-PROJECTS-01, v1 parity — Liam 2026-06-13) ════════
+   Internal layout for <app-project-card>; chrome comes from .bp-card.
+   Mirrors the v1 projects-list card: tall cover with status-gradient
+   fallback + zoom, client chip, gradient "Ballpark" total. (Raw hex is
+   allowed in styles.css — this is the token layer, not a component.) */
+.bp-projcard__cover {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+/* Separate image layer so it zooms while the chip stays put (v1). */
+.bp-projcard__img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.4s ease;
+}
+.bp-card:hover .bp-projcard__img {
+  transform: scale(1.04);
+}
+/* No-cover fallbacks, by status (v1 blues / greys). */
+.bp-projcard__img--active {
+  background-image: linear-gradient(160deg, #1e3a5f, #2563eb);
+}
+.bp-projcard__img--draft {
+  background-image: linear-gradient(160deg, #374151, #4b5563);
+}
+/* Client chip — bottom-left of the cover (v1 "Nike"). */
+.bp-projcard__client-chip {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text);
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+}
+.bp-projcard__logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 70%;
+  max-height: 70%;
+  object-fit: contain;
+  pointer-events: none;
+}
+/* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
+   (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
+.bp-projcard__total {
+  font-family: var(--bp-font);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  background: var(--bp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Storefront category chip (pV2-06d). */
 .bp-cat-chip {
   display: inline-flex;

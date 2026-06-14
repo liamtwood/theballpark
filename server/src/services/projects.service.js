@@ -44,30 +44,36 @@ async function resolveStatus(code) {
  *  the project's quote items (correlated subquery — fine for an org's
  *  project count). */
 const LIST_SELECT = `
-  SELECT p.id, p.name, p.ref, p.status, p.event_type,
-         p.venue_city, p.cover_image_url, p.total_ballpark_cost,
-         p.currency, p.created_at,
+  SELECT p.id, p.name, p.event_name, p.ref, p.status,
+         p.cover_image_url, p.client_logo_url,
+         p.total_client_cost, p.currency,
+         p.created_at, p.updated_at,
+         c.name AS client_name,
          (SELECT COUNT(DISTINCT i.org_id)
             FROM project_items pi
             JOIN items i ON i.id = pi.item_id
            WHERE pi.project_id = p.id AND pi.deleted_at IS NULL) AS supplier_count
     FROM projects p
+    LEFT JOIN clients c ON c.id = p.client_id
    WHERE p.org_id = $1 AND p.deleted_at IS NULL
    ORDER BY p.created_at DESC`;
 
 function toCard(row) {
   return {
     id: row.id,
-    name: row.name,
+    // v1 card title = event_name with a name fallback.
+    name: row.event_name || row.name,
     ref: row.ref,
     status: row.status ?? DEFAULT_STATUS,
-    eventType: row.event_type,
-    venueCity: row.venue_city,
     coverUrl: row.cover_image_url,
-    ballparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
+    clientName: row.client_name ?? null,
+    clientLogoUrl: row.client_logo_url ?? null,
+    // The headline "Ballpark" total — v1 uses total_client_cost.
+    ballparkCost: row.total_client_cost === null ? null : Number(row.total_client_cost),
     currency: row.currency ?? 'GBP',
     supplierCount: Number(row.supplier_count ?? 0),
-    createdAt: row.created_at,
+    // v1 card relative-time is off updated_at (created_at fallback).
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 
