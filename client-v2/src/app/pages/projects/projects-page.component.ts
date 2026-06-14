@@ -32,7 +32,7 @@ import { ProjectCardComponent } from './project-card.component';
             {{ bucket() === 'completed' ? 'No completed ' + labelPlural().toLowerCase() + ' yet.' : 'No ' + labelPlural().toLowerCase() + ' yet — start one from the home screen.' }}
           </p>
         } @else {
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             @for (p of visible(); track p.id) {
               <app-project-card [project]="p" [now]="now()" />
             }

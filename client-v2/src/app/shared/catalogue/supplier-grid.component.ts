@@ -14,7 +14,7 @@ import { CatalogueSupplier, ViewMode } from './catalogue.types';
   template: `
     @switch (viewMode()) {
       @case ('card') {
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           @for (sup of suppliers(); track sup.id) {
             <app-supplier-card
               [supplier]="sup"
