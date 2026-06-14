@@ -820,19 +820,42 @@ body {
   overflow: hidden;
 }
 
-/* Quantity input on cart + quote lines (pV2-QUANTITY-01). Compact, right-
-   aligned, sized for 4-digit numbers; native spinner suppressed so it reads
-   as a clean field, not a stepper (qty is typed for event scale). */
-.bp-qty-input {
-  width: 56px;
-  padding: 4px 8px;
+/* Quantity stepper on cart + quote lines (pV2-QUANTITY-01): −/+ buttons
+   flanking a centered, still-typeable field (event scale → people type large
+   numbers, not just tap). Native spinner suppressed; the field stays editable
+   for fast entry. */
+.bp-qty-stepper {
+  display: inline-flex;
+  align-items: stretch;
   border: 1px solid var(--color-border-hairline);
   border-radius: var(--radius-field);
+  overflow: hidden;
   background: var(--color-surface);
+}
+.bp-qty-stepper:focus-within {
+  border-color: var(--theme-accent);
+}
+.bp-qty-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-qty-step:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+.bp-qty-input {
+  width: 46px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
   font-family: var(--bp-font);
   font-size: var(--text-base);
   color: var(--color-text);
-  text-align: right;
+  text-align: center;
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -843,7 +866,6 @@ body {
 }
 .bp-qty-input:focus {
   outline: none;
-  border-color: var(--theme-accent);
 }
 
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400

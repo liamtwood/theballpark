@@ -126,7 +126,6 @@ import { QtyInputComponent } from './qty-input.component';
                       }
                       <span class="bp-body min-w-0 flex-1 truncate">{{ l.name }}</span>
                       <app-qty-input class="shrink-0" [value]="l.quantity" [label]="l.name" (qtyCommit)="onQtyChange(l.itemId, $event)" />
-                      <span class="bp-meta w-12 shrink-0 truncate">{{ l.unit || '' }}</span>
                       <span class="bp-body-small w-20 shrink-0 text-right text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
                     </div>
                   }

@@ -49,6 +49,7 @@ import {
   CircleOff,
   Clock,
   Plus,
+  Minus,
   ArrowRight,
   Folder,
   Info,
@@ -137,7 +138,7 @@ export const appConfig: ApplicationConfig = {
         ListChecks, PencilLine, Send, CheckCheck, CircleOff, Clock,
         // pV2-CARDS-01 — card foot CTAs (Add/Added, View supplier) +
         // storefront category-group headers
-        Plus, ArrowRight, Folder,
+        Plus, Minus, ArrowRight, Folder,
         // pV2-DIALOGS-01 — inline alert severity icons
         Info, CircleAlert, TriangleAlert,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
