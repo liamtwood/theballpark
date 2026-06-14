@@ -609,6 +609,21 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS serves INT;
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS serves INT;
 
+      -- Rocket Food catering unit/serves corrections (Liam, 2026-06-14).
+      -- Idempotent + safe: the org subselect is NULL where Rocket Food is
+      -- absent (preview/master), so those UPDATEs match nothing.
+      UPDATE public.items  SET unit = 'head' WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+      UPDATE preview.items SET unit = 'head' WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+      UPDATE master.items  SET unit = 'head' WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+
+      UPDATE public.items  SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+      UPDATE preview.items SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+      UPDATE master.items  SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+
+      UPDATE public.items  SET serves = 10 WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+      UPDATE preview.items SET serves = 10 WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+      UPDATE master.items  SET serves = 10 WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+
       -- Units consolidation (Liam 2026-06-14, single-list model). The dead
       -- item_time_unit list/column (150/152 NULL) is retired; its live codes
       -- already leaked into items.unit (event 41, day 25), so we adopt
