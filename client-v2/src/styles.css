@@ -787,6 +787,15 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+/* Estimate line-item thumb — the home action-card rounded square holding
+   the item image (pV2-PROJECTS-02 slice 3, Liam 2026-06-14). */
+.bp-est-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
 /* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
    (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
 .bp-projcard__total {

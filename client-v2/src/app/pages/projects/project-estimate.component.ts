@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, resource } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
@@ -13,7 +14,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 @Component({
   selector: 'app-project-estimate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, LucideAngularModule],
   host: { class: 'block' },
   template: `
     <div class="mx-auto max-w-2xl">
@@ -23,11 +24,21 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
         <p class="bp-body-small text-secondary">No items in the quote yet — add some from the Marketplace tab.</p>
       } @else {
         <p class="bp-field-label uppercase tracking-wide">Line items</p>
-        <div class="mt-2 overflow-hidden rounded-xl border border-hairline bg-surface">
+        <div class="mt-2 flex flex-col gap-2.5">
           @for (l of rows(); track l.id) {
-            <div class="flex items-center justify-between border-b border-hairline px-4 py-2.5 last:border-b-0">
-              <span class="min-w-0 truncate text-md text-text">{{ l.name }}</span>
-              <span class="bp-body-small shrink-0 text-secondary">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
+            <!-- Card row (add-project-2 style): image left in the home
+                 action-card rounded square, name, total on the right. -->
+            <div class="bp-card flex items-center gap-3.5 p-3">
+              @if (l.imageUrl) {
+                <img [src]="l.imageUrl" alt="" class="bp-est-thumb shrink-0 object-cover" />
+              } @else {
+                <span class="bp-icon-block bp-est-thumb shrink-0"><lucide-icon name="store" [size]="20" [strokeWidth]="1.5" /></span>
+              }
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-md font-medium text-text">{{ l.name }}</span>
+                <span class="bp-meta">Estimated cost{{ l.unit ? ' · per ' + l.unit : '' }}</span>
+              </span>
+              <span class="shrink-0 text-md font-semibold text-text">{{ lineCost(l) | currency: cur() : 'symbol' : '1.0-0' }}</span>
             </div>
           }
         </div>
