@@ -68,4 +68,44 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+// ── Project Quote (slice 2) — minimal add/remove on project_items ────────
+const QuoteAddSchema = z.object({ itemId: z.string().uuid() });
+
+// GET /:id/items — the project's quote lines.
+router.get('/:id/items', async (req, res, next) => {
+  try {
+    const lines = await projects.listItems(req.user.org_id, req.params.id);
+    if (lines === null) return res.status(404).json({ error: 'Project not found' });
+    res.json(lines);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /:id/items — add an item to the quote (idempotent). org from JWT.
+router.post('/:id/items', async (req, res, next) => {
+  try {
+    const parsed = QuoteAddSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: z.flattenError(parsed.error).fieldErrors });
+    }
+    const line = await projects.addItem(req.user.org_id, req.params.id, parsed.data.itemId);
+    if (line === null) return res.status(404).json({ error: 'Project or item not found' });
+    res.status(201).json(line);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /:id/items/:itemId — remove an item from the quote.
+router.delete('/:id/items/:itemId', async (req, res, next) => {
+  try {
+    const result = await projects.removeItem(req.user.org_id, req.params.id, req.params.itemId);
+    if (result === null) return res.status(404).json({ error: 'Project not found' });
+    res.json({ removed: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

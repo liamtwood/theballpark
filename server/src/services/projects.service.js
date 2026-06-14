@@ -230,4 +230,100 @@ async function create(orgId, data) {
   });
 }
 
-module.exports = { listForOrg, getDetail, updateDetail, create, resolveStatus, DEFAULT_STATUS, toCard };
+// ── Project Quote (PROJECTS-02 slice 2) ──────────────────────────────────
+// Minimal add/remove against project_items (the full QuoteService — totals,
+// pricing, checkout — lands in 06f). Every op is org-scoped via a join to
+// projects (the project must be the caller's, JWT org).
+
+function toQuoteLine(row) {
+  return {
+    id: row.id, // project_items row id
+    itemId: row.item_id,
+    name: row.name,
+    basePrice: row.base_price === null ? null : Number(row.base_price),
+    unit: row.unit,
+    imageUrl: row.image_url,
+    quantity: Number(row.quantity ?? 1),
+  };
+}
+
+/** The project's quote lines (snapshot fields on project_items). Returns
+ *  null if the project isn't the org's (→ 404). */
+async function listItems(orgId, projectId) {
+  const owns = await pool.query(
+    `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!owns.rows.length) return null;
+  const r = await pool.query(
+    `SELECT id, item_id, name, base_price, unit, image_url, quantity
+       FROM project_items
+      WHERE project_id = $1 AND deleted_at IS NULL
+      ORDER BY created_at ASC`,
+    [projectId]
+  );
+  return r.rows.map(toQuoteLine);
+}
+
+/** Add an item to the project's quote (idempotent — a live row for the
+ *  same item is reused, not duplicated). Snapshots name/price/unit/image
+ *  from the catalogue item. Returns the line, or null if not the org's. */
+async function addItem(orgId, projectId, itemId) {
+  return withTransaction(async (client) => {
+    const owns = await client.query(
+      `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+      [projectId, orgId]
+    );
+    if (!owns.rows.length) return null;
+    const existing = await client.query(
+      `SELECT id FROM project_items
+        WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+        FOR UPDATE`,
+      [projectId, itemId]
+    );
+    if (existing.rows.length) {
+      const r = await client.query(
+        `SELECT id, item_id, name, base_price, unit, image_url, quantity
+           FROM project_items WHERE id = $1`,
+        [existing.rows[0].id]
+      );
+      return toQuoteLine(r.rows[0]);
+    }
+    const snap = await client.query(
+      `SELECT name, base_price, unit, image_url FROM items WHERE id = $1 AND deleted_at IS NULL`,
+      [itemId]
+    );
+    if (!snap.rows.length) return null; // unknown item → 404
+    const s = snap.rows[0];
+    const ins = await client.query(
+      `INSERT INTO project_items (project_id, item_id, name, base_price, unit, image_url, quantity, selection_type)
+       VALUES ($1, $2, $3, $4, $5, $6, 1, 'selected')
+       RETURNING id, item_id, name, base_price, unit, image_url, quantity`,
+      [projectId, itemId, s.name, s.base_price, s.unit, s.image_url]
+    );
+    return toQuoteLine(ins.rows[0]);
+  });
+}
+
+/** Soft-remove an item from the project's quote. Returns true if a row was
+ *  removed, false if none, null if the project isn't the org's. */
+async function removeItem(orgId, projectId, itemId) {
+  const owns = await pool.query(
+    `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+    [projectId, orgId]
+  );
+  if (!owns.rows.length) return null;
+  const r = await pool.query(
+    `UPDATE project_items SET deleted_at = NOW()
+      WHERE project_id = $1 AND item_id = $2 AND deleted_at IS NULL
+      RETURNING id`,
+    [projectId, itemId]
+  );
+  return r.rows.length > 0;
+}
+
+module.exports = {
+  listForOrg, getDetail, updateDetail, create,
+  listItems, addItem, removeItem,
+  resolveStatus, DEFAULT_STATUS, toCard,
+};
