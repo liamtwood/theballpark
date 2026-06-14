@@ -18,11 +18,11 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
   host: { class: 'block' },
   template: `
     <div class="mx-auto max-w-2xl">
-      <h2 class="bp-edit-section-title">Project Quote</h2>
+      <h2 class="bp-edit-section-title pt-2 text-center">Project Quote</h2>
 
-      <!-- Summary cards (add-project-2): Date / Location / Duration /
-           Budget — icon beside text, 2-up wider columns. -->
-      <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <!-- Summary tiles (add-project-2): icon beside text, compact 4-up at
+           desktop. Duration + Guest count share one tile (stacked pairs). -->
+      <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div class="bp-card flex items-center gap-3 p-3.5">
           <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="calendar" [size]="18" [strokeWidth]="1.75" /></span>
           <span class="min-w-0">
@@ -42,6 +42,8 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
           <span class="min-w-0">
             <span class="bp-field-label block">Duration</span>
             <span class="bp-body-small block truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</span>
+            <span class="bp-field-label mt-1.5 block">Guest count</span>
+            <span class="bp-body-small block truncate text-text">{{ project().guestCount ?? '—' }}</span>
           </span>
         </div>
         <div class="bp-card flex items-center gap-3 p-3.5">
@@ -55,7 +57,7 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
 
       <!-- Estimated Ballpark Cost banner (the headline = client total). -->
       <div class="bp-quote-banner mt-5 px-6 py-7 text-center">
-        <div class="bp-body-small opacity-90">Estimated Ballpark Cost</div>
+        <div class="bp-body-small">Estimated Ballpark Cost</div>
         <div class="bp-amount-hero mt-1">{{ clientTotal() | currency: cur() : 'symbol' : '1.0-0' }}</div>
       </div>
 

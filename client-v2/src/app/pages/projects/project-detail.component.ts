@@ -12,7 +12,6 @@ import { errorDetail } from '../../core/http-error';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../shared/edit-section/edit-section.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
-import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
@@ -51,20 +50,18 @@ interface DetailForm {
     TabBandComponent,
     EditSectionComponent,
     EditFieldComponent,
-    StatusPillComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
   ],
   providers: [MessageService],
-  /* Marketplace tab is viewport-fit like the global marketplace (hero +
-     filter band anchored, columns scroll independently — RP-06 standard);
-     Details/Estimate scroll naturally. */
-  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'marketplace'" },
+  /* Viewport-fit on EVERY tab (universal rule: the hero never scrolls).
+     The marketplace tab manages its own column scroll; Details/Estimate
+     scroll inside their own region below the anchored hero. */
+  host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as p) {
       <app-page-hero [back]="{ label: labelPlural(), href: '/projects' }" [title]="p.name" [subtitle]="p.ref ?? ''">
         <div hero-actions class="flex items-center gap-3">
-          <app-status-pill list="project_status" [code]="p.status" />
           <app-tab-band [tabs]="tabs()" [active]="tab()" (activeChange)="setTab($event)" />
         </div>
       </app-page-hero>
@@ -72,7 +69,7 @@ interface DetailForm {
       <div class="bp-page-body">
         @switch (tab()) {
           @case ('details') {
-            <div class="bp-settings-body">
+            <div class="bp-settings-body min-h-0 flex-1 overflow-y-auto">
               <!-- Event details (v1 parity): Ref + Status read-only header,
                    then editable name / venue / city. Client is read-only
                    (changing it needs a picker — out of this slice). -->
@@ -87,10 +84,6 @@ interface DetailForm {
               >
                 <div class="bp-field-grid-2">
                   <app-edit-field label="Ref" density="page" [readonlyAlways]="true" [value]="p.ref ?? '—'" />
-                  <div>
-                    <span class="bp-field-label">Status</span>
-                    <div class="mt-1"><app-status-pill list="project_status" [code]="p.status" /></div>
-                  </div>
                   <app-edit-field label="Event name" density="page" [editing]="editingEvent()" [value]="form().name" (valueChange)="patch({ name: $event })" />
                   <app-edit-field label="Client" density="page" [readonlyAlways]="true" [value]="p.clientName ?? '—'" />
                   <app-edit-field label="Venue" density="page" [editing]="editingEvent()" [value]="form().venueName" (valueChange)="patch({ venueName: $event })" />
@@ -131,7 +124,9 @@ interface DetailForm {
             </div>
           }
           @case ('estimate') {
-            <app-project-estimate [projectId]="p.id" [project]="p" />
+            <div class="min-h-0 flex-1 overflow-y-auto">
+              <app-project-estimate [projectId]="p.id" [project]="p" />
+            </div>
           }
           @default {
             <app-project-marketplace [projectId]="p.id" />

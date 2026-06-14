@@ -90,7 +90,7 @@
   --text-lg: 16px; /* large body — marketing paragraph */
   --text-xl: 18px;
   --text-2xl: 22px; /* all container headings: card / drawer / edit-section titles */
-  --text-3xl: 30px; /* hero amount — the Ballpark cost banner + project-card total */
+  --text-3xl: 42px; /* hero amount — the Ballpark cost banner + project-card total (v2.25n: 30→42, shared tier; split if the card feels big) */
   --text-hero: 40px;
   --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
 
@@ -804,6 +804,11 @@ body {
   border-radius: var(--radius-card);
   background: var(--bp-gradient);
   color: var(--bp-text-on-gradient);
+}
+/* The banner is a uniform white-text zone — descendants inherit white,
+   overriding role-class colours (e.g. .bp-body-small's --color-text). */
+.bp-quote-banner * {
+  color: inherit;
 }
 
 /* Estimate line-item thumb — the home action-card rounded square holding

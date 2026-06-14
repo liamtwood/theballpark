@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 import { ProjectCard, relativeAge } from '../../core/projects/project.types';
 
 /** pV2-PROJECTS-01 — the project card, rebuilt to v1 parity (Liam,
@@ -15,7 +14,7 @@ import { ProjectCard, relativeAge } from '../../core/projects/project.types';
 @Component({
   selector: 'app-project-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink, StatusPillComponent],
+  imports: [CurrencyPipe, RouterLink],
   host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/projects', project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
@@ -40,9 +39,6 @@ import { ProjectCard, relativeAge } from '../../core/projects/project.types';
           <span class="bp-ref-eyebrow self-start">{{ project().ref }}</span>
         }
         <div class="truncate text-md font-semibold text-text">{{ project().name }}</div>
-        <div class="self-start">
-          <app-status-pill list="project_status" [code]="project().status" />
-        </div>
         <div class="flex items-center justify-between">
           <span class="bp-meta">{{ project().supplierCount }} supplier{{ project().supplierCount === 1 ? '' : 's' }}</span>
           <span class="bp-meta">{{ age() }}</span>
