@@ -18,40 +18,49 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
   host: { class: 'block' },
   template: `
     <div class="mx-auto max-w-2xl">
-      <h2 class="bp-edit-section-title pt-2 text-center">Project Quote</h2>
+      <h2 class="bp-page-title pt-2 text-center">Project Quote</h2>
 
       <!-- Summary tiles (add-project-2): icon beside text, compact 4-up at
-           desktop. Duration + Guest count share one tile (stacked pairs). -->
+           desktop. The flex sits on an INNER div — .bp-card is display:block
+           and would beat a flex utility on the card itself. -->
       <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="bp-card flex items-center gap-3 p-3.5">
-          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="calendar" [size]="18" [strokeWidth]="1.75" /></span>
-          <span class="min-w-0">
-            <span class="bp-field-label block">Date</span>
-            <span class="bp-body-small block truncate text-text">{{ project().eventDate || '—' }}</span>
-          </span>
+        <div class="bp-card p-3.5">
+          <div class="flex items-start gap-3">
+            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="calendar" [size]="18" [strokeWidth]="1.75" /></span>
+            <span class="min-w-0">
+              <span class="bp-field-label block">Date</span>
+              <span class="bp-body-small block truncate text-text">{{ project().eventDate || '—' }}</span>
+            </span>
+          </div>
         </div>
-        <div class="bp-card flex items-center gap-3 p-3.5">
-          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="map-pin" [size]="18" [strokeWidth]="1.75" /></span>
-          <span class="min-w-0">
-            <span class="bp-field-label block">Location</span>
-            <span class="bp-body-small block truncate text-text">{{ project().venueCity || project().venueName || '—' }}</span>
-          </span>
+        <div class="bp-card p-3.5">
+          <div class="flex items-start gap-3">
+            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="map-pin" [size]="18" [strokeWidth]="1.75" /></span>
+            <span class="min-w-0">
+              <span class="bp-field-label block">Location</span>
+              <span class="bp-body-small block truncate text-text">{{ project().venueCity || project().venueName || '—' }}</span>
+            </span>
+          </div>
         </div>
-        <div class="bp-card flex items-center gap-3 p-3.5">
-          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="clock" [size]="18" [strokeWidth]="1.75" /></span>
-          <span class="min-w-0">
-            <span class="bp-field-label block">Duration</span>
-            <span class="bp-body-small block truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</span>
-            <span class="bp-field-label mt-1.5 block">Guest count</span>
-            <span class="bp-body-small block truncate text-text">{{ project().guestCount ?? '—' }}</span>
-          </span>
+        <div class="bp-card p-3.5">
+          <div class="flex items-start gap-3">
+            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="clock" [size]="18" [strokeWidth]="1.75" /></span>
+            <span class="min-w-0">
+              <span class="bp-field-label block">Duration</span>
+              <span class="bp-body-small block truncate text-text">{{ project().durationDays ? project().durationDays + (project().durationDays === 1 ? ' day' : ' days') : '—' }}</span>
+              <span class="bp-field-label mt-1.5 block">Guest count</span>
+              <span class="bp-body-small block truncate text-text">{{ project().guestCount ?? '—' }}</span>
+            </span>
+          </div>
         </div>
-        <div class="bp-card flex items-center gap-3 p-3.5">
-          <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="wallet" [size]="18" [strokeWidth]="1.75" /></span>
-          <span class="min-w-0">
-            <span class="bp-field-label block">Budget</span>
-            <span class="bp-body-small block truncate text-text">{{ project().projectBudget ? (project().projectBudget | currency: cur() : 'symbol' : '1.0-0') : '—' }}</span>
-          </span>
+        <div class="bp-card p-3.5">
+          <div class="flex items-start gap-3">
+            <span class="bp-icon-block h-10 w-10 shrink-0"><lucide-icon name="wallet" [size]="18" [strokeWidth]="1.75" /></span>
+            <span class="min-w-0">
+              <span class="bp-field-label block">Budget</span>
+              <span class="bp-body-small block truncate text-text">{{ project().projectBudget ? (project().projectBudget | currency: cur() : 'symbol' : '1.0-0') : '—' }}</span>
+            </span>
+          </div>
         </div>
       </div>
 
