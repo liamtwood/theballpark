@@ -31,9 +31,12 @@ export interface QuoteLine {
   unit: string | null;
   imageUrl: string | null;
   quantity: number;
-  /** Category (joined via the live item) — the Estimate tab groups by it. */
+  /** Category (joined via the live item) — the Estimate tab groups by it;
+   *  the cat card shows the cover image, else the Lucide icon. */
   categoryId: string | null;
   categoryName: string | null;
+  categoryIconName: string | null;
+  categoryCoverUrl: string | null;
 }
 
 /** Full project detail (PROJECTS-02 — the inside-project view). */

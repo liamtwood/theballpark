@@ -248,9 +248,12 @@ function toQuoteLine(row) {
     unit: row.unit,
     imageUrl: row.image_url,
     quantity: Number(row.quantity ?? 1),
-    // Category (joined via the live item) — the Estimate tab groups by it.
+    // Category (joined via the live item) — the Estimate tab groups by it,
+    // and the category card uses its cover image else its Lucide icon.
     categoryId: row.category_id ?? null,
     categoryName: row.category_name ?? null,
+    categoryIconName: row.category_icon_name || null,
+    categoryCoverUrl: row.category_cover_url || null, // '' → null (clean contract)
   };
 }
 
@@ -264,7 +267,8 @@ async function listItems(orgId, projectId) {
   if (!owns.rows.length) return null;
   const r = await pool.query(
     `SELECT pi.id, pi.item_id, pi.name, pi.base_price, pi.unit, pi.image_url, pi.quantity,
-            i.category_id, c.name AS category_name
+            i.category_id, c.name AS category_name,
+            c.icon_name AS category_icon_name, c.cover_image_url AS category_cover_url
        FROM project_items pi
        LEFT JOIN items i ON i.id = pi.item_id
        LEFT JOIN categories c ON c.id = i.category_id

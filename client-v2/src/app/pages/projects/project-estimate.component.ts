@@ -34,7 +34,9 @@ import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
                 @if (g.image) {
                   <img [src]="g.image" alt="" class="bp-est-thumb shrink-0 object-cover" />
                 } @else {
-                  <span class="bp-icon-block bp-est-thumb shrink-0"><lucide-icon name="folder-open" [size]="20" [strokeWidth]="1.5" /></span>
+                  <span class="bp-icon-block bp-est-thumb shrink-0">
+                    <lucide-icon [name]="g.iconName || 'folder-open'" [size]="20" [strokeWidth]="1.5" />
+                  </span>
                 }
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-md font-medium text-text">{{ g.name }}</span>
@@ -137,7 +139,10 @@ export class ProjectEstimateComponent {
     return [...byCat.values()].map((g) => ({
       ...g,
       total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
-      image: g.items.find((l) => l.imageUrl)?.imageUrl ?? null,
+      // Category card icon: the category's cover image, else its Lucide
+      // icon (Liam 2026-06-14). All lines in a group share the category.
+      image: g.items[0]?.categoryCoverUrl ?? null,
+      iconName: g.items[0]?.categoryIconName ?? null,
     }));
   });
 

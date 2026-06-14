@@ -56,6 +56,14 @@ import {
   TriangleAlert,
   Upload,
   Sparkles,
+  Car,
+  Flower2,
+  MessageSquare,
+  Music,
+  Spotlight,
+  Tv,
+  User,
+  Utensils,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -131,6 +139,8 @@ export const appConfig: ApplicationConfig = {
         Info, CircleAlert, TriangleAlert,
         // pV2-PROJECTS-03 — add-project brief page (upload + AI build CTA)
         Upload, Sparkles,
+        // pV2-PROJECTS-02 — Estimate category-card icons (event categories)
+        Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
