@@ -1032,6 +1032,68 @@ body {
   color: var(--color-danger);
 }
 
+/* ── Drawer (pV2-MEDIA-01a) — generic right-side panel wrapping p-drawer.
+   The picker (and future filter/settings panels) mount here. PrimeNG's
+   theme styles inject after styles.css, so the .p-drawer compound selector
+   ties + wins at one class. */
+.bp-drawer.p-drawer {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.bp-drawer .p-drawer-content {
+  padding: 0;
+  height: 100%;
+}
+.bp-drawer__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.bp-drawer__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.bp-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px;
+}
+.bp-drawer__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.bp-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.bp-drawer__close:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+/* Mobile: full-screen below md (MEDIA.md lock §9). */
+@media (max-width: 767px) {
+  .bp-drawer.p-drawer {
+    width: 100% !important;
+  }
+}
+
 /* Inline alert banner — persists until the state changes (form errors,
    advisories). Variants carry the semantic state pair. */
 .bp-alert {
