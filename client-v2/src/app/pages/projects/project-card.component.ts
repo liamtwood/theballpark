@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProjectCard, relativeAge } from '../../core/projects/project.types';
+import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 
 /** pV2-PROJECTS-01 — the project card, rebuilt to v1 parity (Liam,
  *  2026-06-13; reference: projects-list.component.ts): tall cover with a
@@ -14,23 +15,34 @@ import { ProjectCard, relativeAge } from '../../core/projects/project.types';
 @Component({
   selector: 'app-project-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, RouterLink],
+  imports: [CurrencyPipe, RouterLink, EntityIconComponent],
   host: { class: 'bp-card bp-card--zoom' },
   template: `
     <a [routerLink]="['/projects', project().id]" class="block no-underline text-text" [attr.aria-label]="project().name">
-      <!-- Cover (image or status gradient) + client chip / logo overlays. -->
+      <!-- Cover: image (focal-anchored) → icon fallback → status gradient. -->
+      @let proj = project();
       <div class="bp-projcard__cover">
-        <div
-          class="bp-projcard__img"
-          [class.bp-projcard__img--active]="!project().coverUrl && project().status !== 'draft'"
-          [class.bp-projcard__img--draft]="!project().coverUrl && project().status === 'draft'"
-          [style.background-image]="coverBg()"
-        ></div>
-        @if (project().clientLogoUrl) {
-          <img class="bp-projcard__logo" [src]="project().clientLogoUrl" alt="" />
+        @if (proj.coverUrl) {
+          <div class="bp-projcard__img" [style.background-image]="coverBg()" [style.background-position]="focalPos()"></div>
+        } @else if (proj.iconName) {
+          <div class="bp-projcard__iconwrap">
+            <app-entity-icon [name]="proj.iconName" [color]="proj.iconColor" [size]="44" />
+          </div>
+        } @else {
+          <div
+            class="bp-projcard__img"
+            [class.bp-projcard__img--active]="proj.status !== 'draft'"
+            [class.bp-projcard__img--draft]="proj.status === 'draft'"
+          ></div>
         }
-        @if (project().clientName) {
-          <span class="bp-projcard__client-chip">{{ project().clientName }}</span>
+        @if (proj.clientLogoUrl) {
+          <img class="bp-projcard__logo" [src]="proj.clientLogoUrl" alt="" />
+        }
+        @if (proj.clientName) {
+          <span class="bp-projcard__client-chip">{{ proj.clientName }}</span>
+        }
+        @if (proj.unsplashPhotographerName) {
+          <span class="bp-projcard__attr">Photo: {{ proj.unsplashPhotographerName }}</span>
         }
       </div>
 
@@ -60,4 +72,5 @@ export class ProjectCardComponent {
     const url = this.project().coverUrl;
     return url ? `url(${url})` : null;
   });
+  protected readonly focalPos = computed(() => `${this.project().coverFocalX}% ${this.project().coverFocalY}%`);
 }

@@ -4,15 +4,20 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideAngularModule } from 'lucide-angular';
 import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
+import { PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../shared/edit-section/edit-section.component';
 import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
+import { DrawerComponent } from '../../shared/drawer/drawer.component';
+import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
+import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
 
@@ -49,10 +54,14 @@ interface DetailForm {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ToastModule,
+    LucideAngularModule,
     PageHeroComponent,
     TabBandComponent,
     EditSectionComponent,
     EditFieldComponent,
+    DrawerComponent,
+    ImagePickerComponent,
+    EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
   ],
@@ -142,6 +151,33 @@ interface DetailForm {
                   <app-edit-field label="VAT (%)" type="number" density="page" [editing]="editingFinancials()" [value]="form().vatPct" (valueChange)="patch({ vatPct: $event })" />
                 </div>
               </app-edit-section>
+
+              <!-- Image (pV2-MEDIA-01b) — cover/icon picker in a drawer. -->
+              <div class="bp-card p-5">
+                <h3 class="bp-edit-section-title">Image</h3>
+                <div class="mt-3 flex items-center gap-4">
+                  <div class="bp-media-preview">
+                    @if (p.coverUrl) {
+                      <img [src]="p.coverUrl" alt="" [style.object-position]="p.coverFocalX + '% ' + p.coverFocalY + '%'" />
+                    } @else if (p.iconName) {
+                      <app-entity-icon [name]="p.iconName" [color]="p.iconColor" [size]="36" />
+                    } @else {
+                      <span class="bp-caption">No image</span>
+                    }
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <button type="button" class="bp-btn-grad" (click)="imgDrawer.set(true)">
+                      <lucide-icon name="upload" [size]="16" /> Choose image
+                    </button>
+                    @if (p.coverUrl || p.iconName) {
+                      <button type="button" class="bp-btn-outline" (click)="onRemoveImage()">Remove</button>
+                    }
+                  </div>
+                </div>
+                @if (p.unsplashPhotographerName) {
+                  <p class="bp-caption mt-2">Photo by {{ p.unsplashPhotographerName }} on Unsplash</p>
+                }
+              </div>
             </div>
           }
           @case ('estimate') {
@@ -154,6 +190,11 @@ interface DetailForm {
           }
         }
       </div>
+
+      <!-- Image picker drawer (pV2-MEDIA-01b). -->
+      <app-drawer [(open)]="imgDrawer" title="Project image">
+        <app-image-picker entityType="project" previewAspect="4/3" (chosen)="onPick($event)" (cancelled)="imgDrawer.set(false)" />
+      </app-drawer>
     } @else if (detail.isLoading()) {
       <div class="bp-page-body"><p class="bp-body-small text-secondary">Loading…</p></div>
     } @else {
@@ -206,6 +247,8 @@ export class ProjectDetailComponent {
   protected readonly editingLogistics = signal(false);
   protected readonly editingFinancials = signal(false);
   protected readonly saving = signal(false);
+  /** Image-picker drawer (pV2-MEDIA-01b). */
+  protected readonly imgDrawer = signal(false);
   private snapshots: Partial<Record<Section, DetailForm>> = {};
 
   protected readonly tierOptions: EditFieldOption[] = [
@@ -286,6 +329,54 @@ export class ProjectDetailComponent {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(err), life: 5000 });
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Map a picker result → ProjectUpdate (image clears icon + vice-versa) and
+   *  persist (pV2-MEDIA-01b). */
+  protected async onPick(r: PickerResult): Promise<void> {
+    const patch: ProjectUpdate =
+      r.type === 'image'
+        ? {
+            coverImageUrl: r.url,
+            coverFocalX: r.focalX,
+            coverFocalY: r.focalY,
+            unsplashPhotographerName: r.attribution?.photographerName ?? null,
+            unsplashPhotoUrl: r.attribution?.photoUrl ?? null,
+            iconName: null,
+            iconColor: null,
+          }
+        : {
+            iconName: r.name,
+            iconColor: r.color,
+            coverImageUrl: null,
+            unsplashPhotographerName: null,
+            unsplashPhotoUrl: null,
+          };
+    await this.saveMedia(patch);
+    this.imgDrawer.set(false);
+  }
+
+  protected onRemoveImage(): Promise<void> {
+    return this.saveMedia({
+      coverImageUrl: null,
+      iconName: null,
+      iconColor: null,
+      unsplashPhotographerName: null,
+      unsplashPhotoUrl: null,
+    });
+  }
+
+  private async saveMedia(patch: ProjectUpdate): Promise<void> {
+    const id = this.id();
+    if (!id) return;
+    try {
+      const fresh = await firstValueFrom(this.projects.update(id, patch));
+      this.detail.set(fresh);
+      this.form.set(toForm(fresh));
+      this.toast.add({ severity: 'success', summary: 'Image updated.', life: 3000 });
+    } catch (err) {
+      this.toast.add({ severity: 'error', summary: "Couldn't update the image.", detail: errorDetail(err), life: 5000 });
     }
   }
 }

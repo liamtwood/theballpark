@@ -64,6 +64,17 @@
   --color-fill: #f8fafc; /* hover fills, subtle grounds */
   --color-border-hairline: rgba(15, 23, 42, 0.1);
   --color-border-medium: rgba(15, 23, 42, 0.18);
+  /* Soft-pastel swatches — the image-picker icon backgrounds (pV2-MEDIA-01b)
+     and the cover-less icon fallback. Token names referenced from media.types
+     (no raw hex in components). */
+  --bp-pastel-1: #f1f5f9;
+  --bp-pastel-2: #fef3c7;
+  --bp-pastel-3: #dbeafe;
+  --bp-pastel-4: #d1fae5;
+  --bp-pastel-5: #fde2e2;
+  --bp-pastel-6: #ede9fe;
+  --bp-pastel-7: #fce7f3;
+  --bp-pastel-8: #e0e7ff;
   /* Muted text — one step lighter than secondary (#6b7280); the spec's
      literal #6b7280 would have made muted === secondary, collapsing two
      roles into one value. Deviation flagged in the ship report. */
@@ -798,6 +809,37 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+/* Cover-less icon fallback fills the 4:3 cover with a centred big icon
+   (pV2-MEDIA-01b). */
+.bp-projcard__iconwrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-fill);
+}
+.bp-projcard__iconwrap .bp-entity-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-card);
+}
+/* Mandatory Unsplash attribution caption (MEDIA.md lock §4 / RP-11). */
+.bp-projcard__attr {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Estimate "Estimated Ballpark Cost" banner — the add-project-2 brand
    moment: the vivid gradient earns its scarcity (DESIGN.md §2). */
 .bp-quote-banner {
@@ -1092,6 +1134,179 @@ body {
   .bp-drawer.p-drawer {
     width: 100% !important;
   }
+}
+
+/* ── Image picker (pV2-MEDIA-01b) ── */
+.bp-picker__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-field);
+  background: var(--color-fill);
+}
+.bp-picker__tab {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--radius-field);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-picker__tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+.bp-picker__drop {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  border: 1px dashed var(--color-border-medium);
+  border-radius: var(--radius-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-picker__drop:hover,
+.bp-picker__drop--over {
+  background: var(--color-fill);
+  border-color: var(--theme-accent);
+}
+.bp-picker__search {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+}
+.bp-picker__search:focus-within {
+  border-color: var(--theme-accent);
+}
+.bp-picker__search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--bp-font);
+  font-size: var(--text-md);
+  color: var(--color-text);
+}
+.bp-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.bp-picker__cell {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-fill);
+  cursor: pointer;
+}
+.bp-picker__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bp-picker__icons {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.bp-picker__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-card);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+.bp-picker__icon:hover {
+  outline: 2px solid var(--theme-accent);
+}
+.bp-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-hairline);
+  cursor: pointer;
+}
+.bp-swatch--active {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 1px;
+}
+/* Focal-point preview — click to anchor the crop (lock §10). */
+.bp-focal {
+  position: relative;
+  display: block;
+  margin-top: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-fill);
+  cursor: crosshair;
+}
+.bp-focal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.bp-focal__dot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  background: var(--theme-accent);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Cover-less icon fallback square (pV2-MEDIA-01b). */
+.bp-entity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-text-strong);
+}
+
+/* Project Details "Image" section preview (pV2-MEDIA-01b). */
+.bp-media-preview {
+  flex-shrink: 0;
+  width: 96px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+.bp-media-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bp-media-preview .bp-entity-icon {
+  width: 100%;
+  height: 100%;
 }
 
 /* Inline alert banner — persists until the state changes (form errors,

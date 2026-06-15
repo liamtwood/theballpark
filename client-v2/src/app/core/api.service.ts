@@ -45,6 +45,12 @@ export class ApiService {
     return this.http.patch<T>(`${this.base()}${path}`, body, { withCredentials: true });
   }
 
+  /** POST multipart/form-data (file uploads). HttpClient sets the boundary
+   *  Content-Type itself when handed a FormData — don't set it manually. */
+  postForm<T>(path: string, form: FormData): Observable<T> {
+    return this.http.post<T>(`${this.base()}${path}`, form, { withCredentials: true });
+  }
+
   /** DELETE `{apiBaseUrl}{path}`. */
   delete<T>(path: string): Observable<T> {
     return this.http.delete<T>(`${this.base()}${path}`, { withCredentials: true });

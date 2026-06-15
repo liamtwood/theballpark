@@ -8,6 +8,14 @@ export interface ProjectCard {
   /** project_status codelist code (draft/active/completed/archived). */
   status: string;
   coverUrl: string | null;
+  /** Cover focal point (object-position %) + icon fallback + Unsplash
+   *  attribution (pV2-MEDIA-01b). */
+  coverFocalX: number;
+  coverFocalY: number;
+  iconName: string | null;
+  iconColor: string | null;
+  unsplashPhotographerName: string | null;
+  unsplashPhotoUrl: string | null;
   /** Client name → the cover chip (v1 "Nike"); logo overlays the cover. */
   clientName: string | null;
   clientLogoUrl: string | null;
@@ -81,6 +89,15 @@ export interface ProjectDetail {
   defaultMarginPct: number | null;
   defaultContingencyPct: number | null;
   defaultVatPct: number | null;
+  /** Media (pV2-MEDIA-01b). */
+  coverFocalX: number;
+  coverFocalY: number;
+  clientLogoUrl: string | null;
+  cardColor: string | null;
+  iconName: string | null;
+  iconColor: string | null;
+  unsplashPhotographerName: string | null;
+  unsplashPhotoUrl: string | null;
   /** Read-only display (joined from clients) — v1 Event details parity. */
   clientName: string | null;
   coverUrl: string | null;
@@ -106,6 +123,15 @@ export type ProjectUpdate = Partial<{
   defaultMarginPct: number | null;
   defaultContingencyPct: number | null;
   defaultVatPct: number | null;
+  coverImageUrl: string | null;
+  clientLogoUrl: string | null;
+  cardColor: string | null;
+  iconName: string | null;
+  iconColor: string | null;
+  coverFocalX: number | null;
+  coverFocalY: number | null;
+  unsplashPhotographerName: string | null;
+  unsplashPhotoUrl: string | null;
 }>;
 
 /** The create body the gated POST /api/projects-v2 accepts (server:

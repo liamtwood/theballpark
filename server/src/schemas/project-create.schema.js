@@ -44,6 +44,16 @@ const ProjectUpdateSchema = z.object({
   defaultMarginPct: z.number().nonnegative().max(999.99).nullable().optional(),
   defaultContingencyPct: z.number().nonnegative().max(999.99).nullable().optional(),
   defaultVatPct: z.number().nonnegative().max(999.99).nullable().optional(),
+  // Media (pV2-MEDIA-01b) — the image-picker result maps to these.
+  coverImageUrl: z.string().trim().max(1000).nullable().optional(),
+  clientLogoUrl: z.string().trim().max(1000).nullable().optional(),
+  cardColor: z.string().trim().max(40).nullable().optional(),
+  iconName: z.string().trim().max(100).nullable().optional(),
+  iconColor: z.string().trim().max(50).nullable().optional(),
+  coverFocalX: z.number().int().min(0).max(100).nullable().optional(),
+  coverFocalY: z.number().int().min(0).max(100).nullable().optional(),
+  unsplashPhotographerName: z.string().trim().max(200).nullable().optional(),
+  unsplashPhotoUrl: z.string().trim().max(1000).nullable().optional(),
 });
 
 module.exports = { ProjectCreateSchema, ProjectUpdateSchema };

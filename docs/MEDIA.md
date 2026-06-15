@@ -337,7 +337,7 @@ pV2-MEDIA-01 first slice ships.
 | Version | Date | What changed (1-line) | Ship | QC Done? | Audit Done? |
 |---|---|---|---|---|---|
 | v2.29a | 2026-06-15 | **pV2-MEDIA-01a** — `<app-drawer>` generic primitive (wraps PrimeNG p-drawer; header/body/footer slots, ESC/backdrop/focus-trap/scroll-lock, mobile full-screen) | `007b1742` | — | — |
-| target | TBD | **pV2-MEDIA-01b** — `<app-image-picker>` + project cover consumer + `projects.icon_name`/`icon_color` migration | — | — | — |
+| v2.29b | 2026-06-15 | **pV2-MEDIA-01b** — `<app-image-picker>` (My File / Unsplash paginated / lazy Lucide + focal-point) + project cover/icon consumer (Details "Image" section in a drawer). Gated `/api/media/upload`; project media migration (icon_name/color, cover_focal_x/y, unsplash attribution); focal + icon-fallback + attribution rendered on the project card. Lucide full set lazy-loaded (separate 134kB chunk — lock §5 verified). | `d4fe0d0a` | — | — |
 | target | TBD | **pV2-MEDIA-01c** — `<app-image-gallery>` + items consumer (no schema change needed) | — | — | — |
 | target | TBD | **pV2-MEDIA-01d** — Picker mounted on supplier shopfront + profile + item cover | — | — | — |
 | target | TBD | **pV2-MEDIA-01e** — Gallery mounted on project + supplier + profile (add `images` JSONB to each) | — | — | — |

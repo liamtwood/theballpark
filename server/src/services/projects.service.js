@@ -47,6 +47,8 @@ async function resolveStatus(code) {
 const LIST_SELECT = `
   SELECT p.id, p.name, p.event_name, p.ref, p.status,
          p.cover_image_url, p.client_logo_url,
+         p.cover_focal_x, p.cover_focal_y, p.icon_name, p.icon_color,
+         p.unsplash_photographer_name, p.unsplash_photo_url,
          p.total_client_cost, p.currency,
          p.created_at, p.updated_at,
          c.name AS client_name,
@@ -67,6 +69,12 @@ function toCard(row) {
     ref: row.ref,
     status: row.status ?? DEFAULT_STATUS,
     coverUrl: row.cover_image_url,
+    coverFocalX: row.cover_focal_x ?? 50,
+    coverFocalY: row.cover_focal_y ?? 50,
+    iconName: row.icon_name ?? null,
+    iconColor: row.icon_color ?? null,
+    unsplashPhotographerName: row.unsplash_photographer_name ?? null,
+    unsplashPhotoUrl: row.unsplash_photo_url ?? null,
     clientName: row.client_name ?? null,
     clientLogoUrl: row.client_logo_url ?? null,
     // The headline "Ballpark" total — v1 uses total_client_cost.
@@ -109,6 +117,15 @@ function toDetail(row) {
     eventName: row.event_name,
     clientName: row.client_name ?? null,
     coverUrl: row.cover_image_url,
+    // Media (pV2-MEDIA-01b): cover focal point + icon fallback + Unsplash attribution.
+    coverFocalX: row.cover_focal_x ?? 50,
+    coverFocalY: row.cover_focal_y ?? 50,
+    clientLogoUrl: row.client_logo_url ?? null,
+    cardColor: row.card_color ?? null,
+    iconName: row.icon_name ?? null,
+    iconColor: row.icon_color ?? null,
+    unsplashPhotographerName: row.unsplash_photographer_name ?? null,
+    unsplashPhotoUrl: row.unsplash_photo_url ?? null,
     totalBallparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
     createdAt: row.created_at,
   };
@@ -146,6 +163,16 @@ const EDITABLE = {
   defaultMarginPct: 'default_margin_pct',
   defaultContingencyPct: 'default_contingency_pct',
   defaultVatPct: 'default_vat_pct',
+  // Media (pV2-MEDIA-01b) — the picker result maps here.
+  coverImageUrl: 'cover_image_url',
+  clientLogoUrl: 'client_logo_url',
+  cardColor: 'card_color',
+  iconName: 'icon_name',
+  iconColor: 'icon_color',
+  coverFocalX: 'cover_focal_x',
+  coverFocalY: 'cover_focal_y',
+  unsplashPhotographerName: 'unsplash_photographer_name',
+  unsplashPhotoUrl: 'unsplash_photo_url',
 };
 
 /** Partial update, org-scoped. Status is dual-written (code + status_id)

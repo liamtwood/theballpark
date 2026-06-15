@@ -223,8 +223,14 @@ app.get('/api/unsplash/search', async (req, res) => {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return res.json([]);
   try {
+    // pV2-MEDIA-01b: paginate (page + per_page) so the picker can "Load more"
+    // (Unsplash caps per_page at 30). Adds photoUrl for the mandatory
+    // attribution link. Returns a bare array (v1 image-upload-panel relies on
+    // that shape); the picker infers "more" from a full page.
     const query = encodeURIComponent(req.query.query || 'exhibition');
-    const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=9&orientation=landscape`;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage = Math.min(30, Math.max(1, parseInt(req.query.per_page, 10) || 24));
+    const url = `https://api.unsplash.com/search/photos?query=${query}&page=${page}&per_page=${perPage}&orientation=landscape`;
     const resp = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
     if (!resp.ok) return res.json([]);
     const data = await resp.json();
@@ -232,7 +238,8 @@ app.get('/api/unsplash/search', async (req, res) => {
       url: p.urls?.regular,
       thumb: p.urls?.small,
       description: p.alt_description || p.description || '',
-      photographer: p.user?.name || ''
+      photographer: p.user?.name || '',
+      photoUrl: p.links?.html || ''
     })));
   } catch (err) {
     console.error('[Unsplash]', err.message);
@@ -273,6 +280,7 @@ app.get('/api/unsplash/search', async (req, res) => {
   // INTERIM PATH `/projects-v2`: v1 owns the live ungated /api/projects
   // (client-angular until pV2-11); reclaim the clean path at v1 retirement.
   v2.use('/projects-v2', require('./routes/projects-v2'));
+  v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
   // future v2 endpoints: v2.use('/home', ...) — they inherit the gate
   // automatically by being mounted here.
   app.use('/api', v2);

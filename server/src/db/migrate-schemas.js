@@ -715,6 +715,31 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
 
+      -- pV2-MEDIA-01b: project media. cover_image_url / client_logo_url /
+      -- card_color already exist; add the Lucide icon fallback (cover-less
+      -- projects), the cover focal point (object-position %, SMALLINT DEFAULT
+      -- 50 = centre, MEDIA.md lock §10), and the mandatory Unsplash
+      -- attribution (lock §4). focal/attribution columns repeat on items +
+      -- orgs in later MEDIA slices.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+
       -- v1.39f: bring preview + master categories schemas in line
       -- with public — the namespace + model + icon_name/color +
       -- object_type columns were added to public over time but
