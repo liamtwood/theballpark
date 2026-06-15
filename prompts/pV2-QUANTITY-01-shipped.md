@@ -96,6 +96,10 @@
 **Commit:** `e0ecf2bf`
 **Files:** project-quote-rail.component.ts (`groups()` by category, same grouping as the Estimate tab; lines arrive category-ordered from the server), styles.css (`.bp-cart-cat-band` — centered soft-fill strip heading each group).
 
+## Iteration — v2.28b (2026-06-15) — architect audit triage
+**Commit:** `550c499f` · **Report:** [docs/audits/2026-06-15-projects-quantity-arc-architect-audit.md](../docs/audits/2026-06-15-projects-quantity-arc-architect-audit.md)
+End-of-arc Angular/server architect audit (two independent read-only auditors). Verdict: no HIGH client findings; all 10 hygiene rules + v2 standards met; org-scoping flawless; soft-delete revive race-safe. **Fixed:** SRV-H1 recommend → parallel-match/serial-add (no transaction fan-out vs pool max, ~9s preserved); SRV-M1 UUID `router.param` guards (bad id → 400 not 500); SRV-L3 revive clears `deleted_by`; SRV-L1 single-write comment; CLI-M4 estimate resource error branch; CLI-M6 `groupByCategory` extracted (estimate+rail dedup); CLI-L6 `allItemsCount` computed. **Deferred w/ rationale** (see report): SRV-H2 pool.js connect-handler deprecation (shared infra — needs Supabase-pooler verification), list pagination, explicit json body limit, the linkedSignal form-seed refactor, rail currency for non-GBP.
+
 ## QC notes
 (Liam fills this in)
 

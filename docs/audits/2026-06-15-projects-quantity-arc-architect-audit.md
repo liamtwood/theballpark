@@ -38,6 +38,6 @@
 | **CLI-M7 / L1 / L2 / L7 / L8** | `now()` staleness; `$any()` template casts; future card-link nesting guard; cosmetic typings | cosmetic / no current defect |
 
 ## Commits
-- Server fixes + client fixes: see the v2.28b commit (`<sha>` recorded in pV2-QUANTITY-01-shipped.md iteration).
+- Server fixes + client fixes: see the v2.28b commit (`550c499f`) recorded in pV2-QUANTITY-01-shipped.md iteration).
 
 Cross-link: [pV2-QUANTITY-01-shipped.md](../../prompts/pV2-QUANTITY-01-shipped.md).
