@@ -4,7 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 import { ProjectService } from '../../core/projects/project.service';
-import { ProjectDetail, QuoteLine } from '../../core/projects/project.types';
+import { ProjectDetail, QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { errorDetail } from '../../core/http-error';
 import { QtyInputComponent } from './qty-input.component';
 
@@ -88,6 +88,8 @@ import { QtyInputComponent } from './qty-input.component';
 
       @if (lines.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
+      } @else if (lines.error()) {
+        <p class="bp-body-small text-warn">Couldn't load the quote — please refresh.</p>
       } @else if (rows().length === 0) {
         <p class="bp-body-small text-secondary">No items in the quote yet — add some from the Marketplace tab.</p>
       } @else {
@@ -215,27 +217,16 @@ export class ProjectEstimateComponent {
 
   /** Quote lines grouped by category — one card per category, with its
    *  summed total + the first item's image as the cover. */
-  protected readonly groups = computed(() => {
-    const byCat = new Map<string, { id: string; name: string; items: QuoteLine[] }>();
-    for (const l of this.rows()) {
-      const id = l.categoryId ?? '__none';
-      const name = l.categoryName ?? 'Uncategorised';
-      let g = byCat.get(id);
-      if (!g) {
-        g = { id, name, items: [] };
-        byCat.set(id, g);
-      }
-      g.items.push(l);
-    }
-    return [...byCat.values()].map((g) => ({
+  protected readonly groups = computed(() =>
+    groupByCategory(this.rows()).map((g) => ({
       ...g,
       total: g.items.reduce((s, l) => s + this.lineCost(l), 0),
       // Category card icon: the category's cover image, else its Lucide
       // icon (Liam 2026-06-14). All lines in a group share the category.
       image: g.items[0]?.categoryCoverUrl ?? null,
       iconName: g.items[0]?.categoryIconName ?? null,
-    }));
-  });
+    }))
+  );
 
   protected readonly expanded = signal<ReadonlySet<string>>(new Set());
   protected toggle(catId: string): void {

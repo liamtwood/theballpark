@@ -96,9 +96,9 @@ export class ProjectMarketplaceComponent {
   readonly projectId = input.required<string>();
 
   /** "All Categories" count = sum of the rail counts (no extra request). */
-  protected allItemsCount(): number {
-    return this.store.categories().reduce((sum, c) => sum + c.count, 0);
-  }
+  protected readonly allItemsCount = computed(() =>
+    this.store.categories().reduce((sum, c) => sum + c.count, 0)
+  );
 
   protected readonly quoteLines = signal<QuoteLine[]>([]);
   protected readonly quoteIds = computed(() => new Set(this.quoteLines().map((l) => l.itemId)));

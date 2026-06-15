@@ -378,7 +378,7 @@ async function addItem(orgId, projectId, itemId) {
       // Revive the soft-deleted row: re-snapshot + reset qty/selection.
       const up = await client.query(
         `UPDATE project_items
-            SET deleted_at = NULL, name = $2, base_price = $3, unit = $4,
+            SET deleted_at = NULL, deleted_by = NULL, name = $2, base_price = $3, unit = $4,
                 image_url = $5, quantity = $6, selection_type = 'selected', category_id = $7
           WHERE id = $1 RETURNING id`,
         [existing.rows[0].id, s.name, s.base_price, s.unit, s.image_url, qty, s.category_id]
@@ -398,7 +398,10 @@ async function addItem(orgId, projectId, itemId) {
 }
 
 /** pV2-QUANTITY-01 — set the quantity on a live quote line. Returns the
- *  updated line, false if no such live line, null if not the org's. */
+ *  updated line, false if no such live line, null if not the org's.
+ *  Single write (the ownership SELECT + the UPDATE) — no transaction needed
+ *  (Rule 1): the UPDATE re-scopes by project_id, so the ownership check can't
+ *  be raced into a cross-org write. */
 async function updateItemQuantity(orgId, projectId, itemId, quantity) {
   const owns = await pool.query(
     `SELECT 1 FROM projects WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
@@ -489,41 +492,49 @@ async function recommend(orgId, projectId) {
   const brief = pr.rows[0].parsed_brief_json;
   const cats = Array.isArray(brief?.categories) ? brief.categories : [];
 
-  // Match every category CONCURRENTLY — each is one Haiku round-trip (~7-8s);
-  // serial was sum-of-categories (40-50s for a full brief), parallel is ~the
-  // slowest single one. matchItems holds no pg connection across the AI call,
-  // so the pool isn't starved. projectId=null skips the per-category match
-  // cache (we add the items directly; nothing reads that cache here).
-  const tasks = cats.map(async (c) => {
-    const dbName = AI_TO_DB[c.categoryId];
-    if (!dbName) return null;
-    const catRow = await pool.query(
-      `SELECT id FROM categories
-        WHERE name = $1 AND namespace = 'catalogue' AND parent_id IS NULL
-        LIMIT 1`,
-      [dbName]
-    );
-    if (!catRow.rows.length) return null;
-    const categoryId = catRow.rows[0].id;
-    const catBrief = (c.oneLiner || c.categoryLabel || dbName).trim();
-    const budget = lowOfBand(c.budgetEstimate);
+  // PHASE 1 — match every category CONCURRENTLY (the slow part). Each is one
+  // Haiku round-trip (~7-8s); serial was sum-of-categories (40-50s). The reads
+  // here are short pool queries (auto-released), and matchItems holds no pg
+  // connection across the AI call — so no pool pressure. projectId=null skips
+  // the per-category match cache (we add the items directly).
+  const matched = await Promise.all(
+    cats.map(async (c) => {
+      const dbName = AI_TO_DB[c.categoryId];
+      if (!dbName) return null;
+      const catRow = await pool.query(
+        `SELECT id FROM categories
+          WHERE name = $1 AND namespace = 'catalogue' AND parent_id IS NULL
+          LIMIT 1`,
+        [dbName]
+      );
+      if (!catRow.rows.length) return null;
+      const categoryId = catRow.rows[0].id;
+      const catBrief = (c.oneLiner || c.categoryLabel || dbName).trim();
+      const budget = lowOfBand(c.budgetEstimate);
+      try {
+        const m = await taxonomy.matchItems(catBrief, categoryId, budget, null);
+        return { dbName, picks: (m.matched_items || []).slice(0, RECOMMEND_PER_CATEGORY) };
+      } catch (err) {
+        return { dbName, picks: [], error: err.message };
+      }
+    })
+  );
 
-    let match;
-    try {
-      match = await taxonomy.matchItems(catBrief, categoryId, budget, null);
-    } catch (err) {
-      return { category: dbName, added: 0, error: err.message };
-    }
-    const picks = (match.matched_items || []).slice(0, RECOMMEND_PER_CATEGORY);
+  // PHASE 2 — add SEQUENTIALLY. addItem opens a transaction each; fanning these
+  // out under the Phase-1 Promise.all would risk exhausting the pool (audit
+  // H1). The adds are fast DB writes, so serial cost is negligible.
+  const results = [];
+  let totalAdded = 0;
+  for (const m of matched) {
+    if (!m) continue;
     let added = 0;
-    for (const it of picks) {
+    for (const it of m.picks) {
       const line = await addItem(orgId, projectId, it.item_id);
       if (line) added += 1;
     }
-    return { category: dbName, added };
-  });
-  const results = (await Promise.all(tasks)).filter(Boolean);
-  const totalAdded = results.reduce((sum, r) => sum + (r.added || 0), 0);
+    totalAdded += added;
+    results.push(m.error ? { category: m.dbName, added, error: m.error } : { category: m.dbName, added });
+  }
   return { categories: results, totalAdded };
 }
 

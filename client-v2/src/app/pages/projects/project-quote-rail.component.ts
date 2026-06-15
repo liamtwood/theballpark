@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { QuoteLine } from '../../core/projects/project.types';
+import { QuoteLine, groupByCategory } from '../../core/projects/project.types';
 import { QtyInputComponent } from './qty-input.component';
 
 /** pV2-PROJECTS-02 slice 2 — the Project Quote rail: a simple list of the
@@ -71,19 +71,9 @@ export class ProjectQuoteRailComponent {
   readonly qtyChanged = output<{ itemId: string; quantity: number }>();
   readonly checkout = output<void>();
 
-  /** Cart lines grouped by category (same grouping as the Estimate tab). The
-   *  server returns lines ordered by category name, so insertion order is the
-   *  display order. */
-  protected readonly groups = computed(() => {
-    const byCat = new Map<string, { id: string; name: string; items: QuoteLine[] }>();
-    for (const l of this.lines()) {
-      const id = l.categoryId ?? '__none';
-      const g = byCat.get(id) ?? { id, name: l.categoryName ?? 'Uncategorised', items: [] };
-      g.items.push(l);
-      byCat.set(id, g);
-    }
-    return [...byCat.values()];
-  });
+  /** Cart lines grouped by category (shared helper — same grouping as the
+   *  Estimate tab). Server returns lines category-ordered → display order. */
+  protected readonly groups = computed(() => groupByCategory(this.lines()));
 
   /** Indicative only — real pricing (margin/contingency/VAT) is 06f. */
   protected readonly subtotal = computed(() =>

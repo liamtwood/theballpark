@@ -17,6 +17,17 @@ const { z } = require('zod');
 const projects = require('../services/projects.service');
 const { ProjectCreateSchema, ProjectUpdateSchema } = require('../schemas/project-create.schema');
 
+// Validate every :id / :itemId slot as a UUID up front (audit M1). Without
+// this a malformed id reaches Postgres and surfaces as a 500 with a DB-shaped
+// message (wrong status + info disclosure); now it's a clean 400.
+const UUID = z.string().uuid();
+router.param('id', (req, res, next, val) =>
+  UUID.safeParse(val).success ? next() : res.status(400).json({ error: 'Invalid project id' })
+);
+router.param('itemId', (req, res, next, val) =>
+  UUID.safeParse(val).success ? next() : res.status(400).json({ error: 'Invalid item id' })
+);
+
 // GET / — org-scoped project list. org_id is sacred: JWT only.
 router.get('/', async (req, res, next) => {
   try {

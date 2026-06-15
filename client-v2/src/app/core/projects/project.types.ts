@@ -39,6 +39,27 @@ export interface QuoteLine {
   categoryCoverUrl: string | null;
 }
 
+/** A quote's lines grouped by category. */
+export interface QuoteGroup {
+  id: string;
+  name: string;
+  items: QuoteLine[];
+}
+
+/** Group quote lines by category (snapshot id), in insertion order — the
+ *  server returns them category-ordered. Shared by the Estimate tab and the
+ *  cart rail (audit M6: was duplicated in both). */
+export function groupByCategory(lines: QuoteLine[]): QuoteGroup[] {
+  const byCat = new Map<string, QuoteGroup>();
+  for (const l of lines) {
+    const id = l.categoryId ?? '__none';
+    const g = byCat.get(id) ?? { id, name: l.categoryName ?? 'Uncategorised', items: [] };
+    g.items.push(l);
+    byCat.set(id, g);
+  }
+  return [...byCat.values()];
+}
+
 /** Full project detail (PROJECTS-02 — the inside-project view). */
 export interface ProjectDetail {
   id: string;
