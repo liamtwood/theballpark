@@ -6,6 +6,14 @@ const angular = require('angular-eslint');
 
 module.exports = defineConfig([
   {
+    // The public /welcome marketing deck is a VERBATIM, off-system port from
+    // v1 (inline brand styling, v1 idioms: *ngIf/ViewChild/constructor DI).
+    // Exempt from v2's signal / control-flow / a11y lint rigor — same
+    // rationale as the check-style-guards EXEMPT. It passed v1's checks and
+    // is ported unchanged ("don't change unless we have to" — Liam).
+    ignores: ['src/app/public/welcome/**'],
+  },
+  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,

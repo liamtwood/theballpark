@@ -52,7 +52,13 @@ const BP_DEF_LEGACY = [
 
 const ROOT = join(__dirname, '..', 'src');
 // app.config.ts hosts the ONE sanctioned literal palette (BallparkPreset).
-const EXEMPT = [join('app', 'app.config.ts')];
+// welcome.component.ts is the public marketing deck — DELIBERATELY outside the
+// design system (inline brand colours, no PrimeNG, no theme vars; a locked
+// visual recipe ported verbatim from v1). Exempt by design.
+const EXEMPT = [
+  join('app', 'app.config.ts'),
+  join('app', 'public', 'welcome', 'welcome.component.ts'),
+];
 const offenders = [];
 
 function check(line, file, i, pattern, label) {
