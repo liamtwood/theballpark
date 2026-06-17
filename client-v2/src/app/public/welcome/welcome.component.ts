@@ -1093,6 +1093,39 @@ const DEFAULT_CONTENT: Content = {
       from { r: 280px; opacity: 1; }
       to   { r: 0px;   opacity: 1; }
     }
+    /* v2.30l — reverse 2→1 STEP 2 (Option A): the pink→green handoff.
+       (1) slide-2's text crawls out downward while we're still on the
+           held pink screen. */
+    .bp-slide-2.bp-reverse-rolling-2 .bp-slide-2-inner,
+    .bp-slide-2.bp-reverse-rolling-2 .bp-marquee-wrap {
+      animation: bp-credits-down 0.5s ease-in forwards;
+    }
+    @keyframes bp-credits-down {
+      from { transform: translateY(0);    opacity: 1; }
+      to   { transform: translateY(55vh); opacity: 0; }
+    }
+    /* (2) We then jump to slide 1 and add .bp-reverse-enter. Slide 1's
+       bg STARTS at slide-2's pink (so the cut is invisible) and washes
+       to its own green over 1s, while its pink orbs expand in from small
+       to their resting r=280 — the mirror of the forward green→pink +
+       orb move. forwards-fill holds the resting state (= normal slide 1),
+       so leaving the class on is harmless; it's cleared on the next
+       forward 1→2 anyway. Higher specificity than the .in-view fade-in
+       and orb rules, so this wins during the reverse entry. */
+    .bp-slide-1.bp-reverse-enter {
+      animation: bp-slide1-bg-from-pink 1s linear forwards;
+    }
+    @keyframes bp-slide1-bg-from-pink {
+      from { background-color: #EB7396; }
+      to   { background-color: #287F4D; }
+    }
+    .bp-slide-1.bp-reverse-enter .bp-svg-bg circle {
+      animation: bp-orb-expand-in 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes bp-orb-expand-in {
+      from { r: 60px;  opacity: 1; }
+      to   { r: 280px; opacity: 1; }
+    }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
        on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
@@ -1797,9 +1830,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   slide2ReverseRolling = false;
   /** v2.30k — latches once step 1's blue-orb shrink has completed so
       the pink screen is HELD (orbs stay at r=0) instead of popping back.
-      A further scroll-up then proceeds to slide 1 normally. Reset when
-      slide 2 is re-entered forward (1→2) so the orbs are full again. */
+      A further scroll-up then triggers step 2. Reset when slide 2 is
+      re-entered forward (1→2) so the orbs are full again. */
   reverseStage1Done = false;
+  /** v2.30l — reverse 2→1 step 2 (Option A). True while the pink→green
+      handoff is playing: slide-2's text crawls out, then we jump to
+      slide 1 whose bg washes pink→green as its pink orbs expand in.
+      Mirror of the forward credits-roll's green→pink bridge. */
+  slide2ReverseRolling2 = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -1913,10 +1951,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // the reverse-step-1 latch so the blue orbs are full again, not
       // held at r=0 from a previous reverse. Doesn't fire mid-reverse:
       // that path preventDefaults the scroll, so no settle occurs.
-      if (idx === 1 && (this.slide2ReverseRolling || this.reverseStage1Done)) {
+      if (idx === 1 && (this.slide2ReverseRolling || this.slide2ReverseRolling2 || this.reverseStage1Done)) {
         this.slide2ReverseRolling = false;
+        this.slide2ReverseRolling2 = false;
         this.reverseStage1Done = false;
-        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling');
+        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
       }
       const refs = this.slideRefs?.toArray() || [];
       refs.forEach((ref, i) => {
@@ -2037,23 +2076,46 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // A second up-gesture (orbs already gone) falls through to native
     // scroll so the user can continue to slide 1.
     const onWheel = (e: WheelEvent) => {
-      if (this.step !== 1 || e.deltaY >= 0) return;   // slide 2 + upward only
-      if (this.reverseStage1Done) return;             // already pink → let native scroll run
-      e.preventDefault();                             // swallow the scroll
-      if (this.slide2ReverseRolling) return;          // already shrinking
+      if (this.step !== 1 || e.deltaY >= 0) return;       // slide 2 + upward only
+      e.preventDefault();                                  // we own all upward intent here
+      if (this.slide2ReverseRolling || this.slide2ReverseRolling2) return; // mid-animation
+      const refs = this.slideRefs?.toArray() || [];
+      const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
       // Cancel any pending arrival-settle: if the user flicks up within
       // 450ms of landing on slide 2, that settle's setCurrentInView(1)
-      // would otherwise fire mid-reverse and strip the class we add below.
+      // would otherwise fire mid-reverse and strip the classes below.
+      // (classes toggled DIRECTLY, not via an Angular binding: this is a
+      // raw non-Angular listener and the app is zoneless, so a binding
+      // wouldn't reliably trigger CD — mirrors setCurrentInView/forceInView.)
       clearTimeout(settleTimer);
-      this.slide2ReverseRolling = true;
-      // Toggle the class DIRECTLY (not via an Angular binding): this is a
-      // raw, non-Angular listener and the app is zoneless, so a binding
-      // wouldn't reliably trigger change detection — mirrors how
-      // setCurrentInView / forceInView drive .in-view directly.
-      this.slideRefs?.toArray()[1]?.nativeElement.classList.add('bp-reverse-rolling');
+
+      if (!this.reverseStage1Done) {
+        // STEP 1 — shrink the blue orbs, hold the pink screen.
+        this.slide2ReverseRolling = true;
+        s2el?.classList.add('bp-reverse-rolling');
+        setTimeout(() => {
+          this.slide2ReverseRolling = false;   // shrink done (class holds orbs at r=0)
+          this.reverseStage1Done = true;        // latch the held pink screen
+        }, 800);
+        return;
+      }
+
+      // STEP 2 — pink→green handoff. slide-2 text crawls out, then we jump
+      // to slide 1 and wash its bg pink→green while the pink orbs expand in.
+      this.slide2ReverseRolling2 = true;
+      s2el?.classList.add('bp-reverse-rolling-2');
       setTimeout(() => {
-        this.reverseStage1Done = true;                // latch the held pink screen
-      }, 800);
+        s1el?.classList.add('bp-reverse-enter');           // bg pink→green + orbs expand
+        stage.scrollTo({ top: 0, behavior: 'instant' });   // hidden cut (pink→pink)
+        this.forceInView(0);
+        setTimeout(() => {
+          // slide 2 is off-screen now — reset its reverse state for next time
+          s2el?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
+          this.slide2ReverseRolling = false;
+          this.slide2ReverseRolling2 = false;
+          this.reverseStage1Done = false;
+        }, 1100);
+      }, 500);
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
@@ -2240,11 +2302,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // v1.65j5 — duration tightened 1500ms -> 1000ms (matches
       // the CSS animation durations) per client review feedback. */
       if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
-        // v2.30k — re-entering slide 2 forward: clear the reverse-step-1
-        // latch so the blue orbs are full again (not held at r=0).
+        // v2.30k/l — leaving slide 1 forward: clear all reverse-nav state
+        // so slide 2's orbs are full again and slide 1's bg/orbs are back
+        // to normal (not held in a reverse-entry pose).
         this.slide2ReverseRolling = false;
+        this.slide2ReverseRolling2 = false;
         this.reverseStage1Done = false;
-        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling');
+        const revRefs = this.slideRefs?.toArray() || [];
+        revRefs[1]?.nativeElement.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
+        revRefs[0]?.nativeElement.classList.remove('bp-reverse-enter');
         this.slide1CreditsRolling = true;
         this.cdr.markForCheck();
         setTimeout(() => {
