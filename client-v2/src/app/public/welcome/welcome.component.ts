@@ -2078,35 +2078,29 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const onWheel = (e: WheelEvent) => {
       if (this.step !== 1 || e.deltaY >= 0) return;       // slide 2 + upward only
       e.preventDefault();                                  // we own all upward intent here
-      if (this.slide2ReverseRolling || this.slide2ReverseRolling2) return; // mid-animation
+      if (this.slide2ReverseRolling) return;               // sequence already running
       const refs = this.slideRefs?.toArray() || [];
       const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
-      // Cancel any pending arrival-settle: if the user flicks up within
-      // 450ms of landing on slide 2, that settle's setCurrentInView(1)
-      // would otherwise fire mid-reverse and strip the classes below.
-      // (classes toggled DIRECTLY, not via an Angular binding: this is a
-      // raw non-Angular listener and the app is zoneless, so a binding
-      // wouldn't reliably trigger CD — mirrors setCurrentInView/forceInView.)
+      // Cancel any pending arrival-settle so it can't fire mid-reverse and
+      // strip the classes below. (Classes toggled DIRECTLY, not via an
+      // Angular binding: this is a raw non-Angular listener and the app is
+      // zoneless, so a binding wouldn't reliably trigger CD — mirrors
+      // setCurrentInView / forceInView.)
       clearTimeout(settleTimer);
 
-      if (!this.reverseStage1Done) {
-        // STEP 1 — shrink the blue orbs, hold the pink screen.
-        this.slide2ReverseRolling = true;
-        s2el?.classList.add('bp-reverse-rolling');
-        setTimeout(() => {
-          this.slide2ReverseRolling = false;   // shrink done (class holds orbs at r=0)
-          this.reverseStage1Done = true;        // latch the held pink screen
-        }, 800);
-        return;
-      }
-
-      // STEP 2 — pink→green handoff. slide-2 text crawls out, then we jump
-      // to slide 1 and wash its bg pink→green while the pink orbs expand in.
+      // ONE continuous reverse 2→1, played from a single up-gesture:
+      this.slide2ReverseRolling = true;
       this.slide2ReverseRolling2 = true;
-      s2el?.classList.add('bp-reverse-rolling-2');
+      this.reverseStage1Done = true;
+      // Phase 1 (0 → ~0.6s): blue orbs shrink → uniform pink screen.
+      s2el?.classList.add('bp-reverse-rolling');
+      // Phase 2 (0.6s, 0.5s long): slide-2's text crawls out — slide 2 leaves.
+      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 600);
+      // Phase 3 (~1.1s): hidden pink→pink cut to slide 1, which washes its
+      // bg pink→green while the pink orbs expand in (1s) — slide 1 appears.
       setTimeout(() => {
-        s1el?.classList.add('bp-reverse-enter');           // bg pink→green + orbs expand
-        stage.scrollTo({ top: 0, behavior: 'instant' });   // hidden cut (pink→pink)
+        s1el?.classList.add('bp-reverse-enter');
+        stage.scrollTo({ top: 0, behavior: 'instant' });
         this.forceInView(0);
         setTimeout(() => {
           // slide 2 is off-screen now — reset its reverse state for next time
@@ -2115,7 +2109,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.slide2ReverseRolling2 = false;
           this.reverseStage1Done = false;
         }, 1100);
-      }, 500);
+      }, 1100);
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
