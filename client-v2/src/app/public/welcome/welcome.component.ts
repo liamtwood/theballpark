@@ -367,6 +367,24 @@ const DEFAULT_CONTENT: Content = {
         </svg>
       </button>
 
+      <!-- v2.30q — explicit BACK chevron (up). Added because relying on the
+           scrollbar to invoke the reverse felt inconsistent. On slide 2 it
+           plays the reverse 2→1 animation; on later slides it's a plain
+           step-back. Hidden on slide 1 (nothing above). Mirrors .bp-next-icon. -->
+      <button
+        *ngIf="step > 0"
+        type="button"
+        class="bp-prev-icon"
+        (click)="goBack()"
+        aria-label="Previous slide">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m17 11-5-5-5 5"/>
+          <path d="m17 18-5-5-5 5"/>
+        </svg>
+      </button>
+
       <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
            Position is driven by --scroll-progress on .bp-welcome-root,
            updated by the scroll listener in ngAfterViewInit.
@@ -651,6 +669,33 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-next-icon:active {
       transform: translateX(-50%) translateY(2px) scale(0.96);
+    }
+
+    /* v2.30q — BACK chevron (up), mirror of .bp-next-icon pinned to the
+       top edge. Shown on slides 2-4 (hidden on slide 1). */
+    .bp-prev-icon {
+      position: fixed;
+      left: 50%;
+      top: 10vh;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 56px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #DCF0EB;
+      cursor: pointer;
+      z-index: 50;
+      opacity: 0.85;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .bp-prev-icon:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px);
+    }
+    .bp-prev-icon:active {
+      transform: translateX(-50%) translateY(-2px) scale(0.96);
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
@@ -1837,6 +1882,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       blue orbs collapse (bp-orb-shrink) leaving slide 2's uniform pink
       CSS bg. Mirror of the forward credits-roll, opposite operation. */
   slide2ReverseRolling = false;
+  /** v2.30q — handle to the reverse 2→1 sequence (a closure defined in
+      ngAfterViewInit, where the stage/scroll state lives). Lets the back
+      chevron's goBack() trigger the same animation the wheel/scroll do. */
+  private reverseFn?: () => void;
   /** v2.30k — latches once step 1's blue-orb shrink has completed so
       the pink screen is HELD (orbs stay at r=0) instead of popping back.
       A further scroll-up then triggers step 2. Reset when slide 2 is
@@ -2090,6 +2139,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }, 1700);
       }, 2500);
     };
+    this.reverseFn = startReverse;   // v2.30q — let the back chevron trigger it
 
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
@@ -2251,6 +2301,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // + adds .in-view (which triggers the per-slide animations).
   next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
+  /** v2.30q — back chevron. On slide 2 play the reverse 2→1 animation
+      (via the closure captured in ngAfterViewInit); elsewhere step back
+      plainly (no fancy reverse built for 3→2 / 4→3 yet). */
+  goBack()     { if (this.step === 1 && this.reverseFn) this.reverseFn(); else this.prev(); }
   goTo(i: number) {
     // v1.65j1 — BALLPARK-click dissolve. When the user clicks the
     // BALLPARK logo from any non-home slide, fade the page to green
