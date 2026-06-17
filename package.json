@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client-angular && npm run dev",
-    "install:all": "npm install && cd server && npm install && cd ../client-angular && npm install",
+    "dev:client": "cd client-v2 && npm start",
+    "dev:client:v1": "cd client-angular && npm run dev",
+    "build:client": "cd client-v2 && npm run build",
+    "install:all": "npm install && cd server && npm install && cd ../client-v2 && npm install",
     "db:migrate": "cd server && node src/db/migrate.js",
+    "db:migrate:schemas": "cd server && node src/db/migrate-schemas.js",
     "db:seed": "cd server && node src/db/seed.js"
   },
   "devDependencies": {
