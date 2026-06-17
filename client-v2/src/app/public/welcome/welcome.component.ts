@@ -1093,38 +1093,47 @@ const DEFAULT_CONTENT: Content = {
       from { r: 280px; opacity: 1; }
       to   { r: 0px;   opacity: 1; }
     }
-    /* v2.30l — reverse 2→1 STEP 2 (Option A): the pink→green handoff.
-       (1) slide-2's text crawls out downward while we're still on the
-           held pink screen. */
+    /* v2.30n — reverse 2→1 STEP 2 (Option A): the pink→green handoff.
+       (1) slide-2's text + marquee crawl fully OFF the bottom of the page
+       (translateY 110vh) over 1.1s — generous time to clear before the
+       cut, per Liam. opacity stays 1 (they leave, they don't fade). */
     .bp-slide-2.bp-reverse-rolling-2 .bp-slide-2-inner,
     .bp-slide-2.bp-reverse-rolling-2 .bp-marquee-wrap {
-      animation: bp-credits-down 0.5s ease-in forwards;
+      animation: bp-credits-down 1.1s ease-in forwards;
     }
     @keyframes bp-credits-down {
-      from { transform: translateY(0);    opacity: 1; }
-      to   { transform: translateY(55vh); opacity: 0; }
+      from { transform: translateY(0);     opacity: 1; }
+      to   { transform: translateY(110vh); opacity: 1; }
     }
-    /* (2) We then jump to slide 1 and add .bp-reverse-enter. Slide 1's
-       bg STARTS at slide-2's pink (so the cut is invisible) and washes
-       to its own green over 1s, while its pink orbs expand in from small
-       to their resting r=280 — the mirror of the forward green→pink +
-       orb move. forwards-fill holds the resting state (= normal slide 1),
-       so leaving the class on is harmless; it's cleared on the next
-       forward 1→2 anyway. Higher specificity than the .in-view fade-in
-       and orb rules, so this wins during the reverse entry. */
+    /* (2) After slide-2 has cleared we jump to slide 1 (hidden pink→pink
+       cut) and add .bp-reverse-enter, which runs the MASK sequence over
+       1.6s — orbs and bg animations share the duration so they stay in
+       lockstep:
+         · orbs (bp-reverse-enter-orbs): expand r 280→1780 so the two pink
+           spheres OVERLAP and cover the whole viewport (background hidden),
+           hold covered, then shrink back to the resting r=280.
+         · bg (bp-reverse-enter-bg): held at slide-2 pink while the orbs
+           are still expanding, flipped to slide-1 green during the covered
+           window (so the colour change is never seen), then revealed as the
+           orbs shrink away.
+       forwards-fill holds the resting state (= normal slide 1); cleared on
+       the next forward 1→2. Higher specificity than the global .in-view
+       fade-in/orb rules, so this wins during the reverse entry. */
     .bp-slide-1.bp-reverse-enter {
-      animation: bp-slide1-bg-from-pink 1s linear forwards;
+      animation: bp-reverse-enter-bg 1.6s linear forwards;
     }
-    @keyframes bp-slide1-bg-from-pink {
-      from { background-color: #EB7396; }
-      to   { background-color: #287F4D; }
+    @keyframes bp-reverse-enter-bg {
+      0%, 42%  { background-color: #EB7396; }   /* pink — orbs still expanding to cover */
+      52%,100% { background-color: #287F4D; }   /* green — flipped while fully covered */
     }
     .bp-slide-1.bp-reverse-enter .bp-svg-bg circle {
-      animation: bp-orb-expand-in 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: bp-reverse-enter-orbs 1.6s cubic-bezier(0.4, 0, 0.4, 1) forwards;
     }
-    @keyframes bp-orb-expand-in {
-      from { r: 60px;  opacity: 1; }
-      to   { r: 280px; opacity: 1; }
+    @keyframes bp-reverse-enter-orbs {
+      0%   { r: 280px;  opacity: 1; }   /* at the cut: pink orbs on pink bg = uniform pink */
+      35%  { r: 1780px; opacity: 1; }   /* expanded so the orbs overlap, hiding the bg */
+      55%  { r: 1780px; opacity: 1; }   /* hold the cover while bg flips pink→green */
+      100% { r: 280px;  opacity: 1; }   /* shrink to target → green revealed */
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
@@ -2092,12 +2101,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.slide2ReverseRolling = true;
       this.slide2ReverseRolling2 = true;
       this.reverseStage1Done = true;
-      // Phase 1 (0 → ~0.6s): blue orbs shrink → uniform pink screen.
+      // Phase 1 (0 → 0.8s): blue orbs shrink → uniform pink screen.
       s2el?.classList.add('bp-reverse-rolling');
-      // Phase 2 (0.6s, 0.5s long): slide-2's text crawls out — slide 2 leaves.
-      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 600);
-      // Phase 3 (~1.1s): hidden pink→pink cut to slide 1, which washes its
-      // bg pink→green while the pink orbs expand in (1s) — slide 1 appears.
+      // Phase 2 (0.8s, 1.1s long): slide-2's text + marquee crawl fully off
+      // the bottom of the page — generous time to clear before the cut.
+      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 800);
+      // Phase 3 (~1.9s, after slide 2 has cleared): hidden pink→pink cut to
+      // slide 1, which runs the mask sequence (orbs cover → bg flips green →
+      // orbs shrink to reveal green) over 1.6s.
       setTimeout(() => {
         s1el?.classList.add('bp-reverse-enter');
         stage.scrollTo({ top: 0, behavior: 'instant' });
@@ -2108,8 +2119,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.slide2ReverseRolling = false;
           this.slide2ReverseRolling2 = false;
           this.reverseStage1Done = false;
-        }, 1100);
-      }, 1100);
+        }, 1700);
+      }, 1900);
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
