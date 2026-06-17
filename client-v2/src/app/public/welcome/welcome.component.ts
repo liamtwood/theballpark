@@ -332,6 +332,7 @@ const DEFAULT_CONTENT: Content = {
                    mobile where the old right column was display:none. -->
               <div class="bp-footer-links">
                 <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
+                <a href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/" target="_blank" rel="noopener" class="bp-footer-link">Privacy</a>
               </div>
               <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
             </div>
