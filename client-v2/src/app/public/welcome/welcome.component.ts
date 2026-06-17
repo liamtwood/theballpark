@@ -1828,7 +1828,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   private get apiUrl(): string { return `${this.rc.get().apiBaseUrl}/api`; }
 
   ngOnInit() {
-    this.http.get<Content>(`${this.apiUrl}/welcome/content`).subscribe({
+    // Cache-bust: marketing copy is admin-edited and should reflect on the
+    // next load, not after a hard refresh (v2 — the GET was being served from
+    // browser HTTP cache).
+    this.http.get<Content>(`${this.apiUrl}/welcome/content?t=${Date.now()}`).subscribe({
       next: (content) => {
         if (content && typeof content === 'object') {
           // Merge fetched values, falling back to defaults for any missing keys
