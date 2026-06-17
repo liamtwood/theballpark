@@ -2162,6 +2162,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       stage.style.overflowY = 'hidden';               // lock user scroll for the duration
       const refs = this.slideRefs?.toArray() || [];
       const leavingEl = refs[fromStep]?.nativeElement, destEl = refs[destStep]?.nativeElement;
+      // v2.30u — clear any stale .bp-reverse-enter left on a slide from a
+      // PRIOR reverse so (a) the destination's mask replays fresh and (b) it
+      // can't block the leaving slide's orb-shrink / bg. Safe: the leaving
+      // slide gets bp-reverse-rolling in the same synchronous tick (no paint
+      // in between, so no fade-restart flash); other slides are off-screen.
+      refs.forEach(r => r?.nativeElement.classList.remove('bp-reverse-enter'));
       // Phase 1 (0–0.8s): leaving slide's orbs shrink → uniform bg.
       leavingEl?.classList.add('bp-reverse-rolling');
       // Phase 2 (0.8s, 1.7s long): leaving slide's text crawls fully off.
@@ -2181,7 +2187,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         setProgress();
         setTimeout(() => {
           leavingEl?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
-          destEl?.classList.remove('bp-reverse-enter');   // final frame = resting state, safe to drop
+          // v2.30u — do NOT remove destEl's .bp-reverse-enter here. Its
+          // forwards-fill holds the rested state (r=280, opacity 1). Removing
+          // it hands the orb's `animation` back to the slide's .in-view fade-in,
+          // which then RESTARTS from opacity 0 → the flash. It's cleared at the
+          // start of the next reverse and on forward nav off the slide instead.
           stage.style.overflowY = 'scroll';               // restore user scroll
           this.slide2ReverseRolling = false;
         }, 1700);
@@ -2477,6 +2487,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // which was bumped because slide 2 has more elements moving
       // at once and read as quicker than slide 1 at parity timing.
       if (this.step === 1 && i === 2 && !this.slide2CreditsRolling) {
+        // v2.30u — leaving slide 2 forward: clear a leftover .bp-reverse-enter
+        // (from a prior 3→2) so it doesn't block the bg pink→teal bridge.
+        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-enter');
         this.slide2CreditsRolling = true;
         this.cdr.markForCheck();
         setTimeout(() => {
