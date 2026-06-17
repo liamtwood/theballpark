@@ -1072,9 +1072,22 @@ const DEFAULT_CONTENT: Content = {
        transform, so the two do not fight. */
     .bp-slide-1 .bp-svg-bg circle {
       r: calc(280px + var(--s1-leaving, 0) * 1500px);
+      /* v2.30i — reverse 2→1 mask. While slide 1 isn't yet .in-view
+         (i.e. you're scrolling UP into it), drive orb opacity from
+         --s1-leaving so the pink orbs are already present at ~full
+         opacity to carry slide-2's pink across the seam, then fade as
+         they shrink and slide-1's green is revealed. Once slide 1
+         settles .in-view, bp-orb-fade-in (above) animates opacity to a
+         solid 1 and — being an animated value — overrides this static
+         declaration for the steady state. Forward 1→2 is unaffected:
+         slide 1 stays .in-view throughout, so the animation always wins. */
+      opacity: var(--s1-leaving, 0);
     }
     .bp-slide-2 .bp-svg-bg circle {
-      r: calc(280px + var(--s2-leaving, 0) * 1500px);
+      /* v2.30i — base grow (--s2-leaving, forward 2→3) scaled by
+         --s2-shrink (reverse 2→1): on the way up, --s2-leaving is 0 so
+         r = 280 * --s2-shrink, collapsing the blue orbs to nothing. */
+      r: calc((280px + var(--s2-leaving, 0) * 1500px) * var(--s2-shrink, 1));
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
@@ -1945,6 +1958,19 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       root.style.setProperty('--s1-leaving', String(leaving(0)));
       root.style.setProperty('--s2-leaving', String(leaving(1)));
       root.style.setProperty('--s3-leaving', String(leaving(2)));
+
+      // v2.30i — REVERSE 2→1 (free-scroll back-nav). Mirror of the
+      // forward 1→2 bridge, opposite operation: as the user scrolls
+      // UP off slide 2, slide-2's blue orbs shrink to nothing so the
+      // screen settles to slide-2's uniform pink bg, then slide-1's
+      // pink orbs (driven by --s1-leaving, already 1→0 on the way up)
+      // shrink to expose slide-1's green. --s2-shrink is a pure
+      // position fn: 1 while parked on slide 2 (or beyond, so the
+      // 2→3 grow is untouched), ramping to 0 as you arrive on slide 1.
+      // The forward 1→2 approach also drives it 0→1, but slide 2 isn't
+      // .in-view then (orbs opacity 0), so that grow-from-0 is unseen.
+      const s2shrink = Math.min(1, Math.max(0, slideF));
+      root.style.setProperty('--s2-shrink', String(s2shrink));
     };
 
     const onScroll = () => {
