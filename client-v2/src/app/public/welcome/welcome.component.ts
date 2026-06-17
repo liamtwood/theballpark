@@ -1099,7 +1099,7 @@ const DEFAULT_CONTENT: Content = {
        cut, per Liam. opacity stays 1 (they leave, they don't fade). */
     .bp-slide-2.bp-reverse-rolling-2 .bp-slide-2-inner,
     .bp-slide-2.bp-reverse-rolling-2 .bp-marquee-wrap {
-      animation: bp-credits-down 1.1s ease-in forwards;
+      animation: bp-credits-down 1.7s ease-in-out forwards;
     }
     @keyframes bp-credits-down {
       from { transform: translateY(0);     opacity: 1; }
@@ -2064,9 +2064,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
       // Phase 1 (0–0.8s): blue orbs shrink → uniform pink screen.
       s2el?.classList.add('bp-reverse-rolling');
-      // Phase 2 (0.8s, 1.1s long): slide-2 text + marquee crawl fully off.
+      // Phase 2 (0.8s, 1.7s long): slide-2 text + marquee crawl fully off
+      // — a slow, steady credits drift, per Liam.
       setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 800);
-      // Phase 3 (~1.9s, after slide 2 clears): hidden pink→pink cut to
+      // Phase 3 (~2.5s, after slide 2 clears): hidden pink→pink cut to
       // slide 1 + the mask sequence (orbs cover → bg flips green → shrink).
       setTimeout(() => {
         this.step = 0;
@@ -2074,6 +2075,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         s1el?.classList.add('bp-reverse-enter');
         stage.scrollTop = 0;
         this.forceInView(0);
+        // We short-circuited onScroll for the whole reverse, so the
+        // scroll-progress var (and the position pill it drives) is frozen
+        // at slide 2. Now that we've landed on slide 1, recompute it so the
+        // indicator snaps back to the TOP, and reset the up/down tracker.
+        lastRevScrollTop = 0;
+        setProgress();
         setTimeout(() => {
           s2el?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
           stage.style.overflowY = 'scroll';  // restore user scroll on slide 1
@@ -2081,7 +2088,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.slide2ReverseRolling2 = false;
           this.reverseStage1Done = false;
         }, 1700);
-      }, 1900);
+      }, 2500);
     };
 
     const onScroll = () => {
