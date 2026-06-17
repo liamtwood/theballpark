@@ -627,7 +627,7 @@ const DEFAULT_CONTENT: Content = {
     .bp-next-icon {
       position: fixed;
       left: 50%;
-      bottom: 15vh;
+      bottom: 10vh;
       transform: translateX(-50%);
       width: 56px;
       height: 56px;
