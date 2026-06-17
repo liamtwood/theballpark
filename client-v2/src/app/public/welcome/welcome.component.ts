@@ -1072,21 +1072,15 @@ const DEFAULT_CONTENT: Content = {
        transform, so the two do not fight. */
     .bp-slide-1 .bp-svg-bg circle {
       r: calc(280px + var(--s1-leaving, 0) * 1500px);
-      /* v2.30i — reverse 2→1 mask. While slide 1 isn't yet .in-view
-         (i.e. you're scrolling UP into it), drive orb opacity from
-         --s1-leaving so the pink orbs are already present at ~full
-         opacity to carry slide-2's pink across the seam, then fade as
-         they shrink and slide-1's green is revealed. Once slide 1
-         settles .in-view, bp-orb-fade-in (above) animates opacity to a
-         solid 1 and — being an animated value — overrides this static
-         declaration for the steady state. Forward 1→2 is unaffected:
-         slide 1 stays .in-view throughout, so the animation always wins. */
-      opacity: var(--s1-leaving, 0);
     }
     .bp-slide-2 .bp-svg-bg circle {
-      /* v2.30i — base grow (--s2-leaving, forward 2→3) scaled by
-         --s2-shrink (reverse 2→1): on the way up, --s2-leaving is 0 so
-         r = 280 * --s2-shrink, collapsing the blue orbs to nothing. */
+      /* v2.30j — reverse 2→1, STEP 1 only: scrolling back up shrinks the
+         blue orbs to nothing (--s2-shrink scales r 280→0), leaving slide
+         2's uniform pink CSS bg on screen. Step 2 (slide-1 pink orbs
+         shrinking to reveal green) is intentionally NOT wired yet — built
+         incrementally per Liam. The base term keeps the forward 2→3 grow
+         (--s2-leaving) untouched; on the way up --s2-leaving is 0 so
+         r = 280 * --s2-shrink. */
       r: calc((280px + var(--s2-leaving, 0) * 1500px) * var(--s2-shrink, 1));
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
