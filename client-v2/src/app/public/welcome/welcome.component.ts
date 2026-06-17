@@ -47,10 +47,10 @@ const DEFAULT_CONTENT: Content = {
   //     the form
   'hero.eyebrow':           'Coming soon · Event production reimagined',
   'hero.headline':          'REAL COSTS\nREAL FAST',
-  'hero.subtitle':          'Turn your event into an accurate estimate in moments.',
+  'hero.subtitle':          'Turn your event into an accurate estimate in seconds.',
   'hero.cta':               'Get on the guestlist',
   'suppliers.eyebrow':      'The network',
-  'suppliers.headline':     'AI Powered by real costs from our network of incredible suppliers.',
+  'suppliers.headline':     'AI Powered by real costs of our incredible suppliers.',
   'suppliers.subtitle':     'The best suppliers in the UK with quotes in minutes.',
   'suppliers.categories':   ['DESIGN', 'BUILD', 'VENUES', 'FURNITURE', 'AV', 'GRAPHICS', 'CATERING'],
   'producers.headline':     "A PRODUCERS BEST FRIEND.",
@@ -58,10 +58,10 @@ const DEFAULT_CONTENT: Content = {
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
-  'guestlist.headline':        'THOSE WHO GET IN EARLY,\nGET AHEAD',
+  'guestlist.headline':        "Get on the guestlist and the moment we're live you'll be the first to know.",
   'guestlist.subtitle':        "Get on the guestlist",
   'guestlist.cta_label':       'APPLY',
-  'guestlist.footer_text':     "Get on the guestlist and the moment we're live you'll be the first to know.",
+  'guestlist.footer_text':     'Those who get in early get ahead.',
   'guestlist.success_headline': "You're on the guestlist.",
   'guestlist.success_body':    "We'll be in touch the moment Ballpark goes live, {{firstName}}."
 };
@@ -332,9 +332,6 @@ const DEFAULT_CONTENT: Content = {
                    mobile where the old right column was display:none. -->
               <div class="bp-footer-links">
                 <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
-                <a href="https://instagram.com" target="_blank" rel="noopener" class="bp-footer-link">Instagram</a>
-                <a href="https://tiktok.com" target="_blank" rel="noopener" class="bp-footer-link">TikTok</a>
-                <button type="button" class="bp-footer-link bp-footer-link--button" (click)="openLegal($event)">Legal</button>
               </div>
               <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
             </div>
@@ -1722,10 +1719,11 @@ const DEFAULT_CONTENT: Content = {
        Cloudflare renders an iframe roughly 65px tall in compact mode.
        The widget is theme: dark to match the welcome page. */
     .bp-turnstile-wrap {
-      margin-top: 18px;
       display: flex;
       justify-content: center;
-      min-height: 65px;
+      /* v2: invisible Turnstile (interaction-only) — reserve no space when
+         it's not showing a challenge. */
+      min-height: 0;
     }
   `]
 })
