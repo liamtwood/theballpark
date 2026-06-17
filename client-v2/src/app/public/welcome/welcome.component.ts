@@ -1074,14 +1074,24 @@ const DEFAULT_CONTENT: Content = {
       r: calc(280px + var(--s1-leaving, 0) * 1500px);
     }
     .bp-slide-2 .bp-svg-bg circle {
-      /* v2.30j — reverse 2→1, STEP 1 only: scrolling back up shrinks the
-         blue orbs to nothing (--s2-shrink scales r 280→0), leaving slide
-         2's uniform pink CSS bg on screen. Step 2 (slide-1 pink orbs
-         shrinking to reveal green) is intentionally NOT wired yet — built
-         incrementally per Liam. The base term keeps the forward 2→3 grow
-         (--s2-leaving) untouched; on the way up --s2-leaving is 0 so
-         r = 280 * --s2-shrink. */
+      /* v2.30j — reverse 2→1, STEP 1: --s2-shrink scales the blue orbs'
+         r 280→0. The base term keeps the forward 2→3 grow (--s2-leaving)
+         untouched; on the way up --s2-leaving is 0 so r = 280 * --s2-shrink. */
       r: calc((280px + var(--s2-leaving, 0) * 1500px) * var(--s2-shrink, 1));
+    }
+    /* v2.30k — reverse 2→1 step 1 (Option A): a scroll-UP off slide 2
+       triggers a TIMED shrink (not raw scroll position) so the screen
+       can HOLD on pink. .bp-reverse-rolling collapses the blue orbs to
+       r=0 over 0.8s and forwards-fill holds them gone, leaving slide 2's
+       pink CSS bg. opacity pinned to 1 so the shrink is visible (this
+       animation replaces the .in-view fade-in, which would otherwise
+       leave opacity at the global 0). */
+    .bp-slide-2.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    @keyframes bp-orb-shrink {
+      from { r: 280px; opacity: 1; }
+      to   { r: 0px;   opacity: 1; }
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
@@ -1779,6 +1789,17 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       motion, no orb-grow, no bg shift since slide 3 and slide 4
       share the same #6391A4 teal bg). */
   slide3CreditsRolling = false;
+  /** v2.30k — REVERSE 2→1, step 1 (timed, "Option A"). True while
+      slide-2's blue orbs are shrinking to nothing on a scroll-UP off
+      slide 2. Drives .bp-reverse-rolling on the slide-2 section so the
+      blue orbs collapse (bp-orb-shrink) leaving slide 2's uniform pink
+      CSS bg. Mirror of the forward credits-roll, opposite operation. */
+  slide2ReverseRolling = false;
+  /** v2.30k — latches once step 1's blue-orb shrink has completed so
+      the pink screen is HELD (orbs stay at r=0) instead of popping back.
+      A further scroll-up then proceeds to slide 1 normally. Reset when
+      slide 2 is re-entered forward (1→2) so the orbs are full again. */
+  reverseStage1Done = false;
   /** Kept for legacy bindings (template still references it). Now
       always 'forward' since per-slide animations are one-shot. */
   direction: 'forward' | 'backward' = 'forward';
@@ -1888,6 +1909,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const setCurrentInView = (idx: number) => {
       if (idx === this.lastSettledIdx) return;
       this.lastSettledIdx = idx;
+      // v2.30k — a fresh settle on slide 2 (arrived by any path) clears
+      // the reverse-step-1 latch so the blue orbs are full again, not
+      // held at r=0 from a previous reverse. Doesn't fire mid-reverse:
+      // that path preventDefaults the scroll, so no settle occurs.
+      if (idx === 1 && (this.slide2ReverseRolling || this.reverseStage1Done)) {
+        this.slide2ReverseRolling = false;
+        this.reverseStage1Done = false;
+        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling');
+      }
       const refs = this.slideRefs?.toArray() || [];
       refs.forEach((ref, i) => {
         const el = ref.nativeElement;
@@ -1998,9 +2028,39 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     };
 
     stage.addEventListener('scroll', onScroll, { passive: true });
+
+    // v2.30k — reverse 2→1 step 1 (Option A). The deck snap-scrolls too
+    // fast to "hold" a pink screen on a raw scroll, so intercept the
+    // scroll-UP intent off slide 2 and play a TIMED blue-orb shrink
+    // instead. First up-gesture on slide 2 (orbs still present): swallow
+    // the scroll and shrink the blue orbs, leaving the screen pink (held).
+    // A second up-gesture (orbs already gone) falls through to native
+    // scroll so the user can continue to slide 1.
+    const onWheel = (e: WheelEvent) => {
+      if (this.step !== 1 || e.deltaY >= 0) return;   // slide 2 + upward only
+      if (this.reverseStage1Done) return;             // already pink → let native scroll run
+      e.preventDefault();                             // swallow the scroll
+      if (this.slide2ReverseRolling) return;          // already shrinking
+      // Cancel any pending arrival-settle: if the user flicks up within
+      // 450ms of landing on slide 2, that settle's setCurrentInView(1)
+      // would otherwise fire mid-reverse and strip the class we add below.
+      clearTimeout(settleTimer);
+      this.slide2ReverseRolling = true;
+      // Toggle the class DIRECTLY (not via an Angular binding): this is a
+      // raw, non-Angular listener and the app is zoneless, so a binding
+      // wouldn't reliably trigger change detection — mirrors how
+      // setCurrentInView / forceInView drive .in-view directly.
+      this.slideRefs?.toArray()[1]?.nativeElement.classList.add('bp-reverse-rolling');
+      setTimeout(() => {
+        this.reverseStage1Done = true;                // latch the held pink screen
+      }, 800);
+    };
+    stage.addEventListener('wheel', onWheel, { passive: false });
+
     this.scrollListener = () => {
       clearTimeout(settleTimer);
       stage.removeEventListener('scroll', onScroll);
+      stage.removeEventListener('wheel', onWheel);
     };
 
     // Slide 0 is in view on load — mark immediately so first paint
@@ -2180,6 +2240,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // v1.65j5 — duration tightened 1500ms -> 1000ms (matches
       // the CSS animation durations) per client review feedback. */
       if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
+        // v2.30k — re-entering slide 2 forward: clear the reverse-step-1
+        // latch so the blue orbs are full again (not held at r=0).
+        this.slide2ReverseRolling = false;
+        this.reverseStage1Done = false;
+        this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling');
         this.slide1CreditsRolling = true;
         this.cdr.markForCheck();
         setTimeout(() => {
