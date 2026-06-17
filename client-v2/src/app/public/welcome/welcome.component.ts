@@ -2230,6 +2230,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
               this.slide3CreditsRolling = false;
               this.cdr.markForCheck();
             }, 200);
+            // v2 fix: slide 4 is the only slide with no *ngIf remount, so if
+            // the 450ms scroll-settle computes a transient index it can steal
+            // .in-view off the final slide and the orbs never emerge. Re-assert
+            // AFTER the settle window — guarded so it's a no-op (no double-play)
+            // when in-view already stuck.
+            setTimeout(() => {
+              const el = this.slideRefs?.toArray()[3]?.nativeElement as HTMLElement | undefined;
+              if (el && !el.classList.contains('in-view')) this.forceInView(3);
+            }, 550);
           });
         }, 1200);
         return;
