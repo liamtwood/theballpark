@@ -1180,6 +1180,44 @@ const DEFAULT_CONTENT: Content = {
       55%  { r: 1780px; opacity: 1; }   /* hold the cover while bg flips pink→green */
       100% { r: 280px;  opacity: 1; }   /* shrink to target → green revealed */
     }
+
+    /* ── v2.30s — reverse 3→2 (same mask pattern, colours rotated) ──
+       Leave on slide-3's teal (#6391A4); slide-2's BLUE orbs cover (blue
+       sits in the same family as teal, like the forward 2→3 cross-over),
+       the hidden bg flips teal→pink, then the orbs shrink to reveal pink.
+       (1) slide-3's GREEN orbs (r=240) shrink to nothing → uniform teal. */
+    .bp-slide-3.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink-s3 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    @keyframes bp-orb-shrink-s3 {
+      from { r: 240px; opacity: 1; }
+      to   { r: 0px;   opacity: 1; }
+    }
+    /* (2) slide-3's text grid crawls fully off the bottom (reuses bp-credits-down). */
+    .bp-slide-3.bp-reverse-rolling-2 .bp-slide-3-inner {
+      animation: bp-credits-down 1.7s ease-in-out forwards;
+    }
+    /* (3) cut to slide 2: bg STARTS at slide-3 teal (invisible cut) and
+       washes to slide-2 pink during the covered window; the blue orbs grow
+       from nothing to overlap/cover (so no blue blobs pop on the teal at the
+       cut), hold, then shrink to the resting r=280 revealing pink. The extra
+       .bp-bg-layer in the selector outspecifies the .bp-slide-2.in-view rule. */
+    .bp-slide-2.bp-reverse-enter {
+      animation: bp-reverse-enter-bg-s2 1.6s linear forwards;
+    }
+    @keyframes bp-reverse-enter-bg-s2 {
+      0%, 42%  { background-color: #6391A4; }   /* teal — orbs still expanding to cover */
+      52%,100% { background-color: #EB7396; }   /* pink — flipped while fully covered */
+    }
+    .bp-slide-2.bp-reverse-enter .bp-bg-layer .bp-svg-bg circle {
+      animation: bp-reverse-enter-orbs-s2 1.6s cubic-bezier(0.4, 0, 0.4, 1) forwards;
+    }
+    @keyframes bp-reverse-enter-orbs-s2 {
+      0%   { r: 0px;    opacity: 1; }   /* invisible → uniform teal at the cut */
+      35%  { r: 1780px; opacity: 1; }   /* blue orbs overlap, hiding the bg */
+      55%  { r: 1780px; opacity: 1; }   /* hold the cover while bg flips teal→pink */
+      100% { r: 280px;  opacity: 1; }   /* shrink to target → pink revealed */
+    }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
        on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
@@ -1885,7 +1923,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v2.30q — handle to the reverse 2→1 sequence (a closure defined in
       ngAfterViewInit, where the stage/scroll state lives). Lets the back
       chevron's goBack() trigger the same animation the wheel/scroll do. */
-  private reverseFn?: () => void;
+  private reverseFn?: (fromStep: number) => void;
   /** v2.30k — latches once step 1's blue-orb shrink has completed so
       the pink screen is HELD (orbs stay at r=0) instead of popping back.
       A further scroll-up then triggers step 2. Reset when slide 2 is
@@ -2100,50 +2138,51 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // track-click / keyboard / touch). Locks the stage (overflow hidden)
     // for its duration so user scrolling can't fight the timed animation,
     // then restores it on slide 1. Guarded against re-entry.
-    const startReverse = () => {
-      if (this.slide2ReverseRolling) return;
+    // v2.30s — generalized to any one-step-back transition (2→1 or 3→2).
+    // fromStep = the slide we're leaving (1 = slide 2, 2 = slide 3). The
+    // leaving slide's orbs shrink + text crawls off; we cut to fromStep-1
+    // whose per-slide .bp-reverse-enter CSS runs the cover→flip→reveal mask.
+    const startReverse = (fromStep: number) => {
+      if (this.slide2ReverseRolling) return;          // a reverse is already running
+      if (fromStep < 1 || fromStep > 2) return;       // only 2→1 and 3→2 are wired
       const vh = stage.clientHeight || window.innerHeight;
+      const destStep = fromStep - 1;
       this.slide2ReverseRolling = true;
-      this.slide2ReverseRolling2 = true;
-      this.reverseStage1Done = true;
       clearTimeout(settleTimer);
       // behavior:'instant' is REQUIRED — the stage has scroll-behavior:smooth
       // in CSS, so a plain scrollTop assignment would animate a smooth scroll
-      // and sweep the slide-2/slide-1 seam across as a pink "line". Forward
+      // and sweep the inter-slide seam across as a coloured "line". Forward
       // nav uses the same instant trick. (Liam's pink-line bug.)
-      stage.scrollTo({ top: vh, behavior: 'instant' });  // ensure slide 2 is the canvas
-      stage.style.overflowY = 'hidden';     // lock user scroll for the duration
+      stage.scrollTo({ top: fromStep * vh, behavior: 'instant' });  // pin the leaving slide
+      stage.style.overflowY = 'hidden';               // lock user scroll for the duration
       const refs = this.slideRefs?.toArray() || [];
-      const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
-      // Phase 1 (0–0.8s): blue orbs shrink → uniform pink screen.
-      s2el?.classList.add('bp-reverse-rolling');
-      // Phase 2 (0.8s, 1.7s long): slide-2 text + marquee crawl fully off
-      // — a slow, steady credits drift, per Liam.
-      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 800);
-      // Phase 3 (~2.5s, after slide 2 clears): hidden pink→pink cut to
-      // slide 1 + the mask sequence (orbs cover → bg flips green → shrink).
+      const leavingEl = refs[fromStep]?.nativeElement, destEl = refs[destStep]?.nativeElement;
+      // Phase 1 (0–0.8s): leaving slide's orbs shrink → uniform bg.
+      leavingEl?.classList.add('bp-reverse-rolling');
+      // Phase 2 (0.8s, 1.7s long): leaving slide's text crawls fully off.
+      setTimeout(() => { leavingEl?.classList.add('bp-reverse-rolling-2'); }, 800);
+      // Phase 3 (~2.5s, after the leaving slide clears): instant cut to the
+      // destination + its mask sequence (orbs cover → bg flips → orbs shrink).
       setTimeout(() => {
-        this.step = 0;
+        this.step = destStep;
         this.cdr.markForCheck();
-        s1el?.classList.add('bp-reverse-enter');
-        stage.scrollTo({ top: 0, behavior: 'instant' });  // instant cut — no smooth seam sweep
-        this.forceInView(0);
-        // We short-circuited onScroll for the whole reverse, so the
-        // scroll-progress var (and the position pill it drives) is frozen
-        // at slide 2. Now that we've landed on slide 1, recompute it so the
-        // indicator snaps back to the TOP, and reset the up/down tracker.
-        lastRevScrollTop = 0;
+        destEl?.classList.add('bp-reverse-enter');
+        stage.scrollTo({ top: destStep * vh, behavior: 'instant' });  // instant cut — no seam sweep
+        this.forceInView(destStep);
+        // onScroll was short-circuited for the whole reverse, so the
+        // scroll-progress var (and the position pill it drives) is frozen.
+        // Recompute it now that we've landed, and reset the up/down tracker.
+        lastRevScrollTop = destStep * vh;
         setProgress();
         setTimeout(() => {
-          s2el?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
-          stage.style.overflowY = 'scroll';  // restore user scroll on slide 1
+          leavingEl?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
+          destEl?.classList.remove('bp-reverse-enter');   // final frame = resting state, safe to drop
+          stage.style.overflowY = 'scroll';               // restore user scroll
           this.slide2ReverseRolling = false;
-          this.slide2ReverseRolling2 = false;
-          this.reverseStage1Done = false;
         }, 1700);
       }, 2500);
     };
-    this.reverseFn = startReverse;   // v2.30q — let the back chevron trigger it
+    this.reverseFn = startReverse;   // v2.30q/s — let the back chevron trigger it
 
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
@@ -2159,8 +2198,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // Must be moving UP (scrollTop < prev) AND have been settled on slide 2
       // (prev near vh); this excludes the forward 1→2 down-scroll, which
       // passes through the same zone going the other way.
-      if (this.step === 1 && stage.scrollTop < prev && prev >= vh - 8 && stage.scrollTop < vh - 8) {
-        startReverse();
+      if ((this.step === 1 || this.step === 2) && stage.scrollTop < prev
+          && prev >= this.step * vh - 8 && stage.scrollTop < this.step * vh - 8) {
+        startReverse(this.step);
         return;
       }
 
@@ -2200,9 +2240,9 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // here (pre-empt the native scroll); scrollbar/keyboard/touch are caught
     // by the upward-scroll check in onScroll.
     const onWheel = (e: WheelEvent) => {
-      if (this.step !== 1 || e.deltaY >= 0) return;   // slide 2 + upward only
+      if (e.deltaY >= 0 || (this.step !== 1 && this.step !== 2)) return;  // slide 2/3 + upward
       e.preventDefault();                              // pre-empt the native scroll
-      startReverse();
+      startReverse(this.step);
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
@@ -2308,7 +2348,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   /** v2.30q — back chevron. On slide 2 play the reverse 2→1 animation
       (via the closure captured in ngAfterViewInit); elsewhere step back
       plainly (no fancy reverse built for 3→2 / 4→3 yet). */
-  goBack()     { if (this.step === 1 && this.reverseFn) this.reverseFn(); else this.prev(); }
+  goBack()     { if ((this.step === 1 || this.step === 2) && this.reverseFn) this.reverseFn(this.step); else this.prev(); }
   goTo(i: number) {
     // v1.65j1 — BALLPARK-click dissolve. When the user clicks the
     // BALLPARK logo from any non-home slide, fade the page to green
