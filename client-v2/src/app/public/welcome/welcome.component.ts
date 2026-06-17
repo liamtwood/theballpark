@@ -1168,16 +1168,20 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-reverse-enter-bg 1.6s linear forwards;
     }
     @keyframes bp-reverse-enter-bg {
-      0%, 42%  { background-color: #EB7396; }   /* pink — orbs still expanding to cover */
-      52%,100% { background-color: #287F4D; }   /* green — flipped while fully covered */
+      0%, 38%  { background-color: #EB7396; }   /* pink — orbs still expanding to cover */
+      48%,100% { background-color: #287F4D; }   /* green — flipped while fully covered */
     }
     .bp-slide-1.bp-reverse-enter .bp-svg-bg circle {
-      animation: bp-reverse-enter-orbs 1.6s cubic-bezier(0.4, 0, 0.4, 1) forwards;
+      animation: bp-reverse-enter-orbs 1.6s cubic-bezier(0.33, 0, 0.3, 1) forwards;
     }
+    /* v2.30t — softened: peak 1780→1100 (still covers; ~470 is enough for
+       the viewBox), hold trimmed 35-55% → 35-50%, gentler ease. Less of a
+       full-screen "explosion", same hidden bg flip (now 38-48%, inside the
+       covered window). */
     @keyframes bp-reverse-enter-orbs {
       0%   { r: 280px;  opacity: 1; }   /* at the cut: pink orbs on pink bg = uniform pink */
-      35%  { r: 1780px; opacity: 1; }   /* expanded so the orbs overlap, hiding the bg */
-      55%  { r: 1780px; opacity: 1; }   /* hold the cover while bg flips pink→green */
+      35%  { r: 1100px; opacity: 1; }   /* expanded so the orbs overlap, hiding the bg */
+      50%  { r: 1100px; opacity: 1; }   /* hold the cover while bg flips pink→green */
       100% { r: 280px;  opacity: 1; }   /* shrink to target → green revealed */
     }
 
@@ -1206,16 +1210,17 @@ const DEFAULT_CONTENT: Content = {
       animation: bp-reverse-enter-bg-s2 1.6s linear forwards;
     }
     @keyframes bp-reverse-enter-bg-s2 {
-      0%, 42%  { background-color: #6391A4; }   /* teal — orbs still expanding to cover */
-      52%,100% { background-color: #EB7396; }   /* pink — flipped while fully covered */
+      0%, 38%  { background-color: #6391A4; }   /* teal — orbs still expanding to cover */
+      48%,100% { background-color: #EB7396; }   /* pink — flipped while fully covered */
     }
     .bp-slide-2.bp-reverse-enter .bp-bg-layer .bp-svg-bg circle {
-      animation: bp-reverse-enter-orbs-s2 1.6s cubic-bezier(0.4, 0, 0.4, 1) forwards;
+      animation: bp-reverse-enter-orbs-s2 1.6s cubic-bezier(0.33, 0, 0.3, 1) forwards;
     }
+    /* v2.30t — softened to match 2→1: peak 1780→1100, hold 35-50%, gentler ease. */
     @keyframes bp-reverse-enter-orbs-s2 {
       0%   { r: 0px;    opacity: 1; }   /* invisible → uniform teal at the cut */
-      35%  { r: 1780px; opacity: 1; }   /* blue orbs overlap, hiding the bg */
-      55%  { r: 1780px; opacity: 1; }   /* hold the cover while bg flips teal→pink */
+      35%  { r: 1100px; opacity: 1; }   /* blue orbs overlap, hiding the bg */
+      50%  { r: 1100px; opacity: 1; }   /* hold the cover while bg flips teal→pink */
       100% { r: 280px;  opacity: 1; }   /* shrink to target → pink revealed */
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
