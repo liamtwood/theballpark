@@ -544,12 +544,15 @@ const DEFAULT_CONTENT: Content = {
        indicator that signals position. */
     .bp-welcome-stage {
       position: absolute; inset: 0;
-      /* v1.65j0 — overflow scroll → hidden. Disables user-initiated
-         wheel + touch scrolling so the only nav path is clicking the
-         chevron or the slide content. Programmatic scrollTo() still
-         works (overflow:hidden only blocks USER scrolling, not JS-
-         driven). scroll-snap stays for the programmatic scrolls. */
-      overflow-y: hidden;
+      /* v1.65j0 — overflow scroll → hidden disabled user wheel/touch
+         scrolling so the only nav path was the chevron / slide click.
+         v2 (Liam) — RE-ENABLED native scrolling for back-nav (no button
+         wanted). Tradeoff accepted: wheel/trackpad scrolling forward
+         snaps directly and bypasses the credits-roll exit animations
+         (those still play via the chevron/click path). scroll-snap keeps
+         each slide aligned; the IntersectionObserver settle still fires
+         each slide's .in-view entry animations on scroll arrival. */
+      overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
       scrollbar-width: none;                       /* Firefox */
