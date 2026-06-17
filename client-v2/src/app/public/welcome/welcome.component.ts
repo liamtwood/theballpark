@@ -1953,6 +1953,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!stage) return;
 
     let settleTimer: any = null;
+    let lastRevScrollTop = 0;   // v2.30o — previous scrollTop, for up/down detection
     const setCurrentInView = (idx: number) => {
       if (idx === this.lastSettledIdx) return;
       this.lastSettledIdx = idx;
@@ -2045,8 +2046,63 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       root.style.setProperty('--s2-shrink', String(s2shrink));
     };
 
+    // v2.30o — the reverse 2→1 sequence, triggerable from EITHER the wheel
+    // handler OR an upward scroll detected in onScroll (scrollbar drag /
+    // track-click / keyboard / touch). Locks the stage (overflow hidden)
+    // for its duration so user scrolling can't fight the timed animation,
+    // then restores it on slide 1. Guarded against re-entry.
+    const startReverse = () => {
+      if (this.slide2ReverseRolling) return;
+      const vh = stage.clientHeight || window.innerHeight;
+      this.slide2ReverseRolling = true;
+      this.slide2ReverseRolling2 = true;
+      this.reverseStage1Done = true;
+      clearTimeout(settleTimer);
+      stage.scrollTop = vh;                 // ensure slide 2 is the canvas
+      stage.style.overflowY = 'hidden';     // lock user scroll for the duration
+      const refs = this.slideRefs?.toArray() || [];
+      const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
+      // Phase 1 (0–0.8s): blue orbs shrink → uniform pink screen.
+      s2el?.classList.add('bp-reverse-rolling');
+      // Phase 2 (0.8s, 1.1s long): slide-2 text + marquee crawl fully off.
+      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 800);
+      // Phase 3 (~1.9s, after slide 2 clears): hidden pink→pink cut to
+      // slide 1 + the mask sequence (orbs cover → bg flips green → shrink).
+      setTimeout(() => {
+        this.step = 0;
+        this.cdr.markForCheck();
+        s1el?.classList.add('bp-reverse-enter');
+        stage.scrollTop = 0;
+        this.forceInView(0);
+        setTimeout(() => {
+          s2el?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
+          stage.style.overflowY = 'scroll';  // restore user scroll on slide 1
+          this.slide2ReverseRolling = false;
+          this.slide2ReverseRolling2 = false;
+          this.reverseStage1Done = false;
+        }, 1700);
+      }, 1900);
+    };
+
     const onScroll = () => {
       const vh = stage.clientHeight || window.innerHeight;
+      const prev = lastRevScrollTop;
+      lastRevScrollTop = stage.scrollTop;
+
+      // Ignore scroll churn while a reverse is mid-flight (the stage is
+      // locked; only our own programmatic scrollTop changes fire here).
+      if (this.slide2ReverseRolling) return;
+
+      // Trigger the reverse from ANY upward scroll off slide 2 — scrollbar
+      // drag, track click, keyboard, touch — not just the wheel handler.
+      // Must be moving UP (scrollTop < prev) AND have been settled on slide 2
+      // (prev near vh); this excludes the forward 1→2 down-scroll, which
+      // passes through the same zone going the other way.
+      if (this.step === 1 && stage.scrollTop < prev && prev >= vh - 8 && stage.scrollTop < vh - 8) {
+        startReverse();
+        return;
+      }
+
       const idx = Math.max(0, Math.min(TOTAL_STEPS - 1,
         Math.round(stage.scrollTop / vh)));
 
@@ -2077,50 +2133,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     stage.addEventListener('scroll', onScroll, { passive: true });
 
-    // v2.30k — reverse 2→1 step 1 (Option A). The deck snap-scrolls too
-    // fast to "hold" a pink screen on a raw scroll, so intercept the
-    // scroll-UP intent off slide 2 and play a TIMED blue-orb shrink
-    // instead. First up-gesture on slide 2 (orbs still present): swallow
-    // the scroll and shrink the blue orbs, leaving the screen pink (held).
-    // A second up-gesture (orbs already gone) falls through to native
-    // scroll so the user can continue to slide 1.
+    // v2.30k/o — reverse 2→1 (Option A). The deck snap-scrolls too fast to
+    // play the cinematic reverse on a raw scroll, so intercept upward intent
+    // off slide 2 and run the timed sequence (startReverse). Wheel is handled
+    // here (pre-empt the native scroll); scrollbar/keyboard/touch are caught
+    // by the upward-scroll check in onScroll.
     const onWheel = (e: WheelEvent) => {
-      if (this.step !== 1 || e.deltaY >= 0) return;       // slide 2 + upward only
-      e.preventDefault();                                  // we own all upward intent here
-      if (this.slide2ReverseRolling) return;               // sequence already running
-      const refs = this.slideRefs?.toArray() || [];
-      const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
-      // Cancel any pending arrival-settle so it can't fire mid-reverse and
-      // strip the classes below. (Classes toggled DIRECTLY, not via an
-      // Angular binding: this is a raw non-Angular listener and the app is
-      // zoneless, so a binding wouldn't reliably trigger CD — mirrors
-      // setCurrentInView / forceInView.)
-      clearTimeout(settleTimer);
-
-      // ONE continuous reverse 2→1, played from a single up-gesture:
-      this.slide2ReverseRolling = true;
-      this.slide2ReverseRolling2 = true;
-      this.reverseStage1Done = true;
-      // Phase 1 (0 → 0.8s): blue orbs shrink → uniform pink screen.
-      s2el?.classList.add('bp-reverse-rolling');
-      // Phase 2 (0.8s, 1.1s long): slide-2's text + marquee crawl fully off
-      // the bottom of the page — generous time to clear before the cut.
-      setTimeout(() => { s2el?.classList.add('bp-reverse-rolling-2'); }, 800);
-      // Phase 3 (~1.9s, after slide 2 has cleared): hidden pink→pink cut to
-      // slide 1, which runs the mask sequence (orbs cover → bg flips green →
-      // orbs shrink to reveal green) over 1.6s.
-      setTimeout(() => {
-        s1el?.classList.add('bp-reverse-enter');
-        stage.scrollTo({ top: 0, behavior: 'instant' });
-        this.forceInView(0);
-        setTimeout(() => {
-          // slide 2 is off-screen now — reset its reverse state for next time
-          s2el?.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
-          this.slide2ReverseRolling = false;
-          this.slide2ReverseRolling2 = false;
-          this.reverseStage1Done = false;
-        }, 1700);
-      }, 1900);
+      if (this.step !== 1 || e.deltaY >= 0) return;   // slide 2 + upward only
+      e.preventDefault();                              // pre-empt the native scroll
+      startReverse();
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
