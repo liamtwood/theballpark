@@ -2002,6 +2002,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         sitekey: environment.turnstileSiteKey,
         theme: 'dark',
         size: 'flexible',
+        // v2: run invisibly — the widget mints a token in the background and
+        // only shows UI if Cloudflare decides a human-check is needed. Token
+        // still flows to the server's siteverify; no visible checkbox.
+        appearance: 'interaction-only',
         callback: (token: string) => {
           this.turnstileToken = token;
           this.cdr.markForCheck();
