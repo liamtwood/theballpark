@@ -2107,7 +2107,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.slide2ReverseRolling2 = true;
       this.reverseStage1Done = true;
       clearTimeout(settleTimer);
-      stage.scrollTop = vh;                 // ensure slide 2 is the canvas
+      // behavior:'instant' is REQUIRED — the stage has scroll-behavior:smooth
+      // in CSS, so a plain scrollTop assignment would animate a smooth scroll
+      // and sweep the slide-2/slide-1 seam across as a pink "line". Forward
+      // nav uses the same instant trick. (Liam's pink-line bug.)
+      stage.scrollTo({ top: vh, behavior: 'instant' });  // ensure slide 2 is the canvas
       stage.style.overflowY = 'hidden';     // lock user scroll for the duration
       const refs = this.slideRefs?.toArray() || [];
       const s2el = refs[1]?.nativeElement, s1el = refs[0]?.nativeElement;
@@ -2122,7 +2126,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.step = 0;
         this.cdr.markForCheck();
         s1el?.classList.add('bp-reverse-enter');
-        stage.scrollTop = 0;
+        stage.scrollTo({ top: 0, behavior: 'instant' });  // instant cut — no smooth seam sweep
         this.forceInView(0);
         // We short-circuited onScroll for the whole reverse, so the
         // scroll-progress var (and the position pill it drives) is frozen
