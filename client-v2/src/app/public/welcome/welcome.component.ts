@@ -1223,6 +1223,20 @@ const DEFAULT_CONTENT: Content = {
       50%  { r: 1100px; opacity: 1; }   /* hold the cover while bg flips teal→pink */
       100% { r: 280px;  opacity: 1; }   /* shrink to target → pink revealed */
     }
+
+    /* ── v2.30v — reverse 4→3 (same teal bg both slides, so NO mask) ──
+       Slides 3 and 4 share #6391A4, so there's no background to bridge and
+       no orb-cover (an expanding orb on matching teal just reads as a green
+       blob — see the v1.65gZ48 note). The crafted 4→3 is just: slide-4's
+       dark-green orbs shrink + its content crawls off, then an instant cut
+       to slide 3 whose own .in-view entry replays normally. Reuses
+       bp-orb-shrink (280→0) and bp-credits-down. */
+    .bp-slide-4.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    .bp-slide-4.bp-reverse-rolling-2 .bp-slide-4-inner {
+      animation: bp-credits-down 1.7s ease-in-out forwards;
+    }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
        on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
@@ -2149,7 +2163,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // whose per-slide .bp-reverse-enter CSS runs the cover→flip→reveal mask.
     const startReverse = (fromStep: number) => {
       if (this.slide2ReverseRolling) return;          // a reverse is already running
-      if (fromStep < 1 || fromStep > 2) return;       // only 2→1 and 3→2 are wired
+      if (fromStep < 1 || fromStep > 3) return;       // 2→1, 3→2 (masked) and 4→3 (no mask)
       const vh = stage.clientHeight || window.innerHeight;
       const destStep = fromStep - 1;
       this.slide2ReverseRolling = true;
@@ -2177,7 +2191,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       setTimeout(() => {
         this.step = destStep;
         this.cdr.markForCheck();
-        destEl?.classList.add('bp-reverse-enter');
+        // 4→3 (fromStep 3) shares the teal bg, so NO mask — slide 3 just
+        // enters normally. Only the colour-changing boundaries (2→1, 3→2)
+        // get the cover→flip→reveal mask via .bp-reverse-enter.
+        if (fromStep !== 3) destEl?.classList.add('bp-reverse-enter');
         stage.scrollTo({ top: destStep * vh, behavior: 'instant' });  // instant cut — no seam sweep
         this.forceInView(destStep);
         // onScroll was short-circuited for the whole reverse, so the
@@ -2213,7 +2230,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // Must be moving UP (scrollTop < prev) AND have been settled on slide 2
       // (prev near vh); this excludes the forward 1→2 down-scroll, which
       // passes through the same zone going the other way.
-      if ((this.step === 1 || this.step === 2) && stage.scrollTop < prev
+      if (this.step >= 1 && this.step <= 3 && stage.scrollTop < prev
           && prev >= this.step * vh - 8 && stage.scrollTop < this.step * vh - 8) {
         startReverse(this.step);
         return;
@@ -2255,9 +2272,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // here (pre-empt the native scroll); scrollbar/keyboard/touch are caught
     // by the upward-scroll check in onScroll.
     const onWheel = (e: WheelEvent) => {
-      if (e.deltaY >= 0 || (this.step !== 1 && this.step !== 2)) return;  // slide 2/3 + upward
-      e.preventDefault();                              // pre-empt the native scroll
-      startReverse(this.step);
+      // v2.30v — the deck owns ALL wheel nav: native free-snapping doesn't
+      // play our crafted transitions, so every wheel gesture is converted to
+      // the same next()/goBack() the chevrons use (which run the crafted
+      // forward credits-roll / reverse mask). next()/goBack() self-guard via
+      // navBusy(), so extra events during a transition are no-ops.
+      e.preventDefault();
+      if (e.deltaY < 0) this.goBack();
+      else this.next();
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
@@ -2358,12 +2380,18 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // v1.65gL — buttons + keyboard arrows now scroll the target slide
   // into view; the IntersectionObserver picks it up and updates step
   // + adds .in-view (which triggers the per-slide animations).
-  next()       { this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
+  /** v2.30v — true while ANY crafted transition is mid-flight, so every
+      nav entry point (wheel / chevron / keyboard / track-click) no-ops
+      instead of stacking a second transition on top. */
+  private navBusy(): boolean {
+    return this.slide1CreditsRolling || this.slide2CreditsRolling || this.slide3CreditsRolling
+        || this.slide2ReverseRolling || this.exitingFromSlide !== null;
+  }
+  next()       { if (this.navBusy()) return; this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
-  /** v2.30q — back chevron. On slide 2 play the reverse 2→1 animation
-      (via the closure captured in ngAfterViewInit); elsewhere step back
-      plainly (no fancy reverse built for 3→2 / 4→3 yet). */
-  goBack()     { if ((this.step === 1 || this.step === 2) && this.reverseFn) this.reverseFn(this.step); else this.prev(); }
+  /** v2.30v — back nav. Every populated boundary has a crafted reverse now
+      (2→1 + 3→2 masked, 4→3 same-bg), so route steps 1–3 through it. */
+  goBack()     { if (this.navBusy()) return; if (this.step >= 1 && this.step <= 3 && this.reverseFn) this.reverseFn(this.step); else this.prev(); }
   goTo(i: number) {
     // v1.65j1 — BALLPARK-click dissolve. When the user clicks the
     // BALLPARK logo from any non-home slide, fade the page to green
@@ -2601,7 +2629,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const tag = (e.target as HTMLElement)?.tagName;
     const isFormField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
     if (e.key === 'ArrowRight') this.next();
-    if (e.key === 'ArrowLeft' && !isFormField) this.prev();
+    if (e.key === 'ArrowLeft' && !isFormField) this.goBack();
     if (e.key === 'Enter' && this.step < TOTAL_STEPS - 1 && !isFormField) this.next();
   }
 
@@ -2616,7 +2644,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const rect = pill.getBoundingClientRect();
     const pillCentreY = rect.top + rect.height / 2;
     if (e.clientY < pillCentreY) {
-      this.prev();
+      this.goBack();
     } else {
       this.next();
     }
