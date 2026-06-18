@@ -880,6 +880,10 @@
          the letters within each word. */
       word-spacing: 0.25em;
       margin: 0 0 48px 0;
+      /* v2.31b — headline copy carries newlines (e.g. "REAL COSTS\nREAL
+         FAST"); render them as line breaks via pre-line + interpolation
+         instead of [innerHTML]+<br>, so no HTML sink for admin-edited copy. */
+      white-space: pre-line;
     }
     /* v1.65gZ11  — subtitle font bumped + max-width tightened so the
        copy wraps to multiple lines per client review.
@@ -1131,6 +1135,7 @@
       letter-spacing: 0.01em;
       text-transform: uppercase;
       margin: 0 0 32px 0;
+      white-space: pre-line;   /* v2.31b — newline-as-break via interpolation */
     }
     .bp-guestlist-form {
       display: grid;
@@ -1430,4 +1435,21 @@
       /* v2: invisible Turnstile (interaction-only) — reserve no space when
          it's not showing a challenge. */
       min-height: 0;
+    }
+
+    /* v2.31b — prefers-reduced-motion (WCAG 2.3.3). This deck is heavy motion
+       (full-viewport credits crawls, orb balloons, slide sweeps, infinite
+       marquee). For users who ask for reduced motion, collapse every keyframe
+       animation + transition to ~instant so content snaps to its end state.
+       The JS nav paths (scrollToSlide / startReverse) also short-circuit to an
+       instant scroll under this setting, so nothing animates. */
+    @media (prefers-reduced-motion: reduce) {
+      .bp-welcome-stage { scroll-behavior: auto; }
+      .bp-slide, .bp-slide *, .bp-slide *::before, .bp-slide *::after,
+      .bp-svg-bg circle, .bp-marquee-track, .bp-ballpark-fade {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
     }

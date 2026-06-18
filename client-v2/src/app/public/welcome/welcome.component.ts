@@ -186,6 +186,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       requires a non-empty token. */
   turnstileToken: string | null = null;
   private turnstileWidgetId: string | null = null;
+  /** v2.31b — set when submit() is waiting on a fresh Turnstile token
+      (execute-on-submit). The render callback fires the POST when the token
+      lands, and a timeout fails gracefully if it never does. */
+  pendingSubmit = false;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private rc: RuntimeConfigService) {}
 
@@ -348,6 +352,18 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       if (fromStep < 1 || fromStep > 3) return;       // 2→1, 3→2 (masked) and 4→3 (no mask)
       const vh = stage.clientHeight || window.innerHeight;
       const destStep = fromStep - 1;
+      // v2.31b — reduced motion: skip the timed mask sequence entirely; just
+      // jump to the destination and mark it in-view (the .in-view animations
+      // are themselves collapsed to ~instant by the reduced-motion CSS).
+      if (this.reducedMotion()) {
+        this.step = destStep;
+        stage.scrollTo({ top: destStep * vh, behavior: 'instant' });
+        this.forceInView(destStep);
+        setProgress();
+        lastRevScrollTop = destStep * vh;
+        this.cdr.markForCheck();
+        return;
+      }
       this.slide2ReverseRolling = true;
       clearTimeout(settleTimer);
       // behavior:'instant' is REQUIRED — the stage has scroll-behavior:smooth
@@ -501,6 +517,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         appearance: 'interaction-only',
         callback: (token: string) => {
           this.turnstileToken = token;
+          // v2.31b — if a submit is waiting on a fresh token (execute-on-submit
+          // for a long-idle form), fire the POST now that we have one.
+          if (this.pendingSubmit) {
+            this.pendingSubmit = false;
+            this.doPost();
+          }
           this.cdr.markForCheck();
         },
         'error-callback': () => {
@@ -532,6 +554,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.scrollListener?.();
+    // v2.31b — tear down the Turnstile widget + the global onload hook so an
+    // SPA re-entry doesn't orphan the iframe or leave a stale closure pointing
+    // at this destroyed component's ViewChild.
+    const w = window as any;
+    if (w.turnstile && this.turnstileWidgetId) {
+      try { w.turnstile.remove(this.turnstileWidgetId); } catch { /* ignore */ }
+    }
+    try { delete w.__bpTurnstileOnLoad; } catch { /* ignore */ }
   }
 
   // ── Content access ────────────────────────────────────────────
@@ -543,9 +573,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const v = this.content[key];
     return Array.isArray(v) ? v : [];
   }
-  multiline(s: string): string {
-    // Convert literal "\n" (from longtext seed) and real newlines into <br>
-    return (s || '').replace(/\\n/g, '\n').replace(/\n/g, '<br>');
+  /** v2.31b — normalize a content key's literal "\n" (longtext seed) into real
+      newlines, for `white-space: pre-line` rendering via interpolation. Replaces
+      the old multiline()+[innerHTML] sink: interpolation auto-escapes, so
+      admin-edited marketing copy can never inject HTML. */
+  nlText(key: string): string {
+    return (this.text(key) || '').replace(/\\n/g, '\n');
   }
 
   get marqueeCategories(): string[] {
@@ -567,7 +600,14 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       instead of stacking a second transition on top. */
   private navBusy(): boolean {
     return this.slide1CreditsRolling || this.slide2CreditsRolling || this.slide3CreditsRolling
-        || this.slide2ReverseRolling || this.exitingFromSlide !== null;
+        || this.slide2ReverseRolling || this.ballparkFading || this.exitingFromSlide !== null;
+  }
+  /** v2.31b — honour prefers-reduced-motion (WCAG 2.3.3). Checked live so a
+      mid-session OS setting change is respected. When true, the forward
+      credits-roll and reverse mask short-circuit to an instant slide jump. */
+  private reducedMotion(): boolean {
+    return typeof window !== 'undefined'
+        && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   }
   next()       { if (this.navBusy()) return; this.scrollToSlide(Math.min(this.step + 1, TOTAL_STEPS - 1)); }
   prev()       { this.scrollToSlide(Math.max(this.step - 1, 0));               }
@@ -628,6 +668,16 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
     const vh = stage.clientHeight || window.innerHeight;
+
+    // v2.31b — reduced motion: collapse every forward credits-roll (and any
+    // plain nav) to an instant jump + in-view, skipping the timed sequences.
+    if (this.reducedMotion()) {
+      this.step = i;
+      stage.scrollTo({ top: i * vh, behavior: 'instant' });
+      this.forceInView(i);
+      this.cdr.markForCheck();
+      return;
+    }
 
     // v1.65i3 — fade-out + instant-jump handoff for forward
     // transitions. Started as a slide-1 → 2 special-case after the
@@ -855,13 +905,13 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // ── Submit ────────────────────────────────────────────────────
   canSubmit(): boolean {
+    // v2.31b — the invisible Turnstile token is NO LONGER a gate on the
+    // button. It mints in the background; if it's missing/expired at submit
+    // time, submit() fetches a fresh one first (execute-on-submit). Gating
+    // the button on an invisible token left long-idle forms un-submittable.
     return this.form.firstName.trim().length > 0
         && this.form.surname.trim().length > 0
-        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim())
-        // v1.65gZ29 — require a Turnstile token before APPLY enables.
-        // Managed mode usually completes automatically; on suspicious
-        // traffic the user gets a checkbox to click.
-        && !!this.turnstileToken;
+        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email.trim());
   }
 
   submit() {
@@ -870,16 +920,50 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.errorMessage = null;
     this.cdr.markForCheck();
 
+    // Fast path — a fresh background token is already in hand → post now.
+    if (this.turnstileToken) { this.doPost(); return; }
+
+    // v2.31b — execute-on-submit. No token (never minted, or expired on a
+    // long-idle form): re-run the (invisible) widget to mint a fresh one,
+    // then post from its success callback. reset() reliably re-fires the
+    // callback for an interaction-only widget; a "Verifying…" button state
+    // covers the short wait, and a timeout fails gracefully if it never lands.
+    const w = window as any;
+    if (w.turnstile && this.turnstileWidgetId) {
+      this.pendingSubmit = true;
+      this.cdr.markForCheck();
+      try {
+        w.turnstile.reset(this.turnstileWidgetId);
+      } catch {
+        this.pendingSubmit = false;
+        this.doPost();            // couldn't re-run — let the server decide
+        return;
+      }
+      setTimeout(() => {
+        if (this.pendingSubmit) {
+          this.pendingSubmit = false;
+          this.submitting = false;
+          this.errorMessage = 'Verification timed out — please try again.';
+          this.cdr.markForCheck();
+        }
+      }, 12000);
+    } else {
+      // Turnstile unavailable (script blocked / dev) — attempt the post; the
+      // server verifies and rejects if its secret is set + token missing.
+      this.doPost();
+    }
+  }
+
+  /** v2.31b — the actual signup POST, called once a Turnstile token is in
+      hand (immediately on the fast path, or from the render callback after
+      an execute-on-submit re-mint). */
+  private doPost() {
     const fullName = `${this.form.firstName.trim()} ${this.form.surname.trim()}`.trim();
     const body = {
       name:    fullName,
       email:   this.form.email.trim(),
       company: null,
       role:    null,
-      // v1.65gZ29 — Cloudflare Turnstile token; server verifies via
-      // siteverify. Tokens are single-use, so we let Cloudflare
-      // re-issue one if the user re-submits after an error (the
-      // widget auto-resets on submit failure).
       turnstileToken: this.turnstileToken
     };
     this.http.post<{ success: boolean; alreadyRegistered?: boolean }>(
@@ -891,13 +975,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        // v1.65gZ28 — surface real failures instead of showing a fake
-        // success state. The previous "show success anyway" path masked
-        // CORS / 500 / network errors and meant users (and us) had no
-        // signal that their signup hadn't landed. Now every non-200
-        // shows a user-readable message and is logged with full
-        // diagnostic context to the console.
+        // v1.65gZ28 — surface real failures instead of a fake success state,
+        // with full diagnostic context to the console.
         this.submitting = false;
+        this.pendingSubmit = false;
         console.error('[welcome] Signup request failed', {
           status: err.status,
           statusText: err.statusText,
@@ -905,9 +986,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           error: err.error,
           message: err.message
         });
-        // v1.65gZ29 — Turnstile tokens are single-use. On any error,
-        // reset the widget so the user gets a fresh token before
-        // their next submit attempt.
+        // Turnstile tokens are single-use — reset for a fresh one next try.
         this.resetTurnstile();
         if (err.status === 429) {
           this.errorMessage = 'Slow down — too many signups from this connection. Try again in a minute.';

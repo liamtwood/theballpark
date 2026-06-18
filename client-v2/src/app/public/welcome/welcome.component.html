@@ -91,7 +91,7 @@
               <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-eyebrow-welcome-logo"/>
               <span *ngIf="!logoUrl" class="bp-eyebrow-welcome-fallback">BALLPARK</span>
             </div>
-            <h1 class="bp-hero-headline" [innerHTML]="multiline(text('hero.headline'))"></h1>
+            <h1 class="bp-hero-headline">{{ nlText('hero.headline') }}</h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
             <!-- v1.65gZ42 — centred "Get on the guestlist" CTA removed.
                  Moved to the top-right header so it sits in the same
@@ -214,21 +214,21 @@
           </svg></div>
           <div class="bp-grain"></div>
           <div class="bp-slide-inner bp-slide-4-inner">
-            <!-- v1.65gZ3 — innerHTML + multiline() so the headline
-                 splits explicitly after the comma ("THOSE WHO GET IN
-                 EARLY,\nGET AHEAD"), no longer relying on natural
-                 word-wrap which broke at viewport-width changes. -->
-            <h2 class="bp-guestlist-headline" [innerHTML]="multiline(text('guestlist.headline'))"></h2>
+            <!-- v2.31b — nlText() normalizes the stored "\n" to a real newline
+                 and CSS white-space:pre-line breaks it ("THOSE WHO GET IN
+                 EARLY,\nGET AHEAD") — interpolation, not [innerHTML], so no
+                 HTML sink for admin-edited copy. -->
+            <h2 class="bp-guestlist-headline">{{ nlText('guestlist.headline') }}</h2>
 
             <div *ngIf="!submitted" class="bp-guestlist-form">
-              <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name" />
-              <input class="bp-form-input" type="text"  [(ngModel)]="form.surname"   placeholder="Surname" />
-              <input class="bp-form-input" type="email" [(ngModel)]="form.email"     placeholder="Email Address" />
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name"    aria-label="First name" />
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.surname"   placeholder="Surname"       aria-label="Surname" />
+              <input class="bp-form-input" type="email" [(ngModel)]="form.email"     placeholder="Email Address" aria-label="Email address" />
               <button
                 class="bp-guestlist-submit"
                 [disabled]="!canSubmit() || submitting"
                 (click)="submit()">
-                {{ submitting ? '…' : text('guestlist.cta_label') }}
+                {{ pendingSubmit ? 'Verifying…' : (submitting ? '…' : text('guestlist.cta_label')) }}
               </button>
             </div>
             <!-- v1.65gZ29 — Cloudflare Turnstile widget. Renders via
