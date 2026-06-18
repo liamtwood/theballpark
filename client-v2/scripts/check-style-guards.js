@@ -58,6 +58,10 @@ const ROOT = join(__dirname, '..', 'src');
 const EXEMPT = [
   join('app', 'app.config.ts'),
   join('app', 'public', 'welcome', 'welcome.component.ts'),
+  // v2.31a — template extracted out of welcome.component.ts; the .html carries
+  // the verbatim inline brand colours (SVG stop-color) so it's exempt too. The
+  // sibling .css isn't walked at all (scanner only scans .ts/.html).
+  join('app', 'public', 'welcome', 'welcome.component.html'),
 ];
 const offenders = [];
 

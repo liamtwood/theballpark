@@ -1,0 +1,1433 @@
+    /* v1.65g8 — Fraunces (OFL, free for commercial) stands in for
+       the personal-use-only Sharpe trial until the licensed Sharpe
+       pack is bought and dropped in. Closest free-for-commercial
+       match: variable serif, high contrast, full weight range,
+       italics. Swap back to Sharpe by replacing this @import and
+       changing 'Fraunces' → 'Sharpe' across the rules below.
+       v1.65gY — Inter (OFL) added for the slide-4 headline, per
+       client review ("bold uppercase sans-serif").
+       v2 port: the Fraunces+Inter @import moved to index.html (a <link>) so
+       Angular's font-inlining budget (8kB/component-style) isn't tripped by
+       the 29kB variable-font CSS. Same fonts, same rules below — no visual
+       change. */
+
+    :host {
+      display: block;
+      font-family: 'Fraunces', Georgia, serif;
+      color: #DCF0EB;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* v1.65j1 — BALLPARK-click dissolve overlay. Sits above the
+       welcome-root via z-index:100, opacity 0 by default. When the
+       user clicks the BALLPARK logo from a non-home slide, goTo(0)
+       toggles .active → opacity 1 (fade to green), an instant
+       scroll resets to slide 1 underneath, then .active is removed
+       → opacity 0 reveals slide 1 with its existing .in-view orb
+       fade-in playing through the curtain. */
+    .bp-ballpark-fade {
+      position: fixed;
+      inset: 0;
+      background: #287F4D;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 400ms ease-in-out;
+    }
+    .bp-ballpark-fade.active {
+      opacity: 1;
+    }
+
+    .bp-welcome-root {
+      position: relative;
+      height: 100vh;
+      overflow: hidden;
+      /* v1.65hS — opaque coloured floor on the root so iOS Safari's
+         scroll-snap handoff can't reveal body parchment for a frame.
+         v1.65i2 — unified green per client request ("make the
+         background 1 color, lets go for green leave the animation
+         the same"). Slides 2/3/4 backgrounds + stage gradient all
+         changed to the same green so there's nothing for a
+         compositor gap to expose as a mismatch. The orb / fade
+         animations are untouched — orbs still paint their own pink
+         / blue / etc. gradient fills on top of the green base. */
+      background: #287F4D;
+    }
+
+    /* ── Header ───────────────────────────────── */
+    .bp-welcome-header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+      height: 64px; padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .bp-welcome-logo {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px; font-weight: 900; letter-spacing: 0.02em;
+      color: #DCF0EB; background: none; border: none; cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center;
+    }
+    /* v1.65g9 — image variant. The uploaded BALLPARK wordmark sits
+       at the same vertical height as the text fallback so swapping
+       between the two doesn't shift the header layout.
+       v1.65gA — render as solid white on the coloured welcome
+       backgrounds via brightness(0) + invert(1) (drops every
+       non-transparent pixel to pure white). This REQUIRES the
+       uploaded logo to have a transparent background — re-upload
+       through /ballpark-settings/marketplace with the "Remove
+       background" checkbox enabled. A magenta-on-white JPG would
+       end up as a white rectangle blocking the gradient. */
+    .bp-welcome-logo-img {
+      /* v1.65iA — header wordmark trimmed 32 → 26 per client review. */
+      height: 26px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    /* v1.65gY — top-right header CTA. Shown on slides 2 + 3 only
+       (slide 1 has its own centred CTA, slide 4 IS the form).
+       Subtle glass pill matching the slide-1 hero CTA so the
+       branding stays consistent as you scroll. */
+    .bp-welcome-header-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 9px 20px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-welcome-header-cta:hover {
+      background: rgba(220, 240, 235, 0.22);
+      transform: translateY(-1px);
+    }
+
+    /* ── Slide stage ──────────────────────────── */
+    /* v1.65gL — scroll-snap container. All four slides stack
+       vertically at 100vh each; the browser handles wheel/trackpad
+       /touch/keyboard scroll natively. IntersectionObserver in TS
+       adds .in-view to the current slide (one-shot) which fires the
+       per-slide entry animations. */
+    /* v1.65gZ24 — native scrollbar hidden again; replaced with a
+       custom fixed-size pill (.bp-scroll-pill) that just slides
+       down the right edge as scroll progresses. The client's idea
+       is "just a pill, no bar" — no track, no growing/shrinking
+       thumb that tracks content ratio, just a constant-size
+       indicator that signals position. */
+    .bp-welcome-stage {
+      position: absolute; inset: 0;
+      /* v1.65j0 — overflow scroll → hidden disabled user wheel/touch
+         scrolling so the only nav path was the chevron / slide click.
+         v2 (Liam) — RE-ENABLED native scrolling for back-nav (no button
+         wanted). Tradeoff accepted: wheel/trackpad scrolling forward
+         snaps directly and bypasses the credits-roll exit animations
+         (those still play via the chevron/click path). scroll-snap keeps
+         each slide aligned; the IntersectionObserver settle still fires
+         each slide's .in-view entry animations on scroll arrival. */
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      scrollbar-width: none;                       /* Firefox */
+      -ms-overflow-style: none;                    /* Edge legacy */
+      overscroll-behavior: contain;                /* iOS rubber-band suppression */
+      /* v1.65jG — scroll-height-tall gradient (v1.65hW) removed.
+         The gradient existed to paint the CORRECT slide colour
+         behind any one-frame compositor gap iOS Safari left
+         during a smooth scroll-snap handoff. With v1.65j0's
+         click-only nav, all forward transitions use
+         scrollTo({ behavior: 'instant' }) — there's no smooth
+         scroll-snap that could expose a gap, so the gradient is
+         no longer needed.
+         Suspected source of the bright-pink rectangle the
+         client saw on slide 2 in Safari: background-attachment:
+         local on a scroll container creates an oversized
+         compositor layer that WebKit clips erratically. Removing
+         the gradient removes that layer entirely. If a green
+         flash reappears between any two slides, the gradient
+         (or per-slide overlay) needs to come back in a form
+         that doesn't trip Safari. */
+      background: transparent;
+    }
+    .bp-welcome-stage::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+      background: transparent;
+    }
+    .bp-welcome-stage::-webkit-scrollbar-track,
+    .bp-welcome-stage::-webkit-scrollbar-thumb,
+    .bp-welcome-stage::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    /* v1.65gZ25 — invisible clickable track that owns the right-edge
+       hit area. The visible pill sits inside it, positioned by the
+       --scroll-progress CSS variable (0 to 1) set on .bp-welcome-root
+       by the scroll listener in ngAfterViewInit. */
+    .bp-scroll-track {
+      position: fixed;
+      right: 8px;
+      top: 96px;
+      bottom: 96px;
+      width: 20px;
+      z-index: 50;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    /* v1.65gZ26 — width nudged 6 -> 8 (just a little fatter, per
+       client review). Height unchanged at 40. */
+    .bp-scroll-pill {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(var(--scroll-progress, 0) * (100% - 40px));
+      width: 8px;
+      height: 40px;
+      background: rgba(220, 240, 235, 0.55);
+      border-radius: 999px;
+      pointer-events: none;
+      transition: top 0.18s ease-out, background 0.2s;
+    }
+    .bp-scroll-track:hover .bp-scroll-pill {
+      background: rgba(220, 240, 235, 0.75);
+    }
+
+    /* v1.65gZ44  — chevrons-right next-slide icon button.
+       v1.65gZ45 — chrome stripped (no glass pill / border / blur),
+       icon bumped 24 -> 40, centred horizontally and dropped to
+       ~85vh — roughly halfway between slide-1's subtitle and the
+       bottom of the viewport. Hidden on slide 4 via the *ngIf in
+       the template. */
+    .bp-next-icon {
+      position: fixed;
+      left: 50%;
+      bottom: 10vh;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 56px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #DCF0EB;
+      cursor: pointer;
+      z-index: 50;
+      opacity: 0.85;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .bp-next-icon:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(2px);
+    }
+    .bp-next-icon:active {
+      transform: translateX(-50%) translateY(2px) scale(0.96);
+    }
+
+    /* v1.65gL — bg layer wrapper. With scroll-snap the user is
+       already scrolling, so the orbs "scroll in" naturally as the
+       slide enters the viewport. The wrapper exists for layering
+       only; we do NOT transform it (transforming the SVG or any
+       ancestor breaks the Gaussian blur). */
+    .bp-bg-layer {
+      position: absolute; inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      /* v1.65jE / jF — Safari (Mac + iOS) leaks the SVG
+         Gaussian-blur filter region past the slide's
+         overflow:hidden boundary, rendering a bright pink (or
+         blue) rectangle on the right side of slide 2 where the
+         upper-right orb's filter region extends.
+         jE tried HTML-level clip-path + contain:paint here —
+         Chromium honoured it, Safari did not. The SVG filter
+         appears to be composited on a GPU layer that bypasses
+         HTML clip-path on the parent wrapper.
+         jF adds -webkit-backface-visibility: hidden to coerce
+         THIS wrapper into its own GPU compositor layer (no
+         visible transform, blur quality preserved). GPU layers
+         respect their parent's overflow rules, so the inner
+         SVG filter layer now gets clipped at this wrapper's
+         box. clip-path + contain:paint kept as defence in depth
+         for Chromium. */
+      clip-path: inset(0);
+      contain: paint;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+
+    /* v1.65gW  — orb entry animated by animating the individual
+       <circle> elements INSIDE the filtered group rather than the
+       SVG / group / wrapper. CSS animations on SVG children render
+       inside the SVG's own coordinate space — the filter recomputes
+       over the children natively, no HTML compositing layer is
+       created, and the Gaussian blur survives.
+       v1.65gZ40 — all slides now share the same opacity fade-in
+       (per client review — "liked slide 3 animation and wanted the
+       same approach on all the pages"). Earlier the global animation
+       was a translateX wipe-in; that's retired here, slide 3's
+       override is removed below, and every slide's orbs fade in
+       cleanly together. */
+    .bp-svg-bg circle {
+      opacity: 0;
+    }
+    .bp-slide.in-view .bp-svg-bg circle {
+      animation: bp-orb-fade-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-orb-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* v1.65gZ40 — slide-3 orb-entry override removed. Was previously
+       a custom path (scale-bloom -> opacity-fade -> scale 0.5->1 over
+       v1.65gX / v1.65gZ18 / v1.65gZ39) to work around slide-3-specific
+       issues (cx=400 centred orbs exposed the bg during a horizontal
+       wipe; scale(0) collapsed the filter bbox). The global rule now
+       does opacity fade for every slide, so slide 3 inherits it
+       without a custom override. */
+
+    /* v1.65gT — animation declared ONLY under .in-view, with the
+       "from" pose as the element's direct (no-class) state. When
+       the scroll handler removes .in-view (user navigates away)
+       the element snaps back to the from-pose; when .in-view is
+       added again on return, the animation declaration is freshly
+       applied and the reveal replays from scratch. Adding/removing
+       a class that ALSO toggles animation-play-state was no good —
+       paused→running on a completed animation holds the end frame
+       and never replays. */
+
+    /* ── Slide 2 from-pose + reveal ──
+       v1.65j2 — animation split per element. The headline scrolls
+       up from below the visible area (starts at translateY(70vh),
+       i.e. just below the slide bottom, and travels to its final
+       resting position). The subtitle ("The best suppliers in the
+       UK with quotes in minutes.") and the marquee stay hidden
+       until the headline lands, then snap in (steps(1, end) gives
+       a hard pop — no fade — exactly as the headline finishes).
+       v1.65j3 — duration bumped 1.05s -> 1.5s and curve switched
+       to linear so the rise matches the slide-1 credits-roll
+       exit. The two animations run end-to-end (slide-1 inner
+       rolls up off the top over 1.5s, then a 1-frame jump, then
+       slide-2 inner rolls up from below over 1.5s) and read as a
+       single continuous movie-credits crawl across the cut. */
+    .bp-slide-2 .bp-suppliers-headline {
+      transform: translateY(70vh); opacity: 0;
+    }
+    .bp-slide-2 .bp-suppliers-subtitle,
+    .bp-slide-2 .bp-marquee-wrap {
+      opacity: 0;
+    }
+    .bp-slide-2.in-view .bp-suppliers-headline {
+      animation: bp-headline-rise 1.0s linear both;
+    }
+    .bp-slide-2.in-view .bp-suppliers-subtitle,
+    .bp-slide-2.in-view .bp-marquee-wrap {
+      animation: bp-snap-in 1.0s steps(1, end) both;
+    }
+    @keyframes bp-headline-rise {
+      from { transform: translateY(70vh); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes bp-snap-in {
+      0%   { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* ── Slide 1 credits-roll exit ──
+       v1.65j3 — when the user clicks to leave slide 1, the inner
+       lifts up off the top of the viewport at a constant speed,
+       like the credits at the end of a film. Pairs with slide 2's
+       headline rising from below for a continuous credits feel.
+       Animation lasts 1.5s; the scroll-jump to slide 2 fires once
+       the animation completes (orchestrated in scrollToSlide).
+       opacity stays 1 — credits don't fade, they leave.
+       v1.65j4 — during the 1.5s credits roll we ALSO transition
+       slide-1's background from welcome green to slide-2's pink
+       (#287F4D -> #EB7396) AND grow the pink orbs from r=280 to
+       r=1780 so they fill the viewport. By the moment the
+       scroll-jump fires (T=1.5s), the on-screen colour matches
+       slide-2's bg exactly, hiding the cut. Slide 2 then animates
+       its blue orbs from opacity 0 -> 1 over the same 1.5s as the
+       headline rise, so "spheres appear" as the new text crawls
+       up — reading as one continuous credits moment instead of
+       two separate slide animations. */
+    .bp-slide-1-inner.bp-credits-exit {
+      animation: bp-credits-up 1s linear forwards;
+    }
+    .bp-slide-1.bp-credits-rolling {
+      animation: bp-slide1-bg-to-pink 1s linear forwards;
+    }
+    /* v1.65jD — bp-orb-grow on slide-1 + slide-2 credits-roll
+       removed. Growing the circles to r=1780 expanded the SVG
+       Gaussian-blur filter region to a ~7000px-wide bounding box
+       that iOS Safari (and Mac Safari) composited on its own
+       layer, leaking a bright-pink rectangle past the parent's
+       overflow:hidden onto slide 2. Same family of bug as the
+       v1.65hT pink ghost-box. The bg-color shift alone (green ->
+       pink for slide 1, pink -> teal for slide 2) is enough to
+       bridge the colour into the next slide; the orb-grow was
+       only adding the filter-region trap. */
+    @keyframes bp-credits-up {
+      from { transform: translateY(0);      opacity: 1; }
+      to   { transform: translateY(-110vh); opacity: 1; }
+    }
+    @keyframes bp-slide1-bg-to-pink {
+      from { background-color: #287F4D; }
+      to   { background-color: #EB7396; }
+    }
+
+    /* ── Slide 2 sphere fade-in ──
+       v1.65j4 — slide-2 circles get their own fade-in tuned to
+       match the headline-rise timing (1.0s linear), overriding
+       the global .bp-slide.in-view .bp-svg-bg circle rule
+       (1.4s ease-out) for this slide only. Higher specificity
+       (.bp-slide-2 vs .bp-slide) makes this rule win. Pairs
+       with the credits-roll exit on slide 1: as the new
+       headline crawls up from below, the blue spheres "appear"
+       alongside it. Initial opacity:0 is inherited from the
+       global .bp-svg-bg circle { opacity: 0 } rule above. */
+    .bp-slide-2.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.0s linear both;
+    }
+    @keyframes bp-fade-in-circles {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Slide 2 → 3 credits-roll exit ──
+       v1.65j6 — same movie-credits treatment we apply to slide 1
+       on its way to slide 2, now on slide 2 on its way to slide 3.
+       Triggered by .bp-credits-rolling on the slide-2 section
+       (bound to slide2CreditsRolling in the component). During
+       the roll:
+         · .bp-slide-2-inner + .bp-marquee-wrap translate up off
+           the top of the viewport (bp-credits-up, reused from
+           the slide-1 exit — same keyframe drives both).
+         · The section's background-color transitions from slide-2
+           pink (#EB7396) to slide-3 teal (#6391A4), so the bg
+           matches slide-3 exactly by the time the jump fires.
+         · The blue orbs grow from r=280 to r=1780 (bp-orb-grow
+           reused from slide 1) so the page reads solid teal-ish
+           at the end of the roll.
+       v1.65j7 — duration 1s -> 1.2s. Slide 2 has more elements
+       moving at once (inner + marquee + orbs + bg) so the same
+       1s as slide 1 read as "quicker" per client feedback. The
+       JS scroll-jump delay is bumped to match (see scrollToSlide). */
+    .bp-slide-2.bp-credits-rolling .bp-slide-2-inner,
+    .bp-slide-2.bp-credits-rolling .bp-marquee-wrap {
+      animation: bp-credits-up 1.2s linear forwards;
+    }
+    .bp-slide-2.bp-credits-rolling {
+      animation: bp-slide2-bg-to-teal 1.2s linear forwards;
+    }
+    /* v1.65jD — bp-orb-grow on slide 2 dropped for the same iOS
+       Safari compositor reason as slide 1. See note above. */
+    @keyframes bp-slide2-bg-to-teal {
+      from { background-color: #EB7396; }
+      to   { background-color: #6391A4; }
+    }
+
+    /* ── Slide 3 sphere fade-in ──
+       v1.65j6 — overrides the global 1.4s ease-out for this
+       slide so the orb fade-in matches the credits-roll pacing
+       (1s linear). Same pattern as slide-2's fade-in override. */
+    .bp-slide-3.in-view .bp-svg-bg circle {
+      animation: bp-fade-in-circles 1.0s linear both;
+    }
+
+    /* ── Slide 3 exit (three elements, sequential) ──
+       v1.65j9 — exit mirrors the entry order and direction:
+         T=0:    .bp-producers-headline exits to the left
+         T=0.3s: .bp-producers-tagline exits to the left
+         T=0.6s: .bp-producers-body exits to the right
+       Each animation 0.6s ease-out, same curve as entry. Total
+       1.2s — JS timer in scrollToSlide() matches.
+       both fill-mode is critical here: without it, each element
+       snaps to the bp-to-* "from" pose at the moment its
+       animation is declared (delay or no delay), instantly
+       hiding it before any motion is visible. That manifested
+       as "feels like it pauses and then shows slide 4" in
+       v1.65j8 — the columns disappeared the moment .bp-credits-
+       rolling was added, then the timer ran out with no visible
+       motion, then the jump happened. both fills BACKWARDS too,
+       so each element holds its at-rest pose (translateX 0,
+       opacity 1) during the stagger delay, then animates out
+       cleanly. */
+    .bp-slide-3.bp-credits-rolling .bp-producers-headline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-slide-3.bp-credits-rolling .bp-producers-tagline {
+      animation: bp-to-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+    }
+    .bp-slide-3.bp-credits-rolling .bp-producers-body {
+      animation: bp-to-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+    }
+    @keyframes bp-to-left {
+      from { transform: translateX(0);      opacity: 1; }
+      to   { transform: translateX(-100vw); opacity: 0; }
+    }
+    @keyframes bp-to-right {
+      from { transform: translateX(0);     opacity: 1; }
+      to   { transform: translateX(100vw); opacity: 0; }
+    }
+
+    /* ── Slide 3 entry (three elements, sequential) ──
+       v1.65j9 — animation targets the three text elements
+       individually rather than the two grid columns. Sequence:
+         T=0:    .bp-producers-headline ("A PRODUCERS BEST FRIEND")
+                 slides in from translateX(-100vw) -> 0
+         T=0.3s: .bp-producers-tagline ("By producers for creators")
+                 slides in from translateX(-100vw) -> 0
+         T=0.6s: .bp-producers-body ("Costing events can be a
+                 grind...") slides in from translateX(100vw) -> 0
+       0.6s each, 0.3s stagger -> total 1.2s. Same cubic ease-out
+       across all three so each line settles smoothly.
+       both fill-mode preserves the from-pose during the stagger
+       delay (so a tagline at translateX(-100vw) stays off-screen-
+       left while the headline is still arriving — no early flash
+       of the tagline at its resting position). */
+    .bp-slide-3 .bp-producers-headline,
+    .bp-slide-3 .bp-producers-tagline {
+      transform: translateX(-100vw); opacity: 0;
+    }
+    .bp-slide-3 .bp-producers-body {
+      transform: translateX(100vw); opacity: 0;
+    }
+    /* v1.65jC — :not(.bp-credits-rolling) added so the entry
+       rule doesn't fight the exit rule. The exit rules above
+       were source-ordered BEFORE the entry rules, which (with
+       equal specificity 0-3-0) meant the entry rule won the
+       cascade and its both-fill held the at-rest pose,
+       silently clobbering the exit animation. Now when
+       .bp-credits-rolling is on the section, only the exit
+       rules apply. */
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-headline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-tagline {
+      animation: bp-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+    }
+    .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-body {
+      animation: bp-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+    }
+    @keyframes bp-from-left {
+      from { transform: translateX(-100vw); opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+    @keyframes bp-from-right {
+      from { transform: translateX(100vw);  opacity: 0; }
+      to   { transform: translateX(0);      opacity: 1; }
+    }
+
+    /* ── Slide 4 from-pose + reveal ──
+       v1.65jA — the headline / form / footer block (the whole
+       .bp-slide-4-inner glass panel) now rises up from the
+       bottom of the viewport as one unit. Replaces the previous
+       per-element entry (.bp-eyebrow stamp + .bp-guestlist-
+       headline bounce-in + .bp-guestlist-form rise); those
+       declarations and their keyframes (bp-stamp, bp-bounce-in,
+       bp-form-rise) are retired. Sphere fade-in is intentionally
+       NOT overridden here — slide 4 keeps the global 1.4s ease-
+       out orb-fade so the dark-green orbs come up on their own
+       timing as the container arrives.
+       v1.65jB — animation now composes translateX(-50%) WITH the
+       translateY rise. .bp-slide-4-inner uses position:absolute +
+       left:50% + transform:translateX(-50%) for its horizontal
+       centering; the jA animation replaced the entire transform
+       with translateY alone, knocking the panel half a viewport-
+       width to the left. Always include translateX(-50%) on both
+       keyframes (and the from-pose) so the panel stays centred
+       throughout the rise. */
+    .bp-slide-4 .bp-slide-4-inner {
+      transform: translate(-50%, 100vh); opacity: 0;
+    }
+    .bp-slide-4.in-view .bp-slide-4-inner {
+      animation: bp-slide4-rise 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes bp-slide4-rise {
+      from { transform: translate(-50%, 100vh); opacity: 0; }
+      to   { transform: translate(-50%, 0);     opacity: 1; }
+    }
+
+    .bp-slide {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      /* v1.65gV — scroll-snap-stop: always reinstated. Without it,
+         natural wheel + swipe scrolls could end between two snap
+         points (user-reported screenshot showed slide 1 + slide 2
+         half-visible). The original concern was that always broke
+         programmatic Next/Back scrollIntoView, but the wheel/swipe
+         UX is the priority — one swipe = one slide. */
+      scroll-snap-stop: always;
+      display: flex; align-items: center; justify-content: center;
+      color: #DCF0EB;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .bp-slide-inner { position: relative; z-index: 5; max-width: 1100px; padding: 0 32px; text-align: center; }
+
+    /* ── SVG circle background (per-slide) ──────────────────────────────
+       Locked recipe — see WORKING_STANDARDS.md → Marketing Visual Recipe.
+       Each slide template inlines an <svg viewBox="0 0 800 500"> with two
+       gradient-filled circles wrapped in <g filter="url(#blur)">.
+       Don't substitute CSS filter: blur() — calibrated against prototype. */
+    .bp-svg-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Per-slide bases (circle gradients live in template <linearGradient> defs).
+       v1.65gZ33  — bleed the previous slide's colour into the top ~14vh of
+       each slide so the boundary between scroll-snap stops reads as a
+       soft gradient rather than a hard horizontal line.
+       v1.65gZ34 — moved the bleed off the background property (which kept
+       it visible after the transition settled) onto a ::before pseudo-
+       element with opacity tied to .in-view. The bleed shows during
+       scroll, fades out once the scroll settles, fades back in when the
+       user scrolls away. Slide 1 has no previous slide; slides 3 + 4
+       share the same teal so the slide-4 boundary needs no bleed. */
+    /* v1.65i2 — all slide backgrounds unified to slide-1 green as
+       a debug control to isolate the 1→2 transition artifact.
+       v1.65i7 — original per-slide colours restored now that the
+       1→2 fade-out + instant jump (v1.65i3..i6) has fixed the
+       artifact properly. */
+    .bp-slide-1 { background: #287F4D; }
+
+    /* v1.65i3 — exiting state for any slide that's transitioning
+       out via the fade-out + instant-jump handoff. When the user
+       clicks Next, the leaving slide's orbs / grain / inner are
+       removed from the DOM (*ngIf on exitingFromSlide), the page
+       jumps to the next slide, and the destination's .in-view
+       fade-up reveals it normally.
+       v1.65i4 — bp-bg-layer hide via display:none (the *ngIf does
+       the same job now, but kept as defensive CSS). The orbs sit
+       inside a <filter url(#blur)> group; opacity:0 on the parent
+       leaves the iOS Safari compositor to recompute the filter
+       region for children separately, which staggers the orbs out.
+       display:none / *ngIf removal sidesteps that entirely.
+       v1.65i8 — generalized from .bp-slide-1.bp-slide-1-exiting to
+       any .bp-slide.bp-slide-exiting. */
+    .bp-slide.bp-slide-exiting .bp-bg-layer {
+      display: none !important;
+    }
+    .bp-slide.bp-slide-exiting .bp-grain,
+    .bp-slide.bp-slide-exiting .bp-slide-inner {
+      opacity: 0 !important;
+      transition: none !important;
+      animation: none !important;
+    }
+    .bp-slide-2 {
+      background: #EB7396;
+      flex-direction: column;
+      padding: 80px 0 100px;
+    }
+    /* v1.65gZ36 / v1.65gZ37 — both inter-slide colour transitions
+       now handled by EXPANDING the leaving slide's orbs to fill the
+       viewport with their colour, bridging into the next slide's
+       background. The static ::before gradient bleed is no longer
+       needed for either boundary; the orb expansion supersedes it.
+         · slide 1 -> 2: pink orbs grow, page reads pink, into pink slide 2
+         · slide 2 -> 3: blue orbs grow, page reads blue, into teal slide 3
+           (slide-2's blue gradient #79A8BA->#457187 sits in the same
+           teal family as slide-3's #6391A4, so the cross-over is
+           perceptually smooth)
+       CSS r on SVG circles is supported in modern browsers (Chromium
+       99+, Firefox 73+, Safari 16+); JS sets --s1-leaving + --s2-leaving
+       on .bp-welcome-root in the scroll handler. We layer it on the
+       existing translateX wipe-in animation by setting r rather than
+       transform, so the two do not fight. */
+    .bp-slide-1 .bp-svg-bg circle {
+      r: calc(280px + var(--s1-leaving, 0) * 1500px);
+    }
+    .bp-slide-2 .bp-svg-bg circle {
+      /* v2.30j — reverse 2→1, STEP 1: --s2-shrink scales the blue orbs'
+         r 280→0. The base term keeps the forward 2→3 grow (--s2-leaving)
+         untouched; on the way up --s2-leaving is 0 so r = 280 * --s2-shrink. */
+      r: calc((280px + var(--s2-leaving, 0) * 1500px) * var(--s2-shrink, 1));
+    }
+    /* v2.30k — reverse 2→1 step 1 (Option A): a scroll-UP off slide 2
+       triggers a TIMED shrink (not raw scroll position) so the screen
+       can HOLD on pink. .bp-reverse-rolling collapses the blue orbs to
+       r=0 over 0.8s and forwards-fill holds them gone, leaving slide 2's
+       pink CSS bg. opacity pinned to 1 so the shrink is visible (this
+       animation replaces the .in-view fade-in, which would otherwise
+       leave opacity at the global 0). */
+    .bp-slide-2.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    @keyframes bp-orb-shrink {
+      from { r: 280px; opacity: 1; }
+      to   { r: 0px;   opacity: 1; }
+    }
+    /* v2.30n — reverse 2→1 STEP 2 (Option A): the pink→green handoff.
+       (1) slide-2's text + marquee crawl fully OFF the bottom of the page
+       (translateY 110vh) over 1.1s — generous time to clear before the
+       cut, per Liam. opacity stays 1 (they leave, they don't fade). */
+    .bp-slide-2.bp-reverse-rolling-2 .bp-slide-2-inner,
+    .bp-slide-2.bp-reverse-rolling-2 .bp-marquee-wrap {
+      animation: bp-credits-down 1.7s ease-in-out forwards;
+    }
+    @keyframes bp-credits-down {
+      from { transform: translateY(0);     opacity: 1; }
+      to   { transform: translateY(110vh); opacity: 1; }
+    }
+    /* (2) After slide-2 has cleared we jump to slide 1 (hidden pink→pink
+       cut) and add .bp-reverse-enter, which runs the MASK sequence over
+       1.6s — orbs and bg animations share the duration so they stay in
+       lockstep:
+         · orbs (bp-reverse-enter-orbs): expand r 280→1780 so the two pink
+           spheres OVERLAP and cover the whole viewport (background hidden),
+           hold covered, then shrink back to the resting r=280.
+         · bg (bp-reverse-enter-bg): held at slide-2 pink while the orbs
+           are still expanding, flipped to slide-1 green during the covered
+           window (so the colour change is never seen), then revealed as the
+           orbs shrink away.
+       forwards-fill holds the resting state (= normal slide 1); cleared on
+       the next forward 1→2. Higher specificity than the global .in-view
+       fade-in/orb rules, so this wins during the reverse entry. */
+    .bp-slide-1.bp-reverse-enter {
+      animation: bp-reverse-enter-bg 1.6s linear forwards;
+    }
+    @keyframes bp-reverse-enter-bg {
+      0%, 38%  { background-color: #EB7396; }   /* pink — orbs still expanding to cover */
+      48%,100% { background-color: #287F4D; }   /* green — flipped while fully covered */
+    }
+    .bp-slide-1.bp-reverse-enter .bp-svg-bg circle {
+      animation: bp-reverse-enter-orbs 1.6s cubic-bezier(0.33, 0, 0.3, 1) forwards;
+    }
+    /* v2.30t — softened: peak 1780→1100 (still covers; ~470 is enough for
+       the viewBox), hold trimmed 35-55% → 35-50%, gentler ease. Less of a
+       full-screen "explosion", same hidden bg flip (now 38-48%, inside the
+       covered window). */
+    @keyframes bp-reverse-enter-orbs {
+      0%   { r: 280px;  opacity: 1; }   /* at the cut: pink orbs on pink bg = uniform pink */
+      35%  { r: 1100px; opacity: 1; }   /* expanded so the orbs overlap, hiding the bg */
+      50%  { r: 1100px; opacity: 1; }   /* hold the cover while bg flips pink→green */
+      100% { r: 280px;  opacity: 1; }   /* shrink to target → green revealed */
+    }
+
+    /* ── v2.30s — reverse 3→2 (same mask pattern, colours rotated) ──
+       Leave on slide-3's teal (#6391A4); slide-2's BLUE orbs cover (blue
+       sits in the same family as teal, like the forward 2→3 cross-over),
+       the hidden bg flips teal→pink, then the orbs shrink to reveal pink.
+       (1) slide-3's GREEN orbs (r=240) shrink to nothing → uniform teal. */
+    .bp-slide-3.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink-s3 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    @keyframes bp-orb-shrink-s3 {
+      from { r: 240px; opacity: 1; }
+      to   { r: 0px;   opacity: 1; }
+    }
+    /* (2) slide-3's text grid crawls fully off the bottom (reuses bp-credits-down). */
+    .bp-slide-3.bp-reverse-rolling-2 .bp-slide-3-inner {
+      animation: bp-credits-down 1.7s ease-in-out forwards;
+    }
+    /* (3) cut to slide 2: bg STARTS at slide-3 teal (invisible cut) and
+       washes to slide-2 pink during the covered window; the blue orbs grow
+       from nothing to overlap/cover (so no blue blobs pop on the teal at the
+       cut), hold, then shrink to the resting r=280 revealing pink. The extra
+       .bp-bg-layer in the selector outspecifies the .bp-slide-2.in-view rule. */
+    .bp-slide-2.bp-reverse-enter {
+      animation: bp-reverse-enter-bg-s2 1.6s linear forwards;
+    }
+    @keyframes bp-reverse-enter-bg-s2 {
+      0%, 38%  { background-color: #6391A4; }   /* teal — orbs still expanding to cover */
+      48%,100% { background-color: #EB7396; }   /* pink — flipped while fully covered */
+    }
+    .bp-slide-2.bp-reverse-enter .bp-bg-layer .bp-svg-bg circle {
+      animation: bp-reverse-enter-orbs-s2 1.6s cubic-bezier(0.33, 0, 0.3, 1) forwards;
+    }
+    /* v2.30t — softened to match 2→1: peak 1780→1100, hold 35-50%, gentler ease. */
+    @keyframes bp-reverse-enter-orbs-s2 {
+      0%   { r: 0px;    opacity: 1; }   /* invisible → uniform teal at the cut */
+      35%  { r: 1100px; opacity: 1; }   /* blue orbs overlap, hiding the bg */
+      50%  { r: 1100px; opacity: 1; }   /* hold the cover while bg flips teal→pink */
+      100% { r: 280px;  opacity: 1; }   /* shrink to target → pink revealed */
+    }
+
+    /* ── v2.30v — reverse 4→3 (same teal bg both slides, so NO mask) ──
+       Slides 3 and 4 share #6391A4, so there's no background to bridge and
+       no orb-cover (an expanding orb on matching teal just reads as a green
+       blob — see the v1.65gZ48 note). The crafted 4→3 is just: slide-4's
+       dark-green orbs shrink + its content crawls off, then an instant cut
+       to slide 3 whose own .in-view entry replays normally. Reuses
+       bp-orb-shrink (280→0); the crawl-off needs a slide-4-specific keyframe
+       (below) because .bp-slide-4-inner is centered with transform
+       translateX(-50%) — the generic bp-credits-down (translateY only) would
+       drop the -50% and shove the panel off-centre. */
+    .bp-slide-4.bp-reverse-rolling .bp-svg-bg circle {
+      animation: bp-orb-shrink 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+    .bp-slide-4.bp-reverse-rolling-2 .bp-slide-4-inner {
+      animation: bp-credits-down-s4 1.7s ease-in-out forwards;
+    }
+    @keyframes bp-credits-down-s4 {
+      from { transform: translate(-50%, 0);     opacity: 1; }
+      to   { transform: translate(-50%, 110vh); opacity: 1; }
+    }
+    /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
+       to dodge the pink-box compositor artifact. v1.65i9 — restored
+       on mobile. The v1.65i3..i8 fade-out + instant-jump handoff
+       now removes the leaving slide's SVG from the DOM entirely
+       before the scroll, so the iOS Safari filter compositor never
+       gets a chance to flash the unblurred orb. Mobile sees the
+       spheres again on slides 1 + 2. */
+    /* v1.65gZ38  — slide 3 had the same orb-expansion treatment as
+       slides 1 + 2, on the grounds of kinetic consistency.
+       v1.65gZ48 — REMOVED. Both slide 3 and slide 4 share the same
+       #6391A4 teal background, so an expanding green orb on slide 3
+       actively CREATED a transient green-vs-teal split during the
+       scroll that wouldn't exist if we just left the orbs at their
+       normal size. Per client review: "we need the green orbs to
+       disappear leaving the page the blue [teal] before showing the
+       objects on page 4". Letting slide 3's orbs ride off-screen
+       with the slide (no expansion) leaves slide 4's teal bg clean
+       when it arrives; the 450ms settle delay then gives a beat of
+       just-teal before slide 4's content fades in. --s3-leaving is
+       still published from the scroll handler but currently unused. */
+    /* v1.65gZ10 — gap between headline/subtitle block and the marquee
+       trimmed 56 -> 16 so the scrolling row sits closer to the copy. */
+    .bp-slide-2-inner { margin-bottom: 16px; }
+    .bp-slide-3 { background: #6391A4; }
+    .bp-slide-4 { background: #6391A4; }
+
+    /* ── Grain overlay (identical on every slide) ───────────────────────
+       Calibrated: numOctaves=3, matrix alpha 0.5, div opacity 0.20.
+       Don't add div opacity attenuation — the matrix already attenuates. */
+    .bp-grain {
+      position: absolute; inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+      opacity: 0.20;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── Slide 1 typography ───────────────────── */
+    .bp-eyebrow-pill {
+      display: inline-block;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      background: rgba(220,240,235,0.15);
+      border: 1px solid rgba(220,240,235,0.35);
+      border-radius: 999px;
+      padding: 6px 16px;
+      margin-bottom: 32px;
+      backdrop-filter: blur(8px);
+    }
+    /* v1.65gB — "Welcome to BALLPARK" replaces the eyebrow pill on
+       slide 1. "Welcome to" sits as light italic prefix; the
+       wordmark renders inline at the same vertical anchor as the
+       text (brightness(0)+invert(1) so the magenta uploaded asset
+       reads as pure white on the gradient). */
+    .bp-eyebrow-welcome {
+      display: inline-flex;
+      align-items: center;
+      /* v1.65iA — gap tightened 14 → 6 so "Welcome to" sits closer
+         to the BALLPARK wordmark per client review. */
+      gap: 6px;
+      margin-bottom: 32px;
+      color: #DCF0EB;
+    }
+    .bp-eyebrow-welcome-prefix {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+    .bp-eyebrow-welcome-logo {
+      /* v1.65iA — slide-1 eyebrow wordmark trimmed 28 → 22 per
+         client review. */
+      height: 22px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    .bp-eyebrow-welcome-fallback {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+    /* v1.65gY — headline shrunk + comma/period dropped (REAL COSTS /
+       REAL FAST as two clean lines), more breathing room before the
+       subtitle, centred CTA pill below. Per client review. */
+    .bp-hero-headline {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(48px, 8.5vw, 116px);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: -0.04em;
+      /* v1.65gZ41 — bump word-spacing so the gaps between REAL/COSTS
+         and REAL/FAST read clearly. The headline uses -0.04em letter-
+         spacing which tightens everything including the inter-word
+         spaces; word-spacing pushes JUST the gaps without splaying
+         the letters within each word. */
+      word-spacing: 0.25em;
+      margin: 0 0 48px 0;
+    }
+    /* v1.65gZ11  — subtitle font bumped + max-width tightened so the
+       copy wraps to multiple lines per client review.
+       v1.65gZ12 — max-width widened 380 -> 560 so the copy wraps
+       once (two lines), not multiple times. */
+    .bp-hero-subtitle {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(22px, 2.6vw, 30px);
+      font-weight: 500; line-height: 1.4;
+      max-width: 560px; margin: 0 auto 40px;
+      opacity: 0.95;
+    }
+    .bp-hero-cta {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.32);
+      border-radius: 999px;
+      padding: 11px 26px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .bp-hero-cta:hover {
+      background: rgba(220, 240, 235, 0.24);
+      transform: translateY(-1px);
+    }
+
+    /* ── Slide 2 typography + marquee ─────────── */
+    .bp-eyebrow {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      opacity: 0.75;
+      margin-bottom: 24px;
+    }
+    .bp-suppliers-headline {
+      font-family: 'Fraunces', Georgia, serif;
+      /* v1.65gY — headline trimmed (was clamp 40-88) so the AI
+         prefix fits on the same compact 3-line block.
+         v1.65gZ9 — weight dropped 900 -> 500 (regular Fraunces) +
+         max-width 900 -> 700 per client review. Subtitle below
+         tracks the same width so its side-lines still extend just
+         beyond the headline. */
+      font-size: clamp(32px, 4.8vw, 60px);
+      font-weight: 500; line-height: 1.1; letter-spacing: -0.02em;
+      /* v1.65gQ — centre the headline block. text-align: center is
+         inherited from .bp-slide-inner, but the block itself was
+         left-aligned because of max-width: 1000px without auto
+         margins. */
+      margin: 0 auto 28px;
+      max-width: 700px;
+    }
+    /* v1.65gY — subtitle below the suppliers headline.
+       v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
+       line either side of the text, sized to match the headline
+       max-width (900px) so the lines extend just beyond the text
+       and span roughly the headline's footprint. */
+    .bp-suppliers-subtitle {
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review
+         (same family as the slide-4 headline). */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .bp-suppliers-subtitle::before,
+    .bp-suppliers-subtitle::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(220, 240, 235, 0.4);
+    }
+    /* v1.65gZ8  — top + bottom 1px separators dropped.
+       v1.65gZ10 — wrap padding trimmed 24 -> 8 so the marquee
+       sits closer to the subtitle; item font shrunk
+       clamp(36-64) -> clamp(22-40) per client review. */
+    .bp-marquee-wrap {
+      width: 100%; overflow: hidden;
+      padding: 8px 0;
+      position: relative; z-index: 5;
+    }
+    .bp-marquee-track {
+      display: flex; white-space: nowrap; width: max-content;
+      animation: bp-scroll-x 28s linear infinite;
+    }
+    .bp-marquee-item {
+      display: flex; align-items: center;
+      /* v1.65gZ13 — switched Fraunces -> Inter per client review. */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(22px, 3vw, 40px);
+      font-weight: 900; letter-spacing: 0.02em;
+      padding: 0 36px;
+      flex-shrink: 0;
+    }
+    /* v1.65gZ8 — .bp-marquee-sep rule kept for safety in case any
+       admin-injected content still contains the glyph; the template
+       no longer emits one. */
+    .bp-marquee-sep { display: none; }
+    @keyframes bp-scroll-x {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* v1.65gD — vertical marquee variant. Two-column layout: copy
+       on the left, scrolling category column on the right. The
+       track scrolls upward; the ✦ separator sits centred BELOW
+       each label, not to its right. Categories are repeated 3×
+       in marqueeCategories so the loop is seamless. */
+    /* v1.65gR — vertical-marquee experiment styles removed.
+       The block here previously left the .bp-slide-2-inner with
+       text-align: left + align-items: flex-start (intended for the
+       abandoned 2-column vertical-train layout), which was
+       overriding the default .bp-slide-inner text-align: center
+       and breaking the headline centring on phone. */
+
+    /* ── Slide 3 ──────────────────────────────── */
+    /* v1.65gY — headline shrunk + pulled centre-left, body tightened.
+       Per client review the headline shouldn't span the full left
+       column at maximum size; the new clamp keeps it compact and the
+       grid columns are more balanced. */
+    .bp-slide-3-inner { max-width: 1100px; }
+    /* v1.65gZ14 — horizontal gap widened 64 -> 140 per client review. */
+    .bp-producers-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 140px; align-items: center; text-align: left;
+    }
+    /* v1.65gZ15 — headline knocked down ~ half a step per client
+       review ("reduce size by 1/2 a size if you can"). */
+    .bp-producers-headline {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(32px, 4.8vw, 56px);
+      font-weight: 900; line-height: 1.0;
+      letter-spacing: -0.02em;
+      margin: 0 0 14px 0;
+    }
+    /* v1.65gZ7 — tagline + body sizes bumped + body width capped per
+       client review ("increase the font size of By producers… and
+       Costing events…; decrease the width of the container"). */
+    .bp-producers-tagline {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 500;
+      opacity: 0.85; margin: 0;
+    }
+    /* v1.65gZ46 — body font specs aligned with slide 2's subtitle
+       (Inter 500 clamp(15-18)/1.55 at 0.9 opacity) per client review.
+       Keeps the max-width 380px column from v1.65gZ7. */
+    .bp-producers-body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(15px, 1.5vw, 18px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.9;
+      margin: 0;
+      max-width: 380px;
+    }
+
+    @media (max-width: 768px) {
+      .bp-producers-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
+    }
+
+    /* ── Slide 4 ──────────────────────────────── */
+    /* v1.65gY — full redesign per client review:
+        · wide centred glass panel (was a narrow 560px card)
+        · uppercase sans-serif headline (was serif title-case)
+        · single horizontal row of inputs + APPLY button
+        · explanatory footer text below the form
+        · contact/instagram/tiktok/copyright/legal pinned to slide
+          bottom */
+    /* v1.65gZ3 — slide-4 inner is now a glass panel that fills the
+       viewport below the header with rounded top corners. We absolute
+       -position it so the section's flex centering doesn't constrain
+       its width to the shared .bp-slide-inner max-width: 1100px. The
+       footer (links + (c) + Legal) overlays the panel's bottom via a
+       higher z-index — that's why border-bottom is none, the panel
+       slides off the bottom edge of the viewport. */
+    /* v1.65gZ4 — narrower + more rounded per client review. Anchored
+       via left:50% + translateX(-50%) so the max-width 960px caps the
+       panel and it stays centred regardless of viewport. Radius
+       bumped to 56px so the top corners read as a clear curve. */
+    .bp-slide-4-inner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 80px);
+      max-width: 960px;
+      bottom: 0;
+      max-height: none;
+      box-sizing: border-box;
+      /* v1.65gZ16 — content anchored toward the top of the panel
+         (justify-content flex-start) so the headline / form / footer
+         text sit higher; padding-top widened to give the headline
+         room to breathe below the panel's rounded edge. */
+      padding: 96px 60px 96px;
+
+      /* v1.65hV — panel made more transparent per client review.
+         v1.65hZ — bumped a touch further: fill 0.03 → 0.02, border
+         0.12 → 0.09, blur 12 → 10. Reads even more as just-a-shape. */
+      background: rgba(220, 240, 235, 0.02);
+      border: 1px solid rgba(220, 240, 235, 0.09);
+      border-bottom: none;
+      border-radius: 56px 56px 0 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 32px;
+    }
+    /* The gap collapses to flex-item margins; clear the headline's
+       own bottom margin so the gap is the single source of truth. */
+    .bp-slide-4-inner .bp-guestlist-headline { margin-bottom: 0; }
+    .bp-slide-4-inner .bp-guestlist-footer-text { margin-top: 0; }
+    @media (max-width: 720px) {
+      .bp-slide-4-inner {
+        width: calc(100% - 24px);
+        padding: 48px 24px 80px;
+        border-radius: 36px 36px 0 0;
+        /* v1.65hY — on phone, make the panel near-invisible.
+           v1.65hZ — border softened 0.06 → 0.03 so the outline is
+           barely traceable; bg already at 0.005 (effectively none). */
+        background: rgba(220, 240, 235, 0.005);
+        border-color: rgba(220, 240, 235, 0.03);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+    }
+    .bp-guestlist-headline {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: clamp(28px, 4.2vw, 52px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin: 0 0 32px 0;
+    }
+    .bp-guestlist-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 12px;
+      align-items: stretch;
+      background: rgba(220,240,235,0.06);
+      border: 1px solid rgba(220,240,235,0.18);
+      border-radius: 999px;
+      padding: 10px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      max-width: 880px;
+      margin: 0 auto;
+    }
+    /* v1.65gZ2 — name/email inputs render on a solid white pill,
+       with dark-green text. APPLY button stays glass so the action
+       reads as the accent. */
+    .bp-form-input {
+      box-sizing: border-box;
+      padding: 11px 18px;
+      background: #FFFFFF;
+      border: 1px solid #FFFFFF;
+      border-radius: 999px;
+      color: #133C23;
+      /* v1.65iB — entered text 14 → 12 per client review so longer
+         email addresses fit comfortably without overflowing the pill. */
+      font-size: 12px;
+      font-family: 'Fraunces', Georgia, serif; font-weight: 500;
+      outline: none;
+      text-align: center;
+    }
+    .bp-form-input::placeholder { color: rgba(19,60,35,0.45); }
+    .bp-form-input:focus { border-color: rgba(19,60,35,0.25); }
+    .bp-form-error {
+      margin: 14px 0 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 13px; font-weight: 500;
+      color: #FFD3DD;
+    }
+    .bp-guestlist-submit {
+      padding: 11px 28px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(220,240,235,0.18);
+      color: #DCF0EB;
+      border: 1px solid rgba(220,240,235,0.25);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .bp-guestlist-submit:hover:not(:disabled) {
+      background: rgba(220,240,235,0.30);
+    }
+    .bp-guestlist-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .bp-guestlist-footer-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(14px, 1.4vw, 17px);
+      font-weight: 500;
+      line-height: 1.5;
+      opacity: 0.85;
+      max-width: 720px;
+      margin: 36px auto 0;
+    }
+
+    /* Slide 4 form responsive collapse — on narrow viewports the
+       horizontal row would otherwise crush the inputs unreadably
+       small. Stack them at <720px. */
+    @media (max-width: 720px) {
+      .bp-guestlist-form {
+        grid-template-columns: 1fr;
+        border-radius: 24px;
+        padding: 16px;
+      }
+    }
+
+    .bp-guestlist-success {
+      background: rgba(220,240,235,0.1);
+      border: 1px solid rgba(220,240,235,0.3);
+      border-radius: 16px;
+      padding: 40px;
+      backdrop-filter: blur(12px);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .bp-success-tick {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(220,240,235,0.18);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px; font-size: 28px;
+    }
+    .bp-success-headline {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 26px; font-weight: 900;
+      margin: 0 0 10px 0;
+    }
+    .bp-success-body {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px; font-weight: 500;
+      line-height: 1.6; opacity: 0.9; margin: 0;
+    }
+
+    /* ── Slide 4 footer (Contact / Instagram / TikTok / Legal | ©) ─
+       v1.65gZ2 — 3-column grid with © centred.
+       v1.65iB — Legal moved into the links row so the footer is now
+       a 2-column grid (links | ©). The .bp-footer-link--right
+       isolated slot is gone; .bp-footer-link--button retains its
+       button-as-link reset. */
+    .bp-welcome-footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 6;
+      padding: 18px 32px 22px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 12px;
+      opacity: 0.85;
+    }
+    .bp-footer-links {
+      display: flex; gap: 24px; align-items: center;
+      justify-self: start;
+    }
+    .bp-footer-link {
+      color: #DCF0EB;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .bp-footer-link:hover { opacity: 0.7; }
+    .bp-footer-link--button {
+      /* Reset button defaults so Legal renders identically to the
+         anchor links beside it. */
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+    .bp-footer-copy {
+      justify-self: end;
+      opacity: 0.6;
+      letter-spacing: 0.02em;
+    }
+    @media (max-width: 720px) {
+      .bp-welcome-footer {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 8px;
+        font-size: 11px;
+        padding-bottom: 16px;
+      }
+      .bp-footer-links {
+        justify-self: center;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
+      .bp-footer-copy { justify-self: center; }
+    }
+
+    /* v1.65gY — Bottom-nav (Back / Next pills) + vertical pagination
+       train styles removed alongside their template markup. Scroll-
+       snap + header CTA + slide-1 centred CTA cover every nav need;
+       any leftover .bp-welcome-bottom / .bp-welcome-dot rules would
+       be unreferenced dead code. */
+
+    /* ── Legal modal ─────────────────────────────────────────────────
+       v1.65gZ20 — opened by the Legal link in the slide-4 footer.
+       Backdrop overlay sits above every slide (z 100); the modal
+       card centres on screen with a glass treatment that matches
+       the rest of the welcome aesthetic. */
+    .bp-legal-overlay {
+      position: fixed; inset: 0;
+      z-index: 100;
+      background: rgba(15, 30, 24, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .bp-legal-modal {
+      position: relative;
+      max-width: 560px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 40px 40px 32px;
+      background: rgba(220, 240, 235, 0.14);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 24px;
+      color: #DCF0EB;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+    .bp-legal-close {
+      position: absolute;
+      top: 12px; right: 16px;
+      width: 32px; height: 32px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: none;
+      color: #DCF0EB;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .bp-legal-close:hover { opacity: 1; }
+    .bp-legal-title {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0 0 18px 0;
+    }
+    .bp-legal-list {
+      list-style: disc;
+      padding-left: 22px;
+      margin: 0 0 28px 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    .bp-legal-list li {
+      margin-bottom: 10px;
+      opacity: 0.92;
+    }
+    .bp-legal-list li:last-child { margin-bottom: 0; }
+
+    /* v1.65gZ21 — section headings + body paragraphs for the new
+       privacy / cookies / changes content. */
+    .bp-legal-section {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin: 22px 0 8px 0;
+    }
+    .bp-legal-section:first-of-type { margin-top: 4px; }
+    .bp-legal-body {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 15px;
+      line-height: 1.55;
+      margin: 0 0 6px 0;
+      opacity: 0.92;
+    }
+    .bp-legal-dismiss {
+      margin-top: 24px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #DCF0EB;
+      background: rgba(220, 240, 235, 0.18);
+      border: 1px solid rgba(220, 240, 235, 0.28);
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .bp-legal-dismiss:hover { background: rgba(220, 240, 235, 0.30); }
+
+    /* Footer "Legal" link now renders as a button (so we can wire a
+       click handler without a phantom navigation). Strip the default
+       button chrome so it still reads as a footer link. */
+    .bp-footer-link--button {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      letter-spacing: inherit;
+    }
+
+    /* v1.65gZ29 — Turnstile widget wrapper. Centred under the form;
+       Cloudflare renders an iframe roughly 65px tall in compact mode.
+       The widget is theme: dark to match the welcome page. */
+    .bp-turnstile-wrap {
+      display: flex;
+      justify-content: center;
+      /* v2: invisible Turnstile (interaction-only) — reserve no space when
+         it's not showing a challenge. */
+      min-height: 0;
+    }
