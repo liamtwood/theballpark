@@ -173,5 +173,5 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/auth-callback/auth-callback.component').then((m) => m.AuthCallbackComponent),
   },
-  { path: '**', redirectTo: '' },
+  { path: '**', redirectTo: 'welcome' },
 ];

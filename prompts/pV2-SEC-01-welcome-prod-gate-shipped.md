@@ -111,6 +111,22 @@ Gate behaviour against the live preview backend
 `x-bp-admin-secret` → 200 (Liam has the secret); full in-browser signup +
 notification email (Turnstile-gated; fix doesn't touch the signup path).
 
+## Iteration — v2.31j (2026-06-18): graceful-degrade unauth routing
+**Triggered by:** pre-`master`-push verification — for the prod-promote window
+(no real auth yet, pV2-AUTH-01 pending) unauth/unknown URLs must land on the
+public `/welcome`, not `/login` or a broken state.
+**Scope guard:** NOT auth implementation (that's pV2-AUTH-01) — just the redirect
+targets for the cutover window.
+**Files:** `client-v2/src/app/app.routes.ts` (`**` catch-all `'' → 'welcome'`);
+`client-v2/src/app/core/auth/requires-org.guard.ts` (signed-out
+`/login → /welcome`).
+**Verified (local prod-equivalent client build, routing is client-side):**
+- logged-out `/projects` → `/welcome` (requiresOrgGuard).
+- unknown route (`**`) → `/welcome`, welcome page rendered, no error overlay.
+- clean `ng` build (5.4s, no errors).
+Signed-in-orgless → `/onboarding` unchanged; admin/ballpark guards (authed users)
+unchanged.
+
 ## QC notes
 (Liam fills this in)
 
