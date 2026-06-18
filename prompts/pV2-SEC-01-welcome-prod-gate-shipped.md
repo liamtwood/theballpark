@@ -91,6 +91,26 @@ and retires at pV2-AUTH-01 (recorded in TECH-DEBT-01). Flagged for Liam's call.
 **Suggested fix:** accept for the interim, or stand up a minimal authed v2 admin view at AUTH-01.
 **Severity:** LOW (operational, not security)
 
+## Preview QC — v2.31i (2026-06-18)
+**Promoted:** `preview` ← `dev` (`cf7776ba → d8f9f8a7`); staging chip `[Staging v2] v2.31i`.
+**Preview migration:** `migrate-schemas` run against preview DB (host
+`aws-1-us-east-1.pooler.supabase.com`, db `postgres`) — exit 0, hardening line
+read `public/preview/master/marketing`, no errors. Post-check: marketing schema
+ended with **0** anon/authenticated USAGE grants, **0** table grants, RLS `true`
+on `guestlist_signup` / `welcome_content` / `welcome_settings`.
+
+Gate behaviour against the live preview backend
+(`https://theballpark-preview-preview.up.railway.app`):
+- `GET /api/admin/signups` no headers → **403** (proves new code live **and**
+  `ADMIN_API_SECRET` set — old/dev-bypass path returns 401).
+- Forged `x-bp-user-id` only → **403** (exploit closed).
+- `GET /api/welcome/content` (public) → **200** (REVOKE didn't break public path).
+- Local dev-bypass (no secret) + real admin id → `next()` (permissive path intact).
+
+**Not verified here (need the secret / browser):** `curl` *with* the correct
+`x-bp-admin-secret` → 200 (Liam has the secret); full in-browser signup +
+notification email (Turnstile-gated; fix doesn't touch the signup path).
+
 ## QC notes
 (Liam fills this in)
 
