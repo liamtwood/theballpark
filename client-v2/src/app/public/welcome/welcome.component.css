@@ -902,7 +902,7 @@
          v2.31g — widened 700 -> 760 per client; subtitle + marquee
          track the same width so the three read as one column. */
       margin: 0 auto 28px;
-      max-width: 760px;
+      max-width: 900px;
     }
     /* v1.65gY — subtitle below the suppliers headline.
        v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
@@ -917,7 +917,7 @@
       font-weight: 500;
       line-height: 1.55;
       opacity: 0.9;
-      max-width: 760px;   /* v2.31g — match headline + marquee */
+      max-width: 900px;   /* v2.31g — match headline + marquee */
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -941,7 +941,7 @@
          .bp-slide-inner (padding: 0 32px) capped at 760; the marquee is a
          sibling of that, so it needs the same 64px inset + 760 cap to match:
          width = min(viewport - 64, 760), centred. */
-      width: calc(100% - 64px); max-width: 760px; margin: 0 auto;
+      width: calc(100% - 64px); max-width: 900px; margin: 0 auto;
       overflow: hidden;
       padding: 8px 0;
       position: relative; z-index: 5;
