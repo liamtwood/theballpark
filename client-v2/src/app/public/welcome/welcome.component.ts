@@ -386,9 +386,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       const prev = lastRevScrollTop;
       lastRevScrollTop = stage.scrollTop;
 
-      // Ignore scroll churn while a reverse is mid-flight (the stage is
-      // locked; only our own programmatic scrollTop changes fire here).
-      if (this.slide2ReverseRolling) return;
+      // Ignore scroll churn while a reverse is mid-flight (stage locked) OR
+      // during the BALLPARK-logo dissolve (goTo(0) does an instant scrollTo(0)
+      // whose big upward jump would otherwise trip the reverse-detector below
+      // and fire a reverse instead of landing home — v2.31d).
+      if (this.slide2ReverseRolling || this.ballparkFading) return;
 
       // Trigger the reverse from ANY upward scroll off slide 2 — scrollbar
       // drag, track click, keyboard, touch — not just the wheel handler.
@@ -601,11 +603,17 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           root.style.setProperty('--s1-leaving', '0');
           root.style.setProperty('--s2-leaving', '0');
           root.style.setProperty('--s3-leaving', '0');
+          root.style.setProperty('--scroll-progress', '0');   // v2.31d — pill back to top
         }
         const stage = this.stageRef?.nativeElement;
         if (stage) {
           stage.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
         }
+        // v2.31d — onScroll is short-circuited during the dissolve (so the
+        // jump can't trip the reverse-detector), so set the landing state
+        // here: we're on slide 1, replay its entry.
+        this.step = 0;
+        this.forceInView(0);
         setTimeout(() => {
           this.ballparkFading = false;
           this.cdr.markForCheck();
