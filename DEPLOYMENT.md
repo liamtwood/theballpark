@@ -77,16 +77,25 @@ The Angular frontend deploys to Vercel. Build config is repo-tracked in
 v2 reads its API base URL at **runtime** from `/runtime-config.json`
 (`RuntimeConfigService`, loaded at bootstrap), not from a compiled-in env file.
 On a host the file is generated at build time by
-[`client-v2/scripts/write-runtime-config.mjs`](client-v2/scripts/write-runtime-config.mjs)
-from environment variables:
+[`client-v2/scripts/write-runtime-config.mjs`](client-v2/scripts/write-runtime-config.mjs),
+which resolves `apiBaseUrl` in this order:
 
-| Vercel env var           | Fills                | Example                              |
-|--------------------------|----------------------|--------------------------------------|
-| `API_BASE_URL`           | `apiBaseUrl`         | preview backend origin (no trailing /) |
-| `GOOGLE_OAUTH_CLIENT_ID` | `googleOAuthClientId`| (empty until pV2-02 auth)            |
+1. **`API_BASE_URL` env var** (set in the Vercel dashboard) — always wins.
+2. **A per-`VERCEL_ENV` default** baked into the script (so deploys work even
+   with no dashboard var): `preview` → the preview Railway backend,
+   `production` → the prod Railway backend.
+3. **`http://localhost:3001`** — local dev (`ng serve` doesn't run the script,
+   so the committed `public/runtime-config.json` default applies).
 
-Locally (`ng serve`) the script does not run, so the committed
-`client-v2/public/runtime-config.json` default (`http://localhost:3001`) is used.
+| Vercel env var           | Fills                | Notes                                   |
+|--------------------------|----------------------|-----------------------------------------|
+| `API_BASE_URL`           | `apiBaseUrl`         | optional — overrides the per-env default |
+| `GOOGLE_OAUTH_CLIENT_ID` | `googleOAuthClientId`| (empty until pV2-02 auth)               |
+
+> **Verify a deploy:** `curl https://<host>/runtime-config.json` — `apiBaseUrl`
+> must be the backend origin, **not** `localhost`. (A `localhost` value means
+> the build didn't run the inject script — check the Vercel Build Command isn't
+> a dashboard override that bypasses `vercel.json`.)
 
 ## Backend — Railway (server)
 
