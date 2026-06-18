@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  versionChip: '[Staging v2] v2.30w',
+  versionChip: '[Staging v2] v2.30x',
   turnstileSiteKey: '0x4AAAAAADdwdzIjm6NbpAXD',
 };

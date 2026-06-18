@@ -367,23 +367,9 @@ const DEFAULT_CONTENT: Content = {
         </svg>
       </button>
 
-      <!-- v2.30q — explicit BACK chevron (up). Added because relying on the
-           scrollbar to invoke the reverse felt inconsistent. On slide 2 it
-           plays the reverse 2→1 animation; on later slides it's a plain
-           step-back. Hidden on slide 1 (nothing above). Mirrors .bp-next-icon. -->
-      <button
-        *ngIf="step > 0"
-        type="button"
-        class="bp-prev-icon"
-        (click)="goBack()"
-        aria-label="Previous slide">
-        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m17 11-5-5-5 5"/>
-          <path d="m17 18-5-5-5 5"/>
-        </svg>
-      </button>
+      <!-- v2.30x — the explicit BACK chevron (v2.30q) was only a testing aid
+           for the reverse; native scroll-up now drives it, so it's removed.
+           goBack() stays — it's wired to wheel-up / ArrowLeft / scroll-track. -->
 
       <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
            Position is driven by --scroll-progress on .bp-welcome-root,
@@ -669,33 +655,6 @@ const DEFAULT_CONTENT: Content = {
     }
     .bp-next-icon:active {
       transform: translateX(-50%) translateY(2px) scale(0.96);
-    }
-
-    /* v2.30q — BACK chevron (up), mirror of .bp-next-icon pinned to the
-       top edge. Shown on slides 2-4 (hidden on slide 1). */
-    .bp-prev-icon {
-      position: fixed;
-      left: 50%;
-      top: 10vh;
-      transform: translateX(-50%);
-      width: 56px;
-      height: 56px;
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 0;
-      background: transparent;
-      border: none;
-      color: #DCF0EB;
-      cursor: pointer;
-      z-index: 50;
-      opacity: 0.85;
-      transition: opacity 0.2s, transform 0.2s;
-    }
-    .bp-prev-icon:hover {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-2px);
-    }
-    .bp-prev-icon:active {
-      transform: translateX(-50%) translateY(-2px) scale(0.96);
     }
 
     /* v1.65gL — bg layer wrapper. With scroll-snap the user is
