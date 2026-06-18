@@ -1230,12 +1230,19 @@ const DEFAULT_CONTENT: Content = {
        blob — see the v1.65gZ48 note). The crafted 4→3 is just: slide-4's
        dark-green orbs shrink + its content crawls off, then an instant cut
        to slide 3 whose own .in-view entry replays normally. Reuses
-       bp-orb-shrink (280→0) and bp-credits-down. */
+       bp-orb-shrink (280→0); the crawl-off needs a slide-4-specific keyframe
+       (below) because .bp-slide-4-inner is centered with transform
+       translateX(-50%) — the generic bp-credits-down (translateY only) would
+       drop the -50% and shove the panel off-centre. */
     .bp-slide-4.bp-reverse-rolling .bp-svg-bg circle {
       animation: bp-orb-shrink 0.8s cubic-bezier(0.4, 0, 0.6, 1) forwards;
     }
     .bp-slide-4.bp-reverse-rolling-2 .bp-slide-4-inner {
-      animation: bp-credits-down 1.7s ease-in-out forwards;
+      animation: bp-credits-down-s4 1.7s ease-in-out forwards;
+    }
+    @keyframes bp-credits-down-s4 {
+      from { transform: translate(-50%, 0);     opacity: 1; }
+      to   { transform: translate(-50%, 110vh); opacity: 1; }
     }
     /* v1.65hX..hZ defensively hid .bp-slide-1/2 .bp-svg-bg on mobile
        to dodge the pink-box compositor artifact. v1.65i9 — restored
