@@ -898,9 +898,11 @@
       /* v1.65gQ — centre the headline block. text-align: center is
          inherited from .bp-slide-inner, but the block itself was
          left-aligned because of max-width: 1000px without auto
-         margins. */
+         margins.
+         v2.31g — widened 700 -> 760 per client; subtitle + marquee
+         track the same width so the three read as one column. */
       margin: 0 auto 28px;
-      max-width: 700px;
+      max-width: 760px;
     }
     /* v1.65gY — subtitle below the suppliers headline.
        v1.65gZ8 — flex layout + ::before/::after rules paint a 1px
@@ -915,7 +917,7 @@
       font-weight: 500;
       line-height: 1.55;
       opacity: 0.9;
-      max-width: 700px;
+      max-width: 760px;   /* v2.31g — match headline + marquee */
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -934,7 +936,13 @@
        sits closer to the subtitle; item font shrunk
        clamp(36-64) -> clamp(22-40) per client review. */
     .bp-marquee-wrap {
-      width: 100%; overflow: hidden;
+      /* v2.31g — line the scrolling band up with the headline/subtitle box at
+         every width (was full-bleed 100%). The headline sits inside
+         .bp-slide-inner (padding: 0 32px) capped at 760; the marquee is a
+         sibling of that, so it needs the same 64px inset + 760 cap to match:
+         width = min(viewport - 64, 760), centred. */
+      width: calc(100% - 64px); max-width: 760px; margin: 0 auto;
+      overflow: hidden;
       padding: 8px 0;
       position: relative; z-index: 5;
     }
