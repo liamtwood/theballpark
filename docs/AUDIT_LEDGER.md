@@ -53,6 +53,16 @@ out any pattern it disproves.
 Each future audit pass reads this section first and verifies every open
 row's check against the current ship's surface area.
 
+## Sunset-tracked tech debt
+
+Deliberate interim measures that MUST be removed by a named future ship.
+Each row carries a hard sunset condition — these are not "nice to clean up
+someday," they are load-bearing-until-X and a liability past X.
+
+| # | What | Where | Introduced | Sunset condition |
+|---|---|---|---|---|
+| TECH-DEBT-01 | **Interim admin gate — shared secret over forgeable header.** `/api/admin/*` is gated by an `x-bp-admin-secret` header matched against the `ADMIN_API_SECRET` env (constant-time compare); when the env is unset (local dev) it falls back to the legacy `x-bp-user-id` role lookup as an explicit dev-only bypass. Replaces the prior gate that trusted `x-bp-user-id` alone — which was forgeable because `GET /api/org/users` hands any anonymous caller every user's id + role, so knowing an admin UUID granted full read/write over the guestlist (PII) + welcome content/settings + Resend test-sends. The secret defangs that. **Residual (NOT closed here):** `GET /api/org/users` still returns `SELECT *` (incl. name/email/role) to anonymous callers — a v1-era dev-shim the v1 client depends on to self-identify (`users[0].id` → header) and that `user-context.js` audit attribution reads. It can't be hardened without breaking v1's identity bootstrap, and it's not part of the v2/welcome surface. The secret gate removes its value as an *escalation* vector; the remaining `users`-table PII exposure retires with v1 / at AUTH-01. | `server/src/middleware/admin.js`; consumed by `server/src/routes/adminMarketing.js`; residual at `server/src/index.js` (`GET /api/org/users`) + `server/src/services/user.service.js` (`getByOrg`) | 2026-06-18, interim welcome prod-gate fix | **Replace with v2 Supabase JWT auth at pV2-AUTH-01; MUST NOT remain past that ship.** At AUTH-01: delete the secret/header bypass in `admin.js` and gate `/api/admin/*` on the verified JWT subject + admin role; gate or scope `GET /api/org/users` so it no longer returns user PII to anonymous callers; retire `x-bp-user-id` everywhere it is still trusted. |
+
 ## How to use this ledger
 
 1. **After every ship** — the chat audit-before-shipped pass updates rows

@@ -2001,13 +2001,21 @@ const migrate = async () => {
     // Our app doesn't use PostgREST — supabaseAnonKey is empty in every
     // environment.*.ts and all DB access goes through Express using the
     // postgres connection string. So we can safely:
-    //   (a) revoke anon / authenticated grants on public/preview/master
+    //   (a) revoke anon / authenticated grants on public/preview/master/marketing
     //   (b) revoke default privileges so future tables don't regrant
     //   (c) enable RLS on every existing table
     // Postgres owner-bypass means our server still has full access.
     // Idempotent — re-running writes the same state back.
-    console.log('  Hardening RLS + grants on public/preview/master...');
-    for (const schema of ['public', 'preview', 'master']) {
+    //
+    // `marketing` is included (TECH-DEBT-01 ride-along): section 8 above leaves
+    // advisory anon INSERT/SELECT policies on its tables, but the grants were
+    // never revoked, so the guestlist_signup PII would be anon-reachable the
+    // moment PostgREST/anon access is ever enabled. Revoking here closes that
+    // latent gap; the public welcome page is unaffected (it reads/inserts via
+    // Express on the owner connection, not anon). If anon access is ever turned
+    // on, the public welcome path must be re-granted explicitly.
+    console.log('  Hardening RLS + grants on public/preview/master/marketing...');
+    for (const schema of ['public', 'preview', 'master', 'marketing']) {
       await client.query(`REVOKE USAGE ON SCHEMA ${schema} FROM anon, authenticated`);
       await client.query(`REVOKE ALL PRIVILEGES ON ALL TABLES    IN SCHEMA ${schema} FROM anon, authenticated`);
       await client.query(`REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${schema} FROM anon, authenticated`);

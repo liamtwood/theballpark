@@ -257,13 +257,19 @@ async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
     where.push(`role = ANY($${params.length})`);
   }
   const order = sort === 'oldest' ? 'ASC' : 'DESC';
+  // LIMIT/OFFSET bound as params (defence-in-depth — they were Number()-coerced
+  // and not injectable, but no concatenated values reach the SQL string now).
+  params.push(Number(limit) || 100);
+  const limParam = `$${params.length}`;
+  params.push(Number(offset) || 0);
+  const offParam = `$${params.length}`;
   const sql = `
     SELECT id, name, email, company, role, created_at, notified_at
       FROM marketing.guestlist_signup
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
      ORDER BY created_at ${order}
-     LIMIT ${Number(limit) || 100}
-     OFFSET ${Number(offset) || 0}
+     LIMIT ${limParam}
+     OFFSET ${offParam}
   `;
   const { rows } = await pool.query(sql, params);
 
