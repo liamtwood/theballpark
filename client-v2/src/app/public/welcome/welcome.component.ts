@@ -25,14 +25,6 @@ import { RuntimeConfigService } from '../../core/runtime-config.service';
 
 const TOTAL_STEPS = 4;
 
-const ROLE_OPTIONS = [
-  'Agency producer',
-  'Freelance producer',
-  'Supplier',
-  'Brand / in-house',
-  'Just curious'
-];
-
 interface Content {
   [key: string]: string | string[];
 }
@@ -76,8 +68,6 @@ const DEFAULT_CONTENT: Content = {
 })
 export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly TOTAL_STEPS = TOTAL_STEPS;
-  readonly roleOptions = ROLE_OPTIONS;
-  readonly dots = Array.from({ length: TOTAL_STEPS });
 
   /** v1.65gL — references to the four <section #slideRef> elements
       so we can scroll a target slide into view + add .in-view based
@@ -125,19 +115,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       ngAfterViewInit, where the stage/scroll state lives). Lets the back
       chevron's goBack() trigger the same animation the wheel/scroll do. */
   private reverseFn?: (fromStep: number) => void;
-  /** v2.30k — latches once step 1's blue-orb shrink has completed so
-      the pink screen is HELD (orbs stay at r=0) instead of popping back.
-      A further scroll-up then triggers step 2. Reset when slide 2 is
-      re-entered forward (1→2) so the orbs are full again. */
-  reverseStage1Done = false;
-  /** v2.30l — reverse 2→1 step 2 (Option A). True while the pink→green
-      handoff is playing: slide-2's text crawls out, then we jump to
-      slide 1 whose bg washes pink→green as its pink orbs expand in.
-      Mirror of the forward credits-roll's green→pink bridge. */
-  slide2ReverseRolling2 = false;
-  /** Kept for legacy bindings (template still references it). Now
-      always 'forward' since per-slide animations are one-shot. */
-  direction: 'forward' | 'backward' = 'forward';
   /** v1.65i3 — slide exit transition state.
       v1.65i8 — generalized from slide-1-only to ALL forward
       transitions (1→2, 2→3, 3→4). Holds the index of the slide
@@ -146,10 +123,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       the next slide, then the destination slide's .in-view fade-up
       animations reveal it. null = no exit in progress. */
   exitingFromSlide: number | null = null;
-  /** Legacy alias retained because the slide-1 template binding
-      still reads slide1Exiting. v1.65i8 keeps it in sync with
-      exitingFromSlide for backward compat. */
-  get slide1Exiting(): boolean { return this.exitingFromSlide === 0; }
   /** v1.65gN — scroll listener cleanup. */
   private scrollListener?: () => void;
   /** v1.65gT — last settled slide index. Used to gate the class
@@ -175,10 +148,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
   submitting = false;
   submitted  = false;
   errorMessage: string | null = null;
-
-  /** v1.65gZ20 — Legal modal open state. Backdrop click + Close
-      button + ESC keydown all flip this back to false. */
-  legalOpen = false;
 
   /** v1.65gZ29 — Cloudflare Turnstile token. Captured on widget
       success callback, sent with the signup payload, cleared on
@@ -253,10 +222,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // the reverse-step-1 latch so the blue orbs are full again, not
       // held at r=0 from a previous reverse. Doesn't fire mid-reverse:
       // that path preventDefaults the scroll, so no settle occurs.
-      if (idx === 1 && (this.slide2ReverseRolling || this.slide2ReverseRolling2 || this.reverseStage1Done)) {
+      if (idx === 1 && this.slide2ReverseRolling) {
         this.slide2ReverseRolling = false;
-        this.slide2ReverseRolling2 = false;
-        this.reverseStage1Done = false;
         this.slideRefs?.toArray()[1]?.nativeElement.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
       }
       const refs = this.slideRefs?.toArray() || [];
@@ -588,8 +555,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return [...cats, ...cats, ...cats];
   }
 
-  get stepLabel(): string  { return String(this.step + 1).padStart(2, '0'); }
-  get totalLabel(): string { return String(TOTAL_STEPS).padStart(2, '0'); }
 
   // ── Navigation ────────────────────────────────────────────────
   // v1.65gL — buttons + keyboard arrows now scroll the target slide
@@ -708,12 +673,10 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // v1.65j5 — duration tightened 1500ms -> 1000ms (matches
       // the CSS animation durations) per client review feedback. */
       if (this.step === 0 && i === 1 && !this.slide1CreditsRolling) {
-        // v2.30k/l — leaving slide 1 forward: clear all reverse-nav state
-        // so slide 2's orbs are full again and slide 1's bg/orbs are back
-        // to normal (not held in a reverse-entry pose).
+        // v2.30k — leaving slide 1 forward: clear reverse-nav state so
+        // slide 2's orbs are full again and slide 1's bg/orbs are back to
+        // normal (not held in a reverse-entry pose).
         this.slide2ReverseRolling = false;
-        this.slide2ReverseRolling2 = false;
-        this.reverseStage1Done = false;
         const revRefs = this.slideRefs?.toArray() || [];
         revRefs[1]?.nativeElement.classList.remove('bp-reverse-rolling', 'bp-reverse-rolling-2');
         revRefs[0]?.nativeElement.classList.remove('bp-reverse-enter');
@@ -847,16 +810,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @HostListener('window:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
-    // v1.65gZ20 — ESC closes the Legal modal first if open; nothing
-    // else binds to ESC, so it's an additive handler.
-    if (e.key === 'Escape' && this.legalOpen) {
-      this.closeLegal();
-      return;
-    }
-    // While the modal is up, swallow arrow / Enter nav so scrolling
-    // doesn't fire underneath the dialog.
-    if (this.legalOpen) return;
-
     if (this.submitted) return;
     const tag = (e.target as HTMLElement)?.tagName;
     const isFormField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
@@ -892,16 +845,6 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  // ── Legal modal ───────────────────────────────────────────────
-  openLegal(e?: Event) {
-    if (e) e.preventDefault();
-    this.legalOpen = true;
-    this.cdr.markForCheck();
-  }
-  closeLegal() {
-    this.legalOpen = false;
-    this.cdr.markForCheck();
-  }
 
   // ── Submit ────────────────────────────────────────────────────
   canSubmit(): boolean {

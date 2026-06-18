@@ -93,11 +93,6 @@
             </div>
             <h1 class="bp-hero-headline">{{ nlText('hero.headline') }}</h1>
             <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
-            <!-- v1.65gZ42 — centred "Get on the guestlist" CTA removed.
-                 Moved to the top-right header so it sits in the same
-                 spot on every slide. .bp-hero-cta CSS rules kept
-                 (unused) in case we want to restore it later. -->
-
           </div>
         </section>
 
@@ -309,41 +304,6 @@
            role="button"
            aria-label="Previous or next slide">
         <div #scrollPill class="bp-scroll-pill" aria-hidden="true"></div>
-      </div>
-
-      <!-- v1.65gZ20 — Legal modal. Triggered by the Legal link in the
-           slide-4 footer. Backdrop click + close button + ESC all
-           dismiss. -->
-      <!-- v1.65gZ21 — replaced the generic 6-bullet placeholder with
-           the actual Ballpark welcome-page privacy + cookie statement
-           drafted from the client's notes. -->
-      <div *ngIf="legalOpen" class="bp-legal-overlay" (click)="closeLegal()">
-        <div class="bp-legal-modal" (click)="$event.stopPropagation()">
-          <button type="button" class="bp-legal-close" (click)="closeLegal()" aria-label="Close">×</button>
-          <h2 class="bp-legal-title">Legal</h2>
-
-          <h3 class="bp-legal-section">Your privacy</h3>
-          <p class="bp-legal-body">
-            Information about our customers is an important part of our business, and we are not in the business of selling our customers' personal information to others.
-          </p>
-
-          <h3 class="bp-legal-section">What we collect, and why</h3>
-          <p class="bp-legal-body">
-            We collect your contact information on this site for one reason only: so we can invite you to Ballpark when it becomes available. Your name and email address are stored securely and never shared with third parties.
-          </p>
-
-          <h3 class="bp-legal-section">Cookies</h3>
-          <p class="bp-legal-body">
-            We don't set any cookies of our own on this page, and we don't use analytics or advertising trackers. The only cookie involved is <code>__cf_bm</code>, set by Cloudflare on <code>challenges.cloudflare.com</code> when their bot-check runs on the signup form. It expires after 30 minutes and exists solely to remember that your browser has already passed a bot check. Cloudflare classifies it as strictly necessary for security, which exempts it from cookie-banner consent under GDPR/ePrivacy. If we ever introduce other cookies, a full Cookie Policy will be added here and a banner will appear before any are set.
-          </p>
-
-          <h3 class="bp-legal-section">Changes</h3>
-          <p class="bp-legal-body">
-            This statement may be updated as Ballpark evolves. Material changes will be communicated to anyone on the guestlist before they take effect.
-          </p>
-
-          <button type="button" class="bp-legal-dismiss" (click)="closeLegal()">Close</button>
-        </div>
       </div>
 
     </div>
