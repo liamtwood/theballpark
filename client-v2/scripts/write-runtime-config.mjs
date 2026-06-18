@@ -9,12 +9,25 @@
 //   API_BASE_URL            → apiBaseUrl   (e.g. the preview/prod API origin)
 //   GOOGLE_OAUTH_CLIENT_ID  → googleOAuthClientId
 //
-// Locally (ng serve) this script does not run, so the committed localhost
-// default in public/runtime-config.json stays in place for dev.
+// v2.31e — resolution order so the deploy works even if the dashboard
+// API_BASE_URL var is missing (which it was on preview — the build fell back
+// to localhost and every API call failed):
+//   1. explicit API_BASE_URL env (host dashboard) — always wins
+//   2. a per-Vercel-environment default keyed off VERCEL_ENV
+//   3. localhost for local dev (ng serve doesn't run this script anyway)
 import { writeFileSync } from 'node:fs';
 
+const PER_ENV = {
+  preview:    'https://theballpark-preview-preview.up.railway.app',
+  production: 'https://theballpark-production.up.railway.app',
+};
+const apiBaseUrl =
+  process.env.API_BASE_URL
+  || PER_ENV[process.env.VERCEL_ENV]
+  || 'http://localhost:3001';
+
 const config = {
-  apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
+  apiBaseUrl,
   googleOAuthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
 };
 
