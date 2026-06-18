@@ -450,10 +450,44 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
+    // v2.31f — touch parity. Finger-swipe fires touch events, not wheel, so on
+    // mobile the deck was free-snapping (native scroll-snap) instead of playing
+    // the crafted transitions. Block the native touch scroll and route the
+    // swipe to the same next()/goBack() as wheel/chevron. Direction matches the
+    // wheel's deltaY: swipe up (content moves down) = forward = next(); swipe
+    // down = back = goBack(). Taps, form fields, links and multi-touch
+    // (pinch-zoom) are left alone.
+    let touchStartY = 0;
+    let touchOnControl = false;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+      const tag = (e.target as HTMLElement)?.tagName;
+      touchOnControl = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+                    || tag === 'BUTTON' || tag === 'A';
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchOnControl || e.touches.length !== 1) return;  // allow controls + pinch-zoom
+      e.preventDefault();                                     // own single-finger scroll
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchOnControl) return;
+      const endY = e.changedTouches[0]?.clientY ?? touchStartY;
+      const dy = touchStartY - endY;        // >0 swipe up = forward, <0 swipe down = back
+      if (Math.abs(dy) < 40) return;        // ignore taps / micro-moves
+      if (dy < 0) this.goBack();
+      else this.next();
+    };
+    stage.addEventListener('touchstart', onTouchStart, { passive: true });
+    stage.addEventListener('touchmove', onTouchMove, { passive: false });
+    stage.addEventListener('touchend', onTouchEnd, { passive: true });
+
     this.scrollListener = () => {
       clearTimeout(settleTimer);
       stage.removeEventListener('scroll', onScroll);
       stage.removeEventListener('wheel', onWheel);
+      stage.removeEventListener('touchstart', onTouchStart);
+      stage.removeEventListener('touchmove', onTouchMove);
+      stage.removeEventListener('touchend', onTouchEnd);
     };
 
     // Slide 0 is in view on load — mark immediately so first paint
