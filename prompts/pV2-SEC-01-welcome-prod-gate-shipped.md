@@ -127,6 +127,29 @@ targets for the cutover window.
 Signed-in-orgless → `/onboarding` unchanged; admin/ballpark guards (authed users)
 unchanged.
 
+## Prod assessment & disposition (2026-06-18)
+Probed prod before any `master` push:
+- `theballpark.ai` serves a **stale/incomplete v2 build** (old bundle
+  `main-LDLHEDCZ.js`; `/runtime-config.json` returns index.html via the SPA
+  rewrite → no real API config wired) — not a functioning prod. Matches Liam:
+  "v1 was never deployed."
+- Prod backend `theballpark-production.up.railway.app` returns **404** for
+  `/api/admin/signups` + `/api/welcome/content` — it doesn't serve the v2
+  marketing/admin routes. **No live prod exploit.**
+- `master` is **1482 commits / 647 files** behind `dev` → `dev→master` is the
+  full v1→v2 production launch, not a patch.
+- `.env.preview` and `.env.master` are the **same Supabase DB** (project
+  `ixdcmicxlszcbrxvvzjz`; preview via pooler `:6543`, master via direct `:5432`)
+  → the `marketing` REVOKE applied via the preview run already covers prod data.
+
+**Disposition:** security objective **MET** — the vulnerable code only ran on
+preview (now fixed + `ADMIN_API_SECRET`) and local (dev-bypass); nothing is
+exposed on prod. The prod cutover is deferred to its own deliberate milestone;
+the secret gate + graceful-degrade routing already live in the code and ship
+with it. **Hard prerequisite for the cutover:** set `ADMIN_API_SECRET` on the
+prod Railway backend BEFORE the v2 server code goes live, or the launch itself
+opens the gate.
+
 ## QC notes
 (Liam fills this in)
 
