@@ -50,7 +50,7 @@ const DEFAULT_CONTENT: Content = {
   'producers.body_1':       'Costing events can be a grind. Endless quotes, supplier chasing, tight turnarounds.',
   'producers.body_2':       'Ballpark makes it easy. Instant, accurate costs. Incredible suppliers. Everything in one place.',
   'guestlist.eyebrow':         'You made it',
-  'guestlist.headline':        "Get on the guestlist and the moment we're live you'll be the first to know.",
+  'guestlist.headline':        "Get on the guestlist. The moment we're live you'll be the first to know.",
   'guestlist.subtitle':        "Get on the guestlist",
   'guestlist.cta_label':       'APPLY',
   'guestlist.footer_text':     'Those who get in early get ahead.',

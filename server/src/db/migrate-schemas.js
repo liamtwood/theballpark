@@ -1845,7 +1845,7 @@ const migrate = async () => {
       ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
       ['guestlist.headline',         'longtext', 'THOSE WHO GET IN EARLY,\nGET AHEAD',                       'Headline',        'Use \\n for line breaks', 4, 20],
       ['guestlist.subtitle',         'longtext', "Get on the guestlist",                                     'Subtitle',        null, 4, 30],
-      ['guestlist.footer_text',      'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
+      ['guestlist.footer_text',      'longtext', "Get on the guestlist. The moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
       ['guestlist.cta_label',        'text',     'APPLY',                                                    'Submit button label', null, 4, 40],
       ['guestlist.success_headline', 'text',     "You're on the guestlist.",                                  'Success headline', null, 4, 50],
       ['guestlist.success_body',     'longtext', "We'll be in touch the moment Ballpark goes live, {{firstName}}.", 'Success body', "Use {{firstName}} for the registrant's first name", 4, 60],
