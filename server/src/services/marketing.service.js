@@ -183,7 +183,7 @@ async function createSignup({ body, ip, userAgent }) {
   // which emails already exist by spamming the form.
   const ts = await verifyTurnstile(body.turnstileToken, ip);
   if (!ts.ok) {
-    return { ok: false, status: 400, error: 'Bot check failed. Please refresh and try again.' };
+    return { ok: false, status: 400, error: 'Bot check failed. Please try again.' };
   }
 
   const name    = body.name.trim();

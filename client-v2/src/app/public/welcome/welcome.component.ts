@@ -159,6 +159,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       (execute-on-submit). The render callback fires the POST when the token
       lands, and a timeout fails gracefully if it never does. */
   pendingSubmit = false;
+  /** v2.31m — guard so a "bot check failed" rejection auto-retries with a
+      fresh token exactly once per user submit. The invisible token is minted
+      on render and is single-use / ~5min TTL, so on an idle marketing deck the
+      first POST often carries a stale token; a silent re-mint recovers it. */
+  private botCheckRetried = false;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private rc: RuntimeConfigService) {}
 
@@ -903,6 +908,7 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!this.canSubmit() || this.submitting) return;
     this.submitting = true;
     this.errorMessage = null;
+    this.botCheckRetried = false;   // fresh user submit gets one auto-retry
     this.cdr.markForCheck();
 
     // Fast path — a fresh background token is already in hand → post now.
@@ -971,6 +977,30 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           error: err.error,
           message: err.message
         });
+        // v2.31m — the common failure on an idle deck is a stale pre-minted
+        // token (single-use / ~5min TTL) → Cloudflare rejects it and the
+        // server returns 400 "Bot check failed". Re-mint and retry ONCE,
+        // transparently, before showing the user anything: resetTurnstile()
+        // re-fires the widget callback, which (pendingSubmit) re-runs doPost()
+        // with the fresh token. Only a second failure surfaces an error.
+        const isBotCheck = err.status === 400 && /bot check/i.test(err.error?.error ?? '');
+        if (isBotCheck && !this.botCheckRetried) {
+          this.botCheckRetried = true;
+          this.submitting = true;
+          this.pendingSubmit = true;
+          this.cdr.markForCheck();
+          this.resetTurnstile();          // re-mint → callback → doPost() retry
+          setTimeout(() => {
+            if (this.pendingSubmit) {
+              this.pendingSubmit = false;
+              this.submitting = false;
+              this.errorMessage = 'Verification timed out — please try again.';
+              this.cdr.markForCheck();
+            }
+          }, 12000);
+          return;
+        }
+
         // Turnstile tokens are single-use — reset for a fresh one next try.
         this.resetTurnstile();
         if (err.status === 429) {
