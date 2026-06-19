@@ -526,12 +526,19 @@
     .bp-slide-3.in-view:not(.bp-credits-rolling) .bp-producers-body {
       animation: bp-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
     }
+    /* v2.31n — entry mirrors the exit (v2.31k): hold opacity:1 and slide in
+       from fully off-screen (±110vw) rather than fading 0→1. The shared ease-out
+       front-loads the translate, so the old opacity fade made the text "appear
+       near centre" instead of visibly sliding in from the edge — the entry twin
+       of the exit glitch. ±110vw matches the exit so wide centred content starts
+       fully clear on narrow viewports. (Base pose below stays opacity:0 to keep
+       the text hidden until the slide is in-view.) */
     @keyframes bp-from-left {
-      from { transform: translateX(-100vw); opacity: 0; }
+      from { transform: translateX(-110vw); opacity: 1; }
       to   { transform: translateX(0);      opacity: 1; }
     }
     @keyframes bp-from-right {
-      from { transform: translateX(100vw);  opacity: 0; }
+      from { transform: translateX(110vw);  opacity: 1; }
       to   { transform: translateX(0);      opacity: 1; }
     }
 
@@ -1296,5 +1303,22 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
+      }
+      /* v2.31n — defence in depth: pin animated content to its visible end-state
+         so reduced-motion can never strand an element at its opacity:0 /
+         off-screen base pose. Today every entry uses `both` fill (which lands the
+         end-state even at 0.001ms), so this is belt-and-braces — it guards a
+         future entry keyframe shipping with `forwards`/no-fill. slide-4-inner
+         KEEPS translateX(-50%); transform:none would knock the centred panel
+         half a viewport to the left (the recurring -50% clobber trap). */
+      .bp-svg-bg circle { opacity: 1 !important; }
+      .bp-suppliers-headline, .bp-marquee-wrap,
+      .bp-producers-headline, .bp-producers-tagline, .bp-producers-body {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+      .bp-slide-4-inner {
+        opacity: 1 !important;
+        transform: translateX(-50%) !important;
       }
     }

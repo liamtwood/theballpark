@@ -651,6 +651,11 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
         // v2.31d — onScroll is short-circuited during the dissolve (so the
         // jump can't trip the reverse-detector), so set the landing state
         // here: we're on slide 1, replay its entry.
+        // v2.31n — clear any latched .bp-reverse-enter (from a prior back-scroll)
+        // so slide 1's orb fade-in replays through the dissolve instead of being
+        // pinned at the reverse-mask end-state (orbs would otherwise be already
+        // present, no fade). Mirrors the clears in startReverse + forward nav.
+        this.slideRefs?.toArray().forEach(r => r?.nativeElement.classList.remove('bp-reverse-enter'));
         this.step = 0;
         this.forceInView(0);
         setTimeout(() => {
