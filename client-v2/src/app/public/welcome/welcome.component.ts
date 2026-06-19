@@ -802,6 +802,15 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.cdr.markForCheck();
           requestAnimationFrame(() => {
             stage.scrollTo({ top: 3 * vh, behavior: 'instant' });
+            // v2.31o — slide 4's <section> is persistent (its bg-layer is the only
+            // one never *ngIf-remounted), so a prior 4→3 reverse can leave
+            // bp-reverse-rolling/-enter latched on it — those rules shrink the orbs
+            // to r=0 / hold the mask, so on the way back in the fade-in plays on
+            // opacity but the orbs have zero radius (invisible = "don't animate").
+            // Clear them so the orbs fade fresh on every arrival. (Slides 1–3 shed
+            // these implicitly when their bg-layer remounts.)
+            this.slideRefs?.toArray()[3]?.nativeElement.classList.remove(
+              'bp-reverse-rolling', 'bp-reverse-rolling-2', 'bp-reverse-enter');
             this.forceInView(3);
             setTimeout(() => {
               this.exitingFromSlide = null;
