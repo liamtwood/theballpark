@@ -154,8 +154,13 @@ interface DetailForm {
                 </div>
               </app-edit-section>
 
-              <!-- Image (pV2-MEDIA-01b) — cover/icon picker in a drawer. -->
-              <div class="bp-card p-5">
+              <!-- Image (pV2-MEDIA-01b) — cover/icon picker in a drawer.
+                   shrink-0: .bp-card is overflow:hidden, so in the viewport-fit
+                   flex-column scroll region its flex min-height resolves to 0 and
+                   the card collapses under its title (desktop only — mobile is
+                   natural page scroll). Keep it at content height + let the region
+                   scroll. -->
+              <div class="bp-card p-5 shrink-0">
                 <h3 class="bp-edit-section-title">Image</h3>
                 <div class="mt-3 flex items-center gap-4">
                   <div class="bp-media-preview">
@@ -183,7 +188,7 @@ interface DetailForm {
 
               <!-- Gallery (pV2-MEDIA-01c) — multi-image strip; "Set as cover"
                    promotes a photo into the cover above. -->
-              <div class="bp-card p-5">
+              <div class="bp-card p-5 shrink-0">
                 <h3 class="bp-edit-section-title">Gallery</h3>
                 <p class="bp-caption mt-1">Add up to 5 photos — hover one to reorder, set it as the cover, or remove it.</p>
                 <div class="mt-3">
