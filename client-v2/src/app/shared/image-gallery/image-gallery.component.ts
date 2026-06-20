@@ -85,6 +85,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       <app-image-picker
         [entityType]="entityType()"
         [enabledTabs]="photoTabs"
+        [searchSeed]="searchSeed()"
         previewAspect="4/3"
         (chosen)="onPick($event)"
         (cancelled)="pickerOpen.set(false)"
@@ -186,6 +187,8 @@ export class ImageGalleryComponent {
   readonly maxSlots = input<number>(5);
   /** The consumer's cover URL — the slot matching it shows the "Cover" badge. */
   readonly primaryUrl = input<string | null>(null);
+  /** Seeds the picker's Find search (e.g. the project name). */
+  readonly searchSeed = input<string>('');
 
   /** New ordered array after add / remove / reorder — consumer persists. */
   readonly imagesChange = output<GalleryImage[]>();

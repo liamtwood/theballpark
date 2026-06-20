@@ -162,7 +162,7 @@ interface DetailForm {
                    scroll. -->
               <div class="bp-card p-5 shrink-0">
                 <h3 class="bp-edit-section-title">Image</h3>
-                <div class="mt-3 flex items-center gap-4">
+                <div class="mt-3 flex flex-col items-start gap-3">
                   <div class="bp-media-preview">
                     @if (p.coverUrl) {
                       <img [src]="p.coverUrl" alt="" [style.object-position]="p.coverFocalX + '% ' + p.coverFocalY + '%'" />
@@ -172,9 +172,9 @@ interface DetailForm {
                       <span class="bp-caption">No image</span>
                     }
                   </div>
-                  <div class="flex flex-col gap-2">
+                  <div class="flex gap-2">
                     <button type="button" class="bp-btn-grad" (click)="imgDrawer.set(true)">
-                      <lucide-icon name="upload" [size]="16" /> Choose image
+                      <lucide-icon name="square-pen" [size]="16" /> Edit
                     </button>
                     @if (p.coverUrl || p.iconName) {
                       <button type="button" class="bp-btn-outline" (click)="onRemoveImage()">Remove</button>
@@ -196,6 +196,7 @@ interface DetailForm {
                     entityType="project"
                     [images]="p.images"
                     [primaryUrl]="p.coverUrl"
+                    [searchSeed]="p.name"
                     (imagesChange)="saveImages($event)"
                     (primarySet)="setPrimary($event)"
                   />
@@ -216,7 +217,7 @@ interface DetailForm {
 
       <!-- Image picker drawer (pV2-MEDIA-01b). -->
       <app-drawer [(open)]="imgDrawer" title="Project image">
-        <app-image-picker entityType="project" previewAspect="4/3" (chosen)="onPick($event)" (cancelled)="imgDrawer.set(false)" />
+        <app-image-picker entityType="project" [searchSeed]="p.name" previewAspect="4/3" (chosen)="onPick($event)" (cancelled)="imgDrawer.set(false)" />
       </app-drawer>
     } @else if (detail.isLoading()) {
       <div class="bp-page-body"><p class="bp-body-small text-secondary">Loading…</p></div>

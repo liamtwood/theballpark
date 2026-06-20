@@ -45,7 +45,7 @@ import {
       <!-- Tab bar -->
       <div class="bp-picker__tabs">
         @for (t of tabs(); track t.key) {
-          <button type="button" class="bp-picker__tab" [class.bp-picker__tab--active]="activeTab() === t.key" (click)="activeTab.set(t.key)">
+          <button type="button" class="bp-picker__tab" [class.bp-picker__tab--active]="activeTab() === t.key" (click)="selectTab(t.key)">
             {{ t.label }}
           </button>
         }
@@ -113,7 +113,9 @@ import {
               placeholder="Search icons…"
               [value]="iconQuery()"
               (input)="iconQuery.set($any($event.target).value)"
+              (keydown.enter)="applyIconSearch()"
             />
+            <button type="button" class="bp-btn-grad" (click)="applyIconSearch()">Search</button>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             @for (c of palette(); track c) {
@@ -144,6 +146,10 @@ export class ImagePickerComponent {
   readonly enabledTabs = input<PickerTab[]>(['upload', 'find', 'icon']);
   readonly previewAspect = input<PreviewAspect>('4/3');
   readonly iconPalette = input<readonly string[]>(DEFAULT_ICON_COLORS);
+  /** Seeds the Find (Unsplash) search the first time that tab opens — the
+   *  consuming entity's name (e.g. the project), so relevant photos show
+   *  without the user typing. */
+  readonly searchSeed = input<string>('');
 
   readonly chosen = output<PickerResult>();
   readonly cancelled = output<void>();
@@ -151,6 +157,20 @@ export class ImagePickerComponent {
   private static readonly TAB_LABELS: Record<PickerTab, string> = { upload: 'My File', find: 'Find', icon: 'Use Icon' };
   protected readonly tabs = computed(() => this.enabledTabs().map((key) => ({ key, label: ImagePickerComponent.TAB_LABELS[key] })));
   protected readonly activeTab = signal<PickerTab>('upload');
+  /** First-open guard so seeding the Find search doesn't clobber the user's
+   *  own query on every tab switch. */
+  private autoSeededFind = false;
+  protected selectTab(key: PickerTab): void {
+    this.activeTab.set(key);
+    if (key === 'find' && !this.autoSeededFind) {
+      this.autoSeededFind = true;
+      const seed = this.searchSeed().trim();
+      if (seed) {
+        this.findQuery.set(seed);
+        this.runSearch();
+      }
+    }
+  }
 
   // ── Focal stage ──
   protected readonly stage = signal<'pick' | 'focal'>('pick');
@@ -233,8 +253,12 @@ export class ImagePickerComponent {
     this.enterFocal(r.url, 'unsplash', { photographerName: r.photographer, photoUrl: r.photoUrl });
   }
 
-  // ── Icon tab ──
+  // ── Icon tab ── (search applies on the Search button / Enter, like Find)
   protected readonly iconQuery = signal('');
+  protected readonly appliedIconQuery = signal('');
+  protected applyIconSearch(): void {
+    this.appliedIconQuery.set(this.iconQuery().trim().toLowerCase());
+  }
   protected readonly palette = computed(() => this.iconPalette());
   protected readonly iconColor = signal<string>(DEFAULT_ICON_COLORS[0]);
   protected readonly iconsRes = resource({
@@ -243,7 +267,7 @@ export class ImagePickerComponent {
   });
   protected readonly iconMatches = computed(() => {
     const all = this.iconsRes.value() ?? [];
-    const q = this.iconQuery().trim().toLowerCase();
+    const q = this.appliedIconQuery();
     return (q ? all.filter((i) => i.name.includes(q)) : all).slice(0, 160);
   });
   protected pickIcon(name: string): void {
