@@ -173,7 +173,7 @@ interface DetailForm {
                     }
                   </div>
                   <div class="flex gap-2">
-                    <button type="button" class="bp-btn-grad" (click)="imgDrawer.set(true)">
+                    <button type="button" class="bp-btn-outline" (click)="imgDrawer.set(true)">
                       <lucide-icon name="square-pen" [size]="16" /> Edit
                     </button>
                     @if (p.coverUrl || p.iconName) {

@@ -24,6 +24,7 @@ import { LucideAngularModule } from 'lucide-angular';
     <p-drawer
       [visible]="open()"
       (visibleChange)="onVisible($event)"
+      appendTo="body"
       position="right"
       [modal]="true"
       [dismissible]="dismissible()"
