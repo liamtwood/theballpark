@@ -176,9 +176,6 @@ interface DetailForm {
                     <button type="button" class="bp-btn-outline" (click)="imgDrawer.set(true)">
                       <lucide-icon name="square-pen" [size]="16" /> Edit
                     </button>
-                    @if (p.coverUrl || p.iconName) {
-                      <button type="button" class="bp-btn-outline" (click)="onRemoveImage()">Remove</button>
-                    }
                   </div>
                 </div>
                 @if (p.unsplashPhotographerName) {
@@ -217,7 +214,17 @@ interface DetailForm {
 
       <!-- Image picker drawer (pV2-MEDIA-01b). -->
       <app-drawer [(open)]="imgDrawer" title="Project image">
-        <app-image-picker entityType="project" [searchSeed]="p.name" previewAspect="4/3" (chosen)="onPick($event)" (cancelled)="imgDrawer.set(false)" />
+        <app-image-picker
+          entityType="project"
+          [searchSeed]="p.name"
+          [currentImageUrl]="p.coverUrl"
+          [currentIconName]="p.iconName"
+          [currentIconColor]="p.iconColor"
+          previewAspect="4/3"
+          (chosen)="onPick($event)"
+          (removed)="onRemoveImage(); imgDrawer.set(false)"
+          (cancelled)="imgDrawer.set(false)"
+        />
       </app-drawer>
     } @else if (detail.isLoading()) {
       <div class="bp-page-body"><p class="bp-body-small text-secondary">Loading…</p></div>

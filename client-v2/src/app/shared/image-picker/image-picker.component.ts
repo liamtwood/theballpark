@@ -3,6 +3,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { MediaService } from '../../core/media/media.service';
 import { LucideIconsService } from '../../core/media/lucide-icons.service';
+import { EntityIconComponent } from '../entity-icon/entity-icon.component';
 import {
   DEFAULT_ICON_COLORS,
   PickerResult,
@@ -18,7 +19,7 @@ import {
 @Component({
   selector: 'app-image-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, EntityIconComponent],
   host: { class: 'block' },
   template: `
     @if (stage() === 'focal' && pending(); as p) {
@@ -42,6 +43,19 @@ import {
         <button type="button" class="bp-btn-grad" (click)="useImage()">Use this image</button>
       </div>
     } @else {
+      <!-- Current cover (edit mode) — shown above the tabs with a Remove. -->
+      @if (currentImageUrl() || currentIconName()) {
+        <div class="mb-4 flex items-center gap-4">
+          <div class="bp-media-preview">
+            @if (currentImageUrl()) {
+              <img [src]="currentImageUrl()" alt="" />
+            } @else {
+              <app-entity-icon [name]="currentIconName()!" [color]="currentIconColor()" [size]="36" />
+            }
+          </div>
+          <button type="button" class="bp-btn-outline" (click)="removed.emit()">Remove image</button>
+        </div>
+      }
       <!-- Tab bar -->
       <div class="bp-picker__tabs">
         @for (t of tabs(); track t.key) {
@@ -127,10 +141,13 @@ import {
           } @else {
             <div class="bp-picker__icons mt-3">
               @for (i of iconMatches(); track i.name) {
-                <button type="button" class="bp-picker__icon" [style.background]="'var(' + iconColor() + ')'" [attr.aria-label]="i.name" (click)="pickIcon(i.name)">
+                <button type="button" class="bp-picker__icon" [style.outline]="selectedIconName() === i.name ? '2px solid var(--theme-accent)' : ''" [style.background]="'var(' + iconColor() + ')'" [attr.aria-label]="i.name" (click)="selectedIconName.set(i.name)">
                   <lucide-icon [img]="i.data" [size]="20" [strokeWidth]="1.6" />
                 </button>
               }
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button type="button" class="bp-btn-grad" [disabled]="!selectedIconName()" (click)="useIcon()">Use this icon</button>
             </div>
           }
         }
@@ -150,9 +167,15 @@ export class ImagePickerComponent {
    *  consuming entity's name (e.g. the project), so relevant photos show
    *  without the user typing. */
   readonly searchSeed = input<string>('');
+  /** Current cover (edit mode) — shown above the tabs with a Remove button. */
+  readonly currentImageUrl = input<string | null>(null);
+  readonly currentIconName = input<string | null>(null);
+  readonly currentIconColor = input<string | null>(null);
 
   readonly chosen = output<PickerResult>();
   readonly cancelled = output<void>();
+  /** The consumer clears the cover (drawer-driven remove). */
+  readonly removed = output<void>();
 
   private static readonly TAB_LABELS: Record<PickerTab, string> = { upload: 'My File', find: 'Find', icon: 'Use Icon' };
   protected readonly tabs = computed(() => this.enabledTabs().map((key) => ({ key, label: ImagePickerComponent.TAB_LABELS[key] })));
@@ -270,8 +293,11 @@ export class ImagePickerComponent {
     const q = this.appliedIconQuery();
     return (q ? all.filter((i) => i.name.includes(q)) : all).slice(0, 160);
   });
-  protected pickIcon(name: string): void {
-    this.chosen.emit({ type: 'icon', name, color: this.iconColor() });
+  /** Select-then-confirm (QC): click highlights, "Use this icon" emits. */
+  protected readonly selectedIconName = signal<string | null>(null);
+  protected useIcon(): void {
+    const name = this.selectedIconName();
+    if (name) this.chosen.emit({ type: 'icon', name, color: this.iconColor() });
   }
 
   // ── Focal helpers ──
