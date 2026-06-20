@@ -443,6 +443,25 @@
       animation: bp-fade-in-circles 1.0s linear both;
     }
 
+    /* v2.31p — slide 4 orbs GROW in on arrival (Liam: the opacity-only fade was
+       imperceptible — slide 4's orbs are dark-green on teal and slide 3 is a
+       near-identical green field, so the 3→4 cut read as "nothing animated").
+       Override the global fade with a radius grow + fade so the entrance reads as
+       motion, like the slide-1→2 orb balloon. Placed after the global rule so it
+       wins the equal-specificity cascade; the 4→3 reverse shrink (.bp-slide-4
+       .bp-reverse-rolling, later in the file) still wins during the reverse. */
+    .bp-slide-4.in-view .bp-svg-bg circle {
+      transform-box: fill-box;        /* scale around each circle's own centre */
+      transform-origin: center;
+      animation: bp-orb-grow-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    /* transform:scale (not the `r` attribute) — keyframe-animating SVG `r` from a
+       value other than its base stalls; scale animates reliably. */
+    @keyframes bp-orb-grow-in {
+      from { transform: scale(0.25); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
     /* ── Slide 3 exit (three elements, sequential) ──
        v1.65j9 — exit mirrors the entry order and direction:
          T=0:    .bp-producers-headline exits to the left
