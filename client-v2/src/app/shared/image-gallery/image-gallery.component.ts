@@ -197,8 +197,10 @@ export class ImageGalleryComponent {
   protected readonly pickerOpen = signal(false);
 
   /** Mutable working copy for drag-reorder; re-syncs when the input changes
-   *  (after the consumer persists + re-feeds). */
-  protected readonly slots = linkedSignal(() => this.images());
+   *  (after the consumer persists + re-feeds). `?? []` guards a consumer that
+   *  binds an undefined images() (e.g. a stale server response missing the
+   *  column) so the primitive never crashes the host view. */
+  protected readonly slots = linkedSignal(() => this.images() ?? []);
 
   protected readonly emptySlots = computed(() =>
     Array.from({ length: Math.max(0, this.maxSlots() - this.slots().length) })
