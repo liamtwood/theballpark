@@ -68,6 +68,9 @@ import {
   Utensils,
   Calendar,
   Wallet,
+  // pV2-MEDIA-01c — gallery tile actions (drag handle + set-as-cover)
+  GripVertical,
+  Star,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -147,6 +150,8 @@ export const appConfig: ApplicationConfig = {
         Car, Flower2, MessageSquare, Music, Spotlight, Tv, User, Utensils,
         // pV2-PROJECTS-02 — Estimate summary cards (Date/Location/Duration/Guests/Budget)
         Calendar, Users, Wallet,
+        // pV2-MEDIA-01c — gallery tile actions
+        GripVertical, Star,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

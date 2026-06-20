@@ -9,7 +9,7 @@ import { CodelistService } from '../../core/codelists/codelist.service';
 import { PageConfigService } from '../../core/config/page-config.service';
 import { ProjectService } from '../../core/projects/project.service';
 import { ProjectDetail, ProjectUpdate } from '../../core/projects/project.types';
-import { PickerResult } from '../../core/media/media.types';
+import { GalleryImage, PickerResult } from '../../core/media/media.types';
 import { errorDetail } from '../../core/http-error';
 import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../shared/edit-section/edit-section.component';
@@ -17,6 +17,7 @@ import { PageHeroComponent } from '../../shell/page-hero/page-hero.component';
 import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
+import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { EntityIconComponent } from '../../shared/entity-icon/entity-icon.component';
 import { ProjectMarketplaceComponent } from './project-marketplace.component';
 import { ProjectEstimateComponent } from './project-estimate.component';
@@ -61,6 +62,7 @@ interface DetailForm {
     EditFieldComponent,
     DrawerComponent,
     ImagePickerComponent,
+    ImageGalleryComponent,
     EntityIconComponent,
     ProjectMarketplaceComponent,
     ProjectEstimateComponent,
@@ -177,6 +179,22 @@ interface DetailForm {
                 @if (p.unsplashPhotographerName) {
                   <p class="bp-caption mt-2">Photo by {{ p.unsplashPhotographerName }} on Unsplash</p>
                 }
+              </div>
+
+              <!-- Gallery (pV2-MEDIA-01c) — multi-image strip; "Set as cover"
+                   promotes a photo into the cover above. -->
+              <div class="bp-card p-5">
+                <h3 class="bp-edit-section-title">Gallery</h3>
+                <p class="bp-caption mt-1">Add up to 5 photos — hover one to reorder, set it as the cover, or remove it.</p>
+                <div class="mt-3">
+                  <app-image-gallery
+                    entityType="project"
+                    [images]="p.images"
+                    [primaryUrl]="p.coverUrl"
+                    (imagesChange)="saveImages($event)"
+                    (primarySet)="setPrimary($event)"
+                  />
+                </div>
               </div>
             </div>
           }
@@ -367,14 +385,36 @@ export class ProjectDetailComponent {
     });
   }
 
-  private async saveMedia(patch: ProjectUpdate): Promise<void> {
+  /** pV2-MEDIA-01c — gallery edits (add / remove / reorder) persist the array. */
+  protected saveImages(images: GalleryImage[]): Promise<void> {
+    return this.saveMedia({ images }, 'Gallery updated.');
+  }
+
+  /** "Set as cover" — copy the chosen gallery photo into the cover_* columns
+   *  (MEDIA.md §12); clears any icon fallback so the photo wins. */
+  protected setPrimary(img: GalleryImage): Promise<void> {
+    return this.saveMedia(
+      {
+        coverImageUrl: img.url,
+        coverFocalX: img.focalX,
+        coverFocalY: img.focalY,
+        unsplashPhotographerName: img.attribution?.photographerName ?? null,
+        unsplashPhotoUrl: img.attribution?.photoUrl ?? null,
+        iconName: null,
+        iconColor: null,
+      },
+      'Cover updated.'
+    );
+  }
+
+  private async saveMedia(patch: ProjectUpdate, summary = 'Image updated.'): Promise<void> {
     const id = this.id();
     if (!id) return;
     try {
       const fresh = await firstValueFrom(this.projects.update(id, patch));
       this.detail.set(fresh);
       this.form.set(toForm(fresh));
-      this.toast.add({ severity: 'success', summary: 'Image updated.', life: 3000 });
+      this.toast.add({ severity: 'success', summary, life: 3000 });
     } catch (err) {
       this.toast.add({ severity: 'error', summary: "Couldn't update the image.", detail: errorDetail(err), life: 5000 });
     }

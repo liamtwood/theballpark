@@ -740,6 +740,15 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
 
+      -- pV2-MEDIA-01c: project gallery — ordered JSONB array of
+      -- { url, focalX, focalY, attribution? }. The multi-image strip on the
+      -- Details tab. "Set as primary" copies the chosen image into
+      -- cover_image_url / cover_focal_x/y / unsplash_* (MEDIA.md §12), so the
+      -- card still renders from cover_*; this column is purely the gallery.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+
       -- v1.39f: bring preview + master categories schemas in line
       -- with public — the namespace + model + icon_name/color +
       -- object_type columns were added to public over time but

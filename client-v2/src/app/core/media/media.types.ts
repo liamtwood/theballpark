@@ -28,6 +28,17 @@ export interface PickerIconResult {
 
 export type PickerResult = PickerImageResult | PickerIconResult;
 
+/** pV2-MEDIA-01c — one slot in a multi-image gallery (stored as a JSONB array
+ *  on the entity). Carries its own focal point + Unsplash attribution so "set
+ *  as primary" can copy a slot straight into the entity's cover_* columns. */
+export interface GalleryImage {
+  url: string;
+  /** 0–100 percent (object-position); 50/50 = centre. */
+  focalX: number;
+  focalY: number;
+  attribution?: { photographerName: string; photoUrl: string };
+}
+
 /** Unsplash proxy result row (GET /api/unsplash/search). */
 export interface UnsplashPhoto {
   url: string;

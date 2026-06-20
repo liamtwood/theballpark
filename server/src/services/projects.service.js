@@ -126,6 +126,8 @@ function toDetail(row) {
     iconColor: row.icon_color ?? null,
     unsplashPhotographerName: row.unsplash_photographer_name ?? null,
     unsplashPhotoUrl: row.unsplash_photo_url ?? null,
+    // Gallery strip (pV2-MEDIA-01c). jsonb → already a JS array out of pg.
+    images: Array.isArray(row.images) ? row.images : [],
     totalBallparkCost: row.total_ballpark_cost === null ? null : Number(row.total_ballpark_cost),
     createdAt: row.created_at,
   };
@@ -173,6 +175,7 @@ const EDITABLE = {
   coverFocalY: 'cover_focal_y',
   unsplashPhotographerName: 'unsplash_photographer_name',
   unsplashPhotoUrl: 'unsplash_photo_url',
+  images: 'images',
 };
 
 /** Partial update, org-scoped. Status is dual-written (code + status_id)
@@ -183,8 +186,15 @@ async function updateDetail(orgId, id, patch) {
   const vals = [];
   for (const [key, col] of Object.entries(EDITABLE)) {
     if (patch[key] !== undefined) {
-      vals.push(patch[key]);
-      sets.push(`${col} = $${vals.length}`);
+      if (key === 'images') {
+        // jsonb column — serialize the array + cast (pg would otherwise try to
+        // bind a JS array as a Postgres ARRAY, not jsonb).
+        vals.push(JSON.stringify(patch.images ?? []));
+        sets.push(`${col} = $${vals.length}::jsonb`);
+      } else {
+        vals.push(patch[key]);
+        sets.push(`${col} = $${vals.length}`);
+      }
     }
   }
   if (patch.status !== undefined) {

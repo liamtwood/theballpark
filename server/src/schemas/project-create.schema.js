@@ -54,6 +54,25 @@ const ProjectUpdateSchema = z.object({
   coverFocalY: z.number().int().min(0).max(100).nullable().optional(),
   unsplashPhotographerName: z.string().trim().max(200).nullable().optional(),
   unsplashPhotoUrl: z.string().trim().max(1000).nullable().optional(),
+  // Gallery (pV2-MEDIA-01c) — ordered array; "set as primary" copies one into
+  // the cover_* columns. Bounded at 20; unknown keys per element are stripped.
+  images: z
+    .array(
+      z.object({
+        url: z.string().trim().min(1).max(1000),
+        focalX: z.number().int().min(0).max(100).default(50),
+        focalY: z.number().int().min(0).max(100).default(50),
+        attribution: z
+          .object({
+            photographerName: z.string().trim().max(200),
+            photoUrl: z.string().trim().max(1000),
+          })
+          .nullable()
+          .optional(),
+      })
+    )
+    .max(20)
+    .optional(),
 });
 
 module.exports = { ProjectCreateSchema, ProjectUpdateSchema };

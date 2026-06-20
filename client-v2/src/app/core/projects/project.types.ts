@@ -1,3 +1,5 @@
+import { GalleryImage } from '../media/media.types';
+
 /** pV2-PROJECTS-01 — the project list-card contract (server:
  *  services/projects.service.js toCard). */
 export interface ProjectCard {
@@ -98,6 +100,8 @@ export interface ProjectDetail {
   iconColor: string | null;
   unsplashPhotographerName: string | null;
   unsplashPhotoUrl: string | null;
+  /** Gallery strip (pV2-MEDIA-01c) — ordered; primary lives in cover_* above. */
+  images: GalleryImage[];
   /** Read-only display (joined from clients) — v1 Event details parity. */
   clientName: string | null;
   coverUrl: string | null;
@@ -132,6 +136,7 @@ export type ProjectUpdate = Partial<{
   coverFocalY: number | null;
   unsplashPhotographerName: string | null;
   unsplashPhotoUrl: string | null;
+  images: GalleryImage[];
 }>;
 
 /** The create body the gated POST /api/projects-v2 accepts (server:
