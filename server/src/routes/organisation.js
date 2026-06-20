@@ -13,7 +13,8 @@ const { OrganisationUpdateSchema } = require('../schemas/organisation.schema');
 
 /** Shared projection — explicit columns, camelCase out. */
 const SELECT = `SELECT id, name, address, city, country, email, phone, ref_prefix, ref_counter,
-       default_vat_pct, default_margin_pct, default_contingency_pct, default_currency
+       default_vat_pct, default_margin_pct, default_contingency_pct, default_currency,
+       logo_url, cover_image_url, images
   FROM orgs WHERE id = $1 AND deleted_at IS NULL`;
 
 function toProfile(row) {
@@ -31,6 +32,10 @@ function toProfile(row) {
     defaultVatPct: Number(row.default_vat_pct ?? 0),
     defaultMarginPct: Number(row.default_margin_pct ?? 0),
     defaultContingencyPct: Number(row.default_contingency_pct ?? 0),
+    // pV2-MEDIA-01d — branding.
+    logoUrl: row.logo_url ?? null,
+    coverImageUrl: row.cover_image_url ?? null,
+    images: Array.isArray(row.images) ? row.images : [],
   };
 }
 
@@ -67,6 +72,9 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
       default_vat_pct: p.defaultVatPct,
       default_margin_pct: p.defaultMarginPct,
       default_contingency_pct: p.defaultContingencyPct,
+      // pV2-MEDIA-01d — branding URLs (nullable to clear).
+      logo_url: p.logoUrl,
+      cover_image_url: p.coverImageUrl,
     };
     const sets = [];
     const vals = [];
@@ -75,6 +83,11 @@ router.put('/', requireActiveMembership('org.manage_billing'), async (req, res, 
         vals.push(val);
         sets.push(`${col} = $${vals.length}`);
       }
+    }
+    // images is jsonb — serialize + cast (pg would bind a JS array as a PG array).
+    if (p.images !== undefined) {
+      vals.push(JSON.stringify(p.images));
+      sets.push(`images = $${vals.length}::jsonb`);
     }
     if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
     vals.push(req.user.org_id);

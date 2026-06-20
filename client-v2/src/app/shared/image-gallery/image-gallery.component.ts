@@ -44,7 +44,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
       (cdkDropListDropped)="onDrop($event)"
     >
       @for (img of slots(); track img.url; let i = $index) {
-        <div class="tile" cdkDrag>
+        <div class="tile" cdkDrag [cdkDragDisabled]="!editable()">
           <img
             class="thumb"
             [src]="img.url"
@@ -54,6 +54,7 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
           @if (isPrimary(img)) {
             <span class="badge">Cover</span>
           }
+          @if (editable()) {
           <div class="actions">
             <button type="button" class="act" cdkDragHandle aria-label="Drag to reorder" title="Drag to reorder">
               <lucide-icon name="grip-vertical" [size]="15" />
@@ -72,12 +73,15 @@ import { GalleryImage, PickerResult, PickerTab } from '../../core/media/media.ty
               <lucide-icon name="trash-2" [size]="15" />
             </button>
           </div>
+          }
         </div>
       }
-      @for (slot of emptySlots(); track $index) {
-        <button type="button" class="tile tile--empty" (click)="pickerOpen.set(true)" aria-label="Add image">
-          <lucide-icon name="plus" [size]="22" />
-        </button>
+      @if (editable()) {
+        @for (slot of emptySlots(); track $index) {
+          <button type="button" class="tile tile--empty" (click)="pickerOpen.set(true)" aria-label="Add image">
+            <lucide-icon name="plus" [size]="22" />
+          </button>
+        }
       }
     </div>
 
@@ -189,6 +193,9 @@ export class ImageGalleryComponent {
   readonly primaryUrl = input<string | null>(null);
   /** Seeds the picker's Find search (e.g. the project name). */
   readonly searchSeed = input<string>('');
+  /** When false, the gallery is view-only — no add tiles, hover actions, or
+   *  drag (e.g. a non-admin viewing an org profile). */
+  readonly editable = input<boolean>(true);
 
   /** New ordered array after add / remove / reorder — consumer persists. */
   readonly imagesChange = output<GalleryImage[]>();

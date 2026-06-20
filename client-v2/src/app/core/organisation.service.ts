@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
+import { GalleryImage } from './media/media.types';
 
 /** pV2 Profile — /api/organisation shapes (server: routes/organisation.js). */
 export interface OrgProfile {
@@ -19,6 +20,11 @@ export interface OrgProfile {
   defaultContingencyPct: number;
   /** ISO 4217 alpha-3 — fed by the `currency` codelist (pV2-CODELISTS-02). */
   defaultCurrency: string;
+  /** Branding (pV2-MEDIA-01d) — logo + cover + gallery; cover feeds the
+   *  supplier card image. */
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  images: GalleryImage[];
 }
 
 export type OrgProfileUpdate = Partial<

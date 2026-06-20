@@ -749,6 +749,14 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
 
+      -- pV2-MEDIA-01d: org gallery (profile + supplier shopfront). logo_url,
+      -- cover_image_url, image_display already exist on orgs; add the gallery
+      -- strip. The supplier card already renders cover_image_url, so a supplier
+      -- setting their profile cover becomes the card image automatically.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+
       -- v1.39f: bring preview + master categories schemas in line
       -- with public — the namespace + model + icon_name/color +
       -- object_type columns were added to public over time but

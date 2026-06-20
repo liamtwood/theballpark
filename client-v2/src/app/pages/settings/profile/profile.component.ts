@@ -7,9 +7,14 @@ import { can } from '../../../core/auth/permissions';
 import { errorDetail } from '../../../core/http-error';
 import { PageConfigService } from '../../../core/config/page-config.service';
 import { CodelistService } from '../../../core/codelists/codelist.service';
-import { OrgProfile, OrganisationService } from '../../../core/organisation.service';
+import { LucideAngularModule } from 'lucide-angular';
+import { OrgProfile, OrgProfileUpdate, OrganisationService } from '../../../core/organisation.service';
+import { GalleryImage, PickerResult, PickerTab } from '../../../core/media/media.types';
 import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/edit-field.component';
 import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
+import { DrawerComponent } from '../../../shared/drawer/drawer.component';
+import { ImagePickerComponent } from '../../../shared/image-picker/image-picker.component';
+import { ImageGalleryComponent } from '../../../shared/image-gallery/image-gallery.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
@@ -36,7 +41,16 @@ interface ProfileForm {
 @Component({
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ToastModule, PageHeroComponent, EditSectionComponent, EditFieldComponent],
+  imports: [
+    ToastModule,
+    LucideAngularModule,
+    PageHeroComponent,
+    EditSectionComponent,
+    EditFieldComponent,
+    DrawerComponent,
+    ImagePickerComponent,
+    ImageGalleryComponent,
+  ],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
@@ -86,6 +100,93 @@ interface ProfileForm {
               <app-edit-field label="Contingency" type="number" suffix="%" density="page" [editing]="editingFin()" [value]="form().contingency" (valueChange)="patch({ contingency: $event })" />
             </div>
           </app-edit-section>
+
+          @if (profile.value(); as org) {
+            <!-- Branding (pV2-MEDIA-01d) — logo + cover. The cover feeds the
+                 supplier card image automatically (orgs.cover_image_url). -->
+            <div class="bp-card p-5">
+              <h3 class="bp-edit-section-title">Branding</h3>
+              <div class="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <p class="bp-field-label">Cover image</p>
+                  <div class="mt-2 flex flex-col items-start gap-3">
+                    <div class="bp-media-preview">
+                      @if (org.coverImageUrl) {
+                        <img [src]="org.coverImageUrl" alt="" />
+                      } @else {
+                        <span class="bp-caption">No cover</span>
+                      }
+                    </div>
+                    @if (canEdit()) {
+                      <button type="button" class="bp-btn-outline" (click)="coverDrawer.set(true)">
+                        <lucide-icon name="square-pen" [size]="16" /> Edit
+                      </button>
+                    }
+                  </div>
+                </div>
+                <div>
+                  <p class="bp-field-label">Logo</p>
+                  <div class="mt-2 flex flex-col items-start gap-3">
+                    <div class="bp-media-preview">
+                      @if (org.logoUrl) {
+                        <img [src]="org.logoUrl" alt="" />
+                      } @else {
+                        <span class="bp-caption">No logo</span>
+                      }
+                    </div>
+                    @if (canEdit()) {
+                      <button type="button" class="bp-btn-outline" (click)="logoDrawer.set(true)">
+                        <lucide-icon name="square-pen" [size]="16" /> Edit
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gallery (pV2-MEDIA-01d). -->
+            <div class="bp-card p-5">
+              <h3 class="bp-edit-section-title">Gallery</h3>
+              <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
+              <div class="mt-3">
+                <app-image-gallery
+                  entityType="profile"
+                  [images]="org.images"
+                  [primaryUrl]="org.coverImageUrl"
+                  [searchSeed]="org.name"
+                  [editable]="canEdit()"
+                  (imagesChange)="saveImages($event)"
+                  (primarySet)="setCover($event)"
+                />
+              </div>
+            </div>
+
+            <app-drawer [(open)]="coverDrawer" title="Cover image">
+              <app-image-picker
+                entityType="profile"
+                [enabledTabs]="coverTabs"
+                [focalStep]="false"
+                [searchSeed]="org.name"
+                [currentImageUrl]="org.coverImageUrl"
+                previewAspect="4/3"
+                (chosen)="onPickCover($event)"
+                (removed)="onRemoveCover()"
+                (cancelled)="coverDrawer.set(false)"
+              />
+            </app-drawer>
+            <app-drawer [(open)]="logoDrawer" title="Logo">
+              <app-image-picker
+                entityType="profile"
+                [enabledTabs]="logoTabs"
+                [focalStep]="false"
+                [currentImageUrl]="org.logoUrl"
+                previewAspect="1/1"
+                (chosen)="onPickLogo($event)"
+                (removed)="onRemoveLogo()"
+                (cancelled)="logoDrawer.set(false)"
+              />
+            </app-drawer>
+          }
         </div>
       }
     </div>
@@ -147,6 +248,46 @@ export class ProfileComponent {
   protected readonly canEdit = computed(() => can(this.auth.role(), 'org.manage_billing'));
 
   private snapshots: { org?: ProfileForm; fin?: ProfileForm } = {};
+
+  // ── Branding (pV2-MEDIA-01d) — logo / cover / gallery; saves immediately. ──
+  protected readonly coverDrawer = signal(false);
+  protected readonly logoDrawer = signal(false);
+  protected readonly coverTabs: PickerTab[] = ['upload', 'find'];
+  protected readonly logoTabs: PickerTab[] = ['upload'];
+
+  protected onPickCover(r: PickerResult): void {
+    if (r.type === 'image') void this.saveMedia({ coverImageUrl: r.url }, 'Cover updated.');
+    this.coverDrawer.set(false);
+  }
+  protected onRemoveCover(): void {
+    void this.saveMedia({ coverImageUrl: null }, 'Cover removed.');
+    this.coverDrawer.set(false);
+  }
+  protected onPickLogo(r: PickerResult): void {
+    if (r.type === 'image') void this.saveMedia({ logoUrl: r.url }, 'Logo updated.');
+    this.logoDrawer.set(false);
+  }
+  protected onRemoveLogo(): void {
+    void this.saveMedia({ logoUrl: null }, 'Logo removed.');
+    this.logoDrawer.set(false);
+  }
+  protected saveImages(images: GalleryImage[]): void {
+    void this.saveMedia({ images }, 'Gallery updated.');
+  }
+  protected setCover(img: GalleryImage): void {
+    void this.saveMedia({ coverImageUrl: img.url }, 'Cover updated.');
+  }
+  private async saveMedia(patch: OrgProfileUpdate, summary: string): Promise<void> {
+    try {
+      const fresh = await firstValueFrom(this.orgs.update(patch));
+      this.profile.set(fresh);
+      this.form.set(toForm(fresh));
+      this.refCounter.set(fresh.refCounter);
+      this.toast.add({ severity: 'success', summary, life: 3000 });
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't update — please try again.", detail: errorDetail(e), life: 5000 });
+    }
+  }
 
   protected patch(p: Partial<ProfileForm>): void {
     this.form.update((f) => ({ ...f, ...p }));

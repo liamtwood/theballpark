@@ -26,6 +26,27 @@ const OrganisationUpdateSchema = z
     // — an org always has a default currency (audit 02-F-3, documented).
     country: z.string().trim().regex(/^[A-Z]{2}$/).optional().or(z.literal('')),
     defaultCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
+    // pV2-MEDIA-01d — branding. logoUrl/coverImageUrl are plain URLs (nullable
+    // to clear); images is the gallery strip (bounded 20, jsonb).
+    logoUrl: z.string().trim().max(1000).nullable().optional(),
+    coverImageUrl: z.string().trim().max(1000).nullable().optional(),
+    images: z
+      .array(
+        z.object({
+          url: z.string().trim().min(1).max(1000),
+          focalX: z.number().int().min(0).max(100).default(50),
+          focalY: z.number().int().min(0).max(100).default(50),
+          attribution: z
+            .object({
+              photographerName: z.string().trim().max(200),
+              photoUrl: z.string().trim().max(1000),
+            })
+            .nullable()
+            .optional(),
+        })
+      )
+      .max(20)
+      .optional(),
   })
   .strip();
 

@@ -171,6 +171,9 @@ export class ImagePickerComponent {
   readonly currentImageUrl = input<string | null>(null);
   readonly currentIconName = input<string | null>(null);
   readonly currentIconColor = input<string | null>(null);
+  /** When false, upload/Unsplash emit straight away (no focal-point step) —
+   *  "just upload" surfaces like the org logo/cover (pV2-MEDIA-01d). */
+  readonly focalStep = input<boolean>(true);
 
   readonly chosen = output<PickerResult>();
   readonly cancelled = output<void>();
@@ -302,6 +305,11 @@ export class ImagePickerComponent {
 
   // ── Focal helpers ──
   private enterFocal(url: string, source: 'upload' | 'unsplash', attribution?: { photographerName: string; photoUrl: string }): void {
+    if (!this.focalStep()) {
+      // "Just upload" consumers (org logo/cover) skip the focal-point step.
+      this.chosen.emit({ type: 'image', url, source, focalX: 50, focalY: 50, attribution });
+      return;
+    }
     this.pending.set({ url, source, attribution });
     this.focalX.set(50);
     this.focalY.set(50);
