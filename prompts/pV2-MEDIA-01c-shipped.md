@@ -68,7 +68,18 @@ share one Supabase DB, so a single run covers both). Not run yet — local only.
 **Severity:** LOW.
 
 ## QC notes
-(Liam fills this in)
+**Liam, 2026-06-20 — PASS ("ok as is").** Verified: add via Upload, via Unsplash
+(Find), via Icon; adding multiple images. A few small cosmetic things noted but
+accepted as-is (not blocking; to be listed for a later polish pass if pursued).
+
+QC-driven fixes landed during the pass (post-ship iterations):
+- `v2.32b` — gallery guards `undefined` images() (couldn't crash host view).
+- `v2.32c` — Image + Gallery cards no longer clip on desktop (pre-existing 01b
+  `.bp-card overflow:hidden` flex-min-height-0 bug; `shrink-0`).
+- `v2.32d` — cover "Edit" button + buttons-below; picker Find seeded with the
+  project name; Use-Icon search button (parity with Find).
+- `v2.32e` — drawer portaled to `body` (gallery drawer flicker/focus/"dialog in
+  the container"); Edit button de-gradiented.
 
 ## Chat audit
 (chat fills this in)
