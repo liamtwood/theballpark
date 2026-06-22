@@ -13,74 +13,66 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
   selector: 'app-storefront-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
-  host: { class: 'grid max-w-4xl grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]' },
+  host: { class: 'mx-auto flex w-full max-w-4xl flex-col gap-8' },
   template: `
-    <!-- Branding + portfolio gallery (pV2-MEDIA-01e) — the SAME component the
-         owner edits on /settings/profile, here in read-only view mode. Spans
-         both columns above the brand/contact/subcat content. -->
-    <div class="flex flex-col gap-6 lg:col-span-2">
-      <app-org-media
-        mode="view"
-        [name]="supplier().name"
-        [coverUrl]="supplier().coverUrl"
-        [logoUrl]="supplier().logoUrl"
-        [images]="supplier().images"
-      />
-    </div>
+    <!-- 1. Hero banner + logo pill (pV2-MEDIA-01e), at the top of the page. -->
+    <app-org-media
+      show="banner"
+      mode="view"
+      [name]="supplier().name"
+      [coverUrl]="supplier().coverUrl"
+      [logoUrl]="supplier().logoUrl"
+    />
 
-    <!-- Brand panel — the logo now lives in the banner pill (pV2-MEDIA-01e), so
-         this is just the "Company Information" block: name + location + bio. -->
-    <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
+    <!-- 2. Company Information — centered. -->
+    <section class="text-center">
       <h3 class="bp-edit-section-title">Company Information</h3>
-      <div class="mt-3">
-        <span class="block text-md font-medium text-text">{{ supplier().name }}</span>
-        <span class="bp-caption">{{ location() }}</span>
-      </div>
+      <p class="mt-2 text-md font-medium text-text">{{ supplier().name }}</p>
+      <p class="bp-caption">{{ location() }}</p>
       @if (supplier().description) {
-        <p class="bp-body mt-4 text-secondary">{{ supplier().description }}</p>
+        <p class="bp-body mx-auto mt-3 max-w-xl text-secondary">{{ supplier().description }}</p>
       }
     </section>
 
-    <!-- Contact card -->
-    <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
-      <h3 class="bp-field-label uppercase tracking-wide">Contact info</h3>
-      <dl class="mt-3 flex flex-col gap-3">
-        @if (supplier().address) {
-          <div class="flex items-start gap-2.5">
-            <lucide-icon name="map-pin" [size]="15" class="mt-0.5 text-muted" />
-            <dd class="bp-body-small text-secondary">{{ supplier().address }}<br />{{ location() }}</dd>
-          </div>
-        }
-        @if (supplier().phone) {
-          <div class="flex items-center gap-2.5">
-            <lucide-icon name="phone" [size]="15" class="text-muted" />
-            <dd><a class="bp-body-small text-secondary hover:text-accent" [href]="'tel:' + supplier().phone">{{ supplier().phone }}</a></dd>
-          </div>
-        }
-        @if (supplier().email) {
-          <div class="flex items-center gap-2.5">
-            <lucide-icon name="mail" [size]="15" class="text-muted" />
-            <dd><a class="bp-body-small text-secondary hover:text-accent" [href]="'mailto:' + supplier().email">{{ supplier().email }}</a></dd>
-          </div>
-        }
-        @if (supplier().website) {
-          <div class="flex items-center gap-2.5">
-            <lucide-icon name="globe" [size]="15" class="text-muted" />
-            <dd><a class="bp-body-small break-all text-secondary hover:text-accent" [href]="supplier().website" target="_blank" rel="noopener">{{ supplier().website }}</a></dd>
-          </div>
-        }
-      </dl>
-    </section>
+    <!-- 3. Contact — centered. -->
+    @if (hasContact()) {
+      <section class="text-center">
+        <h3 class="bp-edit-section-title">Contact</h3>
+        <div class="mt-3 flex flex-col items-center gap-2.5">
+          @if (supplier().address) {
+            <div class="flex items-center gap-2">
+              <lucide-icon name="map-pin" [size]="15" class="text-muted" />
+              <span class="bp-body-small text-secondary">{{ supplier().address }}{{ location() ? ', ' + location() : '' }}</span>
+            </div>
+          }
+          @if (supplier().phone) {
+            <div class="flex items-center gap-2">
+              <lucide-icon name="phone" [size]="15" class="text-muted" />
+              <a class="bp-body-small text-secondary hover:text-accent" [href]="'tel:' + supplier().phone">{{ supplier().phone }}</a>
+            </div>
+          }
+          @if (supplier().email) {
+            <div class="flex items-center gap-2">
+              <lucide-icon name="mail" [size]="15" class="text-muted" />
+              <a class="bp-body-small text-secondary hover:text-accent" [href]="'mailto:' + supplier().email">{{ supplier().email }}</a>
+            </div>
+          }
+          @if (supplier().website) {
+            <div class="flex items-center gap-2">
+              <lucide-icon name="globe" [size]="15" class="text-muted" />
+              <a class="bp-body-small break-all text-secondary hover:text-accent" [href]="supplier().website" target="_blank" rel="noopener">{{ supplier().website }}</a>
+            </div>
+          }
+        </div>
+      </section>
+    }
 
-    <!-- Subcat cards GROUPED per category (screenshot reference,
-         2026-06-12): folder + uppercase accent category header + count,
-         mini-card grid beneath. Only cats/subcats with live items. -->
+    <!-- 4. Categories the supplier sells in — centered header, card grid. -->
     @for (group of groups(); track group.id) {
-      <section class="lg:col-span-2">
-        <div class="flex items-center gap-2">
-          <lucide-icon name="folder" [size]="18" class="text-accent" />
+      <section>
+        <div class="flex items-center justify-center gap-2">
           <h3 class="bp-edit-section-title">{{ group.name }}</h3>
-          <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
+          <span class="bp-meta">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
         </div>
         <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           @for (sub of group.cards; track sub.id) {
@@ -89,6 +81,16 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
         </div>
       </section>
     }
+
+    <!-- 5. Portfolio — below the categories (pV2-MEDIA-01e QC). Centered header. -->
+    <div class="text-center">
+      <app-org-media
+        show="portfolio"
+        mode="view"
+        [name]="supplier().name"
+        [images]="supplier().images"
+      />
+    </div>
   `,
 })
 export class StorefrontPanelComponent {
@@ -111,6 +113,11 @@ export class StorefrontPanelComponent {
       }))
       .filter((g) => g.cards.length > 0)
   );
+
+  protected readonly hasContact = computed(() => {
+    const s = this.supplier();
+    return !!(s.address || s.phone || s.email || s.website);
+  });
 
   protected location(): string {
     const s = this.supplier();

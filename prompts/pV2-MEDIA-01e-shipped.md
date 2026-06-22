@@ -99,6 +99,20 @@ Verified (dev-login): storefront view = banner cover loaded + pill logo straddli
 
 Verified (dev-login): storefront headers all `.bp-edit-section-title` (0 `.bp-ref-eyebrow` left), 4 portfolio cards loaded, container dropped, "Company Information" present, initial avatar gone; profile edit still interactive (5 add tiles, Edit cover/logo, "Gallery" heading).
 
+## Iteration — v2.32k (2026-06-22)
+**Triggered by QC:** Liam — drop the Stand Structure folder icon; centre the hero + page content; move the Storefront/Store tab band above the banner; move My portfolio below Stand Structure.
+**Commit:** `<pending>`
+**Files:** `org-media.component.ts`, `storefront-panel.component.ts`, `supplier-detail.component.ts`.
+
+- **`show` input on `<app-org-media>`** (`'all' | 'banner' | 'portfolio'`) so the storefront can place the **banner at the top** and the **portfolio at the bottom** independently (mounted twice); profile keeps the default `'all'`.
+- **Storefront layout reworked** — host changed from a 2-col grid to a centred single column (`mx-auto max-w-4xl flex-col`). New order: **banner → Company Information → Contact → categories → My portfolio**. Company Information + Contact are now centred borderless text blocks (the bordered cards are gone); the redundant initial avatar was already dropped in v2.32j.
+- **Folder icon removed** from the category header; the header is centred (`justify-center`) with the count inline.
+- **Tab band moved out of the hero** to a centred row between the hero and `.bp-page-body` — above the banner on Storefront, above the catalogue on Store. Verified the Store tab's viewport-fit still works (catalogue + strip render, vpfit active).
+
+Verified (dev-login): heading order Company Information → Contact → Stand Structure → My portfolio (portfolio last); tab band sits above the banner; 0 folder icons; panel centred; Store tab catalogue intact; profile edit still shows banner + interactive gallery + Edit cover/logo.
+
+**Judgment call (LOW):** Company Information + Contact are now **borderless** centred text (matching the reference's clean centred look) rather than bordered cards. Easy to put the card borders back if you'd rather.
+
 ## QC notes
 (Liam fills this in)
 

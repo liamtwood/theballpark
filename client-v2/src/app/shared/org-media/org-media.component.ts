@@ -164,6 +164,10 @@ import { GalleryImage } from '../../core/media/media.types';
 })
 export class OrgMediaComponent {
   readonly mode = input<'edit' | 'view'>('view');
+  /** Which sub-sections to render. The storefront places the banner at the top
+   *  of the page and the portfolio at the bottom, so it mounts the component
+   *  twice ('banner' / 'portfolio'); the profile editor renders 'all'. */
+  readonly show = input<'all' | 'banner' | 'portfolio'>('all');
   /** Only consulted in edit mode — gates the Edit row + gallery editing. */
   readonly canEdit = input(false);
   readonly name = input('');
@@ -180,11 +184,16 @@ export class OrgMediaComponent {
   /** Pill fallback when the org has no logo yet. */
   protected readonly initialChar = computed(() => (this.name().trim()[0] || '?').toUpperCase());
 
-  /** In view mode each block only appears when there's something to show. */
+  /** In view mode each block only appears when there's something to show, and
+   *  only when `show` includes it. */
   protected readonly showBanner = computed(
-    () => this.mode() === 'edit' || !!this.coverUrl() || !!this.logoUrl()
+    () =>
+      (this.show() === 'all' || this.show() === 'banner') &&
+      (this.mode() === 'edit' || !!this.coverUrl() || !!this.logoUrl())
   );
   protected readonly showGallery = computed(
-    () => this.mode() === 'edit' || (this.images()?.length ?? 0) > 0
+    () =>
+      (this.show() === 'all' || this.show() === 'portfolio') &&
+      (this.mode() === 'edit' || (this.images()?.length ?? 0) > 0)
   );
 }

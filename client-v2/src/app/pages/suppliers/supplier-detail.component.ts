@@ -54,9 +54,13 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           >
             <lucide-icon name="heart" [size]="15" />
           </button>
-          <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
         </div>
       </app-page-hero>
+
+      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC). -->
+      <div class="flex justify-center px-6 pt-4">
+        <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
+      </div>
 
       <div class="bp-page-body">
         @if (tab() === 'storefront') {
