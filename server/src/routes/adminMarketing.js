@@ -17,12 +17,13 @@ router.use(requireAdmin);
 
 router.get('/signups', async (req, res, next) => {
   try {
-    const roles = req.query.roles
-      ? String(req.query.roles).split(',').map(s => s.trim()).filter(Boolean)
+    // pV2-EA-02 — filter by source_environment (dev/preview/master/unknown).
+    const envs = req.query.envs
+      ? String(req.query.envs).split(',').map(s => s.trim()).filter(Boolean)
       : null;
     const result = await MarketingService.listSignups({
       q:      req.query.q || null,
-      roles,
+      envs,
       sort:   req.query.sort || 'newest',
       limit:  Number(req.query.limit)  || 100,
       offset: Number(req.query.offset) || 0

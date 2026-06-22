@@ -244,14 +244,18 @@ async function createSignup({ body, ip, userAgent, origin }) {
 // Admin: paginated list of signups with search + role filter + sort.
 // v1.65gZ32 — only returns rows where deleted_at IS NULL. Soft-deleted
 // rows stay in the table for audit but are hidden from this listing.
-async function listSignups({ q, sort, limit = 100, offset = 0 }) {
+async function listSignups({ q, envs, sort, limit = 100, offset = 0 }) {
   // pV2-EA-01 — first/last name + source_environment; role + company gone.
-  // The environment filter + env-breakdown stats land in pV2-EA-02 (admin UI).
+  // pV2-EA-02 — environment filter + env-breakdown stats for the admin UI.
   const params = [];
   const where  = ['deleted_at IS NULL'];
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
     where.push(`(LOWER(first_name) LIKE $${params.length} OR LOWER(last_name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length})`);
+  }
+  if (Array.isArray(envs) && envs.length) {
+    params.push(envs);
+    where.push(`source_environment = ANY($${params.length})`);
   }
   const order = sort === 'oldest' ? 'ASC' : 'DESC';
   // LIMIT/OFFSET bound as params (defence-in-depth — they were Number()-coerced
@@ -278,13 +282,20 @@ async function listSignups({ q, sort, limit = 100, offset = 0 }) {
      FROM marketing.guestlist_signup
     WHERE deleted_at IS NULL`
   );
+  const byEnv = await pool.query(
+    `SELECT source_environment, COUNT(*)::int AS count
+       FROM marketing.guestlist_signup
+      WHERE deleted_at IS NULL
+      GROUP BY source_environment`
+  );
 
   return {
     rows,
     stats: {
       total:     stats.rows[0].total,
       today:     stats.rows[0].today,
-      this_week: stats.rows[0].this_week
+      this_week: stats.rows[0].this_week,
+      by_environment: Object.fromEntries(byEnv.rows.map(r => [r.source_environment, r.count]))
     }
   };
 }

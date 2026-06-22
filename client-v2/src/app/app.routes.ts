@@ -173,5 +173,31 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/auth-callback/auth-callback.component').then((m) => m.AuthCallbackComponent),
   },
+  {
+    // pV2-EA-02 — Ballpark-team admin umbrella. Pure-bleed (no app shell, no
+    // org session): the interim ADMIN_API_SECRET entry IS the auth (the layout
+    // gates its children). Retires to a ballpark_admin JWT guard at AUTH-01.
+    path: 'ballpark-settings',
+    loadComponent: () =>
+      import('./pages/ballpark-settings/ballpark-settings-layout.component').then(
+        (m) => m.BallparkSettingsLayoutComponent
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/ballpark-settings/ballpark-settings-home.component').then(
+            (m) => m.BallparkSettingsHomeComponent
+          ),
+      },
+      {
+        path: 'early-access',
+        loadComponent: () =>
+          import('./pages/ballpark-settings/early-access/early-access.component').then(
+            (m) => m.EarlyAccessComponent
+          ),
+      },
+    ],
+  },
   { path: '**', redirectTo: 'welcome' },
 ];

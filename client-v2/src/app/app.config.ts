@@ -6,7 +6,8 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { adminSecretInterceptor } from './core/admin/admin-secret.interceptor';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
@@ -71,6 +72,11 @@ import {
   // pV2-MEDIA-01c — gallery tile actions (drag handle + set-as-cover)
   GripVertical,
   Star,
+  // pV2-EA-02 — ballpark-settings admin (preview link, sort, CSV, lock)
+  ExternalLink,
+  ChevronUp,
+  Download,
+  Lock,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -105,7 +111,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([adminSecretInterceptor])),
     // PrimeNG styled-mode + Aura design-token preset. The Ballpark brand is
     // bridged into Aura's tokens once, in styles.css — never per component.
     providePrimeNG({
@@ -152,6 +158,8 @@ export const appConfig: ApplicationConfig = {
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions
         GripVertical, Star,
+        // pV2-EA-02 — ballpark-settings admin
+        ExternalLink, ChevronUp, Download, Lock,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees
