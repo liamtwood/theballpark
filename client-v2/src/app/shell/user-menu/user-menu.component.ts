@@ -59,6 +59,13 @@ import { UserAvatarComponent } from '../../shared/user-avatar/user-avatar.compon
               >
                 Page settings
               </a>
+              <a
+                routerLink="/settings/early-access"
+                class="block w-full cursor-pointer rounded-md px-1 py-1.5 text-left text-md text-text no-underline hover:bg-fill"
+                (click)="menu.hide()"
+              >
+                Early access
+              </a>
             </div>
           }
 

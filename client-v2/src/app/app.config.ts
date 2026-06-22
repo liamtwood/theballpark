@@ -6,8 +6,7 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { adminSecretInterceptor } from './core/admin/admin-secret.interceptor';
+import { provideHttpClient } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
@@ -72,11 +71,10 @@ import {
   // pV2-MEDIA-01c — gallery tile actions (drag handle + set-as-cover)
   GripVertical,
   Star,
-  // pV2-EA-02 — ballpark-settings admin (preview link, sort, CSV, lock)
+  // pV2-EA-02 — early-access admin (preview link, sort, CSV)
   ExternalLink,
   ChevronUp,
   Download,
-  Lock,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -111,7 +109,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([adminSecretInterceptor])),
+    provideHttpClient(),
     // PrimeNG styled-mode + Aura design-token preset. The Ballpark brand is
     // bridged into Aura's tokens once, in styles.css — never per component.
     providePrimeNG({
@@ -158,8 +156,8 @@ export const appConfig: ApplicationConfig = {
         Calendar, Users, Wallet,
         // pV2-MEDIA-01c — gallery tile actions
         GripVertical, Star,
-        // pV2-EA-02 — ballpark-settings admin
-        ExternalLink, ChevronUp, Download, Lock,
+        // pV2-EA-02 — early-access admin
+        ExternalLink, ChevronUp, Download,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

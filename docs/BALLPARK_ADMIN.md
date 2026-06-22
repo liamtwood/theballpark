@@ -67,11 +67,10 @@ Plus future scaffolding:
 | Supplier admin / member | — Nothing here |
 | `ballpark_admin` role (post-AUTH-01) | ✓ Full access |
 
-**Auth pattern (interim, then proper):**
-- **Interim (until pV2-AUTH-01):** protected by `ADMIN_API_SECRET`. UI is a tiny secret-entry form on first visit; secret stored in `sessionStorage` (NOT localStorage — should not persist beyond browser session for a server secret).
-- **Post-AUTH-01:** standard v2 JWT auth with `ballpark_admin` role check. Replaces interim secret entry.
-
-This is TECH-DEBT-01's UI counterpart — interim browser-secret pattern, MUST be replaced with JWT at AUTH-01 (sunset condition locked).
+**Auth pattern (revised pV2-EA-02b — role-based, Liam):**
+- Uses the **existing `ballpark_admin` role** (`admin.cross_org_view`). Client routes gate on `ballparkAdminGuard` and the server `/api/admin/*` on `authenticate` + `requireActiveMembership('admin.cross_org_view')` — the SAME gate as Pages / Categories / Codelists. Beth / Meg / Liam log in with their Ballpark-team accounts; no separate secret.
+- The originally-specced interim `ADMIN_API_SECRET` sessionStorage entry form was **dropped** — it duplicated the role + guard + user-menu the app already has. This *retired* the `/api/admin/*` secret gate (see AUDIT_LEDGER TECH-DEBT-01) rather than extending it.
+- **Post-AUTH-01:** unchanged endpoints, swapped onto verified Supabase JWT once that lands.
 
 ## Layout — home page
 
@@ -345,7 +344,8 @@ See `AUDIT_LEDGER.md` for per-file audit state. Empty until first slice ships.
 | Version | Date | What changed (1-line) | Ship | QC Done? | Audit Done? |
 |---|---|---|---|---|---|
 | v2.33a | 2026-06-22 | **pV2-EA-01** — signup schema + welcome form: first/last split, role+company dropped, source_environment added, rows backfilled (no admin UI) | `5b565d6b` | — | — |
-| v2.33b | 2026-06-22 | **pV2-EA-02** — `/ballpark-settings` home + interim sessionStorage secret gate + Early Access (Signups env-aware / Page content / Notifications-admin half). Feature Flags + user-welcome/signature + URL move + stubs deferred to EA-03/04. | `<pending>` | — | — |
+| v2.33b | 2026-06-22 | **pV2-EA-02** — Early Access (Signups env-aware / Page content / Notifications-admin half). *(Initially shipped with a `/ballpark-settings` home + secret gate; reworked in v2.33c.)* | `bd1872a0` | — | — |
+| v2.33c | 2026-06-22 | **pV2-EA-02b** — reworked onto the existing `ballpark_admin` role: Early Access moved to `/settings/early-access` under `ballparkAdminGuard` + user-menu link; server `/api/admin/*` gates on the session role (not a secret); secret gate + tile-home + `admin-secret`/interceptor removed. Retires TECH-DEBT-01's `/api/admin/*` secret. | `<pending>` | — | — |
 | target | TBD | **pV2-EA-03** — user-welcome email + shared signature + `app_config` table + Notifications-tab extension | — | — | — |
 | target | TBD | **pV2-EA-04** — Feature Flags UI + URL move (pages/categories/codelists → `/ballpark-settings/*`) + coming-soon stubs (Orgs, Users) | — | — | — |
 | target | post-AUTH-01 | **pV2-BALLPARK-AUTH-MIGRATE** — retire interim sessionStorage secret-entry UI; consume v2 JWT instead (with `ballpark_admin` role check) | — | — | — |

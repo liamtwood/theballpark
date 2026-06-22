@@ -78,8 +78,25 @@ value to type in the gate locally. Preview/prod already set their own.
 **What:** Simple add-on-Enter / remove-× chips rather than a PrimeNG component (PrimeNG Chips is deprecated). Functional; matches v1 intent.
 **Severity:** LOW.
 
+## Iteration — v2.33c (2026-06-22) — role-based, not a separate secret gate
+**Triggered by QC:** Liam — "we already have a `ballpark_admin` role and a menu; why a new menu + separate password?" Correct — the secret-entry gate duplicated the existing role + guard + user-menu. Reworked to use them.
+
+**Client:**
+- **Removed** the secret-entry gate, the `/ballpark-settings` tile-home, and the `admin-secret` service + HTTP interceptor.
+- **Early Access is now a normal admin page** at `/settings/early-access`, gated by the existing `ballparkAdminGuard` (`admin.cross_org_view`), inside the shell — exactly like Pages/Categories/Codelists.
+- **Added an "Early access" link** to the user-menu admin block (same gate as "Page settings").
+- `app.config` interceptor reverted; dev `.env` `ADMIN_API_SECRET` line removed.
+
+**Server:**
+- `/api/admin/*` now gates on `authenticate` + `requireActiveMembership('admin.cross_org_view')` (the standard v2 session-role gate — re-derives the live role from the DB), replacing the interim `ADMIN_API_SECRET` header. **Deleted `middleware/admin.js`** (the secret gate); `adminMarketing.js` uses `req.user.id` for audit attribution.
+- *(The JWT carries identity only — `org_type`/`is_admin` are not in the token, so authority is correctly re-derived from `user_orgs` per request.)*
+
+Verified (dev): server — no session 401, **Beth (Ballpark org) 200, Sarah (agency) 403**, no secret used. Client — Beth loads `/settings/early-access` (19 rows, 3 tabs, no gate); Sarah bounced to `/home`. Build + 48/48 tests green.
+
+**Net:** this *pays down* TECH-DEBT-01 (the `/api/admin/*` secret gate is gone) instead of extending it. Beth / Meg / Liam reach Early Access by logging in with their `ballpark_admin` accounts — no separate password.
+
 ## QC notes
-(Liam fills this in — enter the dev secret at `/ballpark-settings`, browse signups by environment, edit a slide, send a test admin email)
+(Liam fills this in — log in as a Ballpark-team user, open the user-menu → Early access, browse signups by environment, edit a slide, send a test admin email)
 
 ## Chat audit
 (chat fills this in)

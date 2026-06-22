@@ -79,6 +79,17 @@ export const routes: Routes = [
           ),
       },
       {
+        // Settings → Early Access (pV2-EA-02) — waitlist signups + welcome
+        // content + admin notifications. Ballpark admins only, gated on the
+        // SAME session role as Pages/Categories/Codelists (no separate secret).
+        path: 'settings/early-access',
+        canActivate: [ballparkAdminGuard],
+        loadComponent: () =>
+          import('./pages/settings/early-access/early-access.component').then(
+            (m) => m.EarlyAccessComponent
+          ),
+      },
+      {
         // Dev-only style sandbox — visual QC for shared chrome components.
         path: 'style/hero',
         loadComponent: () =>
@@ -172,32 +183,6 @@ export const routes: Routes = [
     path: 'auth/callback',
     loadComponent: () =>
       import('./pages/auth-callback/auth-callback.component').then((m) => m.AuthCallbackComponent),
-  },
-  {
-    // pV2-EA-02 — Ballpark-team admin umbrella. Pure-bleed (no app shell, no
-    // org session): the interim ADMIN_API_SECRET entry IS the auth (the layout
-    // gates its children). Retires to a ballpark_admin JWT guard at AUTH-01.
-    path: 'ballpark-settings',
-    loadComponent: () =>
-      import('./pages/ballpark-settings/ballpark-settings-layout.component').then(
-        (m) => m.BallparkSettingsLayoutComponent
-      ),
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./pages/ballpark-settings/ballpark-settings-home.component').then(
-            (m) => m.BallparkSettingsHomeComponent
-          ),
-      },
-      {
-        path: 'early-access',
-        loadComponent: () =>
-          import('./pages/ballpark-settings/early-access/early-access.component').then(
-            (m) => m.EarlyAccessComponent
-          ),
-      },
-    ],
   },
   { path: '**', redirectTo: 'welcome' },
 ];

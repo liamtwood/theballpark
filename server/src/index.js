@@ -216,7 +216,16 @@ app.use('/api/brief', require('./routes/brief'));
 
 // Marketing — public welcome page + guestlist signups
 app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup
-app.use('/api/admin', require('./routes/adminMarketing')); // admin-guarded
+// pV2-EA-02b — the admin marketing surface gates on the v2 session + the
+// ballpark-admin role (admin.cross_org_view), exactly like Pages/Categories/
+// Codelists. authenticate populates req.user; requireActiveMembership re-derives
+// the live role from the DB. Replaces the interim ADMIN_API_SECRET header gate.
+app.use(
+  '/api/admin',
+  require('./middleware/authenticate').authenticate,
+  require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
+  require('./routes/adminMarketing')
+);
 
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {

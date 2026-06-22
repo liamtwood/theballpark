@@ -1,5 +1,8 @@
 /**
- * Admin marketing routes — guarded by requireAdmin middleware.
+ * Admin marketing routes. Gated at the mount (index.js) by `authenticate` +
+ * `requireActiveMembership('admin.cross_org_view')` — ballpark admins only,
+ * the same session-role gate as Pages/Categories/Codelists. `req.user.id` is
+ * the verified actor for audit attribution.
  *
  *   GET   /api/admin/signups
  *   GET   /api/admin/welcome/content
@@ -10,10 +13,7 @@
  */
 
 const router = require('express').Router();
-const { requireAdmin } = require('../middleware/admin');
 const MarketingService = require('../services/marketing.service');
-
-router.use(requireAdmin);
 
 router.get('/signups', async (req, res, next) => {
   try {
@@ -60,7 +60,7 @@ router.patch('/welcome/content', async (req, res, next) => {
     if (!Array.isArray(updates)) {
       return res.status(400).json({ error: 'Body must be { updates: [{ key, value }, ...] }' });
     }
-    const count = await MarketingService.patchContent(updates, req.adminUserId);
+    const count = await MarketingService.patchContent(updates, req.user.id);
     res.json({ updated: count });
   } catch (err) { next(err); }
 });
@@ -72,7 +72,7 @@ router.get('/welcome/settings', async (req, res, next) => {
 
 router.patch('/welcome/settings', async (req, res, next) => {
   try {
-    const updated = await MarketingService.updateSettings(req.body || {}, req.adminUserId);
+    const updated = await MarketingService.updateSettings(req.body || {}, req.user.id);
     res.json(updated);
   } catch (err) { next(err); }
 });
