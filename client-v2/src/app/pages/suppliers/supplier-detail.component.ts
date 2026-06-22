@@ -37,10 +37,12 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     StorefrontPanelComponent,
   ],
   providers: [MarketplaceStore],
-  /* The Store tab is viewport-fit like /marketplace (same engine, same
-     scroll mechanics — RP-06); the Storefront tab scrolls naturally
-     (grouped subcat grids can be long). */
-  host: { class: 'block', '[class.bp-vpfit]': "tab() === 'store'" },
+  /* Both tabs are viewport-fit: the hero + Storefront/Store toggle stay
+     anchored and only the content from the banner down scrolls (Liam QC
+     2026-06-22). Store scrolls per-column inside catalogue-layout; Storefront
+     scrolls its own single column (overflow-y on .bp-page-body below). md+
+     only — mobile keeps the natural page scroll (the .bp-vpfit media query). */
+  host: { class: 'block bp-vpfit' },
   template: `
     @if (detail.value(); as sup) {
       <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
@@ -62,7 +64,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
         <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
       </div>
 
-      <div class="bp-page-body">
+      <div class="bp-page-body" [class.overflow-y-auto]="tab() === 'storefront'">
         @if (tab() === 'storefront') {
           <app-storefront-panel
             [supplier]="sup"

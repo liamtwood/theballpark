@@ -124,6 +124,16 @@ Verified (dev-login): heading order Company Information → Contact → Stand St
 
 Verified (dev-login): all four headings text-align `start`; Company Information + Contact are bordered sections; order Company Information → Contact → Stand Structure → My portfolio (portfolio last).
 
+## Iteration — v2.32m (2026-06-22)
+**Triggered by QC:** Liam — "the scrollbar should only work from the banner down" (keep the hero + Storefront/Store toggle anchored).
+**Commit:** `<pending>`
+**Files:** `supplier-detail.component.ts`.
+
+- Made the **Storefront tab viewport-fit too** (`.bp-vpfit` now always on the host, was Store-only). The hero + tab band are anchored flex children; `.bp-page-body` is the `flex:1` scroll region — so scrolling starts at the banner (first element inside the body).
+- Storefront scrolls its **own single column** via `[class.overflow-y-auto]="tab() === 'storefront'"` on `.bp-page-body`; the Store tab keeps its per-column `catalogue-layout` scroll (no body overflow). md+ only — mobile keeps the natural page scroll (the `.bp-vpfit` media query).
+
+Verified (dev-login, 1280×800): host `.bp-vpfit` height-constrained to 712px; `.bp-page-body` overflow-y auto + scrollable + scrolls; hero + tab band sit outside the scroll region (anchored). At 274px (mobile) vpfit is inactive and the page scrolls naturally, as intended.
+
 ## QC notes
 (Liam fills this in)
 
