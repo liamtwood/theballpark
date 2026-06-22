@@ -238,7 +238,10 @@ export class ImagePickerComponent {
     try {
       const { url } = await firstValueFrom(this.media.upload(file, this.entityType()));
       this.enterFocal(url, 'upload');
-    } catch {
+    } catch (e) {
+      // Friendly message to the user; log the real fault so a genuine 5xx is
+      // observable rather than swallowed (ENGINEERING Rule 5 — audit F-7).
+      console.warn('[image-picker] upload failed', e);
       this.uploadError.set("Upload failed — please try again.");
     } finally {
       this.uploading.set(false);

@@ -22,7 +22,14 @@ import { CompletenessConfig } from './completeness.types';
         <span class="text-md font-medium" [class.text-accent]="percent() === 100">{{ percent() }}%</span>
       </div>
 
-      <div class="bp-progress mt-3" role="progressbar" [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
+      <div
+        class="bp-progress mt-3"
+        role="progressbar"
+        [attr.aria-valuenow]="percent()"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuetext]="percent() + '% complete'"
+      >
         <span [style.width.%]="percent()"></span>
       </div>
 

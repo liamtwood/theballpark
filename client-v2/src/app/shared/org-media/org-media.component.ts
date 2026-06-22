@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
+import { UnsplashCreditComponent } from '../media/unsplash-credit.component';
 import { GalleryImage } from '../../core/media/media.types';
 
 /** pV2-MEDIA-01e — the org's branding (cover banner + logo pill) and portfolio
@@ -23,7 +24,7 @@ import { GalleryImage } from '../../core/media/media.types';
   selector: 'app-org-media',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'contents' },
-  imports: [LucideAngularModule, ImageGalleryComponent],
+  imports: [LucideAngularModule, ImageGalleryComponent, UnsplashCreditComponent],
   template: `
     @if (showBanner()) {
       <div class="bp-org-banner">
@@ -75,6 +76,7 @@ import { GalleryImage } from '../../core/media/media.types';
                   decoding="async"
                   [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
                 />
+                <app-unsplash-credit [attribution]="img.attribution" />
               </div>
             }
           </div>

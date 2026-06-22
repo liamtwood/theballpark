@@ -9,6 +9,11 @@ const StorageService = require('../services/storage.service');
 // 10MB cap (MEDIA.md picker spec), memory storage → buffer → Supabase.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+// Audit F-2 — allow-list the real image types StorageService can extension
+// (png/jpeg/webp). Trusting `image/*` let a spoofed Content-Type through and an
+// unknown mimetype produced an extensionless object.
+const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
 const PROJECTS_BUCKET = process.env.STORAGE_BUCKET_PROJECTS || 'dev-project-assets';
 const SUPPLIERS_BUCKET = process.env.STORAGE_BUCKET_SUPPLIERS || 'dev-supplier-assets';
 const SCOPE_BUCKET = {
@@ -22,8 +27,8 @@ const SCOPE_BUCKET = {
 router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    if (!req.file.mimetype || !req.file.mimetype.startsWith('image/')) {
-      return res.status(400).json({ error: 'Images only' });
+    if (!ALLOWED_MIME.has(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Only PNG, JPEG, or WebP images are allowed' });
     }
     const scope = String(req.body.scope || '');
     const bucket = SCOPE_BUCKET[scope];
