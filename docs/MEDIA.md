@@ -202,7 +202,7 @@ No schema. Pure client-side computation from existing entity data.
 | Entity | Cover | Icon fallback | Logo | Gallery | Completeness | Schema delta needed |
 |---|---|---|---|---|---|---|
 | **Project** | ✓ (`cover_image_url`) | ✓ (`icon_name` + `icon_color`) | — | ✓ (`images` JSONB — new) | optional | + `icon_name`, `icon_color`, `cover_focal_x`, `cover_focal_y`, `unsplash_photographer_name`, `unsplash_photo_url`, `images` |
-| **Item** | ✓ (`cover_image_url` existing) | — | — | ✓ (`images` JSONB — already exists) | ✓ | + `cover_focal_x`, `cover_focal_y`, `unsplash_photographer_name`, `unsplash_photo_url` |
+| **Item** ⚠️ deferred | ✓ (`cover_image_url` existing) | — | — | ✓ (`images` JSONB — already exists) | ✓ | + `cover_focal_x`, `cover_focal_y`, `unsplash_photographer_name`, `unsplash_photo_url` — **but no v2 item editor surface to mount the picker on; blocked on `/store` arc. See Deferred table.** |
 | **Supplier shopfront** | ✓ (`cover_image_url` existing) | — | ✓ (`logo_url` existing) | ✓ (`images` JSONB — new on orgs) | ✓ | + `cover_focal_x`, `cover_focal_y`, `unsplash_photographer_name`, `unsplash_photo_url`, `images` on orgs |
 | **Profile** (user / org) | ✓ | — | ✓ | ✓ | ✓ | depends on existing org/user schema; same focal/attribution columns where covers exist |
 | **Future: category** | ✓ (existing) | ✓ (existing) | — | likely no | — | + focal/attribution if not already present |
@@ -315,15 +315,22 @@ move to the Locked section.
 2. **`<app-image-picker>` + project cover consumer** — first picker
    ship. Project has cover already; add `icon_name`/`icon_color`
    columns. Validates the picker on a single-image consumer.
-3. **`<app-image-gallery>` + items consumer** — items already have
-   `images JSONB`, so gallery proves itself on the richest pre-built
-   surface.
+3. **`<app-image-gallery>` + project consumer** — pulls
+   `projects.images JSONB` forward; project's Details tab is the
+   first gallery host. *(Updated 2026-06-15: originally items, but
+   items has no v2 editor surface to mount on — see Deferred table.
+   Project becomes the gallery's proof-of-life consumer.)*
 4. **Picker mounts on remaining consumers** — supplier shopfront
-   cover, profile avatar, item cover (each a small ship).
-5. **Gallery mounts on remaining consumers** — project gallery, supplier
+   cover, profile avatar (each a small ship). Item cover deferred.
+5. **Gallery mounts on remaining consumers** — supplier
    gallery, profile gallery (each adds `images` column to its entity).
+   Item gallery deferred.
 6. **`<app-completeness-card>`** — lands last; depends on having all
    editors to deep-link into.
+
+**Out of pV2-MEDIA-01 scope (gated on `/store`):** item cover picker
++ item gallery. Surfaces don't exist; data columns are ready. Lands
+in pV2-MEDIA-01-items (post-STORE-01 follow-up).
 
 ## Audit reference
 
@@ -338,9 +345,10 @@ pV2-MEDIA-01 first slice ships.
 |---|---|---|---|---|---|
 | v2.29a | 2026-06-15 | **pV2-MEDIA-01a** — `<app-drawer>` generic primitive (wraps PrimeNG p-drawer; header/body/footer slots, ESC/backdrop/focus-trap/scroll-lock, mobile full-screen) | `007b1742` | — | — |
 | v2.29b | 2026-06-15 | **pV2-MEDIA-01b** — `<app-image-picker>` (My File / Unsplash paginated / lazy Lucide + focal-point) + project cover/icon consumer (Details "Image" section in a drawer). Gated `/api/media/upload`; project media migration (icon_name/color, cover_focal_x/y, unsplash attribution); focal + icon-fallback + attribution rendered on the project card. Lucide full set lazy-loaded (separate 134kB chunk — lock §5 verified). | `d4fe0d0a` | — | — |
-| target | TBD | **pV2-MEDIA-01c** — `<app-image-gallery>` + items consumer (no schema change needed) | — | — | — |
-| target | TBD | **pV2-MEDIA-01d** — Picker mounted on supplier shopfront + profile + item cover | — | — | — |
-| target | TBD | **pV2-MEDIA-01e** — Gallery mounted on project + supplier + profile (add `images` JSONB to each) | — | — | — |
+| v2.32a–c | 2026-06-19 | **pV2-MEDIA-01c** — `<app-image-gallery>` (CDK drag-reorder, set-cover, remove) + project Details consumer (pulls `projects.images` forward; items deferred — no editor surface) | `8e2573d6` | — | — |
+| v2.32d–g | 2026-06-20 | **pV2-MEDIA-01d** — picker + gallery on org **profile** (logo/cover/gallery editing); org `cover_image_url` → supplier **card** image; `orgs.images JSONB` added; picker `focalStep` + gallery `editable` inputs | `400f1ea9` | — | — |
+| v2.32h | 2026-06-22 | **pV2-MEDIA-01e** — supplier shopfront renders the profile media in **view mode**: extracted `<app-org-media mode="edit\|view">` (cover + logo + gallery), mounted on profile (edit) + storefront (view); `images` added to the `GET /suppliers/:id` projection | — | — | — |
+| target | post-STORE-01 | **pV2-MEDIA-01-items** — Picker + gallery mounted on item edit surface (deferred from MEDIA-01; gated on `/store`) | — | — | — |
 | target | TBD | **pV2-MEDIA-01f** — `<app-completeness-card>` + first consumer (profile likely) | — | — | — |
 
 ### Detail — QC + Audit findings per version
@@ -355,6 +363,7 @@ pV2-MEDIA-01 first slice ships.
 | AI image generation tab in picker | pV2-MEDIA-01 | Out of scope for v1 of media; requires LLM image provider decision | future |
 | Image alt-text / accessibility metadata | pV2-MEDIA-01b | Worth doing; defer to a small follow-up so picker ships clean | future MEDIA polish |
 | Bulk image actions (multi-select remove, reorder multiple) | pV2-MEDIA-01c | Gallery v1 ships single-item actions; bulk is nice-to-have | future MEDIA polish |
+| **Item cover picker + item gallery** | pV2-MEDIA-01 (surfaced 2026-06-15 mid-build) | Data columns ready (`images JSONB` exists on items; focal/attribution to be added with /store ship), but v2 has no item editor surface to mount the picker on — `/store` is a `coming-soon` stub. Building the editor just to host the picker is scope creep into a different arc. | pV2-MEDIA-01-items (post-STORE-01) |
 | Completeness gamification (badges, streaks) | pV2-MEDIA-01f | Out of scope; completeness v1 is informational only | future |
 
 ## When to update this doc

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { LucideAngularModule } from 'lucide-angular';
 import { SupplierDetail, SupplierSubcategory } from '../../shared/catalogue/catalogue.types';
 import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.component';
+import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
 
 /** pV2-06d (v2.15c audit fix M7) — the Storefront tab content extracted
  *  from supplier-detail: brand panel + contact card + (pV2-CARDS-01 QC #5)
@@ -11,9 +12,22 @@ import { SubcatCardComponent } from '../../shared/catalogue/subcat-card.componen
 @Component({
   selector: 'app-storefront-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, SubcatCardComponent],
+  imports: [LucideAngularModule, SubcatCardComponent, OrgMediaComponent],
   host: { class: 'grid max-w-4xl grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]' },
   template: `
+    <!-- Branding + portfolio gallery (pV2-MEDIA-01e) — the SAME component the
+         owner edits on /settings/profile, here in read-only view mode. Spans
+         both columns above the brand/contact/subcat content. -->
+    <div class="flex flex-col gap-6 lg:col-span-2">
+      <app-org-media
+        mode="view"
+        [name]="supplier().name"
+        [coverUrl]="supplier().coverUrl"
+        [logoUrl]="supplier().logoUrl"
+        [images]="supplier().images"
+      />
+    </div>
+
     <!-- Brand panel -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
       <div class="flex items-center gap-3">

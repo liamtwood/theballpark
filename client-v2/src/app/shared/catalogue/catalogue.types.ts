@@ -1,5 +1,6 @@
 /** pV2-MARKET-00/06a — catalogue domain types (the engine's shared
  *  contract). Mirrors the server's marketplace.js projections. */
+import { GalleryImage } from '../../core/media/media.types';
 
 /** One top-level catalogue category as the rail + curation table see it. */
 export interface CategoryInfo {
@@ -119,6 +120,8 @@ export interface SupplierDetail {
   description: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  /** Portfolio gallery (pV2-MEDIA-01e) — rendered read-only on the storefront. */
+  images: GalleryImage[];
   categories: { id: string; name: string; count: number }[];
 }
 

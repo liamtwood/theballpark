@@ -317,7 +317,7 @@ router.get('/suppliers/:id', async (req, res, next) => {
     if (!id.success) return res.status(400).json({ error: 'Invalid id' });
     const r = await pool.query(
       `SELECT id, name, city, country, address, phone, email, website,
-              description, logo_url, cover_image_url
+              description, logo_url, cover_image_url, images
          FROM orgs
         WHERE id = $1 AND type = 'supplier' AND deleted_at IS NULL`,
       [id.data]
@@ -346,6 +346,8 @@ router.get('/suppliers/:id', async (req, res, next) => {
       description: row.description,
       logoUrl: row.logo_url,
       coverUrl: row.cover_image_url,
+      // orgs.images is NOT NULL DEFAULT '[]' — pg parses jsonb to a JS array.
+      images: row.images ?? [],
       categories: cats.rows.map((c) => ({ id: c.id, name: c.name, count: Number(c.item_count) })),
     });
   } catch (err) { next(err); }

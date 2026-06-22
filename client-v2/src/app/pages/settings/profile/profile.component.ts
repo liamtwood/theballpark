@@ -14,7 +14,7 @@ import { EditFieldComponent, EditFieldOption } from '../../../shared/edit-field/
 import { EditSectionComponent } from '../../../shared/edit-section/edit-section.component';
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../../shared/image-picker/image-picker.component';
-import { ImageGalleryComponent } from '../../../shared/image-gallery/image-gallery.component';
+import { OrgMediaComponent } from '../../../shared/org-media/org-media.component';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
@@ -49,7 +49,7 @@ interface ProfileForm {
     EditFieldComponent,
     DrawerComponent,
     ImagePickerComponent,
-    ImageGalleryComponent,
+    OrgMediaComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -102,64 +102,21 @@ interface ProfileForm {
           </app-edit-section>
 
           @if (profile.value(); as org) {
-            <!-- Branding (pV2-MEDIA-01d) — logo + cover. The cover feeds the
-                 supplier card image automatically (orgs.cover_image_url). -->
-            <div class="bp-card p-5">
-              <h3 class="bp-edit-section-title">Branding</h3>
-              <div class="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                  <p class="bp-field-label">Cover image</p>
-                  <div class="mt-2 flex flex-col items-start gap-3">
-                    <div class="bp-media-preview">
-                      @if (org.coverImageUrl) {
-                        <img [src]="org.coverImageUrl" alt="" />
-                      } @else {
-                        <span class="bp-caption">No cover</span>
-                      }
-                    </div>
-                    @if (canEdit()) {
-                      <button type="button" class="bp-btn-outline" (click)="coverDrawer.set(true)">
-                        <lucide-icon name="square-pen" [size]="16" /> Edit
-                      </button>
-                    }
-                  </div>
-                </div>
-                <div>
-                  <p class="bp-field-label">Logo</p>
-                  <div class="mt-2 flex flex-col items-start gap-3">
-                    <div class="bp-media-preview">
-                      @if (org.logoUrl) {
-                        <img [src]="org.logoUrl" alt="" />
-                      } @else {
-                        <span class="bp-caption">No logo</span>
-                      }
-                    </div>
-                    @if (canEdit()) {
-                      <button type="button" class="bp-btn-outline" (click)="logoDrawer.set(true)">
-                        <lucide-icon name="square-pen" [size]="16" /> Edit
-                      </button>
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Gallery (pV2-MEDIA-01d). -->
-            <div class="bp-card p-5">
-              <h3 class="bp-edit-section-title">Gallery</h3>
-              <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
-              <div class="mt-3">
-                <app-image-gallery
-                  entityType="profile"
-                  [images]="org.images"
-                  [primaryUrl]="org.coverImageUrl"
-                  [searchSeed]="org.name"
-                  [editable]="canEdit()"
-                  (imagesChange)="saveImages($event)"
-                  (primarySet)="setCover($event)"
-                />
-              </div>
-            </div>
+            <!-- Branding + Gallery (pV2-MEDIA-01e) — the SAME component the
+                 supplier shopfront renders in view mode. Edit affordances
+                 here ride canEdit; the picker drawers below stay local. -->
+            <app-org-media
+              mode="edit"
+              [canEdit]="canEdit()"
+              [name]="org.name"
+              [coverUrl]="org.coverImageUrl"
+              [logoUrl]="org.logoUrl"
+              [images]="org.images"
+              (editCover)="coverDrawer.set(true)"
+              (editLogo)="logoDrawer.set(true)"
+              (imagesChange)="saveImages($event)"
+              (primarySet)="setCover($event)"
+            />
 
             <app-drawer [(open)]="coverDrawer" title="Cover image">
               <app-image-picker
