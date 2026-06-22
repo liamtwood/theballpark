@@ -59,23 +59,43 @@ import { GalleryImage } from '../../core/media/media.types';
     }
 
     @if (showGallery()) {
-      <div class="bp-card p-5">
-        <h3 class="bp-edit-section-title">{{ mode() === 'view' ? 'My portfolio' : 'Gallery' }}</h3>
-        @if (mode() === 'edit') {
+      @if (mode() === 'view') {
+        <!-- Portfolio — photos as cards using the storefront subcat-card chrome
+             (.bp-card--zoom), no surrounding container (pV2-MEDIA-01e QC). -->
+        <section>
+          <h3 class="bp-edit-section-title">My portfolio</h3>
+          <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            @for (img of images(); track img.url) {
+              <div class="bp-card bp-card--zoom">
+                <img
+                  class="bp-item-card__img"
+                  [src]="img.url"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  [style.object-position]="img.focalX + '% ' + img.focalY + '%'"
+                />
+              </div>
+            }
+          </div>
+        </section>
+      } @else {
+        <div class="bp-card p-5">
+          <h3 class="bp-edit-section-title">Gallery</h3>
           <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
-        }
-        <div class="mt-3">
-          <app-image-gallery
-            entityType="profile"
-            [images]="images()"
-            [primaryUrl]="coverUrl()"
-            [searchSeed]="name()"
-            [editable]="mode() === 'edit' && canEdit()"
-            (imagesChange)="imagesChange.emit($event)"
-            (primarySet)="primarySet.emit($event)"
-          />
+          <div class="mt-3">
+            <app-image-gallery
+              entityType="profile"
+              [images]="images()"
+              [primaryUrl]="coverUrl()"
+              [searchSeed]="name()"
+              [editable]="canEdit()"
+              (imagesChange)="imagesChange.emit($event)"
+              (primarySet)="primarySet.emit($event)"
+            />
+          </div>
         </div>
-      </div>
+      }
     }
   `,
   styles: `

@@ -87,6 +87,18 @@ Verified (dev-login): storefront view = banner cover loaded + pill logo straddli
 - Banner applies to **both** profile (edit) and storefront (view) per the architectural lock (same component). Profile's cover/logo editing now lives on the banner's button row, not preview cards.
 - Gallery still renders as a uniform thumbnail grid — the reference's featured "1 big + grid" portfolio layout is a separate gallery change if wanted.
 
+## Iteration — v2.32j (2026-06-22)
+**Triggered by QC:** Liam — storefront cohesion: unify section-header fonts; portfolio photos as subcat-style cards; drop the portfolio container; add a "Company Information" header.
+**Commit:** `<pending>`
+**Files:** `org-media.component.ts`, `storefront-panel.component.ts`.
+
+- **Consistent section headers** — the category group header ("Stand Structure") moved from `.bp-ref-eyebrow` (tiny uppercase) to `.bp-edit-section-title`, matching "My portfolio". Folder icon 14 → 18 to balance. All three storefront headers now share one font: **Company Information · My portfolio · Stand Structure**.
+- **Portfolio = subcat-card chrome** — view-mode portfolio photos now render as `.bp-card.bp-card--zoom` cells with `.bp-item-card__img` (4:3, hover-zoom) in the same `grid-cols-2/3/4` as the Stand Structure cards, instead of the editor's thumbnail strip. The **container `bp-card p-5` is dropped** — header + card grid sit bare like the category groups.
+- **"Company Information" header** added to the brand panel; the redundant initial-letter avatar removed (the logo now lives in the banner pill), and the unused `initial()` method deleted.
+- **Edit mode unchanged** — profile still renders the interactive `<app-image-gallery>` in its card under "Gallery"; only the `view` branch is the new card grid.
+
+Verified (dev-login): storefront headers all `.bp-edit-section-title` (0 `.bp-ref-eyebrow` left), 4 portfolio cards loaded, container dropped, "Company Information" present, initial avatar gone; profile edit still interactive (5 add tiles, Edit cover/logo, "Gallery" heading).
+
 ## QC notes
 (Liam fills this in)
 

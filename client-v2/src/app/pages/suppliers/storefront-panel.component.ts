@@ -28,19 +28,17 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       />
     </div>
 
-    <!-- Brand panel -->
+    <!-- Brand panel — the logo now lives in the banner pill (pV2-MEDIA-01e), so
+         this is just the "Company Information" block: name + location + bio. -->
     <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
-      <div class="flex items-center gap-3">
-        <span class="bp-supplier-card__logo !h-10 !w-10 text-md">{{ initial() }}</span>
-        <span>
-          <span class="block text-md font-medium text-text">{{ supplier().name }}</span>
-          <span class="bp-caption">{{ location() }}</span>
-        </span>
+      <h3 class="bp-edit-section-title">Company Information</h3>
+      <div class="mt-3">
+        <span class="block text-md font-medium text-text">{{ supplier().name }}</span>
+        <span class="bp-caption">{{ location() }}</span>
       </div>
       @if (supplier().description) {
         <p class="bp-body mt-4 text-secondary">{{ supplier().description }}</p>
       }
-
     </section>
 
     <!-- Contact card -->
@@ -80,8 +78,8 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
     @for (group of groups(); track group.id) {
       <section class="lg:col-span-2">
         <div class="flex items-center gap-2">
-          <lucide-icon name="folder" [size]="14" class="text-accent" />
-          <h3 class="bp-ref-eyebrow">{{ group.name }}</h3>
+          <lucide-icon name="folder" [size]="18" class="text-accent" />
+          <h3 class="bp-edit-section-title">{{ group.name }}</h3>
           <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
         </div>
         <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -113,10 +111,6 @@ export class StorefrontPanelComponent {
       }))
       .filter((g) => g.cards.length > 0)
   );
-
-  protected initial(): string {
-    return (this.supplier().name || '?').charAt(0).toUpperCase();
-  }
 
   protected location(): string {
     const s = this.supplier();
