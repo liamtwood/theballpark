@@ -52,7 +52,9 @@ router.post('/guestlist/signup', rateLimitSignup, async (req, res, next) => {
     const result = await MarketingService.createSignup({
       body: req.body,
       ip:   req.ip || req.headers['x-forwarded-for'] || null,
-      userAgent: req.headers['user-agent'] || null
+      userAgent: req.headers['user-agent'] || null,
+      // pV2-EA-01 — source_environment is inferred from the Origin header.
+      origin: req.headers.origin || null
     });
     if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
     res.json(result.body);

@@ -136,10 +136,8 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       never feels broken. */
   logoUrl = '';
 
-  // v1.65gY — form simplified to First Name / Surname / Email per
-  // the client review. The submit() call still posts a single "name"
-  // field (firstName + " " + surname) so the existing backend route
-  // stays unchanged; role + company are sent as null.
+  // v1.65gY — form is First Name / Surname / Email. pV2-EA-01 — submit() now
+  // posts first_name + last_name as separate fields (role + company dropped).
   form = {
     firstName: '',
     surname:   '',
@@ -963,12 +961,12 @@ export class WelcomeComponent implements OnInit, OnDestroy, AfterViewInit {
       hand (immediately on the fast path, or from the render callback after
       an execute-on-submit re-mint). */
   private doPost() {
-    const fullName = `${this.form.firstName.trim()} ${this.form.surname.trim()}`.trim();
+    // pV2-EA-01 — first/last name sent as separate fields (no client-side
+    // concatenation); role + company dropped.
     const body = {
-      name:    fullName,
-      email:   this.form.email.trim(),
-      company: null,
-      role:    null,
+      first_name: this.form.firstName.trim(),
+      last_name:  this.form.surname.trim(),
+      email:      this.form.email.trim(),
       turnstileToken: this.turnstileToken
     };
     this.http.post<{ success: boolean; alreadyRegistered?: boolean }>(

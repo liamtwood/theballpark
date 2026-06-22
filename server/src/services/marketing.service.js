@@ -9,13 +9,17 @@
 const pool = require('../db/pool');
 const { sendEmail } = require('./email.service');
 
-const ALLOWED_ROLES = [
-  'Agency producer',
-  'Freelance producer',
-  'Supplier',
-  'Brand / in-house',
-  'Just curious'
-];
+/** pV2-EA-01 — tag each signup with the environment it came from (the
+ *  marketing schema is single-instance across dev/preview/master). Inferred
+ *  from the Origin header per docs/BALLPARK_ADMIN.md — spoofable, but
+ *  low-stakes (analytics tagging, not security). */
+function inferEnvironment(origin) {
+  if (!origin) return 'unknown';
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) return 'dev';
+  if (origin.includes('preview.')) return 'preview';
+  if (origin.includes('theballpark.ai')) return 'master';
+  return 'unknown';
+}
 
 // ── Content ───────────────────────────────────────────────────────────
 
@@ -138,18 +142,15 @@ async function verifyTurnstile(token, remoteIp) {
 }
 
 function validateSignupInput(body) {
-  const name    = (body?.name    || '').trim();
-  const email   = (body?.email   || '').trim().toLowerCase();
-  const company = (body?.company || '').trim() || null;
-  const role    = (body?.role    || '').trim();
+  // pV2-EA-01 — first/last name captured separately (the welcome form sends
+  // them as distinct fields); role + company dropped.
+  const firstName = (body?.first_name || '').trim();
+  const lastName  = (body?.last_name  || '').trim();
+  const email     = (body?.email      || '').trim().toLowerCase();
 
-  if (name.length < 1 || name.length > 100) return 'Name must be 1–100 characters';
-  if (!isValidEmail(email))                   return 'Invalid email address';
-  if (company && company.length > 200)        return 'Company must be ≤ 200 characters';
-  // v1.65gZ19 — role is now optional (the welcome form dropped the
-  // I-am-a... dropdown in v1.65gY). If supplied it must be in the
-  // allowlist; if missing createSignup will store a sentinel.
-  if (role && !ALLOWED_ROLES.includes(role))  return 'Invalid role';
+  if (firstName.length < 1 || firstName.length > 100) return 'First name must be 1–100 characters';
+  if (lastName.length  < 1 || lastName.length  > 100) return 'Last name must be 1–100 characters';
+  if (!isValidEmail(email))                            return 'Invalid email address';
   return null;
 }
 
@@ -174,7 +175,7 @@ function formatTimestamp(d) {
   return `${fmt} BST`;
 }
 
-async function createSignup({ body, ip, userAgent }) {
+async function createSignup({ body, ip, userAgent, origin }) {
   const errMsg = validateSignupInput(body);
   if (errMsg) return { ok: false, status: 400, error: errMsg };
 
@@ -186,21 +187,19 @@ async function createSignup({ body, ip, userAgent }) {
     return { ok: false, status: 400, error: 'Bot check failed. Please try again.' };
   }
 
-  const name    = body.name.trim();
-  const email   = body.email.trim().toLowerCase();
-  const company = (body.company || '').trim() || null;
-  // v1.65gZ19 — fall back to a sentinel when the form (which no longer
-  // collects a role) sends null/empty. DB column is NOT NULL; this
-  // keeps the contract without a schema migration.
-  const role    = (body.role || '').trim() || 'Unknown';
+  const firstName   = body.first_name.trim();
+  const lastName    = body.last_name.trim();
+  const email       = body.email.trim().toLowerCase();
+  const sourceEnv   = inferEnvironment(origin);
 
   let signup;
   try {
     const { rows } = await pool.query(
-      `INSERT INTO marketing.guestlist_signup (name, email, company, role, ip_address, user_agent)
+      `INSERT INTO marketing.guestlist_signup
+         (first_name, last_name, email, source_environment, ip_address, user_agent)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, email, company, role, ip || null, userAgent || null]
+      [firstName, lastName, email, sourceEnv, ip || null, userAgent || null]
     );
     signup = rows[0];
   } catch (err) {
@@ -216,15 +215,15 @@ async function createSignup({ body, ip, userAgent }) {
     const settings = await getSettings();
     if (settings?.notify_recipients?.length) {
       const vars = {
-        name,
+        // {{name}} kept (full name) for templates that reference it; {{firstName}}
+        // now reads the first_name column directly (no space-split — EA-01 §4).
+        name:       `${firstName} ${lastName}`.trim(),
+        firstName,
         email,
-        company:    company || '—',
-        role,
         created_at: formatTimestamp(new Date(signup.created_at)),
         admin_url:  process.env.ADMIN_BASE_URL
                       ? `${process.env.ADMIN_BASE_URL}/ballpark-settings/early-access`
-                      : 'https://theballpark.ai/ballpark-settings/early-access',
-        firstName:  name.split(' ')[0] || name
+                      : 'https://theballpark.ai/ballpark-settings/early-access'
       };
       const subject = renderTemplate(settings.email_subject, vars);
       const text    = renderTemplate(settings.email_body_template, vars);
@@ -245,16 +244,14 @@ async function createSignup({ body, ip, userAgent }) {
 // Admin: paginated list of signups with search + role filter + sort.
 // v1.65gZ32 — only returns rows where deleted_at IS NULL. Soft-deleted
 // rows stay in the table for audit but are hidden from this listing.
-async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
+async function listSignups({ q, sort, limit = 100, offset = 0 }) {
+  // pV2-EA-01 — first/last name + source_environment; role + company gone.
+  // The environment filter + env-breakdown stats land in pV2-EA-02 (admin UI).
   const params = [];
   const where  = ['deleted_at IS NULL'];
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
-    where.push(`(LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(company, '')) LIKE $${params.length})`);
-  }
-  if (Array.isArray(roles) && roles.length) {
-    params.push(roles);
-    where.push(`role = ANY($${params.length})`);
+    where.push(`(LOWER(first_name) LIKE $${params.length} OR LOWER(last_name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length})`);
   }
   const order = sort === 'oldest' ? 'ASC' : 'DESC';
   // LIMIT/OFFSET bound as params (defence-in-depth — they were Number()-coerced
@@ -264,7 +261,7 @@ async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
   params.push(Number(offset) || 0);
   const offParam = `$${params.length}`;
   const sql = `
-    SELECT id, name, email, company, role, created_at, notified_at
+    SELECT id, first_name, last_name, email, source_environment, created_at, notified_at
       FROM marketing.guestlist_signup
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
      ORDER BY created_at ${order}
@@ -281,20 +278,13 @@ async function listSignups({ q, roles, sort, limit = 100, offset = 0 }) {
      FROM marketing.guestlist_signup
     WHERE deleted_at IS NULL`
   );
-  const byRole = await pool.query(
-    `SELECT role, COUNT(*)::int AS count
-       FROM marketing.guestlist_signup
-      WHERE deleted_at IS NULL
-      GROUP BY role`
-  );
 
   return {
     rows,
     stats: {
       total:     stats.rows[0].total,
       today:     stats.rows[0].today,
-      this_week: stats.rows[0].this_week,
-      by_role:   Object.fromEntries(byRole.rows.map(r => [r.role, r.count]))
+      this_week: stats.rows[0].this_week
     }
   };
 }
@@ -305,14 +295,12 @@ async function sendTestEmail({ recipients, subject, body_template }) {
   }
   const sample = {
     name:       'Jane Doe',
+    firstName:  'Jane',
     email:      'jane@studio.com',
-    company:    'Studio Example',
-    role:       'Agency producer',
     created_at: formatTimestamp(new Date()),
     admin_url:  process.env.ADMIN_BASE_URL
                   ? `${process.env.ADMIN_BASE_URL}/ballpark-settings/early-access`
-                  : 'https://theballpark.ai/ballpark-settings/early-access',
-    firstName:  'Jane'
+                  : 'https://theballpark.ai/ballpark-settings/early-access'
   };
   const finalSubject = '[TEST] ' + renderTemplate(subject || '', sample);
   const finalText    = renderTemplate(body_template || '', sample) +
@@ -341,7 +329,6 @@ async function softDeleteSignup(id) {
 }
 
 module.exports = {
-  ALLOWED_ROLES,
   getPublicContent,
   getContentForAdmin,
   patchContent,

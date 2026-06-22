@@ -1716,13 +1716,16 @@ const migrate = async () => {
     // ── 6. Marketing schema (public welcome page + signups) ──────────────
     console.log('  Creating marketing schema tables...');
     await client.query(`
-      -- Guestlist signups from /welcome
+      -- Guestlist signups from /welcome (pV2-EA-01: first/last name split,
+      -- role + company dropped, source_environment added).
       CREATE TABLE IF NOT EXISTS marketing.guestlist_signup (
         id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name        TEXT NOT NULL,
+        first_name  TEXT NOT NULL,
+        last_name   TEXT NOT NULL DEFAULT '',
         email       TEXT NOT NULL,
-        company     TEXT,
-        role        TEXT NOT NULL,
+        -- Inferred from the Origin header at signup (marketing schema is
+        -- single-instance across envs, so we tag where each row came from).
+        source_environment TEXT NOT NULL DEFAULT 'master',
         ip_address  TEXT,
         user_agent  TEXT,
         notified_at TIMESTAMPTZ,
@@ -1734,6 +1737,29 @@ const migrate = async () => {
       );
       ALTER TABLE marketing.guestlist_signup
         ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+      -- pV2-EA-01 migration for EXISTING DBs (idempotent). RENAME has no
+      -- IF EXISTS, so guard it; the rest use IF [NOT] EXISTS.
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='marketing' AND table_name='guestlist_signup' AND column_name='name')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='marketing' AND table_name='guestlist_signup' AND column_name='first_name') THEN
+          ALTER TABLE marketing.guestlist_signup RENAME COLUMN name TO first_name;
+        END IF;
+      END $$;
+      ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS role;
+      ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS company;
+      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS last_name TEXT NOT NULL DEFAULT '';
+      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS source_environment TEXT NOT NULL DEFAULT 'master';
+      -- Backfill: split the legacy single name on the first space. Single-word
+      -- names keep an empty last_name. Idempotent — rows already split (last_name
+      -- non-empty) are skipped; single-word rows re-run as a no-op.
+      UPDATE marketing.guestlist_signup
+         SET last_name  = COALESCE(NULLIF(SPLIT_PART(first_name, ' ', 2), ''), ''),
+             first_name = SPLIT_PART(first_name, ' ', 1)
+       WHERE last_name = '' AND first_name LIKE '% %';
       -- v1.65gZ32 — replace the unconditional unique index with a
       -- partial one that only enforces uniqueness on active rows.
       DROP INDEX IF EXISTS marketing.guestlist_signup_email_uniq;
@@ -1881,8 +1907,6 @@ const migrate = async () => {
       '',
       'Name:     {{name}}',
       'Email:    {{email}}',
-      'Company:  {{company}}',
-      'Role:     {{role}}',
       '',
       'Registered: {{created_at}}',
       '',
