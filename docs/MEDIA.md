@@ -349,7 +349,7 @@ pV2-MEDIA-01 first slice ships.
 | v2.32d–g | 2026-06-20 | **pV2-MEDIA-01d** — picker + gallery on org **profile** (logo/cover/gallery editing); org `cover_image_url` → supplier **card** image; `orgs.images JSONB` added; picker `focalStep` + gallery `editable` inputs | `400f1ea9` | — | — |
 | v2.32h | 2026-06-22 | **pV2-MEDIA-01e** — supplier shopfront renders the profile media in **view mode**: extracted `<app-org-media mode="edit\|view">` (cover + logo + gallery), mounted on profile (edit) + storefront (view); `images` added to the `GET /suppliers/:id` projection | — | — | — |
 | target | post-STORE-01 | **pV2-MEDIA-01-items** — Picker + gallery mounted on item edit surface (deferred from MEDIA-01; gated on `/store`) | — | — | — |
-| target | TBD | **pV2-MEDIA-01f** — `<app-completeness-card>` + first consumer (profile likely) | — | — | — |
+| v2.32n | 2026-06-22 | **pV2-MEDIA-01f** — `<app-completeness-card>` (generic weighted % + suggested-action deep-links, no schema) + profile consumer (cover/logo/gallery/contact config, deep-links into the drawers + Company Information edit). **Closes MEDIA-01** (item surfaces remain deferred to `/store`). | `<pending>` | — | — |
 
 ### Detail — QC + Audit findings per version
 

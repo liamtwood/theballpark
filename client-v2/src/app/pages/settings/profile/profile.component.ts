@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -15,6 +15,8 @@ import { EditSectionComponent } from '../../../shared/edit-section/edit-section.
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
 import { ImagePickerComponent } from '../../../shared/image-picker/image-picker.component';
 import { OrgMediaComponent } from '../../../shared/org-media/org-media.component';
+import { CompletenessCardComponent } from '../../../shared/completeness/completeness-card.component';
+import { CompletenessConfig } from '../../../shared/completeness/completeness.types';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
@@ -50,6 +52,7 @@ interface ProfileForm {
     DrawerComponent,
     ImagePickerComponent,
     OrgMediaComponent,
+    CompletenessCardComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -63,6 +66,21 @@ interface ProfileForm {
         <p class="bp-body-small text-warn">Couldn't load your organisation.</p>
       } @else {
         <div class="bp-settings-body">
+          @if (profile.value(); as org) {
+            @if (canEdit()) {
+              <!-- pV2-MEDIA-01f — weighted % complete + suggested-action
+                   deep-links into the editors below. Editors only (canEdit). -->
+              <app-completeness-card
+                [entity]="org"
+                [config]="completenessConfig"
+                title="Profile completeness"
+                entityLabel="profile"
+                (actionClicked)="handleCompletenessAction($event)"
+              />
+            }
+          }
+
+          <div #companySection>
           <app-edit-section
             title="Company Information"
             [editable]="canEdit()"
@@ -83,6 +101,7 @@ interface ProfileForm {
               <app-edit-field label="Projects numbered so far" density="page" [readonlyAlways]="true" [value]="String(refCounter())" />
             </div>
           </app-edit-section>
+          </div>
 
           <app-edit-section
             title="Financial defaults"
@@ -105,18 +124,20 @@ interface ProfileForm {
             <!-- Branding + Gallery (pV2-MEDIA-01e) — the SAME component the
                  supplier shopfront renders in view mode. Edit affordances
                  here ride canEdit; the picker drawers below stay local. -->
-            <app-org-media
-              mode="edit"
-              [canEdit]="canEdit()"
-              [name]="org.name"
-              [coverUrl]="org.coverImageUrl"
-              [logoUrl]="org.logoUrl"
-              [images]="org.images"
-              (editCover)="coverDrawer.set(true)"
-              (editLogo)="logoDrawer.set(true)"
-              (imagesChange)="saveImages($event)"
-              (primarySet)="setCover($event)"
-            />
+            <div #mediaSection>
+              <app-org-media
+                mode="edit"
+                [canEdit]="canEdit()"
+                [name]="org.name"
+                [coverUrl]="org.coverImageUrl"
+                [logoUrl]="org.logoUrl"
+                [images]="org.images"
+                (editCover)="coverDrawer.set(true)"
+                (editLogo)="logoDrawer.set(true)"
+                (imagesChange)="saveImages($event)"
+                (primarySet)="setCover($event)"
+              />
+            </div>
 
             <app-drawer [(open)]="coverDrawer" title="Cover image">
               <app-image-picker
@@ -203,6 +224,47 @@ export class ProfileComponent {
 
   /** Pencils mirror the server's PUT gate (org.manage_billing = org admins). */
   protected readonly canEdit = computed(() => can(this.auth.role(), 'org.manage_billing'));
+
+  // ── Completeness (pV2-MEDIA-01f) — weighted % + suggested-action deep-links. ──
+  private readonly companySection = viewChild<ElementRef<HTMLElement>>('companySection');
+  private readonly mediaSection = viewChild<ElementRef<HTMLElement>>('mediaSection');
+
+  /** Weighted profile completeness (sums to 100). Each unmet item surfaces a
+   *  suggested action that deep-links to its editor (handleCompletenessAction). */
+  protected readonly completenessConfig: CompletenessConfig<OrgProfile> = [
+    { weight: 25, label: 'Add a cover image', action: 'cover', done: (o) => !!o.coverImageUrl },
+    { weight: 15, label: 'Add your logo', action: 'logo', done: (o) => !!o.logoUrl },
+    { weight: 20, label: 'Add at least 3 gallery photos', action: 'gallery', done: (o) => (o.images?.length ?? 0) >= 3 },
+    { weight: 10, label: 'Set your city & country', action: 'company', done: (o) => !!o.city && !!o.country },
+    { weight: 10, label: 'Add your address', action: 'company', done: (o) => !!o.address },
+    { weight: 10, label: 'Add a contact email', action: 'company', done: (o) => !!o.email },
+    { weight: 10, label: 'Add a phone number', action: 'company', done: (o) => !!o.phone },
+  ];
+
+  /** Maps a completeness action token to the matching editor. */
+  protected handleCompletenessAction(action: string): void {
+    switch (action) {
+      case 'cover':
+        this.coverDrawer.set(true);
+        break;
+      case 'logo':
+        this.logoDrawer.set(true);
+        break;
+      case 'gallery':
+        this.scrollTo(this.mediaSection());
+        break;
+      case 'company':
+        // Enter edit on Company Information so the fields are ready to fill.
+        this.snapshot('org');
+        this.editingOrg.set(true);
+        this.scrollTo(this.companySection());
+        break;
+    }
+  }
+
+  private scrollTo(ref: ElementRef<HTMLElement> | undefined): void {
+    ref?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   private snapshots: { org?: ProfileForm; fin?: ProfileForm } = {};
 
