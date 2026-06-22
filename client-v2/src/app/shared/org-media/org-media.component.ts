@@ -3,75 +3,64 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { GalleryImage } from '../../core/media/media.types';
 
-/** pV2-MEDIA-01e — the org's branding (cover + logo) and portfolio gallery,
- *  rendered identically on the owner's /settings/profile (edit mode) and a
- *  visitor's /suppliers/:id storefront (view mode). One definition, two
- *  consumers — the architectural lock: view mode is purely a render flag,
- *  NOT a fork. Only edit affordances toggle.
+/** pV2-MEDIA-01e — the org's branding (cover banner + logo pill) and portfolio
+ *  gallery, rendered identically on the owner's /settings/profile (edit mode)
+ *  and a visitor's /suppliers/:id storefront (view mode). One definition, two
+ *  consumers — the architectural lock: view mode is purely a render flag, NOT
+ *  a fork. Only edit affordances toggle.
  *
- *  Fields are passed individually (not a DTO) so either consumer's shape —
- *  OrgProfile (`coverImageUrl`) or SupplierDetail (`coverUrl`) — feeds it
- *  without a shared interface.
+ *  Layout (v2.32i, per Liam's reference): the cover is a wide banner with the
+ *  logo in a stadium "pill" straddling its bottom edge (where a profile avatar
+ *  would sit). No "Branding" heading. Fields are passed individually so either
+ *  consumer's DTO shape — OrgProfile (`coverImageUrl`) or SupplierDetail
+ *  (`coverUrl`) — feeds it without a shared interface.
  *
- *  - edit mode: empty cover/logo show "No …" placeholders + an Edit button
- *    (gated by `canEdit`); the gallery is editable (add/remove/reorder).
- *  - view mode: only POPULATED media renders (no empty placeholders, no
- *    buttons); the gallery is read-only. */
+ *  - edit mode: empty cover/logo show placeholders; an Edit cover / Edit logo
+ *    row appears (gated by `canEdit`); the gallery is editable.
+ *  - view mode: only POPULATED media renders (no placeholders, no buttons);
+ *    the gallery is read-only and titled "My portfolio". */
 @Component({
   selector: 'app-org-media',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'contents' },
   imports: [LucideAngularModule, ImageGalleryComponent],
   template: `
-    @if (showBranding()) {
-      <div class="bp-card p-5">
-        <h3 class="bp-edit-section-title">Branding</h3>
-        <div class="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          @if (mode() === 'edit' || coverUrl()) {
-            <div>
-              <p class="bp-field-label">Cover image</p>
-              <div class="mt-2 flex flex-col items-start gap-3">
-                <div class="bp-media-preview">
-                  @if (coverUrl()) {
-                    <img [src]="coverUrl()" alt="" />
-                  } @else {
-                    <span class="bp-caption">No cover</span>
-                  }
-                </div>
-                @if (mode() === 'edit' && canEdit()) {
-                  <button type="button" class="bp-btn-outline" (click)="editCover.emit()">
-                    <lucide-icon name="square-pen" [size]="16" /> Edit
-                  </button>
-                }
-              </div>
-            </div>
-          }
-          @if (mode() === 'edit' || logoUrl()) {
-            <div>
-              <p class="bp-field-label">Logo</p>
-              <div class="mt-2 flex flex-col items-start gap-3">
-                <div class="bp-media-preview">
-                  @if (logoUrl()) {
-                    <img [src]="logoUrl()" alt="" />
-                  } @else {
-                    <span class="bp-caption">No logo</span>
-                  }
-                </div>
-                @if (mode() === 'edit' && canEdit()) {
-                  <button type="button" class="bp-btn-outline" (click)="editLogo.emit()">
-                    <lucide-icon name="square-pen" [size]="16" /> Edit
-                  </button>
-                }
-              </div>
-            </div>
+    @if (showBanner()) {
+      <div class="bp-org-banner">
+        <div class="bp-org-banner__cover">
+          @if (coverUrl()) {
+            <img [src]="coverUrl()" alt="" />
+          } @else {
+            <span class="bp-caption">No cover image</span>
           }
         </div>
+
+        @if (mode() === 'edit' || logoUrl()) {
+          <div class="bp-org-banner__pill" [class.bp-org-banner__pill--empty]="!logoUrl()">
+            @if (logoUrl()) {
+              <img [src]="logoUrl()" alt="" />
+            } @else {
+              <span>{{ initialChar() }}</span>
+            }
+          </div>
+        }
       </div>
+
+      @if (mode() === 'edit' && canEdit()) {
+        <div class="bp-org-banner__actions">
+          <button type="button" class="bp-btn-outline" (click)="editCover.emit()">
+            <lucide-icon name="square-pen" [size]="16" /> Edit cover
+          </button>
+          <button type="button" class="bp-btn-outline" (click)="editLogo.emit()">
+            <lucide-icon name="square-pen" [size]="16" /> Edit logo
+          </button>
+        </div>
+      }
     }
 
     @if (showGallery()) {
       <div class="bp-card p-5">
-        <h3 class="bp-edit-section-title">Gallery</h3>
+        <h3 class="bp-edit-section-title">{{ mode() === 'view' ? 'My portfolio' : 'Gallery' }}</h3>
         @if (mode() === 'edit') {
           <p class="bp-caption mt-1">Add up to 5 photos — set one as the cover (used on your supplier card).</p>
         }
@@ -89,10 +78,73 @@ import { GalleryImage } from '../../core/media/media.types';
       </div>
     }
   `,
+  styles: `
+    .bp-org-banner {
+      position: relative;
+      /* Reserve room for the pill straddling the cover's bottom edge so it
+         stays inside the box (no overflow into the parent's flex gap). */
+      padding-bottom: 36px;
+    }
+    .bp-org-banner__cover {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 7;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      border: 1px solid var(--color-border-hairline);
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bp-org-banner__cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .bp-org-banner__pill {
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      transform: translateX(-50%);
+      height: 60px;
+      min-width: 96px;
+      max-width: 70%;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: var(--color-surface);
+      /* The surface-coloured ring lifts the pill off the cover (reference). */
+      border: 4px solid var(--color-surface);
+      box-shadow: 0 6px 18px var(--color-border-medium);
+      overflow: hidden;
+    }
+    .bp-org-banner__pill img {
+      height: 100%;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      border-radius: 999px;
+      display: block;
+    }
+    .bp-org-banner__pill--empty {
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-size: var(--text-lg, 1.125rem);
+    }
+    .bp-org-banner__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  `,
 })
 export class OrgMediaComponent {
   readonly mode = input<'edit' | 'view'>('view');
-  /** Only consulted in edit mode — gates the Edit buttons + gallery editing. */
+  /** Only consulted in edit mode — gates the Edit row + gallery editing. */
   readonly canEdit = input(false);
   readonly name = input('');
   readonly coverUrl = input<string | null>(null);
@@ -105,8 +157,11 @@ export class OrgMediaComponent {
   readonly imagesChange = output<GalleryImage[]>();
   readonly primarySet = output<GalleryImage>();
 
-  /** In view mode the card only appears when there's something to show. */
-  protected readonly showBranding = computed(
+  /** Pill fallback when the org has no logo yet. */
+  protected readonly initialChar = computed(() => (this.name().trim()[0] || '?').toUpperCase());
+
+  /** In view mode each block only appears when there's something to show. */
+  protected readonly showBanner = computed(
     () => this.mode() === 'edit' || !!this.coverUrl() || !!this.logoUrl()
   );
   protected readonly showGallery = computed(

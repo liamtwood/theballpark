@@ -68,6 +68,25 @@ don't fork. View mode is a render flag; only edit affordances toggle.
 **Suggested fix:** A `coverVariant` input ('preview' | 'banner') if Liam wants the shopfront cover larger. Deferred — design call.
 **Severity:** LOW.
 
+## Iteration — v2.32i (2026-06-22)
+**Triggered by QC:** Liam — "remove branding, banner variant, logo in a pill (replace the face with the logo in a pill shape)" + reference image.
+**Commit:** `<pending>`
+**Files:** `org-media.component.ts` (layout rebuild only — no consumer/server changes).
+
+Replaced the two "Branding" preview cards with a **cover banner + logo pill**:
+- Cover renders as a wide 16:7 banner (`.bp-org-banner__cover`, `--radius-card`).
+- Logo sits in a stadium **pill** (`border-radius: 999px`, surface ring + shadow) straddling the banner's bottom edge — the reference's avatar position, logo instead of a face; initial-letter fallback when no logo.
+- "Branding" heading dropped. In **view** mode the gallery heading reads **"My portfolio."**
+- Edit affordances moved to an "Edit cover / Edit logo" button row below the banner (edit mode + `canEdit` only); outputs unchanged, so profile's picker drawers still fire.
+- Pill is contained via the banner's `padding-bottom` (no overflow into the parent flex gap).
+
+Verified (dev-login): storefront view = banner cover loaded + pill logo straddling bottom + "My portfolio" + no Branding heading + no edit row; profile edit = banner + pill + Edit cover/Edit logo row + editable gallery + Company Info/Financial intact; Edit cover still opens the picker drawer.
+
+**Open judgment calls (LOW — for QC):**
+- Pill is **centered** on the banner (matches the reference). Storefront left-column may want it left-aligned — easy flag to add.
+- Banner applies to **both** profile (edit) and storefront (view) per the architectural lock (same component). Profile's cover/logo editing now lives on the banner's button row, not preview cards.
+- Gallery still renders as a uniform thumbnail grid — the reference's featured "1 big + grid" portfolio layout is a separate gallery change if wanted.
+
 ## QC notes
 (Liam fills this in)
 
