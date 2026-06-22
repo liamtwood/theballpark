@@ -24,41 +24,41 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       [logoUrl]="supplier().logoUrl"
     />
 
-    <!-- 2. Company Information — centered. -->
-    <section class="text-center">
+    <!-- 2. Company Information — bordered card, left-aligned. -->
+    <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
       <h3 class="bp-edit-section-title">Company Information</h3>
       <p class="mt-2 text-md font-medium text-text">{{ supplier().name }}</p>
       <p class="bp-caption">{{ location() }}</p>
       @if (supplier().description) {
-        <p class="bp-body mx-auto mt-3 max-w-xl text-secondary">{{ supplier().description }}</p>
+        <p class="bp-body mt-3 text-secondary">{{ supplier().description }}</p>
       }
     </section>
 
-    <!-- 3. Contact — centered. -->
+    <!-- 3. Contact — bordered card, left-aligned. -->
     @if (hasContact()) {
-      <section class="text-center">
+      <section class="rounded-[var(--radius-card)] border border-hairline bg-surface p-6">
         <h3 class="bp-edit-section-title">Contact</h3>
-        <div class="mt-3 flex flex-col items-center gap-2.5">
+        <div class="mt-3 flex flex-col gap-2.5">
           @if (supplier().address) {
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <lucide-icon name="map-pin" [size]="15" class="text-muted" />
               <span class="bp-body-small text-secondary">{{ supplier().address }}{{ location() ? ', ' + location() : '' }}</span>
             </div>
           }
           @if (supplier().phone) {
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <lucide-icon name="phone" [size]="15" class="text-muted" />
               <a class="bp-body-small text-secondary hover:text-accent" [href]="'tel:' + supplier().phone">{{ supplier().phone }}</a>
             </div>
           }
           @if (supplier().email) {
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <lucide-icon name="mail" [size]="15" class="text-muted" />
               <a class="bp-body-small text-secondary hover:text-accent" [href]="'mailto:' + supplier().email">{{ supplier().email }}</a>
             </div>
           }
           @if (supplier().website) {
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <lucide-icon name="globe" [size]="15" class="text-muted" />
               <a class="bp-body-small break-all text-secondary hover:text-accent" [href]="supplier().website" target="_blank" rel="noopener">{{ supplier().website }}</a>
             </div>
@@ -67,12 +67,12 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       </section>
     }
 
-    <!-- 4. Categories the supplier sells in — centered header, card grid. -->
+    <!-- 4. Categories the supplier sells in — left-aligned header, card grid. -->
     @for (group of groups(); track group.id) {
       <section>
-        <div class="flex items-center justify-center gap-2">
+        <div class="flex items-center gap-2">
           <h3 class="bp-edit-section-title">{{ group.name }}</h3>
-          <span class="bp-meta">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
+          <span class="bp-meta ml-auto">{{ group.cards.length }} categor{{ group.cards.length === 1 ? 'y' : 'ies' }}</span>
         </div>
         <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           @for (sub of group.cards; track sub.id) {
@@ -82,15 +82,13 @@ import { OrgMediaComponent } from '../../shared/org-media/org-media.component';
       </section>
     }
 
-    <!-- 5. Portfolio — below the categories (pV2-MEDIA-01e QC). Centered header. -->
-    <div class="text-center">
-      <app-org-media
-        show="portfolio"
-        mode="view"
-        [name]="supplier().name"
-        [images]="supplier().images"
-      />
-    </div>
+    <!-- 5. Portfolio — below the categories (pV2-MEDIA-01e QC). -->
+    <app-org-media
+      show="portfolio"
+      mode="view"
+      [name]="supplier().name"
+      [images]="supplier().images"
+    />
   `,
 })
 export class StorefrontPanelComponent {

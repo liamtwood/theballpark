@@ -113,6 +113,17 @@ Verified (dev-login): heading order Company Information → Contact → Stand St
 
 **Judgment call (LOW):** Company Information + Contact are now **borderless** centred text (matching the reference's clean centred look) rather than bordered cards. Easy to put the card borders back if you'd rather.
 
+## Iteration — v2.32l (2026-06-22)
+**Triggered by QC:** Liam — keep content in containers + titles left-justified (the v2.32k centring was meant for the page column, not the cards/titles).
+**Commit:** `<pending>`
+**Files:** `storefront-panel.component.ts`.
+
+- **Company Information + Contact** back in bordered cards (`border border-hairline bg-surface p-6`), content left-aligned.
+- **All section titles left-justified** — removed `text-center` / `justify-center`; the Stand Structure header count returns to `ml-auto` (right), portfolio header un-wrapped from its centring div.
+- **Kept** from v2.32k: centred page column (`mx-auto max-w-4xl`), tab band above the banner, portfolio below the categories, no folder icon. Stand Structure + My portfolio remain container-less card grids (per the v2.32j ask).
+
+Verified (dev-login): all four headings text-align `start`; Company Information + Contact are bordered sections; order Company Information → Contact → Stand Structure → My portfolio (portfolio last).
+
 ## QC notes
 (Liam fills this in)
 
