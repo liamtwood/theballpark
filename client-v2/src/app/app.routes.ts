@@ -157,11 +157,12 @@ export const routes: Routes = [
           import('./pages/supplier/storefront.component').then((m) => m.StorefrontComponent),
       },
       {
-        // Storefront hub tile target — the catalogue stub (§14 internal name
-        // /store; "My Shop" is UI copy only).
+        // "My Shop" (§14 internal /store) — resolves to the supplier's OWN
+        // storefront (/suppliers/:id), where they manage their catalogue with
+        // owner affordances. Was a coming-soon stub (pV2-STORE).
         path: 'store',
-        loadComponent: () => import('./pages/stub/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { feature: 'My Shop' },
+        loadComponent: () =>
+          import('./pages/supplier/store-redirect.component').then((m) => m.StoreRedirectComponent),
       },
       {
         // Profile — the org's own profile + financial defaults (the v2 port
