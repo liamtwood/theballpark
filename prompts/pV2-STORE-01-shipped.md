@@ -149,6 +149,15 @@ Verified: client build clean; 48/48 server tests.
 
 Verified: client build clean.
 
+### v2.33v — Profile sections split: Completeness / Branding / About Us / Gallery / Finance
+Liam QC: each a separate section, in that order; About Us carries the description (confirmed `orgs.description` exists).
+- **Branding** — `org-media show="banner"` (cover + logo only).
+- **About Us** — the former "Company Information" section, **renamed**, now with a full-width **Description** textarea at the top (the public blurb). Threaded `description` end-to-end: `orgs.description` → `GET/PUT /api/organisation` (+ Zod) → `OrgProfile` → profile form/save. Same field the shopfront renders.
+- **Gallery** — `org-media show="portfolio"` split into its own titled section; saves immediately (cover/primary still work).
+- **Finance** — the former "Financial defaults", renamed and moved below Gallery.
+- *Interpretation note:* I folded the company-info fields (name/address/contact/ref-prefix) under **About Us** alongside the description to match the 5-section list — say if you'd rather keep "Company Information" as its own section.
+Build clean; 48/48 server tests.
+
 ### v2.33u — Branding container, cover first
 Liam QC: on the Profile tab the media block moves to the **top** as the first section, wrapped in a titled **Branding** container (`app-edit-section title="Branding" [editable]="false"` — org-media keeps its own cover/logo/gallery editing). Cover image is now the first thing on the profile. Build clean.
 

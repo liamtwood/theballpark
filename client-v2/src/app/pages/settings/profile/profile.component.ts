@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -27,6 +28,7 @@ import { SupplierSubcategory } from '../../../shared/catalogue/catalogue.types';
 /** The editable form state (strings throughout — edit-field's surface). */
 interface ProfileForm {
   name: string;
+  description: string;
   city: string;
   country: string;
   address: string;
@@ -49,6 +51,7 @@ interface ProfileForm {
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    FormsModule,
     ToastModule,
     LucideAngularModule,
     PageHeroComponent,
@@ -118,20 +121,17 @@ interface ProfileForm {
                  canEdit. Titled container only (org-media owns its own editing,
                  so the section's button row stays off). -->
             <app-edit-section title="Branding" [editable]="false">
-              <div #mediaSection>
-                <app-org-media
-                  mode="edit"
-                  [canEdit]="canEdit()"
-                  [name]="org.name"
-                  [coverUrl]="org.coverImageUrl"
-                  [logoUrl]="org.logoUrl"
-                  [images]="org.images"
-                  (editCover)="coverDrawer.set(true)"
-                  (editLogo)="logoDrawer.set(true)"
-                  (imagesChange)="saveImages($event)"
-                  (primarySet)="setCover($event)"
-                />
-              </div>
+              <app-org-media
+                mode="edit"
+                show="banner"
+                [canEdit]="canEdit()"
+                [name]="org.name"
+                [coverUrl]="org.coverImageUrl"
+                [logoUrl]="org.logoUrl"
+                [images]="org.images"
+                (editCover)="coverDrawer.set(true)"
+                (editLogo)="logoDrawer.set(true)"
+              />
             </app-edit-section>
 
             <app-drawer [(open)]="coverDrawer" title="Cover image">
@@ -163,7 +163,7 @@ interface ProfileForm {
 
           <div #companySection>
           <app-edit-section
-            title="Company Information"
+            title="About Us"
             [editable]="canEdit()"
             [(editing)]="editingOrg"
             [saving]="saving()"
@@ -171,6 +171,22 @@ interface ProfileForm {
             (cancelled)="restore('org')"
             (save)="save('org')"
           >
+            <!-- Description — the public "About Us" blurb (orgs.description,
+                 also rendered on the shopfront). Full-width above the grid. -->
+            <div class="mb-5">
+              <label class="bp-field-label">Description</label>
+              @if (editingOrg()) {
+                <textarea
+                  class="bp-profile-textarea mt-1"
+                  rows="4"
+                  [ngModel]="form().description"
+                  (ngModelChange)="patch({ description: $event })"
+                  placeholder="Tell customers about your company…"
+                ></textarea>
+              } @else {
+                <p class="bp-body mt-1 whitespace-pre-line text-secondary">{{ form().description || '—' }}</p>
+              }
+            </div>
             <div class="bp-field-grid-2">
               <app-edit-field label="Organisation name" density="page" [editing]="editingOrg()" [value]="form().name" (valueChange)="patch({ name: $event })" />
               <app-edit-field label="City" density="page" [editing]="editingOrg()" [value]="form().city" (valueChange)="patch({ city: $event })" />
@@ -184,8 +200,28 @@ interface ProfileForm {
           </app-edit-section>
           </div>
 
+          @if (profile.value(); as org) {
+            <!-- Gallery — the portfolio strip, its own section (pV2-STORE-01).
+                 org-media in portfolio mode; saves immediately like Branding. -->
+            <app-edit-section title="Gallery" [editable]="false">
+              <div #mediaSection>
+                <app-org-media
+                  mode="edit"
+                  show="portfolio"
+                  [canEdit]="canEdit()"
+                  [name]="org.name"
+                  [coverUrl]="org.coverImageUrl"
+                  [logoUrl]="org.logoUrl"
+                  [images]="org.images"
+                  (imagesChange)="saveImages($event)"
+                  (primarySet)="setCover($event)"
+                />
+              </div>
+            </app-edit-section>
+          }
+
           <app-edit-section
-            title="Financial defaults"
+            title="Finance"
             [editable]="canEdit()"
             [(editing)]="editingFin"
             [saving]="saving()"
@@ -209,6 +245,24 @@ interface ProfileForm {
     <!-- MessageService supplies aria-live by severity (polite success/info,
          assertive error) — no explicit role needed (audit F-10). -->
     <p-toast position="bottom-right" styleClass="bp-toast" />
+  `,
+  styles: `
+    .bp-profile-textarea {
+      width: 100%;
+      border: 1px solid var(--color-border-hairline);
+      border-radius: var(--radius-input, 8px);
+      background: var(--color-surface);
+      color: var(--color-text);
+      padding: 10px 12px;
+      font-family: var(--bp-font);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      resize: vertical;
+    }
+    .bp-profile-textarea:focus-visible {
+      outline: 2px solid var(--theme-accent);
+      outline-offset: 1px;
+    }
   `,
 })
 export class ProfileComponent {
@@ -411,6 +465,7 @@ export class ProfileComponent {
       section === 'org'
         ? {
             name: f.name,
+            description: f.description.trim(),
             address: f.address,
             city: f.city,
             country: f.country,
@@ -446,6 +501,7 @@ export class ProfileComponent {
 function toForm(org: OrgProfile | null): ProfileForm {
   return {
     name: org?.name ?? '',
+    description: org?.description ?? '',
     city: org?.city ?? '',
     country: org?.country ?? '',
     address: org?.address ?? '',
