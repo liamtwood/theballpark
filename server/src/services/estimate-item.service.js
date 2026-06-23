@@ -32,13 +32,13 @@ async function getAll(estimateId, projectId) {
       `SELECT ei.*
          FROM estimate_items ei
          JOIN estimates e ON e.id = ei.estimate_id
-        WHERE e.project_id = $1
+        WHERE e.project_id = $1 AND ei.deleted_at IS NULL
         ORDER BY ei.created_at DESC`,
       [projectId]
     );
     return result.rows;
   }
-  let query = 'SELECT * FROM estimate_items WHERE 1=1';
+  let query = 'SELECT * FROM estimate_items WHERE deleted_at IS NULL';
   const params = [];
   if (estimateId) { params.push(estimateId); query += ` AND estimate_id = $${params.length}`; }
   query += ' ORDER BY created_at DESC';
@@ -47,7 +47,7 @@ async function getAll(estimateId, projectId) {
 }
 
 async function getById(id) {
-  const result = await pool.query('SELECT * FROM estimate_items WHERE id = $1', [id]);
+  const result = await pool.query('SELECT * FROM estimate_items WHERE id = $1 AND deleted_at IS NULL', [id]);
   return result.rows[0] || null;
 }
 
@@ -131,11 +131,14 @@ async function update(id, data) {
   return result.rows[0];
 }
 
-async function hardDelete(id) {
-  const result = await pool.query('DELETE FROM estimate_items WHERE id = $1 RETURNING *', [id]);
+// v1.66e4 (Item 1): soft-delete (was a hard DELETE). deleted_at hides it from
+// getAll/getById and from recalcTotal's SUM, so the estimate total drops it.
+async function softDelete(id) {
+  const result = await pool.query(
+    'UPDATE estimate_items SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *', [id]);
   if (!result.rows.length) return null;
   await EstimateService.recalcTotal(result.rows[0].estimate_id);
   return result.rows[0];
 }
 
-module.exports = { getAll, getById, create, update, hardDelete };
+module.exports = { getAll, getById, create, update, softDelete };

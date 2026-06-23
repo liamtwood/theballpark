@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ballpark v2</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- pV2-TYPE-01: ONE font family app-wide, DB-driven via
+       bp_brand_config.font_pair (--bp-font). The static Playfair/Libre
+       Franklin pair is gone; runtime loading of an admin-picked webfont
+       lands in pV2-TYPE-02. -->
+  <!-- pV2-WELCOME port: the public /welcome marketing deck uses Fraunces
+       (serif) + Inter (slide-4). Loaded here as a <link> (not an inline
+       component @import) so Angular's font-inlining budget isn't tripped.
+       Scoped in effect to /welcome — no other surface references them. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600;700;900&display=swap">
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

@@ -1,0 +1,161 @@
+# inbox-v2 — Component Schematic
+# Living spec. Update whenever a layer is added/changed.
+# In Notepad++: Language → Y → YAML  (folds with +/- on every indent level)
+#
+# Legend:
+#   [global: x]  — imported / shared chrome, no per-page CSS
+#   [local]      — unique to this component
+
+inbox-v2:
+
+  inputs:
+    desc: "Reusable contract — every mount point sets these"
+    scope:
+      scopedToProjectId: "string? — null = all projects"
+      scopedToSupplierId: "string? — null = all suppliers"
+      scopedToItemId: "string? — null = all items"
+      viewerRole: "'agency' | 'supplier' (default 'agency')"
+    chrome:
+      showHero: "boolean (default true) — false when embedded"
+      showSearchRow: "boolean (default true)"
+      showFilterDrawer: "boolean (default true)"
+      showTreeRail: "boolean (default true) — false = single-item mode"
+      showItemPreview: "boolean (default true) — toggles <app-message-item-card> at top of thread pane; page-setting overrides"
+      compact: "boolean (default false) — tighter padding"
+    events:
+      threadSelected: "EventEmitter<string>"
+      messageSent: "EventEmitter<MessageDto>"
+
+  mount-points:
+    full-inbox:
+      route: /inbox-v2
+      inputs: "viewerRole=agency (all defaults)"
+    embedded-in-project:
+      where: project-detail page
+      inputs: "scopedToProjectId, showHero=false, compact=true"
+    embedded-on-item-card:
+      where: item card / item detail
+      inputs: "scopedToItemId, all chrome=false except message-list + compose-bar"
+
+  hero:
+    type: "[global: app-shell]"
+    back:
+      source: route.data.back
+    title:
+      source: route.data.heroTitle
+      overridden_by: page-settings
+    subtitle:
+      source: route.data.heroSub
+      overridden_by: page-settings
+    align:
+      source: route.data.heroAlign
+      overridden_by: page-settings
+    page-settings-cog:
+      type: "[global: HeroSettingsService + ConfigService]"
+
+  search-row:
+    type: "[global: .bp-search-row CSS]"
+    search-input:
+      type: "[global: .bp-search-input + pInputText]"
+      binding: ngModel -> searchTerm
+    filter-button:
+      type: "[global: .bp-search-filter-btn]"
+      badge: activeFilterCount()
+      click: filterOpen = !filterOpen
+
+  filter-drawer:
+    type: "[global: p-sidebar styleClass=bp-drawer]"
+    client-dropdown:
+      timing: load-time
+      model: selectedClientId
+    project-dropdown:
+      timing: load-time
+      model: selectedProjectId
+    category-dropdown:
+      timing: post-load
+      model: activeFolder
+    contact-dropdown:
+      timing: post-load
+      model: activeSupplier
+    status-dropdown:
+      timing: post-load
+      model: activeStatus
+
+  body:
+    type: "[local]"
+
+    tree-rail-left:
+      desc: |
+        Hierarchical tree. Depth depends on viewerRole + scopedToProjectId:
+          Agent full        : Project -> Category -> Item   (3 deep)
+          Agent project     : Category -> Item              (2 deep)
+          Supplier full     : Project -> Item               (2 deep — suppliers skip cat)
+          Supplier project  : Item (flat)                   (1 deep)
+        Uses generic .bp-cat-rail-row primitive with [data-level] for indent.
+      container:
+        outer: ".bp-cat-body--cats-left  [global: marketplace]"
+        sidebar: ".bp-cat-sidebar        [global]"
+        head: ".bp-cat-sidebar-head      [global] — eyebrow"
+        head-label:
+          agent-full: "Project conversations"
+          agent-project: "Category conversations"
+          supplier-full: "Client conversations"
+          supplier-project: "Conversations"
+        head-icon: "messages-square (Lucide)"
+        body: ".bp-cat-sidebar-body      [global] — scrollable"
+        list: ".bp-cat-rail              [global]"
+      row-primitive:
+        class: ".bp-cat-rail-row         [NEW — to add for generic indent]"
+        levels: "[data-level=1|2|3] sets padding-left; replaces .bp-cat-rail-sub-sub family"
+      level-content:
+        project:
+          content: "folder icon + project name + (supplier subtitle for supplier viewer) + thread count + chevron"
+        category:
+          content: "category icon + category name + thread count + chevron"
+        item:
+          content: "item-name + latest-snippet + timestamp + unread-badge"
+          binding: "(click) -> selectedItemId; emits threadSelected"
+
+    thread-pane-right:
+      desc: per-item conversation
+
+      thread-header:
+        type: "[local]"
+        breadcrumb: "Project > Supplier > Item"
+        status-pill: "open / closed / awaiting"
+
+      item-preview-card:
+        type: "[global: <app-message-item-card>] — reused from marketplace shape (p0011)"
+        pinned: top
+        gated_by: showItemPreview input  (page-setting can turn off)
+        content: "thumbnail + item-name + was->now price + decision pill"
+
+      message-list:
+        type: "[local]"
+        scrollable: true
+        message-bubble:
+          type: "[global: .bp-msg-bubble CSS]"
+          avatar: ~
+          sender-name-timestamp: ~
+          body: "text / attachments"
+          decision-action: "accept / counter / reject (when applicable)"
+
+      compose-bar:
+        type: "[local]"
+        pinned: bottom
+        textarea:
+          type: "[global: .bp-compose-input]"
+        attach-button: paperclip icon
+        send-button:
+          type: "[global: .bp-btn-primary]"
+
+status:
+  built_so_far:
+    - hero             # p0037 — shared shell + route, hero layer only
+    - search-row       # p0038
+    - tree-rail-shell  # p0038 — empty 3-deep rail + thread-pane placeholder, no data
+  sketched_not_yet_coded:
+    - filter-drawer
+    - thread-pane
+  next_to_code:
+    - filter-drawer

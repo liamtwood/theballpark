@@ -1,0 +1,1430 @@
+/* @import rules must precede other statements. */
+@import 'primeicons/primeicons.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Ballpark brand tokens — single source of truth ───────────────────── */
+  /* Brand mark (pV2-01f): vivid pink→green "logo circle" gradient — white
+     text reads cleanly on it. The soft pastel use case (row tints, soft
+     surfaces) stays on --theme-soft; --bp-gradient is brand-mark territory. */
+  --bp-gradient: linear-gradient(135deg, #d63384 0%, #16a34a 100%);
+  /* Text color that sits ON the gradient (avatar initials, brand buttons). */
+  --bp-text-on-gradient: #ffffff;
+  /* Master brand font + text color (DB-driven from pV2-01e onwards). */
+  --bp-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bp-text-color: #1f2937;
+
+  --theme-accent: #d63384;
+  --theme-accent-contrast: #ffffff;
+  --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
+  --theme-bg: #fbf7f4;
+  --theme-text: var(--bp-text-color);
+  /* Chrome tokens */
+  --border-hairline: 1px solid rgba(0, 0, 0, 0.06);
+  --color-text-secondary: #6b7280;
+  /* Middle step of the 3-shade text ramp (Liam, 2026-06-11): section titles
+     + field values sit between the #111 title black and the secondary gray. */
+  --color-text-strong: #374151;
+
+  /* ── Semantic state tokens (pV2-AUDIT-02 fix 5) — DO NOT recolour with
+     theme presets. Carried from v1's vocabulary for parity. ───────────── */
+  --color-success: #047857; /* green — Live / Signed / Accepted / connected */
+  --color-success-soft: #d1fae5;
+  --color-warn: #b45309; /* amber — Negotiating / Pending invite / degraded */
+  --color-warn-soft: #fef3c7;
+  --color-danger: #b91c1c; /* red — Suspended / Declined / destructive */
+  --color-danger-soft: #fee2e2;
+  --color-info: #1e40af; /* blue — Signing SOW / in progress */
+  --color-info-soft: #dbeafe;
+  --color-action: #6d28d9; /* purple — Payment Processing / Quoted */
+  --color-action-soft: #ede9fe;
+
+  /* ── Extended state-hue tokens (pV2-CODELISTS-02 / RP-09) — referenced by
+     codelist meta ('--color-state-*' refs in shared.reference_codelist_values;
+     project_status + category_status). Hex matches the original v1 palette so
+     the token sweep changed NOTHING visually; v1 styles.css defines the same
+     names. Retire/remap when a styling pass rationalises the status hues. */
+  --color-state-blue: #3b82f6; /* briefed */
+  --color-state-indigo: #6366f1; /* out for quote */
+  --color-state-sky: #0ea5e9; /* quoted */
+  --color-state-violet: #8b5cf6; /* client managed */
+  --color-state-orange: #f97316; /* need supplier */
+  --color-state-amber: #f59e0b; /* draft (project) / awaiting client */
+  --color-state-green: #22c55e; /* confirmed */
+  --color-state-emerald: #10b981; /* active (project) */
+  --color-state-gray: #6b7280; /* draft (category) / completed */
+  --color-state-gray-light: #9ca3af; /* archived / n.a. */
+
+  /* ── Surface / structure tokens ──────────────────────────────────────── */
+  --color-surface: #ffffff;
+  --color-surface-alt: rgba(255, 255, 255, 0.8); /* glassy card (login) */
+  --color-fill: #f8fafc; /* hover fills, subtle grounds */
+  --color-border-hairline: rgba(15, 23, 42, 0.1);
+  --color-border-medium: rgba(15, 23, 42, 0.18);
+  /* Soft-pastel swatches — the image-picker icon backgrounds (pV2-MEDIA-01b)
+     and the cover-less icon fallback. Token names referenced from media.types
+     (no raw hex in components). */
+  --bp-pastel-1: #f1f5f9;
+  --bp-pastel-2: #fef3c7;
+  --bp-pastel-3: #dbeafe;
+  --bp-pastel-4: #d1fae5;
+  --bp-pastel-5: #fde2e2;
+  --bp-pastel-6: #ede9fe;
+  --bp-pastel-7: #fce7f3;
+  --bp-pastel-8: #e0e7ff;
+  /* Muted text — one step lighter than secondary (#6b7280); the spec's
+     literal #6b7280 would have made muted === secondary, collapsing two
+     roles into one value. Deviation flagged in the ship report. */
+  --color-text-muted: #9ca3af;
+
+  /* ── Typography (pV2-TYPE-01) — ONE family, one scale ─────────────────
+     Family is DB-driven: bp_brand_config.font_pair → BrandConfigService →
+     --bp-font at bootstrap. The role aliases exist so a future return to a
+     two-family pairing is a one-line flip, not a refactor. FAMILY NEVER
+     VARIES — size / weight / case / color / line-height do (the .bp-* type
+     classes below). This file + the BallparkPreset are the ONLY legal
+     sites for font-family / literal font-size (lint-enforced). */
+  --font-display: var(--bp-font);
+  --font-body: var(--bp-font);
+  /* Dev chrome only (version chip) — not part of the brand surface. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Layer 1 — size scale (One Definition of every size) */
+  --text-xs: 10px; /* micro-meta — capsule chip captions */
+  --text-2xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px; /* large body — marketing paragraph */
+  --text-xl: 18px;
+  --text-2xl: 22px; /* all container headings: card / drawer / edit-section titles */
+  --text-3xl: 42px; /* hero amount — the Ballpark cost banner + project-card total (v2.25n: 30→42, shared tier; split if the card feels big) */
+  --text-hero: 40px;
+  --text-greeting: clamp(40px, 5vw, 60px); /* responsive in the token */
+
+  /* Tracking (uppercase treatments) + line heights */
+  --tracking-wide: 0.05em;
+  --leading-tight: 1.15; /* greeting / hero titles */
+  --leading-snug: 1.3; /* card + drawer titles */
+  --leading-normal: 1.45; /* body, labels, help */
+
+  /* Fixed neutral body-text color (DESIGN.md structural neutrals) — distinct
+     from the themable --theme-text. */
+  --color-text: #111111;
+
+  /* ── Card / elevation tokens (pV2-04b) ──────────────────────────────── */
+  /* 20px per Liam's QC ("increase the rounding on any boxes") — matches
+     v1's action-tile radius (p0019). Tiles + icon blocks + future cards
+     all ride this one token. */
+  --radius-card: 20px;
+  --radius-pill: 999px; /* button pills — never inline 9999px */
+  /* Form-control family radius (pV2-CARDS-01 QC): ONE token for the
+     search box + .bp-fld + the p-select trigger — same family, same
+     rhythm, zero drift. Anchored to the search bar's pill (the most
+     prominent control on /marketplace). FIELDS.md doc capture queued
+     to name the full chrome contract (radius + padding + focus ring). */
+  --radius-field: var(--radius-pill);
+  /* Glow under the gradient CTA — pairs with --bp-gradient (pink head of
+     the ramp). Static fallback like the gradient itself; the brand admin
+     surface (pV2-TYPE-02 era) updates both together. */
+  --bp-gradient-shadow-rgb: 214, 51, 132;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* Shell vertical chrome (audit cards-F-1): the SINGLE source for the
+     app-shell main paddings AND the .bp-vpfit height calc — change a
+     value here and both stay in step (a banner/tray bumps --shell-pt
+     once, every viewport-fit page follows). */
+  --shell-pt: 5rem;
+  --shell-pb: 0.5rem;
+
+  /* ── PrimeNG bridge ───────────────────────────────────────────────────────
+     PrimeNG (styled mode) injects its design tokens at RUNTIME, so overriding
+     `--p-*` here would be clobbered. The Ballpark→PrimeNG bridge therefore lives
+     in ONE place: the `BallparkPreset` (definePreset(Aura, …)) in app.config.ts,
+     whose primary.500 == --theme-accent below. This `:root` block stays the
+     single source of truth for NON-PrimeNG brand tokens (app chrome, Tailwind). */
+}
+
+/* Standard page-body padding below an <app-page-hero>. */
+.bp-page-body {
+  padding: 32px;
+}
+
+/* Viewport-fit page (pV2-CARDS-01 QC laptop pass): the PAGE never scrolls
+   — the hero + filter band stay anchored and each catalogue column scrolls
+   within itself (catalogue-layout owns the per-column overflow). md+ only:
+   mobile keeps the natural single-column page scroll. Height = viewport
+   minus the shell's pt-20 (5rem) + pb-12 (3rem). */
+@media (min-width: 768px) {
+  .bp-vpfit {
+    display: flex;
+    flex-direction: column;
+    /* Shell chrome from the single-source tokens (audit cards-F-1). */
+    height: calc(100dvh - var(--shell-pt) - var(--shell-pb));
+    min-height: 0;
+  }
+  .bp-vpfit > .bp-page-body,
+  .bp-vpfit .bp-vpfit__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 12px 24px 8px;
+  }
+  /* Compressed hero on viewport-fit pages (laptop QC 2026-06-12: the
+     standard hero + body paddings left the columns ~half the screen).
+     Type ranks unchanged — only the vertical air tightens. */
+  .bp-vpfit .bp-page-hero {
+    padding: 10px 32px 10px;
+    gap: 4px 20px;
+  }
+}
+
+/* ═══ Layer 2 — the type-class table (pV2-TYPE-01) ═══════════════════════
+   Surface-keyed names; each class is a one-line composition of the Layer-1
+   tokens above. Where two classes coincide (card-title ≡ drawer-title)
+   that's deliberate convergence — the values live once, in Layer 1.
+   Shared components bake their classes in (page-hero, edit-field, …);
+   hand-typed classes appear only in page-specific templates.
+   Eyebrows use the THEMABLE --theme-text on purpose (locked decision,
+   Liam 2026-06-11): they re-colour with persona presets; titles stay on
+   the fixed neutral --color-text. Do not "fix". */
+
+/* Hero — home */
+.bp-home-title    { font-family: var(--bp-font); font-size: var(--text-greeting); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); letter-spacing: -0.01em; }
+.bp-home-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Hero — page */
+.bp-page-back     { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 500; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+.bp-page-label    { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
+.bp-page-title    { font-family: var(--bp-font); font-size: var(--text-hero); font-weight: 400; line-height: var(--leading-tight); color: var(--color-text); }
+.bp-page-subtitle { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Section */
+.bp-section-title    { font-family: var(--bp-font); font-size: var(--text-xl); font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-section-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Edit-form card (the v2 edit-form standard — Profile is the reference).
+   Converged on the 2xl container-heading rank (card ≡ drawer ≡ edit-section);
+   differentiated by SHADE — the middle --color-text-strong step. */
+.bp-edit-section-title { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text-strong); }
+
+/* Card / tile */
+.bp-card-title    { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-card-subtitle { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Drawer */
+.bp-drawer-label            { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); color: var(--theme-text); }
+.bp-drawer-title            { font-family: var(--bp-font); font-size: var(--text-2xl); font-weight: 400; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-drawer-section-title    { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-drawer-section-subtitle { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Field */
+.bp-field-label { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 500; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+.bp-field-value { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-strong); }
+.bp-field-help  { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
+
+/* Body */
+.bp-body       { font-family: var(--bp-font); font-size: var(--text-md); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text); }
+.bp-body-small { font-family: var(--bp-font); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text); }
+.bp-caption    { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
+
+/* List title + amounts (pV2-PROJECTS-02 — quote/estimate standardisation).
+   .bp-list-title — a list-row name (cat name, item name). .bp-amount — a
+   money figure (cat total, your cost, budget diff). .bp-amount-hero — the
+   big banner / card headline figure. amounts set TYPE only; colour stays
+   with the consumer (default text, or success/danger on a budget diff,
+   or the gradient clip on the project card). */
+.bp-list-title  { font-family: var(--bp-font); font-size: var(--text-md);  font-weight: 500; line-height: var(--leading-snug); color: var(--color-text); }
+.bp-amount      { font-family: var(--bp-font); font-size: var(--text-md);  font-weight: 600; line-height: var(--leading-snug); }
+.bp-amount-hero { font-family: var(--bp-font); font-size: var(--text-3xl); font-weight: 600; line-height: var(--leading-snug); }
+
+/* Inline — pill sets type only; shape (padding/radius) and the per-state
+   colors stay with the consumer (semantic tokens). */
+.bp-status-pill { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); line-height: 1; }
+.bp-meta        { font-family: var(--bp-font); font-size: var(--text-2xs); font-weight: 400; line-height: var(--leading-normal); color: var(--color-text-muted); }
+
+/* Column */
+.bp-table-column-header { font-family: var(--bp-font); font-size: var(--text-sm); font-weight: 600; line-height: var(--leading-normal); color: var(--color-text-secondary); }
+
+/* Brand wordmark metrics (pV2-01f: 16px/600/lh 1/0 tracking — matches the
+   40px avatar initials). Lives HERE because styles.css is the legal site
+   for the literal size; <app-wordmark> consumes the class. */
+.bp-wordmark { font-family: var(--bp-font); font-size: 16px; font-weight: 600; line-height: 1; letter-spacing: 0; color: var(--bp-text-color); text-decoration: none; }
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--bp-font);
+}
+
+/* Mobile type overrides at the ROOT (pV2-TYPE-01 / DESIGN.md §5 rule 5:
+   update the token in a media query — never re-declare per-component).
+   --text-greeting needs none (clamp() is responsive by itself). */
+@media (max-width: 640px) {
+  :root {
+    --text-hero: 28px;
+  }
+}
+
+/* Settings-page field grids (pV2 Profile — the v1 bp-field-grid standard).
+   edit-fields lay out 2- or 3-up; span2 stretches a field across both
+   columns of the 2-up grid. Single column under 640px. */
+.bp-field-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+.bp-field-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px 20px;
+}
+.bp-field-grid-2 .bp-edit-field--span2 {
+  grid-column: 1 / -1;
+}
+@media (max-width: 640px) {
+  .bp-field-grid-2,
+  .bp-field-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Settings-page section stack. */
+.bp-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+}
+
+/* ═══ Buttons (DESIGN.md §8 — locked spec, defined ONCE here) ════════════
+   .bp-btn-outline — the quiet pill (Edit / Cancel).
+   .bp-btn-grad    — the vivid brand CTA (edit-form Save changes per the v1
+                     standard; landing/hero CTAs). Scarce on purpose. */
+.bp-btn-outline,
+.bp-btn-grad {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 400;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+}
+
+.bp-btn-outline {
+  background: var(--color-surface);
+  border-color: var(--color-border-hairline);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+.bp-btn-outline:hover {
+  box-shadow: var(--shadow-md);
+}
+.bp-btn-outline:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.bp-btn-outline:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+.bp-btn-grad {
+  background: var(--bp-gradient);
+  color: var(--bp-text-on-gradient);
+  /* Brand-glow shadow uses --bp-gradient-shadow-rgb (pink stop) */
+  box-shadow:
+    0 2px 6px rgba(var(--bp-gradient-shadow-rgb), 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.bp-btn-grad:hover {
+  box-shadow:
+    0 8px 20px rgba(var(--bp-gradient-shadow-rgb), 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.bp-btn-grad:active {
+  transform: translateY(0);
+}
+.bp-btn-grad:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+.bp-btn-grad:focus-visible {
+  outline: 2px solid rgba(var(--bp-gradient-shadow-rgb), 1);
+  outline-offset: 2px;
+}
+
+/* Card-foot CTA density (pV2-CARDS-01 tweak pass): inside a card foot the
+   brand CTA drops to --text-sm (12px) + tighter padding. The 12px rank
+   DELIBERATELY converges with .bp-tag-chip so the card foot carries
+   proportional weight against the prominent .bp-price-large — keep the
+   two in step, don't drift them apart. */
+.bp-btn-grad.bp-cta-foot {
+  padding: 8px 16px;
+  font-size: var(--text-sm);
+}
+
+/* Danger (BUTTONS.md locked spec, ships pV2-DIALOGS-01): destructive
+   actions only — NEVER without a paired confirmation dialog (locked rule;
+   RP-08 candidate at audit). First consumer: team remove-confirm. */
+.bp-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--bp-font);
+  font-size: var(--text-md);
+  font-weight: 400;
+  background: var(--color-danger);
+  color: #fff;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, background 0.12s ease, transform 0.12s ease;
+}
+.bp-btn-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 88%, #000);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+.bp-btn-danger:active {
+  transform: scale(0.98);
+}
+.bp-btn-danger:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+.bp-btn-danger:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+
+/* The brand CTA's "done" twin (BUTTONS.md two-state pattern, pV2-CARDS-01):
+   visually muted but NOT hidden — acknowledgment, usually unclickable. */
+.bp-btn-grad--added {
+  /* Longhands, not the shorthand — `background: var(--x)` over the base's
+     gradient image computes invalid and resets EVERYTHING to transparent. */
+  background-image: none;
+  background-color: var(--color-text-muted);
+  color: #fff;
+  box-shadow: none;
+}
+.bp-btn-grad--added:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+/* Drawer density — when inside .bp-card--drawer or a drawer footer */
+.bp-card--drawer .bp-btn-outline,
+.bp-card--drawer .bp-btn-grad {
+  padding: 8px 16px;
+  font-size: var(--text-base);
+}
+
+/* ═══ Marketplace utilities (pV2-06 arc) ═════════════════════════════════
+   RP-05 fix (chat audit, 2026-06-12): .bp-* classes live HERE, never in
+   component styles blocks — the one-definition rule. The style guard now
+   fails new component-local .bp-* definitions (legacy BEM-element files
+   are ratchet-allowlisted until refactored). */
+
+/* View toggle (card / list / table) — reusable by any catalogue surface. */
+.bp-viewtoggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-viewtoggle:hover {
+  background: var(--color-fill);
+}
+.bp-viewtoggle--active {
+  background: var(--theme-soft);
+  color: var(--color-text);
+}
+
+/* Left category rail rows. */
+.bp-catstrip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: var(--text-base);
+  color: var(--color-text-strong);
+  text-align: left;
+  cursor: pointer;
+}
+.bp-catstrip-row:hover {
+  background: var(--color-fill);
+}
+.bp-catstrip-row--active {
+  background: var(--theme-soft);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Item-card / preview imagery. */
+.bp-item-card__img {
+  display: block;
+  width: 100%;
+  /* Portrait card (pV2-CARDS-01 QC #2): the hero scales with column width
+     instead of the old fixed 132px square-ish crop — 4:3 image over the
+     content block lands the CARD at roughly 3:4. */
+  aspect-ratio: 4 / 3;
+  height: auto;
+  object-fit: cover;
+  background: var(--color-fill);
+}
+.bp-item-card__img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--theme-soft);
+}
+.bp-itemprev-img {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--color-fill);
+}
+.bp-itemprev-img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--theme-soft);
+}
+.bp-itemprev-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-itemprev-close:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+
+/* Right-rail content block. */
+.bp-rail-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 120px;
+}
+
+/* Hero tab band (pV2-06d primitive) — marketplace Items|Suppliers,
+   supplier-detail Storefront|Store, future project tabs. */
+.bp-tab-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+.bp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--bp-font);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-tab:hover {
+  background: var(--color-fill);
+}
+.bp-tab--active {
+  background: var(--theme-soft);
+  color: var(--color-text);
+  font-weight: 500;
+}
+.bp-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--theme-accent);
+  color: var(--theme-accent-contrast);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+/* ═══ Cards (CARDS.md — locked chrome foundation, pV2-CARDS-01) ══════════
+   ONE chrome foundation for every card-shaped surface. Components consume
+   via host/class — internal layout stays bespoke per archetype; chrome and
+   the interaction patterns (lift / zoom / selection / focus) live here
+   only (RP-07: the style guard fails component-local card chrome). */
+.bp-card {
+  position: relative; /* overlay anchors: .bp-fav-btn, tag chips, badges */
+  display: block;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+.bp-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.bp-card:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.bp-card--selected {
+  border-color: var(--theme-accent);
+  box-shadow: var(--shadow-md);
+}
+/* Image zoom on hover (item / supplier / project / storefront cells). */
+.bp-card--zoom img {
+  transition: transform 0.4s ease;
+}
+.bp-card--zoom:hover img {
+  transform: scale(1.04);
+}
+/* Lifted rest state — the launcher tile's Figma look (pV2-04b2: md at
+   rest, lg + -3px on hover so the lift stays visible). */
+.bp-card--lifted {
+  box-shadow: var(--shadow-md);
+}
+.bp-card--lifted:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+/* ── Card content sub-primitives (CARDS.md table) ──────────────────────── */
+/* Soft pastel pill with themed-accent text — category subtitle on item
+   cards (image 2), brand pill overlay on project cards (image 8). */
+.bp-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--bp-font);
+  /* --text-sm (12px) converges with .bp-cta-foot — the card foot's
+     deliberate lighter rank against .bp-price-large (keep in step). */
+  font-size: var(--text-sm);
+  font-weight: 400;
+  background: var(--theme-soft);
+  color: var(--theme-text);
+  line-height: 1.4;
+}
+/* Prominent accent price — "From £2,000" (image 2), "£0 Ballpark"
+   (image 8). The gradient clip carries the brand on the number. */
+.bp-price-large {
+  font-family: var(--bp-font);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  background: var(--bp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Small uppercase tracked accent reference — WA-026 (image 8). */
+.bp-ref-eyebrow {
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--theme-text);
+}
+/* Soft pastel rounded square holding a Lucide icon — launcher tile
+   (image 9), rail category rows (image 1). Size is layout — the consumer
+   sets width/height (Tailwind or structural CSS). */
+.bp-icon-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-card);
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+}
+
+/* Supplier card internals (pV2-06d; chrome now from .bp-card). The
+   logo-letter circle stays — list rows (supplier-grid / storefront-panel /
+   category-summary) still render it; the CARD dropped it per image 3. */
+.bp-supplier-card__link {
+  display: block;
+  text-decoration: none;
+  color: var(--color-text);
+}
+.bp-supplier-card__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--theme-soft);
+  color: var(--theme-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.bp-fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+}
+.bp-fav-btn:hover {
+  color: var(--theme-accent);
+}
+.bp-fav-btn--on {
+  /* Active = the brand gradient fills the circle, icon goes light
+     (Liam, 2026-06-12). background-image longhand — the shorthand-over-
+     gradient trap is documented at .bp-btn-grad--added. */
+  background-image: var(--bp-gradient);
+  border-color: transparent;
+  color: var(--bp-text-on-gradient);
+}
+.bp-fav-btn--on:hover {
+  color: var(--bp-text-on-gradient);
+}
+/* Second overlay slot — the customer-proposed "+" add button sits left
+   of the heart (v2.20q; replaced the gradient foot CTA per the
+   BUTTONS.md scarcity rule). */
+.bp-fav-btn--second {
+  right: 44px;
+}
+.bp-fav-btn--on svg {
+  fill: currentColor;
+}
+
+/* ═══ Project card (pV2-PROJECTS-01, v1 parity — Liam 2026-06-13) ════════
+   Internal layout for <app-project-card>; chrome comes from .bp-card.
+   Mirrors the v1 projects-list card: tall cover with status-gradient
+   fallback + zoom, client chip, gradient "Ballpark" total. (Raw hex is
+   allowed in styles.css — this is the token layer, not a component.) */
+.bp-projcard__cover {
+  position: relative;
+  width: 100%;
+  /* Same 4:3 as the marketplace item card (.bp-item-card__img) — scales
+     with column width instead of a fixed height (Liam, 2026-06-13). */
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+/* Separate image layer so it zooms while the chip stays put (v1). */
+.bp-projcard__img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.4s ease;
+}
+.bp-card:hover .bp-projcard__img {
+  transform: scale(1.04);
+}
+/* No-cover fallbacks, by status (v1 blues / greys). */
+.bp-projcard__img--active {
+  background-image: linear-gradient(160deg, #1e3a5f, #2563eb);
+}
+.bp-projcard__img--draft {
+  background-image: linear-gradient(160deg, #374151, #4b5563);
+}
+/* Client chip — bottom-left of the cover (v1 "Nike"). */
+.bp-projcard__client-chip {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text);
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+}
+.bp-projcard__logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 70%;
+  max-height: 70%;
+  object-fit: contain;
+  pointer-events: none;
+}
+/* Cover-less icon fallback fills the 4:3 cover with a centred big icon
+   (pV2-MEDIA-01b). */
+.bp-projcard__iconwrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-fill);
+}
+.bp-projcard__iconwrap .bp-entity-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-card);
+}
+/* Mandatory Unsplash attribution caption (MEDIA.md lock §4 / RP-11). */
+.bp-projcard__attr {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Estimate "Estimated Ballpark Cost" banner — the add-project-2 brand
+   moment: the vivid gradient earns its scarcity (DESIGN.md §2). */
+.bp-quote-banner {
+  border-radius: var(--radius-card);
+  background: var(--bp-gradient);
+  color: var(--bp-text-on-gradient);
+}
+/* The banner is a uniform white-text zone — descendants inherit white,
+   overriding role-class colours (e.g. .bp-body-small's --color-text). */
+.bp-quote-banner * {
+  color: inherit;
+}
+
+/* Estimate line-item thumb — the home action-card rounded square holding
+   the item image (pV2-PROJECTS-02 slice 3, Liam 2026-06-14). */
+.bp-est-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+/* Quantity stepper on cart + quote lines (pV2-QUANTITY-01): −/+ buttons
+   flanking a centered, still-typeable field (event scale → people type large
+   numbers, not just tap). Native spinner suppressed; the field stays editable
+   for fast entry. */
+.bp-qty-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-field);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.bp-qty-stepper:focus-within {
+  border-color: var(--theme-accent);
+}
+.bp-qty-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-qty-step:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+.bp-qty-input {
+  width: 46px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.bp-qty-input::-webkit-outer-spin-button,
+.bp-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.bp-qty-input:focus {
+  outline: none;
+}
+
+/* Cart category band — a centered, soft-fill strip heading each category's
+   group of lines in the Project Quote rail (pV2-QUANTITY-01). */
+.bp-cart-cat-band {
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: var(--radius-field);
+  background: var(--color-fill);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-strong);
+}
+
+/* Headline "Ballpark" total — brand gradient text, ~30px / weight 400
+   (v1 .bp-card-total). Distinct from .bp-price-large (2xl/600). */
+.bp-projcard__total {
+  font-family: var(--bp-font);
+  font-size: var(--text-3xl);
+  font-weight: 400;
+  line-height: 1;
+  background: var(--bp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Storefront category chip (pV2-06d). */
+.bp-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+.bp-cat-chip:hover {
+  background: var(--color-fill);
+}
+
+/* Subcategory strip active state (pV2-06-subcats). */
+.bp-cat-chip--active {
+  background: var(--theme-soft);
+  border-color: var(--theme-accent);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Curation table subcategory expander (pV2-06-subcats). */
+.bp-subcat-expander {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-subcat-expander:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+
+/* Category-rail subtree rows (v2.16c tree rail). Denser than parents
+   (pV2-CARDS-01 fold pass): 12px + tight vertical padding — visually
+   subordinate AND the rail shows more rows unscrolled. */
+.bp-catstrip-row--sub {
+  padding: 4px 12px 4px 28px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.bp-catstrip-row--sub.bp-catstrip-row--active {
+  color: var(--color-text);
+}
+
+/* Rail chevron hit-target (v2.16d collapse fix). */
+.bp-catstrip-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+.bp-catstrip-chevron:hover {
+  background: var(--color-fill);
+}
+
+/* Codelist status pill shape (pV2-CODELISTS-01) — TYPE comes from
+   .bp-status-pill (the §5 table class); this adds the pill chrome.
+   Colors arrive inline from codelist meta (data, not tokens). */
+.bp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* ═══ Dialogs (DIALOGS.md — locked specs, pV2-DIALOGS-01) ════════════════
+   Every system-to-user message: blocking modals (confirm/info), inline
+   alerts, transient toasts, hover tooltips. Locked rules: danger buttons
+   NEVER fire without a confirm dialog; toast for outcomes, dialog for
+   permissions; form errors are inline alerts, never toasts; tooltips
+   never carry decision-critical content; ESC always dismisses. */
+.bp-modal .p-dialog-header {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-hairline);
+  padding: 20px 24px;
+}
+.bp-modal .p-dialog-content {
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 20px 24px;
+}
+.bp-modal .p-dialog-footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-hairline);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+/* Compound selector — PrimeNG's runtime-injected theme styles land AFTER
+   styles.css, so .p-dialog ties (and wins) at one class of specificity. */
+.bp-modal.p-dialog {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Confirmation variant — tighter; headline emphasises the action. */
+.bp-modal--confirm .p-dialog-content {
+  padding: 24px;
+}
+.bp-modal--confirm .p-dialog-header {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.bp-modal--confirm .p-dialog-footer {
+  border-top: none;
+}
+.bp-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-bottom: 12px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+/* ── Drawer (pV2-MEDIA-01a) — generic right-side panel wrapping p-drawer.
+   The picker (and future filter/settings panels) mount here. PrimeNG's
+   theme styles inject after styles.css, so the .p-drawer compound selector
+   ties + wins at one class. */
+.bp-drawer.p-drawer {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.bp-drawer .p-drawer-content {
+  padding: 0;
+  height: 100%;
+}
+.bp-drawer__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.bp-drawer__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.bp-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px;
+}
+.bp-drawer__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.bp-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.bp-drawer__close:hover {
+  background: var(--color-fill);
+  color: var(--color-text);
+}
+/* Mobile: full-screen below md (MEDIA.md lock §9). */
+@media (max-width: 767px) {
+  .bp-drawer.p-drawer {
+    width: 100% !important;
+  }
+}
+
+/* ── Image picker (pV2-MEDIA-01b) ── */
+.bp-picker__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-field);
+  background: var(--color-fill);
+}
+.bp-picker__tab {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--radius-field);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-picker__tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+.bp-picker__drop {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  border: 1px dashed var(--color-border-medium);
+  border-radius: var(--radius-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.bp-picker__drop:hover,
+.bp-picker__drop--over {
+  background: var(--color-fill);
+  border-color: var(--theme-accent);
+}
+.bp-picker__search {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+}
+.bp-picker__search:focus-within {
+  border-color: var(--theme-accent);
+}
+.bp-picker__search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--bp-font);
+  font-size: var(--text-md);
+  color: var(--color-text);
+}
+.bp-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.bp-picker__cell {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-fill);
+  cursor: pointer;
+}
+.bp-picker__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bp-picker__icons {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.bp-picker__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-card);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+.bp-picker__icon:hover {
+  outline: 2px solid var(--theme-accent);
+}
+.bp-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-hairline);
+  cursor: pointer;
+}
+.bp-swatch--active {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 1px;
+}
+/* Focal-point preview — click to anchor the crop (lock §10). */
+.bp-focal {
+  position: relative;
+  display: block;
+  margin-top: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-fill);
+  cursor: crosshair;
+}
+.bp-focal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.bp-focal__dot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  background: var(--theme-accent);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Cover-less icon fallback square (pV2-MEDIA-01b). */
+.bp-entity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-text-strong);
+}
+
+/* Project Details "Image" section preview (pV2-MEDIA-01b). */
+.bp-media-preview {
+  flex-shrink: 0;
+  width: 96px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-fill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+.bp-media-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bp-media-preview .bp-entity-icon {
+  width: 100%;
+  height: 100%;
+}
+
+/* Inline alert banner — persists until the state changes (form errors,
+   advisories). Variants carry the semantic state pair. */
+.bp-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid;
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+  line-height: 1.4;
+}
+.bp-alert__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bp-alert__body {
+  flex: 1;
+  min-width: 0;
+}
+.bp-alert__dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+}
+.bp-alert__dismiss:hover {
+  opacity: 1;
+}
+.bp-alert--success { background: var(--color-success-soft); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-success); }
+.bp-alert--info    { background: var(--color-info-soft);    border-color: color-mix(in srgb, var(--color-info)    30%, transparent); color: var(--color-info); }
+.bp-alert--warn    { background: var(--color-warn-soft);    border-color: color-mix(in srgb, var(--color-warn)    30%, transparent); color: var(--color-warn); }
+.bp-alert--danger  { background: var(--color-danger-soft);  border-color: color-mix(in srgb, var(--color-danger)  30%, transparent); color: var(--color-danger); }
+
+/* Toast = the .bp-alert FLOOD chrome wrapped in the toast lifecycle
+   (v2.21e, Liam's call): same severity-soft background + severity-colour
+   icon/text + hairline border as the inline alert — colour carries the
+   signal at a glance — but it keeps the floating lifecycle (bottom-right
+   slide-in, auto-dismiss). Toast and alert now SHARE chrome, differ only
+   in lifecycle. The float-shadow stays (a toast is a layer above content;
+   the inline alert is flat in the flow). */
+.bp-toast .p-toast-message {
+  border-radius: var(--radius-card);
+  border: 1px solid;
+  box-shadow: var(--shadow-md);
+  font-family: var(--bp-font);
+  font-size: var(--text-base);
+}
+.bp-toast .p-toast-message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.bp-toast .p-toast-message-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+.bp-toast .p-toast-message-text { min-width: 0; }
+.bp-toast .p-toast-summary {
+  font-weight: 500;
+  line-height: var(--leading-snug);
+  color: inherit; /* severity colour from the message-level rule */
+}
+.bp-toast .p-toast-detail {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: inherit;
+  opacity: 0.85; /* quieter than the summary, same severity hue */
+}
+.bp-toast .p-toast-close-button,
+.bp-toast .p-toast-icon-close {
+  flex-shrink: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+/* Severity flood — mirrors .bp-alert--* (background-soft / 30%-mix
+   border / severity text+icon). */
+.bp-toast .p-toast-message-success { background: var(--color-success-soft); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-success); }
+.bp-toast .p-toast-message-info    { background: var(--color-info-soft);    border-color: color-mix(in srgb, var(--color-info)    30%, transparent); color: var(--color-info); }
+.bp-toast .p-toast-message-warn    { background: var(--color-warn-soft);    border-color: color-mix(in srgb, var(--color-warn)    30%, transparent); color: var(--color-warn); }
+.bp-toast .p-toast-message-error   { background: var(--color-danger-soft);  border-color: color-mix(in srgb, var(--color-danger)  30%, transparent); color: var(--color-danger); }
+
+/* Hover help — never decision-critical content (locked rule 4). */
+.bp-tooltip .p-tooltip-text {
+  background: var(--color-text);
+  color: var(--color-surface);
+  border-radius: var(--radius-card);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  padding: 6px 10px;
+  max-width: 240px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Codelists admin (pV2-CODELISTS-01): the system|ballpark type badge on the
+   master rail. system = muted (read-only lists), ballpark = accent-soft. */
+.bp-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-family: var(--bp-font);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--theme-soft);
+  color: var(--color-text);
+}
+.bp-type-badge--system {
+  background: var(--color-fill);
+  color: var(--color-text-muted);
+}

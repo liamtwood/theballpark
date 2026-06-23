@@ -5,6 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
+import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import {
@@ -106,7 +107,7 @@ interface VendorThread {
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    ButtonModule, InputTextModule, DropdownModule, ToastModule,
+    ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, CategoryCirclesComponent,
     MessageItemCardComponent
@@ -116,93 +117,29 @@ interface VendorThread {
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <!-- v1.65g4 — top filter row: Client | Project | Search on a
-           single line. Client + Project dropdowns only render in
-           global (un-bound) mode; search is universal. The two
-           previously-separate bars (bp-msg-project-bar + bp-browse-
-           strip) collapsed into one row so the inbox loses ~50px of
-           chrome and the three coarsest filters sit shoulder to
-           shoulder. -->
-      <div class="bp-msg-top-filter-row">
-        <p-dropdown *ngIf="!boundProjectId"
-          [(ngModel)]="selectedClientId"
-          [options]="clientDropdownOptions"
-          optionLabel="name" optionValue="id"
-          styleClass="bp-msg-top-dd"
-          placeholder="All clients"
-          (onChange)="onClientChange()">
-        </p-dropdown>
-
-        <p-dropdown *ngIf="!boundProjectId"
-          [(ngModel)]="selectedProjectId"
-          [options]="projectOptions"
-          optionLabel="name" optionValue="id"
-          styleClass="bp-msg-top-dd"
-          placeholder="All projects"
-          (onChange)="onProjectChange()">
-        </p-dropdown>
-
-        <div class="bp-search-row bp-msg-top-search">
-          <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
-          <input pInputText type="text"
-                 [(ngModel)]="searchTerm"
-                 (ngModelChange)="onSearchChange()"
-                 placeholder="Search threads, suppliers, messages…"
-                 class="bp-search-input"/>
-        </div>
-      </div><!-- /.bp-msg-top-filter-row -->
-
       <!-- ═══════════════ TWO-COLUMN BODY ═══════════════
-           v1.65dv (p0015 follow-up) — filter sidebar retired. Three
-           dropdowns in the INBOX header (Category / Contact / Status)
-           replace the rail. Body grid is now main (1fr) | detail
-           (resizable preview). -->
+           Body grid is main (1fr) | detail (resizable preview). -->
       <div class="bp-cat-body bp-msg-body bp-msg-body--2col"
            [style.--bp-msg-preview-w.px]="previewWidth">
 
-        <!-- ── MAIN: panel head (icon + INBOX + count + 3 filter
-             dropdowns) + scrolling body ── -->
+        <!-- ── MAIN: search bar (spans the inbox container width) + scrolling
+             thread list. v1.69c — the search moved into the inbox column so it
+             matches its width; the Filter sits as an icon INSIDE the search
+             bar (standard .bp-search-filter-btn), opening the filter drawer. ── -->
         <section class="bp-cat-main">
-          <div class="bp-cat-main-head">
-            <lucide-icon name="inbox" [size]="13" class="bp-cat-main-head-icon"></lucide-icon>
-            <span class="bp-cat-section-title">INBOX</span>
-            <span class="bp-cat-section-count">
-              {{ filteredThreads().length }}
-              {{ filteredThreads().length === 1 ? 'thread' : 'threads' }}
-            </span>
-
-            <!-- v1.65dv — Category / Contact / Status dropdowns. All
-                 three reuse the existing activeFolder / activeSupplier
-                 / activeStatus state, so filteredThreads() keeps
-                 working without change. The "Contact" label fits both
-                 viewers — agency sees suppliers, supplier sees
-                 agencies (when /inbox lands in Phase 2). -->
-            <div class="bp-msg-head-filters">
-              <p-dropdown *ngIf="folderDropdownOptions.length > 1"
-                          [options]="folderDropdownOptions"
-                          [ngModel]="activeFolder"
-                          (onChange)="onFolderDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          placeholder="Category"></p-dropdown>
-
-              <p-dropdown [options]="contactDropdownOptions"
-                          [ngModel]="activeSupplier"
-                          (onChange)="onContactDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          [placeholder]="viewer === 'supplier' ? 'Agency' : 'Contact'"></p-dropdown>
-
-              <p-dropdown [options]="statusDropdownOptions"
-                          [ngModel]="activeStatus"
-                          (onChange)="onStatusDropdownChange($event.value)"
-                          optionLabel="name" optionValue="id"
-                          styleClass="bp-msg-head-dd"
-                          appendTo="body"
-                          placeholder="Status"></p-dropdown>
-            </div>
+          <div class="bp-search-row bp-msg-search">
+            <lucide-icon name="search" [size]="14" class="bp-search-icon"></lucide-icon>
+            <input pInputText type="text"
+                   [(ngModel)]="searchTerm"
+                   (ngModelChange)="onSearchChange()"
+                   placeholder="Search threads, suppliers, messages…"
+                   class="bp-search-input"/>
+            <button type="button" class="bp-search-filter-btn"
+                    [class.active]="activeFilterCount > 0"
+                    (click)="filterOpen = true" title="Filter">
+              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
+              <span *ngIf="activeFilterCount" class="bp-msg-filter-badge">{{ activeFilterCount }}</span>
+            </button>
           </div>
 
           <div class="bp-cat-main-body">
@@ -643,6 +580,77 @@ interface VendorThread {
       </div>
 
     </ng-container>
+
+    <!-- FILTER DRAWER — standard bp-drawer (Category / Contact / Status),
+         moved out of the inbox panel head. -->
+    <p-sidebar [(visible)]="filterOpen" position="right"
+               styleClass="bp-drawer" [style]="{width:'420px'}"
+               [showCloseIcon]="false">
+      <ng-template pTemplate="header">
+        <div class="bp-drawer-header-row">
+          <div class="bp-drawer-header">
+            <span class="bp-drawer-label">INBOX</span>
+            <div class="bp-drawer-title">Filters</div>
+          </div>
+          <button class="bp-icon-btn" (click)="filterOpen = false" title="Close">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </ng-template>
+
+      <div class="bp-drawer-body bp-msg-filter-body">
+        <div class="bp-field" *ngIf="!boundProjectId">
+          <label class="bp-field-label">Client</label>
+          <p-dropdown [(ngModel)]="selectedClientId"
+                      [options]="clientDropdownOptions"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="All clients"
+                      (onChange)="onClientChange()"></p-dropdown>
+        </div>
+
+        <div class="bp-field" *ngIf="!boundProjectId">
+          <label class="bp-field-label">Project</label>
+          <p-dropdown [(ngModel)]="selectedProjectId"
+                      [options]="projectOptions"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="All projects"
+                      (onChange)="onProjectChange()"></p-dropdown>
+        </div>
+
+        <div class="bp-field" *ngIf="folderDropdownOptions.length > 1">
+          <label class="bp-field-label">Category</label>
+          <p-dropdown [options]="folderDropdownOptions"
+                      [ngModel]="activeFolder"
+                      (onChange)="onFolderDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="Category"></p-dropdown>
+        </div>
+
+        <div class="bp-field">
+          <label class="bp-field-label">{{ viewer === 'supplier' ? 'Agency' : 'Contact' }}</label>
+          <p-dropdown [options]="contactDropdownOptions"
+                      [ngModel]="activeSupplier"
+                      (onChange)="onContactDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      [placeholder]="viewer === 'supplier' ? 'Agency' : 'Contact'"></p-dropdown>
+        </div>
+
+        <div class="bp-field">
+          <label class="bp-field-label">Status</label>
+          <p-dropdown [options]="statusDropdownOptions"
+                      [ngModel]="activeStatus"
+                      (onChange)="onStatusDropdownChange($event.value)"
+                      optionLabel="name" optionValue="id"
+                      appendTo="body" styleClass="w-full"
+                      placeholder="Status"></p-dropdown>
+        </div>
+      </div>
+    </p-sidebar>
+
     <p-toast></p-toast>
   `,
   styles: [`
@@ -737,33 +745,31 @@ interface VendorThread {
       margin: 0 auto;
     }
 
-    /* v1.65g4 — single horizontal row at the top of the inbox holding
-       Client + Project + Search. Same horizontal padding as the
-       former two bars combined; the search input flexes to consume
-       the remaining width so the line reads:
-         [Client ▼] [Project ▼] [🔍 search ............................. ] */
-    .bp-msg-top-filter-row {
+    /* v1.69c — the inbox column is a flex stack: the search bar at the top
+       (spanning the column = inbox container width), the thread list scrolling
+       below it. */
+    .bp-cat-main {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 24px;
-      max-width: 1200px;
-      margin: 0 auto;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .bp-msg-search {
       width: 100%;
+      margin-bottom: 12px;
+      flex-shrink: 0;
     }
-    .bp-msg-top-filter-row :host ::ng-deep .bp-msg-top-dd,
-    .bp-msg-top-filter-row ::ng-deep .bp-msg-top-dd {
-      min-width: 200px;
+    /* Filter-icon active-count chip, top-right of the in-search filter button. */
+    .bp-search-filter-btn { position: relative; }
+    .bp-msg-filter-badge {
+      position: absolute;
+      top: -5px; right: -5px;
+      min-width: 15px; height: 15px; padding: 0 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: var(--theme-accent); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 1;
     }
-    /* v1.65g4 — top-row search reuses the shared .bp-search-row
-       chrome (flex icon + p-inputtext sibling). We just flex it to
-       consume the remaining width and pad it inside so the icon
-       isn't flush against the border. */
-    .bp-msg-top-search {
-      flex: 1 1 auto;
-      padding: 0 12px;
-      height: 34px;
-    }
+    .bp-msg-filter-body { display: flex; flex-direction: column; gap: 16px; }
 
     /* Long supplier names truncate inside the shared bp-sidebar-item. */
     .bp-msg-supp-name {
@@ -1005,7 +1011,7 @@ interface VendorThread {
     .bp-badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
     .bp-badge-quoted  { background: var(--color-quoted-bg);  color: var(--color-quoted-text); }
     .bp-badge-booked  { background: var(--color-booked-bg);  color: var(--color-booked-text); }
-    .bp-badge-default { background: var(--theme-bg);          color: var(--theme-accent); }
+    .bp-badge-default { background: var(--color-fill);          color: var(--theme-accent); }
 
     /* v1.65cr (p0006) — old .bp-msg-card-tile / -top / -av / -name /
        -time / -prev / -foot rules removed; the card view now uses the
@@ -1029,7 +1035,7 @@ interface VendorThread {
       letter-spacing: 0.04em;
       color: var(--color-text-muted);
       border-bottom: 0.5px solid var(--color-border);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-msg-table td {
       padding: 9px 12px;
@@ -1131,7 +1137,7 @@ interface VendorThread {
     }
     .bp-thread-drawer-chip-badge {
       padding: 2px 6px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: var(--radius-pill);
       font-size: 10px;
       font-weight: 600;
@@ -1353,7 +1359,7 @@ interface VendorThread {
     .bp-cat-waiting { background: var(--color-waiting-bg); border-color: var(--color-waiting-border); color: var(--color-waiting-text); }
     .bp-cat-quoted  { background: var(--color-quoted-bg); border-color: var(--color-quoted-border); color: var(--color-quoted-text); }
     .bp-cat-booked  { background: var(--color-booked-bg); border-color: var(--color-booked-border); color: var(--color-booked-text); }
-    .bp-cat-default { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-cat-default { background: var(--color-fill); border-color: var(--theme-border); color: var(--theme-accent); }
     .bp-thread-info { flex: 1; min-width: 0; }
     .bp-thread-name { font-family: var(--font-display); font-size: 16px; font-weight: 400; color: var(--color-text-primary); }
     .bp-thread-sub  { font-size: 11px; color: var(--color-text-muted); }
@@ -1382,7 +1388,7 @@ interface VendorThread {
       letter-spacing: 0.06em; text-transform: uppercase;
       transition: background 0.12s;
     }
-    .bp-thread-sec-head:hover { background: var(--theme-bg); }
+    .bp-thread-sec-head:hover { background: var(--color-fill); }
     .bp-thread-sec-head lucide-icon { color: var(--theme-accent); flex-shrink: 0; }
     .bp-thread-sec-label { flex-grow: 0; }
     .bp-thread-sec-badge {
@@ -1473,7 +1479,7 @@ interface VendorThread {
       flex: 1; overflow-y: auto;
       padding: 12px 14px;
       display: flex; flex-direction: column; gap: 8px;
-      background-color: var(--color-thread-bg, var(--theme-bg));
+      background-color: var(--color-thread-bg, var(--color-fill));
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       background-attachment: local;
       min-height: 200px;
@@ -1564,7 +1570,7 @@ interface VendorThread {
     .bp-msg-bubble:hover .bp-msg-bubble-reply { opacity: 1; }
     .bp-msg-bubble-reply:hover {
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-msg-bubble-reply lucide-icon { line-height: 0; }
     /* v1.65g0 — delete trash icon. Same hover-fade vocabulary as
@@ -1646,7 +1652,7 @@ interface VendorThread {
     .bp-quoted-items { margin-top: 10px; border-top: 0.5px solid var(--color-border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .bp-quoted-items-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
     .bp-quoted-item { display: flex; align-items: center; gap: 10px; background: var(--color-surface); border: var(--border-hairline); border-radius: var(--radius-button); padding: 9px 11px; }
-    .bp-quoted-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--theme-bg); border: 0.5px solid var(--theme-border); display: flex; align-items: center; justify-content: center; color: var(--theme-accent); flex-shrink: 0; }
+    .bp-quoted-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--color-fill); border: 0.5px solid var(--theme-border); display: flex; align-items: center; justify-content: center; color: var(--theme-accent); flex-shrink: 0; }
     .bp-quoted-item-body { flex: 1; min-width: 0; }
     .bp-quoted-item-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
     .bp-quoted-item-desc { font-size: 11px; color: var(--color-text-muted); }
@@ -1686,7 +1692,7 @@ interface VendorThread {
       white-space: nowrap;
       transition: background 0.12s, border-color 0.12s;
     }
-    .bp-compose-chip:hover { background: var(--theme-bg); border-color: var(--theme-accent); }
+    .bp-compose-chip:hover { background: var(--color-fill); border-color: var(--theme-accent); }
     .bp-compose-ph {
       display: flex; gap: 6px; align-items: center;
       padding: 6px 0;
@@ -1829,6 +1835,8 @@ export class MessagesInboxComponent implements OnInit {
   selectedClientId = '';
   activeStatus = 'all';
   activeFolder = 'all';
+  /** Filter drawer (Category / Contact / Status) open state. */
+  filterOpen = false;
   /** v1.27: supplier filter (left sidebar). 'all' = no filter. */
   activeSupplier: string = 'all';
   /** v1.27 → v1.65dt (p0015) — list / card / table view toggle
@@ -1984,6 +1992,13 @@ export class MessagesInboxComponent implements OnInit {
         // v1.65db (p0013 header refit) — agency name for the new
         // 3×2 grid header (From line).
         this.agencyName = (org as any).name || '';
+        // v1.69d — global agency inbox (home → inbox, no project context):
+        // show ALL threads (all projects / clients / statuses) by default
+        // instead of waiting for a project pick. getAllByOrg needs orgId, so
+        // kick the load here, once it resolves.
+        if (this.viewer !== 'supplier' && this.showProjectSelector && !this.boundProjectId) {
+          this.loadAllMessages();
+        }
       }
     });
 
@@ -1993,7 +2008,8 @@ export class MessagesInboxComponent implements OnInit {
       // is the source of truth for which supplier we are.
       this.loadAllMessages();
     } else if (this.showProjectSelector && !this.boundProjectId) {
-      // Global mode — load all projects for selector
+      // Global mode — load the projects list for the Project filter dropdown.
+      // The threads themselves load above (loadAllMessages) once orgId resolves.
       this.projectSvc.getAll().subscribe({
         next: projects => {
           this.projects = projects || [];
@@ -2173,7 +2189,9 @@ export class MessagesInboxComponent implements OnInit {
       const sid = m.supplier_org_id || 'unknown';
       const cid = m.category_id || '';
       const pid = (m as any).project_id || '';
-      const key = sid + '_' + cid + '_' + pid;
+      // v1.67d — one definition of the thread key (MsgSvc.threadKey),
+      // shared with the supplier home unread-count badge.
+      const key = MsgSvc.threadKey(m);
       if (!map[key]) {
         map[key] = {
           key, supplierId: sid,
@@ -2351,6 +2369,17 @@ export class MessagesInboxComponent implements OnInit {
       opts.push({ id: f.id, name: f.name });
     }
     return opts;
+  }
+
+  /** Number of active (non-default) drawer filters → the Filter button badge. */
+  get activeFilterCount(): number {
+    let n = 0;
+    if (!this.boundProjectId && this.selectedClientId && this.selectedClientId !== 'all') n++;
+    if (!this.boundProjectId && this.selectedProjectId && this.selectedProjectId !== 'all') n++;
+    if (this.activeFolder && this.activeFolder !== 'all') n++;
+    if (this.activeSupplier && this.activeSupplier !== 'all') n++;
+    if (this.activeStatus && this.activeStatus !== 'all') n++;
+    return n;
   }
 
   /** Dropdown change handler — keeps activeFolder + circle strip in sync. */

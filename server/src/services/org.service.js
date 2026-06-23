@@ -97,7 +97,7 @@ async function getSuppliers() {
       ) AS category_ids,
       COUNT(i.id) FILTER (WHERE i.is_active = true) AS item_count
     FROM orgs o
-    LEFT JOIN items i ON i.org_id = o.id AND i.is_active = true
+    LEFT JOIN items i ON i.org_id = o.id AND i.is_active = true AND i.deleted_at IS NULL
     WHERE o.type = 'supplier' AND o.is_active = true
     GROUP BY o.id
     ORDER BY o.name ASC
@@ -105,13 +105,18 @@ async function getSuppliers() {
   return result.rows;
 }
 
-async function getCatalogue(supplierId) {
+// v1.68b — items dual-pattern: deleted_at (removed) ALWAYS excluded;
+// is_active (publish/hide) excluded for public/marketplace views but RELAXED
+// for the owner's own /store (includeHidden=true) so hidden items render with
+// a "Hidden" badge instead of vanishing.
+async function getCatalogue(supplierId, includeHidden = false) {
+  const activeFilter = includeHidden ? '' : ' AND i.is_active = true';
   const result = await pool.query(
     `SELECT i.*, c.name as category_name, c.icon as category_icon,
             COALESCE((SELECT array_agg(sit.tag_id)
                         FROM supplier_item_tag sit WHERE sit.item_id = i.id), '{}') AS tag_ids
      FROM items i LEFT JOIN categories c ON i.category_id = c.id
-     WHERE i.org_id = $1 AND i.is_active = true
+     WHERE i.org_id = $1 AND i.deleted_at IS NULL${activeFilter}
      ORDER BY c.sort_order ASC, i.name ASC`,
     [supplierId]
   );

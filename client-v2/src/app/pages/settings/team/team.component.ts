@@ -1,0 +1,210 @@
+import { ChangeDetectionStrategy, Component, inject, resource, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { LucideAngularModule } from 'lucide-angular';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { AuthService } from '../../../core/auth/auth.service';
+import { errorDetail } from '../../../core/http-error';
+import { TeamMember, TeamService } from '../../../core/team/team.service';
+import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
+import { TeamMemberRowComponent } from './team-member-row.component';
+
+/** Typed invite form. */
+interface InviteForm {
+  email: FormControl<string>;
+  displayName: FormControl<string>;
+  jobTitle: FormControl<string>;
+  isAdmin: FormControl<boolean>;
+}
+
+/** Settings → Team: list, invite, role/suspend toggles, removal. Admin-gated
+ *  (adminGuard + every server route re-checks live membership). */
+@Component({
+  selector: 'app-team',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReactiveFormsModule, ButtonModule, DialogModule, LucideAngularModule, ToastModule, PageHeroComponent, TeamMemberRowComponent],
+  providers: [MessageService],
+  host: { class: 'block' },
+  template: `
+    @let me = auth.user();
+
+    <app-page-hero [back]="{ label: 'Back', href: '/home' }" title="Team" [subtitle]="me?.activeOrgName ?? ''">
+      <p-button hero-actions label="+ Invite Team Member" size="small" (onClick)="openInvite()" />
+    </app-page-hero>
+
+    <div class="bp-page-body">
+      @if (members.isLoading()) {
+        <p class="text-md text-secondary">Loading team…</p>
+      } @else if (members.value(); as list) {
+        <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+          @for (m of list; track m.userId ?? m.email) {
+            <app-team-member-row
+              [member]="m"
+              [currentUserId]="me?.id ?? ''"
+              (roleChanged)="setAdmin(m, $event)"
+              (statusChanged)="setSuspended(m, $event)"
+              (removed)="confirmRemove(m)"
+            />
+          } @empty {
+            <p class="px-4 py-6 text-md text-secondary">No team members yet.</p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Invite modal — ESC + backdrop dismiss = Cancel (DIALOGS.md rule 5;
+         audit 02-F-2 — was Cancel-only, inconsistent with the remove confirm). -->
+    <p-dialog header="Invite a team member" styleClass="bp-modal" [visible]="inviteOpen()" (visibleChange)="inviteOpen.set($event === true)" [modal]="true" [closeOnEscape]="true" [dismissableMask]="true" [style]="{ width: '380px' }">
+      <form class="flex flex-col gap-3" [formGroup]="inviteForm" (ngSubmit)="submitInvite()">
+        <label class="text-sm font-medium text-secondary">
+          Email *
+          <input type="email" formControlName="email" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" placeholder="name@company.com" />
+        </label>
+        <label class="text-sm font-medium text-secondary">
+          Name
+          <input type="text" formControlName="displayName" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" />
+        </label>
+        <label class="text-sm font-medium text-secondary">
+          Job title
+          <input type="text" formControlName="jobTitle" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-md" />
+        </label>
+        <label class="flex items-center gap-2 text-md text-secondary">
+          <input type="checkbox" formControlName="isAdmin" class="rounded border-medium" />
+          Make admin
+        </label>
+        <div class="mt-2 flex justify-end gap-2">
+          <p-button label="Cancel" severity="secondary" [text]="true" size="small" (onClick)="inviteOpen.set(false)" />
+          <p-button label="Invite" size="small" type="submit" [disabled]="inviteForm.invalid || inviting()" />
+        </div>
+      </form>
+    </p-dialog>
+
+    <!-- Remove confirmation — the DIALOGS.md locked confirm template +
+         the FIRST .bp-btn-danger consumer (the pairing rule holds from
+         day one). ESC + backdrop dismiss = Cancel per the interaction
+         table. -->
+    <p-dialog
+      styleClass="bp-modal bp-modal--confirm"
+      [visible]="removeTarget() !== null"
+      (visibleChange)="!$event && removeTarget.set(null)"
+      [modal]="true"
+      [closable]="false"
+      [closeOnEscape]="true"
+      [dismissableMask]="true"
+      [style]="{ width: '420px' }"
+    >
+      <ng-template pTemplate="header">
+        <div>
+          <div class="bp-modal__icon">
+            <lucide-icon name="trash-2" [size]="20" />
+          </div>
+          <h2 class="bp-card-title">Remove {{ removeTarget()?.displayName ?? removeTarget()?.email }}?</h2>
+        </div>
+      </ng-template>
+      @if (removeTarget(); as t) {
+        <p class="bp-body text-secondary">
+          They'll lose access to this org. Reversible — you can re-invite them by email.
+        </p>
+      }
+      <ng-template pTemplate="footer">
+        <button type="button" class="bp-btn-outline" (click)="removeTarget.set(null)">Cancel</button>
+        @if (removeTarget(); as t) {
+          <button type="button" class="bp-btn-danger" (click)="doRemove(t)">Remove</button>
+        }
+      </ng-template>
+    </p-dialog>
+
+    <!-- MessageService supplies aria-live by severity (polite success/info,
+         assertive error) — no explicit role needed (audit F-10). -->
+    <p-toast position="bottom-right" styleClass="bp-toast" />
+  `,
+})
+export class TeamComponent {
+  protected readonly auth = inject(AuthService);
+  private readonly team = inject(TeamService);
+  private readonly toast = inject(MessageService);
+
+  /** The member list — resource per the v2 fetch-into-state standard. */
+  protected readonly members = resource<TeamMember[], void>({
+    loader: () => firstValueFrom(this.team.list()),
+  });
+
+  protected readonly inviteOpen = signal(false);
+  protected readonly inviting = signal(false);
+  protected readonly removeTarget = signal<TeamMember | null>(null);
+
+  protected readonly inviteForm = new FormGroup<InviteForm>({
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    displayName: new FormControl('', { nonNullable: true }),
+    jobTitle: new FormControl('', { nonNullable: true }),
+    isAdmin: new FormControl(false, { nonNullable: true }),
+  });
+
+  protected openInvite(): void {
+    this.inviteForm.reset();
+    this.inviteOpen.set(true);
+  }
+
+  protected async submitInvite(): Promise<void> {
+    if (this.inviteForm.invalid) return;
+    this.inviting.set(true);
+    const v = this.inviteForm.getRawValue();
+    try {
+      await firstValueFrom(this.team.invite({
+        email: v.email,
+        displayName: v.displayName || undefined,
+        jobTitle: v.jobTitle || undefined,
+        isAdmin: v.isAdmin,
+      }));
+      this.inviteOpen.set(false);
+      this.members.reload();
+      // Locked toast copy (DIALOGS.md standard messages).
+      this.toast.add({ severity: 'success', summary: 'Sent.', detail: v.email, life: 3000 });
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: 'Invite failed', detail: errorDetail(e), life: 4000 });
+    } finally {
+      this.inviting.set(false);
+    }
+  }
+
+  protected async setAdmin(m: TeamMember, isAdmin: boolean): Promise<void> {
+    if (!m.userId) return;
+    try {
+      await firstValueFrom(this.team.setAdmin(m.userId, isAdmin));
+      this.members.reload();
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: 'Change rejected', detail: errorDetail(e), life: 4000 });
+      this.members.reload(); // revert the toggle to server truth
+    }
+  }
+
+  protected async setSuspended(m: TeamMember, suspend: boolean): Promise<void> {
+    if (!m.userId) return;
+    try {
+      await firstValueFrom(this.team.setStatus(m.userId, suspend));
+      this.members.reload();
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: 'Change rejected', detail: errorDetail(e), life: 4000 });
+      this.members.reload();
+    }
+  }
+
+  protected confirmRemove(m: TeamMember): void {
+    this.removeTarget.set(m);
+  }
+
+  protected async doRemove(m: TeamMember): Promise<void> {
+    if (!m.userId) return;
+    this.removeTarget.set(null);
+    try {
+      await firstValueFrom(this.team.remove(m.userId));
+      this.members.reload();
+      this.toast.add({ severity: 'success', summary: 'Member removed', detail: m.displayName ?? m.email, life: 3000 });
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: 'Remove rejected', detail: errorDetail(e), life: 4000 });
+    }
+  }
+}

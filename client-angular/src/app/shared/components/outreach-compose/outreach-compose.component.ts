@@ -346,11 +346,11 @@ interface SupplierRow {
       width: 84px; flex-shrink: 0; }
     .bp-oc-tcirc { width: 28px; height: 28px; border-radius: 50%; display: flex;
       align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
-      background: var(--theme-bg); border: 1.5px solid var(--color-border);
+      background: var(--color-fill); border: 1.5px solid var(--color-border);
       color: var(--color-text-muted); transition: all 0.15s; }
     .bp-oc-tlbl { font-size: 10px; font-weight: 600; color: var(--color-text-muted); text-align: center; }
     .bp-oc-tnode.on .bp-oc-tcirc { background: var(--theme-accent); border-color: var(--theme-accent);
-      color: #fff; box-shadow: 0 0 0 4px var(--theme-bg); }
+      color: #fff; box-shadow: 0 0 0 4px var(--color-focus-ring); }
     .bp-oc-tnode.on .bp-oc-tlbl { color: var(--theme-accent); }
     .bp-oc-tnode.done .bp-oc-tcirc { background: var(--theme-accent);
       border-color: var(--theme-accent); color: #fff; }
@@ -387,7 +387,7 @@ interface SupplierRow {
 
     /* requirement card */
     .bp-oc-reqcard { display: flex; align-items: center; gap: 11px; margin-top: 9px;
-      border: 0.5px solid var(--theme-border); background: var(--theme-bg);
+      border: 0.5px solid var(--theme-border); background: var(--color-fill);
       border-radius: 9px; padding: 11px 13px; }
     .bp-oc-reqic { width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0;
       background: var(--theme-accent); color: #fff; display: flex; align-items: center;
@@ -404,7 +404,7 @@ interface SupplierRow {
       border: 1.5px solid var(--color-border); border-radius: 10px;
       padding: 11px 13px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.12s; }
     .bp-oc-scard:hover { border-color: var(--theme-border); }
-    .bp-oc-scard.sel { border-color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-oc-scard.sel { border-color: var(--theme-accent); background: var(--color-fill); }
     .bp-oc-check { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
       border: 1.5px solid var(--color-border); background: var(--color-surface);
       display: flex; align-items: center; justify-content: center; font-size: 11px;
@@ -438,7 +438,7 @@ interface SupplierRow {
       margin: 14px 0 5px; }
     .bp-oc-flabel:first-child { margin-top: 0; }
     .bp-oc-input { width: 100%; font-family: var(--font-body); font-size: 12.5px;
-      color: var(--color-text-primary); background: var(--theme-bg);
+      color: var(--color-text-primary); background: var(--color-fill);
       border: 0.5px solid var(--color-border); border-radius: 7px; padding: 9px 11px; outline: none; }
     .bp-oc-input:focus { border-color: var(--theme-accent); background: var(--color-surface); }
     .bp-oc-textarea { resize: vertical; line-height: 1.55; }
@@ -463,7 +463,7 @@ interface SupplierRow {
     .bp-oc-itemimg {
       width: 32px; height: 32px;
       border-radius: 6px;
-      background-color: var(--theme-bg);
+      background-color: var(--color-fill);
       background-size: cover;
       background-position: center;
       display: flex; align-items: center; justify-content: center;
@@ -501,7 +501,7 @@ interface SupplierRow {
       display: flex; align-items: center; justify-content: center;
       border-radius: 4px;
     }
-    .bp-oc-itemrm:hover { color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-oc-itemrm:hover { color: var(--theme-accent); background: var(--color-fill); }
 
     /* Add-item input row */
     .bp-oc-addrow {
@@ -523,18 +523,18 @@ interface SupplierRow {
     .bp-oc-addbtn:hover:not(:disabled) { opacity: 0.85; }
     .bp-oc-evbox { border: 0.5px solid var(--color-border); border-radius: 8px;
       overflow: hidden; margin-top: 16px; }
-    .bp-oc-evhd { padding: 7px 13px; background: var(--theme-bg);
+    .bp-oc-evhd { padding: 7px 13px; background: var(--color-fill);
       border-bottom: 0.5px solid var(--color-border); font-size: 9px; font-weight: 700;
       letter-spacing: 0.07em; text-transform: uppercase; color: var(--color-text-muted); }
     .bp-oc-evrow { display: flex; align-items: center; border-bottom: 0.5px solid var(--color-border); }
     .bp-oc-evrow:last-child { border-bottom: none; }
     .bp-oc-evk { width: 62px; padding: 8px 13px; font-size: 10.5px; font-weight: 600;
-      color: var(--color-text-secondary); background: var(--theme-bg);
+      color: var(--color-text-secondary); background: var(--color-fill);
       border-right: 0.5px solid var(--color-border); flex-shrink: 0; }
     .bp-oc-evrow input { flex: 1; padding: 8px 12px; border: none; outline: none;
       font-family: var(--font-body); font-size: 12px; color: var(--color-text-primary);
       background: var(--color-surface); }
-    .bp-oc-ballnote { background: var(--theme-bg); border: 0.5px solid var(--theme-border);
+    .bp-oc-ballnote { background: var(--color-fill); border: 0.5px solid var(--theme-border);
       border-radius: 8px; padding: 10px 13px; font-size: 11.5px;
       color: var(--color-text-secondary); margin-top: 16px; }
 
@@ -548,7 +548,7 @@ interface SupplierRow {
       font-size: 12.5px; font-weight: 600; color: var(--color-text-primary); background: none; }
     .bp-oc-tochips { display: flex; flex-wrap: wrap; gap: 5px; }
     .bp-oc-tochip { font-size: 11px; font-weight: 600; color: var(--color-text-primary);
-      background: var(--theme-bg); border: 0.5px solid var(--theme-border);
+      background: var(--color-fill); border: 0.5px solid var(--theme-border);
       border-radius: 20px; padding: 3px 10px; }
     .bp-oc-tonote { display: flex; gap: 6px; padding: 8px 24px; flex-shrink: 0;
       border-bottom: 0.5px solid var(--color-border); font-size: 10.5px;
@@ -560,7 +560,7 @@ interface SupplierRow {
     /* sent */
     .bp-oc-sent { text-align: center; padding: 26px 16px 8px; }
     .bp-oc-sent-ok { width: 50px; height: 50px; border-radius: 50%; margin: 0 auto 13px;
-      background: var(--theme-bg); color: var(--theme-accent); display: flex;
+      background: var(--color-fill); color: var(--theme-accent); display: flex;
       align-items: center; justify-content: center; font-size: 24px; }
     .bp-oc-sent-h { font-family: var(--font-display); font-size: 19px; color: var(--color-text-primary); }
     .bp-oc-sent-p { font-size: 12px; color: var(--color-text-secondary); margin-top: 5px;

@@ -9,7 +9,9 @@ import { filter, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { OrgService } from '../../../core/services/org.service';
 import { ConfigService } from '../../../core/services/config.service';
+import { HeroSettingsService } from '../../../core/services/hero-settings.service';
 import { ShellContextService, ShellContext, ShellTab } from '../../../core/services/shell-context.service';
+import { pagePatternKey } from '../../../core/utils/page-key';
 import { PersonaService } from '../../../core/services/persona.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
 // v1.65hJ (p0017): TemplateRef import dropped — lifted strip slot gone.
@@ -31,6 +33,9 @@ import {
 import {
   CartDrawerComponent
 } from '../cart-drawer/cart-drawer.component';
+import {
+  PageConfigDrawerComponent
+} from '../page-config-drawer/page-config-drawer.component';
 
 interface NavItem  { label: string; path: string; }
 interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
@@ -38,7 +43,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent],
+  imports: [CommonModule, TitleCasePipe, TagModule, ToastModule, LucideAngularModule, RouterModule, RouterOutlet, CreateProjectModalComponent, OutreachComposeComponent, EstimateDrawerComponent, AddCategoryDrawerComponent, EventDrawerComponent, CartDrawerComponent, PageConfigDrawerComponent],
   providers: [MessageService],
   template: `
     <!-- HERO -->
@@ -46,8 +51,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          treatment: parchment fill, no orbs/grain (even in Bold mode),
          calm underline tabs. -->
     <div class="bp-hero" *ngIf="!hideHero"
-         [class.bp-hero--calm]="heroVariant === 'calm'"
-         [class.bp-hero--none]="heroVariant === 'none'">
+         [class.bp-hero--none]="heroIsNone"
+         [class.bp-hero--left]="effectiveHeroAlign === 'left'">
 
       <!-- p0003 — BOLD MODE decoration. Two blurred orbs + feTurbulence
            grain overlay sit behind hero content. Always present in the
@@ -85,58 +90,44 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
            Location pill: click → /settings.
            Upcoming pill (v1.23): renders when ctx.upcomingPill is set
            AND ConfigService.showUpcoming is true — see ngOnInit. -->
-      <div *ngIf="heroPills.length > 0 || upcomingPillText" class="bp-hero-meta">
-        <ng-container *ngFor="let pill of heroPills">
-          <!-- Location pill -->
-          <button *ngIf="isLocationPill(pill)"
-                  type="button"
-                  class="bp-hero-tag-span bp-hero-pill-btn"
-                  (click)="onLocationPillClick()">
-            <lucide-icon name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
-            {{ pill }}
-          </button>
-          <!-- User pill — wrapped in a relative div so the dropdown
-               anchors below it without affecting layout. -->
-          <div *ngIf="!isLocationPill(pill)" class="bp-hero-pill-wrap">
-            <p-tag [value]="pill"
-                   styleClass="bp-hero-tag bp-hero-pill-btn"
-                   (click)="onUserPillClick($event)"></p-tag>
-            <div *ngIf="userMenuOpen"
-                 class="bp-hero-pill-menu"
-                 (click)="$event.stopPropagation()">
-              <button type="button" class="bp-hero-pill-menu-item"
-                      (click)="onUserMenuAction('profile')">Profile</button>
-              <button type="button" class="bp-hero-pill-menu-item"
-                      (click)="onUserMenuAction('switch-org')">Switch Org</button>
-              <div class="bp-hero-pill-menu-sep"></div>
-              <button type="button"
-                      class="bp-hero-pill-menu-item bp-hero-pill-menu-item--danger"
-                      (click)="onUserMenuAction('signout')">Sign out</button>
-            </div>
-          </div>
-        </ng-container>
-
-        <!-- Upcoming-event pill (v1.23). Dashboard pushes the text via
-             shellCtx.upcomingPill when ConfigService.showUpcoming is on
-             AND a future project exists. Calendar icon + plain text. -->
+      <!-- v1.66am — standardised pills: org / user / location are plain,
+           non-interactive chips with one shared look. Account + persona
+           actions live on the top-nav avatar, not the pills. -->
+      <div *ngIf="orgPill || heroPills.length > 0 || upcomingPillText || projectPill" class="bp-hero-meta">
+        <span *ngIf="orgPill" class="bp-hero-tag-span">{{ orgPill }}</span>
+        <span *ngFor="let pill of heroPills" class="bp-hero-tag-span">
+          <lucide-icon *ngIf="isLocationPill(pill)" name="map-pin" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ pill }}
+        </span>
         <span *ngIf="upcomingPillText" class="bp-hero-tag-span bp-hero-upcoming">
           <lucide-icon name="calendar" [size]="10" style="flex-shrink:0;"></lucide-icon>
           {{ upcomingPillText }}
         </span>
+        <!-- Clickable "shopping for {project}" pill — opens the marketplace
+             project picker (the page supplies onClick). -->
+        <button *ngIf="projectPill as pp" type="button"
+                class="bp-hero-tag-span bp-hero-project-pill" (click)="pp.onClick()">
+          <lucide-icon name="folder" [size]="10" style="flex-shrink:0;"></lucide-icon>
+          {{ pp.text }}
+          <lucide-icon name="chevron-down" [size]="11" style="flex-shrink:0;"></lucide-icon>
+        </button>
       </div>
 
       <!-- TITLE -->
       <h1 class="bp-hero-org-name">{{ heroTitle }}</h1>
 
       <!-- SUB -->
-      <p class="bp-hero-page-label">{{ heroSub }}</p>
+      <p class="bp-hero-page-label" [class.bp-hero-subtitle]="heroSubIsSentence">{{ heroSub }}</p>
 
       <!-- v1.65bh — TAB BAND moved BACK inside .bp-hero so it
            shares the hero's parchment (or accent in bold) fill. The
            band itself has no background — it inherits visually from
            its hero parent. Tabs are centred. -->
+      <!-- v1.66ah — the tab band always renders in tabs mode (even with no
+           tabs) so every hero reserves the same height + shows the
+           separator; menu items fill it when present. -->
       <div class="bp-hero-tab-band"
-           *ngIf="navMode === 'tabs' && activeTabs.length > 0">
+           *ngIf="navMode === 'tabs'">
         <div class="bp-hero-tabs">
           <button *ngFor="let tab of activeTabs"
             class="bp-hero-tab"
@@ -216,6 +207,11 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
          CartDrawerService.open(projectId). Shows selected + wishlist
          project_items with a description tooltip on hover. -->
     <app-cart-drawer></app-cart-drawer>
+
+    <!-- v1.66at: page-settings drawer mounted globally so the cog +
+         page settings are available on EVERY page (was dashboard-only,
+         so the cog vanished on Inbox / Projects / etc.). -->
+    <app-page-config-drawer></app-page-config-drawer>
   `,
   styles: [`
     :host             { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -224,32 +220,33 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* Optional back link on the hero's left edge. Vertically centred
        against the hero's full height; offset is var(--section-pad) so it
        aligns with the page's left content gutter. */
+    /* v1.69 — the back sits IN FLOW above the title (launcher / standard
+       pattern), the hero's first child, for BOTH centre- and left-aligned
+       heroes. Block-level (display:flex + fit-content width) so the hero's
+       centred text flow doesn't centre the inline button — it hugs the
+       content's left edge. z-index:3 keeps it above the orbs/grain (the
+       .bp-hero child-layering rule excludes .bp-hero-back, so it lifts itself). */
     .bp-hero-back {
-      position: absolute;
-      left: var(--section-pad, 28px);
-      top: 50%;
-      transform: translateY(-50%);
-      /* v1.65ds — z-index: 3 explicitly so the back link still sits
-         above the orbs/grain. The .bp-hero direct-child layering
-         rule below excludes .bp-hero-back (because that rule forces
-         position:relative which clobbers our absolute positioning),
-         so the back link needs to lift itself manually. */
+      position: relative;
       z-index: 3;
-      display: inline-flex;
+      display: flex;
+      width: fit-content;
       align-items: center;
       gap: 4px;
+      margin: 0 0 14px 0;
       background: none; border: none;
       cursor: pointer;
       font-family: var(--font-body);
       font-size: 12px;
       font-weight: 500;
-      /* v1.65bs — back link on the accent-filled hero needs to be
-         white for contrast. */
+      /* white on an accent-filled hero; greyed on a stripped hero below. */
       color: var(--color-surface);
-      padding: 4px 0;
+      padding: 0;
       white-space: nowrap;
     }
     .bp-hero-back:hover { opacity: 0.75; }
+    /* On a stripped (parchment) hero the white back link would vanish. */
+    .bp-hero--none .bp-hero-back { color: var(--color-text-secondary); }
     @media (max-width: 600px) {
       /* Hide the back label on narrow screens — keep the chevron only. */
       .bp-hero-back span { display: none; }
@@ -258,10 +255,12 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── HERO META (pills) ── */
     .bp-hero-meta { display: flex; justify-content: var(--hero-align-flex, center); gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 
+    /* v1.66ah — org / user / location pills share ONE look: white fill,
+       a hairline border in the theme border colour. */
     :host ::ng-deep .bp-hero-tag.p-tag {
       background: #fff !important;
       color: var(--theme-text) !important;
-      border: 1.5px solid var(--theme-accent) !important;
+      border: 1px solid var(--color-border) !important;
       font-size: 11px !important;
       font-weight: 500 !important;
       padding: 3px 12px !important;
@@ -271,7 +270,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-hero-tag-span {
       display: inline-flex; align-items: center; gap: 5px;
       background: #fff; color: var(--theme-text);
-      border: 1.5px solid var(--theme-accent);
+      border: 1px solid var(--color-border);
       font-size: 11px; font-weight: 500;
       padding: 3px 12px; border-radius: 20px;
     }
@@ -284,9 +283,20 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       transition: border-color 150ms ease, background-color 100ms ease;
     }
+    /* Marketplace project pill — clickable chip that opens the picker. Accent
+       tinted so it reads as the active "shopping for" context. */
+    .bp-hero-project-pill {
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--theme-accent) !important;
+      color: var(--theme-accent) !important;
+      background: var(--theme-soft) !important;
+      transition: background-color 100ms ease, border-color 150ms ease;
+    }
+    .bp-hero-project-pill:hover { background: var(--color-fill) !important; }
     .bp-hero-pill-btn:hover {
       border-color: var(--theme-accent) !important;
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
     }
     :host ::ng-deep .bp-hero-tag.bp-hero-pill-btn .p-tag {
       cursor: pointer;
@@ -322,7 +332,7 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
       font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-hero-pill-menu-item:hover { background: var(--theme-bg); }
+    .bp-hero-pill-menu-item:hover { background: var(--color-fill); }
     .bp-hero-pill-menu-item--danger { color: var(--color-danger); }
     .bp-hero-pill-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
     .bp-hero-pill-menu-sep {
@@ -388,17 +398,15 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     /* ── SHELL BODY ── */
     .bp-shell-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
     .bp-shell-body.bp-shell-sidenav-mode { flex-direction: row; }
-    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; }
-    /* v1.65an — paint the scroll viewport with the page ground so the
-       empty area below the 3-col body doesn't reveal white.
-       v1.65bp — reverted to --theme-bg parchment (was --theme-contrast-soft
-       green). Cat + search panels are contained white cards on the
-       parchment ground. */
-    .bp-shell-content:has(app-catalogue-grid),
-    .bp-shell-content:has(app-messages-inbox),
-    .bp-shell-content:has(app-project-detail) {
-      background: var(--theme-bg);
-    }
+    /* v1.65an — paint the scroll viewport with the page ground so the empty
+       area below the body doesn't reveal white.
+       v1.66dn — was a :has() allow-list (catalogue / inbox / project only),
+       which left settings, ballpark-settings, home, etc. on the bare white body
+       and out of step with the parchment→off-white sweep. Promoted to a blanket
+       default so EVERY page shares the one neutral ground; white cards/panels
+       lift off it. --theme-bg is the off-white ground in light mode, the dark
+       ground in dark mode. */
+    .bp-shell-content { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-page-ground); }
 
     /* ── SIDE NAV ── */
     .bp-sidenav { width: 200px; flex-shrink: 0; border-right: 0.5px solid var(--color-border); padding: 16px 0; overflow-y: auto; background: var(--color-surface); }
@@ -408,8 +416,8 @@ interface NavGroup { label: string; items: NavItem[]; adminOnly?: boolean; }
     .bp-sidenav-home.active .bp-sidenav-org { color: var(--theme-accent); }
     .bp-sidenav-group-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); padding: 12px 16px 4px; }
     .bp-sidenav-item { display: flex; align-items: center; padding: 7px 16px; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-    .bp-sidenav-item:hover { background: var(--theme-bg); color: var(--color-text-primary); }
-    .bp-sidenav-item.active { background: var(--theme-bg); color: var(--theme-accent); font-weight: 500; border-left-color: var(--theme-accent); }
+    .bp-sidenav-item:hover { background: var(--color-fill); color: var(--color-text-primary); }
+    .bp-sidenav-item.active { background: var(--color-fill); color: var(--theme-accent); font-weight: 500; border-left-color: var(--theme-accent); }
   `]
 })
 export class AppShellComponent implements OnInit, OnDestroy {
@@ -420,20 +428,95 @@ export class AppShellComponent implements OnInit, OnDestroy {
   platformName = 'The Ballpark';
 
   pageLabel    = '';
+  /** v1.66s — optional route-data hero overrides. A route may set
+      `data: { heroTitle, heroSub }` to drive the shell hero from a fixed
+      page title/subtitle (e.g. the Profile/settings surface) instead of
+      the orgName + pageLabel fallback. Empty = use the existing fallback
+      chain. Always re-read per navigation so they don't leak between
+      routes. */
+  routeHeroTitle = '';
+  routeHeroSub   = '';
+  /** p0038 — per-route hero-align default from route data. A saved page-setting
+      still wins over it (see effectiveHeroAlign). undefined = no route default. */
+  routeHeroAlign?: 'left' | 'center';
+  pageKey        = '';   // v1.66av — route path, key for per-page hero overrides
   hideHero     = false;
-  /** v1.65dh — route-data flag for a calm, non-Bold hero treatment
-      (used by the dashboard + settings surfaces per p0013-followup).
-      'calm' = light parchment fill, no orbs/grain even in Bold mode,
-      calm-underline tabs. Default = the existing Bold-aware hero. */
-  heroVariant: 'default' | 'calm' | 'none' = 'default';
+  /* v1.66ag — heroVariant (calm/none) removed. There is ONE hero object;
+     the global ConfigService.heroColor decides accent vs stripped. Add a
+     variant explicitly here only if a future surface truly needs one. */
   routeTabs: ShellTab[] = [];
   isBallparkRoute = false;
 
   ctx: ShellContext | null = null;
 
   get hasContext(): boolean   { return !!this.ctx?.heroTitle; }
-  get heroTitle(): string     { return this.ctx?.heroTitle || (this.isBallparkRoute ? this.platformName : this.orgName); }
-  get heroSub(): string       { return this.ctx?.heroSub   || this.pageLabel; }
+  /** p0023 / p0032 — surfaces that opt in via ctx.useConfiguredTitle (the
+      dashboard) drive the title from ConfigService.heroTitleMode;
+      everywhere else it's the page-pushed heroTitle or the org / platform
+      fallback. */
+  get heroTitle(): string {
+    return this.resolveTitle(this.effectiveTitleMode);
+  }
+  /** v1.66av — a per-page override (page settings) wins; else the
+      dashboard's configured mode (useConfiguredTitle); else 'purpose'
+      (the page's own name). */
+  get effectiveTitleMode(): 'org' | 'user' | 'greeting' | 'purpose' {
+    const override = this.configService.getPageSetting(this.pageKey).heroTitleMode;
+    if (override) return override;
+    if (this.ctx?.useConfiguredTitle) return this.heroTitleMode;
+    return 'purpose';
+  }
+  private resolveTitle(mode: 'org' | 'user' | 'greeting' | 'purpose'): string {
+    // Delegates the org / user / greeting / purpose logic to the shared
+    // HeroSettingsService (One Definition — the launcher pages resolve titles
+    // the same way). The shell supplies its own ctx-derived values:
+    //   · org     = the org this PAGE represents (ctx.orgName wins when viewing
+    //               another org, e.g. a supplier detail)
+    //   · purpose = the page's own name (ctx / route heroTitle)
+    return this.heroSettings.resolveTitle(mode, {
+      orgName: this.ctx?.orgName || this.orgName || this.platformName,
+      userName: this.personaSvc.active?.name || this.orgName,
+      purpose: this.substituteLabels(this.ctx?.heroTitle || this.routeHeroTitle || (this.isBallparkRoute ? this.platformName : this.orgName)),
+    });
+  }
+  /** p0032 — Hero color is now a GLOBAL ConfigService setting applied to
+      every hero: 'none' = stripped parchment, 'theme' = accent fill. A
+      route may still force the stripped treatment via heroVariant='none'
+      (e.g. auth pages); the global 'none' no longer fights it. */
+  get heroIsNone(): boolean {
+    return this.heroColor === 'none';
+  }
+  /** v1.66ag — org/owner pill content. The org name moved out of the
+      hero title into a pill; shown when ConfigService.showOrg is on. */
+  get orgPill(): string | null {
+    // v1.66aj — the org pill follows the ACTIVE account (persona), like
+    // the user + location pills. Was showing the globally-loaded agency
+    // org (getCurrentOrg) regardless of who's viewing, so a supplier
+    // persona (Ryan / Rocket Food) wrongly read "Woodland Agency".
+    // A page viewing another org (supplier detail) sets ctx.orgName, which
+    // wins over the active persona's org so the pill names the VIEWED org.
+    const name = this.ctx?.orgName || this.personaSvc.active?.orgName || this.orgName;
+    return this.showOrg && name ? name : null;
+  }
+  get heroSub(): string {
+    const override = this.configService.getPageSetting(this.pageKey).heroSub;
+    return this.substituteLabels(override || this.ctx?.heroSub || this.routeHeroSub || this.pageLabel);
+  }
+  /** v1.66ag — route/ctx subtitles may use {event} / {events} tokens so a
+      page subtitle tracks the configurable Events label (projectLabel). */
+  private substituteLabels(s: string): string {
+    if (!s) return s;
+    const ev  = this.configService.projectLabel || 'Event';   // e.g. "Event"
+    const evL = ev.toLowerCase();
+    return s
+      .replace(/\{Events\}/g, ev + 's')   // title case, plural  → "Events"
+      .replace(/\{Event\}/g, ev)          // title case, singular
+      .replace(/\{events\}/g, evL + 's')  // lower case, plural  → "events"
+      .replace(/\{event\}/g, evL);
+  }
+  /** v1.66ad — a page-pushed / route subtitle is a real sentence (render
+      sentence-case); a bare pageLabel is the legacy uppercase eyebrow. */
+  get heroSubIsSentence(): boolean { return !!(this.ctx?.heroSub || this.routeHeroSub); }
   get heroPills(): string[]   {
     if (this.ctx?.pills?.length) return this.ctx.pills;
     const pills: string[] = [];
@@ -480,6 +563,11 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return this.ctx?.upcomingPill?.text || '';
   }
 
+  /** Clickable marketplace "shopping for {project}" pill, or null. */
+  get projectPill(): { text: string; onClick: () => void } | null {
+    return this.ctx?.projectPill || null;
+  }
+
   // Tab click — use onTabClick callback if present, otherwise navigate by path
   onTabClick(tab: ShellTab) {
     if (this.ctx?.onTabClick) {
@@ -499,8 +587,15 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   heroAlign    = 'center';
   navMode: 'tabs' | 'sidenav' = 'tabs';
+  /** p0023 — hero title source, synced from ConfigService. Read by the
+      heroTitle getter on home / agent surfaces. */
+  heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose' = 'greeting';
+  /** p0032 — global hero strip treatment, synced from ConfigService.
+      Drives heroIsNone for every hero in the app. */
+  heroColor: 'theme' | 'none' = 'none';
   showUserName = true;
   showLocation = true;
+  showOrg      = true;   // v1.66ag — org/owner pill toggle (global)
   showUpcoming = true;
   showStats    = true;
   creditLabel  = 'Ball';
@@ -528,16 +623,46 @@ export class AppShellComponent implements OnInit, OnDestroy {
     }
   ];
 
+  /** v1.66ay — alignment is per-page: a page override (page settings)
+      wins over the global heroAlign. Drives the title, subtitle, pills
+      and the tab band. */
+  get effectiveHeroAlign(): 'left' | 'center' {
+    // A page may push a transient align override (e.g. the marketplace forces
+    // 'left' when categories are in the left rail) — it wins over the saved
+    // per-page setting + the global default.
+    return (this.ctx?.heroAlign as 'left' | 'center')
+      || this.configService.getPageSetting(this.pageKey).heroAlign
+      || this.routeHeroAlign                       // p0038 — route-data default
+      || (this.heroAlign as 'left' | 'center');
+  }
+
   @HostBinding('style.--hero-align')
   get heroAlignVar() {
-    const val = this.navMode === 'sidenav' ? 'left' : this.heroAlign;
+    const val = this.navMode === 'sidenav' ? 'left' : this.effectiveHeroAlign;
     document.documentElement.style.setProperty('--hero-align', val);
+    // v1.66bg — mirror align as an attribute so page bodies (outside the
+    // hero) can anchor their content to the separator's left edge too.
+    document.documentElement.setAttribute('data-hero-align', val);
     return val;
+  }
+
+  @HostBinding('style.--hero-sep-width')
+  get heroSepWidthVar() {
+    const val = `${this.configService.separatorWidth ?? 100}%`;
+    document.documentElement.style.setProperty('--hero-sep-width', val);
+    return val;
+  }
+
+  /** Extra left inset for the left-aligned hero content (pushed by a page,
+      e.g. the marketplace's Left categories mode). Default 0px. */
+  @HostBinding('style.--hero-extra-left')
+  get heroExtraLeftVar() {
+    return this.ctx?.heroExtraLeft || '0px';
   }
 
   @HostBinding('style.--hero-align-flex')
   get heroAlignFlex() {
-    const val = (this.navMode === 'sidenav' || this.heroAlign === 'left') ? 'flex-start' : 'center';
+    const val = (this.navMode === 'sidenav' || this.effectiveHeroAlign === 'left') ? 'flex-start' : 'center';
     document.documentElement.style.setProperty('--hero-align-flex', val);
     return val;
   }
@@ -561,6 +686,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
     private configStripSvc: ConfigStripService,
     private msg: MessageService,
     public  personaSvc: PersonaService,
+    private heroSettings: HeroSettingsService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -640,7 +766,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
       // v1.35a: keep ctx alive when only `back` is set so pages that just
       // need a Back button (e.g. /settings via data.back) don't have to
       // also push a heroTitle. Title/sub still fall back to route data.
-      this.ctx = (ctx.heroTitle || ctx.back) ? ctx : null;
+      // p0032 — keep ctx alive when the surface opts into the configured
+      // title (the dashboard pushes useConfiguredTitle without a heroTitle).
+      this.ctx = (ctx.heroTitle || ctx.orgName || ctx.heroAlign || ctx.back || ctx.useConfiguredTitle || ctx.tabs?.length || ctx.onTabClick) ? ctx : null;
       this.cdr.detectChanges();
     });
 
@@ -676,10 +804,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.navMode      = config?.navMode      || 'tabs';
     this.showUserName = config?.showUserName !== false;
     this.showLocation = config?.showLocation !== false;
+    this.showOrg      = config?.showOrg      !== false;
     this.showUpcoming = config?.showUpcoming !== false;
     this.showStats    = config?.showStats    !== false;
     this.creditLabel  = config?.creditLabel  || 'Ball';
     this.platformName = config?.platformName || 'The Ballpark';
+    this.heroTitleMode = config?.heroTitleMode || 'greeting';
+    this.heroColor     = config?.heroColor     === 'theme' ? 'theme' : 'none';
 
     const pairing = config?.fontPairing || 'playfair-franklin';
     const fonts = AppShellComponent.FONT_PAIRINGS[pairing] || AppShellComponent.FONT_PAIRINGS['playfair-franklin'];
@@ -692,10 +823,16 @@ export class AppShellComponent implements OnInit, OnDestroy {
     'playfair-dm':       { display: "'Playfair Display', serif",  body: "'DM Sans', sans-serif",        label: 'Playfair Display + DM Sans' },
     'inter':             { display: "'Inter', sans-serif",        body: "'Inter', sans-serif",           label: 'Inter + Inter' },
     'fraunces-nunito':   { display: "'Fraunces', serif",          body: "'Nunito', sans-serif",          label: 'Fraunces + Nunito' },
+    // v1.68k — one system font app-wide: display === body, the system-UI sans
+    // stack (Tailwind font-sans default). No web-font load needed.
+    'system':            { display: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', body: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', label: 'System Sans' },
   };
 
   private updateFromRoute() {
     this.isBallparkRoute = this.router.url.startsWith('/ballpark-settings');
+    // Per-page key from the route PATTERN (e.g. /suppliers/:id) so param
+    // routes share one settings entry instead of one per concrete id.
+    this.pageKey = pagePatternKey(this.router);
     if (!this.router.url.includes('/projects/')) {
       this.shellCtx.reset();
     }
@@ -708,13 +845,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
         this.pageLabel  = data['pageLabel'];
         this.routeTabs  = data['tabs'] || [];
         this.hideHero   = !!data['hideHero'];
-        // v1.65dh — heroVariant flag plumbed through route data.
-        // v1.65h1 — 'none' added for the Agent dashboard: hero text
-        // still renders but the accent background, orbs and grain are
-        // suppressed so the band visually merges with the body.
-        this.heroVariant =
-          data['heroVariant'] === 'calm' ? 'calm' :
-          data['heroVariant'] === 'none' ? 'none' : 'default';
+        // v1.66s — optional fixed hero title/subtitle from route data.
+        // Re-read every navigation (default '') so they don't leak.
+        this.routeHeroTitle = data['heroTitle'] || '';
+        this.routeHeroSub   = data['heroSub']   || '';
+        // p0038 — route-data hero-align default (page-setting override wins).
+        this.routeHeroAlign = (data['heroAlign'] === 'left' || data['heroAlign'] === 'center')
+          ? data['heroAlign'] : undefined;
       }
       // v1.35a: any level in the active route tree may set
       // `data: { back: '/somewhere' }` to opt into the standard hero

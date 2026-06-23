@@ -455,7 +455,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       display: inline-flex;
       width: 64px; height: 64px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       align-items: center; justify-content: center;
       color: var(--theme-accent);
       margin-bottom: 18px;
@@ -519,11 +519,11 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       cursor: pointer;
       font-family: var(--font-body);
     }
-    .bp-build-card-head:hover { background: var(--theme-bg); }
+    .bp-build-card-head:hover { background: var(--color-fill); }
     .bp-build-card-icon {
       width: 36px; height: 36px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       display: flex; align-items: center; justify-content: center;
       color: var(--theme-accent);
       flex-shrink: 0;
@@ -614,7 +614,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       padding: 1px 6px;
       font-size: 10px; font-weight: 600;
       color: var(--color-text-muted);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: 10px;
     }
     .bp-build-card-tab.active .bp-build-card-tab-count {
@@ -756,7 +756,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
       font-size: 13px;
       font-weight: 600;
       color: var(--color-text-primary);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 8px;
       min-height: 38px;
@@ -884,7 +884,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
        WORKING_STANDARDS and pulls from CSS variables). */
     .bp-build-budget {
       border: 0.5px solid var(--theme-border);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: 8px;
       padding: 10px 12px;
       margin-bottom: 14px;
@@ -939,7 +939,7 @@ type CardTab = 'items' | 'wishlist' | 'brief';
     }
 
     .bp-build-insight {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 8px;
       padding: 10px 12px;

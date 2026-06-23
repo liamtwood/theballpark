@@ -329,7 +329,7 @@ import { registeredIconNames } from '../../../core/icons';
       font-family: inherit;
     }
     .iup-icon-btn:hover { border-color: var(--color-border, #D9CFC2); }
-    .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--theme-bg, #FEF3C7); color: var(--theme-accent, #D97706); }
+    .iup-icon-btn.selected { border-color: var(--theme-accent, #D97706); background: var(--color-fill); color: var(--theme-accent, #D97706); }
     .iup-icon-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
     .iup-search-bar { display: flex; gap: 6px; margin-bottom: 10px; }
     .iup-search-input {
@@ -375,7 +375,7 @@ import { registeredIconNames } from '../../../core/icons';
     .iup-unsplash-credit a { color: var(--theme-accent, #D97706); text-decoration: none; }
     .iup-toggle-row { display: flex; gap: 0; border: 0.5px solid #D9CFC2; border-radius: 8px; overflow: hidden; }
     .iup-toggle-opt { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; font-family: inherit; border: none; background: #FAFAF8; color: #6B7280; cursor: pointer; transition: all 0.15s; }
-    .iup-toggle-opt.active { background: var(--theme-bg, #F5F0E8); color: var(--theme-accent, #D97706); font-weight: 600; }
+    .iup-toggle-opt.active { background: var(--color-fill); color: var(--theme-accent, #D97706); font-weight: 600; }
   `]
 })
 export class ImageUploadPanelComponent implements OnInit {
@@ -428,7 +428,7 @@ export class ImageUploadPanelComponent implements OnInit {
   selectedColor = 'navy';
   imageDisplay: 'cover' | 'contain' = 'cover';
   selectedIconName = '';
-  selectedIconColor = 'var(--theme-bg)';
+  selectedIconColor = 'var(--color-fill)';
   activeTab: 'upload' | 'search' | 'icon' = 'upload';
   unsplashQuery = '';
   unsplashResults: { url: string; thumb: string; description: string; photographer: string }[] = [];
@@ -450,7 +450,7 @@ export class ImageUploadPanelComponent implements OnInit {
     return this.iconOptions.filter(n => n.includes(q));
   }
   iconColors = [
-    'var(--theme-bg)', 'var(--color-surface)',
+    'var(--color-fill)', 'var(--color-surface)',
     '#FEF3C7', '#DBEAFE', '#D1FAE5', '#FDE2E2', '#EDE9FE', '#FEE2E2'
   ];
 

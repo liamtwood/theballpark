@@ -32,8 +32,22 @@ export class ItemService {
     return this.api.put<Item>(`/items/${id}`, data);
   }
 
-  /** Soft delete — backend sets is_active=false. */
+  /** Soft delete — v1.68b: backend now sets deleted_at (was is_active=false).
+      Removes the item from the supplier's own store AND the marketplace. */
   delete(id: string) {
     return this.api.delete<Item>(`/items/${id}`);
+  }
+
+  /** v1.68b — publish/hide toggle (distinct from delete). Sets items.is_active:
+      false hides the item from the marketplace (still visible, badged "Hidden",
+      in the owner's own store); true re-publishes it. */
+  setActive(id: string, isActive: boolean) {
+    return this.api.put<Item>(`/items/${id}`, { is_active: isActive });
+  }
+
+  /** v1.68b — duplicate an item (row + gallery + taxonomy). The copy lands
+      hidden (is_active=false) for review before publishing. */
+  duplicate(id: string) {
+    return this.api.post<Item>(`/items/${id}/duplicate`, {});
   }
 }

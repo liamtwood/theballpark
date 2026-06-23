@@ -7,7 +7,8 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SidebarModule } from 'primeng/sidebar';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { LucideAngularModule, MapPin, ChevronRight, Heart, SquarePen, Globe, Phone, Mail } from 'lucide-angular';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -23,6 +24,10 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import { CatalogueGridComponent } from '../../shared/components/catalogue-grid/catalogue-grid.component';
+import { MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
+import { ItemService } from '../../core/services/item.service';
+import { MarketplaceProjectService, MarketplaceProject } from '../../core/services/marketplace-project.service';
+import { MarketplaceProjectPickerComponent } from '../../shared/components/marketplace-project-picker/marketplace-project-picker.component';
 import { ItemDrawerComponent, ItemDrawerMode } from '../../shared/components/item-drawer/item-drawer.component';
 import { SupplierDrawerComponent } from '../../shared/components/supplier-drawer/supplier-drawer.component';
 import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
@@ -34,11 +39,13 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
   imports: [
     CommonModule, FormsModule, RouterModule,
     ButtonModule, DropdownModule, InputTextareaModule, SidebarModule, ToastModule,
+    ConfirmDialogModule,
     LucideAngularModule,
     GbpPipe, LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent
+    ItemDrawerComponent, SupplierDrawerComponent, MessagesInboxComponent,
+    MarketplaceProjectPickerComponent
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   template: `
     <div class="bp-page">
     <app-loading *ngIf="loading"></app-loading>
@@ -111,7 +118,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
               <div class="bp-supplier-cover"
                    [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null"
                    [class.bp-supplier-cover--empty]="!supplier.cover_image_url">
-                <button class="bp-supplier-cover-edit"
+                <button *ngIf="manage" class="bp-supplier-cover-edit"
                         (click)="openSupplierEditDrawer()"
                         title="Edit supplier details">
                   <lucide-icon name="square-pen" [size]="14"></lucide-icon>
@@ -159,11 +166,14 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
                 </span>
               </div>
               <div class="bp-home-cat-grid">
-                <button type="button" class="bp-home-cat-card"
+                <button type="button" class="bp-home-cat-card bp-card-hover"
                         *ngFor="let sub of group.subcategories">
                   <div class="bp-home-cat-card-img"
-                       [style.background-image]="sub.cover_image_url ? 'url(' + sub.cover_image_url + ')' : null"
                        [class.bp-home-cat-card-img--fallback]="!sub.cover_image_url">
+                    <!-- Cover on its own layer so it zooms on hover (only the
+                         photo; the card lifts via .bp-card-hover). -->
+                    <div *ngIf="sub.cover_image_url" class="bp-card-zoom-img"
+                         [style.background-image]="'url(' + sub.cover_image_url + ')'"></div>
                     <span *ngIf="!sub.cover_image_url" class="bp-home-cat-card-initial">
                       {{ sub.name.charAt(0) }}
                     </span>
@@ -268,11 +278,16 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
         <app-catalogue-grid
           [entities]="itemEntities"
           [categories]="displayStoreCategories"
+          viewControlsKey="supplier-store"
+          [viewControlsDefaults]="viewDefaults"
           entityType="item"
           entityLabel="item"
           [actionLabel]="''"
           [favouriteIds]="itemFavIds"
-          [showEdit]="true"
+          [showEdit]="manage"
+          [showDelete]="manage"
+          [allowItemEdit]="manage"
+          [addToProjectMode]="!manage"
           [showItemEdit]="false"
           [showFavourite]="false"
           [showBack]="false"
@@ -291,26 +306,36 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
           (favouriteToggled)="onFavToggled($event)"
           (imageEditRequested)="onImageEdit($event)"
           (itemEditRequested)="onItemEditRequested($event)"
+          (deleteRequested)="onDeleteItem($event)"
+          (copyRequested)="onCopyItem($event)"
+          (activeToggleRequested)="onToggleActive($event)"
+          (projectRequired)="onProjectRequired($event)"
           (viewRequested)="onViewItem($event)"
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)"
           (actionClicked)="onAction($event)">
-          <div catalogue-toggles class="bp-cat-actions">
+          <div catalogue-toggles class="bp-cat-actions" *ngIf="manage">
             <!-- Mirror the project Build tab's scoped/all toggle so suppliers
                  can opt to see categories they don't have items in (e.g. if
-                 they're about to add into a new one via + Add item). -->
+                 they're about to add into a new one via Add). -->
             <button type="button" class="bp-store-scope-toggle"
                     (click)="toggleShowAllStoreCategories()">
               {{ showAllStoreCategories ? 'Show scoped only' : 'Show all categories' }}
             </button>
-            <p-button label="+ Add item"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="openAddItemDrawer()">
-            </p-button>
-            <p-button label="Upload" icon="pi pi-upload"
-              styleClass="p-button-outlined bp-section-add-btn"
-              (onClick)="fileInput.click()">
-            </p-button>
+          </div>
+          <!-- v1.68d — Add (gradient, primary) + Upload (outline, secondary)
+               pills sit inline to the RIGHT of the search bar via the grid's
+               [catalogue-search-actions] slot. Canonical bp-btn-grad /
+               bp-btn-outline, sized to the 38px search-bar height. -->
+          <div catalogue-search-actions class="bp-store-actions" *ngIf="manage">
+            <button type="button" class="bp-btn-grad bp-store-action-btn"
+                    (click)="openAddItemDrawer()">
+              <lucide-icon name="plus" [size]="16"></lucide-icon> Add
+            </button>
+            <button type="button" class="bp-btn-outline bp-store-action-btn"
+                    (click)="fileInput.click()">
+              <lucide-icon name="upload" [size]="16"></lucide-icon> Upload
+            </button>
             <input #fileInput type="file"
                    accept=".xls,.xlsx,.csv"
                    (change)="onCatalogueUploadSelected($event)"
@@ -405,10 +430,16 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
     </p-sidebar>
 
     <p-toast></p-toast>
+    <p-confirmDialog></p-confirmDialog>
+    <app-marketplace-project-picker
+      [(visible)]="pickerOpen"
+      [activeId]="selectedProjectId || null"
+      (picked)="onProjectPicked($event)">
+    </app-marketplace-project-picker>
     </div>
   `,
   styles: [`
-    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--color-fill); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
     .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 2px; }
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
@@ -418,11 +449,11 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
        slot. Sits inline in the section header, between the entity count
        and the list/card/table view-toggle. */
     .bp-cat-actions { display: flex; gap: 8px; align-items: center; }
-    :host ::ng-deep .bp-section-add-btn .p-button {
-      height: 30px; padding: 0 12px;
-      font-size: 12px; font-weight: 500;
-      font-family: var(--font-body);
-    }
+    /* v1.68d — store Add / Upload pills (canonical bp-btn-grad / bp-btn-outline)
+       sized to the 38px search-bar height so they sit inline with it. */
+    .bp-store-actions { display: flex; gap: 8px; align-items: center; }
+    .bp-store-action-btn { height: 38px; padding: 0 16px; font-size: 14px; }
+    .bp-store-action-btn lucide-icon { display: inline-flex; }
     /* Scoped/all categories toggle — matches the catalogue-grid's own
        .bp-circles-toggle look (text link, accent colour). */
     .bp-store-scope-toggle {
@@ -442,7 +473,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
        a continuous parchment surface. */
 
     .bp-supplier-home-ground {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 24px 20px;
       min-height: calc(100vh - var(--nav-height) - 64px);
     }
@@ -619,26 +650,22 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       padding: 0;
       text-align: left;
       cursor: pointer;
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      transition: var(--card-hover-transition);   /* card hover standard */
       font-family: inherit;
     }
-    .bp-home-cat-card:hover {
-      border-color: var(--theme-accent);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-home-cat-card-img {
       width: 100%;
       height: 96px;
-      background-size: cover;
-      background-position: center;
-      background-color: var(--theme-bg);
+      background-color: var(--color-fill);
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;   /* hosts the .bp-card-zoom-img cover layer */
+      overflow: hidden;     /* clips the zoom to the 96px image area */
     }
     .bp-home-cat-card-img--fallback {
-      background: linear-gradient(135deg, var(--theme-bg) 0%, var(--theme-border) 100%);
+      background: linear-gradient(135deg, var(--color-fill) 0%, var(--theme-border) 100%);
     }
     .bp-home-cat-card-initial {
       font-family: var(--font-display);
@@ -674,7 +701,7 @@ import { Project, CatalogueEntity, CategoryInfo, Item, Org } from '../../models'
       align-items: flex-start;
       gap: 12px;
       padding: 14px 16px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--theme-border);
       border-radius: 10px;
       text-decoration: none;
@@ -742,6 +769,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   showQuoteDrawer = false;
   selectedItem: any = null;
   selectedProjectId = '';
+  /** Project picker dialog state + pending add (queued until a project is
+      chosen via the hero pill). */
+  pickerOpen = false;
+  private pendingAdd: { entity: CatalogueEntity; type: 'selected' | 'liked' } | null = null;
   quoteBrief = '';
   ballsBalance = 0;
   creditLabel = 'Ball';
@@ -751,12 +782,26 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   // Catalogue grid data
   itemEntities: CatalogueEntity[] = [];
   categories: CategoryInfo[] = [];
+  /** Shipped catalogue-view default (shared across all three marketplaces). */
+  viewDefaults = MARKETPLACE_VIEW_DEFAULTS;
   itemFavIds = new Set<string>();
 
   // Image upload
   uploadEntityId = '';
   uploadCoverUrl = '';
   uploadImageDisplay: 'cover' | 'contain' = 'cover';
+
+  // v1.66db — this component serves three URL-distinct surfaces, chosen by
+  // route data.mode/surface (see app.routes):
+  //   mode 'public'  → /suppliers/:id, the read-only tabbed detail (no chrome)
+  //   mode 'manage'  → /storefront (surface 'storefront') or /store (surface
+  //                    'store'), the owner's single-surface management views.
+  // ownsCatalogue is the ownership FACT; `manage` (mode==='manage' && owner)
+  // is what gates all edit/delete/add affordances.
+  mode: 'public' | 'manage' = 'public';
+  // v1.68c — surface 'shopfront' renamed to 'storefront' (URL + vocabulary).
+  surface: 'storefront' | 'store' = 'storefront';
+  get manage(): boolean { return this.mode === 'manage' && this.ownsCatalogue; }
 
   // Item drawer — v1.17: now driven by an explicit mode input so the
   // same component handles add / edit / view from a single mount.
@@ -778,7 +823,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   currentOrgType: string | null = null;
 
   // v1.65dz (p0015) — "Home" tab renamed to "Front" (the supplier's
-  // public shopfront).
+  // public storefront).
   // v1.65e1 — supplier-detail expanded to FOUR tabs when viewing your
   // own org (ownsCatalogue): Home / Front / Store / Inbox. Agencies
   // browsing a supplier see only Front + Store (the public surface).
@@ -832,25 +877,39 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     private shellCtx: ShellContextService,
     public  personaSvc: PersonaService,
     private msg: MessageService,
+    private confirm: ConfirmationService,
+    private itemSvc: ItemService,
+    private marketProjectSvc: MarketplaceProjectService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.sid = this.route.snapshot.paramMap.get('id') || '';
+    // v1.66db — surface chosen by route data. Manage surfaces (/storefront,
+    // /store) are self-scoped: resolve to the logged-in supplier's own org
+    // (no :id in the URL). Public detail (/suppliers/:id) reads :id.
+    const data = this.route.snapshot.data as any;
+    this.mode = data['mode'] === 'manage' ? 'manage' : 'public';
+    this.surface = data['surface'] === 'store' ? 'store' : 'storefront';
+    this.sid = data['self']
+      ? (this.personaSvc.active?.supplierOrgId || '')
+      : (this.route.snapshot.paramMap.get('id') || '');
     this.creditLabel = this.configService.current?.creditLabel || 'Ball';
 
     const qp = this.route.snapshot.queryParams;
-    if (qp['projectId']) { this.selectedProjectId = qp['projectId']; this.projectPreSelected = true; }
-    // v1.65dz (p0015) → v1.65e1 — ?tab= deep-links into any of the 4
-    // supplier-detail tabs. Defaults to 'front' (the public shopfront)
-    // when no param is set OR when an agency is browsing someone
-    // else's supplier page (Home + Inbox only render when ownsCatalogue
-    // is true, so picking them on a foreign page just sticks to front).
-    const tabParam = qp['tab'];
-    if (tabParam === 'home' || tabParam === 'front' ||
-        tabParam === 'store' || tabParam === 'inbox') {
-      this.activeTab = tabParam;
+    if (qp['projectId']) {
+      this.selectedProjectId = qp['projectId']; this.projectPreSelected = true;
+    } else if (this.marketProjectSvc.current) {
+      // Carry the session "shopping for" project into the store.
+      this.selectedProjectId = this.marketProjectSvc.current.id; this.projectPreSelected = true;
+    }
+    // Active surface. Manage mode → the route's surface (URL IS the surface;
+    // no in-page tab bar). Public mode → ?tab= (front|store only), default front.
+    if (this.mode === 'manage') {
+      this.activeTab = this.surface === 'store' ? 'store' : 'front';
+    } else {
+      const tabParam = qp['tab'];
+      if (tabParam === 'front' || tabParam === 'store') this.activeTab = tabParam;
     }
 
     this.orgSvc.getCurrentOrg().subscribe(org => {
@@ -886,6 +945,8 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       next: projects => {
         this.projects = (projects || []).filter(p => ['active','costing','draft'].includes(p.status_name || ''));
         if (this.projects.length > 0 && !this.projectPreSelected) this.selectedProjectId = this.projects[0].id;
+        // Re-push so the hero project pill label resolves from the loaded list.
+        if (this.supplier) this.applyShellHero();
         this.cdr.detectChanges();
       }
     });
@@ -898,7 +959,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
@@ -952,6 +1013,10 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       unit: i.unit,
       categoryLabel: i.category_name,
       specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
+      // v1.68b — publish state drives the "Hidden" badge + eye toggle on the
+      // owner's own store. The catalogue endpoint returns hidden items only
+      // when include_hidden=true (manage mode).
+      is_active: i.is_active,
       _raw: i
     }));
   }
@@ -972,14 +1037,24 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
 
     const counts: Record<string, number> = {};
     for (const item of this.catalogueItems) {
-      let current = this.allCatalogueCategories.find(c => c.id === item.category_id);
-      let guard = 6;
-      while (current && guard-- > 0) {
-        counts[current.id] = (counts[current.id] || 0) + 1;
-        if (!current.parent_id) break;
-        const parentId: string = current.parent_id;
-        current = this.allCatalogueCategories.find(c => c.id === parentId);
+      // Collect this item's category + ALL ancestors, seeded from BOTH its
+      // category_id and its subcategory_id, deduped so each is counted once.
+      // Seeding from subcategory_id is what makes leaf subcategories carry a
+      // count — without it they're filtered out of the scoped LEFT rail and
+      // never appear when a parent is expanded.
+      const ids = new Set<string>();
+      for (const seed of [item.category_id, item.subcategory_id]) {
+        if (!seed) continue;
+        let current = this.allCatalogueCategories.find(c => c.id === seed);
+        let guard = 6;
+        while (current && guard-- > 0) {
+          ids.add(current.id);
+          if (!current.parent_id) break;
+          const parentId: string = current.parent_id;
+          current = this.allCatalogueCategories.find(c => c.id === parentId);
+        }
       }
+      for (const id of ids) counts[id] = (counts[id] || 0) + 1;
     }
 
     this.categories = this.allCatalogueCategories
@@ -1153,26 +1228,69 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       surface tabs render — Front + Store. */
   private applyShellHero() {
     if (!this.supplier) return;
-    const tabs = this.ownsCatalogue
-      ? [
-          { label: 'Home',  path: 'home'  },
-          { label: 'Front', path: 'front' },
-          { label: 'Store', path: 'store' },
-          { label: 'Inbox', path: 'inbox' },
-        ]
+    // Manage surfaces are URL-distinct (no in-page tab bar — you switch via
+    // the top nav). Public detail keeps its 2-tab band (Storefront / Store).
+    const tabs = this.mode === 'manage'
+      ? []
       : [
-          { label: 'Front', path: 'front' },
-          { label: 'Store', path: 'store' },
+          { label: 'Storefront', path: 'front' },
+          { label: 'Store',      path: 'store' },
         ];
+    const heroSub = this.mode === 'manage'
+      ? (this.surface === 'store' ? 'Store' : 'Storefront')
+      : (this.supplier.city || 'London');
     this.shellCtx.set({
       heroTitle: this.supplier.name,
-      heroSub: this.supplier.city || 'London',
+      // This page VIEWS the supplier's org — drive the hero's org title-mode
+      // + org pill from it (not the logged-in viewer's org).
+      orgName: this.supplier.name,
+      heroSub,
       pills: [],
       tabs,
       activeTabPath: this.activeTab,
       onTabClick: (t) => this.setActiveTab(t.path as 'home' | 'front' | 'store' | 'inbox'),
+      // "Shopping for {project}" pill — only when an agency is shopping a
+      // supplier's store (public store tab). Not in owner management mode.
+      projectPill: (this.mode === 'public' && this.activeTab === 'store') ? {
+        text: this.marketProjectName(),
+        onClick: () => { this.pickerOpen = true; this.cdr.detectChanges(); },
+      } : undefined,
       back: { label: 'Back', onBack: () => this.goBack() }
     });
+  }
+
+  /** Label for the project pill — the selected project's name, or a prompt. */
+  private marketProjectName(): string {
+    const p = this.projects.find(x => x.id === this.selectedProjectId);
+    return p ? (p.event_name || p.name) : 'Select project';
+  }
+
+  /** Add attempted before a project was chosen — stash + open the picker. */
+  onProjectRequired(req: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    this.pendingAdd = req;
+    this.pickerOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  /** Project picked from the hero pill — set it (and remember for the session
+      so it carries to /shop), flush any pending add, refresh the cart. */
+  onProjectPicked(p: MarketplaceProject | null) {
+    this.marketProjectSvc.set(p);
+    this.selectedProjectId = p?.id || '';
+    const pending = this.pendingAdd;
+    this.pendingAdd = null;
+    if (p && pending) {
+      this.projectItemSvc.add(p.id, pending.entity.id, pending.type).subscribe({
+        next: () => this.loadProjectItems(p.id),
+        error: () => this.loadProjectItems(p.id),
+      });
+    } else if (p) {
+      this.loadProjectItems(p.id);
+    } else {
+      this.projectItems = [];
+    }
+    this.applyShellHero();
+    this.cdr.detectChanges();
   }
 
   /** v1.65dm — flip the page-local tab AND re-push the shell context so
@@ -1191,10 +1309,74 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
     // no history entry (deep-link / fresh tab) we fall back to the
     // catalogue.
     if (history.length > 1) history.back();
-    else this.router.navigate(['/suppliers']);
+    else this.router.navigate(['/shop']);
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
+
+  /** Delete from the Store "⋯" menu — supplier managing their own catalogue.
+      Confirms, soft-deletes via the item API, drops the row locally and
+      rebuilds the category circles / counts. */
+  onDeleteItem(entity: CatalogueEntity) {
+    this.confirm.confirm({
+      header: `Delete ${entity.name}?`,
+      message: 'This removes the item from your catalogue. You can’t undo this from here.',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      accept: () => {
+        this.itemSvc.delete(entity.id).subscribe({
+          next: () => {
+            this.catalogueItems = this.catalogueItems.filter(i => i.id !== entity.id);
+            this.mapItems();
+            this.buildCategories();
+            this.buildHomeCategoryGroups();
+            this.msg.add({ severity: 'success', summary: 'Item deleted', life: 2500 });
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.msg.add({ severity: 'error', summary: 'Delete failed', life: 3500 });
+          },
+        });
+      },
+    });
+  }
+
+  /** v1.68b — Make inactive / Make active (eye toggle) from the Store menu.
+      Flips items.is_active; the row stays in the owner's own store (loaded
+      with include_hidden) and the "Hidden" badge toggles. Hidden items vanish
+      from the marketplace. */
+  onToggleActive(entity: CatalogueEntity) {
+    const newActive = entity.is_active === false; // hidden → activate; active → hide
+    this.itemSvc.setActive(entity.id, newActive).subscribe({
+      next: () => {
+        const it = this.catalogueItems.find((i: any) => i.id === entity.id);
+        if (it) it.is_active = newActive;
+        this.mapItems();
+        this.msg.add({
+          severity: 'success',
+          summary: newActive ? 'Item published' : 'Item hidden',
+          life: 2500
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Update failed', life: 3500 }),
+    });
+  }
+
+  /** v1.68b — Copy from the Store menu. Duplicates the item (row + gallery +
+      taxonomy) via the backend; the copy lands hidden (is_active=false). Then
+      navigates to the new item per spec. */
+  onCopyItem(entity: CatalogueEntity) {
+    this.itemSvc.duplicate(entity.id).subscribe({
+      next: (copy: any) => {
+        this.msg.add({ severity: 'success', summary: 'Item copied', life: 2000 });
+        if (copy?.id) this.router.navigate(['/items', copy.id]);
+      },
+      error: () => this.msg.add({ severity: 'error', summary: 'Copy failed', life: 3500 }),
+    });
+  }
 
   onFavToggled(entityId: string) {
     this.favSvc.toggleItem(entityId).subscribe(() => this.cdr.detectChanges());
@@ -1293,7 +1475,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
   onItemSaved(_item: Item) {
     // Refresh the catalogue so the grid AND the Home subcategory cards
     // reflect the new/updated row.
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();
@@ -1310,7 +1492,7 @@ export class SupplierDetailComponent implements OnInit, OnDestroy {
       the deleted row drops out of the grid + the Home subcategory
       counts update. */
   onItemDeleted(_e: { id: string }) {
-    this.supplierSvc.getCatalogue(this.sid).subscribe({
+    this.supplierSvc.getCatalogue(this.sid, this.mode === 'manage').subscribe({
       next: (items: any[]) => {
         this.catalogueItems = items || [];
         this.mapItems();

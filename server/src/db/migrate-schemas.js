@@ -440,6 +440,54 @@ const migrate = async () => {
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
 
+      -- v2.22a (pV2-PROJECTS-01): projects.status — the project_status
+      -- CODELIST code (draft/active/completed/archived). Dual-model with
+      -- the legacy status_id FK (kept for v1 compat until pV2-11): the v2
+      -- ProjectsService dual-writes both. statuses.name for
+      -- entity_type='project' maps 1:1 to the codelist codes, so the
+      -- backfill is exact; NULL status_id → the codelist default 'draft'.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS status TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS status TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS status TEXT;
+
+      UPDATE public.projects  p SET status = s.name FROM public.statuses  s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+      UPDATE preview.projects p SET status = s.name FROM preview.statuses s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+      UPDATE master.projects  p SET status = s.name FROM master.statuses  s WHERE p.status_id = s.id AND s.entity_type = 'project' AND p.status IS NULL;
+
+      UPDATE public.projects  SET status = 'draft' WHERE status IS NULL;
+      UPDATE preview.projects SET status = 'draft' WHERE status IS NULL;
+      UPDATE master.projects  SET status = 'draft' WHERE status IS NULL;
+
+      -- Wire the project_status codelist consumer pointer now that the
+      -- column exists (was NULL at CODELISTS-01 — the column didn't exist
+      -- yet). Drives the deactivation in-use gate in /settings/codelists.
+      UPDATE shared.reference_codelists SET consumer_table = 'projects', consumer_column = 'status' WHERE list_name = 'project_status';
+
+      -- Each project carries its own financial defaults (margin/contingency/
+      -- VAT), seeded from the org's Profile defaults. AI-created projects
+      -- landed NULL (create didn't seed them) → the Estimate fell back to the
+      -- house rates instead of the org's. Backfill any NULL from the org,
+      -- falling back to the v1 house rates (20/10/20). Only touches NULL rows,
+      -- so per-project overrides + already-seeded projects are preserved.
+      UPDATE public.projects  p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM public.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+      UPDATE preview.projects p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM preview.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+      UPDATE master.projects  p SET
+        default_margin_pct      = COALESCE(p.default_margin_pct,      o.default_margin_pct,      20),
+        default_contingency_pct = COALESCE(p.default_contingency_pct, o.default_contingency_pct, 10),
+        default_vat_pct         = COALESCE(p.default_vat_pct,         o.default_vat_pct,         20)
+        FROM master.orgs o WHERE o.id = p.org_id
+         AND (p.default_margin_pct IS NULL OR p.default_contingency_pct IS NULL OR p.default_vat_pct IS NULL);
+
       -- estimate_items drift reconciliation. The legacy CREATE block had
       -- unit VARCHAR(50) and is_active BOOLEAN columns that were dropped
       -- in dev out-of-band; shortlisted + status_id were added at the
@@ -530,6 +578,112 @@ const migrate = async () => {
       CREATE UNIQUE INDEX IF NOT EXISTS uq_project_items_project_item
         ON public.project_items(project_id, item_id);
 
+      -- ── pV2-QUANTITY-01 ──────────────────────────────────────────────
+      -- Quantity becomes a first-class field on the cart/quote line. A v1-era
+      -- quantity numeric NULL column pre-exists in some envs, so we ADD it
+      -- where missing, backfill NULL/<1 to 1, then normalise to INT NOT NULL
+      -- DEFAULT 1 (no NULLs, no fractional quantities — the spec guarantee).
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS quantity INT;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS quantity INT;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS quantity INT;
+
+      UPDATE public.project_items  SET quantity = 1 WHERE quantity IS NULL OR quantity < 1;
+      UPDATE preview.project_items SET quantity = 1 WHERE quantity IS NULL OR quantity < 1;
+      UPDATE master.project_items  SET quantity = 1 WHERE quantity IS NULL OR quantity < 1;
+
+      ALTER TABLE public.project_items  ALTER COLUMN quantity TYPE INT USING ROUND(quantity)::int, ALTER COLUMN quantity SET DEFAULT 1, ALTER COLUMN quantity SET NOT NULL;
+      ALTER TABLE preview.project_items ALTER COLUMN quantity TYPE INT USING ROUND(quantity)::int, ALTER COLUMN quantity SET DEFAULT 1, ALTER COLUMN quantity SET NOT NULL;
+      ALTER TABLE master.project_items  ALTER COLUMN quantity TYPE INT USING ROUND(quantity)::int, ALTER COLUMN quantity SET DEFAULT 1, ALTER COLUMN quantity SET NOT NULL;
+
+      -- pV2-QUANTITY-01c: snapshot the item's category onto the quote line.
+      -- We snapshot the category_id ONLY (no FK — a snapshot must survive
+      -- independent of the catalogue) and live-join categories for the
+      -- name/visuals. This keeps a line in the category it was added under if
+      -- the item is later RECATEGORISED, while a category RENAME still
+      -- propagates (live name). Relies on categories being soft-delete-only.
+      ALTER TABLE public.project_items  ADD COLUMN IF NOT EXISTS category_id UUID;
+      ALTER TABLE preview.project_items ADD COLUMN IF NOT EXISTS category_id UUID;
+      ALTER TABLE master.project_items  ADD COLUMN IF NOT EXISTS category_id UUID;
+
+      UPDATE public.project_items  pi SET category_id = i.category_id FROM public.items  i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+      UPDATE preview.project_items pi SET category_id = i.category_id FROM preview.items i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+      UPDATE master.project_items  pi SET category_id = i.category_id FROM master.items  i WHERE i.id = pi.item_id AND pi.category_id IS NULL;
+
+      -- Smart auto-fill mapping on the units codelist: a unit can point at a
+      -- project field so add-to-cart seeds a sensible default quantity
+      -- (per-head → guest_count, per-day → duration_days). Nullable — most
+      -- units (flat / dimensional) have no mapping and default to 1.
+      ALTER TABLE shared.reference_codelist_values ADD COLUMN IF NOT EXISTS auto_fill_field TEXT;
+
+      -- pV2-QUANTITY-01b: per-item pack size. How many guests ONE unit serves
+      -- (a platter that "feeds 10", a "coffee for 50"). Nullable — most items
+      -- have no pack size. On add-to-quote, qty = ceil(guest_count / serves)
+      -- when set, so a platter serving 10 lands at 25 for a 250-guest event.
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS serves INT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS serves INT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS serves INT;
+
+      -- Rocket Food catering unit/serves corrections (Liam, 2026-06-14).
+      -- Idempotent + safe: the org subselect is NULL where Rocket Food is
+      -- absent (preview/master), so those UPDATEs match nothing.
+      UPDATE public.items  SET unit = 'head' WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+      UPDATE preview.items SET unit = 'head' WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+      UPDATE master.items  SET unit = 'head' WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name IN ('Sit-Down Dinner (3 course)', 'Soda with Lunch', 'Soft Drinks the whole day', 'Wine & Beer with Dinner');
+
+      UPDATE public.items  SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+      UPDATE preview.items SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+      UPDATE master.items  SET unit = 'each', serves = 50 WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name = 'Breakfast & Coffee (50 guests)';
+
+      UPDATE public.items  SET serves = 10 WHERE org_id = (SELECT id FROM public.orgs  WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+      UPDATE preview.items SET serves = 10 WHERE org_id = (SELECT id FROM preview.orgs WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+      UPDATE master.items  SET serves = 10 WHERE org_id = (SELECT id FROM master.orgs  WHERE name = 'Rocket Food') AND name = 'Working Lunch Platters';
+
+      -- Units consolidation (Liam 2026-06-14, single-list model). The dead
+      -- item_time_unit list/column (150/152 NULL) is retired; its live codes
+      -- already leaked into items.unit (event 41, day 25), so we adopt
+      -- items.unit as the single source of truth and fold day/event/hour in.
+      -- Codelist rule: deactivate + merge, never DROP.
+      INSERT INTO shared.reference_codelist_values
+        (list_name, code, label, sort_order, is_active, is_system, is_default, meta, auto_fill_field)
+      VALUES
+        ('item_unit', 'day',   'Day',   2, true, true, false, '{}'::jsonb, 'duration_days'),
+        ('item_unit', 'event', 'Event', 3, true, true, false, '{}'::jsonb, NULL),
+        ('item_unit', 'hour',  'Hour',  4, true, true, false, '{}'::jsonb, NULL)
+      ON CONFLICT (list_name, code) DO NOTHING;
+
+      -- Keeper set: head, day, event, hour, each, sqm — give them a clean
+      -- sort order + the auto_fill mapping. (Re-runnable: same values.)
+      UPDATE shared.reference_codelist_values SET sort_order = 1, auto_fill_field = 'guest_count'  WHERE list_name = 'item_unit' AND code = 'head';
+      UPDATE shared.reference_codelist_values SET sort_order = 2, auto_fill_field = 'duration_days' WHERE list_name = 'item_unit' AND code = 'day';
+      UPDATE shared.reference_codelist_values SET sort_order = 3, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'event';
+      UPDATE shared.reference_codelist_values SET sort_order = 4, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'hour';
+      UPDATE shared.reference_codelist_values SET sort_order = 5, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'each';
+      UPDATE shared.reference_codelist_values SET sort_order = 6, auto_fill_field = NULL            WHERE list_name = 'item_unit' AND code = 'sqm';
+
+      -- Deactivate the merged-away long tail (countable → each, project →
+      -- event) and the deactivated dimensionals (sqft/linear_m/cbm). Values
+      -- stay in the table (reactivate if a real item resurfaces).
+      UPDATE shared.reference_codelist_values SET is_active = false
+       WHERE list_name = 'item_unit'
+         AND code IN ('unit','cover','sqft','linear_m','package','set','project','item','pair','panel','platter','letter','load','pallet','cbm','table');
+
+      -- Retire the item_time_unit parent (single-list model). Its values are
+      -- left intact; an inactive parent hides the list from the admin UI.
+      UPDATE shared.reference_codelists SET is_active = false WHERE list_name = 'item_time_unit';
+
+      -- Re-point affected items.unit rows to the canonical code (one pass per
+      -- merge target). After this every active item sits on head/day/event/
+      -- each/sqm — all active item_unit codes. Idempotent: merged codes no
+      -- longer exist on items after the first run.
+      UPDATE public.items  SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
+      UPDATE preview.items SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
+      UPDATE master.items  SET unit = 'each' WHERE unit IS NULL OR unit IN ('unit','cover','sqft','linear_m','package','set','item','pair','panel','platter','letter','load','pallet','cbm','table');
+
+      UPDATE public.items  SET unit = 'event' WHERE unit = 'project';
+      UPDATE preview.items SET unit = 'event' WHERE unit = 'project';
+      UPDATE master.items  SET unit = 'event' WHERE unit = 'project';
+      -- ── end pV2-QUANTITY-01 ──────────────────────────────────────────
+
       -- v1.13: orgs.auto_publish_items. Controls whether approved
       -- estimate items auto-publish back to the supplier catalogue.
       ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS auto_publish_items BOOLEAN DEFAULT true;
@@ -550,9 +704,58 @@ const migrate = async () => {
       ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
       ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS ref_counter   INTEGER DEFAULT 0;
 
+      -- v2.19a (pV2-CODELISTS-02): the org's default currency — Profile
+      -- "Financial defaults" select, fed by the currency codelist. ISO
+      -- 4217 alpha-3 code; GBP matches the platform's v1-era assumption.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) DEFAULT 'GBP';
+
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
       ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS ref VARCHAR(20);
+
+      -- pV2-MEDIA-01b: project media. cover_image_url / client_logo_url /
+      -- card_color already exist; add the Lucide icon fallback (cover-less
+      -- projects), the cover focal point (object-position %, SMALLINT DEFAULT
+      -- 50 = centre, MEDIA.md lock §10), and the mandatory Unsplash
+      -- attribution (lock §4). focal/attribution columns repeat on items +
+      -- orgs in later MEDIA slices.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS icon_name VARCHAR(100);
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS icon_color VARCHAR(50);
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS cover_focal_x SMALLINT DEFAULT 50;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS cover_focal_y SMALLINT DEFAULT 50;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS unsplash_photographer_name TEXT;
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;
+
+      -- pV2-MEDIA-01c: project gallery — ordered JSONB array of
+      -- { url, focalX, focalY, attribution? }. The multi-image strip on the
+      -- Details tab. "Set as primary" copies the chosen image into
+      -- cover_image_url / cover_focal_x/y / unsplash_* (MEDIA.md §12), so the
+      -- card still renders from cover_*; this column is purely the gallery.
+      ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE preview.projects ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE master.projects  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+      -- pV2-MEDIA-01d: org gallery (profile + supplier shopfront). logo_url,
+      -- cover_image_url, image_display already exist on orgs; add the gallery
+      -- strip. The supplier card already renders cover_image_url, so a supplier
+      -- setting their profile cover becomes the card image automatically.
+      ALTER TABLE public.orgs  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE preview.orgs ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE master.orgs  ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb;
 
       -- v1.39f: bring preview + master categories schemas in line
       -- with public — the namespace + model + icon_name/color +
@@ -1288,9 +1491,22 @@ const migrate = async () => {
             'pass', 'fail', 'skip', 'todo', 'draft', 'agreed'
           ));
 
-      -- Codelists — shared key/value lookup table for platform-wide reference
-      -- data (item units, time units, future: event_type, tier, visibility).
-      CREATE TABLE IF NOT EXISTS shared.codelists (
+      -- pV2-CODELISTS-01: the v1 single table shared.codelists became
+      -- shared.reference_codelist_values (RCV). The reference_ prefix is
+      -- deliberate (see docs/CODELISTS.md) — rename BEFORE the idempotent
+      -- create below so live DBs carry their data across and fresh DBs
+      -- simply create the new name.
+      DO $rcv$
+      BEGIN
+        IF to_regclass('shared.codelists') IS NOT NULL
+           AND to_regclass('shared.reference_codelist_values') IS NULL THEN
+          ALTER TABLE shared.codelists RENAME TO reference_codelist_values;
+        END IF;
+      END $rcv$;
+
+      -- Codelist VALUES (RCV) — one row per (list_name, code); the parent
+      -- reference_codelists table (RC) is created in section 4f below.
+      CREATE TABLE IF NOT EXISTS shared.reference_codelist_values (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         list_name VARCHAR(100) NOT NULL,
         code VARCHAR(50) NOT NULL,
@@ -1304,7 +1520,7 @@ const migrate = async () => {
         UNIQUE(list_name, code)
       );
 
-      INSERT INTO shared.codelists (list_name, code, label, symbol, sort_order, is_system) VALUES
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, symbol, sort_order, is_system) VALUES
         ('item_unit',      'unit',      'Units',          NULL, 1, true),
         ('item_unit',      'cover',     'Covers',         NULL, 2, true),
         ('item_unit',      'head',      'Head',           NULL, 3, true),
@@ -1350,26 +1566,28 @@ const migrate = async () => {
       -- and the dashboard project-card pill colour. Colour is stored on
       -- meta JSONB so the consumer reads it via
       -- CodelistService.getMeta('project_status', code).color.
-      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
-        ('project_status', 'draft',     'Draft',     1, '{"color":"#F59E0B"}'::jsonb, true),
-        ('project_status', 'active',    'Active',    2, '{"color":"#10B981"}'::jsonb, true),
-        ('project_status', 'completed', 'Completed', 3, '{"color":"#6B7280"}'::jsonb, true),
-        ('project_status', 'archived',  'Archived',  4, '{"color":"#9CA3AF"}'::jsonb, true)
+      -- v2.19a (RP-09): token refs, not hex — each app's styles.css owns
+      -- the hue (--color-state-* set, identical hex in v1 + v2 today).
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('project_status', 'draft',     'Draft',     1, '{"color":"--color-state-amber"}'::jsonb, true),
+        ('project_status', 'active',    'Active',    2, '{"color":"--color-state-emerald"}'::jsonb, true),
+        ('project_status', 'completed', 'Completed', 3, '{"color":"--color-state-gray"}'::jsonb, true),
+        ('project_status', 'archived',  'Archived',  4, '{"color":"--color-state-gray-light"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
 
       -- v1.53: category_status drives the Brief-tab per-category status
       -- pill + dropdown. meta.color is read by the pill via
       -- CodelistService.getMeta('category_status', code).color.
-      INSERT INTO shared.codelists (list_name, code, label, sort_order, meta, is_system) VALUES
-        ('category_status', 'draft',          'Draft',           1, '{"color":"#6B7280"}'::jsonb, true),
-        ('category_status', 'briefed',        'Briefed',         2, '{"color":"#3B82F6"}'::jsonb, true),
-        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"#F97316"}'::jsonb, true),
-        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"#6366F1"}'::jsonb, true),
-        ('category_status', 'quoted',         'Quoted',          5, '{"color":"#0EA5E9"}'::jsonb, true),
-        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"#22C55E"}'::jsonb, true),
-        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"#F59E0B"}'::jsonb, true),
-        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"#8B5CF6"}'::jsonb, true),
-        ('category_status', 'na',             'N/A',             9, '{"color":"#9CA3AF"}'::jsonb, true)
+      INSERT INTO shared.reference_codelist_values (list_name, code, label, sort_order, meta, is_system) VALUES
+        ('category_status', 'draft',          'Draft',           1, '{"color":"--color-state-gray"}'::jsonb, true),
+        ('category_status', 'briefed',        'Briefed',         2, '{"color":"--color-state-blue"}'::jsonb, true),
+        ('category_status', 'need_supplier',  'Need Supplier',   3, '{"color":"--color-state-orange"}'::jsonb, true),
+        ('category_status', 'out_for_quote',  'Out for Quote',   4, '{"color":"--color-state-indigo"}'::jsonb, true),
+        ('category_status', 'quoted',         'Quoted',          5, '{"color":"--color-state-sky"}'::jsonb, true),
+        ('category_status', 'confirmed',      'Confirmed',       6, '{"color":"--color-state-green"}'::jsonb, true),
+        ('category_status', 'awaiting',       'Awaiting Client', 7, '{"color":"--color-state-amber"}'::jsonb, true),
+        ('category_status', 'client_managed', 'Client Managed',  8, '{"color":"--color-state-violet"}'::jsonb, true),
+        ('category_status', 'na',             'N/A',             9, '{"color":"--color-state-gray-light"}'::jsonb, true)
       ON CONFLICT (list_name, code) DO NOTHING;
     `);
     console.log('  Shared schema tables created.');
@@ -1498,13 +1716,18 @@ const migrate = async () => {
     // ── 6. Marketing schema (public welcome page + signups) ──────────────
     console.log('  Creating marketing schema tables...');
     await client.query(`
-      -- Guestlist signups from /welcome
+      -- Guestlist signups from /welcome (pV2-EA-01: first/last name split,
+      -- role + company dropped, source_environment added).
       CREATE TABLE IF NOT EXISTS marketing.guestlist_signup (
         id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name        TEXT NOT NULL,
+        first_name  TEXT NOT NULL,
+        last_name   TEXT NOT NULL DEFAULT '',
         email       TEXT NOT NULL,
-        company     TEXT,
-        role        TEXT NOT NULL,
+        -- Inferred from the Origin header at signup (marketing schema is
+        -- single-instance across envs, so we tag where each row came from).
+        -- Default 'unknown' — a row only becomes dev/preview/master when the
+        -- signup endpoint infers it (pre-EA-01 rows have no recorded origin).
+        source_environment TEXT NOT NULL DEFAULT 'unknown',
         ip_address  TEXT,
         user_agent  TEXT,
         notified_at TIMESTAMPTZ,
@@ -1516,6 +1739,29 @@ const migrate = async () => {
       );
       ALTER TABLE marketing.guestlist_signup
         ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+      -- pV2-EA-01 migration for EXISTING DBs (idempotent). RENAME has no
+      -- IF EXISTS, so guard it; the rest use IF [NOT] EXISTS.
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='marketing' AND table_name='guestlist_signup' AND column_name='name')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='marketing' AND table_name='guestlist_signup' AND column_name='first_name') THEN
+          ALTER TABLE marketing.guestlist_signup RENAME COLUMN name TO first_name;
+        END IF;
+      END $$;
+      ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS role;
+      ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS company;
+      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS last_name TEXT NOT NULL DEFAULT '';
+      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS source_environment TEXT NOT NULL DEFAULT 'unknown';
+      -- Backfill: split the legacy single name on the first space. Single-word
+      -- names keep an empty last_name. Idempotent — rows already split (last_name
+      -- non-empty) are skipped; single-word rows re-run as a no-op.
+      UPDATE marketing.guestlist_signup
+         SET last_name  = COALESCE(NULLIF(SPLIT_PART(first_name, ' ', 2), ''), ''),
+             first_name = SPLIT_PART(first_name, ' ', 1)
+       WHERE last_name = '' AND first_name LIKE '% %';
       -- v1.65gZ32 — replace the unconditional unique index with a
       -- partial one that only enforces uniqueness on active rows.
       DROP INDEX IF EXISTS marketing.guestlist_signup_email_uniq;
@@ -1644,7 +1890,7 @@ const migrate = async () => {
       ['guestlist.eyebrow',          'text',     'You made it',                                              'Eyebrow tag',     null, 4, 10],
       ['guestlist.headline',         'longtext', 'THOSE WHO GET IN EARLY,\nGET AHEAD',                       'Headline',        'Use \\n for line breaks', 4, 20],
       ['guestlist.subtitle',         'longtext', "Get on the guestlist",                                     'Subtitle',        null, 4, 30],
-      ['guestlist.footer_text',      'longtext', "Get on the guestlist and the moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
+      ['guestlist.footer_text',      'longtext', "Get on the guestlist. The moment we're live you'll be the first to know.", 'Footer text below form', null, 4, 35],
       ['guestlist.cta_label',        'text',     'APPLY',                                                    'Submit button label', null, 4, 40],
       ['guestlist.success_headline', 'text',     "You're on the guestlist.",                                  'Success headline', null, 4, 50],
       ['guestlist.success_body',     'longtext', "We'll be in touch the moment Ballpark goes live, {{firstName}}.", 'Success body', "Use {{firstName}} for the registrant's first name", 4, 60],
@@ -1663,8 +1909,6 @@ const migrate = async () => {
       '',
       'Name:     {{name}}',
       'Email:    {{email}}',
-      'Company:  {{company}}',
-      'Role:     {{role}}',
       '',
       'Registered: {{created_at}}',
       '',
@@ -1800,13 +2044,21 @@ const migrate = async () => {
     // Our app doesn't use PostgREST — supabaseAnonKey is empty in every
     // environment.*.ts and all DB access goes through Express using the
     // postgres connection string. So we can safely:
-    //   (a) revoke anon / authenticated grants on public/preview/master
+    //   (a) revoke anon / authenticated grants on public/preview/master/marketing
     //   (b) revoke default privileges so future tables don't regrant
     //   (c) enable RLS on every existing table
     // Postgres owner-bypass means our server still has full access.
     // Idempotent — re-running writes the same state back.
-    console.log('  Hardening RLS + grants on public/preview/master...');
-    for (const schema of ['public', 'preview', 'master']) {
+    //
+    // `marketing` is included (TECH-DEBT-01 ride-along): section 8 above leaves
+    // advisory anon INSERT/SELECT policies on its tables, but the grants were
+    // never revoked, so the guestlist_signup PII would be anon-reachable the
+    // moment PostgREST/anon access is ever enabled. Revoking here closes that
+    // latent gap; the public welcome page is unaffected (it reads/inserts via
+    // Express on the owner connection, not anon). If anon access is ever turned
+    // on, the public welcome path must be re-granted explicitly.
+    console.log('  Hardening RLS + grants on public/preview/master/marketing...');
+    for (const schema of ['public', 'preview', 'master', 'marketing']) {
       await client.query(`REVOKE USAGE ON SCHEMA ${schema} FROM anon, authenticated`);
       await client.query(`REVOKE ALL PRIVILEGES ON ALL TABLES    IN SCHEMA ${schema} FROM anon, authenticated`);
       await client.query(`REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${schema} FROM anon, authenticated`);
@@ -1828,6 +2080,270 @@ const migrate = async () => {
       `);
     }
     console.log('  v1.65gZ27 RLS + grant hardening applied.');
+
+    // ── Items convergence backfill (v1.68b) — ONE-TIME, per schema ──────
+    // Before the hide-vs-delete split, the ONLY operation that set
+    // items.is_active=false was the old soft-delete. After the split,
+    // is_active=false means "hidden" (reversible) and deleted_at means
+    // "deleted" — and the two are INDISTINGUISHABLE by column values
+    // (both are is_active=false / deleted_at IS NULL for a hidden item).
+    // So reclassifying legacy is_active=false rows to deleted_at MUST run
+    // exactly once per schema: a blind re-run of the UPDATE would
+    // soft-delete legitimately-hidden items. Guarded by a marker in
+    // shared.migration_flags, plus a deleted_at column-exists check (the
+    // 6 audit columns are added by the Item 1 audit migration, which may
+    // run after this script on a fresh build — skip cleanly until then).
+    // Production note: master is empty today, so the UPDATE is a no-op
+    // there; the marker still records it so the rule is encoded for any
+    // future env that inherits the old convention.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.migration_flags (
+        name       TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = '${schema}' AND table_name = 'items'
+                   AND column_name = 'deleted_at')
+             AND NOT EXISTS (
+                SELECT 1 FROM shared.migration_flags
+                 WHERE name = 'items_is_active_to_deleted_at:${schema}')
+          THEN
+            UPDATE ${schema}.items
+               SET deleted_at = NOW()
+             WHERE is_active = false AND deleted_at IS NULL;
+            INSERT INTO shared.migration_flags (name)
+              VALUES ('items_is_active_to_deleted_at:${schema}');
+          END IF;
+        END $$;
+      `);
+    }
+    console.log('  items is_active=false → deleted_at backfill applied (once per schema, guarded).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v2.03a (pV2-01e) — bp_brand_config: key/value brand registry read
+    // by client-v2's BrandConfigService via GET /api/brand (public). The
+    // values land on the --bp-* CSS tokens at client bootstrap, so brand
+    // font / gradient / text color are DB-changeable without a redeploy.
+    // Config registry: rows never go away → no deleted_at (per the
+    // WORKING_STANDARDS registry exemption). Seeded with the pV2-01f
+    // vivid brand values (matches client-v2/styles.css fallbacks — no
+    // visual change on first load).
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.bp_brand_config (
+          key        TEXT PRIMARY KEY,
+          value      TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_by UUID,
+          updated_by UUID
+        );
+      `);
+      await client.query(`
+        INSERT INTO ${schema}.bp_brand_config (key, value) VALUES
+          ('font_pair',  'ui-sans-serif, system-ui, -apple-system, ''Segoe UI'', Roboto, sans-serif'),
+          ('gradient',   'linear-gradient(135deg, #d63384 0%, #16a34a 100%)'),
+          ('text_color', '#1f2937')
+        ON CONFLICT (key) DO NOTHING;
+      `);
+    }
+    console.log('  bp_brand_config table + seeds installed (v2.03a, all schemas).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v2.04a (pV2-02) — auth: users reshape + user_orgs membership.
+    // The v1 `users` table ALREADY EXISTS (id/org_id/name/email/role/…),
+    // so the reshape is ADDITIVE — new columns only, v1 rows + reads
+    // untouched (criterion: v1 on 4200 keeps working). New columns:
+    //   · google_sub  — Google's stable subject id. NULLABLE (dev-seed
+    //     users have none — the prompt's NOT NULL contradicts its own
+    //     seed spec); uniqueness via partial index WHERE NOT NULL.
+    //   · display_name, default_org_id — per the auth plan.
+    // user_orgs = role-per-membership (is_admin flag; effective role is
+    // derived from (orgs.type, is_admin) at session time). Soft-delete
+    // cols kept — richer membership, not a pure FK junction.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS display_name TEXT;
+        ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS default_org_id UUID;
+      `);
+      // preview/master users predate the audit sweep — ensure the 6 audit
+      // cols (incl. deleted_at, referenced by the email index) exist first.
+      await client.query(`SELECT audit.add_audit_columns('${schema}', 'users')`);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx
+          ON ${schema}.users (google_sub)
+          WHERE google_sub IS NOT NULL AND deleted_at IS NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx
+          ON ${schema}.users (lower(email)) WHERE deleted_at IS NULL;
+      `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.user_orgs (
+          user_id   UUID NOT NULL REFERENCES ${schema}.users(id),
+          org_id    UUID NOT NULL REFERENCES ${schema}.orgs(id),
+          is_admin  BOOLEAN NOT NULL DEFAULT false,
+          job_title TEXT,
+          status    TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','invited','suspended')),
+          invited_by_user_id UUID REFERENCES ${schema}.users(id),
+          invited_at TIMESTAMPTZ,
+          joined_at  TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          deleted_at TIMESTAMPTZ,
+          created_by UUID,
+          updated_by UUID,
+          deleted_by UUID,
+          PRIMARY KEY (user_id, org_id)
+        );
+        CREATE INDEX IF NOT EXISTS user_orgs_user_id_idx ON ${schema}.user_orgs (user_id);
+        CREATE INDEX IF NOT EXISTS user_orgs_org_id_idx  ON ${schema}.user_orgs (org_id);
+      `);
+      // Audit stamping + hard-delete guard via the universal helper.
+      await client.query(`SELECT audit.add_audit_columns('${schema}', 'user_orgs')`);
+    }
+    console.log('  users reshape (google_sub/display_name/default_org_id) + user_orgs installed (v2.04a, all schemas).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v2.07a (pV2-02b QC) — users: free soft-deleted identifiers for
+    // re-signup.
+    // A soft-deleted users row still occupied its email (legacy
+    // NON-partial users_email_key constraint, pre-dates soft-delete) and
+    // google_sub (the v2.04a index above originally shipped without a
+    // deleted_at filter), so upsertUserFromGoogle step 3's INSERT hit a
+    // unique violation and the OAuth callback 500'd — a soft-deleted
+    // user could never sign up again (caught in pV2-02b QC). Fix: drop
+    // users_email_key (live-row uniqueness is still enforced — and
+    // case-insensitively, which the old constraint wasn't — by
+    // users_email_uidx) and rebuild users_google_sub_uidx with the
+    // deleted_at IS NULL predicate; the v2.04a CREATE above now carries
+    // the same shape for fresh databases. Deliberately NOT
+    // tombstone-scrubbing (renaming email / nulling google_sub on
+    // delete): the partial indexes free the identifiers while the
+    // tombstone keeps its real values for audit. Idempotent — the
+    // conditional drop fires only while the old index shape exists; the
+    // drop + recreate run in one client.query() call, so they share one
+    // implicit transaction and uniqueness never has a gap. The only
+    // consumer of users_email_key was seed-v1.65e9-persona-users.js's
+    // ON CONFLICT (email) — repointed at users_email_uidx in the same
+    // commit.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        ALTER TABLE ${schema}.users DROP CONSTRAINT IF EXISTS users_email_key;
+        DO $fix$ BEGIN
+          IF EXISTS (
+            SELECT 1 FROM pg_indexes
+             WHERE schemaname = '${schema}' AND tablename = 'users'
+               AND indexname = 'users_google_sub_uidx'
+               AND indexdef NOT LIKE '%deleted_at IS NULL%'
+          ) THEN
+            EXECUTE 'DROP INDEX ${schema}.users_google_sub_uidx';
+          END IF;
+        END $fix$;
+        CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx
+          ON ${schema}.users (google_sub)
+          WHERE google_sub IS NOT NULL AND deleted_at IS NULL;
+      `);
+    }
+    console.log('  users re-signup unblock: users_email_key dropped; google_sub uidx rebuilt with deleted_at filter (v2.07a QC fix, all schemas).');
+
+    // ─────────────────────────────────────────────────────────────────
+    // v2.09c (pV2-04b) — org_type_config: per-org_type page-settings
+    // payload (JSONB). The p0021 migration file existed in database/ but
+    // was NEVER applied — ConfigService has been degrading to {} via its
+    // 42P01 catch since p0021 (v1 page settings silently rode
+    // localStorage). org_type uses the v2 vocabulary ('ballpark', not
+    // legacy 'admin'); the service normalises v1's 'admin' to 'ballpark'
+    // at the boundary so both apps share one row. v2 home config nests
+    // under payload.v2Home so v1's flat payload fields are never
+    // clobbered by v2 writes (and vice versa). Full audit columns per
+    // the universal standard.
+    // ─────────────────────────────────────────────────────────────────
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${schema}.org_type_config (
+          org_type   TEXT PRIMARY KEY
+                       CHECK (org_type IN ('agency', 'supplier', 'ballpark')),
+          payload    JSONB       NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_by UUID,
+          updated_by UUID,
+          deleted_at TIMESTAMPTZ,
+          deleted_by UUID
+        );
+      `);
+      await client.query(`
+        INSERT INTO ${schema}.org_type_config (org_type, payload) VALUES
+          ('agency', '{}'::jsonb), ('supplier', '{}'::jsonb), ('ballpark', '{}'::jsonb)
+        ON CONFLICT (org_type) DO NOTHING;
+      `);
+      // Universal audit triggers (stamp + forbid-hard-delete) when the audit
+      // helper is installed in this database.
+      await client.query(`
+        DO $audit$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'audit' AND p.proname = 'add_audit_columns'
+          ) THEN
+            PERFORM audit.add_audit_columns('${schema}', 'org_type_config');
+          END IF;
+        END $audit$;
+      `);
+    }
+    console.log('  org_type_config installed + seeded (v2.09c — p0021 migration finally applied, all schemas).');
+
+    // ── pV2-06-subcats (v2.16b) — taxonomy browse indexes ─────────────────
+    // chat audit (RP-01 continuation): GET /categories/:id/subcategories
+    // filters WHERE parent_id = ? (seq-scan without this — Liam's
+    // "very slow first time" on the subcat strip), and the items count
+    // joins through items.subcategory_id. Partial indexes keep them tight.
+    // Guarded per schema/table/column — preview/master carry older table
+    // shapes (some lack deleted_at); index only where the columns exist.
+    for (const schema of ['public', 'preview', 'master']) {
+      await client.query(`
+        DO $idx$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'categories'
+                        AND column_name = 'deleted_at')
+             AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'categories'
+                        AND column_name = 'parent_id') THEN
+            CREATE INDEX IF NOT EXISTS ${schema}_categories_parent_id_idx
+              ON ${schema}.categories (parent_id) WHERE deleted_at IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'items'
+                        AND column_name = 'deleted_at')
+             AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = '${schema}' AND table_name = 'items'
+                        AND column_name = 'subcategory_id') THEN
+            CREATE INDEX IF NOT EXISTS ${schema}_items_subcategory_id_idx
+              ON ${schema}.items (subcategory_id) WHERE deleted_at IS NULL;
+          END IF;
+        END $idx$;
+      `);
+    }
+    console.log('  taxonomy browse indexes installed (v2.16b — categories.parent_id + items.subcategory_id, all schemas).');
+
+    // ── 4f. pV2-CODELISTS-01 — RC/RCV split + the locked 12-list seed ────
+    // Table rename happened in section 4b (before the idempotent create).
+    // The inventory + meta + three-layer integrity posture live in
+    // db/codelists-seed.js (reviewable without scrolling this file).
+    console.log('  Seeding reference codelists (pV2-CODELISTS-01)...');
+    const { seedCodelists } = require('./codelists-seed');
+    const parentCount = await seedCodelists(client);
+    console.log(`  reference_codelists installed — ${parentCount} parents seeded, default invariant asserted (v2.18a).`);
 
     console.log('\n✅ Schema setup complete.');
     console.log('   public  → dev  (existing data unchanged)');

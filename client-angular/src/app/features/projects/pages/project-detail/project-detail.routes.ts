@@ -1,81 +1,64 @@
 import { Routes } from '@angular/router';
 
 export const PROJECT_DETAIL_ROUTES: Routes = [
-  // v1.24: Overview is the default landing tab.
-  { path: '', redirectTo: 'overview', pathMatch: 'full' },
+  // v1.67 — Project Details is the default landing tab (was Overview).
+  { path: '', redirectTo: 'details', pathMatch: 'full' },
   {
-    // Overview tab (v1.24) — action-oriented dashboard. Event strip
-    // + 2×2 inbox cards (Brief / Marketplace / Estimate / Messages)
-    // surfaced as the project's first impression.
+    // v1.67 — Project Details tab. Page form of the (deprecated) event
+    // drawer: the shared <app-project-event-form> at card density
+    // (Event details / Event type / Logistics).
+    path: 'details',
+    loadComponent: () => import('./tabs/details/details.component').then(m => m.ProjectDetailsComponent)
+  },
+  {
+    // Overview tab (v1.24) — kept mounted for back-compat links, but
+    // v1.67 removed it from the visible tab band.
     path: 'overview',
     loadComponent: () => import('./tabs/overview/overview.component').then(m => m.OverviewComponent)
   },
   {
-    // v1.29: /event redirects to /overview. The standalone Event tab
-    // was removed in favour of the Event drawer that opens from the
-    // Overview event strip. The component file is preserved at
-    // tabs/event/event.component.ts for git-history continuity; the
-    // drawer reuses its field definitions and dropdown options.
-    path: 'event',
-    redirectTo: 'overview',
-    pathMatch: 'full'
-  },
-  {
-    // v1.65cg (p0005) — Plan tab removed. AI matching (Recommend
-    // button + ?recommend=1 auto-fire) and per-category brief editing
-    // both live on the Marketplace now, so /plan and /brief redirect
-    // there. BriefComponent was deleted at the same time.
+    // v1.65cg (p0005) — Plan tab removed. AI matching + per-category
+    // brief editing both live on the Marketplace now, so /plan and
+    // /brief redirect there.
     path: 'plan',
     redirectTo: 'marketplace',
     pathMatch: 'full'
   },
   {
     // Backward compat: anyone with a saved /brief link lands on the
-    // Marketplace (was previously chained through /plan).
+    // Marketplace.
     path: 'brief',
     redirectTo: 'marketplace',
     pathMatch: 'full'
   },
   {
     // Marketplace tab (v1.18) — catalogue-grid browse in project context.
-    // Previously served from /build with the "Marketplace" label;
-    // the unified Build tab now owns /build, so this moved to its own
-    // route. Component logic is the v1.17 catalogue-grid + cart wiring
-    // verbatim.
     path: 'marketplace',
     loadComponent: () => import('./tabs/marketplace/marketplace.component').then(m => m.MarketplaceComponent)
   },
   {
-    // Estimate tab (v1.18b rename of the "Build" tab) — unified
-    // compressed category cards (left) with sticky estimate summary
-    // (right). Class is still BuildComponent and the file lives at
-    // tabs/build/build.component.ts for git-history continuity; only
-    // the user-visible label + URL slug were renamed.
+    // v1.67 — Estimate tab. Page form of the (deprecated) estimate
+    // drawer: the read-only <app-estimate> summary inside card chrome.
+    // Was the BuildComponent two-column Build/Estimate view, which is
+    // retired from routing (file kept in tree for history).
     path: 'estimate',
-    loadComponent: () => import('./tabs/build/build.component').then(m => m.BuildComponent)
+    loadComponent: () => import('./tabs/estimate/estimate-page.component').then(m => m.EstimatePageComponent)
   },
   {
     // Backward compat: anyone with a saved /build link lands on the
-    // renamed Estimate route. Re-slug rather than dual-mount so the
-    // canonical URL is stable.
+    // Estimate tab. (v1.68g — Build tab hidden again; BuildComponent
+    // re-unrouted per request.)
     path: 'build',
     redirectTo: 'estimate',
     pathMatch: 'full'
   },
-  {
-    // Legacy "vendor selection" Build tab — preserved at /supplier for
-    // safety. Not surfaced in the project tab bar after v1.18.
-    path: 'supplier',
-    loadComponent: () => import('./tabs/build/build-legacy.component').then(m => m.BuildLegacyComponent)
-  },
-  {
-    // Legacy standalone Estimate page (pre-v1.18). The /estimate slug
-    // now points at the unified Build/Estimate component above; the
-    // legacy file is preserved here under -legacy in case anyone needs
-    // to compare the older summary view.
-    path: 'estimate-legacy',
-    loadComponent: () => import('./tabs/estimate/estimate.component').then(m => m.EstimateComponent)
-  },
+  // v1.67 — UNROUTED (files kept in tree for git history, no longer
+  // surfaced): the BuildComponent two-column Build/Estimate view
+  // (tabs/build/build.component.ts), the legacy vendor-selection Build
+  // tab (tabs/build/build-legacy.component.ts, was /supplier), and the
+  // standalone legacy Estimate summary route (was /estimate-legacy;
+  // EstimateComponent itself lives on, mounted by the Estimate tab page
+  // + the deprecated estimate drawer).
   {
     path: 'suppliers',
     loadComponent: () => import('./tabs/suppliers/suppliers.component').then(m => m.SuppliersComponent)

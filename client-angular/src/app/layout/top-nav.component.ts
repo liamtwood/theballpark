@@ -24,7 +24,7 @@ import { environment } from '../../environments/environment';
     <!-- DESKTOP TOP NAV -->
     <nav class="bp-nav">
       <div class="bp-nav-left">
-        <a routerLink="/" class="bp-nav-logo">
+        <a routerLink="/home" class="bp-nav-logo">
           <img *ngIf="logoUrl" [src]="logoUrl" alt="Logo" class="bp-nav-logo-img"/>
           <ng-container *ngIf="!logoUrl">
             <span class="bp-logo-text">{{ logoFirst }}</span><span class="bp-logo-accent">{{ logoSecond }}</span>
@@ -37,32 +37,17 @@ import { environment } from '../../environments/environment';
         <lucide-icon [name]="modeIcon" [size]="16"></lucide-icon>
       </button>
       <div class="bp-nav-right">
-        <!-- v1.65e4 (p0015) — top-nav unified across personas: just
-             Home + Settings as text links. The supplier's Front /
-             Store / Inbox tabs live INSIDE the home page (hero tab
-             band on /suppliers/:id); Beth's Categories / Marketplace
-             / Orgs / Early Access / Feedback tabs live inside her
-             home (/ballpark-settings hero tab band).
-             Home routes per persona:
-               agency   → /
-               admin    → /ballpark-settings
-               supplier → /suppliers/{supplierOrgId}?tab=home -->
-        <a [routerLink]="personaHomeRoute"
-           [queryParams]="personaHomeQueryParams"
+        <!-- v1.66n (p0033) — role-keyed top-nav. Each persona's nav set
+             is the objects that role works with (computed in navItems).
+             Agency: Agent / Inbox / Projects / Marketplace / {orgName}.
+             Platform admin: Config Home / {orgName}. Supplier nav set is
+             p0021's scope. Home objects route to / (exact-active). -->
+        <a *ngFor="let item of navItems"
+           [routerLink]="item.route"
            routerLinkActive="active"
-           [routerLinkActiveOptions]="{exact:true}"
+           [routerLinkActiveOptions]="{ exact: item.route === '/home' }"
            class="bp-nav-link">
-          <lucide-icon name="house" [size]="14"></lucide-icon> Home
-        </a>
-        <a routerLink="/agent"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="user" [size]="14"></lucide-icon> Agent
-        </a>
-        <a routerLink="/settings"
-           routerLinkActive="active"
-           class="bp-nav-link">
-          <lucide-icon name="settings" [size]="14"></lucide-icon> Settings
+          <lucide-icon [name]="item.icon" [size]="14"></lucide-icon> {{ item.label }}
         </a>
 
         <p-tag [value]="ballsBalance + ' ' + creditLabel + 's left'" styleClass="bp-balls-tag"></p-tag>
@@ -104,11 +89,11 @@ import { environment } from '../../environments/environment';
 
       <!-- DEFAULT NAV — Home, Suppliers, Favourites, Messages -->
       <ng-container *ngIf="!inProject">
-        <a routerLink="/" [routerLinkActiveOptions]="{exact:true}" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/home" [routerLinkActiveOptions]="{exact:true}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
-        <a routerLink="/suppliers" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/shop" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>{{ catalogueLabel }}</span>
         </a>
@@ -116,7 +101,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="heart" [size]="20"></lucide-icon>
           <span>Favourites</span>
         </a>
-        <a routerLink="/messages" routerLinkActive="active" class="bp-bottom-tab">
+        <a routerLink="/inbox" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="inbox" [size]="20"></lucide-icon>
           <span>Inbox</span>
         </a>
@@ -124,7 +109,7 @@ import { environment } from '../../environments/environment';
 
       <!-- PROJECT NAV — Home, Project, Suppliers, Inbox -->
       <ng-container *ngIf="inProject">
-        <a routerLink="/" class="bp-bottom-tab">
+        <a routerLink="/home" class="bp-bottom-tab">
           <lucide-icon name="house" [size]="20"></lucide-icon>
           <span>Home</span>
         </a>
@@ -132,7 +117,7 @@ import { environment } from '../../environments/environment';
           <lucide-icon name="folder" [size]="20"></lucide-icon>
           <span>Project</span>
         </a>
-        <a [routerLink]="['/suppliers']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
+        <a [routerLink]="['/shop']" [queryParams]="{projectId: projectId}" routerLinkActive="active" class="bp-bottom-tab">
           <lucide-icon name="building-2" [size]="20"></lucide-icon>
           <span>{{ catalogueLabel }}</span>
         </a>
@@ -274,6 +259,7 @@ export class TopNavComponent implements OnInit, OnDestroy {
   creditLabel  = 'Ball';
   catalogueLabel = 'Catalogue';
   feedbackLabel  = 'Feedback';
+  projectLabel = 'Event';
   ballsBalance = 0;
   orgName      = '';
   /** v1.22: avatar in the top-right now shows USER initials, not org.
@@ -362,6 +348,52 @@ export class TopNavComponent implements OnInit, OnDestroy {
     return this.personaSvc.isSupplier() ? { tab: 'home' } : {};
   }
 
+  /** v1.66n (p0033) — role-keyed top-nav set. Held as a STABLE field
+      (not a getter) and recomputed only on persona switch. A getter that
+      returns a fresh array every change-detection cycle drove a runaway
+      CD loop with the *ngFor + routerLinkActive — froze the page.
+      (v1.66o fix.) Supplier nav set is p0021's scope. */
+  navItems: Array<{ label: string; icon: string; route: string }> = [];
+
+  private buildNavItems() {
+    const persona = this.personaSvc.active;
+
+    if (persona?.kind === 'admin') {
+      // Platform admin (Beth). Config Home is the /home dashboard.
+      this.navItems = [
+        { label: 'Home',        icon: 'house',      route: '/home' },
+        { label: 'Settings',    icon: 'building-2', route: '/settings' },
+      ];
+      return;
+    }
+
+    if (persona?.kind === 'supplier') {
+      // v1.66db — supplier works their own shop: Storefront + Store are the
+      // owner management surfaces (/storefront, /store); Marketplace (/shop)
+      // stays because suppliers shop too (buy from / watch each other).
+      // v1.68c — /shopfront renamed to /storefront; default label "Storefront".
+      this.navItems = [
+        { label: 'Home',        icon: 'house',      route: '/home' },
+        { label: 'Storefront',  icon: 'store',      route: '/storefront' },
+        { label: 'Store',       icon: 'package',    route: '/store' },
+        { label: 'Inbox',       icon: 'inbox',      route: '/inbox' },
+        { label: 'Marketplace', icon: 'compass',    route: '/shop' },
+        { label: 'Settings',    icon: 'building-2', route: '/settings' },
+      ];
+      return;
+    }
+
+    // Agency role (Sarah). v1.66ap — home item labelled "Home" (was "Agent").
+    this.navItems = [
+      { label: 'Home',        icon: 'house',       route: '/home' },
+      { label: 'Inbox',       icon: 'inbox',       route: '/inbox' },
+      // v1.66ak — the Projects tab tracks the configurable Events label.
+      { label: this.projectLabel + 's', icon: 'folder-open', route: '/projects' },
+      { label: 'Marketplace', icon: 'store',       route: '/shop' },
+      { label: 'Settings',    icon: 'building-2',  route: '/settings' },
+    ];
+  }
+
   toggleConfigStrip() { this.configStrip.toggle(); }
 
   ngOnInit() {
@@ -376,6 +408,8 @@ export class TopNavComponent implements OnInit, OnDestroy {
       if (cfg.creditLabel) this.creditLabel = cfg.creditLabel;
       if (cfg.catalogueLabel) this.catalogueLabel = cfg.catalogueLabel;
       if (cfg.feedbackLabel)  this.feedbackLabel  = cfg.feedbackLabel;
+      if (cfg.projectLabel)   this.projectLabel   = cfg.projectLabel;
+      this.buildNavItems();   // v1.66ak — rebuild so the Projects tab tracks the Events label
       this.cdr.detectChanges();
     });
 
@@ -452,8 +486,12 @@ export class TopNavComponent implements OnInit, OnDestroy {
     /* v1.65dz (p0015) — re-render the avatar + nav whenever the active
        persona flips so the initials reflect the current persona. */
     this.personaSub = this.personaSvc.active$.subscribe(() => {
+      this.buildNavItems();
       this.cdr.detectChanges();
     });
+
+    // Initial paint (covers the case where active$ isn't replayed).
+    this.buildNavItems();
   }
 
   /* p0003 — three-way cycle: light → dark → bold → light. */

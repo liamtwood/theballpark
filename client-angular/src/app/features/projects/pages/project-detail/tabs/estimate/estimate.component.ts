@@ -18,11 +18,11 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
     GbpPipe, LoadingSpinnerComponent
   ],
   template: `
-    <div class="bp-page">
+    <div [class.bp-page]="!embedded">
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
 
-      <div class="bp-est-body">
+      <div class="bp-est-body" [class.bp-est-body--embedded]="embedded">
 
         <!-- CATEGORY ROWS -->
         <!-- v1.65co — uses category_name + category_icon_name from the
@@ -105,6 +105,9 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
   `,
   styles: [`
     .bp-est-body  { padding: 20px var(--section-pad); max-width: 640px; margin: 0 auto; }
+    /* v1.67 — embedded inside the Estimate tab's <app-edit-section> card,
+       which owns the padding + width, so the body chrome flattens. */
+    .bp-est-body--embedded { padding: 0; max-width: none; margin: 0; }
 
     /* v1.65co — section eyebrow (theme-accent uppercase) replaces the
        Playfair "Summary" h2 — the drawer's accent header now owns
@@ -191,6 +194,9 @@ export class EstimateComponent implements OnInit {
       EstimateDrawerComponent reuse this view outside the /estimate-legacy
       route (project home, Overview, Marketplace). */
   @Input() projectId?: string;
+  /** v1.67 — when mounted inside the Estimate tab's card shell, drop the
+      component's own page wrapper + body padding so the card owns chrome. */
+  @Input() embedded = false;
 
   loading = true;
   categories: any[] = [];

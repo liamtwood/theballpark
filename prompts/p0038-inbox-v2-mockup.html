@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>p0038 — inbox-v2 rail mockup (agent + supplier)</title>
+<style>
+  :root {
+    --bg: #fbf7f4;
+    --surface: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --border-hairline: 1px solid #e5e7eb;
+    --radius-card: 12px;
+    --radius-button: 8px;
+    --theme-accent: #d63384;
+    --theme-soft: linear-gradient(135deg, #fde7f0 0%, #e6f4ea 100%);
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --status-negotiating: #b45309;
+    --status-negotiating-bg: #fef3c7;
+    --status-signing: #1e40af;
+    --status-signing-bg: #dbeafe;
+    --status-payment: #6d28d9;
+    --status-payment-bg: #ede9fe;
+    --status-live: #047857;
+    --status-live-bg: #d1fae5;
+    --badge-grad: linear-gradient(135deg, #d63384 0%, #16a34a 100%);
+  }
+  body {
+    margin: 0;
+    padding: 32px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+  }
+  h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; }
+  .lead { color: var(--text-secondary); margin: 0 0 28px; font-size: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 360px 360px;
+    gap: 32px;
+  }
+  .col h2 { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin: 0 0 12px; }
+  .col h2 small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; margin-top: 4px; font-size: 12px; color: var(--text-secondary); }
+
+  /* ── Hero (above rail) ── */
+  .hero { margin-bottom: 16px; }
+  .hero-title { font-size: 28px; font-weight: 700; line-height: 1.1; margin: 0; }
+  .hero-sub { color: var(--text-secondary); font-size: 14px; margin: 4px 0 0; }
+
+  /* ── List row card (bp-list-row) ── */
+  .row {
+    background: var(--surface);
+    border: var(--border-hairline);
+    border-radius: var(--radius-card);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow-xs);
+  }
+  .row:hover { border-color: #d1d5db; }
+  .row--active { background: var(--theme-soft); border-color: rgba(214, 51, 132, 0.25); }
+
+  .row-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .chev { color: var(--text-secondary); flex-shrink: 0; }
+  .row-name { font-weight: 600; font-size: 15px; flex: 1; min-width: 0; }
+  .row-sub-line {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 6px 0 0;
+    padding-left: 24px;
+  }
+  .row-time {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 4px;
+    padding-left: 24px;
+  }
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 7px;
+    border-radius: 11px;
+    background: var(--badge-grad);
+    color: #fff; font-size: 12px; font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* ── Nested children ── */
+  .children {
+    margin: 4px 0 14px 16px;
+    padding-left: 8px;
+    border-left: 2px solid rgba(214, 51, 132, 0.08);
+  }
+  .children .row { padding: 12px 14px; }
+  .children .row-name { font-size: 14px; }
+  .children .row-sub-line { font-size: 12px; padding-left: 0; }
+
+  /* ── Items at the leaf (status pills) ── */
+  .item-card {
+    background: var(--surface);
+    border: var(--border-hairline);
+    border-radius: var(--radius-card);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    box-shadow: var(--shadow-xs);
+  }
+  .item-card--active { background: var(--theme-soft); border-color: rgba(214, 51, 132, 0.25); }
+  .item-name { font-weight: 600; font-size: 14px; margin: 0; }
+  .pill {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill--negotiating { background: var(--status-negotiating-bg); color: var(--status-negotiating); }
+  .pill--signing { background: var(--status-signing-bg); color: var(--status-signing); }
+  .pill--payment { background: var(--status-payment-bg); color: var(--status-payment); }
+  .pill--live { background: var(--status-live-bg); color: var(--status-live); }
+
+  /* ── chevron icons (SVG inline for fidelity) ── */
+  svg.icon { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  .label-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 4px 0 8px; padding-left: 4px; }
+</style>
+</head>
+<body>
+
+<h1>p0038 — inbox-v2 rail mockup</h1>
+<p class="lead">Agent rail = 3 levels deep (Project → Supplier → Item). Supplier rail = 2 levels deep (Project → Item). Items are always the leaves — same status-pill card shape on both views.</p>
+
+<div class="grid">
+
+  <!-- ─────────────── AGENT RAIL ─────────────── -->
+  <div class="col">
+    <h2>Agent view <small>viewerRole = 'agency' · scopedToProjectId = null</small></h2>
+
+    <div class="hero">
+      <p class="hero-title">Inbox</p>
+      <p class="hero-sub">All supplier conversations organised by project.</p>
+    </div>
+
+    <!-- Project row (LEVEL 1) -->
+    <div class="row">
+      <div class="row-head">
+        <svg class="icon chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="row-name">Retail Pop-Up Launch</span>
+        <span class="badge">4</span>
+      </div>
+      <p class="row-sub-line" style="padding-left:24px;">Nike</p>
+    </div>
+
+    <!-- Supplier expanded under the project (LEVEL 2) -->
+    <div class="children">
+
+      <div class="row">
+        <div class="row-head">
+          <svg class="icon chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="row-name">Studio Build Co</span>
+          <span class="badge">4</span>
+        </div>
+      </div>
+
+      <!-- Items under Studio Build Co (LEVEL 3) -->
+      <div class="children">
+        <div class="label-eyebrow">Project items</div>
+
+        <div class="item-card item-card--active">
+          <p class="item-name">Retail Pop-Up Structure</p>
+          <span class="pill pill--negotiating">Negotiating costs</span>
+        </div>
+
+        <div class="item-card">
+          <p class="item-name">Conference Stage</p>
+          <span class="pill pill--signing">Signing SOW</span>
+        </div>
+
+        <div class="item-card">
+          <p class="item-name">Branded Entrance Feature</p>
+          <span class="pill pill--payment">Payment Processing</span>
+        </div>
+
+        <div class="item-card">
+          <p class="item-name">LED Screen Package</p>
+          <span class="pill pill--live">Live</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─────────────── SUPPLIER RAIL ─────────────── -->
+  <div class="col">
+    <h2>Supplier view <small>viewerRole = 'supplier' · scopedToProjectId = null</small></h2>
+
+    <div class="hero">
+      <p class="hero-title">Inbox</p>
+      <p class="hero-sub">Project conversations.</p>
+    </div>
+
+    <!-- Project row (LEVEL 1) -->
+    <div class="row">
+      <div class="row-head">
+        <svg class="icon chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="row-name">Retail Pop-Up Launch</span>
+      </div>
+      <p class="row-sub-line" style="padding-left:24px;">Creative Agency Ltd</p>
+    </div>
+
+    <!-- Items expanded under the project (LEVEL 2 = leaf in supplier rail) -->
+    <div class="children">
+      <div class="label-eyebrow">Project items</div>
+
+      <div class="item-card">
+        <p class="item-name">Retail Pop-Up Structure</p>
+        <span class="pill pill--negotiating">Negotiating Costs</span>
+      </div>
+
+      <div class="item-card">
+        <p class="item-name">Conference Stage</p>
+        <span class="pill pill--signed">Signed</span>
+      </div>
+
+      <div class="item-card item-card--active">
+        <p class="item-name">LED Screen Package</p>
+        <span class="pill pill--payment">Payment Processing</span>
+      </div>
+
+      <div class="item-card">
+        <p class="item-name">Branded Entrance Feature</p>
+        <span class="pill pill--signed">Signed</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:40px; padding-top:24px; border-top: 1px solid #e5e7eb; max-width:760px;">
+  <h2 style="font-size: 14px; margin: 0 0 8px;">Notes</h2>
+  <ul style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+    <li><strong>Agent rail:</strong> 3 deep — Project → Supplier → Item. Supplier rail: 2 deep — Project → Item. Items are always the leaves.</li>
+    <li><strong>Same item card on both views:</strong> name + status pill. Click = select that item thread on the right pane.</li>
+    <li><strong>Supplier middle layer (agent only):</strong> <code>.bp-list-row</code> showing supplier name + count badge + latest snippet. The supplier viewer skips this — they ARE the supplier.</li>
+    <li><strong>Status pill colours:</strong> use existing semantic tokens — <code>--color-action</code> (negotiating), <code>--color-booked</code> (signed), <code>--color-quoted</code> (payment processing).</li>
+    <li><strong>Indent:</strong> each nested level uses <code>.children</code> wrapper with 16px left padding + soft left rule. Same primitive throughout.</li>
+    <li><strong>Empty-state:</strong> empty rail just shows the hero + sidebar shell with no rows. Future prompts add data.</li>
+  </ul>
+</div>
+
+</body>
+</html>

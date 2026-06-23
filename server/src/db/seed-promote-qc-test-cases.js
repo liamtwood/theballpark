@@ -56,10 +56,11 @@ require('dotenv').config({ path: 'C:/projects/ballpark/.env' });
       );
       promoted += upd.rowCount;
 
-      // Delete the bug. parent_id FK has ON DELETE no-action by default —
-      // but we already detached children, so a plain DELETE is safe.
+      // v1.66e5 (Item 1): soft-delete the consumed bug (was a hard DELETE).
+      // All feedback reads filter deleted_at IS NULL, so it disappears; this is
+      // also guard-safe (UPDATE, not DELETE).
       await pool.query(
-        `DELETE FROM shared.feedback WHERE id = $1`,
+        `UPDATE shared.feedback SET deleted_at = NOW() WHERE id = $1`,
         [bug.id]
       );
       deletedBugs++;

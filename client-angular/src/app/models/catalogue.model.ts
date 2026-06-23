@@ -14,7 +14,10 @@ export interface CatalogueEntity {
   unit?: string;
   category_id?: string;
   categoryLabel?: string;
-  // Optional pill rendered next to the name (var(--theme-bg) background) —
+  /** Subcategory display name — preferred over categoryLabel for the card's
+      category pill ("subcat, or cat if no subcat"). */
+  subcategoryLabel?: string;
+  // Optional pill rendered next to the name (var(--color-fill) background) —
   // used for things like a feedback version tag (e.g. 'v1.7').
   badge?: string;
   specs?: { label: string; value: string }[];
@@ -24,6 +27,10 @@ export interface CatalogueEntity {
   image_display?: 'cover' | 'contain';
   // Lucide icon name — shown when no image
   icon?: string;
+  /** v1.68b — publish state for owner-managed catalogues. false → the item
+      is hidden from the marketplace and renders a "Hidden" badge in the
+      owner's own store. Undefined/true on browse surfaces. */
+  is_active?: boolean;
   // Pass-through for actions
   _raw?: any;
 }

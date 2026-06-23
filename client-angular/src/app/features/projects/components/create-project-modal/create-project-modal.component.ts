@@ -416,7 +416,7 @@ interface PendingCategory {
     /* p-dialog chrome — parchment header / hairline border, matches the
        Settings + drawer rhythm. */
     :host ::ng-deep .bp-cp-dialog .p-dialog-header {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-bottom: 0.5px solid var(--color-border);
       padding: 16px 20px;
     }
@@ -424,7 +424,7 @@ interface PendingCategory {
       padding: 16px 20px 8px;
     }
     :host ::ng-deep .bp-cp-dialog .p-dialog-footer {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-top: 0.5px solid var(--color-border);
       padding: 12px 20px;
       display: flex; justify-content: flex-end; gap: 10px;
@@ -450,7 +450,7 @@ interface PendingCategory {
     .bp-cp-ref {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 4px 12px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--color-border);
       border-radius: 6px;
       font-size: 12px;
@@ -480,7 +480,7 @@ interface PendingCategory {
     .bp-cp-mode {
       display: inline-flex;
       padding: 3px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--color-border);
       border-radius: 999px;
       gap: 2px;
@@ -524,7 +524,7 @@ interface PendingCategory {
     .bp-cp-upload:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-cp-upload.has-file {
       flex-direction: column;
@@ -546,7 +546,7 @@ interface PendingCategory {
       font-size: 9px;
       padding: 2px 8px;
       border-radius: 999px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--color-text-muted);
     }
     .bp-cp-upload-name {
@@ -605,7 +605,7 @@ interface PendingCategory {
       display: inline-flex; align-items: center; gap: 6px;
       align-self: flex-start;
       padding: 4px 10px 4px 8px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--color-border);
       border-radius: 999px;
       font-size: 11px;
@@ -661,7 +661,7 @@ interface PendingCategory {
     .bp-cp-example-pill:hover {
       border-color: var(--theme-accent);
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
 
     .bp-cp-error {
@@ -682,7 +682,7 @@ interface PendingCategory {
     }
     .bp-cp-spinner {
       width: 32px; height: 32px;
-      border: 3px solid var(--theme-bg);
+      border: 3px solid var(--color-fill);
       border-top-color: var(--theme-accent);
       border-radius: 50%;
       animation: bp-cp-spin 0.7s linear infinite;
@@ -741,7 +741,7 @@ interface PendingCategory {
     /* ── RESULTS state ───────────────────────────────────────────────── */
     .bp-cp-hero {
       padding: 14px 16px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-radius: 10px;
       border: 0.5px solid var(--color-border);
     }
@@ -851,7 +851,7 @@ interface PendingCategory {
       display: inline-grid; place-items: center;
       width: 52px; height: 52px;
       border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-text);
       box-shadow: 0 0 0 0.5px var(--theme-border);
       padding: 0 6px;
@@ -895,7 +895,7 @@ interface PendingCategory {
     }
     .bp-cp-confirm-icon {
       width: 56px; height: 56px; border-radius: 50%;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       display: flex; align-items: center; justify-content: center;
     }
@@ -952,12 +952,12 @@ interface PendingCategory {
       background: var(--color-surface);
       transition: background 0.15s, opacity 0.15s;
     }
-    .bp-cp-cat:hover { background: var(--theme-bg); }
+    .bp-cp-cat:hover { background: var(--color-fill); }
     .bp-cp-cat.removed { opacity: 0.4; }
     .bp-cp-cat-icon {
       width: 28px; height: 28px;
       border-radius: 6px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;

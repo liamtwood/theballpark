@@ -139,9 +139,13 @@ async function upsert(projectId, categoryId, data) {
   // INSERT ... ON CONFLICT requires a unique constraint on
   // (project_id, category_id). A composite constraint isn't guaranteed
   // historically, so we do a SELECT-then-INSERT/UPDATE round-trip.
+  // v1.66e0 — find ANY existing row (active OR soft-removed), preferring the
+  // active one, so a re-added category REACTIVATES its row instead of inserting
+  // a duplicate.
   const existing = await pool.query(
     `SELECT id FROM project_categories
-     WHERE project_id = $1 AND category_id = $2 AND is_active = true
+     WHERE project_id = $1 AND category_id = $2
+     ORDER BY is_active DESC
      LIMIT 1`,
     [projectId, categoryId]
   );
@@ -149,6 +153,7 @@ async function upsert(projectId, categoryId, data) {
   if (existing.rows.length) {
     const result = await pool.query(
       `UPDATE project_categories SET
+        is_active          = true,
         requirement_brief  = COALESCE($1, requirement_brief),
         requirement_detail = COALESCE($2, requirement_detail),
         ballpark_budget    = COALESCE($3, ballpark_budget),
@@ -175,14 +180,15 @@ async function upsert(projectId, categoryId, data) {
 }
 
 async function remove(projectId, categoryId) {
-  // Hard delete on the brief picker — toggling off should clear the row
-  // entirely, not leave inactive ghosts behind that confuse subsequent
-  // selections. recalcTotals only looks at is_active rows so the project
-  // totals stay correct either way.
+  // v1.66e0 (Item 1): soft-remove on the brief picker toggle (was a hard
+  // DELETE). is_active=false hides it; the upsert below reactivates the SAME
+  // row on re-add (no inactive ghosts / duplicates). recalcTotals only looks
+  // at is_active rows so the project totals stay correct either way.
   const result = await pool.query(
-    `DELETE FROM project_categories
-     WHERE project_id = $1 AND category_id = $2
-     RETURNING *`,
+    `UPDATE project_categories
+        SET is_active = false, updated_at = NOW()
+      WHERE project_id = $1 AND category_id = $2 AND is_active = true
+      RETURNING *`,
     [projectId, categoryId]
   );
   if (result.rows.length) {

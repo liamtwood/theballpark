@@ -231,7 +231,7 @@ import { Project, Item } from '../../models';
     .bp-hero-heart.active { color: #E11D48; }
 
     /* PARCHMENT HERO */
-    .bp-item-hero { background: var(--theme-bg); padding: 14px 16px 16px; border-bottom: 0.5px solid var(--theme-border); position: relative; }
+    .bp-item-hero { background: var(--color-fill); padding: 14px 16px 16px; border-bottom: 0.5px solid var(--theme-border); position: relative; }
     .bp-item-hero-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--theme-accent); margin-bottom: 4px; }
     .bp-item-hero-name { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; margin: 0; padding-right: 40px; }
     .bp-item-hero-edit {
@@ -249,7 +249,7 @@ import { Project, Item } from '../../models';
 
     /* TAGS */
     .bp-item-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-    .bp-item-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--theme-bg); color: var(--theme-text); border: 0.5px solid var(--theme-border); }
+    .bp-item-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--color-fill); color: var(--theme-text); border: 0.5px solid var(--theme-border); }
     .bp-item-tag-tier { background: var(--color-tier-bg); color: var(--color-tier-text); border-color: var(--color-tier-border); }
 
     /* PRICE */
@@ -283,7 +283,7 @@ import { Project, Item } from '../../models';
     :host ::ng-deep .bp-btn-request-quote.p-button { background: var(--theme-accent) !important; border-color: var(--theme-accent) !important; color: #fff !important; font-weight: 600 !important; }
 
     /* BALL CARD */
-    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+    .bp-review-ball-card { display: flex; align-items: center; justify-content: space-between; background: var(--color-fill); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
     .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 2px; }
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num { font-size: 22px; font-weight: 700; color: var(--color-text-primary); }

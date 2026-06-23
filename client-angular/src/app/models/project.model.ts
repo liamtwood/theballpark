@@ -32,6 +32,10 @@ export interface Project {
   total_ballpark_cost?: number;
   total_base_cost?: number;
   total_client_cost?: number;
+  /** v1.66j — distinct supplier orgs with items added to the project.
+      Computed live by the projects list endpoint (getAll); absent on
+      other payloads. */
+  supplier_count?: number;
   tier?: string;
   event_type?: string;
   duration_days?: number;

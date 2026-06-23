@@ -49,7 +49,7 @@ async function softDelete(id) {
 
 async function recalcTotal(estimateId) {
   const totals = await pool.query(
-    'SELECT COALESCE(SUM(total_price), 0) AS total_value FROM estimate_items WHERE estimate_id = $1',
+    'SELECT COALESCE(SUM(total_price), 0) AS total_value FROM estimate_items WHERE estimate_id = $1 AND deleted_at IS NULL',
     [estimateId]
   );
   await pool.query(

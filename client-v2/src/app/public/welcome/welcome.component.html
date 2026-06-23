@@ -1,0 +1,309 @@
+    <!-- v1.65j1 — fixed green overlay used for the BALLPARK-click
+         dissolve. Sits above everything; fades in to fully cover
+         the page green, the scroll jumps to slide 1 underneath,
+         then it fades out revealing slide 1. -->
+    <div class="bp-ballpark-fade" [class.active]="ballparkFading" aria-hidden="true"></div>
+    <div class="bp-welcome-root">
+
+      <!-- Persistent header. v1.65g9 — logo is now an image when the
+           agency's marketplace-logo has been uploaded (loaded from
+           /api/org on init), with the text wordmark as a fallback so
+           first paint never blocks on the network.
+           v1.65gY — counter dropped per client review; top-right CTA
+           pill appears on slides 2 & 3, jumps the user to slide 4. -->
+      <header class="bp-welcome-header">
+        <button class="bp-welcome-logo" (click)="goTo(0)" [class.bp-welcome-logo--img]="logoUrl">
+          <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-welcome-logo-img"/>
+          <span *ngIf="!logoUrl">BALLPARK</span>
+        </button>
+        <!-- v1.65gZ20 — header CTA now advances by one slide (next())
+             rather than jumping straight to slide 4, per client
+             review. Label keeps reading "Get on the guestlist" since
+             that's still the eventual destination. -->
+        <!-- v1.65gZ42 — header CTA now shows on slide 1 too. Was
+             previously hidden on step 0 because slide 1 had its own
+             centred CTA below the subtitle; that has been removed
+             so all three "Get on the guestlist" pills live in the
+             same top-right spot for consistency.
+             v1.65gZ43 — fast-track: clicking the CTA now jumps
+             straight to slide 4 (the form) instead of advancing one
+             slide at a time. Scroll + arrow keys still do the slow
+             walk; the button is the shortcut. -->
+        <!-- v1.65hZ — "Get on the guestlist" CTA removed per client
+             review (chevron + scroll already cover navigation to
+             slide 4). Markup kept commented in case we restore.
+        <button
+          *ngIf="step < TOTAL_STEPS - 1"
+          class="bp-welcome-header-cta"
+          (click)="goTo(TOTAL_STEPS - 1)">
+          Get on the guestlist
+        </button>
+        -->
+      </header>
+
+      <!-- Slide stage. v1.65gL — restructured as a scroll-snap
+           container. All four slides render simultaneously stacked
+           vertically; CSS scroll-snap handles mouse wheel, trackpad,
+           touch swipe, and the browser's native keyboard scroll.
+           IntersectionObserver in TS tracks which slide is in view
+           and adds .in-view to its section (one-shot — animations
+           don't replay on scroll back). Step state is derived from
+           scroll position; pagination + counter still bind to it. -->
+      <div class="bp-welcome-stage" #stage>
+
+        <!-- ── Slide 1: Hero ────────────────────────────── -->
+        <!-- v1.65gZ — orbs reverted to r=280 (the v1.65gY zoom was
+             undone per the next-day review: "the orbs should not
+             have been changed, only the text styling"). Centred CTA
+             pill below the subtitle stays. -->
+        <section #slideRef data-slide="0" class="bp-slide bp-slide-1" [class.bp-slide-exiting]="exitingFromSlide === 0" [class.bp-credits-rolling]="slide1CreditsRolling" (click)="next()" style="cursor: pointer;">
+          <!-- v1.65i5 — *ngIf instead of CSS hide. iOS Safari was
+               caching the Gaussian-blur filter texture and momentarily
+               redrawing it during the scroll-jump even when the parent
+               was display:none. Removing the SVG (and grain) from the
+               DOM entirely on exit forces a clean teardown — no
+               compositor cache to leak. -->
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 0"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s1-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#FA91B0"/>
+                <stop offset="100%" stop-color="#DF5980"/>
+              </linearGradient>
+              <filter id="s1-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g>
+              <circle cx="100" cy="250" r="280" fill="url(#s1-pink)" filter="url(#s1-blur)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s1-pink)" filter="url(#s1-blur)"/>
+            </g>
+          </svg></div>
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 0"></div>
+          <div class="bp-slide-inner bp-slide-1-inner"
+               [class.bp-credits-exit]="slide1CreditsRolling"
+               *ngIf="exitingFromSlide !== 0">
+            <!-- v1.65gB — eyebrow pill replaced with "Welcome to" +
+                 the BALLPARK wordmark, per the design review. Falls
+                 back to the original eyebrow text when the logo
+                 hasn't loaded so first paint never feels empty. -->
+            <div class="bp-eyebrow-welcome">
+              <span class="bp-eyebrow-welcome-prefix">Welcome to</span>
+              <img *ngIf="logoUrl" [src]="logoUrl" alt="Ballpark" class="bp-eyebrow-welcome-logo"/>
+              <span *ngIf="!logoUrl" class="bp-eyebrow-welcome-fallback">BALLPARK</span>
+            </div>
+            <h1 class="bp-hero-headline">{{ nlText('hero.headline') }}</h1>
+            <p class="bp-hero-subtitle">{{ text('hero.subtitle') }}</p>
+          </div>
+        </section>
+
+        <!-- ── Slide 2: Suppliers ───────────────────────── -->
+        <!-- v1.65gY — eyebrow dropped, subtitle line added below the
+             headline ("The best suppliers in the UK with quotes in
+             minutes.").
+             v1.65gZ — orbs reverted to r=280 (no zoom). -->
+        <section #slideRef data-slide="1" class="bp-slide bp-slide-2" [class.bp-slide-exiting]="exitingFromSlide === 1" [class.bp-credits-rolling]="slide2CreditsRolling" (click)="next()" style="cursor: pointer;">
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 1"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s2-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#79A8BA"/>
+                <stop offset="100%" stop-color="#457187"/>
+              </linearGradient>
+              <filter id="s2-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g>
+              <circle cx="700" cy="0"   r="280" fill="url(#s2-blue)" filter="url(#s2-blur)"/>
+              <circle cx="100" cy="500" r="280" fill="url(#s2-blue)" filter="url(#s2-blur)"/>
+            </g>
+          </svg></div>
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 1"></div>
+          <div class="bp-slide-inner bp-slide-2-inner" *ngIf="exitingFromSlide !== 1">
+            <h2 class="bp-suppliers-headline">{{ text('suppliers.headline') }}</h2>
+            <p class="bp-suppliers-subtitle">{{ text('suppliers.subtitle') }}</p>
+          </div>
+          <!-- v1.65gZ8 — ✦ separator between items removed and the
+               top/bottom border rules on .bp-marquee-wrap dropped
+               per client review (let the marquee run freely without
+               visual frames around it). -->
+          <div class="bp-marquee-wrap" *ngIf="exitingFromSlide !== 1">
+            <div class="bp-marquee-track">
+              <div *ngFor="let cat of marqueeCategories" class="bp-marquee-item">{{ cat }}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Slide 3: Producers ───────────────────────── -->
+        <section #slideRef data-slide="2" class="bp-slide bp-slide-3" [class.bp-slide-exiting]="exitingFromSlide === 2" [class.bp-credits-rolling]="slide3CreditsRolling" (click)="next()" style="cursor: pointer;">
+          <div class="bp-bg-layer" *ngIf="exitingFromSlide !== 2"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s3-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#2D8E53"/>
+                <stop offset="100%" stop-color="#133C23"/>
+              </linearGradient>
+              <linearGradient id="s3-light" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#33A25F"/>
+                <stop offset="100%" stop-color="#2D8E53"/>
+              </linearGradient>
+              <filter id="s3-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <!-- v1.65gZ17 — r=280 had the top + bottom orbs
+                 overlapping in the middle band (combined diameter 560
+                 > viewBox height 500). Dropped to r=240 so they leave
+                 a 20-unit gap and the two colours read as separate
+                 blobs. -->
+            <g>
+              <circle cx="400" cy="0"   r="240" fill="url(#s3-dark)"  filter="url(#s3-blur)"/>
+              <circle cx="400" cy="500" r="240" fill="url(#s3-light)" filter="url(#s3-blur)"/>
+            </g>
+          </svg></div>
+          <div class="bp-grain" *ngIf="exitingFromSlide !== 2"></div>
+          <div class="bp-slide-inner bp-slide-3-inner" *ngIf="exitingFromSlide !== 2">
+            <div class="bp-producers-grid">
+              <div>
+                <h2 class="bp-producers-headline">{{ text('producers.headline') }}</h2>
+                <p class="bp-producers-tagline">{{ text('producers.tagline') }}</p>
+              </div>
+              <div>
+                <!-- v1.65gZ6 — body_1 + body_2 collapsed into a single
+                     paragraph so the copy flows as one block with no
+                     paragraph return between them. -->
+                <p class="bp-producers-body">{{ text('producers.body_1') }} {{ text('producers.body_2') }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Slide 4: Guestlist ───────────────────────── -->
+        <!-- v1.65gY — content redesigned per client review:
+              · eyebrow + subtitle dropped
+              · headline rendered uppercase + sans-serif (Inter 900)
+              · narrow vertical card replaced by a wide glassmorphism
+                panel filling most of the viewport width
+              · form collapsed to one horizontal row:
+                First Name | Surname | Email | APPLY (role + company
+                removed; backend still receives a single "name" field
+                composed from First + Surname)
+              · footer line below the form + Contact/Instagram/TikTok/
+                Legal/copyright row pinned to the bottom of the slide
+             v1.65gZ — orb position + gradient reverted to the
+             pre-v1.65gY values (cx=100/700 cy=250, diagonal gradient)
+             per "the orbs should not have been changed". -->
+        <section #slideRef data-slide="3" class="bp-slide bp-slide-4">
+          <div class="bp-bg-layer"><svg class="bp-svg-bg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="s4-darkgreen" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   stop-color="#33A25F"/>
+                <stop offset="100%" stop-color="#133C23"/>
+              </linearGradient>
+              <filter id="s4-blur" x="-15%" y="-15%" width="130%" height="130%">
+                <feGaussianBlur stdDeviation="20"/>
+              </filter>
+            </defs>
+            <g>
+              <circle cx="100" cy="250" r="280" fill="url(#s4-darkgreen)" filter="url(#s4-blur)"/>
+              <circle cx="700" cy="250" r="280" fill="url(#s4-darkgreen)" filter="url(#s4-blur)"/>
+            </g>
+          </svg></div>
+          <div class="bp-grain"></div>
+          <div class="bp-slide-inner bp-slide-4-inner">
+            <!-- v2.31b — nlText() normalizes the stored "\n" to a real newline
+                 and CSS white-space:pre-line breaks it ("THOSE WHO GET IN
+                 EARLY,\nGET AHEAD") — interpolation, not [innerHTML], so no
+                 HTML sink for admin-edited copy. -->
+            <h2 class="bp-guestlist-headline">{{ nlText('guestlist.headline') }}</h2>
+
+            <div *ngIf="!submitted" class="bp-guestlist-form">
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.firstName" placeholder="First Name"    aria-label="First name" />
+              <input class="bp-form-input" type="text"  [(ngModel)]="form.surname"   placeholder="Surname"       aria-label="Surname" />
+              <input class="bp-form-input" type="email" [(ngModel)]="form.email"     placeholder="Email Address" aria-label="Email address" />
+              <button
+                class="bp-guestlist-submit"
+                [disabled]="!canSubmit() || submitting"
+                (click)="submit()">
+                {{ pendingSubmit ? 'Verifying…' : (submitting ? '…' : text('guestlist.cta_label')) }}
+              </button>
+            </div>
+            <!-- v1.65gZ29 — Cloudflare Turnstile widget. Renders via
+                 explicit window.turnstile.render() after the script
+                 loads (see ngAfterViewInit). Managed mode is usually
+                 invisible; occasional checkbox for suspicious traffic. -->
+            <div *ngIf="!submitted" #turnstileEl class="bp-turnstile-wrap"></div>
+            <p *ngIf="!submitted && errorMessage" class="bp-form-error">{{ errorMessage }}</p>
+            <p *ngIf="!submitted" class="bp-guestlist-footer-text">
+              {{ text('guestlist.footer_text') }}
+            </p>
+
+            <div *ngIf="submitted" class="bp-guestlist-success">
+              <div class="bp-success-tick">✓</div>
+              <h3 class="bp-success-headline">{{ text('guestlist.success_headline') }}</h3>
+              <p class="bp-success-body">{{ successBody }}</p>
+            </div>
+
+            <!-- v1.65gZ5 — footer (Contact / Instagram / TikTok / (c)
+                 / Legal) moved INSIDE the glass panel per client
+                 review. It absolute-positions to the bottom of the
+                 panel rather than to the viewport. -->
+            <div class="bp-welcome-footer">
+              <!-- v1.65iB — Legal moved INTO the links row next to
+                   TikTok (was an isolated right-aligned button). Reads
+                   as part of the same group and stays visible on
+                   mobile where the old right column was display:none. -->
+              <div class="bp-footer-links">
+                <a href="mailto:hello@theballpark.ai" class="bp-footer-link">Contact</a>
+                <a href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/" target="_blank" rel="noopener" class="bp-footer-link">Privacy</a>
+              </div>
+              <div class="bp-footer-copy">© 2026. All Rights Reserved.</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- v1.65gY — pagination train + bottom nav (Back / Next pills)
+           removed per client review. Navigation is now exclusively
+           scroll-driven (wheel, trackpad, swipe, arrow keys) with the
+           header CTA jumping straight to the form on slides 2 & 3. -->
+
+      <!-- v1.65gZ44 — chevrons-right next-button. Bottom-right of the
+           viewport on slides 1, 2 and 3; hidden on slide 4 where the
+           user is already at the form. One click advances one slide
+           via next() (slide-by-slide); contrast with the header CTA
+           which fast-tracks straight to slide 4. -->
+      <button
+        *ngIf="step < TOTAL_STEPS - 1"
+        type="button"
+        class="bp-next-icon"
+        (click)="next()"
+        aria-label="Next slide">
+        <!-- v1.65hU — chevrons-right → chevrons-down to match the
+             slide-stack vertical scroll direction. -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m7 6 5 5 5-5"/>
+          <path d="m7 13 5 5 5-5"/>
+        </svg>
+      </button>
+
+      <!-- v2.30x — the explicit BACK chevron (v2.30q) was only a testing aid
+           for the reverse; native scroll-up now drives it, so it's removed.
+           goBack() stays — it's wired to wheel-up / ArrowLeft / scroll-track. -->
+
+      <!-- v1.65gZ24  — custom scroll progress pill (per client mockup).
+           Position is driven by --scroll-progress on .bp-welcome-root,
+           updated by the scroll listener in ngAfterViewInit.
+           v1.65gZ25 — pill wrapped in an invisible clickable track.
+           Clicking above the pill moves to the previous slide;
+           clicking below moves to the next. The pill itself has
+           pointer-events: none so the track always owns the click. -->
+      <div class="bp-scroll-track"
+           (click)="onScrollTrackClick($event)"
+           role="button"
+           aria-label="Previous or next slide">
+        <div #scrollPill class="bp-scroll-pill" aria-hidden="true"></div>
+      </div>
+
+    </div>

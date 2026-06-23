@@ -373,7 +373,7 @@ export interface MessageItemAction {
     .bp-mi-grid-img {
       width: 100%; height: 140px;
       position: relative;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       display: flex; align-items: center; justify-content: center;
       overflow: hidden;
     }

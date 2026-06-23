@@ -54,7 +54,7 @@ import { ImageProcessingService } from '../../services/image-processing.service'
     .ip-file-label {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 16px; border-radius: 6px; cursor: pointer;
-      background: var(--theme-bg); color: var(--theme-text);
+      background: var(--color-fill); color: var(--theme-text);
       border: 0.5px solid var(--theme-border); font-weight: 600; font-size: var(--text-sm);
     }
     .ip-check { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--color-text-secondary); }

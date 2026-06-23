@@ -29,7 +29,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const item = await EstimateItemService.hardDelete(req.params.id);
+    const item = await EstimateItemService.softDelete(req.params.id);
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) { next(err); }

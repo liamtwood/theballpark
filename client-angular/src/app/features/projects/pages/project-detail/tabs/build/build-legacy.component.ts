@@ -294,7 +294,7 @@ interface CategoryWithBrief {
     .bp-vendor-list  { display: flex; flex-direction: column; gap: 8px; }
     .bp-vendor-empty { font-size: 13px; color: var(--color-text-muted); padding: 12px 0; }
     .bp-vendor-row   { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 8px; background: var(--color-surface); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-    .bp-vendor-row.selected { border-color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-vendor-row.selected { border-color: var(--theme-accent); background: var(--color-fill); }
     .bp-vendor-img   { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; background-size: cover; background-position: center; }
     .bp-vendor-grad  { background-image: linear-gradient(160deg, #1a1a2e, #16213e); }
     .bp-vendor-info  { flex: 1; min-width: 0; }
@@ -325,7 +325,7 @@ interface CategoryWithBrief {
     .bp-review-vendor     { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
     .bp-review-brief      { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; line-height: 1.5; }
     .bp-review-brief-lbl  { font-weight: 600; color: var(--theme-accent); }
-    .bp-review-ball-card  { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; background: var(--theme-bg); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 14px 16px; }
+    .bp-review-ball-card  { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; background: var(--color-fill); border: 0.5px solid var(--theme-border); border-radius: 10px; padding: 14px 16px; }
     .bp-review-ball-label { font-size: 13px; font-weight: 600; color: var(--theme-accent); margin-bottom: 3px; }
     .bp-review-ball-after { font-size: 11px; color: var(--color-text-muted); }
     .bp-review-ball-num   { font-size: 24px; font-weight: 700; color: var(--color-text-primary); }

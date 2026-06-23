@@ -1,6 +1,12 @@
 export interface ThemePreset {
   name: string;
+  /** Primary accent — solid-accent UI (hero, pills, tabs) AND the first
+      stop of the derived --grad-accent gradient. */
   accent: string;
+  /** Secondary accent — the second stop of --grad-accent. Predefined per
+      theme so the pink→green-style gradient tracks the active theme with
+      no separate setting. */
+  accent2: string;
   bg: string;
   empty: string;
   text: string;
@@ -27,6 +33,7 @@ export interface PlatformConfig {
   heroAlign?: string;
   showUserName?: boolean;
   showLocation?: boolean;
+  showOrg?: boolean;
   showUpcoming?: boolean;
   showStats?: boolean;
   /** p0018 — per-section visibility for the dashboard body. All default
@@ -38,6 +45,25 @@ export interface PlatformConfig {
   showRecentActivity?: boolean;
   logoUrl?: string;
   navMode?: 'tabs' | 'sidenav';
+  /** p0023 — hero title source on the home / agent surfaces.
+      'org' = org name, 'user' = active persona name,
+      'greeting' = "Welcome back, {firstName}". Default 'greeting'. */
+  heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose';
+  /** v1.66av — per-page hero overrides, keyed by route path (e.g.
+      "/inbox"). Lets each page set its own title mode + subtitle from
+      that page's settings tab, overriding the route defaults. */
+  pageSettings?: Record<string, { heroTitleMode?: 'org' | 'user' | 'greeting' | 'purpose'; heroSub?: string; heroAlign?: 'left' | 'center' }>;
+  /** p0023 — home / agent hero strip treatment. 'theme' = accent fill
+      (--theme-accent), 'none' = calm parchment (--theme-bg, the stripped
+      agent look). Default 'none'. */
+  heroColor?: 'theme' | 'none';
+  /** v1.66bb — hero separator (tab-band underline) width as a % of the
+      content width. Default 100. General (global) setting. */
+  separatorWidth?: number;
+  /** Financial defaults — currency for headline money figures (project
+      card totals, estimates). ISO 4217 code; default 'GBP'. Authored from
+      the page-config drawer's General → Financial defaults group. */
+  currency?: 'GBP' | 'USD' | 'EUR';
   fontPairing?: string;
   catalogueLabel?: string;
   feedbackLabel?: string;

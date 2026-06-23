@@ -37,6 +37,16 @@ router.post('/', async (req, res, next) => {
   try { res.status(201).json(await ItemService.create(req.body)); } catch (err) { next(err); }
 });
 
+// v1.68b — duplicate an item (row + gallery + taxonomy tags). The copy lands
+// is_active=false (hidden) so the owner reviews before publishing.
+router.post('/:id/duplicate', async (req, res, next) => {
+  try {
+    const item = await ItemService.duplicate(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(item);
+  } catch (err) { next(err); }
+});
+
 router.put('/:id', async (req, res, next) => {
   try {
     const item = await ItemService.update(req.params.id, req.body);

@@ -69,7 +69,7 @@ const PUBLIC_PATH_PREFIXES = ['/welcome'];
       color: var(--color-text-primary); font-family: var(--font-body);
       transition: background 0.1s;
     }
-    .bp-fab-menu-item:hover { background: var(--theme-bg); }
+    .bp-fab-menu-item:hover { background: var(--color-fill); }
   `]
 })
 export class AppComponent {

@@ -40,17 +40,21 @@ import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SidebarModule } from 'primeng/sidebar';
 import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, filter } from 'rxjs/operators';
+import { Router, NavigationEnd } from '@angular/router';
 
 import { ConfigService } from '../../../core/services/config.service';
 import { ConfigStripService } from '../../../core/services/config-strip.service';
+import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
+import { pagePatternKey } from '../../../core/utils/page-key';
 
 @Component({
   selector: 'app-page-config-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule, CheckboxModule],
+  imports: [CommonModule, FormsModule, InputTextModule, SidebarModule, CheckboxModule, DropdownModule],
   template: `
     <p-sidebar [(visible)]="visible"
                (visibleChange)="onVisibleChange($event)"
@@ -73,111 +77,199 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
 
       <div class="bp-drawer-body bp-pcd-body">
 
-        <!-- ── GENERAL ─────────────────────────────────────────── -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">GENERAL</div>
+        <!-- v1.66ap — system-admin: pick the (platform, role) profile to
+             author. Sits ABOVE the tabs because it scopes BOTH the
+             Dashboard and General settings below. -->
+        <div class="bp-pcd-field">
+          <label class="bp-pcd-field-label">Platform</label>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let p of cfgPlatforms" type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="activePlatform === p"
+                    (click)="selectProfile(p, activeRole)">{{ p }}</button>
+          </div>
+        </div>
+        <div class="bp-pcd-field">
+          <label class="bp-pcd-field-label">Role</label>
+          <div class="bp-cfg-seg">
+            <button *ngFor="let r of cfgRoles" type="button"
+                    class="bp-cfg-seg-btn"
+                    [class.p-highlight]="activeRole === r"
+                    (click)="selectProfile(activePlatform, r)">{{ r }}</button>
+          </div>
+        </div>
 
+        <!-- p0032 — two tabs replace the four legacy sub-eyebrow groups.
+             Dashboard = settings for THIS page; General = app-wide hero /
+             site preferences. Default Dashboard; remembered in state. -->
+        <div class="bp-cfg-seg bp-pcd-tabs">
+          <button type="button" class="bp-cfg-seg-btn"
+                  [class.p-highlight]="activeDrawerTab === 'dashboard'"
+                  (click)="activeDrawerTab = 'dashboard'">{{ currentPageName }}</button>
+          <button type="button" class="bp-cfg-seg-btn"
+                  [class.p-highlight]="activeDrawerTab === 'general'"
+                  (click)="activeDrawerTab = 'general'">General</button>
+        </div>
+
+        <!-- ── PAGE TAB — title + subtitle for THIS page (per-page override) ── -->
+        <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'dashboard'">
+          <!-- ── HERO ── -->
+          <div class="bp-pcd-subhead">Hero</div>
+          <!-- v1.66av — Title source for THIS page (per-page heroTitleMode). -->
           <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Page label</label>
+            <label class="bp-pcd-field-label">Title</label>
+            <p-dropdown styleClass="bp-pcd-dropdown"
+                        [options]="heroTitleOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        [appendTo]="'body'"
+                        [(ngModel)]="pageTitleMode"
+                        (onChange)="onPageTitleModeChange($event.value)">
+            </p-dropdown>
+          </div>
+
+          <!-- v1.66av — Subtitle for THIS page (per-page heroSub override). -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Subtitle</label>
             <input pInputText
                    class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.homePageLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Projects"/>
+                   [(ngModel)]="pageSubtitle"
+                   (blur)="savePageSubtitle()"
+                   placeholder="Describe this page"/>
           </div>
 
+          <!-- v1.66ay — Hero align for THIS page (title / sub / menu). -->
           <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Credits</label>
-            <input pInputText
-                   class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.creditLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Balls"/>
-          </div>
-
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Events</label>
-            <input pInputText
-                   class="bp-pcd-input"
-                   [(ngModel)]="settingsDraft.projectLabel"
-                   (blur)="saveLabels()"
-                   placeholder="Events"/>
-          </div>
-        </section>
-
-        <!-- ── APPEARANCE ──────────────────────────────────────── -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">APPEARANCE</div>
-
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Theme</label>
-            <div class="bp-cfg-swatches-row">
-              <button *ngFor="let t of themeOptions"
-                      type="button"
-                      class="bp-cfg-swatch-btn"
-                      [class.active]="settingsDraft.themeName === t.value"
-                      [style.background]="t.color"
-                      [title]="t.label"
-                      (click)="onThemeChange(t.value)">
-              </button>
-            </div>
-          </div>
-
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Hero align</label>
+            <label class="bp-pcd-field-label">Position</label>
             <div class="bp-cfg-seg">
               <button *ngFor="let opt of alignOptions"
                       type="button"
                       class="bp-cfg-seg-btn"
-                      [class.p-highlight]="settingsDraft.heroAlign === opt.value"
-                      (click)="selectHeroAlign(opt.value)">
+                      [class.p-highlight]="pageAlign === opt.value"
+                      (click)="onPageAlignChange(opt.value)">
                 {{ opt.label }}
               </button>
             </div>
           </div>
 
-          <div class="bp-pcd-field">
-            <label class="bp-pcd-field-label">Navigation</label>
-            <div class="bp-cfg-seg">
-              <button *ngFor="let opt of navOptions"
-                      type="button"
-                      class="bp-cfg-seg-btn"
-                      [class.p-highlight]="settingsDraft.navMode === opt.value"
-                      (click)="selectNavMode(opt.value)">
-                {{ opt.label }}
-              </button>
+          <!-- Catalogue view controls — shown only when a catalogue page
+               (marketplace / feedback) is active. These replace the old
+               config-strip bar; they edit the page via CatalogueViewService. -->
+          <ng-container *ngIf="catalogueView as cv">
+            <div class="bp-pcd-subhead">Catalogue view</div>
+
+            <!-- Categories -->
+            <div class="bp-pcd-subhead2">Categories</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Position</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of catPositionOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.categoriesPosition === o.value"
+                        (click)="setCatalogueView({ categoriesPosition: o.value })">{{ o.label }}</button>
+              </div>
             </div>
-          </div>
-        </section>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Shape</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of shapeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.shape === o.value"
+                        (click)="setCatalogueView({ shape: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Shape size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of circleSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.circleSize === o.value"
+                        (click)="setCatalogueView({ circleSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
 
-        <!-- ── HERO ────────────────────────────────────────────── -->
-        <!-- p0018 — User / Location now live as checkboxes (were pills
-             in the old SECTIONS row). They gate the AppShell hero meta
-             chips, which already read showUserName / showLocation. -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">HERO</div>
+            <!-- Catalogue -->
+            <div class="bp-pcd-subhead2">Catalogue</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Default View Mode</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of catViewOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.view === o.value"
+                        (click)="setCatalogueView({ view: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Card size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of circleSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.cardSize === o.value"
+                        (click)="setCatalogueView({ cardSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
 
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showUserName"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">User name</span>
-          </label>
-          <label class="bp-pcd-check-row">
-            <p-checkbox [(ngModel)]="settingsDraft.showLocation"
-                        [binary]="true"
-                        (ngModelChange)="saveToggles()"></p-checkbox>
-            <span class="bp-pcd-check-label">Location</span>
-          </label>
-        </section>
+            <!-- Preview panel -->
+            <div class="bp-pcd-subhead2">Preview panel</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Show</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showPreview"
+                        (click)="setCatalogueView({ showPreview: false })">Off</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Size</label>
+              <div class="bp-cfg-seg">
+                <button *ngFor="let o of detailSizeOptions" type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.detailSize === o.value"
+                        (click)="setCatalogueView({ detailSize: o.value })">{{ o.label }}</button>
+              </div>
+            </div>
 
-        <!-- ── SECTIONS ────────────────────────────────────────── -->
-        <!-- p0018 — per-section show/hide for the dashboard body. Labels
-             interpolate the configurable tokens (projectLabel /
-             creditLabel) so they read with whatever the user set above. -->
-        <section class="bp-pcd-group">
-          <div class="bp-drawer-label bp-pcd-sub-eyebrow">SECTIONS</div>
+            <!-- Filter -->
+            <div class="bp-pcd-subhead2">Filter</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Show Sidebar</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showFilter"
+                        (click)="setCatalogueView({ showFilter: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showFilter"
+                        (click)="setCatalogueView({ showFilter: false })">Off</button>
+              </div>
+            </div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Show Button</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showFilterButton"
+                        (click)="setCatalogueView({ showFilterButton: true })">On</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showFilterButton"
+                        (click)="setCatalogueView({ showFilterButton: false })">Off</button>
+              </div>
+            </div>
 
+            <!-- Containers -->
+            <div class="bp-pcd-subhead2">Containers</div>
+            <div class="bp-pcd-field">
+              <label class="bp-pcd-field-label">Show containers</label>
+              <div class="bp-cfg-seg">
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="cv.showContainers"
+                        (click)="setCatalogueView({ showContainers: true })">Yes</button>
+                <button type="button" class="bp-cfg-seg-btn"
+                        [class.p-highlight]="!cv.showContainers"
+                        (click)="setCatalogueView({ showContainers: false })">No</button>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- v1.66au — section-visibility toggles are dashboard-only;
+               the other pages (incl. the /home launcher) don't have these
+               sections, so they're gated to the data dashboard. -->
+          <ng-container *ngIf="isDashboardPage">
           <label class="bp-pcd-check-row">
             <p-checkbox [(ngModel)]="settingsDraft.showUpcoming"
                         [binary]="true"
@@ -214,30 +306,143 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
                         (ngModelChange)="saveToggles()"></p-checkbox>
             <span class="bp-pcd-check-label">Recent Activity</span>
           </label>
-        </section>
+          </ng-container>
+        </div>
+
+        <!-- ── GENERAL TAB — app-wide hero / site preferences ── -->
+        <div class="bp-pcd-group" *ngIf="activeDrawerTab === 'general'">
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Theme</label>
+            <div class="bp-cfg-swatches-row">
+              <button *ngFor="let t of themeOptions"
+                      type="button"
+                      class="bp-cfg-swatch-btn"
+                      [class.active]="settingsDraft.themeName === t.value"
+                      [style.background]="t.color"
+                      [title]="t.label"
+                      (click)="onThemeChange(t.value)">
+              </button>
+            </div>
+          </div>
+
+          <!-- p0032 — Hero color now applies to EVERY hero in the app
+               (global ConfigService read). Theme = accent fill, None =
+               calm parchment. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Hero color</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let opt of heroColorOptions"
+                      type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="settingsDraft.heroColor === opt.value"
+                      (click)="selectHeroColor(opt.value)">
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- v1.66bb — separator (tab-band underline) width, % of content. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Separator width</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="range" min="0" max="100" step="5"
+                     [(ngModel)]="settingsDraft.separatorWidth"
+                     (ngModelChange)="saveSeparatorWidth()"
+                     style="flex:1;"/>
+              <span class="bp-pcd-field-label" style="margin:0; min-width:34px; text-align:right;">{{ settingsDraft.separatorWidth }}%</span>
+            </div>
+          </div>
+
+          <!-- v1.66ay — Hero align moved to the page tab (it's per-page). -->
+
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Navigation</label>
+            <div class="bp-cfg-seg">
+              <button *ngFor="let opt of navOptions"
+                      type="button"
+                      class="bp-cfg-seg-btn"
+                      [class.p-highlight]="settingsDraft.navMode === opt.value"
+                      (click)="selectNavMode(opt.value)">
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Hero meta chips (gate the AppShell org / user / location pills). -->
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showOrg"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Org name</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showUserName"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">User name</span>
+          </label>
+          <label class="bp-pcd-check-row">
+            <p-checkbox [(ngModel)]="settingsDraft.showLocation"
+                        [binary]="true"
+                        (ngModelChange)="saveToggles()"></p-checkbox>
+            <span class="bp-pcd-check-label">Location</span>
+          </label>
+
+          <!-- App-wide object labels. -->
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Credits label</label>
+            <input pInputText
+                   class="bp-pcd-input"
+                   [(ngModel)]="settingsDraft.creditLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Balls"/>
+          </div>
+
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Events label</label>
+            <input pInputText
+                   class="bp-pcd-input"
+                   [(ngModel)]="settingsDraft.projectLabel"
+                   (blur)="saveLabels()"
+                   placeholder="Events"/>
+          </div>
+
+          <!-- Financial defaults — currency for headline money figures
+               (project card totals / estimates). Default GBP. -->
+          <div class="bp-pcd-subhead">Financial defaults</div>
+          <div class="bp-pcd-field">
+            <label class="bp-pcd-field-label">Currency</label>
+            <p-dropdown styleClass="bp-pcd-dropdown"
+                        [options]="currencyOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        [appendTo]="'body'"
+                        [(ngModel)]="settingsDraft.currency"
+                        (onChange)="saveCurrency($event.value)">
+            </p-dropdown>
+          </div>
+        </div>
 
       </div>
     </p-sidebar>
   `,
   styles: [`
-    /* Drawer body grouping — stacked sections with a sub-eyebrow at the
-       top of each. Sub-eyebrow uses the existing .bp-drawer-label small-
-       caps treatment; we just add bottom spacing so the controls below
-       breathe. */
+    /* p0032 — drawer body = the tab strip + the one active panel. */
     .bp-pcd-body {
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 18px;
     }
     .bp-pcd-group {
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
-    .bp-pcd-sub-eyebrow {
-      /* Inherits .bp-drawer-label styling; only spacing override here. */
-      margin-bottom: 2px;
-    }
+    /* Two-tab segmented control — full width, equal halves, a touch
+       taller than the inline bp-cfg-seg controls so it reads as a tab
+       strip at the top of the drawer. */
+    .bp-pcd-tabs { display: flex; width: 100%; }
+    .bp-pcd-tabs .bp-cfg-seg-btn { flex: 1; height: 34px; font-size: 13px; }
 
     /* Field row — label sits above the control so the drawer reads as
        a vertical list (the strip's inline label-then-input pattern
@@ -253,6 +458,31 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       font-weight: 500;
       color: var(--color-text-secondary);
       letter-spacing: 0.02em;
+    }
+    /* Group sub-heading inside a tab panel (e.g. "Financial defaults").
+       A small eyebrow with a hairline above to separate clusters. */
+    .bp-pcd-subhead {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      padding-top: 14px;
+      margin-top: 2px;
+      border-top: var(--border-hairline);
+    }
+    /* Subsection header inside a section (e.g. Categories / Catalogue /
+       Preview panel / Filter / Containers under "Catalogue view"). Accent
+       tinted, no rule, tighter — reads as a child of the section above. */
+    .bp-pcd-subhead2 {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-accent);
+      margin-top: 6px;
     }
 
     /* Drawer body input — wider than the strip's compact inline input.
@@ -274,6 +504,39 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
       border-color: var(--theme-accent);
       box-shadow: 0 0 0 1px var(--theme-accent);
       outline: none;
+    }
+
+    /* p0023 — Title dropdown. Matches the .bp-pcd-input metric (full
+       width, 34px, 6px radius) so it sits in the field list like the
+       text inputs. Panel is appendTo body — PrimeNG's themed panel
+       styling applies there; --primary-color (= --theme-accent) drives
+       the highlighted option. */
+    :host ::ng-deep .bp-pcd-dropdown.p-dropdown {
+      width: 100%;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      border-radius: 6px;
+      box-shadow: none;
+    }
+    :host ::ng-deep .bp-pcd-dropdown.p-dropdown:not(.p-disabled).p-focus {
+      border-color: var(--theme-accent);
+      box-shadow: 0 0 0 1px var(--theme-accent);
+      outline: none;
+    }
+    :host ::ng-deep .bp-pcd-dropdown .p-dropdown-label {
+      padding: 0 10px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+    }
+    :host ::ng-deep .bp-pcd-dropdown .p-dropdown-trigger {
+      width: 32px;
+      color: var(--color-text-muted);
     }
 
     /* p0018 — checkbox list (HERO + SECTIONS groups). Each row is a
@@ -337,7 +600,7 @@ import { ConfigStripService } from '../../../core/services/config-strip.service'
     }
     .bp-cfg-seg-btn:first-child { border-left: none; }
     .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cfg-seg-btn.p-highlight {
@@ -364,6 +627,10 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
       animation, for instance) sees the same value. */
   visible = false;
 
+  /** p0032 — active drawer tab. Default Dashboard; persists across
+      open/close within the session (the drawer mounts once per page). */
+  activeDrawerTab: 'dashboard' | 'general' = 'dashboard';
+
   private destroy$ = new Subject<void>();
 
   /** Draft copy of the configurable fields; saved back to ConfigService
@@ -377,6 +644,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     themeName: string;
     heroAlign: 'left' | 'center';
     navMode: 'tabs' | 'sidenav';
+    // p0023 — hero customisation.
+    heroTitleMode: 'org' | 'user' | 'greeting' | 'purpose';
+    heroColor: 'theme' | 'none';
+    separatorWidth: number;
+    currency: 'GBP' | 'USD' | 'EUR';
+    showOrg: boolean;
     showUserName: boolean;
     showLocation: boolean;
     showUpcoming: boolean;
@@ -393,6 +666,11 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     themeName: 'amber',
     heroAlign: 'center',
     navMode: 'tabs',
+    heroTitleMode: 'greeting',
+    heroColor: 'none',
+    separatorWidth: 100,
+    currency: 'GBP',
+    showOrg: true,
     showUserName: true,
     showLocation: true,
     showUpcoming: true,
@@ -412,10 +690,62 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'slate',   label: 'Slate',   color: '#64748B' },
   ];
 
+  /** p0023 — hero title source (GENERAL dropdown). */
+  readonly heroTitleOptions: Array<{ value: 'org' | 'user' | 'greeting' | 'purpose'; label: string }> = [
+    { value: 'org',      label: 'Org Name' },
+    { value: 'user',     label: 'Username' },
+    { value: 'greeting', label: 'Greeting' },
+    { value: 'purpose',  label: 'Purpose' },
+  ];
+
+  /** p0023 — hero strip treatment (APPEARANCE segmented). */
+  readonly heroColorOptions: Array<{ value: 'theme' | 'none'; label: string }> = [
+    { value: 'theme', label: 'Theme' },
+    { value: 'none',  label: 'None' },
+  ];
+
   /** Hero alignment — single-pick segmented group. */
   readonly alignOptions: Array<{ value: 'left' | 'center'; label: string }> = [
     { value: 'left',   label: 'Left' },
     { value: 'center', label: 'Centre' },
+  ];
+
+  /** Financial defaults — headline currency (GENERAL dropdown). */
+  readonly currencyOptions: Array<{ value: 'GBP' | 'USD' | 'EUR'; label: string }> = [
+    { value: 'GBP', label: '£ GBP — British Pound' },
+    { value: 'USD', label: '$ USD — US Dollar' },
+    { value: 'EUR', label: '€ EUR — Euro' },
+  ];
+
+  /** Catalogue view controls (shown when a catalogue page is active). The
+      values mirror page-config-toggles' old options. */
+  catalogueView: CatalogueViewState | null = null;
+  readonly catPositionOptions = [
+    { value: 'top' as const,  label: 'Top' },
+    { value: 'left' as const, label: 'Left' },
+  ];
+  readonly shapeOptions = [
+    { value: 'circle' as const, label: 'Circle' },
+    { value: 'square' as const, label: 'Square' },
+  ];
+  readonly circleSizeOptions = [
+    { value: 'sm' as const, label: 'S' },
+    { value: 'md' as const, label: 'M' },
+    { value: 'lg' as const, label: 'L' },
+  ];
+  readonly detailSizeOptions = [
+    { value: 'sm' as const, label: 'S' },
+    { value: 'md' as const, label: 'M' },
+    { value: 'lg' as const, label: 'L' },
+  ];
+  readonly catViewOptions = [
+    { value: 'card' as const,  label: 'Card' },
+    { value: 'list' as const,  label: 'List' },
+    { value: 'table' as const, label: 'Table' },
+  ];
+  readonly detailModeOptions = [
+    { value: 'inline' as const, label: 'Inline' },
+    { value: 'drawer' as const, label: 'Drawer' },
   ];
 
   /** Nav mode — single-pick segmented group. */
@@ -424,11 +754,77 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     { value: 'sidenav', label: 'Menu' },
   ];
 
+  /** v1.66as — the page-settings tab is labelled with the current page
+      name (Home / Inbox / Categories …), paired with the global General
+      tab. Derived from the active route's heroTitle (label tokens
+      substituted), falling back to the URL segment. */
+  currentPageName = 'Home';
+  /** v1.66au — the dashboard section toggles (Upcoming / Stats / …) only
+      apply to the data dashboard, so they're gated to it. v1.68v: the /home
+      page is now the launcher (no such sections), so this tracks /dashboard. */
+  isDashboardPage = true;
+  /** v1.66av — per-page hero draft. The Title + Subtitle edit THIS page's
+      override (keyed by pageKey), defaulting to the route's values. */
+  pageKey = '/home';
+  routeHeroSub = '';
+  pageTitleMode: 'org' | 'user' | 'greeting' | 'purpose' = 'purpose';
+  pageSubtitle = '';
+  pageAlign: 'left' | 'center' = 'center';
+
   constructor(
     private configService: ConfigService,
     private configStripSvc: ConfigStripService,
+    private catalogueViewSvc: CatalogueViewService,
     private cdr: ChangeDetectorRef,
+    private router: Router,
   ) {}
+
+  /** Drawer → active catalogue page. The host persists + re-syncs. */
+  setCatalogueView(partial: Partial<CatalogueViewState>) {
+    this.catalogueViewSvc.apply(partial);
+  }
+
+  private updatePageName(): void {
+    // Pattern-based key (e.g. /suppliers/:id) so param routes share one entry
+    // and the label isn't a raw id. Matches the app-shell's key exactly.
+    this.pageKey = pagePatternKey(this.router);
+    this.isDashboardPage = this.pageKey === '/dashboard';
+    const ev = this.configService.projectLabel || 'Event';
+    const sub = (s: string) => (s || '')
+      .replace(/\{Events\}/g, ev + 's').replace(/\{Event\}/g, ev)
+      .replace(/\{events\}/g, ev.toLowerCase() + 's').replace(/\{event\}/g, ev.toLowerCase());
+
+    let route = this.router.routerState.snapshot.root;
+    while (route.firstChild) route = route.firstChild;
+
+    let name = sub(route.data?.['heroTitle'] as string);
+    if (!name) {
+      // Last STATIC segment of the pattern (skip :params like :id).
+      const seg = this.pageKey.split('/').filter(s => s && !s.startsWith(':')).pop() || 'home';
+      name = seg === 'home' ? 'Home'
+           : seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    this.currentPageName = name;
+    this.routeHeroSub = sub(route.data?.['heroSub'] as string);
+
+    // Load this page's override (→ route default).
+    const ps = this.configService.getPageSetting(this.pageKey);
+    this.pageTitleMode = ps.heroTitleMode || (this.isDashboardPage ? this.settingsDraft.heroTitleMode : 'purpose');
+    this.pageSubtitle  = ps.heroSub ?? this.routeHeroSub;
+    this.pageAlign     = ps.heroAlign || (this.settingsDraft.heroAlign === 'left' ? 'left' : 'center');
+  }
+
+  onPageTitleModeChange(mode: 'org' | 'user' | 'greeting' | 'purpose') {
+    this.pageTitleMode = mode;
+    this.configService.updatePageSetting(this.pageKey, { heroTitleMode: mode });
+  }
+  savePageSubtitle() {
+    this.configService.updatePageSetting(this.pageKey, { heroSub: this.pageSubtitle });
+  }
+  onPageAlignChange(align: 'left' | 'center') {
+    this.pageAlign = align;
+    this.configService.updatePageSetting(this.pageKey, { heroAlign: align });
+  }
 
   ngOnInit() {
     // Mount-side: tell the service we exist so the top-nav cog appears.
@@ -436,6 +832,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     // — increments here, decrements in ngOnDestroy. hasConfig$ flips
     // true when mountedCount > 0.
     this.configStripSvc.register();
+
+    // v1.66as — keep the page-settings tab label in sync with the route.
+    this.updatePageName();
+    this.router.events
+      .pipe(filter(e => e instanceof NavigationEnd), takeUntil(this.destroy$))
+      .subscribe(() => { this.updatePageName(); this.cdr.markForCheck(); });
 
     // Keep the draft mirrored to the canonical config so changes made
     // elsewhere reflect here without a reload.
@@ -449,6 +851,12 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           themeName:     cfg.themeName     || 'amber',
           heroAlign:     (cfg.heroAlign === 'left' ? 'left' : 'center'),
           navMode:       (cfg.navMode === 'sidenav' ? 'sidenav' : 'tabs'),
+          // p0023 — hero customisation (default greeting / none).
+          heroTitleMode: (['org', 'user', 'purpose'].includes(cfg.heroTitleMode as string) ? cfg.heroTitleMode as any : 'greeting'),
+          heroColor:     (cfg.heroColor === 'theme' ? 'theme' : 'none'),
+          separatorWidth: cfg.separatorWidth ?? 100,
+          currency:      (['USD', 'EUR'].includes(cfg.currency as string) ? cfg.currency as any : 'GBP'),
+          showOrg:       cfg.showOrg       !== false,
           showUserName:  cfg.showUserName  !== false,
           showLocation:  cfg.showLocation  !== false,
           // p0018 — all section flags default visible (!== false) so a
@@ -460,8 +868,14 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
           showSavedSuppliers: cfg.showSavedSuppliers !== false,
           showRecentActivity: cfg.showRecentActivity !== false,
         };
+        this.updatePageName();   // v1.66av — reload the per-page draft on config/profile change
         this.cdr.markForCheck();
       });
+
+    // Catalogue view controls appear when a catalogue page registers.
+    this.catalogueViewSvc.state$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(state => { this.catalogueView = state; this.cdr.markForCheck(); });
 
     // Bind visibility to the shared open$ signal so the top-nav cog
     // toggle() reaches the drawer.
@@ -509,6 +923,27 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** p0023 — hero title source (GENERAL dropdown). Save on change. */
+  onHeroTitleModeChange(mode: 'org' | 'user' | 'greeting' | 'purpose') {
+    this.settingsDraft.heroTitleMode = mode;
+    this.configService.update({ heroTitleMode: mode });
+  }
+
+  /** p0023 — hero strip treatment (APPEARANCE segmented). Save on change. */
+  selectHeroColor(value: 'theme' | 'none') {
+    this.settingsDraft.heroColor = value;
+    this.configService.update({ heroColor: value });
+  }
+  saveSeparatorWidth() {
+    this.configService.update({ separatorWidth: this.settingsDraft.separatorWidth });
+  }
+
+  /** Financial defaults — persist the headline currency on change. */
+  saveCurrency(value: 'GBP' | 'USD' | 'EUR') {
+    this.settingsDraft.currency = value;
+    this.configService.update({ currency: value });
+  }
+
   onThemeChange(theme: string) {
     this.settingsDraft.themeName = theme;
     this.configService.update({ themeName: theme });
@@ -524,12 +959,24 @@ export class PageConfigDrawerComponent implements OnInit, OnDestroy {
     this.configService.update({ heroAlign: align });
   }
 
+  // ── v1.66an — system-admin profile authoring ──────────────────────
+  // Pick the (platform, role) profile to edit; setActiveProfile re-emits
+  // config$, which reloads settingsDraft via the subscription above.
+  get cfgPlatforms(): readonly string[] { return this.configService.platforms; }
+  get cfgRoles():     readonly string[] { return this.configService.roles; }
+  get activePlatform(): string { return this.configService.activePlatform; }
+  get activeRole():     string { return this.configService.activeRole; }
+  selectProfile(platform: string, role: string) {
+    this.configService.setActiveProfile(platform, role);
+  }
+
   /** p0018 — persist all hero-meta + section visibility flags. Fired by
       every checkbox's (ngModelChange); the two-way [(ngModel)] has
       already mutated settingsDraft, so we just push the whole set to
       ConfigService (which spreads + saves + re-emits). */
   saveToggles() {
     this.configService.update({
+      showOrg:            this.settingsDraft.showOrg,
       showUserName:       this.settingsDraft.showUserName,
       showLocation:       this.settingsDraft.showLocation,
       showUpcoming:       this.settingsDraft.showUpcoming,

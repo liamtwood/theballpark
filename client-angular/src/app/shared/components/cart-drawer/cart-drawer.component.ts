@@ -864,7 +864,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       line-height: 1.6;
       color: var(--color-text-secondary);
       padding: 8px 10px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--color-border);
       border-radius: var(--radius-input);
       font-style: italic;
@@ -912,7 +912,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       padding: 10px 12px;
       border: 0.5px solid var(--theme-border);
       border-radius: var(--radius-card);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-text);
       font-size: 12px;
       line-height: 1.5;
@@ -950,7 +950,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       text-transform: uppercase;
       padding: 2px 8px;
       border-radius: 999px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--color-text-secondary);
     }
     .bp-cd-change-status--ok {
@@ -961,7 +961,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
        attention" without competing with Accepted (green) or
        Declined (red). */
     .bp-cd-change-status--info {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cd-change-status--bad {
@@ -997,7 +997,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       color: var(--color-text-muted) !important;
     }
     .bp-cd-aside-foot-cancel:hover {
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
       color: var(--color-text-primary) !important;
       border-color: var(--color-border) !important;
     }
@@ -1017,14 +1017,14 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     }
     .bp-cd-checkout-back:hover {
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-cd-grid-summary {
       display: flex;
       flex-direction: column;
       gap: 12px;
       padding: 20px 20px 24px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-left: 0.5px solid var(--color-border);
       overflow-y: auto;
       min-height: 0;
@@ -1055,7 +1055,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       transition: background 0.12s, border-color 0.12s;
     }
     .bp-cd-mini:hover {
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-cd-mini--active {
       background: var(--color-surface);
@@ -1200,7 +1200,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 1px 7px;
       border-radius: 999px;
       font-weight: 600;
@@ -1350,7 +1350,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       font-family: var(--font-body);
       font-size: 12.5px;
       color: var(--color-text-primary);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: 0.5px solid var(--color-border);
       border-radius: 7px;
       outline: none;
@@ -1480,7 +1480,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
     .bp-cd-action--edit:hover,
     .bp-cd-action--active.bp-cd-action--edit {
       color: var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     /* Price rate — supplier mode only (read-only big number, no
        multiplier breakdown). */
@@ -1542,7 +1542,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       transition: background 0.12s, color 0.12s;
     }
     .bp-cd-qty-btn:hover:not(:disabled) {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cd-qty-btn:disabled {
@@ -1766,7 +1766,7 @@ const PER_ATTENDEE_UNITS = new Set(['cover', 'head']);
       color: var(--color-text-secondary);
       transition: background 0.15s, opacity 0.15s;
     }
-    .bp-cd-adjust-cancel:hover { background: var(--theme-bg); }
+    .bp-cd-adjust-cancel:hover { background: var(--color-fill); }
     .bp-cd-adjust-save {
       background: var(--theme-accent);
       color: var(--color-surface);

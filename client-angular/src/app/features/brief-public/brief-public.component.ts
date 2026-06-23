@@ -143,7 +143,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     </div>
   `,
   styles: [`
-    :host { display: block; min-height: 100vh; background: var(--theme-bg, #f5f0e8); }
+    :host { display: block; min-height: 100vh; background: var(--color-page-ground); }
     .bp-brief-shell {
       max-width: 800px; margin: 0 auto;
       padding: 24px 16px 48px;
@@ -229,7 +229,7 @@ import { GbpPipe } from '../../shared/pipes/gbp.pipe';
     .bp-badge-waiting { background: var(--color-waiting-bg); color: var(--color-waiting-text); }
     .bp-badge-quoted  { background: var(--color-quoted-bg);  color: var(--color-quoted-text); }
     .bp-badge-booked  { background: var(--color-booked-bg);  color: var(--color-booked-text); }
-    .bp-badge-default { background: var(--theme-bg);         color: var(--theme-accent); }
+    .bp-badge-default { background: var(--color-fill);         color: var(--theme-accent); }
 
     .bp-brief-main {
       display: flex; flex-direction: column; gap: 16px;

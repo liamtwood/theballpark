@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, OnInit, OnDestroy, SimpleChanges, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -26,6 +26,8 @@ import { ApiService } from '../../../core/services/api.service';
 import { OutreachService } from '../../../core/services/outreach.service';
 import { EventDrawerService } from '../../../core/services/event-drawer.service';
 import { CartDrawerService } from '../../../core/services/cart-drawer.service';
+import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
+import { PersonaService } from '../../../core/services/persona.service';
 
 export type CircleSize = 'sm' | 'md' | 'lg';
 export type DetailSize = 'sm' | 'md' | 'lg';
@@ -82,16 +84,20 @@ export type DetailMode = 'inline' | 'drawer';
          the two were sibling panels and the page-ground colour
          between them read as accidental bleed-through. -->
     <div class="bp-browse-strip"
+         [class.bp-browse-strip--cats-left]="categoriesPosition === 'left'"
          *ngIf="categories.length && showCategoryCircles">
       <!-- CATEGORY CIRCLES — extracted to <app-category-circles> in v1.28.
            Catalogue-grid owns the data + drill/scope state; the sub-
            component owns the markup, scroll-arrow state and event wiring.
-           Messages tab mounts the SAME component so the two stay aligned. -->
-      <div class="bp-browse-panel">
+           Messages tab mounts the SAME component so the two stay aligned.
+           Hidden in Categories-LEFT mode (the rail owns category nav) — but
+           the SEARCH row below still renders so search isn't lost. -->
+      <div class="bp-browse-panel" *ngIf="categoriesPosition !== 'left'">
         <app-category-circles
           [categories]="displayedCircles"
           [activeId]="circleActiveId"
           [size]="circleSize"
+          [shape]="shape"
           [showEdit]="showEdit && !projectContext"
           [unscopedIds]="circleUnscopedIds"
           [showAdd]="showAdd"
@@ -116,7 +122,7 @@ export type DetailMode = 'inline' | 'drawer';
         <div class="bp-search-panel">
           <div class="bp-search-section-label" *ngIf="projectContext">SEARCH</div>
           <div class="bp-search-row">
-            <p-dropdown *ngIf="stripDropdownOptions.length > 1"
+            <p-dropdown *ngIf="stripDropdownOptions.length > 1 && categoriesPosition !== 'left'"
                         [options]="stripDropdownOptions"
                         [ngModel]="stripDropdownValue"
                         (onChange)="onStripDropdownChange($event.value)"
@@ -129,6 +135,18 @@ export type DetailMode = 'inline' | 'drawer';
                    [placeholder]="searchPlaceholder"
                    class="bp-search-input"
                    (keyup.enter)="applySearch()"/>
+            <!-- Filter sidebar is off (setting) — this icon (right of the
+                 search box) reveals it on demand without changing the saved
+                 setting. -->
+            <!-- Filter button — its own setting (Show Button) now, independent
+                 of the sidebar. Filtering surface in Left mode is deferred. -->
+            <button *ngIf="showFilterButton" type="button"
+                    class="bp-search-filter-btn"
+                    [class.active]="filterPanelOpen"
+                    (click)="filterPanelOpen = !filterPanelOpen"
+                    title="Filters">
+              <lucide-icon name="list-filter" [size]="15"></lucide-icon>
+            </button>
             <!-- v1.65cm — Recommend lives in the SEARCH row (was in
                  QUICK ACTIONS). It's an AI-driven search/match action
                  — belongs alongside the text search + scope dropdown.
@@ -145,6 +163,12 @@ export type DetailMode = 'inline' | 'drawer';
               {{ recommending ? 'Recommending…' : 'Recommend' }}
             </button>
           </div>
+        </div>
+        <!-- v1.68d — store-owner actions (Add / Upload) project here so they
+             sit inline to the RIGHT of the search bar. Only the supplier store
+             provides this content; every other grid surface renders nothing. -->
+        <div class="bp-search-actions-slot">
+          <ng-content select="[catalogue-search-actions]"></ng-content>
         </div>
         <div class="bp-quick-actions-panel" *ngIf="projectContext">
           <div class="bp-search-section-label">QUICK ACTIONS</div>
@@ -176,10 +200,53 @@ export type DetailMode = 'inline' | 'drawer';
     <!-- THREE-COLUMN BODY -->
     <div class="bp-cat-body bp-cat-body--detail"
       [attr.data-detail-size]="detailSize"
-      [class.bp-cat-body--no-inline-detail]="hideInlineDetail">
+      [class.bp-cat-body--no-inline-detail]="hideInlineDetail || !showPreview"
+      [class.bp-cat-body--cats-left]="categoriesPosition === 'left'"
+      [class.bp-cat-body--no-containers]="!showContainers"
+      [class.bp-cat-body--no-filter]="categoriesPosition !== 'left' && !showFilter && !filterPanelOpen">
 
       <!-- ── SIDEBAR ── -->
-      <div class="bp-cat-sidebar">
+      <div class="bp-cat-sidebar" *ngIf="categoriesPosition === 'left' || showFilter || filterPanelOpen">
+        <!-- Categories LEFT rail — replaces the filter sidebar; cats with
+             icon + count, expanding to subcats. -->
+        <ng-container *ngIf="categoriesPosition === 'left'">
+          <div class="bp-cat-sidebar-head">
+            <lucide-icon name="layout-grid" [size]="13" class="bp-cat-sidebar-head-icon"></lucide-icon>
+            <div class="bp-filter-title">CATEGORIES</div>
+          </div>
+          <div class="bp-cat-sidebar-body">
+            <div class="bp-cat-rail">
+              <button type="button" class="bp-cat-rail-all" [class.active]="activeCategory === 'all'"
+                      (click)="railExpandedId = null; setCategory('all')">
+                <span>All {{ entityLabel }}s</span>
+                <span class="bp-sidebar-count" *ngIf="totalCount">{{ totalCount }}</span>
+              </button>
+              <ng-container *ngFor="let cat of sidebarParentCategories">
+                <button type="button" class="bp-cat-rail-item"
+                        [class.active]="activeCategory === cat.id"
+                        (click)="onRailCatClick(cat)">
+                  <span class="bp-cat-rail-icon">
+                    <lucide-icon [name]="cat.icon_name || 'folder'" [size]="16" [strokeWidth]="1.5"></lucide-icon>
+                  </span>
+                  <span class="bp-cat-rail-text">
+                    <span class="bp-cat-rail-name">{{ cat.name }}</span>
+                    <span class="bp-cat-rail-count" *ngIf="cat.count">{{ cat.count }} {{ entityLabel }}{{ cat.count === 1 ? '' : 's' }}</span>
+                  </span>
+                  <lucide-icon [name]="railExpandedId === cat.id ? 'chevron-down' : 'chevron-right'"
+                               [size]="15" class="bp-cat-rail-chev"></lucide-icon>
+                </button>
+                <div class="bp-cat-rail-subs" *ngIf="railExpandedId === cat.id">
+                  <button type="button" class="bp-cat-rail-sub"
+                          *ngFor="let sub of railSubcats(cat.id)"
+                          [class.active]="activeSubcategoryId === sub.id"
+                          (click)="onRailSubClick(sub)">{{ sub.name }}</button>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="categoriesPosition !== 'left'">
         <!-- v1.65c — search moved out to the strip-bar above. -->
 
         <!-- v1.65ai — FILTER eyebrow promoted to a non-scrolling panel
@@ -347,6 +414,7 @@ export type DetailMode = 'inline' | 'drawer';
           </div>
         </ng-container>
         </div><!-- /.bp-cat-sidebar-body -->
+        </ng-container><!-- /categoriesPosition !== 'left' -->
       </div>
 
       <!-- ── MAIN ── -->
@@ -398,7 +466,14 @@ export type DetailMode = 'inline' | 'drawer';
              when drilled and reset to top via onBreadcrumbBack(). -->
         <!-- Main-column breadcrumb — hidden in project mode for the same
              reason as the top one (no drill nav, so the crumb is noise). -->
-        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext">
+        <nav class="bp-main-crumbs" *ngIf="resolvedBreadcrumbRoot && !projectContext && (activeFilterLabel || isCrumbDrilled)">
+          <!-- Active category/subcat → show its name as the heading + a Clear
+               filter link (replaces the "CATEGORY › All …" crumb). -->
+          <ng-container *ngIf="activeFilterLabel as label; else defaultCrumbs">
+            <h2 class="bp-crumb-filter-title">{{ label }}</h2>
+            <button class="bp-crumb-clear" (click)="clearCategoryFilter()">Clear filter</button>
+          </ng-container>
+          <ng-template #defaultCrumbs>
           <ng-container *ngIf="!isCrumbDrilled; else crumbsDrilled">
             <span class="bp-crumb-root">{{ resolvedBreadcrumbRoot }}</span>
             <span class="bp-crumb-sep">›</span>
@@ -411,6 +486,7 @@ export type DetailMode = 'inline' | 'drawer';
             <span class="bp-crumb-sep">›</span>
             <span class="bp-crumb-active">{{ resolvedBreadcrumbActive }}</span>
           </ng-template>
+          </ng-template><!-- /#defaultCrumbs -->
         </nav>
 
         <!-- v1.65i — Selected + Wishlist sections (project context only).
@@ -474,6 +550,7 @@ export type DetailMode = 'inline' | 'drawer';
               <div class="bp-list-name">
                 {{ e.name }}
                 <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+                <span class="bp-hidden-pill" *ngIf="allowItemEdit && e.is_active === false">Hidden</span>
               </div>
               <div class="bp-list-sub" *ngIf="e.subtitle">{{ e.subtitle }}</div>
             </div>
@@ -523,66 +600,106 @@ export type DetailMode = 'inline' | 'drawer';
         </ng-container>
 
         <ng-template #cardGridTpl let-entities>
-          <div class="bp-item-grid">
+          <div class="bp-item-grid" [attr.data-card-size]="cardSize">
             <div *ngFor="let e of entities"
-              class="bp-item-card"
+              class="bp-item-card bp-card-hover"
               [class.bp-item-card-selected]="selectedEntity?.id === e.id"
               (click)="select(e)">
               <div class="bp-item-card-img"
-                [style.background-image]="getImageUrl(e) && e.image_display !== 'contain' ? 'url(' + getImageUrl(e) + ')' : null"
                 [class.bp-item-card-img-default]="!getImageUrl(e)"
                 [class.bp-item-card-img-logo]="!!getImageUrl(e) && e.image_display === 'contain'">
+                <!-- Cover image on its own layer so it zooms on hover while the
+                     action buttons / logo stay put (.bp-card-zoom-img). -->
+                <div *ngIf="getImageUrl(e) && e.image_display !== 'contain'"
+                     class="bp-card-zoom-img"
+                     [style.background-image]="'url(' + getImageUrl(e) + ')'"></div>
                 <img *ngIf="getImageUrl(e) && e.image_display === 'contain'" [src]="getImageUrl(e)!" [alt]="e.name" class="bp-card-logo-img"/>
                 <lucide-icon *ngIf="!getImageUrl(e) && e.icon" [name]="e.icon" [size]="32" class="bp-card-icon"></lucide-icon>
                 <span *ngIf="!getImageUrl(e) && !e.icon" class="bp-card-initials">{{ e.name.charAt(0) }}</span>
-                <div class="bp-grid-actions">
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          [class.bp-cart-btn--selected]="getSelectionType(e.id) === 'selected'"
-                          (click)="onCartAddClick($event, e)"
-                          [title]="getSelectionType(e.id) === 'selected' ? 'Remove from project' : 'Add to project'">
-                    <lucide-icon name="plus" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          [class.bp-cart-btn--liked]="getSelectionType(e.id) === 'liked'"
-                          (click)="onCartLikeClick($event, e)"
-                          [title]="getSelectionType(e.id) === 'liked' ? 'Remove from project' : 'Like for project'">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showCartActions" type="button"
-                          class="bp-grid-action-btn"
-                          (click)="onRequestQuoteClick($event, e)" title="Request a quote">
-                    <lucide-icon name="mail" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showEdit" class="bp-grid-action-btn" (click)="onEdit($event, e)">
-                    <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-                  </button>
-                  <button *ngIf="showFavourite" class="bp-grid-action-btn" [class.bp-grid-heart-active]="favouriteIds.has(e.id)"
-                    (click)="onToggleFav($event, e)">
-                    <lucide-icon name="heart" [size]="14"></lucide-icon>
-                  </button>
-                </div>
               </div>
+              <!-- v1.66cq — actions live OUTSIDE the image (its overflow:hidden
+                   would clip the dropdown). Items get a hover-revealed "⋯" menu
+                   (top-right); suppliers keep a favourite heart. -->
+              <div class="bp-grid-actions">
+                <ng-container *ngIf="entityType === 'item'">
+                  <button type="button" class="bp-grid-menu-btn"
+                          [class.is-open]="openCardMenuId === e.id"
+                          (click)="toggleCardMenu($event, e)"
+                          title="More actions">⋯</button>
+                  <div class="bp-card-menu" *ngIf="openCardMenuId === e.id"
+                       (click)="$event.stopPropagation()">
+                    <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
+                            (click)="onMenuAction('add', e, $event)">
+                      <lucide-icon name="plus" [size]="14"></lucide-icon>
+                      {{ getSelectionType(e.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
+                            (click)="onMenuAction('wishlist', e, $event)">
+                      <lucide-icon name="heart" [size]="14"></lucide-icon> Wishlist for Project
+                    </button>
+                    <button class="bp-card-menu-item"
+                            (click)="onMenuAction('view', e, $event)">
+                      <lucide-icon name="arrow-right" [size]="14"></lucide-icon> View
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('edit', e, $event)">
+                      <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('edit-image', e, $event)">
+                      <lucide-icon name="image" [size]="14"></lucide-icon> Edit Image
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('copy', e, $event)">
+                      <lucide-icon name="copy" [size]="14"></lucide-icon> Copy
+                    </button>
+                    <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                            (click)="onMenuAction('toggle-active', e, $event)">
+                      <lucide-icon [name]="e.is_active === false ? 'eye' : 'eye-off'" [size]="14"></lucide-icon>
+                      {{ e.is_active === false ? 'Make active' : 'Make inactive' }}
+                    </button>
+                    <ng-container *ngIf="showDelete">
+                      <div class="bp-card-menu-sep"></div>
+                      <button class="bp-card-menu-item bp-card-menu-item--danger"
+                              (click)="onMenuAction('delete', e, $event)">
+                        <lucide-icon name="trash-2" [size]="14"></lucide-icon> Delete
+                      </button>
+                    </ng-container>
+                  </div>
+                </ng-container>
+                <button *ngIf="entityType !== 'item' && showFavourite" type="button"
+                        class="bp-grid-action-btn" [class.bp-grid-heart-active]="favouriteIds.has(e.id)"
+                        (click)="onToggleFav($event, e)" title="Favourite">
+                  <lucide-icon name="heart" [size]="14"></lucide-icon>
+                </button>
+              </div>
+              <!-- v1.66cd — card redesign: name, subcat/cat pill, "From {min}"
+                   in the Ballpark-cost gradient, lead-time + location meta, and
+                   a big primary action button. -->
               <div class="bp-item-card-body">
                 <div class="bp-item-card-name">
                   {{ e.name }}
                   <span class="bp-version-pill" *ngIf="e.badge">{{ e.badge }}</span>
+                  <span class="bp-hidden-pill" *ngIf="allowItemEdit && e.is_active === false">Hidden</span>
                 </div>
-                <!-- v1.65ee — card price now mirrors the list-view
-                     fallback: prefer priceRange (min – max) when set,
-                     else fall back to base_price. Was only rendering
-                     base_price, so an item with only min/max set
-                     (e.g. Rocket Food's sit-down dinner at £7k-£12k)
-                     showed as priceless on the card while the detail
-                     panel displayed the range correctly. -->
-                <div class="bp-item-card-price" *ngIf="e.priceRange || e.price">
-                  <ng-container *ngIf="e.priceRange">{{ e.priceRange.min | gbp }} – {{ e.priceRange.max | gbp }}</ng-container>
-                  <ng-container *ngIf="!e.priceRange && e.price">{{ e.price | gbp }}</ng-container>
-                  <span class="bp-item-card-unit" *ngIf="e.unit">{{ unitDisplay(e.unit) }}</span>
+                <span class="bp-item-card-cat" *ngIf="cardCatLabel(e)">{{ cardCatLabel(e) }}</span>
+                <div class="bp-item-card-from" *ngIf="cardFromPrice(e) != null">
+                  From {{ cardFromPrice(e) | gbp:0:true }}
                 </div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && !(e.priceRange || e.price)">{{ e.subtitle }}</div>
-                <div class="bp-item-card-supplier" *ngIf="e.subtitle && (e.priceRange || e.price)">{{ e.subtitle }}</div>
+                <div class="bp-item-card-meta" *ngIf="cardLeadTime(e) || cardLocation(e)">
+                  <span class="bp-item-card-meta-item" *ngIf="cardLeadTime(e)">
+                    <lucide-icon name="clock" [size]="13"></lucide-icon>{{ cardLeadTime(e) }}
+                  </span>
+                  <span class="bp-item-card-meta-item" *ngIf="cardLocation(e)">
+                    <lucide-icon name="map-pin" [size]="13"></lucide-icon>{{ cardLocation(e) }}
+                  </span>
+                </div>
+                <button type="button" class="bp-item-card-action"
+                        [class.bp-item-card-action--added]="showCartActions && getSelectionType(e.id) === 'selected'"
+                        (click)="onPrimaryAction($event, e)">
+                  <lucide-icon [name]="primaryActionIcon(e)" [size]="16"></lucide-icon>
+                  {{ primaryActionLabel(e) }}
+                </button>
               </div>
             </div>
           </div>
@@ -630,7 +747,7 @@ export type DetailMode = 'inline' | 'drawer';
            projected content and skip the built-in entity preview below.
            Hidden entirely in table+drawer mode — the page's own drawer
            handles detail there. -->
-      <div *ngIf="!hideInlineDetail" class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
+      <div *ngIf="showPreview && !hideInlineDetail" class="bp-cat-detail" [class.bp-cat-detail--wide]="useCustomDetail">
         <ng-container *ngIf="useCustomDetail">
           <ng-content select="[catalogue-detail]"></ng-content>
         </ng-container>
@@ -645,72 +762,54 @@ export type DetailMode = 'inline' | 'drawer';
             <span *ngIf="!getImageUrl(selectedEntity)"
                   class="bp-detail-hero-initials">{{ selectedEntity.name.charAt(0) }}</span>
 
-            <!-- ── v1.17 Action cluster ───────────────────────────────
-                 Four circular icon buttons in the hero's top-right.
-                   + (add to project)   — agency only, toggles selected
-                   ♡ (like for project) — agency only, toggles liked
-                   ✎ (edit)             — own org items only, opens drawer
-                                          in edit mode
-                   👁 (view)             — always visible, opens drawer in
-                                          view mode
-                 Add and like toggle the same project_items row through
-                 ProjectItemService.upsert — the cart pattern from v1.13. -->
+            <!-- v1.66cq — action cluster replaced by a single hover-revealed
+                 "⋯" menu (same standard dropdown as the card). The primary
+                 "Add to Project" CTA is the gradient button in the body below. -->
             <div *ngIf="entityType === 'item'" class="bp-detail-actions">
-              <!-- Add to project (agency only). Active state fills the
-                   button amber (via .bp-detail-action.active); the icon
-                   itself stays the same plus glyph. -->
-              <button *ngIf="isAgency"
-                      type="button"
-                      class="bp-detail-action"
-                      [class.active]="getSelectionType(selectedEntity.id) === 'selected'"
-                      (click)="onAddToProject(selectedEntity)"
-                      [title]="getSelectionType(selectedEntity.id) === 'selected'
-                               ? 'Remove from project'
-                               : 'Add to project'">
-                <lucide-icon name="plus" [size]="14"></lucide-icon>
-              </button>
-              <!-- Like for project (agency only). Active state fills the
-                   button amber — no separate solid variant needed
-                   (Lucide doesn't ship one and the button background
-                   already reads as "on"). -->
-              <button *ngIf="isAgency"
-                      type="button"
-                      class="bp-detail-action"
-                      [class.active]="getSelectionType(selectedEntity.id) === 'liked'"
-                      (click)="onLikeForProject(selectedEntity)"
-                      [title]="getSelectionType(selectedEntity.id) === 'liked'
-                               ? 'Remove from project'
-                               : 'Like for project'">
-                <lucide-icon name="heart" [size]="14"></lucide-icon>
-              </button>
-              <!-- v1.52c — Request a quote. Same gate as the card/row mail
-                   action (showCartActions ⇒ agency + a projectId bound),
-                   so it only appears inside a project context. -->
-              <button *ngIf="showCartActions"
-                      type="button"
-                      class="bp-detail-action"
-                      (click)="onRequestQuoteClick($event, selectedEntity)"
-                      title="Request a quote">
-                <lucide-icon name="mail" [size]="14"></lucide-icon>
-              </button>
-              <!-- Edit — visible for all users until auth + roles ship.
-                   Future gate: own-org items OR platform admin role.
-                   See canEdit() for the relaxed-now / strict-later logic.
-                   Uses the standard square-pen edit glyph per WORKING_STANDARDS. -->
-              <button *ngIf="canEdit(selectedEntity)"
-                      type="button"
-                      class="bp-detail-action"
-                      (click)="onEditItem(selectedEntity)"
-                      title="Edit item">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-              <!-- View (always) -->
-              <button type="button"
-                      class="bp-detail-action"
-                      (click)="onViewItem(selectedEntity)"
-                      title="View details">
-                <lucide-icon name="eye" [size]="14"></lucide-icon>
-              </button>
+              <button type="button" class="bp-grid-menu-btn"
+                      [class.is-open]="previewMenuOpen"
+                      (click)="togglePreviewMenu($event)"
+                      title="More actions">⋯</button>
+              <div class="bp-card-menu" *ngIf="previewMenuOpen"
+                   (click)="$event.stopPropagation()">
+                <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
+                        (click)="onMenuAction('add', selectedEntity, $event)">
+                  <lucide-icon name="plus" [size]="14"></lucide-icon>
+                  {{ getSelectionType(selectedEntity.id) === 'selected' ? 'Remove from Project' : 'Add to Project' }}
+                </button>
+                <button class="bp-card-menu-item" *ngIf="showCartActions || addToProjectMode"
+                        (click)="onMenuAction('wishlist', selectedEntity, $event)">
+                  <lucide-icon name="heart" [size]="14"></lucide-icon> Wishlist for Project
+                </button>
+                <button class="bp-card-menu-item"
+                        (click)="onMenuAction('view', selectedEntity, $event)">
+                  <lucide-icon name="arrow-right" [size]="14"></lucide-icon> View
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('edit', selectedEntity, $event)">
+                  <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('edit-image', selectedEntity, $event)">
+                  <lucide-icon name="image" [size]="14"></lucide-icon> Edit Image
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('copy', selectedEntity, $event)">
+                  <lucide-icon name="copy" [size]="14"></lucide-icon> Copy
+                </button>
+                <button class="bp-card-menu-item" *ngIf="allowItemEdit"
+                        (click)="onMenuAction('toggle-active', selectedEntity, $event)">
+                  <lucide-icon [name]="selectedEntity.is_active === false ? 'eye' : 'eye-off'" [size]="14"></lucide-icon>
+                  {{ selectedEntity.is_active === false ? 'Make active' : 'Make inactive' }}
+                </button>
+                <ng-container *ngIf="showDelete">
+                  <div class="bp-card-menu-sep"></div>
+                  <button class="bp-card-menu-item bp-card-menu-item--danger"
+                          (click)="onMenuAction('delete', selectedEntity, $event)">
+                    <lucide-icon name="trash-2" [size]="14"></lucide-icon> Delete
+                  </button>
+                </ng-container>
+              </div>
             </div>
 
             <!-- Legacy item-edit pencil. Kept for parents that still set
@@ -776,16 +875,21 @@ export type DetailMode = 'inline' | 'drawer';
               <lucide-icon name="chevron-right" [size]="14" class="bp-row-chev"></lucide-icon>
             </div>
 
-            <!-- Action buttons. v1.35d: primary CTA only renders when
-                 actionLabel is set; surfaces that don't want a primary
-                 button (supplier shop front, now using the eye instead)
-                 pass [actionLabel]="''". Heart stays independent. -->
-            <div class="flex gap-2">
-              <p-button *ngIf="actionLabel" [label]="actionLabel" styleClass="flex-1"
+            <!-- v1.66cq — primary "Add to Project" CTA as a full-width accent
+                 gradient button (same as the card's primary action). Wishlist /
+                 view / edit / delete now live in the "⋯" menu on the hero. -->
+            <button *ngIf="entityType === 'item'" type="button"
+                    class="bp-item-card-action bp-detail-add-btn"
+                    [class.bp-item-card-action--added]="showCartActions && getSelectionType(selectedEntity.id) === 'selected'"
+                    (click)="onPrimaryAction($event, selectedEntity)">
+              <lucide-icon [name]="primaryActionIcon(selectedEntity)" [size]="16"></lucide-icon>
+              {{ primaryActionLabel(selectedEntity) }}
+            </button>
+            <!-- Non-item surfaces keep the projected primary CTA (e.g. supplier
+                 shop front "View supplier"). -->
+            <div class="flex gap-2" *ngIf="entityType !== 'item' && actionLabel">
+              <p-button [label]="actionLabel" styleClass="flex-1"
                 (onClick)="onAction(selectedEntity)"></p-button>
-              <p-button *ngIf="showFavourite" icon="pi pi-heart" styleClass="p-button-outlined"
-                [class.p-button-danger]="favouriteIds.has(selectedEntity.id)"
-                (onClick)="onToggleFav($event, selectedEntity)"></p-button>
             </div>
           </div>
         </ng-container>
@@ -991,7 +1095,7 @@ export type DetailMode = 'inline' | 'drawer';
        v1.65bp — reverted to --theme-bg parchment. */
     :host {
       display: block;
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
 
     /* v1.65ax — .bp-browse-panel chrome moved to .bp-browse-strip in
@@ -1052,7 +1156,7 @@ export type DetailMode = 'inline' | 'drawer';
       overflow: hidden; background: var(--color-surface);
     }
     :host ::ng-deep .bp-strip-search-dd.p-dropdown {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border: none !important;
       border-right: 0.5px solid var(--color-border) !important;
       border-radius: 0 !important; box-shadow: none !important;
@@ -1206,7 +1310,7 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* ── PAGE HERO ── (rendered when pageTitle is set) */
     .bp-page-hero {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 36px 40px;
       text-align: center;
       border-bottom: 0.5px solid var(--theme-border);
@@ -1321,6 +1425,10 @@ export type DetailMode = 'inline' | 'drawer';
     }
     .bp-crumb-link:hover { color: var(--theme-accent); }
     .bp-crumb-active { color: var(--color-text-primary); font-weight: 500; }
+    /* Active category/subcat heading + Clear filter (replaces the crumb). */
+    .bp-crumb-filter-title { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--color-text-primary); line-height: 1.2; }
+    .bp-crumb-clear { margin-left: auto; background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--theme-accent); padding: 0; }
+    .bp-crumb-clear:hover { opacity: 0.75; }
 
     /* v1.27: bp-cat-section-header / -title / -count + bp-view-toggle /
        -btn live in styles.css now (shared with app-messages-inbox). */
@@ -1329,10 +1437,10 @@ export type DetailMode = 'inline' | 'drawer';
     /* LIST VIEW */
     .bp-list-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border); cursor: pointer; transition: background 0.15s; }
     .bp-list-row:hover { background: var(--color-surface); margin: 0 -12px; padding: 10px 12px; border-radius: 8px; border-bottom-color: transparent; }
-    .bp-list-row-selected { background: var(--theme-bg) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
+    .bp-list-row-selected { background: var(--color-fill) !important; margin: 0 -12px !important; padding: 10px 12px !important; border-radius: 8px !important; border-bottom-color: transparent !important; border-left: 3px solid var(--theme-accent); }
     .bp-list-img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-list-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-list-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
+    .bp-list-img-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-list-img-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px; }
     .bp-list-img-logo img { max-width: 36px; max-height: 36px; object-fit: contain; }
     .bp-list-initials { font-size: 16px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-list-icon { color: var(--theme-accent); }
@@ -1342,7 +1450,7 @@ export type DetailMode = 'inline' | 'drawer';
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
       padding: 1px 7px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-family: var(--font-body);
     }
     .bp-list-sub { font-size: 12px; color: var(--color-text-muted); }
@@ -1357,23 +1465,24 @@ export type DetailMode = 'inline' | 'drawer';
 
     /* CARD GRID */
     .bp-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+    /* Card size — sm (today) / md / lg (lg = the project-card width). */
+    .bp-item-grid[data-card-size="sm"] { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    .bp-item-grid[data-card-size="md"] { grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
+    .bp-item-grid[data-card-size="lg"] { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
     /* v1.65ag — result cards adopt the v1.22 elevation system:
        --shadow-xs at rest, --shadow-sm + translateY(-1px) on hover.
        Lift uses transform so there's no layout shift. */
     .bp-item-card {
       background: var(--color-surface);
       border: var(--border-hairline);
-      border-radius: var(--radius-card);
+      border-radius: var(--radius-card-lg);
       box-shadow: var(--shadow-xs);
       overflow: hidden;
       cursor: pointer;
-      transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+      position: relative;   /* anchors the "⋯" actions + dropdown */
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-item-card:hover {
-      border-color: var(--theme-accent);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* Hover via the global .bp-card-hover class on the element (see template). */
     .bp-item-card-selected {
       border-color: var(--theme-accent) !important;
       box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-accent) !important;
@@ -1384,20 +1493,107 @@ export type DetailMode = 'inline' | 'drawer';
        .bp-card-logo-img, but the parent now clips too. */
     .bp-item-card-img { width: 100%; height: 140px; background-size: cover; background-position: center; position: relative; overflow: hidden; }
     .bp-item-card-img img { max-width: 100%; object-fit: contain; }
-    .bp-item-card-img-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-item-card-img-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-item-card-img-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-item-card-img-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-card-logo-img { max-height: 108px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-card-initials { font-size: 36px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-card-icon { color: var(--theme-accent); }
-    .bp-item-card-body { padding: 10px 12px; }
-    .bp-item-card-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .bp-item-card-price { font-size: 14px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-    /* v1.65f1 — explicit gap so "£140Platter" reads "£140 Platter".
-       padding-left rather than a literal space in the template so the
-       space survives whitespace collapsing across the *ngIf branches. */
-    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); padding-left: 6px; }
+    /* v1.66cd — redesigned card body: name, subcat/cat pill, "From {min}"
+       in the Ballpark-cost gradient, lead-time + location meta, primary button.
+       Type scale steps up with the Card size (data-card-size on the grid). */
+    .bp-item-card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; }
+    .bp-item-card-name { font-size: 15px; font-weight: 600; color: var(--color-text-primary); line-height: 1.25; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    /* Subcat/cat pill — soft accent chip (matches the REF chip language). */
+    .bp-item-card-cat {
+      align-self: flex-start;
+      padding: 2px 9px; border-radius: var(--radius-pill);
+      background: var(--theme-soft); color: var(--theme-accent);
+      font-size: 11px; font-weight: 600; font-family: var(--font-body);
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      /* Extra breathing room before the "From {price}" line (on top of the
+         card body's 7px flex gap). */
+      margin-bottom: 5px;
+    }
+    /* "From {min}" — same font as the Ballpark cost, accent gradient fill. */
+    .bp-item-card-from {
+      font-family: var(--font-body); font-weight: 400; line-height: 1; font-size: 20px;
+      background: var(--grad-accent);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .bp-item-card-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--color-text-muted); font-family: var(--font-body); }
+    .bp-item-card-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+    /* Primary action — full-width gradient pill (the "larger primary icon"). */
+    .bp-item-card-action {
+      margin-top: 3px; width: 100%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 12px; border: none; border-radius: var(--radius-pill);
+      background: var(--grad-accent); color: #fff;
+      font-size: 13px; font-weight: 600; font-family: var(--font-body); cursor: pointer;
+      box-shadow: 0 2px 8px rgba(var(--theme-accent-rgb), 0.22);
+      transition: box-shadow 0.18s ease, transform 0.18s ease;
+    }
+    .bp-item-card-action:hover { box-shadow: 0 6px 16px rgba(var(--theme-accent-rgb), 0.30); }
+    .bp-item-card-action:active { transform: translateY(1px); }
+    .bp-item-card-action--added { background: var(--color-text-secondary); box-shadow: none; }
+    /* Type scale per Card size. */
+    .bp-item-grid[data-card-size="md"] .bp-item-card-name { font-size: 16px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-name { font-size: 18px; }
+    .bp-item-grid[data-card-size="md"] .bp-item-card-from { font-size: 24px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-from { font-size: 28px; }
+    /* Cover height scales with Card size; Large matches the project-card cover
+       (260px) so a Large card is the same width AND height as a project card. */
+    .bp-item-grid[data-card-size="md"] .bp-item-card-img { height: 190px; }
+    .bp-item-grid[data-card-size="lg"] .bp-item-card-img { height: 260px; }
+    .bp-item-card-unit { font-size: 11px; font-weight: 400; color: var(--color-text-muted); -webkit-text-fill-color: var(--color-text-muted); }
     .bp-item-card-supplier { font-size: 11px; color: var(--color-text-muted); }
-    .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+    .bp-grid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 3; }
+    /* v1.66cq — "⋯" actions menu (card + preview). Standard inline dropdown,
+       matching the projects-list card menu. The "⋯" circle is hidden until the
+       card / preview hero is hovered (or the menu is open). */
+    .bp-grid-menu-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: var(--color-surface); color: var(--color-text-secondary);
+      cursor: pointer; font-size: 20px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-xs);
+      opacity: 0; transition: opacity 0.15s, color 0.15s;
+    }
+    .bp-item-card:hover .bp-grid-menu-btn,
+    .bp-detail-hero:hover .bp-grid-menu-btn,
+    .bp-grid-menu-btn.is-open { opacity: 1; }
+    .bp-grid-menu-btn:hover { color: var(--theme-accent); }
+    .bp-card-menu {
+      position: absolute; top: 34px; right: 0; width: 170px;
+      background: var(--color-surface); border: var(--border-hairline);
+      border-radius: var(--radius-button); padding: 4px 0;
+      z-index: 50; box-shadow: var(--shadow-md);
+    }
+    .bp-card-menu-item {
+      display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 12px;
+      font-size: 12px; font-weight: 500; text-align: left;
+      background: none; border: none; cursor: pointer;
+      color: var(--color-text-primary); font-family: var(--font-body);
+      transition: background 0.1s;
+    }
+    /* v1.68b — leading action icon, muted; inherits danger colour on Delete. */
+    .bp-card-menu-item lucide-icon { color: var(--color-text-muted); flex-shrink: 0; }
+    .bp-card-menu-item:hover { background: var(--color-fill); }
+    .bp-card-menu-item--danger { color: var(--color-danger); }
+    .bp-card-menu-item--danger lucide-icon { color: var(--color-danger); }
+    .bp-card-menu-item--danger:hover { background: rgba(225, 29, 72, 0.06); }
+    .bp-card-menu-sep { height: 0.5px; background: var(--color-border); margin: 4px 0; }
+    /* v1.68b — "Hidden" pill on the owner's own store cards (is_active=false). */
+    .bp-hidden-pill {
+      display: inline-flex; align-items: center;
+      margin-left: 6px; padding: 1px 7px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+      color: var(--color-text-muted);
+      background: var(--color-fill);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      vertical-align: middle;
+    }
     .bp-grid-action-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; opacity: 0.92; }
     .bp-grid-action-btn:hover { color: var(--theme-accent); }
     .bp-grid-heart-active { color: #E11D48 !important; }
@@ -1494,7 +1690,7 @@ export type DetailMode = 'inline' | 'drawer';
       font-size: 12px; line-height: 1.6;
       font-family: var(--font-body);
     }
-    .bp-brief-card--cat-desc { background: var(--theme-bg); }
+    .bp-brief-card--cat-desc { background: var(--color-fill); }
     .bp-brief-card--cat-desc .bp-brief-card-text { color: var(--color-text-primary); }
     .bp-brief-card-counts {
       display: flex; align-items: center; gap: 4px;
@@ -1705,8 +1901,8 @@ export type DetailMode = 'inline' | 'drawer';
       color: var(--color-text-muted); position: relative;
       flex-shrink: 0;
     }
-    .bp-brief-cat-circle--no-image { background-color: var(--theme-bg); }
-    .bp-brief-cat-circle--logo { background: var(--theme-bg); }
+    .bp-brief-cat-circle--no-image { background-color: var(--color-fill); }
+    .bp-brief-cat-circle--logo { background: var(--color-fill); }
     .bp-brief-cat-circle-logo-img { width: 60%; height: 60%; object-fit: contain; }
     .bp-brief-cat-circle-icon { color: var(--theme-accent); }
     .bp-brief-cat-circle-lucide { color: var(--color-text-muted); }
@@ -1777,8 +1973,8 @@ export type DetailMode = 'inline' | 'drawer';
       background: var(--theme-accent);
       color: var(--color-surface);
     }
-    .bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-    .bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+    .bp-detail-hero-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+    .bp-detail-hero-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
     .bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
     .bp-detail-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
     .bp-detail-body { padding: 16px 20px; }
@@ -1798,7 +1994,7 @@ export type DetailMode = 'inline' | 'drawer';
     .bp-detail-parent { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
     .bp-detail-parent:hover { border-color: var(--theme-accent); }
     .bp-detail-parent-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
-    .bp-detail-parent-img-default { background: var(--theme-bg); }
+    .bp-detail-parent-img-default { background: var(--color-fill); }
     .bp-detail-parent-body { flex: 1; min-width: 0; }
     .bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
     .bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }
@@ -1809,7 +2005,7 @@ export type DetailMode = 'inline' | 'drawer';
     }
   `]
 })
-export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit {
+export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input() entities: CatalogueEntity[] = [];
   @Input() categories: CategoryInfo[] = [];
   /** When false, suppresses the top horizontal category-circle row.
@@ -1825,6 +2021,36 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Input() pageLabel: string = '';
   @Input() pageTitle: string = '';
   @Input() pageSubtitle: string = '';
+  /** Category nav position — 'top' (circle strip) or 'left' (vertical rail). */
+  @Input() categoriesPosition: 'top' | 'left' = 'top';
+  /** Category-strip shape — round circles or rounded squares. */
+  @Input() shape: 'circle' | 'square' = 'circle';
+  /** Item/supplier card size — sm (today) / md / lg (project-card width). */
+  @Input() cardSize: 'sm' | 'md' | 'lg' = 'sm';
+  /** Toggle the left filter sidebar / right preview panel (managed via the
+      drawer's Catalogue view controls when viewControlsKey is set). */
+  @Input() showFilter = true;
+  /** Show the filter icon button by the search box (own setting, independent
+      of the sidebar). */
+  @Input() showFilterButton = true;
+  @Input() showPreview = true;
+  /** Show the panel containers (CATEGORIES/CATALOGUE heads + borders + fill).
+      When false the catalogue renders bare on the page ground. */
+  @Input() showContainers = true;
+  /** Show the "Delete" item in the "⋯" menu. Off by default — delete lives on
+      the supplier store (where a supplier manages their own catalogue). */
+  @Input() showDelete = false;
+  /** Marketplace mode: the primary CTA + menu always offer "Add to Project"
+      even before a project is chosen. Triggering an add with no project
+      selected emits projectRequired so the host can open the project picker. */
+  @Input() addToProjectMode = false;
+  /** Show "Edit" + "Edit Image" in the "⋯" menu. Off by default — item
+      editing lives on the supplier store (where a supplier manages their own
+      catalogue), not in the marketplace / project marketplace. */
+  @Input() allowItemEdit = false;
+  /** Transient: when the filter sidebar setting is OFF, the filter icon by the
+      search box reveals it on demand without changing the saved setting. */
+  filterPanelOpen = false;
   /** Circle strip size — sm/md/lg map to 56/72/96px circles. */
   @Input() circleSize: CircleSize = 'lg';
   /** Inline detail panel width — sm/md/lg map to 260/320/420px. */
@@ -1834,6 +2060,21 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
       app-feedback-drawer) is the only detail surface. In 'inline' mode
       or any non-table layout the inline column is always shown. */
   @Input() detailMode: DetailMode = 'inline';
+  /** Opt this grid into the global drawer's "Catalogue view" controls.
+      When set, the grid registers with CatalogueViewService on init (so the
+      page-config drawer drives circle size / view / detail size / detail mode),
+      persists per this key (localStorage `ballpark:catview:<key>`), and applies
+      drawer edits to itself. This is the single home for the view controls —
+      every catalogue surface (marketplace, supplier store, …) reuses it by
+      setting this one input instead of re-wiring the controls per host. */
+  @Input() viewControlsKey?: string;
+  /** Initial defaults for the managed view controls (used only on first load,
+      before any persisted value). Lets a host keep its own default look. */
+  @Input() viewControlsDefaults?: Partial<CatalogueViewState>;
+  /** Emits the managed view state on init + whenever the drawer changes it,
+      for hosts that also use the values outside the grid (e.g. feedback's
+      area-circle size). */
+  @Output() viewStateChange = new EventEmitter<CatalogueViewState>();
   /** Always-visible breadcrumb row at the top of the main column.
       Default: derives root from sidebarCategoryLabel and "All …" segment
       from a naive plural; the active segment falls back to the internal
@@ -1957,6 +2198,18 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   @Output() addToProject = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
   @Output() removeFromProject = new EventEmitter<{ entity: CatalogueEntity }>();
   @Output() viewRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.66cq — "Delete" from the card / preview "⋯" menu. The host confirms
+      and performs the delete (soft-delete via ItemService). */
+  @Output() deleteRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.68b — owner "Copy" from the "⋯" menu. Host calls ItemService.duplicate
+      and navigates to the new item. */
+  @Output() copyRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.68b — owner "Make inactive / Make active" (eye toggle). Host flips
+      items.is_active via ItemService.setActive and refreshes. */
+  @Output() activeToggleRequested = new EventEmitter<CatalogueEntity>();
+  /** v1.66ct — user wants to add/wishlist but no project is selected yet
+      (addToProjectMode). Host opens the project picker, then adds. */
+  @Output() projectRequired = new EventEmitter<{ entity: CatalogueEntity; type: 'selected' | 'liked' }>();
 
   /** v1.22 — context panel events.
         briefUpdated → parent persists the new requirement_brief via
@@ -2363,7 +2616,9 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
     private api: ApiService,
     private outreach: OutreachService,
     private eventDrawerSvc: EventDrawerService,
-    private cartDrawerSvc: CartDrawerService
+    private cartDrawerSvc: CartDrawerService,
+    private catalogueViewSvc: CatalogueViewService,
+    private personaSvc: PersonaService
   ) {}
 
   /** v1.65ab — open the shared Project Items cart drawer.
@@ -2407,6 +2662,7 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   ngOnInit() {
+    this.initViewControls();
     forkJoin({
       units: this.codelistSvc.getByName('item_unit'),
       timeUnits: this.codelistSvc.getByName('item_time_unit')
@@ -2426,6 +2682,78 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   ngAfterViewInit() { /* circle scroll handled inside <app-category-circles> */ }
+
+  ngOnDestroy() {
+    if (this.viewControlsKey) this.catalogueViewSvc.unregister();
+  }
+
+  // ── Managed view controls (opt-in via [viewControlsKey]) ────────────────
+  // The single home for the drawer's "Catalogue view" controls: any catalogue
+  // surface (marketplace, supplier store, …) reuses them by setting the input.
+  // v1.66de — role-scoped: the same surface (e.g. supplier-store) keeps a
+  // SEPARATE catalogue view per persona role, so an agent's view of a store
+  // doesn't overwrite the supplier's (and vice-versa). Matches the role-
+  // specific page settings from Step 5.
+  private get viewControlsLsKey(): string {
+    return `ballpark:catview:${this.viewControlsKey}::${this.personaSvc.active?.kind || 'agency'}`;
+  }
+
+  private initViewControls(): void {
+    if (!this.viewControlsKey) return;
+    let saved: Partial<CatalogueViewState> = {};
+    try { saved = JSON.parse(localStorage.getItem(this.viewControlsLsKey) || '{}'); } catch {}
+    const d = this.viewControlsDefaults || {};
+    this.categoriesPosition = (saved.categoriesPosition || d.categoriesPosition || this.categoriesPosition) as 'top' | 'left';
+    this.shape      = (saved.shape      || d.shape      || this.shape) as 'circle' | 'square';
+    this.cardSize   = (saved.cardSize   || d.cardSize   || this.cardSize) as 'sm' | 'md' | 'lg';
+    this.showFilter  = saved.showFilter  ?? d.showFilter  ?? this.showFilter;
+    this.showFilterButton = saved.showFilterButton ?? d.showFilterButton ?? this.showFilterButton;
+    this.showPreview = saved.showPreview ?? d.showPreview ?? this.showPreview;
+    this.showContainers = saved.showContainers ?? d.showContainers ?? this.showContainers;
+    this.circleSize = (saved.circleSize || d.circleSize || this.circleSize) as CircleSize;
+    this.detailSize = (saved.detailSize || d.detailSize || this.detailSize) as DetailSize;
+    this.layout     = (saved.view       || d.view       || this.layout) as 'list' | 'card' | 'table';
+    this.detailMode = (saved.detailMode || d.detailMode || this.detailMode) as DetailMode;
+    const state = this.viewControlsState();
+    this.catalogueViewSvc.register(state, (p) => this.applyViewControls(p));
+    this.viewStateChange.emit(state);
+  }
+
+  private viewControlsState(): CatalogueViewState {
+    return {
+      categoriesPosition: this.categoriesPosition,
+      shape: this.shape,
+      cardSize: this.cardSize,
+      circleSize: this.circleSize,
+      detailSize: this.detailSize,
+      view: this.layout,
+      detailMode: this.detailMode,
+      showFilter: this.showFilter,
+      showFilterButton: this.showFilterButton,
+      showPreview: this.showPreview,
+      showContainers: this.showContainers,
+    };
+  }
+
+  /** Drawer → this grid: apply a view change, persist, emit, re-sync. */
+  private applyViewControls(p: Partial<CatalogueViewState>): void {
+    if (p.categoriesPosition) this.categoriesPosition = p.categoriesPosition;
+    if (p.shape)      this.shape      = p.shape;
+    if (p.cardSize)   this.cardSize   = p.cardSize;
+    if (p.showFilter  !== undefined) { this.showFilter = p.showFilter; this.filterPanelOpen = false; }
+    if (p.showFilterButton !== undefined) this.showFilterButton = p.showFilterButton;
+    if (p.showPreview !== undefined) this.showPreview = p.showPreview;
+    if (p.showContainers !== undefined) this.showContainers = p.showContainers;
+    if (p.circleSize) this.circleSize = p.circleSize;
+    if (p.detailSize) this.detailSize = p.detailSize;
+    if (p.view)       this.layout     = p.view;
+    if (p.detailMode) this.detailMode = p.detailMode;
+    try { localStorage.setItem(this.viewControlsLsKey, JSON.stringify(this.viewControlsState())); } catch {}
+    const state = this.viewControlsState();
+    this.catalogueViewSvc.sync(state);
+    this.viewStateChange.emit(state);
+    this.cdr.detectChanges();
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['entities']) {
@@ -2461,9 +2789,159 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   select(e: CatalogueEntity) {
+    // Preview panel off → no inline detail, so go straight to the entity's
+    // own page (items → /items/:id; suppliers → /suppliers/:id via the host's
+    // action handler).
+    if (!this.showPreview) {
+      if (this.entityType === 'supplier') this.actionClicked.emit(e);
+      else this.viewRequested.emit(e);
+      return;
+    }
     this.selectedEntity = e;
     this.entitySelected.emit(e);
     this.cdr.detectChanges();
+  }
+
+  // ── Categories LEFT rail ───────────────────────────────────────────────
+  /** Which parent category is expanded in the left rail (null = none). */
+  railExpandedId: string | null = null;
+  /** Children of a parent category, for the rail accordion. */
+  railSubcats(parentId: string): CategoryInfo[] {
+    return this.categories.filter(c => c.parent_id === parentId);
+  }
+  /** Rail parent click — select the category + toggle its subcat accordion. */
+  onRailCatClick(cat: CategoryInfo) {
+    this.railExpandedId = this.railExpandedId === cat.id ? null : cat.id;
+    this.setCategory(cat.id);
+  }
+  /** Rail subcat click — delegate to the SAME handler the subcategory chips
+      use (onSubcategoryClick) so the left rail and the chip strip behave
+      identically: filter the pre-loaded entities client-side immediately
+      (toggles off if the active sub is re-clicked) AND emit subcategoryChanged
+      so server-backed hosts (/shop) can additionally refetch.
+
+      v1.66di — previously this only emitted, so hosts that pre-load all
+      entities (supplier store, project marketplace) never refiltered on a
+      rail subcat click; only /shop worked, because its refetch swapped the
+      `entities` input and incidentally re-ran applyFilter(). Single source of
+      truth now: see the Filtering contract note on applyFilter(). */
+  onRailSubClick(sub: CategoryInfo) {
+    this.onSubcategoryClick(sub.id);
+  }
+
+  /** Active filter heading — the selected subcat, else the selected category,
+      else '' (show the default breadcrumb). */
+  get activeFilterLabel(): string {
+    if (this.activeSubcategoryId) {
+      return this.categories.find(c => c.id === this.activeSubcategoryId)?.name || '';
+    }
+    if (this.activeCategory && this.activeCategory !== 'all') {
+      return this.categories.find(c => c.id === this.activeCategory)?.name || '';
+    }
+    return '';
+  }
+  /** "Clear filter" — reset category + subcategory back to All. */
+  clearCategoryFilter() {
+    this.railExpandedId = null;
+    this.subcategoryChanged.emit('');
+    this.setCategory('all');
+  }
+
+  // ── v1.66cd card helpers (redesigned item/supplier card) ───────────────
+  /** Pill label: subcategory if present, else category. */
+  cardCatLabel(e: CatalogueEntity): string {
+    return e.subcategoryLabel || e.categoryLabel || '';
+  }
+  /** "From {min}" figure — priceRange.min, else base price. */
+  cardFromPrice(e: CatalogueEntity): number | null {
+    return e.priceRange?.min ?? e.price ?? null;
+  }
+  /** Lead-time spec value, if the entity carries one. */
+  cardLeadTime(e: CatalogueEntity): string {
+    return e.specs?.find(s => /lead/i.test(s.label))?.value || '';
+  }
+  /** Location — supplier's own city for a supplier; the parent supplier's
+      city for an item. */
+  cardLocation(e: CatalogueEntity): string {
+    return (this.entityType === 'supplier' ? e.subtitle : e.parentEntity?.subtitle) || '';
+  }
+  /** Primary action button — label/icon/behaviour by context. */
+  primaryActionLabel(e: CatalogueEntity): string {
+    if (this.entityType === 'supplier') return this.actionLabel || 'View supplier';
+    // v1.68a — when the viewer OWNS this catalogue (supplier on their own
+    // /store, allowItemEdit — store-only), the primary CTA edits the item.
+    // Takes precedence over the agency-facing Add-to-Project / View CTAs.
+    if (this.allowItemEdit) return 'Edit';
+    if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'Added to project' : 'Add to Project';
+    if (this.addToProjectMode) return 'Add to Project';
+    return 'View item';
+  }
+  primaryActionIcon(e: CatalogueEntity): string {
+    if (this.entityType === 'supplier') return 'arrow-right';
+    if (this.allowItemEdit) return 'square-pen';
+    if (this.showCartActions) return this.getSelectionType(e.id) === 'selected' ? 'check' : 'plus';
+    if (this.addToProjectMode) return 'plus';
+    return 'arrow-right';
+  }
+  onPrimaryAction(ev: MouseEvent, e: CatalogueEntity) {
+    ev.stopPropagation();
+    if (this.entityType === 'supplier') { this.actionClicked.emit(e); return; }
+    // v1.68a — owner's own catalogue (store-only): primary CTA opens the
+    // item edit drawer. Precedence over the agency Add-to-Project CTAs.
+    if (this.allowItemEdit) { this.onEditItem(e); return; }
+    if (this.showCartActions) { this.onAddToProject(e); return; }
+    // Marketplace with no project chosen yet — ask the host to open the picker.
+    if (this.addToProjectMode) { this.projectRequired.emit({ entity: e, type: 'selected' }); return; }
+    this.viewRequested.emit(e);
+  }
+
+  // ── "⋯" action menu (card + preview) ──────────────────────────────────
+  /** Id of the card whose "⋯" menu is open, or null. */
+  openCardMenuId: string | null = null;
+  /** Whether the preview panel's "⋯" menu is open. */
+  previewMenuOpen = false;
+
+  toggleCardMenu(ev: MouseEvent, e: CatalogueEntity) {
+    ev.stopPropagation();
+    this.previewMenuOpen = false;
+    this.openCardMenuId = this.openCardMenuId === e.id ? null : e.id;
+  }
+  togglePreviewMenu(ev: MouseEvent) {
+    ev.stopPropagation();
+    this.openCardMenuId = null;
+    this.previewMenuOpen = !this.previewMenuOpen;
+  }
+  /** Dispatch a "⋯" menu action to the matching handler. */
+  onMenuAction(action: 'add' | 'wishlist' | 'view' | 'edit' | 'edit-image' | 'copy' | 'toggle-active' | 'delete',
+               e: CatalogueEntity, ev: MouseEvent) {
+    ev.stopPropagation();
+    this.openCardMenuId = null;
+    this.previewMenuOpen = false;
+    switch (action) {
+      case 'add':
+        if (this.showCartActions) this.onAddToProject(e);
+        else this.projectRequired.emit({ entity: e, type: 'selected' });
+        break;
+      case 'wishlist':
+        if (this.showCartActions) this.onLikeForProject(e);
+        else this.projectRequired.emit({ entity: e, type: 'liked' });
+        break;
+      case 'view':       this.onViewItem(e); break;
+      case 'edit':       this.onEditItem(e); break;
+      case 'edit-image': this.imageEditRequested.emit(e); break;
+      case 'copy':          this.copyRequested.emit(e); break;
+      case 'toggle-active': this.activeToggleRequested.emit(e); break;
+      case 'delete':     this.deleteRequested.emit(e); break;
+    }
+  }
+  /** Close any open "⋯" menu when clicking elsewhere. Toggles + menu-item
+      clicks stopPropagation, so this only fires for outside clicks. */
+  @HostListener('document:click')
+  onDocumentClickCloseMenus() {
+    if (this.openCardMenuId || this.previewMenuOpen) {
+      this.openCardMenuId = null;
+      this.previewMenuOpen = false;
+    }
   }
 
   // ── Circle click handler ──────────────────────────────────────────────
@@ -3356,7 +3834,23 @@ export class CatalogueGridComponent implements OnInit, OnChanges, AfterViewInit 
   }
 
   // ── Filtering ─────────────────────────────────────────────────────────
-
+  //
+  // FILTERING CONTRACT (read before wiring a new host):
+  // The grid OWNS category/subcategory/facet filtering of its `entities`
+  // input. Every category path (setCategory / onCircleClick / rail / sidebar)
+  // and BOTH subcategory paths (chip onSubcategoryClick, rail onRailSubClick)
+  // set the internal active* state and call applyFilter(), which recomputes
+  // `filteredEntities` (what the template renders). ngOnChanges also re-runs
+  // applyFilter() whenever the `entities` input changes.
+  //
+  // The grid ALSO emits categoryChanged / subcategoryChanged. These are NOT
+  // required for filtering — they let server-backed hosts (e.g. /shop) ALSO
+  // refetch a narrowed set from the API. Hosts that pre-load all entities
+  // (supplier store, project marketplace) need only bind `entities` once and
+  // can ignore the events for filtering; the internal filter handles it.
+  // => Do NOT replicate this filter logic in a host. If a chip/rail action
+  //    doesn't filter, the bug is a grid handler that forgot applyFilter(),
+  //    not a missing host refilter.
   private applyFilter() {
     let result = this.entities;
 

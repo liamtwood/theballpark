@@ -23,6 +23,19 @@ export interface ShellBack {
 export interface ShellContext {
   heroTitle:    string;
   heroSub:      string;
+  /** Transient hero alignment override (wins over the saved per-page setting).
+      The marketplace pushes 'left' when categories sit in the left rail so the
+      hero lines up with the catalogue's left edge. */
+  heroAlign?:   'left' | 'center';
+  /** Extra left inset (CSS length) for the left-aligned hero content — the
+      marketplace pushes the rail width here so the hero lines up with the
+      catalogue's main column (first item card) in Left categories mode. */
+  heroExtraLeft?: string;
+  /** Page-scoped org identity. When a page shows a DIFFERENT org than the
+      logged-in viewer (e.g. a supplier detail page viewing "Rocket Food"),
+      it sets this so the hero's org title-mode + org pill reflect the org
+      being VIEWED, not the viewer's own org. Empty = use the viewer's org. */
+  orgName?:     string;
   pills:        string[];
   tabs:         ShellTab[];
   showStats:    boolean;
@@ -37,6 +50,15 @@ export interface ShellContext {
       when ConfigService.showUpcoming is true and a future project
       exists; app-shell renders a calendar-iconned pill in the hero. */
   upcomingPill?: { text: string };
+  /** Optional clickable pill above the hero title — the marketplace pushes a
+      "shopping for {project}" chip so the user can pick / change the project
+      that "Add to Project" targets. onClick opens the project picker. */
+  projectPill?: { text: string; onClick: () => void };
+  /** p0032: a surface (the dashboard) sets this to drive its hero title
+      from ConfigService.heroTitleMode (org / username / greeting) instead
+      of a fixed page title. Hero COLOR is no longer pushed per-surface —
+      it's a global ConfigService setting read directly by the AppShell. */
+  useConfiguredTitle?: boolean;
 }
 
 const DEFAULT_CONTEXT: ShellContext = {

@@ -13,6 +13,9 @@ import { User } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { UpdateMeComponent } from '../../../shared/components/update-me/update-me.component';
+import { EditSectionComponent } from '../../../shared/components/edit-section/edit-section.component';
+import { EditFieldComponent } from '../../../shared/components/edit-field/edit-field.component';
 
 interface InviteCode {
   code: string;
@@ -27,7 +30,8 @@ interface InviteCode {
     CommonModule, FormsModule, TitleCasePipe,
     LucideAngularModule,
     ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent
+    LoadingSpinnerComponent, AvatarComponent, StatusBadgeComponent, UpdateMeComponent,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -35,6 +39,8 @@ interface InviteCode {
 
     <ng-container *ngIf="!loading">
       <div class="bp-team-page">
+
+        <app-update-me reason="app-page-header"></app-update-me>
 
         <div class="bp-team-title-bar">
           <h2 class="bp-page-title">Team</h2>
@@ -176,18 +182,20 @@ interface InviteCode {
         </div>
       </ng-template>
       <div class="bp-drawer-body">
-        <div class="mb-4">
-          <label class="bp-field-label">Email address</label>
-          <input pInputText [(ngModel)]="inviteForm.email" class="w-full bp-input-edit"
-            type="email" placeholder="colleague@company.com"/>
-        </div>
-        <div>
-          <label class="bp-field-label">Role</label>
-          <p-dropdown [(ngModel)]="inviteForm.role" [options]="roleOptions"
-            optionLabel="label" optionValue="value"
-            styleClass="w-full bp-input-edit" placeholder="Select role">
-          </p-dropdown>
-        </div>
+        <!-- v1.66ds — always-edit invite form on the shared standard. -->
+        <app-edit-section title="Invite" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Email address" type="email" density="drawer" [editing]="true"
+                            [(value)]="inviteForm.email" placeholder="colleague@company.com"></app-edit-field>
+            <div class="bp-field bp-field-s2 bp-field--drawer">
+              <label class="bp-field-label">Role</label>
+              <p-dropdown [(ngModel)]="inviteForm.role" [options]="roleOptions"
+                optionLabel="label" optionValue="value"
+                styleClass="w-full bp-input-edit" placeholder="Select role">
+              </p-dropdown>
+            </div>
+          </div>
+        </app-edit-section>
       </div>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeInviteDrawer()"></p-button>
@@ -216,58 +224,26 @@ interface InviteCode {
       </ng-template>
 
       <div class="bp-drawer-body">
-        <div class="bp-section-header mb-4">
-          <span class="bp-section-title">MEMBER DETAILS</span>
-          <div class="flex items-center gap-1">
-            <ng-container *ngIf="!editingMember">
-              <button class="bp-icon-btn" (click)="startEditMember()" title="Edit">
-                <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-              </button>
-            </ng-container>
-            <ng-container *ngIf="editingMember">
-              <button class="bp-icon-btn bp-icon-save" (click)="submitEdit()"
-                [disabled]="!editForm.name?.trim()" title="Save">
-                <i class="pi pi-check"></i>
-              </button>
-              <button class="bp-icon-btn bp-icon-cancel" (click)="cancelEditMember()" title="Cancel">
-                <i class="pi pi-times"></i>
-              </button>
-            </ng-container>
+        <!-- v1.66ds — per-member view/edit on the shared standard. ES owns the
+             Edit/Cancel/Save lifecycle (reuses the existing snapshot methods);
+             email is always read-only, role swaps text→dropdown in edit. -->
+        <app-edit-section title="Member details" density="drawer" saveLabel="Save"
+                          [(editing)]="editingMember"
+                          (edit)="startEditMember()" (cancel)="cancelEditMember()" (save)="submitEdit()">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Name" density="drawer" [editing]="editingMember"
+                            [(value)]="editForm.name" placeholder="Full name"></app-edit-field>
+            <app-edit-field span2 label="Email address" density="drawer" readonlyAlways
+                            [value]="editForm.email"></app-edit-field>
+            <div class="bp-field bp-field-s2 bp-field--drawer">
+              <label class="bp-field-label">Role</label>
+              <input *ngIf="!editingMember" pInputText [value]="editForm.role | titlecase"
+                     class="w-full bp-fld bp-fld--drawer" readonly/>
+              <p-dropdown *ngIf="editingMember" [(ngModel)]="editForm.role" [options]="roleOptions"
+                optionLabel="label" optionValue="value" styleClass="w-full bp-input-edit"></p-dropdown>
+            </div>
           </div>
-        </div>
-
-        <ng-container *ngIf="!editingMember">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [value]="editForm.name" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Email address</label>
-            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Role</label>
-            <input pInputText [value]="editForm.role | titlecase" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </ng-container>
-
-        <ng-container *ngIf="editingMember">
-          <div class="mb-4">
-            <label class="bp-field-label">Name</label>
-            <input pInputText [(ngModel)]="editForm.name" class="w-full bp-input-edit" placeholder="Full name"/>
-          </div>
-          <div class="mb-4">
-            <label class="bp-field-label">Email address</label>
-            <input pInputText [value]="editForm.email" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Role</label>
-            <p-dropdown [(ngModel)]="editForm.role" [options]="roleOptions"
-              optionLabel="label" optionValue="value"
-              styleClass="w-full bp-input-edit">
-            </p-dropdown>
-          </div>
-        </ng-container>
+        </app-edit-section>
       </div>
     </p-sidebar>
 
@@ -284,11 +260,11 @@ interface InviteCode {
     .bp-sidebar-sublabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px; }
     .bp-sidebar-item     { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 2px; transition: background 0.15s; }
     .bp-sidebar-item:hover { background: var(--color-surface); }
-    .bp-sidebar-item.active { background: var(--theme-bg); color: var(--theme-text); font-weight: 500; }
+    .bp-sidebar-item.active { background: var(--color-fill); color: var(--theme-text); font-weight: 500; }
     .bp-sidebar-arrow { font-size: 10px; color: var(--color-text-muted); }
     .bp-sidebar-item.active .bp-sidebar-arrow { color: var(--theme-accent); }
     .bp-sidebar-count { font-size: 11px; color: var(--color-text-muted); background: var(--color-surface); padding: 1px 7px; border-radius: 20px; border: 0.5px solid var(--color-border); }
-    .bp-sidebar-item.active .bp-sidebar-count { background: var(--theme-bg); color: var(--theme-text); border-color: var(--theme-border); }
+    .bp-sidebar-item.active .bp-sidebar-count { background: var(--color-fill); color: var(--theme-text); border-color: var(--theme-border); }
     .bp-sidebar-divider { border: none; border-top: 0.5px solid var(--color-border); margin: 16px 0; }
     .bp-team-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 6px; padding: 5px 10px; margin-bottom: 10px; }
     .bp-team-search:focus-within { border-color: var(--theme-accent); }
@@ -296,7 +272,7 @@ interface InviteCode {
     /* ── VIEW TOGGLE ── */
     .bp-view-toggle { display: flex; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
     .bp-view-btn    { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: var(--color-surface); cursor: pointer; color: var(--color-text-muted); font-size: 13px; transition: all 0.15s; }
-    .bp-view-btn.active { background: var(--theme-bg); color: var(--theme-accent); }
+    .bp-view-btn.active { background: var(--color-fill); color: var(--theme-accent); }
 
     /* Section-header add button — sized to match the view-toggle row. */
     :host ::ng-deep .bp-section-add-btn .p-button {
@@ -308,7 +284,7 @@ interface InviteCode {
     /* ── MEMBERS ── */
     .bp-member-row           { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; }
     .bp-member-row-clickable { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
-    .bp-member-row-clickable:hover { background: var(--theme-bg); }
+    .bp-member-row-clickable:hover { background: var(--color-fill); }
     .bp-member-grid          { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
     .bp-member-card          { border: 0.5px solid var(--color-border); border-radius: 10px; padding: 16px; }
     .bp-member-card-footer   { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
@@ -321,7 +297,7 @@ interface InviteCode {
     .bp-code-value   { font-size: 13px; font-weight: 600; color: var(--color-text-primary); font-family: monospace; letter-spacing: 0.04em; margin-bottom: 3px; }
     .bp-code-meta    { font-size: 11px; color: var(--color-text-muted); }
     .bp-copy-btn     { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 6px; padding: 4px 12px; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
-    .bp-copy-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--theme-bg); }
+    .bp-copy-btn:hover { border-color: var(--theme-accent); color: var(--theme-accent); background: var(--color-fill); }
   `]
 })
 export class TeamComponent implements OnInit {

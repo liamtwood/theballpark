@@ -32,16 +32,18 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [CommonModule, LucideAngularModule],
   template: `
     <button type="button"
-            class="bp-action-tile"
+            class="bp-action-tile bp-card-hover"
             (click)="action.emit()"
             [attr.aria-label]="ariaLabel || title">
+      <span class="bp-action-tile-badge" *ngIf="badge">{{ badge }}</span>
       <div class="bp-action-tile-icon">
-        <lucide-icon [name]="icon" [size]="20"></lucide-icon>
+        <lucide-icon [name]="icon" [size]="28" [strokeWidth]="1.5"></lucide-icon>
       </div>
       <div class="bp-action-tile-body">
         <h3 class="bp-action-tile-title">{{ title }}</h3>
         <p class="bp-action-tile-sub" *ngIf="subtitle">{{ subtitle }}</p>
       </div>
+      <div class="bp-action-tile-foot" *ngIf="meta">{{ meta }}</div>
     </button>
   `,
   styles: [`
@@ -52,44 +54,76 @@ import { LucideAngularModule } from 'lucide-angular';
           the two-tier --shadow-xs rule — now the action-tile standard)
         · button so it's keyboard-focusable + fires on Enter/Space
         · icon stacked ABOVE the body (flex column, align flex-start) */
+    /* v1.68m — the host is the grid item; the grid stretches it to the row
+       height (= tallest sibling). Make the host a flex box so the card button
+       fills that stretched height → every card is the same height. (Width is
+       already equalised by the grid columns.) */
+    :host { display: flex; }
+
     .bp-action-tile {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 14px;
-      padding: 26px;
+      /* v1.68l — match the mockup project card: white/80 + backdrop blur,
+         rounded-3xl (24px), p-8 (32px). */
+      padding: 32px;
       min-height: 200px;
       width: 100%;
       text-align: left;
       font: inherit;
       cursor: pointer;
-      background: var(--color-surface);
+      background: rgba(255, 255, 255, 0.8);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
       border: var(--border-hairline);
-      border-radius: 20px;
+      border-radius: 24px;
       box-shadow: var(--shadow-md);
-      transition: box-shadow 0.18s, transform 0.18s;
-    }
-    .bp-action-tile:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-1px);
+      /* Hover (lift + accent shadow/border, 300ms) comes from the global
+         .bp-card-hover standard in styles.css — see the class on the button.
+         Do not re-declare it here. */
     }
     .bp-action-tile:active {
-      transform: translateY(0);
+      transform: translateY(-2px);
     }
     .bp-action-tile:focus-visible {
       outline: 2px solid var(--theme-accent);
       outline-offset: 2px;
     }
 
-    /* 40px icon square — themed-soft bg, themed-accent glyph, 14px
-       corners to echo the card's 20px silhouette. */
+    /* 56px icon square — accent-gradient tint bg (--grad-accent-soft, tracks
+       the theme), neutral gray-700 glyph, 16px corners. On card hover it
+       deepens to --grad-accent-soft-hover and scales to 110%. */
     .bp-action-tile-icon {
       flex-shrink: 0;
-      width: 40px; height: 40px;
+      width: 56px; height: 56px;
       display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 14px;
-      background: var(--theme-soft);
-      color: var(--theme-accent);
+      border-radius: 16px;
+      background: var(--grad-accent-soft);
+      color: #374151;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    .bp-action-tile:hover .bp-action-tile-icon {
+      background: var(--grad-accent-soft-hover);
+      transform: scale(1.1);
+    }
+
+    /* Unread / count chip — top-right corner, red fill. Renders only
+       when [badge] > 0 (e.g. the supplier home Inbox tile's unread
+       thread count). */
+    .bp-action-tile-badge {
+      position: absolute;
+      top: 18px; right: 18px;
+      min-width: 22px; height: 22px;
+      padding: 0 7px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 11px;
+      background: var(--color-danger);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 12px; font-weight: 600;
+      line-height: 1;
     }
 
     .bp-action-tile-body {
@@ -98,18 +132,33 @@ import { LucideAngularModule } from 'lucide-angular';
     }
     .bp-action-tile-title {
       margin: 0 0 4px 0;
-      font-family: var(--font-display);   /* Playfair Display */
-      font-size: 18px;
+      font-family: var(--font-display);   /* follows the global font setting */
+      font-size: 24px;                    /* v1.68l — mockup text-2xl */
       font-weight: 400;
       color: var(--color-text-primary);
       line-height: 1.2;
     }
     .bp-action-tile-sub {
       margin: 0;
-      font-family: var(--font-body);      /* Libre Franklin */
-      font-size: 13px;
+      font-family: var(--font-body);      /* follows the global font setting */
+      font-size: 16px;                    /* v1.68l — mockup text-base */
+      font-weight: 400;
       color: var(--color-text-secondary);
       line-height: 1.4;
+    }
+
+    /* v1.68t — optional footer meta line (e.g. "3 projects"), divided from the
+       body by a hairline. Sits at the card's bottom edge (body is flex:1), full
+       content-width so every tile's divider aligns. */
+    .bp-action-tile-foot {
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: var(--border-hairline);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--color-text-muted);
     }
   `],
 })
@@ -123,6 +172,11 @@ export class ActionTileComponent {
   @Input() subtitle?: string;
   /** Optional aria-label override (defaults to title). */
   @Input() ariaLabel?: string;
+  /** Optional count chip (top-right). Renders only when > 0 — e.g. the
+      supplier home Inbox tile's unread-thread count. */
+  @Input() badge?: number;
+  /** Optional footer line below a hairline divider, e.g. "3 projects". */
+  @Input() meta?: string;
 
   /** Fired on click / Enter / Space. Parent wires the behaviour. */
   @Output() action = new EventEmitter<void>();

@@ -8,7 +8,13 @@ export class SupplierService {
 
   getAll() { return this.api.get<Org[]>('/suppliers'); }
 
-  getCatalogue(supplierId: string) { return this.api.get<Item[]>(`/suppliers/${supplierId}/catalogue`); }
+  /** v1.68b — includeHidden=true (owner viewing their OWN /store) relaxes the
+      is_active filter so hidden items return (badged "Hidden"). Deleted items
+      stay excluded either way. Public/marketplace callers omit it. */
+  getCatalogue(supplierId: string, includeHidden = false) {
+    const q = includeHidden ? '?include_hidden=true' : '';
+    return this.api.get<Item[]>(`/suppliers/${supplierId}/catalogue${q}`);
+  }
 
   getItems(params: { category_id?: string; subcategory_id?: string; tag?: string } = {}) {
     const qs = new URLSearchParams();

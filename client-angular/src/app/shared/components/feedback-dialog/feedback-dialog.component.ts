@@ -205,7 +205,7 @@ type FlowType = 'folder' | 'issue' | 'note' | null;
       font-family: var(--font-body); cursor: pointer; transition: all 0.15s;
     }
     .bp-fb-priority-pill:hover { border-color: var(--theme-accent); }
-    .bp-fb-priority-pill.active { border-color: var(--theme-accent); background: var(--theme-bg); color: var(--theme-accent); }
+    .bp-fb-priority-pill.active { border-color: var(--theme-accent); background: var(--color-fill); color: var(--theme-accent); }
     .bp-fb-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .bp-fb-priority-dot-1 { background: var(--color-danger-text); }
     .bp-fb-priority-dot-2 { background: var(--color-waiting-text); }

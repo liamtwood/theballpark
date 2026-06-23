@@ -11,9 +11,10 @@ import {
   CatalogueGridComponent, CircleSize, DetailSize
 } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import {
-  PageConfigTogglesComponent, ThemeSwatch, DetailMode
+  DetailMode
 } from '../../../shared/components/page-config-toggles/page-config-toggles.component';
 import { ConfigService } from '../../../core/services/config.service';
+import { CatalogueViewService, CatalogueViewState } from '../../../core/services/catalogue-view.service';
 import { ShellContextService } from '../../../core/services/shell-context.service';
 import { FeedbackDialogComponent } from '../../../shared/components/feedback-dialog/feedback-dialog.component';
 import { InputTextModule } from 'primeng/inputtext';
@@ -39,7 +40,7 @@ type ViewMode = 'card' | 'list' | 'table';
     InputTextModule, DropdownModule, ButtonModule, ConfirmDialogModule, ToastModule,
     TableModule, SelectButtonModule,
     StatusBadgeComponent, AvatarComponent,
-    FeedbackDrawerComponent, PageConfigTogglesComponent
+    FeedbackDrawerComponent
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -72,26 +73,15 @@ type ViewMode = 'card' | 'list' | 'table';
         [showEdit]="false"
         [showFavourite]="false"
         [totalCount]="filteredEntities.length"
-        [showConfigStrip]="true"
+        [showConfigStrip]="false"
         (entitySelected)="openDrawerFromEntity($event)"
         (actionClicked)="openDrawerFromEntity($event)"
         (categoryChanged)="onTypeFilterChanged($event)"
         (breadcrumbBackClicked)="setArea('all')">
 
-        <!-- Shared config strip controls (toggled by cog in top-nav) -->
-        <app-page-config-toggles config-content
-          [(pageLabel)]="pageLabel"
-          (pageLabelChange)="onPageLabelChange($event)"
-          [(theme)]="theme"
-          (themeChange)="onThemeChange()"
-          [(circleSize)]="circleSize"
-          (circleSizeChange)="persistConfig()"
-          [(view)]="viewMode"
-          (viewChange)="persistConfig()"
-          [(detailSize)]="detailSize"
-          (detailSizeChange)="persistConfig()"
-          [(detailMode)]="detailMode"
-          (detailModeChange)="persistConfig()"></app-page-config-toggles>
+        <!-- Config-strip bar removed — circle size / view / detail size /
+             detail mode now live in the global page-config drawer, wired via
+             CatalogueViewService (register/unregister in this component). -->
 
         <!-- AREA CIRCLES + FILTER BAR + BULK BAR — projected so they sit
              between the hero and the 3-col body. -->
@@ -142,6 +132,7 @@ type ViewMode = 'card' | 'list' | 'table';
           <p-selectButton
             [options]="viewModeOptions"
             [(ngModel)]="viewMode"
+            (onChange)="onViewModeChange()"
             optionLabel="label"
             optionValue="value"
             styleClass="bp-fb-view-select">
@@ -282,7 +273,7 @@ type ViewMode = 'card' | 'list' | 'table';
       display: flex; align-items: center; justify-content: center;
       border: 2.5px solid transparent;
       transition: width 0.18s, height 0.18s, border-color 0.15s;
-      color: var(--theme-accent); background: var(--theme-bg);
+      color: var(--theme-accent); background: var(--color-fill);
       box-shadow: 0 0 0 0.5px var(--color-border);
     }
     /* When icon_color is set on the area, an inline style fills the
@@ -342,7 +333,7 @@ type ViewMode = 'card' | 'list' | 'table';
       font-size: 13px !important;
     }
     :host ::ng-deep .bp-fb-view-select .p-button.p-highlight {
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
       color: var(--theme-accent) !important;
     }
     :host ::ng-deep .bp-fb-view-select .p-button:focus { box-shadow: none !important; }
@@ -354,20 +345,20 @@ type ViewMode = 'card' | 'list' | 'table';
     .bp-fb-type-pill {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 11px; font-weight: 500; text-transform: capitalize;
     }
     .bp-fb-area-pill {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 11px; font-weight: 500;
     }
     .bp-fb-page-cell { font-size: 12px; color: var(--color-text-secondary); }
     .bp-muted-text { color: var(--color-text-muted); font-size: 12px; }
     .bp-fb-version-pill {
       display: inline-flex; padding: 1px 7px; border-radius: 10px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
     }
     .bp-fb-tests-pill {
@@ -376,7 +367,7 @@ type ViewMode = 'card' | 'list' | 'table';
       font-size: 11px; font-weight: 500;
     }
     .bp-fb-tests-pill--todo {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       border: 0.5px solid var(--theme-border, var(--color-border));
     }
@@ -403,7 +394,7 @@ type ViewMode = 'card' | 'list' | 'table';
     /* Bulk action bar */
     .bp-fb-bulk-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 28px;
-      background: var(--theme-bg); border-bottom: 0.5px solid var(--color-border);
+      background: var(--color-fill); border-bottom: 0.5px solid var(--color-border);
     }
     .bp-fb-bulk-count { font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
     .bp-fb-bulk-btn {
@@ -470,13 +461,18 @@ export class FeedbackComponent implements OnInit, OnDestroy {
   }
 
   private readonly LS = {
-    theme:      'ballpark:feedback:theme',
     circleSize: 'ballpark:feedback:circleSize',
     detailSize: 'ballpark:feedback:detailSize',
     viewMode:   'ballpark:feedback:viewMode',
     detailMode: 'ballpark:feedback:detailMode'
   };
-  theme: ThemeSwatch = '';
+  catPosition: 'top' | 'left' = 'top';
+  catShape: 'circle' | 'square' = 'circle';
+  catCardSize: 'sm' | 'md' | 'lg' = 'sm';
+  catShowFilter = true;
+  catShowFilterButton = true;
+  catShowPreview = true;
+  catShowContainers = true;
   circleSize: CircleSize = 'md';
   detailSize: DetailSize = 'md';
   // Drawer is the only fully-supported detail mode for feedback today.
@@ -547,6 +543,7 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     private confirmSvc: ConfirmationService,
     private msg: MessageService,
     private shellCtx: ShellContextService,
+    private catalogueViewSvc: CatalogueViewService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -558,6 +555,12 @@ export class FeedbackComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadConfig();
+    // Expose the view controls to the global page-config drawer (replaces
+    // the old config-strip bar).
+    this.catalogueViewSvc.register(
+      this.catalogueViewState(),
+      (p) => this.applyCatalogueView(p)
+    );
     this.pageLabel = this.configSvc.feedbackLabel;
     // Defer past NavigationEnd — AppShell resets shellCtx after child
     // ngOnInit, so a synchronous set would be wiped.
@@ -578,45 +581,68 @@ export class FeedbackComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.shellCtx.reset(); }
+  ngOnDestroy() {
+    this.shellCtx.reset();
+    this.catalogueViewSvc.unregister();
+  }
+
+  private catalogueViewState(): CatalogueViewState {
+    return {
+      categoriesPosition: this.catPosition,
+      shape: this.catShape,
+      cardSize: this.catCardSize,
+      circleSize: this.circleSize,
+      detailSize: this.detailSize,
+      view: this.viewMode,
+      detailMode: this.detailMode,
+      showFilter: this.catShowFilter,
+      showFilterButton: this.catShowFilterButton,
+      showPreview: this.catShowPreview,
+      showContainers: this.catShowContainers,
+    };
+  }
+
+  /** In-body view switcher changed — persist + keep the drawer in sync. */
+  onViewModeChange() {
+    this.persistConfig();
+    this.catalogueViewSvc.sync(this.catalogueViewState());
+  }
+
+  /** Drawer → this page: apply a view change, persist, re-sync the drawer. */
+  private applyCatalogueView(p: Partial<CatalogueViewState>) {
+    if (p.categoriesPosition) this.catPosition = p.categoriesPosition;
+    if (p.shape)      this.catShape   = p.shape;
+    if (p.cardSize)   this.catCardSize = p.cardSize;
+    if (p.showFilter  !== undefined) this.catShowFilter  = p.showFilter;
+    if (p.showFilterButton !== undefined) this.catShowFilterButton = p.showFilterButton;
+    if (p.showPreview !== undefined) this.catShowPreview = p.showPreview;
+    if (p.showContainers !== undefined) this.catShowContainers = p.showContainers;
+    if (p.circleSize) this.circleSize = p.circleSize;
+    if (p.detailSize) this.detailSize = p.detailSize;
+    if (p.view)       this.viewMode   = p.view;
+    if (p.detailMode) this.detailMode = p.detailMode;
+    this.persistConfig();
+    this.catalogueViewSvc.sync(this.catalogueViewState());
+    this.cdr.detectChanges();
+  }
 
   private applyShellHero() {
-    this.shellCtx.set({
-      heroTitle: this.configSvc.platformName,
-      heroSub: this.configSvc.feedbackLabel.toUpperCase(),
-      pills: [],
-      tabs: []
-    });
+    // v1.66ar — hero (title "Feedback" + subtitle) now comes from route
+    // data, like every other ballpark-settings tab. No push here.
   }
 
   // ── Config strip persistence ──────────────────────────────────────────
   loadConfig() {
-    this.theme      = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
     this.circleSize = (localStorage.getItem(this.LS.circleSize) || 'md') as CircleSize;
     this.detailSize = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
     this.viewMode   = (localStorage.getItem(this.LS.viewMode)   || 'table') as ViewMode;
     this.detailMode = (localStorage.getItem(this.LS.detailMode) || 'drawer') as DetailMode;
-    this.applyTheme();
   }
   persistConfig() {
-    localStorage.setItem(this.LS.theme,      this.theme);
     localStorage.setItem(this.LS.circleSize, this.circleSize);
     localStorage.setItem(this.LS.detailSize, this.detailSize);
     localStorage.setItem(this.LS.viewMode,   this.viewMode);
     localStorage.setItem(this.LS.detailMode, this.detailMode);
-  }
-  onThemeChange() {
-    this.applyTheme();
-    this.persistConfig();
-  }
-  /** Page label is org-wide — write through to ConfigService so the
-      top-nav and admin terminology editor see the change too. */
-  onPageLabelChange(label: string) {
-    this.configSvc.update({ feedbackLabel: label });
-  }
-  private applyTheme() {
-    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
-    else document.documentElement.removeAttribute('data-theme');
   }
 
   loadEntries() {

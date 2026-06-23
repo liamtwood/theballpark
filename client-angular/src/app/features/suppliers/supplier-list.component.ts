@@ -11,18 +11,18 @@ import { ProjectService } from '../../core/services/project.service';
 import { ProjectItemService } from '../../core/services/project-item.service';
 import { ShellContextService } from '../../core/services/shell-context.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CatalogueViewState, MARKETPLACE_VIEW_DEFAULTS } from '../../core/services/catalogue-view.service';
+import { MarketplaceProjectService, MarketplaceProject } from '../../core/services/marketplace-project.service';
+import { MarketplaceProjectPickerComponent } from '../../shared/components/marketplace-project-picker/marketplace-project-picker.component';
 import { Org, CatalogueEntity, CategoryInfo, Item, ProjectItem } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { ImageUploadPanelComponent } from '../../shared/components/image-upload-panel/image-upload-panel.component';
 import {
-  CatalogueGridComponent, CircleSize, DetailSize
+  CatalogueGridComponent
 } from '../../shared/components/catalogue-grid/catalogue-grid.component';
 import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../shared/components/item-drawer/item-drawer.component';
-import {
-  PageConfigTogglesComponent, Layout, DetailMode, ThemeSwatch
-} from '../../shared/components/page-config-toggles/page-config-toggles.component';
 
 @Component({
   selector: 'app-supplier-list',
@@ -30,10 +30,15 @@ import {
   imports: [
     CommonModule, FormsModule, RouterModule, LucideAngularModule,
     LoadingSpinnerComponent, ImageUploadPanelComponent, CatalogueGridComponent,
-    ItemDrawerComponent, PageConfigTogglesComponent
+    ItemDrawerComponent, MarketplaceProjectPickerComponent
   ],
   template: `
-    <div class="bp-page">
+    <app-marketplace-project-picker
+      [(visible)]="pickerOpen"
+      [activeId]="projectId"
+      (picked)="onProjectPicked($event)">
+    </app-marketplace-project-picker>
+    <div class="bp-page bp-page--catalogue">
       <app-loading *ngIf="loading"></app-loading>
       <ng-container *ngIf="!loading">
         <app-catalogue-grid
@@ -43,12 +48,12 @@ import {
           [entityLabel]="viewMode === 'suppliers' ? 'supplier' : 'item'"
           [actionLabel]="viewMode === 'suppliers' ? 'View supplier' : '+ Add to Project'"
           [favouriteIds]="currentFavIds"
-          [totalCount]="totalItems"
-          [showConfigStrip]="true"
-          [circleSize]="circleSize"
-          [detailSize]="detailSize"
-          [detailMode]="detailMode"
-          [layout]="layout"
+          [totalCount]="viewMode === 'suppliers' ? suppliers.length : totalItems"
+          viewControlsKey="marketplace"
+          [viewControlsDefaults]="viewDefaults"
+          [addToProjectMode]="true"
+          (projectRequired)="onProjectRequired($event)"
+          (viewStateChange)="onGridViewState($event)"
           [projectId]="projectId"
           [projectItems]="projectItems"
           [currentOrgId]="currentOrgId"
@@ -69,27 +74,10 @@ import {
           (itemEditRequested)="onItemEditRequested($event)"
           (addToProject)="onAddToProject($event)"
           (removeFromProject)="onRemoveFromProject($event)">
-          <div catalogue-toggles class="bp-cat-toggle-wrap">
-            <button class="bp-toggle-btn" [class.active]="viewMode === 'items'"
-              (click)="switchMode('items')">Items</button>
-            <button class="bp-toggle-btn" [class.active]="viewMode === 'suppliers'"
-              (click)="switchMode('suppliers')">Suppliers</button>
-          </div>
-
-          <!-- Shared config strip controls (toggled by cog in top-nav) -->
-          <app-page-config-toggles config-content
-            [(pageLabel)]="catalogueTitle"
-            (pageLabelChange)="onPageLabelChange($event)"
-            [(theme)]="theme"
-            (themeChange)="onThemeChange()"
-            [(circleSize)]="circleSize"
-            (circleSizeChange)="persistConfig()"
-            [(view)]="layout"
-            (viewChange)="persistConfig()"
-            [(detailSize)]="detailSize"
-            (detailSizeChange)="persistConfig()"
-            [(detailMode)]="detailMode"
-            (detailModeChange)="persistConfig()"></app-page-config-toggles>
+          <!-- Items / Suppliers moved to the hero tab band (pushed via
+               ShellContextService in applyShellHero), matching the events
+               Current/Completed pattern. Config-strip bar also removed — the
+               view controls live in the global page-config drawer. -->
         </app-catalogue-grid>
       </ng-container>
 
@@ -141,11 +129,8 @@ import {
     </div>
   `,
   styles: [`
-    .bp-cat-toggle-wrap { display: flex; gap: 0; flex-shrink: 0; border: 0.5px solid var(--color-border); border-radius: 6px; overflow: hidden; }
-    .bp-toggle-btn { padding: 5px 14px; font-size: 12px; font-weight: 500; font-family: var(--font-body); border: none; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
-    /* v1.65an — solid --theme-accent active state (matches the unified
-       selector pattern across the app). */
-    .bp-toggle-btn.active { background: var(--theme-accent); color: var(--color-surface); font-weight: 600; }
+    /* Items/Suppliers toggle styles removed — they're now hero tabs
+       (rendered by the app-shell tab band, styled globally). */
   `]
 })
 export class SupplierListComponent implements OnInit, OnDestroy {
@@ -157,6 +142,14 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   // State
   loading = true;
   viewMode: 'suppliers' | 'items' = 'items';
+  /** Shipped catalogue-view default (shared across all three marketplaces). */
+  viewDefaults = MARKETPLACE_VIEW_DEFAULTS;
+  /** Project picker dialog open state + the session "shopping for" project. */
+  pickerOpen = false;
+  marketProject: MarketplaceProject | null = null;
+  /** Item the user tried to add before choosing a project — added once they
+      pick one (the picker opens via onProjectRequired). */
+  private pendingAdd: { entity: CatalogueEntity; type: 'selected' | 'liked' } | null = null;
   /** v1.32: when ?favourites=true is in the URL, restrict the list to
       the user's hearted suppliers (or items) and surface a "My
       Suppliers" hero + back button so the entry-from-dashboard
@@ -175,28 +168,23 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   totalItems = 0;
   categoryCounts: Record<string, number> = {};
+  /** Suppliers-per-category, derived from each supplier's category_ids. Used
+      for the rail/circle counts when viewMode === 'suppliers'. */
+  supplierCounts: Record<string, number> = {};
 
   // Editable page label bound to the config strip. Kept in sync with
   // ConfigService.catalogueLabel (org-wide) via the config$ subscription
   // in ngOnInit. The hero subtitle on the global app-shell hero also
   // mirrors this label (uppercased) and re-renders on change.
   catalogueTitle = 'Catalogue';
+  /** True when the grid reports categories in the left rail — drives the
+      hero's left-align halfway-house. */
+  catsLeft = false;
 
-  // Layout-only config strip state — persisted per-user to localStorage
-  // with the ballpark:marketplace:* key namespace. Page label lives in
-  // ConfigService (org-wide), not here.
-  private readonly LS = {
-    theme:      'ballpark:marketplace:theme',
-    circleSize: 'ballpark:marketplace:circleSize',
-    detailSize: 'ballpark:marketplace:detailSize',
-    layout:     'ballpark:marketplace:layout',
-    detailMode: 'ballpark:marketplace:detailMode'
-  };
-  theme: ThemeSwatch = '';
-  circleSize: CircleSize = 'lg';
-  detailSize: DetailSize = 'md';
-  layout: Layout = 'card';
-  detailMode: DetailMode = 'inline';
+  // View controls (circle size / view / detail size / detail mode) are owned
+  // by <app-catalogue-grid> via [viewControlsKey]="marketplace" — it registers
+  // with CatalogueViewService so the page-config drawer drives them. No host
+  // state here anymore.
 
   // Image upload
   categoryUploadId = '';
@@ -240,6 +228,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     private projectItemSvc: ProjectItemService,
     private shellCtx: ShellContextService,
     private configSvc: ConfigService,
+    private marketProjectSvc: MarketplaceProjectService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -254,7 +243,6 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadConfig();
     this.catalogueTitle = this.configSvc.catalogueLabel;
 
     // v1.22i: ?view=suppliers | items lets the dashboard's Browse
@@ -279,23 +267,33 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       }
     });
 
-    const projectId = this.route.snapshot.queryParams['projectId'];
-    this.projectId = projectId || null;
-    if (projectId) {
-      this.projectSvc.getById(projectId).subscribe(p => {
-        this.applyShellHero(p ? [p.event_name || p.name || ''] : []);
+    // The marketplace's active project: an explicit ?projectId= wins; else the
+    // session "shopping for" project (chosen via the picker pill). Either way it
+    // drives projectId (→ Add to Project / Wishlist) + the clickable hero pill.
+    const queryPid = this.route.snapshot.queryParams['projectId'];
+    if (queryPid) {
+      this.projectId = queryPid;
+      this.projectSvc.getById(queryPid).subscribe(p => {
+        this.marketProject = p ? { id: p.id, name: p.event_name || p.name || '' } : null;
+        this.applyShellHero(this.shellCtx.current.pills || []);
+        this.cdr.detectChanges();
       });
-      // Load the cart so the detail-panel +/♡ buttons reflect existing
-      // selections on first paint.
-      this.projectItemSvc.getByProject(projectId).subscribe(rows => {
+      // Load the cart so the +/♡ states reflect existing selections.
+      this.projectItemSvc.getByProject(queryPid).subscribe(rows => {
         this.projectItems = rows || [];
         this.cdr.detectChanges();
       });
     } else {
-      // Defer past NavigationEnd — AppShell's router subscription resets
-      // shellCtx on every navigation, so a synchronous set in ngOnInit
-      // would be wiped immediately afterwards.
-      setTimeout(() => this.applyShellHero([]), 0);
+      this.marketProject = this.marketProjectSvc.current;
+      this.projectId = this.marketProject?.id || null;
+      if (this.projectId) {
+        this.projectItemSvc.getByProject(this.projectId).subscribe(rows => {
+          this.projectItems = rows || [];
+          this.cdr.detectChanges();
+        });
+      }
+      // Defer past NavigationEnd — AppShell resets shellCtx on every nav.
+      setTimeout(() => this.applyShellHero(this.shellCtx.current.pills || []), 0);
     }
 
     this.configSvc.config$.subscribe(cfg => {
@@ -332,7 +330,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
             tagline: c.tagline,
             description: c.description,
             model: c.model || 'A',
-            count: this.categoryCounts[c.id] || 0
+            count: this.countFor(c.id)
           }));
         this.cdr.detectChanges();
       },
@@ -342,6 +340,8 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     this.supplierSvc.getAll().subscribe({
       next: (suppliers: Org[]) => {
         this.suppliers = suppliers || [];
+        this.computeSupplierCounts();
+        this.applyCategoryCounts();
         this.mapSuppliers();
         this.loading = false;
         if (this.viewMode === 'items') this.loadItems();
@@ -363,22 +363,37 @@ export class SupplierListComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.shellCtx.reset(); }
+  ngOnDestroy() {
+    this.shellCtx.reset();
+  }
 
   private applyShellHero(pills: string[]) {
-    // v1.32: hero swaps to "My Suppliers" + "SAVED CATALOGUE" when the
-    // list is filtered to favourites.
-    // v1.32a: Back button now shows on every supplier-list view (not
-    // just the favourites one) — it's reachable from Browse Suppliers
-    // on the dashboard and from the top-nav. history.back() with a
-    // dashboard fallback handles both cases gracefully.
-    const favHero = this.favouritesOnly;
+    // v1.66ag — hero title ("Marketplace") + subtitle come from route data
+    // (the standard hero). This push only carries the dynamic pills and
+    // the back button. v1.32a: Back shows on every supplier-list view.
     this.shellCtx.set({
-      heroTitle: favHero ? 'My Suppliers' : this.configSvc.platformName,
-      heroSub: (favHero ? 'SAVED ' : '') +
-               this.configSvc.catalogueLabel.toUpperCase(),
       pills,
-      tabs: [],
+      // Halfway-house: when categories are in the left rail, left-align the
+      // hero AND indent it to the first item card so the title/sub/tabs line up
+      // with the catalogue grid. 349px = body pad 12 + rail 300 (--cat-col1 in
+      // cats-left) + gap 12 + main-body pad 24 + 1px border; minus --section-pad.
+      heroAlign: this.catsLeft ? 'left' : undefined,
+      heroExtraLeft: this.catsLeft ? 'calc(349px - var(--section-pad))' : undefined,
+      // Clickable "shopping for {project}" pill — opens the project picker so
+      // Add to Project / Wishlist have a target.
+      projectPill: {
+        text: this.marketProject ? this.marketProject.name : 'Select project',
+        onClick: () => { this.pickerOpen = true; this.cdr.detectChanges(); },
+      },
+      // Items / Suppliers as hero tabs (like events' Current/Completed). They
+      // don't route — onTabClick flips the in-page viewMode + re-pushes so the
+      // active tab tracks.
+      tabs: [
+        { label: 'Items',     path: 'items' },
+        { label: 'Suppliers', path: 'suppliers' },
+      ],
+      activeTabPath: this.viewMode,
+      onTabClick: (t) => this.switchMode(t.path === 'suppliers' ? 'suppliers' : 'items'),
       back: { label: 'Back', onBack: () => this.goBack() }
     });
   }
@@ -387,42 +402,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       land on the dashboard. Mirrors the supplier-detail goBack(). */
   private goBack() {
     if (history.length > 1) history.back();
-    else this.router.navigate(['/']);
-  }
-
-  // ── Config strip persistence ──────────────────────────────────────────
-  loadConfig() {
-    const t  = (localStorage.getItem(this.LS.theme) || '') as ThemeSwatch;
-    const cs = (localStorage.getItem(this.LS.circleSize) || 'lg') as CircleSize;
-    const ds = (localStorage.getItem(this.LS.detailSize) || 'md') as DetailSize;
-    const ly = (localStorage.getItem(this.LS.layout) || 'card') as Layout;
-    const dm = (localStorage.getItem(this.LS.detailMode) || 'inline') as DetailMode;
-    this.theme = t;
-    this.circleSize = cs;
-    this.detailSize = ds;
-    this.layout = ly;
-    this.detailMode = dm;
-    this.applyTheme();
-  }
-  persistConfig() {
-    localStorage.setItem(this.LS.theme, this.theme);
-    localStorage.setItem(this.LS.circleSize, this.circleSize);
-    localStorage.setItem(this.LS.detailSize, this.detailSize);
-    localStorage.setItem(this.LS.layout, this.layout);
-    localStorage.setItem(this.LS.detailMode, this.detailMode);
-  }
-  onThemeChange() {
-    this.applyTheme();
-    this.persistConfig();
-  }
-  /** Page label is org-wide — write through to ConfigService so the
-      top-nav and admin terminology editor see the change too. */
-  onPageLabelChange(label: string) {
-    this.configSvc.update({ catalogueLabel: label });
-  }
-  private applyTheme() {
-    if (this.theme) document.documentElement.setAttribute('data-theme', this.theme);
-    else document.documentElement.removeAttribute('data-theme');
+    else this.router.navigate(['/home']);
   }
 
   // ── Data mapping ──────────────────────────────────────────────────────
@@ -480,6 +460,7 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
       categoryLabel: i.category_name,
+      subcategoryLabel: i.subcategory_name,
       specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
       parentEntity: i.supplier_name ? {
         id: i.org_id,
@@ -521,22 +502,54 @@ export class SupplierListComponent implements OnInit, OnDestroy {
       next: (data: any) => {
         this.categoryCounts = data.counts || {};
         this.totalItems = data.total || 0;
-        // Update category counts
-        this.categories = this.categories.map(c => ({
-          ...c,
-          count: this.categoryCounts[c.id] || 0
-        }));
+        this.applyCategoryCounts();
         this.cdr.detectChanges();
       }
     });
   }
 
+  /** Count suppliers per category from each supplier's category_ids. A
+      supplier tagged to multiple categories counts in each. */
+  private computeSupplierCounts() {
+    const counts: Record<string, number> = {};
+    for (const s of this.suppliers) {
+      for (const id of ((s as any).category_ids || [])) {
+        counts[id] = (counts[id] || 0) + 1;
+      }
+    }
+    this.supplierCounts = counts;
+  }
+
+  /** The per-category count for the active view — item counts in Items mode,
+      supplier counts in Suppliers mode. */
+  private countFor(id: string): number {
+    return (this.viewMode === 'suppliers' ? this.supplierCounts : this.categoryCounts)[id] || 0;
+  }
+
+  /** Re-stamp every category's `count` for the active view (Items/Suppliers). */
+  private applyCategoryCounts() {
+    this.categories = this.categories.map(c => ({ ...c, count: this.countFor(c.id) }));
+  }
+
   // ── Event handlers ────────────────────────────────────────────────────
+
+  /** Grid reports its view state — track Left categories so the hero
+      left-aligns to match the catalogue's left edge. */
+  onGridViewState(state: CatalogueViewState) {
+    const left = state?.categoriesPosition === 'left';
+    if (left === this.catsLeft) return;
+    this.catsLeft = left;
+    this.applyShellHero(this.shellCtx.current.pills || []);
+  }
 
   switchMode(mode: 'items' | 'suppliers') {
     this.viewMode = mode;
+    // Re-stamp the category counts for the new view (items ↔ suppliers).
+    this.applyCategoryCounts();
     if (mode === 'items') this.loadItems();
     else this.mapSuppliers();
+    // Re-push so the hero tab band's active state tracks the new mode.
+    this.applyShellHero(this.shellCtx.current.pills || []);
     this.cdr.detectChanges();
   }
 
@@ -569,6 +582,44 @@ export class SupplierListComponent implements OnInit, OnDestroy {
   }
 
   onEntitySelected(_entity: CatalogueEntity) {}
+
+  /** User clicked Add to Project / Wishlist before choosing a project — stash
+      the intent and open the picker; onProjectPicked flushes it. */
+  onProjectRequired(req: { entity: CatalogueEntity; type: 'selected' | 'liked' }) {
+    this.pendingAdd = req;
+    this.pickerOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  /** Project picked from the hero pill dialog — remember it for the session,
+      retarget Add to Project / Wishlist, flush any pending add, and refresh
+      the cart state. */
+  onProjectPicked(p: MarketplaceProject | null) {
+    this.marketProjectSvc.set(p);
+    this.marketProject = p;
+    this.projectId = p?.id || null;
+    const pending = this.pendingAdd;
+    this.pendingAdd = null;
+    if (p && pending) {
+      this.projectItemSvc.add(p.id, pending.entity.id, pending.type).subscribe({
+        next: () => this.reloadProjectItems(p.id),
+        error: () => this.reloadProjectItems(p.id),
+      });
+    } else if (p) {
+      this.reloadProjectItems(p.id);
+    } else {
+      this.projectItems = [];
+    }
+    this.applyShellHero(this.shellCtx.current.pills || []);
+    this.cdr.detectChanges();
+  }
+
+  private reloadProjectItems(projectId: string) {
+    this.projectItemSvc.getByProject(projectId).subscribe(rows => {
+      this.projectItems = rows || [];
+      this.cdr.detectChanges();
+    });
+  }
 
   onFavToggled(entityId: string) {
     if (this.viewMode === 'suppliers') {

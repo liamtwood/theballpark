@@ -41,7 +41,8 @@ export interface CategoryCircle {
   template: `
     <div class="bp-cat-circles-wrap"
          *ngIf="categories.length || showAll"
-         [attr.data-circle-size]="size">
+         [attr.data-circle-size]="size"
+         [attr.data-circle-shape]="shape">
 
       <button type="button"
               class="bp-circles-arrow bp-circles-arrow--left"
@@ -58,7 +59,7 @@ export interface CategoryCircle {
                 [class.active]="activeId === 'all'"
                 (click)="select.emit('all')">
           <div class="bp-cat-circle bp-cat-circle--all">
-            <lucide-icon name="layers" [size]="iconSize"></lucide-icon>
+            <lucide-icon name="layers" [size]="iconSize" [strokeWidth]="1.5"></lucide-icon>
           </div>
           <span class="bp-cat-circle-label">All</span>
         </button>
@@ -80,10 +81,10 @@ export interface CategoryCircle {
                  [src]="cat.logo_url" [alt]="cat.name"
                  class="bp-cat-circle-logo-img"/>
             <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && cat.icon_name"
-                         [name]="cat.icon_name" [size]="iconSize"
+                         [name]="cat.icon_name" [size]="iconSize" [strokeWidth]="1.5"
                          class="bp-cat-circle-lucide"></lucide-icon>
             <lucide-icon *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && cat.icon"
-                         [name]="cat.icon" [size]="iconSize"
+                         [name]="cat.icon" [size]="iconSize" [strokeWidth]="1.5"
                          class="bp-cat-circle-icon"></lucide-icon>
             <span *ngIf="!cat.cover_image_url && !cat.logo_url && !cat.icon_name && !cat.icon"
                   class="bp-cat-circle-initials">{{ (cat.name || '?').charAt(0) }}</span>
@@ -108,7 +109,7 @@ export interface CategoryCircle {
                 title="Add category"
                 (click)="addClicked.emit()">
           <div class="bp-cat-circle bp-cat-circle--add">
-            <lucide-icon name="plus" [size]="iconSize"></lucide-icon>
+            <lucide-icon name="plus" [size]="iconSize" [strokeWidth]="1.5"></lucide-icon>
           </div>
           <span class="bp-cat-circle-label">Add category</span>
         </button>
@@ -141,6 +142,8 @@ export class CategoryCirclesComponent implements AfterViewInit, OnChanges {
   @Input() activeId: string = 'all';
   /** Circle size — sm/md/lg map to 56/72/96px (see styles.css). */
   @Input() size: 'sm' | 'md' | 'lg' = 'lg';
+  /** Strip shape — round circles (default) or rounded squares. */
+  @Input() shape: 'circle' | 'square' = 'circle';
   /** Render the "All" pseudo-circle at the start of the strip. */
   @Input() showAll = true;
   /** Render the small edit-pencil overlay on each circle. */

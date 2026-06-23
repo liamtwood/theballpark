@@ -357,7 +357,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
     :host ::ng-deep .bp-brief-num.bp-brief-edit .p-inputtext,
     :host ::ng-deep .bp-brief-dropdown.bp-brief-edit.p-dropdown,
     :host ::ng-deep .bp-brief-cal.bp-brief-edit .p-inputtext {
-      background: var(--theme-bg) !important;
+      background: var(--color-fill) !important;
       border-color: var(--theme-accent) !important;
     }
     :host ::ng-deep .bp-brief-num.bp-brief-edit,
@@ -394,7 +394,7 @@ type SectionKey = 'details' | 'type' | 'logistics' | 'financials';
       display: inline-flex; align-items: center; gap: 6px;
       height: 28px; padding: 0 12px;
       border: 0.5px solid var(--theme-accent);
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       border-radius: 14px;
       font-size: 11.5px; font-weight: 600;

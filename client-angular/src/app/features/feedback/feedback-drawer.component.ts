@@ -421,7 +421,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
     /* ── Sidebar shell ── */
     :host ::ng-deep .bp-fbd .p-sidebar-header {
       padding: 0 !important;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       border-bottom: 0.5px solid var(--theme-border, var(--color-border));
       display: block !important;
     }
@@ -433,7 +433,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
     /* ── Header (parchment) ── */
     .bp-fbd-head {
       padding: 14px 18px 12px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       width: 100%;
     }
     .bp-fbd-row1 {
@@ -443,7 +443,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
     .bp-fbd-spacer { flex: 1; }
     .bp-fbd-type-pill {
       height: 22px; padding: 0 10px; border-radius: 999px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
       border: 0.5px solid var(--theme-accent);
       font-size: 11px; font-weight: 600;
@@ -459,7 +459,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       display: inline-flex; align-items: center; justify-content: center;
     }
     .bp-fbd-close:hover {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
 
@@ -528,12 +528,12 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       border-color: var(--color-border);
     }
     .bp-fbd-status-pill[data-status="todo"] {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-color: var(--theme-accent);
     }
 
     .bp-fbd-owner-pill {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-color: var(--theme-accent);
       padding-left: 2px;
     }
@@ -544,17 +544,17 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
     }
     .bp-fbd-priority-pill {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-color: var(--theme-accent); font-weight: 600;
     }
     .bp-fbd-version-pill {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-color: var(--theme-accent);
     }
     :host ::ng-deep .bp-fbd-version-input {
       width: 130px; height: 22px; padding: 0 8px;
       border-radius: 999px; font-size: 11px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border: 0.5px solid var(--theme-accent);
       font-family: var(--font-body);
     }
@@ -585,7 +585,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
     .bp-fbd-tab-count {
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       font-size: 10px; font-weight: 700;
     }
 
@@ -686,7 +686,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       border: 0.5px solid var(--color-border);
     }
     .bp-fbd-tc-status[data-status="todo"] {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border: 0.5px solid var(--theme-accent);
     }
     /* Clickable status pill on test case rows — replaces the icon-only
@@ -713,7 +713,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       border-color: var(--color-border);
     }
     .bp-fbd-tc-pill[data-status="todo"] {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border-color: var(--theme-accent);
     }
     .bp-fbd-tc-body { flex: 1; min-width: 0; }
@@ -766,7 +766,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       display: inline-flex; align-items: center; justify-content: center;
     }
     .bp-fbd-tc-owner--active {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border: 1.5px solid var(--theme-accent);
     }
     .bp-fbd-tc-results {
@@ -795,7 +795,7 @@ const TEST_CASE_STATUS_CYCLE = ['todo', 'pass', 'fail', 'skip'] as const;
       border: 1.5px solid var(--color-border);
     }
     .bp-fbd-tc-result--todo.bp-fbd-tc-result--active {
-      background: var(--theme-bg); color: var(--theme-accent);
+      background: var(--color-fill); color: var(--theme-accent);
       border: 1.5px solid var(--theme-accent);
     }
     .bp-fbd-tc-add-btn {

@@ -25,6 +25,7 @@ import { LoadingSpinnerComponent } from '../../../../../../shared/components/loa
 import {
   CatalogueGridComponent
 } from '../../../../../../shared/components/catalogue-grid/catalogue-grid.component';
+import { CatalogueViewState, MARKETPLACE_VIEW_DEFAULTS } from '../../../../../../core/services/catalogue-view.service';
 import {
   ItemDrawerComponent, ItemDrawerMode
 } from '../../../../../../shared/components/item-drawer/item-drawer.component';
@@ -68,7 +69,8 @@ import {
       entityLabel="item"
       sectionTitle="RESULTS"
       actionLabel="View item"
-      detailSize="lg"
+      viewControlsKey="project-marketplace"
+      [viewControlsDefaults]="viewDefaults"
       [showAdd]="true"
       [projectContext]="projectContext"
       [showEdit]="false"
@@ -122,6 +124,10 @@ import {
 })
 export class MarketplaceComponent implements OnInit {
   loading = true;
+  /** Catalogue view defaults for the project context — wider detail panel
+      (the Project Summary). The grid self-manages the rest via the drawer's
+      Catalogue view controls (viewControlsKey="project-marketplace"). */
+  viewDefaults: Partial<CatalogueViewState> = MARKETPLACE_VIEW_DEFAULTS;
   projectContext: ProjectContext | null = null;
   categories: CategoryInfo[] = [];
   itemEntities: CatalogueEntity[] = [];
@@ -329,9 +335,10 @@ export class MarketplaceComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  /** v1.41a — chip click from <app-catalogue-grid>. Internal filter
-      runs inside the grid; we just track the active id so the chip's
-      "active" state stays in sync with the URL bar. */
+  /** Subcategory click from <app-catalogue-grid>. We pre-load all items, so
+      filtering happens INSIDE the grid (applyFilter on activeSubcategoryId —
+      see the grid's Filtering contract). No refetch needed here; we just keep
+      our copy of the active id in sync for [activeSubcategoryId] binding. */
   onSubcategoryChanged(id: string) {
     this.activeSubcategoryId = id || '';
     this.cdr.detectChanges();
@@ -564,6 +571,7 @@ export class MarketplaceComponent implements OnInit {
       priceRange: i.min_price && i.max_price ? { min: Number(i.min_price), max: Number(i.max_price) } : undefined,
       unit: i.unit,
       categoryLabel: i.category_name,
+      subcategoryLabel: i.subcategory_name,
       specs: i.lead_time_days ? [{ label: 'Lead time', value: `${i.lead_time_days} working days` }] : [],
       parentEntity: i.supplier_name ? {
         id: i.org_id,

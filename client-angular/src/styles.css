@@ -16,7 +16,12 @@
 
   /* Theme colours — amber default (overridden by ConfigService) */
   --theme-accent: #D97706;
-  --theme-bg: #F5F0E8;
+  --theme-accent-2: #EC4899;   /* secondary accent — gradient stop 2 (overridden by ConfigService) */
+  --theme-accent-rgb: 217, 119, 6;   /* primary accent as r,g,b for glows (overridden by ConfigService) */
+  /* --theme-bg moved to the page-ground colour system below (Cleanup 2). It
+     survives only as a DEPRECATED alias of --color-fill for any dynamic/straggler
+     consumer; all CSS now uses the role tokens (--color-page-ground / -hero-bg /
+     -fill / -focus-ring). */
   --theme-empty: #EDD9A3;
   --theme-text: #92400E;
   --theme-border: #E8D9C0;
@@ -26,6 +31,19 @@
   --color-white: #FFFFFF;
   --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
+  /* ── PAGE-GROUND COLOUR SYSTEM (Cleanup 2) — one literal, role tokens ──
+     ONE literal for the neutral off-white ground; each ROLE references it so a
+     role can be tuned independently later without touching the others (One
+     Definition, One Role — see WORKING_STANDARDS). Dark mode: applyTheme sets
+     --color-ground-base to the theme-derived dark ground (the one dynamic case). */
+  --color-ground-base: #FAFAF8;                    /* the only literal for the ground */
+  --color-page-ground: var(--color-ground-base);   /* page / content scroll grounds */
+  --color-hero-bg:     var(--color-ground-base);   /* hero bands */
+  --color-fill:        var(--color-ground-base);   /* subtle neutral fills: hover, highlight, circles, chrome, placeholders */
+  --color-focus-ring:  var(--color-ground-base);   /* focus-ring box-shadows */
+  --theme-bg:          var(--color-fill);          /* DEPRECATED alias — migrated to the role tokens above */
+  --color-page-bg: #FFFFFF;     /* page body */
+  --color-card-border: #ECEAE4; /* hairline to lift white cards off the ground */
   --color-border: #EBEBEB;
   --color-text-primary: #111111;
   --color-text-secondary: #888888;
@@ -97,9 +115,37 @@
 
   /* Border radius tokens. */
   --radius-card: 12px;
+  /* Standard rounded-card radius — the softer corner used by event cards,
+     dashboard action tiles, item cards, the catalogue preview panel, etc.
+     Single source: change here to retune the app's card rounding. */
+  --radius-card-lg: 20px;
   --radius-button: 8px;
   --radius-pill: 999px;
   --radius-input: 6px;
+
+  /* v1.66t — Profile/account "light-card" design vocabulary. The
+     gradient accent (pink→green) is the ONLY strong colour in the new
+     language; everything else is light/neutral. Reserved for primary
+     buttons, badges, the avatar and usage cards. */
+  --grad-accent: linear-gradient(90deg, #EC4899 0%, #22C55E 100%);  /* pink-500 → green-500 (primary buttons) */
+  --grad-tab:    linear-gradient(90deg, #F472B6 0%, #C084FC 50%, #4ADE80 100%); /* pink-400 → purple-400 → green-400 (active tab underline) */
+  /* Soft tints of the accent gradient — derived from the theme accents via
+     color-mix, so they track the theme. Used by the dashboard action-tile
+     icon containers (default ≈ pink-100→green-100, hover ≈ pink-200→green-200). */
+  --grad-accent-soft:       linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 12%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 12%, #fff) 100%);
+  --grad-accent-soft-hover: linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 30%, #fff) 0%, color-mix(in srgb, var(--theme-accent-2) 30%, #fff) 100%);
+  /* Card hover standard — the single source for the interactive-card hover
+     (lift + accent shadow/border). Referenced via the .bp-card-hover class or
+     directly by components that need !important. Tracks the theme. */
+  --card-hover-transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  --card-hover-transform: translateY(-8px);
+  --card-hover-border: color-mix(in srgb, var(--theme-accent) 20%, #fff);
+  --card-hover-shadow: 0 24px 48px -12px rgba(var(--theme-accent-rgb), 0.18), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  /* Card image zoom — cover image scales on card hover. 600ms (slower than
+     the lift) for a magazine feel. Single source; see .bp-card-zoom-img. */
+  --card-img-zoom: scale(1.1);
+  --card-img-zoom-transition: transform 0.6s ease;
+  --card-soft-input: #F6F7F9;   /* her grey-filled edit input */
 
   /* v1.24: positive-state tokens. STANDARD pairs --color-danger
      (errors / over-budget / destructive) — use whenever the UI
@@ -114,7 +160,22 @@
      fed off --theme-bg (parchment) for the default amber theme. */
   --color-success:      #10B981;
   --color-success-dark: #065F46;
-  --theme-soft: var(--theme-bg);
+  --theme-soft: var(--color-fill);
+
+  /* v2.19 (pV2-CODELISTS-02 / RP-09): codelist meta colors became token
+     refs ('--color-state-*') resolved per-app via resolveMetaColor().
+     These carry the ORIGINAL v1 status hex — zero visual change. Same
+     names exist in client-v2/styles.css. */
+  --color-state-blue: #3B82F6;
+  --color-state-indigo: #6366F1;
+  --color-state-sky: #0EA5E9;
+  --color-state-violet: #8B5CF6;
+  --color-state-orange: #F97316;
+  --color-state-amber: #F59E0B;
+  --color-state-green: #22C55E;
+  --color-state-emerald: #10B981;
+  --color-state-gray: #6B7280;
+  --color-state-gray-light: #9CA3AF;
 
   /* p0003 — three-stop contrast set per preset. Overridden by
      ConfigService.applyTheme() when the preset changes. Defaults
@@ -156,7 +217,7 @@
   --primary-color: var(--theme-accent);
 }
 [data-mode="dark"] .bp-hero {
-  background: var(--theme-bg) !important;
+  background: var(--color-hero-bg) !important;
 }
 [data-mode="dark"] .bp-section-title { color: var(--theme-accent) !important; }
 
@@ -224,7 +285,7 @@ lucide-icon svg {
   color: #fff !important;
 }
 .p-button:focus {
-  box-shadow: 0 0 0 2px var(--theme-bg) !important;
+  box-shadow: 0 0 0 2px var(--color-focus-ring) !important;
 }
 .p-button:disabled {
   opacity: 0.5 !important;
@@ -250,16 +311,16 @@ lucide-icon svg {
   border: none !important;
 }
 .p-button.p-button-text:hover:not(:disabled) {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   color: var(--theme-text) !important;
 }
 
 /* Parchment button (modal footer only) */
 .p-button.bp-btn-cancel,
 .p-button.bp-btn-save {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   color: var(--theme-text) !important;
-  border: 0.5px solid var(--theme-bg) !important;
+  border: 0.5px solid var(--color-fill) !important;
 }
 .p-button.bp-btn-cancel:hover,
 .p-button.bp-btn-save:hover {
@@ -288,7 +349,7 @@ lucide-icon svg {
   border-color: var(--theme-accent) !important;
 }
 .p-tabview .p-tabview-nav li .p-tabview-nav-link:focus {
-  box-shadow: 0 0 0 2px var(--theme-bg) !important;
+  box-shadow: 0 0 0 2px var(--color-focus-ring) !important;
 }
 /* Steps (wizard) — active step uses theme */
 .p-steps .p-steps-item.p-highlight .p-steps-number {
@@ -365,7 +426,7 @@ lucide-icon svg {
 }
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   color: var(--color-text-primary) !important;
 }
 /* InputSwitch — on state uses theme */
@@ -374,7 +435,7 @@ lucide-icon svg {
 }
 /* Paginator active */
 .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-color: var(--theme-border) !important;
   color: var(--theme-text) !important;
 }
@@ -393,7 +454,7 @@ lucide-icon svg {
 /* Links — replace all text-brand-600 with theme accent */
 .text-brand-600, .text-brand-700, a.text-brand-600, a.text-brand-700 { color: var(--theme-accent) !important; }
 .bg-brand-600 { background-color: var(--theme-accent) !important; }
-.bg-brand-50, .bg-brand-100 { background-color: var(--theme-bg) !important; }
+.bg-brand-50, .bg-brand-100 { background-color: var(--color-fill) !important; }
 .text-brand-700 { color: var(--theme-text) !important; }
 .border-brand-600 { border-color: var(--theme-accent) !important; }
 .ring-brand-600 { --tw-ring-color: var(--theme-accent) !important; }
@@ -401,7 +462,7 @@ lucide-icon svg {
 /* Selection/active cards in project-create wizard */
 .border-brand-600.bg-brand-50 {
   border-color: var(--theme-accent) !important;
-  background-color: var(--theme-bg) !important;
+  background-color: var(--color-fill) !important;
 }
 
 /* ============================================
@@ -449,12 +510,12 @@ lucide-icon svg {
 }
 .bp-table tbody tr:hover,
 .bp-table .p-datatable-tbody > tr:hover {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
 }
 .bp-table tbody tr.bp-row-selected,
 .bp-table .p-datatable-tbody > tr.bp-row-selected,
 .bp-table .p-datatable-tbody > tr.p-highlight {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
 }
 .bp-table tbody tr:last-child td,
 .bp-table .p-datatable-tbody > tr:last-child td {
@@ -611,7 +672,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
    GLOBAL .btn-primary — theme-aware action button
    ============================================ */
 .btn-primary {
-  background: var(--theme-bg);
+  background: var(--color-fill);
   color: var(--theme-text);
   border: 0.5px solid var(--theme-border);
   border-radius: 6px;
@@ -692,15 +753,23 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-circles-toggle:hover { opacity: 0.75; }
 .bp-cat-circle-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0; position: relative; }
-.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s, box-shadow 150ms ease; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-xs); color: var(--color-text-muted); position: relative; }
-/* v1.65ag — circles adopt the v1.22 elevation: --shadow-xs at rest,
-   --shadow-sm on hover. Active state preserves the themed ring and
-   lifts to --shadow-sm. */
+/* Match the dashboard action-tile icons: soft accent-gradient fill + neutral
+   gray-700 glyph, scaling up to 110% with a deeper gradient on hover. The
+   gradient is set as background-IMAGE so it layers over the per-circle
+   background-color; a cover photo (inline background-image: url) still wins,
+   and the active circle clears it for a solid accent fill (see below). */
+.bp-cat-circle { width: var(--bp-circle-w, 96px); height: var(--bp-circle-w, 96px); border-radius: 50%; background-size: cover; background-position: center; border: 2.5px solid transparent; transition: border-color 0.15s, width 0.18s, height 0.18s, box-shadow 150ms ease, transform 0.3s ease, background-image 0.3s ease; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); background-image: var(--grad-accent-soft); box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-xs); color: #374151; position: relative; }
 .bp-cat-circle-btn:hover .bp-cat-circle {
   box-shadow: 0 0 0 0.5px var(--color-border), var(--shadow-sm);
+  transform: scale(1.1);
+  background-image: var(--grad-accent-soft-hover);
 }
 .bp-cat-circle--all       { background-color: var(--color-surface); }
-.bp-cat-circle--no-image  { background-color: var(--theme-bg); }
+.bp-cat-circle--no-image  { background-color: var(--color-fill); }
+/* Shape: "square" rounds to a soft rounded-square (matches the dashboard
+   icon tiles); default stays a full circle. % radius keeps it proportional
+   across sm/md/lg sizes. */
+.bp-cat-circles-wrap[data-circle-shape="square"] .bp-cat-circle { border-radius: 24%; }
 /* v1.65b — "+ Add category" trailing pseudo-circle: solid theme fill,
    white icon, scaled up on hover. */
 .bp-cat-circle--add       { background-color: var(--theme-accent);
@@ -709,10 +778,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-circle-btn--add:hover .bp-cat-circle--add { filter: brightness(0.95); }
 .bp-cat-circle-btn--add .bp-cat-circle-label { color: var(--theme-accent);
                                                font-weight: 600; }
-.bp-cat-circle--logo      { background: var(--theme-bg); }
-.bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
-.bp-cat-circle-icon       { color: var(--theme-accent); }
-.bp-cat-circle-lucide     { color: var(--color-text-muted); }
+.bp-cat-circle--logo      { background: var(--color-fill); }
+.bp-cat-circle-initials   { font-size: 28px; font-weight: 600; color: #374151; font-family: var(--font-display); }
+.bp-cat-circle-icon       { color: #374151; }
+.bp-cat-circle-lucide     { color: #374151; }
 .bp-cat-circle-logo-img   { width: 60%; height: 60%; object-fit: contain; border-radius: 0; }
 /* v1.65am (p0002 #8) — active category circle: SOLID --theme-accent
    fill with white-rendered contents. Unmistakable active state. The
@@ -771,26 +840,63 @@ input.bp-cfg-page-label.p-inputtext:focus {
    (--color-surface + hairline + --radius-card + --shadow-xs) with a gap
    between them so the layout reads as objects, not zones. */
 .bp-cat-body {
+  /* --cat-col1 is the leading column width (filter sidebar / categories rail).
+     The Categories-LEFT rail widens it so long names (e.g. "Logistics &
+     Transport") don't truncate — see .bp-cat-body--cats-left. */
+  --cat-col1: 260px;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--cat-col1) 1fr;
+  /* Fallback height for catalogue hosts that aren't flex-filled (e.g. the
+     project marketplace tab). Standalone catalogue pages (.bp-page--catalogue)
+     override this with flex:1 so the body fills the shell viewport EXACTLY and
+     only the two columns scroll — no redundant outer page scrollbar. */
   height: calc(100vh - var(--nav-height) - 160px);
-  /* v1.65bp — page ground reverted to --theme-bg parchment (was
-     --theme-contrast-soft green). Cat + search panels back to
-     contained cards on the parchment ground. */
-  background: var(--theme-bg);
+  /* Catalogue body page ground — neutral off-white; cat + search panels are
+     contained white cards on it. */
+  background: var(--color-page-ground);
   gap: 12px;
   padding: 12px;
 }
-.bp-cat-body--detail { grid-template-columns: 260px 1fr 260px; }
-.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 260px 1fr 260px; }
-.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 260px 1fr 320px; }
-.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 260px 1fr 420px; }
+/* ── Catalogue page flex-fill ─────────────────────────────────────────────
+   A standalone catalogue page (marketplace / supplier store) marks its
+   wrapper .bp-page--catalogue. The chain shell-content → page → grid → body
+   becomes a flex column so the body fills the viewport height precisely; the
+   sidebar + main columns own the only scrollbars. Without this the body's
+   calc() height never matches the shell viewport exactly, leaking a 1px+
+   outer scrollbar. */
+.bp-shell-content:has(.bp-page--catalogue) { display: flex; flex-direction: column; overflow: hidden; }
+.bp-shell-content:has(.bp-page--catalogue) > * { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.bp-page--catalogue { overflow: hidden; display: flex; flex-direction: column; }
+.bp-page--catalogue app-catalogue-grid { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.bp-page--catalogue .bp-cat-body { height: auto; flex: 1 1 auto; min-height: 0; }
+.bp-cat-body--detail { grid-template-columns: var(--cat-col1) 1fr 260px; }
+.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: var(--cat-col1) 1fr 260px; }
+.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: var(--cat-col1) 1fr 320px; }
+.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: var(--cat-col1) 1fr 420px; }
 .bp-cat-body--detail:has(.bp-cat-detail--wide) { grid-template-columns: 240px 1fr 380px; }
 .bp-cat-body--detail.bp-cat-body--no-inline-detail,
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="sm"],
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="md"],
 .bp-cat-body--detail.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--cat-col1) 1fr;
+}
+/* Categories LEFT — widen the rail so category names fit; the marketplace
+   keeps the left-aligned hero lined up with the first card via heroExtraLeft
+   (309px at 260, 349px at 300 — see supplier-list). */
+.bp-cat-body--cats-left { --cat-col1: 300px; }
+/* Filter sidebar hidden — drop the leading 260px column (main + optional
+   detail remain). The no-inline-detail combo comes last so it wins on equal
+   specificity and collapses to a single column. */
+.bp-cat-body--no-filter { grid-template-columns: 1fr; }
+.bp-cat-body--no-filter.bp-cat-body--detail,
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="sm"] { grid-template-columns: 1fr 260px; }
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="md"] { grid-template-columns: 1fr 320px; }
+.bp-cat-body--no-filter.bp-cat-body--detail[data-detail-size="lg"] { grid-template-columns: 1fr 420px; }
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail,
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="sm"],
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="md"],
+.bp-cat-body--no-filter.bp-cat-body--no-inline-detail[data-detail-size="lg"] {
+  grid-template-columns: 1fr;
 }
 /* v1.65ai — sidebar + main become flex columns. Each has a fixed,
    non-scrolling head and a flex:1 body wrapper that owns the scrollbar
@@ -831,6 +937,59 @@ input.bp-cfg-page-label.p-inputtext:focus {
   overflow-y: auto;
   padding: 16px;
 }
+/* ── Categories LEFT rail ─────────────────────────────────────────────── */
+.bp-cat-rail { display: flex; flex-direction: column; gap: 2px; }
+.bp-cat-rail-all {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; margin-bottom: 4px; border: none; background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  border-radius: 10px;
+}
+.bp-cat-rail-all:hover { background: var(--color-fill); }
+.bp-cat-rail-all.active { color: var(--theme-accent); }
+.bp-cat-rail-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 8px; border: none; background: none; cursor: pointer; border-radius: 14px;
+  font-family: var(--font-body); transition: background 0.15s, box-shadow 0.15s;
+}
+.bp-cat-rail-item:hover { background: var(--color-fill); }
+.bp-cat-rail-item.active { background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.bp-cat-rail-icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--grad-accent-soft); color: #374151;
+}
+.bp-cat-rail-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bp-cat-rail-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-cat-rail-count { font-size: 11px; color: var(--color-text-muted); }
+.bp-cat-rail-chev { color: var(--color-text-muted); flex-shrink: 0; }
+.bp-cat-rail-subs { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 8px 49px; }
+.bp-cat-rail-sub {
+  text-align: left; border: none; background: none; cursor: pointer;
+  padding: 6px 6px; border-radius: 6px; font-family: var(--font-body);
+  font-size: 13px; color: var(--color-text-secondary);
+}
+.bp-cat-rail-sub:hover { color: var(--theme-accent); background: var(--color-fill); }
+.bp-cat-rail-sub.active { color: var(--theme-accent); font-weight: 600; }
+/* v1.69x (p0038) — third-level rail row, sits under .bp-cat-rail-sub.
+   Used by inbox-v2 to show item-thread rows nested under suppliers. */
+.bp-cat-rail-sub-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 36px;  /* +12px indent vs .bp-cat-rail-sub */
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-button);
+  transition: background 0.1s;
+}
+.bp-cat-rail-sub-sub:hover { background: var(--color-fill); }
+.bp-cat-rail-sub-sub.active { background: var(--theme-soft); color: var(--theme-accent); font-weight: 600; }
 .bp-cat-main {
   background: var(--color-surface);
   border: var(--border-hairline);
@@ -863,10 +1022,31 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-cat-detail {
   background: var(--color-surface);
   border: var(--border-hairline);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-card-lg);
   box-shadow: var(--shadow-xs);
   overflow-y: auto;
 }
+
+/* ── Show Containers = No ─────────────────────────────────────────────────
+   Strip the panel chrome (heads, borders, white fill, shadow) so the
+   catalogue reads as bare lists/cards on the page ground. The section heads
+   carry the CATEGORIES / CATALOGUE titles AND the view-mode toggle, so hiding
+   them removes those too (per the setting). Body padding is kept so the cards
+   stay put — the left-aligned hero stays lined up with the first card. */
+.bp-cat-body--no-containers .bp-cat-sidebar,
+.bp-cat-body--no-containers .bp-cat-main,
+.bp-cat-body--no-containers .bp-cat-detail {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* !important — beats the component-scoped `.bp-cat-sidebar-head { display:flex }`
+   rule (catalogue-grid styles) which competes at equal specificity. */
+.bp-cat-body--no-containers .bp-cat-sidebar-head,
+.bp-cat-body--no-containers .bp-cat-main-head { display: none !important; }
+/* Bare bodies hug the column edges (no inner gutter to a missing border). */
+.bp-cat-body--no-containers .bp-cat-sidebar-body { padding-left: 0; padding-right: 0; }
 
 /* ── Sidebar primitives ── */
 .bp-sidebar-search { display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border); border-radius: 8px; padding: 0 10px; height: 34px; margin-bottom: 20px; }
@@ -976,7 +1156,30 @@ input.bp-cfg-page-label.p-inputtext:focus {
    on a grid that mirrors the 3-col body grid below (col 1+2 → search,
    col 3 → actions). Outside project context the wrapper is a no-op
    block and the search panel renders full-width as before. */
-.bp-search-row-wrap { display: block; }
+/* Categories LEFT — v1.68d: the search bar spans FULL WIDTH with its LEFT edge
+   aligned to the containers panel (the left rail), not indented to the first
+   card. 12px = the body's left padding, where the rail starts. The bespoke
+   "card" search-row chrome (white fill, 16px radius, tall padding) is dropped —
+   the row now inherits the canonical .bp-search-row (38px, transparent +
+   theme-border, radius-button) so the search bar is consistent across every
+   grid surface (marketplace / supplier store / project marketplace). */
+.bp-browse-strip--cats-left { padding-left: 12px; }
+.bp-browse-strip--cats-left .bp-search-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+/* v1.68d — flex row so projected [catalogue-search-actions] (the supplier
+   store's Add / Upload pills) sit inline to the RIGHT of the search bar.
+   The --split variant below overrides to grid for project context. */
+.bp-search-row-wrap { display: flex; align-items: center; gap: 10px; }
+.bp-search-row-wrap > .bp-search-panel { flex: 1 1 auto; min-width: 0; }
+.bp-search-actions-slot { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* The actions slot is store-only; in project context (--split grid) it would
+   auto-place into a grid cell and break the search / quick-actions columns, so
+   hide it there. */
+.bp-search-row-wrap--split .bp-search-actions-slot { display: none; }
 .bp-search-row-wrap--split {
   display: grid;
   gap: 12px;
@@ -1022,21 +1225,48 @@ input.bp-cfg-page-label.p-inputtext:focus {
 /* v1.65bo — search row gets its own white fill + hairline so the
    input reads as a defined field while the surrounding browse + search
    panels stay chrome-less. */
+/* v1.68d — search-style inputs join the canonical input chrome family:
+   38px tall + var(--radius-button) (same as bp-btn-grad / Edit pill) so the
+   bar can sit inline with action buttons; transparent fill + theme-border,
+   accent focus ring (matches bp-fld). Shared across every catalogue-grid
+   surface (marketplace / supplier store / project marketplace). */
 .bp-search-row {
   display: flex; align-items: center; gap: 8px;
-  background: var(--color-surface);
-  border: var(--border-hairline);
-  border-radius: var(--radius-button);
-  overflow: hidden;
+  min-height: 38px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--theme-border);
+  /* v1.68e — matches the grid's container family (item cards / detail
+     preview panel = --radius-card-lg) so the search bar + category
+     container + cards all share one rounding. */
+  border-radius: var(--radius-card-lg);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bp-search-row:focus-within {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(var(--theme-accent-rgb), 0.10);
 }
 .bp-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+/* Filter affordance shown in the search row when the filter sidebar setting
+   is off — reveals the sidebar on demand. Active = revealed. */
+.bp-search-filter-btn {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0.5px solid var(--color-border); border-radius: var(--radius-button);
+  background: var(--color-surface); color: var(--color-text-muted);
+  cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.bp-search-filter-btn:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+.bp-search-filter-btn.active { background: var(--theme-accent); color: var(--color-surface); border-color: var(--theme-accent); }
 .bp-search-input.p-inputtext {
   flex: 1;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 !important;
-  font-size: 12px !important;
+  /* v1.68d — canonical input font size (was 12px — too small). Matches bp-fld. */
+  font-size: 15px !important;
   height: auto !important;
   min-height: 0 !important;
 }
@@ -1141,7 +1371,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
   transition: background 0.12s, border-color 0.12s;
 }
 .bp-list-row:hover {
-  background: var(--color-background-secondary, var(--theme-bg));
+  background: var(--color-background-secondary, var(--color-fill));
 }
 .bp-list-row--active,
 .bp-list-row--unread {
@@ -1260,7 +1490,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
    ============================================ */
 .bp-modal.p-dialog .p-dialog-header,
 .p-dialog.bp-modal .p-dialog-header {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-bottom: 0.5px solid var(--theme-border) !important;
   padding: 24px 24px 20px 24px !important;
 }
@@ -1301,9 +1531,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 .bp-modal.p-dialog .p-dialog-footer .p-button,
 .p-dialog.bp-modal .p-dialog-footer .p-button {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   color: var(--theme-text) !important;
-  border: 0.5px solid var(--theme-bg) !important;
+  border: 0.5px solid var(--color-fill) !important;
   font-family: var(--font-body) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
@@ -1338,11 +1568,13 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-hero {
   background: var(--theme-accent);
   padding: 32px var(--section-pad) 0;
-  border-bottom: 0.5px solid var(--theme-bg);
+  /* v1.66bc — the hero's full-bleed bottom border is gone; the inset
+     tab-band separator (.bp-hero-tabs::after, aligned with the title)
+     is the single hero baseline now. */
 }
 .bp-hero-org-name {
   font-family: var(--font-display);
-  font-size: 36px;
+  font-size: 42px;          /* v1.66ae — up one step (was 36) */
   font-weight: 400;
   color: var(--color-surface);
   letter-spacing: -0.02em;
@@ -1358,6 +1590,16 @@ input.bp-cfg-page-label.p-inputtext:focus {
   margin-bottom: 20px;
   display: block;
 }
+/* v1.66ad — a real subtitle sentence (route/ctx heroSub) renders
+   sentence-case + normal spacing; the legacy bare pageLabel keeps the
+   small uppercase eyebrow treatment above. */
+.bp-hero-page-label.bp-hero-subtitle {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 15px;                       /* v1.66ae — up one step (was 13) */
+  font-weight: 400;
+  color: #475569 !important;             /* v1.66ae — darker slate, per mock */
+}
 /* v1.65bd — hairline along the bottom of the tab row. Inactive tabs
    sit on it (their bottom edge appears bordered because the band's
    hairline shows below them). The active tab "punches through" via
@@ -1367,6 +1609,45 @@ input.bp-cfg-page-label.p-inputtext:focus {
    Tabs flex row no longer carries it. */
 .bp-hero-tabs {
   display: flex;
+  align-items: flex-end;
+  gap: 28px;   /* v1.66t — flat underline tabs need breathing room */
+  /* v1.66ah — min-height so heros with no tabs still reserve the band
+     height + show the separator (consistent hero height everywhere). */
+  min-height: 42px;
+  position: relative;
+}
+/* v1.66bb — the separator is now a pseudo-element so its width is
+   controllable (--hero-sep-width, a % general setting). The active tab's
+   gradient underline (::after) overlays it. Anchored to the hero
+   alignment: centred by default, left-anchored on a left-aligned hero. */
+/* v1.66be — the separator is always centred within the content area, so
+   when the width is < 100% it shrinks symmetrically from BOTH sides
+   (was left-anchored, which put the whole gap on the right and made the
+   line hug the left). At 100% it still spans title-left → content-right. */
+.bp-hero-tabs::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--hero-sep-width, 100%);
+  height: 1px;
+  background: #E5E7EB;
+}
+/* v1.66bf — left-aligned hero anchors to the separator's LEFT EDGE. When
+   the separator is < 100% wide it's centred (gap each side); the content
+   (pills / title / subtitle / tab buttons) insets by that same gap so it
+   lines up with the separator's left end. box-sizing is border-box
+   (Tailwind preflight) so padding-left doesn't overflow. At 100% the gap
+   is 0 — content sits at the usual content-left edge. */
+.bp-hero--left .bp-hero-meta,
+.bp-hero--left .bp-hero-org-name,
+.bp-hero--left .bp-hero-page-label,
+.bp-hero--left .bp-hero-tabs {
+  /* --hero-extra-left lets a page push the hero content further right (e.g.
+     the marketplace indents it to the catalogue's main column when categories
+     are in the left rail). Default 0. */
+  padding-left: calc((100% - var(--hero-sep-width, 100%)) / 2 + var(--hero-extra-left, 0px));
 }
 /* v1.65n — tab band. Sibling of .bp-hero, painted in the same
    parchment so the tabs feel like a continuation of the hero rather
@@ -1381,7 +1662,10 @@ input.bp-cfg-page-label.p-inputtext:focus {
    visible chrome in the row. */
 .bp-hero-tab-band {
   background: transparent;
-  padding: 0 var(--section-pad);
+  /* v1.66ba — no horizontal padding here; .bp-hero already provides
+     --section-pad, so the tab band + separator align to the same left
+     edge as the title/subtitle (was double-indented). */
+  padding: 0;
 }
 /* p0003 — REAL FOLDER TABS. Sentence case, --text-base, readable
    inactive colour. Active tab = --theme-contrast-soft fill +
@@ -1392,83 +1676,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
    inactive tabs also read as folder-tab shapes, matching the Adobe
    reference. The tab band's own bottom hairline handles the row
    bottom so individual tabs don't need a border-bottom. */
-.bp-hero-tab {
-  padding: 10px 18px;
-  /* v1.65bc — even visual width across tabs regardless of label
-     length. "Marketplace" is the widest natural label (~95px); 130px
-     gives a small breathing margin and lets "Overview" / "Plan" /
-     "Inbox" share the same footprint. */
-  min-width: 130px;
-  text-align: center;
-  font-size: var(--text-base);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  /* v1.65br — inactive tabs now carry a white fill so they read as
-     defined card chips on the parchment hero. */
-  background: var(--color-surface);
-  border: var(--border-hairline);
-  border-bottom: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
-  font-family: var(--font-body);
-  text-transform: none;
-  letter-spacing: 0;
-  border-radius: 9px 9px 0 0;
-  /* v1.65ca — soft drop shadow on the tabs (top + sides) so the
-     folder chips lift off the hero band. Negative-y + side spreads
-     keep the shadow above the bottom hairline of the active tab. */
-  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03);
-}
-.bp-hero-tab + .bp-hero-tab { margin-left: -0.5px; } /* avoid doubled hairline */
-.bp-hero-tab:hover { color: var(--color-text-primary); }
-/* v1.65br — active tab is now light-theme parchment (--theme-bg) with
-   --theme-text text, so it visually opens onto the hero and the
-   parchment page-ground below. Inactive tabs are the white chips;
-   active reads as the "this is the surface" tab. */
-.bp-hero-tab.active {
-  background: var(--theme-bg);
-  color: var(--theme-text);
-  position: relative;
-  z-index: 1;
-  margin-bottom: -0.5px;
-}
-/* v1.65bf — Dark + Bold mode tabs. Hero bg is a bold accent / dark
-   surface, so inactive tabs drop their hairline outline (which
-   reads as faint frame on coloured bg) and the band's bottom
-   hairline is suppressed. `!important` is necessary because
-   the duplicate .bp-hero-tab rule lower in styles.css carries
-   its own !important.
-   v1.65ca — Dark stays bare white-ish text on transparent.
-   Bold now gets white-filled inactive tabs (matching light mode)
-   so they read as defined folder chips on the accent hero. */
-[data-mode="dark"] .bp-hero-tab {
-  color: rgba(255, 255, 255, 0.82) !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-[data-mode="dark"] .bp-hero-tab:hover {
-  color: #fff !important;
-}
-[data-mode="bold"] .bp-hero-tab {
-  color: var(--color-text-secondary) !important;
-  background: var(--color-surface) !important;
-  border: var(--border-hairline) !important;
-  border-bottom: none !important;
-}
-[data-mode="bold"] .bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-}
+/* v1.66ae — hero tabs now have ONE canonical definition (search
+   "HERO TAB — SINGLE CANONICAL" below). All the per-mode and per-variant
+   tab overrides that used to live here were removed so every hero tab
+   band renders identically. Only the hero's own bottom border stays
+   mode-tweaked. */
 [data-mode="dark"] .bp-hero,
 [data-mode="bold"] .bp-hero {
   border-bottom: none;
-}
-[data-mode="dark"] .bp-hero-tab.active,
-[data-mode="bold"] .bp-hero-tab.active {
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
-  border: none !important;
-  margin-bottom: 0 !important;
 }
 
 /* ─── p0003 — BOLD MODE HERO ──────────────────────────────────────
@@ -1516,12 +1731,14 @@ input.bp-cfg-page-label.p-inputtext:focus {
 [data-mode="bold"] .bp-hero-back {
   color: var(--color-surface) !important;
 }
-/* Pills on Bold hero — white-fill + theme-text for legibility. */
+/* Pills on Bold hero — white-fill + theme-text for legibility.
+   v1.66ah — hairline border in the theme border colour (was #fff /
+   invisible) so all three pills read consistently. */
 [data-mode="bold"] .bp-hero-tag.p-tag,
 [data-mode="bold"] .bp-hero-tag-span {
   background: #fff !important;
   color: var(--theme-text) !important;
-  border-color: #fff !important;
+  border-color: var(--color-border) !important;
 }
 /* Tab badge in Bold — danger-red on accent is muddy; flip to white-fill
    + accent-text. */
@@ -1530,24 +1747,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   color: var(--theme-accent) !important;
 }
 
-/* ─── v1.65dh — CALM HERO VARIANT ─────────────────────────────────
-   Used by the dashboard + settings surfaces (route data
-   heroVariant: 'calm'). Overrides the Bold-aware default hero with
-   a parchment fill, no orbs/grain regardless of [data-mode], and
-   calm underline tabs (text-muted by default, accent + bottom-
-   underline on active). Selectors win on specificity (.bp-hero--calm
-   + .bp-hero-tab), so the existing !important rules from p0003 +
-   v1.65ca are kept intact for the default hero.
-
-   Notes from the spec:
-   - Card chrome on this page is shadow-only (no hairline border).
-   - Tabs are calm underline, not folder-tab.
-   - No Bold-mode hero on this page even when data-mode='bold'. */
-.bp-hero.bp-hero--calm {
-  background: var(--theme-bg) !important;
-  border-bottom: var(--border-hairline) !important;
-  padding-top: 24px !important;
-}
+/* v1.66ag — the 'calm' hero variant was removed. There is ONE hero
+   object; the global ConfigService.heroColor picks accent vs the
+   stripped ('none') treatment below. */
 
 /* v1.65h1  — 'none' hero variant. Used by the Agent dashboard:
    no accent fill, no orbs/grain, no border.
@@ -1557,14 +1759,18 @@ input.bp-cfg-page-label.p-inputtext:focus {
    the hero band matches the agent page body (which is also
    --theme-bg). Continuous parchment from top of viewport to bottom. */
 .bp-hero.bp-hero--none {
-  background: var(--theme-bg) !important;
+  background: var(--color-hero-bg) !important;
   border-bottom: none !important;
   padding-top: 24px !important;
 }
+/* v1.66k — keep the tab band visible on the transparent ('none') hero.
+   The default .bp-hero-tab styling is already parchment-ready (white
+   folder-chips, v1.65br), so the Home/Inbox tabs render correctly here.
+   The pill band (.bp-hero-meta) stays hidden — preserves the clean look. */
 .bp-hero.bp-hero--none .bp-hero-orbs,
-.bp-hero.bp-hero--none .bp-hero-grain,
-.bp-hero.bp-hero--none .bp-hero-meta,
-.bp-hero.bp-hero--none .bp-hero-tab-band { display: none !important; }
+.bp-hero.bp-hero--none .bp-hero-grain { display: none !important; }
+/* v1.66ag — the pill band (.bp-hero-meta) now shows on the stripped hero
+   too; the org / user / location pills are part of the standard hero. */
 .bp-hero.bp-hero--none .bp-hero-org-name {
   color: var(--color-text-primary) !important;
 }
@@ -1573,69 +1779,8 @@ input.bp-cfg-page-label.p-inputtext:focus {
 }
 [data-mode="dark"] .bp-hero.bp-hero--none,
 [data-mode="bold"] .bp-hero.bp-hero--none {
-  background: var(--theme-bg) !important;
+  background: var(--color-hero-bg) !important;
   border-bottom: none !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-orbs,
-.bp-hero.bp-hero--calm .bp-hero-grain { display: none !important; }
-.bp-hero.bp-hero--calm .bp-hero-org-name {
-  color: var(--color-text-primary) !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-page-label {
-  color: var(--color-text-muted) !important;
-}
-/* Tab band — strip-style flat bar with a hairline divider. */
-.bp-hero.bp-hero--calm .bp-hero-tab-band {
-  background: transparent !important;
-  padding-bottom: 0 !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tabs {
-  border-bottom: var(--border-hairline) !important;
-  gap: 4px;
-}
-/* Calm underline tab — bare text, no fill, no border-radius. */
-.bp-hero.bp-hero--calm .bp-hero-tab {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  min-width: 0 !important;
-  padding: 10px 16px !important;
-  color: var(--color-text-muted) !important;
-  font-weight: 500 !important;
-  margin-bottom: 0 !important;
-  transition: color 0.15s, border-color 0.15s !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-  background: transparent !important;
-}
-.bp-hero.bp-hero--calm .bp-hero-tab.active {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border-bottom-color: var(--theme-accent) !important;
-  font-weight: 600 !important;
-}
-/* Override Bold-mode rules so this variant looks identical regardless
-   of the global data-mode setting. */
-[data-mode="dark"] .bp-hero.bp-hero--calm,
-[data-mode="bold"] .bp-hero.bp-hero--calm {
-  background: var(--theme-bg) !important;
-}
-[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab,
-[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab {
-  background: transparent !important;
-  color: var(--color-text-muted) !important;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  box-shadow: none !important;
-}
-[data-mode="dark"] .bp-hero.bp-hero--calm .bp-hero-tab.active,
-[data-mode="bold"] .bp-hero.bp-hero--calm .bp-hero-tab.active {
-  background: transparent !important;
-  color: var(--theme-accent) !important;
-  border-bottom-color: var(--theme-accent) !important;
 }
 
 /* ── PAGE LAYOUT ── */
@@ -1715,6 +1860,185 @@ input.bp-cfg-page-label.p-inputtext:focus {
 .bp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .bp-field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
+/* ── v1.66t — Profile/account "light-card" vocabulary ──────────────
+   New shared classes for the redesigned Settings/Profile surface.
+   Only Settings/Organisation consumes these today; other pages adopt
+   them deliberately as the new standard rolls out. Nothing else moves
+   until it opts in. */
+.bp-field         { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bp-field-s2      { grid-column: span 2; }
+.bp-field .bp-field-label { margin-bottom: 0; padding-left: 10px; }
+/* read-mode value — plain text (used by read-only summary cards) */
+.bp-field-value   { font-size: 15px; font-weight: 400; color: var(--color-text-primary); min-height: 22px; padding-left: 10px; }
+.bp-field-value.is-muted { color: var(--color-text-secondary); }
+
+/* v1.66ac — ZERO-SHIFT edit field. One <input> serves both view and
+   edit with identical metrics (height / padding / font); only the fill
+   + border toggle on .is-edit, so the value text never moves or resizes
+   when you click Edit. Transitions off — no morphing. */
+.bp-fld.p-inputtext,
+.bp-fld .p-inputtext,
+input.bp-fld {
+  width: 100%;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  height: 38px !important;
+  font-size: 15px !important;
+  color: var(--color-text-primary) !important;
+  padding: 0 10px !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+input.bp-fld:not(.is-edit),
+.bp-fld:not(.is-edit) input { cursor: default !important; }
+.bp-fld.is-edit.p-inputtext,
+.bp-fld.is-edit .p-inputtext,
+input.bp-fld.is-edit {
+  background: var(--card-soft-input) !important;
+  border-color: var(--color-border) !important;
+}
+input.bp-fld.is-edit:focus,
+.bp-fld.is-edit .p-inputtext:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px rgba(236,72,153,0.10) !important;
+}
+
+/* white surface card */
+.bp-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 16px rgba(16,24,40,0.04);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+}
+/* ── Card hover standard ───────────────────────────────────────────────
+   THE single hover treatment for interactive cards: lift 8px, accent-tinted
+   shadow + soft accent border, 300ms. Defined once as tokens (below) that
+   track the active theme; change them here and every card follows.
+
+   Two ways to reference it — both trace to the SAME tokens, so never
+   re-declare the lift/shadow per component:
+     1. Plain cards: add the class `bp-card-hover` to the hoverable element.
+     2. Cards that need !important (e.g. PrimeNG p-card): reference the tokens
+        in the component's own :hover, e.g.
+          transform: var(--card-hover-transform);
+          box-shadow: var(--card-hover-shadow) !important;
+          border-color: var(--card-hover-border) !important; */
+.bp-card-hover {
+  transition: var(--card-hover-transition);
+}
+.bp-card-hover:hover {
+  transform: var(--card-hover-transform);
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* ── Card image zoom standard ──────────────────────────────────────────
+   A cover-image layer that scales on card hover (combined with the lift).
+   Put .bp-card-zoom-img on an absolutely-positioned image layer inside an
+   overflow-hidden container, with overlay content (chips / action buttons /
+   logos) as siblings ABOVE it so only the photo zooms. Cards using the
+   .bp-card-hover class get the trigger for free; cards with a bespoke hover
+   trigger (e.g. PrimeNG p-card via a wrap) add one rule referencing the same
+   --card-img-zoom token. */
+.bp-card-zoom-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform-origin: center;
+  transition: var(--card-img-zoom-transition);
+}
+.bp-card-hover:hover .bp-card-zoom-img { transform: var(--card-img-zoom); }
+.bp-card-head  { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.bp-card-title { font-family: var(--font-display); font-size: 28px; font-weight: 400; letter-spacing: -0.01em; color: var(--color-text-primary); margin: 0; }
+.bp-card-actions { display: flex; align-items: center; gap: 10px; }
+/* v1.66x — card action row, bottom-left (her mock places Edit / Save
+   under the fields, not in the header) */
+.bp-card-foot  { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
+
+/* her soft grey-filled edit input (view→edit happens behind an Edit
+   button, so a box appearing on edit is an intentional mode change) */
+.bp-input-soft.p-inputtext,
+input.bp-input-soft {
+  background: var(--card-soft-input) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  font-size: 15px !important;
+  color: var(--color-text-primary) !important;
+  padding: 0 14px !important;
+}
+.bp-input-soft.p-inputtext:enabled:focus,
+input.bp-input-soft:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px rgba(236,72,153,0.10) !important;
+}
+.bp-input-soft.p-inputnumber .p-inputtext {
+  background: var(--card-soft-input) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  height: 44px !important;
+  font-size: 15px !important;
+}
+
+/* pill buttons — gradient = primary (Edit / Save), outline = secondary
+   (Cancel). Her spec: px-6 py-3, rounded-full, normal weight, white text,
+   shadow-md → lg on hover. */
+.bp-btn-outline, .bp-btn-grad {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 24px; border-radius: var(--radius-pill);
+  font-family: var(--font-body); font-size: 14px; font-weight: 400;
+  cursor: pointer; border: 1px solid transparent;
+  transition: box-shadow .15s, background .15s;
+}
+.bp-btn-outline {
+  background: #fff; border-color: #E5E7EB; color: #374151;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.bp-btn-outline:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.09); }
+.bp-btn-grad {
+  background: var(--grad-accent); color: #fff;
+  box-shadow: 0 2px 6px rgba(var(--theme-accent-rgb), 0.20), 0 1px 2px rgba(0,0,0,0.06);
+}
+.bp-btn-grad:hover { box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.28), 0 2px 6px rgba(0,0,0,0.08); }
+.bp-btn-grad:disabled { opacity: .55; cursor: default; box-shadow: none; }
+
+/* ── v1.66dk — DRAWER DENSITY for the shared <app-edit-section> /
+   <app-edit-field>. ONE chrome, scaled down for sidebar drawers; the
+   page/card density is the rules above, unchanged. The consuming SURFACE picks
+   the container (drawer OR page, one at a time) and the matching density flag.
+   Placed after .bp-card / .bp-btn / .bp-fld so source order + specificity
+   resolve in the drawer modifier's favour. ── */
+/* Field: 34px (vs 38px). The .is-edit grey fill/border is inherited from the
+   .bp-fld.is-edit rules above — only the metrics change here. */
+.bp-fld--drawer.p-inputtext,
+.bp-fld--drawer .p-inputtext,
+input.bp-fld--drawer,
+textarea.bp-fld--drawer {
+  height: 34px !important;
+  font-size: 13px !important;
+  padding: 0 9px !important;
+  border-radius: 8px !important;
+}
+/* Textarea grows vertically (rows-driven) — undo the fixed field height at both
+   densities so the [rows] attribute sets the height. */
+textarea.bp-fld.p-inputtext         { height: auto !important; min-height: 76px !important; padding: 8px 10px !important; }
+textarea.bp-fld--drawer.p-inputtext { height: auto !important; min-height: 60px !important; padding: 7px 9px !important; }
+/* Label: 10px (vs 11px) + tighter inter-field gap. */
+.bp-field--drawer .bp-field-label { font-size: 10px; margin-bottom: 4px; }
+.bp-card--drawer .bp-field-grid-2,
+.bp-card--drawer .bp-field-grid-3 { gap: 12px; }
+/* Card shell: 16px padding, serif 20px title, tighter head/foot, 32px pills. */
+.bp-card--drawer { padding: 16px; margin-bottom: 16px; border-radius: 12px; }
+.bp-card--drawer .bp-card-head { margin-bottom: 16px; }
+.bp-card--drawer .bp-card-title { font-size: 20px; }
+.bp-card--drawer .bp-card-foot { margin-top: 16px; }
+.bp-card--drawer .bp-btn-outline,
+.bp-card--drawer .bp-btn-grad { padding: 8px 16px; font-size: 13px; }
+
 /* ── FIELD LABELS & VALUES ── */
 .bp-field-label {
   font-size: var(--text-sm);
@@ -1745,9 +2069,9 @@ input.bp-cfg-page-label.p-inputtext:focus {
   transition: color 0.15s, background 0.15s;
   font-size: 13px;
 }
-.bp-icon-btn:hover          { color: var(--theme-accent); background: var(--theme-bg); }
+.bp-icon-btn:hover          { color: var(--theme-accent); background: var(--color-fill); }
 .bp-icon-save               { color: var(--theme-accent); }
-.bp-icon-save:hover:not(:disabled) { background: var(--theme-bg); }
+.bp-icon-save:hover:not(:disabled) { background: var(--color-fill); }
 .bp-icon-save:disabled      { opacity: 0.4; cursor: default; }
 .bp-icon-cancel:hover       { color: var(--color-text-primary); background: var(--color-border); }
 .bp-icon-danger             { color: var(--color-text-muted); }
@@ -1755,7 +2079,7 @@ input.bp-cfg-page-label.p-inputtext:focus {
 
 /* ── DRAWER CHROME ── */
 .bp-drawer.p-sidebar .p-sidebar-header {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-bottom: 0.5px solid var(--theme-border) !important;
   padding: 20px 24px !important;
 }
@@ -1847,7 +2171,7 @@ input.bp-input-edit {
   padding: 6px 11px !important;
   font-size: 13px !important;
   line-height: 1.4 !important;
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
@@ -1859,7 +2183,7 @@ textarea.bp-input-edit {
   padding: 6px 11px !important;
   font-size: 13px !important;
   line-height: 1.4 !important;
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
@@ -1873,7 +2197,7 @@ textarea.bp-input-edit:focus {
 
 /* Edit mode — nested inputtext (inputNumber, chips) */
 .bp-input-edit .p-inputtext {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-color: var(--theme-accent) !important;
 }
 
@@ -1885,7 +2209,7 @@ textarea.bp-input-edit:focus {
   border-width: 1px !important;
   border-style: solid !important;
   border-color: var(--theme-accent) !important;
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-radius: var(--radius-button) !important;
 }
 .bp-input-edit.p-inputnumber .p-inputtext {
@@ -1927,7 +2251,7 @@ textarea.bp-input-edit:focus {
 
 /* Edit mode — chips */
 .bp-input-edit.p-chips .p-inputtext {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   border-color: var(--theme-accent) !important;
 }
 
@@ -1975,7 +2299,7 @@ app-top-nav { flex-shrink: 0; }
    (--theme-bg background, no border) reads quieter while keeping
    the accent colour for the count. */
 .bp-balls-tag.p-tag {
-  background: var(--theme-bg) !important;
+  background: var(--color-fill) !important;
   color: var(--theme-accent) !important;
   border: none !important;
   font-weight: 600 !important;
@@ -2149,28 +2473,44 @@ app-top-nav { flex-shrink: 0; }
    parchment.
    v1.65ca — soft folder-tab drop shadow added (top + sides only,
    bottom flush against the band hairline). */
+/* ════════════════════════════════════════════════════════════════
+   HERO TAB — SINGLE CANONICAL DEFINITION (v1.66ae).
+   The ONLY place hero tabs are styled. Flat text + a 3-colour gradient
+   underline on the active tab, identical in every theme mode
+   (light / dark / bold) and hero variant. Change it here → every hero
+   tab band updates. Do NOT reintroduce mode/variant tab overrides. */
 .bp-hero-tab {
+  padding: 10px 2px !important;
+  min-width: 25ch !important;
+  text-align: center !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--text-base) !important;
+  font-weight: 400 !important;
   color: var(--color-text-secondary) !important;
-  background: var(--color-surface) !important;
-  font-weight: 500 !important;
-  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.04), -1px 0 2px rgba(0, 0, 0, 0.03), 1px 0 2px rgba(0, 0, 0, 0.03) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-size: var(--text-base) !important;
-  border: var(--border-hairline) !important;
-  border-bottom: none !important;
-  border-radius: 9px 9px 0 0 !important;
-}
-.bp-hero-tab:hover {
-  color: var(--color-text-primary) !important;
-}
-.bp-hero-tab.active {
-  background: var(--theme-bg) !important;
-  color: var(--theme-text) !important;
-  font-weight: 500 !important;
+  cursor: pointer !important;
   position: relative !important;
+  transition: color 0.15s !important;
+}
+.bp-hero-tab:hover { color: var(--color-text-primary) !important; }
+.bp-hero-tab.active {
+  color: var(--color-text-primary) !important;
+  font-weight: 500 !important;
   z-index: 1 !important;
-  margin-bottom: -0.5px !important;
+}
+.bp-hero-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--grad-tab);
+  border-radius: 2px 2px 0 0;
+  z-index: 1;
 }
 
 /* ── FILLED HEART when active ── */
@@ -2181,16 +2521,24 @@ app-top-nav { flex-shrink: 0; }
   stroke: #E11D48 !important;
 }
 
-/* ── CENTER hero tabs ── */
+/* ── hero tabs follow the hero alignment (v1.66ay — was forced center) ── */
 .bp-hero-tabs {
-  justify-content: center !important;
+  justify-content: var(--hero-align-flex, center) !important;
+}
+/* v1.66az — left-aligned hero: tab labels anchor flush-left to the
+   separator (drop the even 25ch min-width + centered text). */
+.bp-hero--left .bp-hero-tab {
+  min-width: 0 !important;
+  text-align: left !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* ── INBOX CARD STYLE (messages) ── */
 .bp-inbox-card { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--color-border); background: var(--color-surface); transition: background 0.15s; }
 .bp-inbox-card:hover { background: var(--color-surface); }
-.bp-inbox-outbound { background: var(--theme-bg); }
-.bp-inbox-outbound:hover { background: var(--theme-bg); opacity: 0.85; }
+.bp-inbox-outbound { background: var(--color-fill); }
+.bp-inbox-outbound:hover { background: var(--color-fill); opacity: 0.85; }
 .bp-inbox-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--theme-accent); color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .bp-inbox-outbound .bp-inbox-avatar { background: var(--color-text-muted); }
 .bp-inbox-card-body { flex: 1; min-width: 0; }
@@ -2351,7 +2699,7 @@ app-top-nav { flex-shrink: 0; }
   margin: 8px 0;
 }
 .bp-md-preview th {
-  background: var(--theme-bg);
+  background: var(--color-fill);
   color: var(--theme-text);
   font-weight: 500;
   text-align: left;
@@ -2423,8 +2771,8 @@ app-top-nav { flex-shrink: 0; }
   background: var(--theme-accent);
   color: var(--color-surface);
 }
-.bp-detail-hero-default { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; }
-.bp-detail-hero-logo { background: var(--theme-bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+.bp-detail-hero-default { background: var(--color-fill); display: flex; align-items: center; justify-content: center; }
+.bp-detail-hero-logo { background: var(--color-fill); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
 .bp-detail-hero-logo-img { max-height: 128px; max-width: calc(100% - 32px); object-fit: contain; }
 .bp-detail-hero-initials { font-size: 48px; font-weight: 600; color: var(--theme-accent); font-family: var(--font-display); }
 .bp-detail-body { padding: 16px 20px; }
@@ -2444,7 +2792,7 @@ app-top-nav { flex-shrink: 0; }
 .bp-detail-parent { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--color-border); border-radius: 10px; margin-bottom: 16px; cursor: pointer; transition: border-color 0.15s; }
 .bp-detail-parent:hover { border-color: var(--theme-accent); }
 .bp-detail-parent-img { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; background-size: cover; background-position: center; }
-.bp-detail-parent-img-default { background: var(--theme-bg); }
+.bp-detail-parent-img-default { background: var(--color-fill); }
 .bp-detail-parent-body { flex: 1; min-width: 0; }
 .bp-detail-parent-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
 .bp-detail-parent-sub { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-text-muted); margin-top: 1px; }

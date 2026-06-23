@@ -12,6 +12,8 @@ import { Org, CatalogueEntity, CategoryInfo } from '../../../models';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CatalogueGridComponent } from '../../../shared/components/catalogue-grid/catalogue-grid.component';
 import { ImageUploadPanelComponent } from '../../../shared/components/image-upload-panel/image-upload-panel.component';
+import { EditSectionComponent } from '../../../shared/components/edit-section/edit-section.component';
+import { EditFieldComponent } from '../../../shared/components/edit-field/edit-field.component';
 
 @Component({
   selector: 'app-orgs',
@@ -19,7 +21,8 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
   imports: [
     CommonModule, FormsModule, TitleCasePipe,
     ButtonModule, InputTextModule, DropdownModule, SidebarModule, ToastModule,
-    LoadingSpinnerComponent, CatalogueGridComponent, ImageUploadPanelComponent
+    LoadingSpinnerComponent, CatalogueGridComponent, ImageUploadPanelComponent,
+    EditSectionComponent, EditFieldComponent
   ],
   providers: [MessageService],
   template: `
@@ -75,25 +78,24 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         </div>
       </ng-template>
       <div class="bp-drawer-body">
-        <div class="mb-4">
-          <label class="bp-field-label">Organisation name *</label>
-          <input pInputText [(ngModel)]="addForm.name" class="w-full bp-input-edit" placeholder="Organisation name"/>
-        </div>
-        <div class="mb-4">
-          <label class="bp-field-label">Type</label>
-          <p-dropdown [(ngModel)]="addForm.type" [options]="typeOptions"
-            optionLabel="label" optionValue="value"
-            styleClass="w-full bp-input-edit" placeholder="Select type">
-          </p-dropdown>
-        </div>
-        <div class="mb-4">
-          <label class="bp-field-label">City</label>
-          <input pInputText [(ngModel)]="addForm.city" class="w-full bp-input-edit" placeholder="City"/>
-        </div>
-        <div>
-          <label class="bp-field-label">Email</label>
-          <input pInputText [(ngModel)]="addForm.email" class="w-full bp-input-edit" type="email" placeholder="contact@company.com"/>
-        </div>
+        <!-- v1.66dr — Tier 2: always-edit add form on the shared standard
+             (edit-section editable=false + edit-field, drawer density). Type
+             stays a bespoke dropdown (EF-select zero-shift is a follow-up). -->
+        <app-edit-section title="Details" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Organisation name *" density="drawer" [editing]="true"
+                            [(value)]="addForm.name" placeholder="Organisation name"></app-edit-field>
+            <div class="bp-field bp-field-s2 bp-field--drawer">
+              <label class="bp-field-label">Type</label>
+              <p-dropdown [(ngModel)]="addForm.type" [options]="typeOptions"
+                optionLabel="label" optionValue="value"
+                styleClass="w-full bp-input-edit" placeholder="Select type">
+              </p-dropdown>
+            </div>
+            <app-edit-field span2 label="City" density="drawer" [editing]="true" [(value)]="addForm.city" placeholder="City"></app-edit-field>
+            <app-edit-field span2 label="Email" type="email" density="drawer" [editing]="true" [(value)]="addForm.email" placeholder="contact@company.com"></app-edit-field>
+          </div>
+        </app-edit-section>
       </div>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" styleClass="bp-btn-cancel" (onClick)="closeAddDrawer()"></p-button>
@@ -121,47 +123,22 @@ import { ImageUploadPanelComponent } from '../../../shared/components/image-uplo
         </div>
       </ng-template>
       <div class="bp-drawer-body" *ngIf="selectedOrg">
-        <div class="bp-section-header mb-4">
-          <span class="bp-section-title">DETAILS</span>
-        </div>
-        <div class="mb-4">
-          <label class="bp-field-label">Name</label>
-          <input pInputText [value]="selectedOrg.name" class="w-full bp-field-readonly" readonly/>
-        </div>
-        <div class="bp-field-grid-2 mb-4">
-          <div>
-            <label class="bp-field-label">Type</label>
-            <input pInputText [value]="selectedOrg.type | titlecase" class="w-full bp-field-readonly" readonly/>
+        <!-- v1.66dr — read-only view on the shared standard (edit-field
+             readonlyAlways = transparent, zero-shift, drawer density). -->
+        <app-edit-section title="Details" density="drawer" [editable]="false">
+          <div class="bp-field-grid-2">
+            <app-edit-field span2 label="Name" density="drawer" readonlyAlways [value]="selectedOrg.name"></app-edit-field>
+            <app-edit-field label="Type" density="drawer" readonlyAlways [value]="selectedOrg.type | titlecase"></app-edit-field>
+            <app-edit-field label="Subscription" density="drawer" readonlyAlways [value]="selectedOrg.subscription_tier | titlecase"></app-edit-field>
+            <app-edit-field label="City" density="drawer" readonlyAlways [value]="$any(selectedOrg).city || '—'"></app-edit-field>
+            <app-edit-field label="Email" density="drawer" readonlyAlways [value]="$any(selectedOrg).email || '—'"></app-edit-field>
+            <ng-container *ngIf="selectedOrg.type === 'agency'">
+              <app-edit-field label="Balls balance" density="drawer" readonlyAlways [value]="selectedOrg.balls_balance"></app-edit-field>
+              <app-edit-field label="Monthly allowance" density="drawer" readonlyAlways [value]="selectedOrg.balls_monthly_allowance"></app-edit-field>
+            </ng-container>
+            <app-edit-field span2 label="Status" density="drawer" readonlyAlways [value]="selectedOrg.is_active ? 'Active' : 'Inactive'"></app-edit-field>
           </div>
-          <div>
-            <label class="bp-field-label">Subscription</label>
-            <input pInputText [value]="selectedOrg.subscription_tier | titlecase" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </div>
-        <div class="bp-field-grid-2 mb-4">
-          <div>
-            <label class="bp-field-label">City</label>
-            <input pInputText [value]="$any(selectedOrg).city || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Email</label>
-            <input pInputText [value]="$any(selectedOrg).email || '—'" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </div>
-        <div class="bp-field-grid-2 mb-4" *ngIf="selectedOrg.type === 'agency'">
-          <div>
-            <label class="bp-field-label">Balls balance</label>
-            <input pInputText [value]="selectedOrg.balls_balance" class="w-full bp-field-readonly" readonly/>
-          </div>
-          <div>
-            <label class="bp-field-label">Monthly allowance</label>
-            <input pInputText [value]="selectedOrg.balls_monthly_allowance" class="w-full bp-field-readonly" readonly/>
-          </div>
-        </div>
-        <div>
-          <label class="bp-field-label">Status</label>
-          <input pInputText [value]="selectedOrg.is_active ? 'Active' : 'Inactive'" class="w-full bp-field-readonly" readonly/>
-        </div>
+        </app-edit-section>
       </div>
     </p-sidebar>
 

@@ -11,6 +11,7 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { ProjectService } from '../../core/services/project.service';
+import { MessageService } from '../../core/services/message.service';
 import { OrgService } from '../../core/services/org.service';
 import { SupplierService } from '../../core/services/supplier.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -20,21 +21,13 @@ import { ShellContextService } from '../../core/services/shell-context.service';
 import { Project, Org } from '../../models';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-import { MessagesInboxComponent } from '../../shared/components/messages-inbox/messages-inbox.component';
 import { EventDatePipe } from '../../shared/pipes/event-date.pipe';
 import { CompactCurrencyPipe } from '../../shared/pipes/compact-currency.pipe';
 import { FavouriteService, Favourite } from '../../core/services/favourite.service';
 import { CreateProjectService } from '../../core/services/create-project.service';
-import { CodelistService } from '../../core/services/codelist.service';
-import { PageConfigDrawerComponent } from '../../shared/components/page-config-drawer/page-config-drawer.component';
+import { CodelistService, resolveMetaColor } from '../../core/services/codelist.service';
+import { PersonaService } from '../../core/services/persona.service';
 import { ActionTileComponent } from '../../shared/components/action-tile/action-tile.component';
-
-// v1.65g2 — Inbox tab added next to Home/Projects. The label of the
-// "projects" tab reads from pageCfg.homePageLabel (so orgs that
-// renamed it to "Events" keep their label); Inbox is fixed.
-// activeTab='projects' = the dashboard home content;
-// activeTab='inbox' renders the embedded MessagesInboxComponent.
-type DashTab = 'projects' | 'inbox';
 
 @Component({
   selector: 'app-dashboard',
@@ -44,28 +37,16 @@ type DashTab = 'projects' | 'inbox';
     LucideAngularModule,
     ButtonModule, CheckboxModule, InputTextModule,
     LoadingSpinnerComponent, StatusBadgeComponent,
-    MessagesInboxComponent,
-    PageConfigDrawerComponent, ActionTileComponent,
+    ActionTileComponent,
     EventDatePipe, CompactCurrencyPipe
   ],
   template: `
-    <!-- v1.65g2 — when the Inbox hero tab is active, render the
-         shared MessagesInboxComponent at the org level. No new
-         component or route — the same inbox the supplier uses
-         (and the existing /messages route mounts) flips on inside
-         the dashboard so users don't have to leave home. -->
-    <app-messages-inbox *ngIf="activeTab === 'inbox'"
-                        [showProjectSelector]="true"
-                        viewer="agency">
-    </app-messages-inbox>
-
-    <div class="bp-page" *ngIf="activeTab === 'projects'">
-    <!-- v1.65hJ (p0017) — page-settings drawer. Migrated from the
-         horizontal strip; same handlers/draft/sync, but rendered as a
-         right-side p-sidebar so it can scroll and accommodate the
-         next round of section-visibility toggles. The cog in the
-         top-nav still toggles it via ConfigStripService.toggle(). -->
-    <app-page-config-drawer></app-page-config-drawer>
+    <!-- v1.66l (p0015 close-out) — the dashboard no longer embeds the
+         inbox. Inbox is its own canonical /inbox route; the hero Inbox
+         tab + the launcher Inbox tile both navigate there. -->
+    <div class="bp-page">
+    <!-- v1.66at — page-settings drawer now mounted globally in app-shell,
+         so the cog appears on every page (not just the dashboard). -->
 
     <app-loading *ngIf="loading"></app-loading>
     <ng-container *ngIf="!loading">
@@ -99,11 +80,11 @@ type DashTab = 'projects' | 'inbox';
            DESKTOP — three column layout
            MOBILE — hidden, replaced by tab panels below
       ══════════════════════════════════════════════════ -->
-      <!-- p0018 / p0019 — grid-template-columns is bound so a fully-
-           hidden SIDE column drops its track (no empty gap). hasLeftColumn
-           / hasRightColumn gate the side columns; the centre launcher is
-           always present. -->
-      <div class="bp-body bp-desktop-only" [style.grid-template-columns]="bodyGridColumns">
+      <!-- v1.66b — fixed 3-track grid (320 / 1fr / 320); each column is
+           pinned to its track via grid-column, so hiding a side column's
+           sections leaves its track reserved (empty) and the centre
+           launcher stays dead-centre rather than sliding over. -->
+      <div class="bp-body bp-desktop-only">
 
         <!-- LEFT PANEL — v1.65dh: each section is now its own
              elevated card (shadow-only, no border) instead of all
@@ -150,7 +131,7 @@ type DashTab = 'projects' | 'inbox';
                  lives behind the cog icon in the header. -->
             <!-- v1.65hQ (p0019 §2): Browse Marketplace dropped — it's now
                  the Marketplace launcher tile in the centre column. -->
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers' }"
                class="bp-quick-action">Browse Suppliers</a>
             <a routerLink="/settings/team" class="bp-quick-action">Invite Member</a>
@@ -165,6 +146,35 @@ type DashTab = 'projects' | 'inbox';
              not wrapped in a bp-dash-card. -->
         <div class="bp-body-left">
           <div class="bp-launcher-grid">
+            <!-- Supplier persona (e.g. Ryan @ Rocket Food) — v1.67d: three
+                 tiles matching the agent home pattern. Storefront / Store /
+                 Profile moved behind the Marketplace Profile hub. -->
+            <ng-container *ngIf="isSupplier; else agencyLauncher">
+              <app-action-tile
+                icon="folder-open"
+                title="Projects"
+                subtitle="Manage active opportunities, confirmed projects and ongoing work."
+                (action)="goToProjects()">
+              </app-action-tile>
+
+              <app-action-tile
+                icon="inbox"
+                title="Inbox"
+                subtitle="View and respond to producer conversations."
+                [badge]="inboxUnread"
+                (action)="goToInbox()">
+              </app-action-tile>
+
+              <app-action-tile
+                icon="store"
+                title="Marketplace Profile"
+                subtitle="Manage how your company appears in Ballpark Marketplace. Update categories, pricing, portfolio and company information."
+                (action)="goTo('/marketplace-profile')">
+              </app-action-tile>
+            </ng-container>
+
+            <!-- Agency / admin launcher -->
+            <ng-template #agencyLauncher>
             <app-action-tile
               icon="folder-plus"
               title="Add {{ projectLabel }}"
@@ -199,6 +209,7 @@ type DashTab = 'projects' | 'inbox';
               subtitle="Your account and settings"
               (action)="goToProfile()">
             </app-action-tile>
+            </ng-template>
           </div>
         </div>
 
@@ -231,7 +242,7 @@ type DashTab = 'projects' | 'inbox';
             <div class="bp-sup-grid">
               <a *ngFor="let s of favSuppliers.slice(0,2)"
                  [routerLink]="['/suppliers', s.ref_id]"
-                 class="bp-sup-card">
+                 class="bp-sup-card bp-card-hover">
                 <div class="bp-sup-img bp-sup-bg-default"
                      [style.background-image]="s.ref_image_url ? 'url(' + s.ref_image_url + ')' : null">
                   <!-- v1.22i: lucide heart in a small white circle.
@@ -250,7 +261,7 @@ type DashTab = 'projects' | 'inbox';
             <!-- v1.32: "My Suppliers" lands on the marketplace
                  (a.k.a. supplier-list at /suppliers) pre-filtered
                  to the user's hearted suppliers. -->
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My Suppliers
@@ -258,7 +269,7 @@ type DashTab = 'projects' | 'inbox';
           </ng-container>
           <ng-template #noFavSuppliers>
             <div class="bp-empty">No saved suppliers yet</div>
-            <a [routerLink]="['/suppliers']"
+            <a [routerLink]="['/shop']"
                [queryParams]="{ view: 'suppliers', favourites: 'true' }"
                class="bp-quick-action">
               My suppliers
@@ -273,8 +284,9 @@ type DashTab = 'projects' | 'inbox';
            MOBILE TAB PANELS — hidden on desktop
       ══════════════════════════════════════════════════ -->
 
-      <!-- PROJECTS TAB -->
-      <div class="bp-mobile-panel" [class.active]="activeTab === 'projects'">
+      <!-- PROJECTS TAB — v1.66l: the dashboard has a single view now
+           (inbox moved to /inbox), so this mobile panel is always on. -->
+      <div class="bp-mobile-panel active">
         <div class="bp-section-header">
           <span class="bp-section-title">Active {{ projectLabel }}s</span>
           <!-- <a routerLink="/projects/new" class="bp-section-action">+ New</a> -->
@@ -317,10 +329,6 @@ type DashTab = 'projects' | 'inbox';
       box-shadow: var(--shadow-xs);
       padding: 16px 18px;
     }
-    .bp-dash-card--collapsible { padding: 0; }
-    .bp-dash-card--collapsible .bp-section-header { padding: 14px 18px; margin: 0; }
-    .bp-dash-card--collapsible .bp-project-grid,
-    .bp-dash-card--collapsible .bp-past-carousel { padding: 0 18px 16px; margin: 0; }
 
     /* v1.65di — STATS row sits on the parchment ground (same as the
        body below). 24px gap from the hero divider above; wider 16px
@@ -330,7 +338,7 @@ type DashTab = 'projects' | 'inbox';
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       padding: 24px 20px 0;
-      background: var(--theme-bg);
+      background: var(--color-fill);
     }
     .bp-dash-stat {
       display: flex; flex-direction: column;
@@ -346,29 +354,34 @@ type DashTab = 'projects' | 'inbox';
     /* DESKTOP 3-COL — parchment ground, 16px gap between columns
        and a matching 16px top padding above the row so the stats
        and the 3-col body share the same rhythm. */
-    /* p0018 — grid-template-columns is set inline (bodyGridColumns) so
-       a hidden column drops its track. The static value here is the
-       all-visible fallback. justify-content:center balances the row
-       when the greedy centre 1fr track is gone (only fixed side
-       columns remain) so they don't left-pack against a big gap. */
+    /* v1.66b — fixed 3-track grid; columns are pinned to their tracks
+       (grid-column below) so hiding a side column reserves its track
+       and the centre launcher stays put. */
     .bp-body {
       display: grid;
       grid-template-columns: 320px minmax(400px, 1fr) 320px;
-      justify-content: center;
       gap: 16px;
-      background: var(--theme-bg);
+      background: var(--color-fill);
       padding: 16px 20px 24px;
       min-height: calc(100vh - var(--nav-height) - 64px);
     }
-    .bp-body-panel { display: flex; flex-direction: column; gap: 14px; }
-    .bp-body-left  { display: flex; flex-direction: column; gap: 14px; }
-    .bp-body-right { display: flex; flex-direction: column; gap: 14px; }
+    /* v1.66b — pin each column to its grid track so a hidden side
+       column leaves its 320px track reserved (empty) and the centre
+       launcher stays centred instead of sliding into the freed space. */
+    .bp-body-panel { grid-column: 1; display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-left  { grid-column: 2; display: flex; flex-direction: column; gap: 14px; }
+    .bp-body-right { grid-column: 3; display: flex; flex-direction: column; gap: 14px; }
     /* v1.65hQ (p0019 §2) — centre-column launcher. auto-fit wraps 2 per
        row at typical centre widths, 3 at wider viewports. Tiles bring
        their own elevated chrome (<app-action-tile>) — no panel wrapper. */
+    /* v1.66d — match the agent page's tile sizing (.bp-agent-cards):
+       auto-fit + minmax(280px, 350px), capped (not 1fr) so tiles keep
+       their roomy rectangular footprint instead of stretching; centred
+       and wraps onto new rows as the centre column narrows. */
     .bp-launcher-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 350px));
+      justify-content: center;
       gap: 16px;
     }
     /* Make each .bp-panel-section in the left column inherit the
@@ -419,214 +432,14 @@ type DashTab = 'projects' | 'inbox';
     .bp-section-action:hover { color:var(--color-text-primary); }
     .bp-section-spacer { margin-top:24px; }
 
-    /* P-CARD GRID */
-    /* TODO(p0019-§2 / p0020): the project-card styles below
-       (.bp-project-grid / .bp-project-card* / .bp-card-* / .bp-past-* /
-       .bp-section-new-btn / collapsible header bits) are retained but
-       no longer rendered here — the Active/Inactive/Past grid moved out
-       of the centre column. They come back when the dedicated /projects
-       page is built (p0020); lift them to that component or a shared
-       stylesheet then rather than deleting now (per p0019 spec). */
-    .bp-project-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:8px; }
-    .bp-project-card-wrap { display:block; }
-    /* v1.22 elevation: Level 1 at rest (shadow-xs + hairline), Level 2
-       on hover (shadow-sm + stronger hairline + translateY(-1px)).
-       overflow:visible kept from v1.22g so the "..." dropdown can
-       extend past the card edge; the cover image's rounded top is
-       clipped by .bp-card-header below. */
-    :host ::ng-deep .bp-project-card.p-card {
-      border: var(--border-hairline) !important;
-      border-radius: var(--radius-card) !important;
-      box-shadow: var(--shadow-xs) !important;
-      overflow: visible !important;
-      margin: 0;
-      cursor: pointer;
-      position: relative;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    :host ::ng-deep .bp-project-card-wrap:hover .bp-project-card.p-card {
-      border: var(--border-hairline-strong) !important;
-      box-shadow: var(--shadow-sm) !important;
-      transform: translateY(-1px);
-    }
-    :host ::ng-deep .bp-project-card .p-card-body, :host ::ng-deep .bp-project-card .p-card-content, :host ::ng-deep .bp-project-card .p-card-header { padding:0 !important; }
-    .bp-card-header {
-      height:110px; position:relative;
-      display:flex; align-items:flex-end; justify-content:space-between;
-      padding:8px 10px;
-      background-size:cover; background-position:center;
-      /* Top-corner clip lives on the header, not the parent card —
-         keeps the cover image from spilling out of the rounded
-         corners now that the p-card itself is overflow:visible. */
-      border-top-left-radius: var(--radius-card);
-      border-top-right-radius: var(--radius-card);
-      overflow:hidden;
-    }
-    .bp-card-header-active { background-image:linear-gradient(160deg,#1e3a5f,#2563eb); }
-    .bp-card-header-draft  { background-image:linear-gradient(160deg,#374151,#4B5563); }
-    .bp-card-header-closed { background-image:linear-gradient(160deg,#374151,#6B7280); }
-    /* v1.22: client chip moved to bottom-left of cover. Lighter
-       white-translucent treatment so it doesn't fight the cover image. */
-    .bp-card-client-chip {
-      position:absolute; bottom:8px; left:8px;
-      background:rgba(255,255,255,0.92); color:var(--color-text-primary);
-      border-radius: var(--radius-pill); padding:3px 10px;
-      font-size:10px; font-weight:500;
-      font-family: var(--font-body);
-    }
-
-    /* v1.22: solid-fill status pill in top-right. Sentence case, white
-       text, themed colours. Replaces the previous app-status-badge in
-       this slot — kept smaller and quieter so it reads as a chip not a
-       full label. */
-    .bp-card-status-pill {
-      position:absolute; top:8px; right:8px;
-      font-size:10px; font-weight:500;
-      padding:3px 10px;
-      border-radius: var(--radius-pill);
-      color:var(--color-surface);
-      background:var(--color-text-secondary);
-      font-family: var(--font-body);
-      letter-spacing: 0.01em;
-    }
-    .bp-card-status-pill--draft  { background: var(--theme-accent); }
-    .bp-card-status-pill--active { background: var(--color-booked-text); }
-    .bp-card-status-pill--closed { background: var(--color-text-muted); }
-    .bp-card-logo          { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); max-width:70%; max-height:70%; object-fit:contain; pointer-events:none; }
-    .bp-card-edit-overlay  { position:absolute; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.15s; cursor:pointer; }
-    .bp-card-header:hover .bp-card-edit-overlay { opacity:1; }
-    .bp-card-content { padding:12px 14px 14px; position: relative; }
-    /* v1.22: name + "..." menu sit on the same row so the menu trigger
-       is reachable without overlapping the cover image. */
-    .bp-card-name-row {
-      display:flex; align-items:flex-start; gap:6px;
-      margin-bottom:4px;
-    }
-    .bp-card-name { font-size:13px; font-weight:600; color:var(--color-text-primary); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    /* v1.39h — auto-ref chip on dashboard card name row. */
-    .bp-card-ref-chip {
-      display:inline-block; margin-right:6px;
-      padding:1px 7px; border-radius:999px;
-      background:var(--theme-bg);
-      border:0.5px solid var(--color-border);
-      font-size:10px; font-weight:500; letter-spacing:0.04em;
-      color:var(--color-text-secondary);
-      vertical-align:middle;
-    }
-    .bp-card-menu-btn {
-      width:24px; height:24px;
-      border-radius:50%;
-      border:none; background:none;
-      color:var(--color-text-muted);
-      cursor:pointer;
-      flex-shrink:0;
-      font-size:16px; line-height:1;
-      display:flex; align-items:center; justify-content:center;
-      transition: background 0.15s, color 0.15s;
-    }
-    .bp-card-menu-btn:hover {
-      background:var(--theme-bg);
-      color:var(--theme-accent);
-    }
-    /* Dropdown — anchored bottom-right of the name row. v1.22
-       elevation: Level 3 (shadow-md) + hairline + button radius.
-       z-index + card overflow:visible let it overlay siblings. */
-    .bp-card-menu {
-      position:absolute;
-      top:32px; right:12px;
-      width:150px;
-      background:var(--color-surface);
-      border: var(--border-hairline);
-      border-radius: var(--radius-button);
-      padding:4px 0;
-      z-index:50;
-      box-shadow: var(--shadow-md);
-    }
-    /* Lift the wrap (and therefore its dropdown menu) above sibling
-       cards when the menu is open, so the dropdown isn't covered by
-       the next card's border / hero image. The wrap is always
-       position:relative so z-index applies; the --menu-open modifier
-       is added by the template via [class.…] when openMenuProjectId
-       matches this card. */
-    .bp-project-card-wrap { position:relative; }
-    .bp-project-card-wrap--menu-open { z-index:30; }
-    .bp-card-menu-item {
-      display:block;
-      width:100%;
-      padding:8px 12px;
-      font-size:12px;
-      font-weight:500;
-      text-align:left;
-      background:none;
-      border:none;
-      cursor:pointer;
-      color:var(--color-text-primary);
-      font-family: var(--font-body);
-      transition: background 0.1s;
-    }
-    .bp-card-menu-item:hover { background:var(--theme-bg); }
-    .bp-card-menu-item--danger { color:var(--color-danger); }
-    .bp-card-menu-item--danger:hover {
-      background:rgba(225, 29, 72, 0.06);
-    }
-    .bp-card-menu-sep {
-      height:0.5px;
-      background:var(--color-border);
-      margin:4px 0;
-    }
-    .bp-card-meta { font-size:11px; color:var(--color-text-muted); margin-bottom:6px; }
-    .bp-card-cost { font-size:13px; font-weight:500; color:var(--color-text-secondary); }
-
-    /* v1.65dh — "+ New Event" is the one primary CTA. Filled accent
-       PILL (was an outlined chip), white text, --radius-pill,
-       12px bold weight, subtle shadow-xs, slight lift on hover. */
-    .bp-section-new-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 18px;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: var(--font-body);
-      color: var(--color-surface);
-      background: var(--theme-accent);
-      border: none;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      box-shadow: var(--shadow-xs);
-      transition: box-shadow 150ms ease, transform 150ms ease, filter 150ms ease;
-    }
-    .bp-section-new-btn:hover {
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-    .bp-section-new-btn:active { transform: scale(0.98); }
+    /* v1.66e (p0024): the project-card grid, "+ New" pill, collapsible
+       headers and past-events carousel CSS that lived here (retained
+       dead since p0019) moved to projects-list.component.ts with the
+       /projects page. Shared section-header / icon / title primitives
+       below stay — the left column still uses them. */
 
     /* Section header icon — small, theme-accent, fixed size. */
     .bp-section-icon { color: var(--theme-accent); flex-shrink: 0; }
-    /* Count badge after the section title (Inactive / Past). */
-    .bp-section-count {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.04em;
-      padding: 1px 7px;
-      border-radius: var(--radius-pill);
-      background: var(--theme-soft);
-      color: var(--theme-accent);
-    }
-    .bp-section-chev {
-      margin-left: auto;
-      color: var(--color-text-muted);
-    }
-    /* Collapsible section header — clickable; gives the whole strip
-       the affordance of a button. */
-    .bp-section-header--toggle {
-      width: 100%;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: var(--font-body);
-      text-align: left;
-    }
-    .bp-section-header--toggle:hover .bp-section-title { color: var(--color-text-primary); }
     /* v1.65dj — section header: left-justified flow (icon → title →
        trailing actions) with a hairline divider underneath that spans
        the card's full width. Negative side margins pull the divider
@@ -644,22 +457,6 @@ type DashTab = 'projects' | 'inbox';
       padding-left: 18px;
       padding-right: 18px;
       border-bottom: var(--border-hairline);
-    }
-    .bp-section-header > .bp-section-new-btn,
-    .bp-section-header > .bp-section-chev {
-      margin-left: auto;
-    }
-    /* Collapsible variant — header IS the card content when closed,
-       so the divider becomes the card's bottom edge naturally. Same
-       hairline; the negative side margin lines up with the card's
-       zero padding. */
-    .bp-dash-card--collapsible .bp-section-header {
-      margin: 0;
-      padding: 14px 18px;
-      border-bottom: var(--border-hairline);
-    }
-    .bp-dash-card--collapsible:not(.bp-dash-card--open) .bp-section-header {
-      border-bottom: none;
     }
     /* v1.22d: section-header CTA — same font / padding as
        .bp-quick-action (13px / 8px 12px). The whole CTA family now
@@ -683,86 +480,6 @@ type DashTab = 'projects' | 'inbox';
       color:var(--color-surface);
     }
 
-    /* ── PAST EVENTS CAROUSEL ──────────────────────────────────────
-       Horizontal scroll, snap-to-card, hidden scrollbar. Compact
-       cards (130px) replace the previous full-grid "Completed
-       Events" section. */
-    .bp-past-carousel {
-      display:flex;
-      gap:8px;
-      overflow-x:auto;
-      padding:0 0 8px;
-      scroll-snap-type: x mandatory;
-      scrollbar-width:none;
-      -ms-overflow-style:none;
-    }
-    .bp-past-carousel::-webkit-scrollbar { display:none; }
-    .bp-past-card {
-      flex-shrink:0;
-      width:130px;
-      scroll-snap-align:start;
-      border: var(--border-hairline);
-      border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs);
-      overflow:hidden;
-      background:var(--color-surface);
-      text-decoration:none;
-      color:inherit;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    .bp-past-card:hover {
-      border: var(--border-hairline-strong);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
-    .bp-past-card--fade { opacity: 0.6; }
-    .bp-past-cover {
-      position:relative;
-      height:72px;
-      background-size:cover;
-      background-position:center;
-      background-color: var(--theme-bg);
-    }
-    .bp-past-cover--empty {
-      background-image: linear-gradient(160deg, var(--theme-bg), var(--theme-border));
-    }
-    .bp-past-year {
-      position:absolute;
-      bottom:6px; left:8px;
-      font-family: var(--font-display);
-      font-size:14px;
-      color:var(--color-surface);
-      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-      letter-spacing: 0.02em;
-    }
-    .bp-past-status-pill {
-      position:absolute;
-      top:6px; right:6px;
-      font-size:9px;
-      font-weight:500;
-      padding:2px 8px;
-      border-radius: var(--radius-pill);
-      color:var(--color-surface);
-      background: var(--color-text-muted);
-      font-family: var(--font-body);
-    }
-    .bp-past-body { padding:6px 8px 8px; }
-    .bp-past-name {
-      font-size:10px;
-      font-weight:500;
-      color:var(--color-text-primary);
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      margin-bottom:2px;
-    }
-    .bp-past-sub {
-      font-size:9px;
-      color:var(--color-text-muted);
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
 
     /* RIGHT PANEL */
     /* v1.65dh — right-column padding now lives on each .bp-dash-card;
@@ -791,13 +508,10 @@ type DashTab = 'projects' | 'inbox';
       overflow:hidden;
       background:var(--color-surface);
       cursor:pointer;
-      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+      transition: var(--card-hover-transition);   /* card hover standard */
     }
-    .bp-sup-card:hover {
-      border: var(--border-hairline-strong);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
-    }
+    /* Hover (lift + accent shadow/border) via the global .bp-card-hover class
+       on the element — see template. No per-card hover declared here. */
     .bp-sup-img  { width:100%; height:140px; background-size:cover; background-position:center; position:relative; }
     .bp-sup-cat  { position:absolute; top:6px; left:6px; font-size:9px; font-weight:600; padding:2px 7px; border-radius: var(--radius-pill); background:rgba(0,0,0,0.5); color:#fff; }
     /* v1.22i: heart sits in a small white circle so the red lucide
@@ -871,7 +585,7 @@ type DashTab = 'projects' | 'inbox';
     }
     .bp-cfg-seg-btn:first-child { border-left: none; }
     .bp-cfg-seg-btn:hover:not(:disabled):not(.p-highlight) {
-      background: var(--theme-bg);
+      background: var(--color-fill);
       color: var(--theme-accent);
     }
     .bp-cfg-seg-btn.p-highlight {
@@ -909,7 +623,7 @@ type DashTab = 'projects' | 'inbox';
     .bp-fav-subtab  { flex: 1; padding: 10px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color 0.15s; }
     .bp-fav-subtab.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); font-weight: 600; }
     .bp-fav-count { font-size: 11px; background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: 20px; padding: 1px 7px; color: var(--color-text-muted); }
-    .bp-fav-subtab.active .bp-fav-count { background: var(--theme-bg); border-color: var(--theme-border); color: var(--theme-accent); }
+    .bp-fav-subtab.active .bp-fav-count { background: var(--color-fill); border-color: var(--theme-border); color: var(--theme-accent); }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -940,7 +654,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   projectLabel = 'Event';
   creditLabel  = 'Ball';
   daysUntilReset = 0;
-  activeTab: DashTab = 'projects';
+  /** v1.67d — supplier home Inbox tile badge: count of threads with an
+      unread inbound message. Loaded only for the supplier persona. */
+  inboxUnread = 0;
   // v1.65hQ (p0019 §2): the Active/Inactive/Past project-card grid +
   // its "..." menu / image-upload / collapse state moved out of the
   // dashboard with the centre column. activeProjects / completedProjects
@@ -973,26 +689,16 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     showRecentActivity: true,
   };
 
-  /** p0018 — column presence for the 3-col body. A column collapses
-      (its grid track is dropped via bodyGridColumns) when all its
-      sections are hidden. */
+  /** p0018 — column presence for the 3-col body. When all of a side
+      column's sections are hidden, the column div is omitted (no empty
+      card chrome). v1.66b: its grid track is still reserved (each column
+      is pinned via grid-column in CSS) so the centre launcher stays
+      centred. */
   get hasLeftColumn(): boolean {
     return this.pageCfg.showUpcoming || this.pageCfg.showRecentActivity || this.pageCfg.showQuickActions;
   }
   get hasRightColumn(): boolean {
     return this.pageCfg.showCredits || this.pageCfg.showSavedSuppliers;
-  }
-  /** Dynamic grid-template-columns — only present columns get a track,
-      so a hidden side column leaves no empty gap. The centre column is
-      the launcher grid and is always present (greedy 1fr); the fixed
-      320px sides centre in the row when a side is gone (see .bp-body
-      justify-content). */
-  get bodyGridColumns(): string {
-    const cols: string[] = [];
-    if (this.hasLeftColumn) cols.push('320px');
-    cols.push('minmax(400px, 1fr)');   // centre launcher — always shown
-    if (this.hasRightColumn) cols.push('320px');
-    return cols.join(' ');
   }
   favTab: 'suppliers' | 'items' = 'suppliers';
   favSuppliers: Favourite[] = [];
@@ -1004,6 +710,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   constructor(
     private projectService: ProjectService,
+    private messageService: MessageService,
     private orgService: OrgService,
     private supplierService: SupplierService,
     private configService: ConfigService,
@@ -1011,6 +718,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     private favSvc: FavouriteService,
     private createProjectSvc: CreateProjectService,
     private codelistSvc: CodelistService,
+    private personaSvc: PersonaService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1033,7 +741,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     const code = (p.status_name || 'draft').toLowerCase();
     const label = this.codelistSvc.getLabel('project_status', code) || 'Draft';
     const meta  = this.codelistSvc.getMeta('project_status', code);
-    return { key: code, label, color: meta?.['color'] || '#F59E0B' };
+    return { key: code, label, color: resolveMetaColor(meta?.['color'], 'var(--color-state-amber)') };
   }
 
   // ── v1.65hQ (p0019 §2) — launcher-tile action wiring ───────────────
@@ -1052,27 +760,23 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   // The tile is wired to the real path now so it lights up when p0020
   // lands.
   goToProjects()    { this.router.navigate(['/projects']); }
-  goToInbox()       { this.router.navigate(['/messages']); }
-  goToMarketplace() { this.router.navigate(['/suppliers']); }
+  goToInbox()       { this.router.navigate(['/inbox']); }
+  goToMarketplace() { this.router.navigate(['/shop']); }
   // No dedicated /profile route — Settings is the account surface today.
   goToProfile()     { this.router.navigate(['/settings']); }
+
+  /** True when the active persona is a supplier (e.g. Ryan @ Rocket Food) —
+      their home launcher shows shop folders instead of agency ones. */
+  get isSupplier(): boolean { return this.personaSvc.isSupplier(); }
+
+  /** Navigate to a top-level route (supplier launcher tiles → /storefront etc). */
+  goTo(path: string) { this.router.navigate([path]); }
 
   getCategoryClass(cat: string): string {
     const map: Record<string, string> = { 'set build': 'setbuild', 'av': 'av', 'audio visual': 'av' };
     return map[(cat || '').toLowerCase()] || 'default';
   }
 
-  /** v1.65g2 — public (was private) so the hero tab band's
-      onTabClick can call it. Sync activeTab + re-push the
-      activeTabPath so the hero highlight matches. */
-  setTab(tab: DashTab) {
-    this.activeTab = tab;
-    this.shellCtx.set({
-      ...this.shellCtx.current,
-      activeTabPath: tab,
-    });
-    this.cdr.detectChanges();
-  }
 
   ngOnInit() {
     // v1.31: warm the project_status codelist cache so the project
@@ -1117,6 +821,24 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loadProjects();
     this.loadSuppliers();
     this.loadFavourites();
+    this.loadInboxUnread();
+  }
+
+  /** v1.67d — supplier Inbox tile badge. Loads the supplier-scoped message
+      feed and counts distinct threads with an unread inbound message via the
+      shared MessageService.countUnreadThreads helper (same thread grouping
+      as the inbox). Supplier persona only; agency home has no badge. */
+  private loadInboxUnread() {
+    if (!this.isSupplier) return;
+    const supId = this.personaSvc.active?.orgId;
+    if (!supId) return;
+    this.messageService.getAllBySupplier(supId).subscribe({
+      next: (msgs: any[]) => {
+        this.inboxUnread = MessageService.countUnreadThreads(msgs);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
   }
 
   // ── v1.23 settings persistence ────────────────────────────────────
@@ -1126,24 +848,33 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
       with the settings draft. */
   private pushShellContext() {
     if (!this.org) return;
-    // v1.65g2 — two-tab hero: home (the existing dashboard content,
-    // labelled by pageCfg.homePageLabel) + Inbox. Tab click routes
-    // through setTab so activeTab + activeTabPath stay in sync with
-    // the AppShell's hero highlight.
+    // v1.66l — two hero tabs: Home (this page) + Inbox (routes to the
+    // canonical /inbox). Home is always the active tab here.
     // v1.65hG (p0016 Step 2): reads from pageCfg now — the local
     // read-only mirror of the bits the dashboard needs. The full
     // strip draft lives in <app-page-config-drawer>.
-    const homeLabel = this.pageCfg.homePageLabel || 'Projects';
+    // v1.66af — subtitle renders sentence-case like every other hero and
+    // uses the configurable Events label (projectLabel) for the noun, so
+    // renaming events (e.g. "Activation") flows through automatically.
+    const eventWord = (this.projectLabel || 'event').toLowerCase();
+    // Persona-appropriate DEFAULT subtitle (a per-role drawer override still
+    // wins via getPageSetting). Suppliers run a shop, not events.
+    const defaultSub = this.isSupplier
+      ? 'How are sales going?'
+      : `What ${eventWord} are we working on today?`;
     const ctx: any = {
-      heroTitle: this.org.name,
-      heroSub: homeLabel.toUpperCase(),
+      // p0023 / p0032 — no heroTitle: the AppShell computes it from
+      // config.heroTitleMode (org / user / greeting). Hero colour is now
+      // global (read from ConfigService by the AppShell), so we just flag
+      // that this surface uses the configured title.
+      useConfiguredTitle: true,
+      heroSub: defaultSub,
       pills: [],
-      tabs: [
-        { label: 'Home',  path: 'projects' },
-        { label: 'Inbox', path: 'inbox'    },
-      ],
-      activeTabPath: this.activeTab,
-      onTabClick: (t: any) => this.setTab(t.path as DashTab),
+      // v1.66m — no hero tab band on the dashboard. Home / Inbox /
+      // Projects / Marketplace are top-level objects reached from the
+      // top-nav, not sub-tabs of this screen. The dashboard is the Org
+      // home; its body is the launcher.
+      tabs: [],
     };
     // Upcoming pill — when enabled AND we've got a future project.
     if (this.pageCfg.showUpcoming && this.nextProject) {

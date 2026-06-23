@@ -20,9 +20,12 @@ import { ProjectService } from '../../../../core/services/project.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { ShellContextService } from '../../../../core/services/shell-context.service';
 import { OutreachService } from '../../../../core/services/outreach.service';
+import { PersonaService } from '../../../../core/services/persona.service';
+import { MarketplaceProjectService, MarketplaceProject } from '../../../../core/services/marketplace-project.service';
 import { GbpPipe } from '../../../../shared/pipes/gbp.pipe';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemDrawerComponent } from '../../../../shared/components/item-drawer/item-drawer.component';
+import { MarketplaceProjectPickerComponent } from '../../../../shared/components/marketplace-project-picker/marketplace-project-picker.component';
 import { Item, Org, Project } from '../../../../models';
 
 @Component({
@@ -31,7 +34,8 @@ import { Item, Org, Project } from '../../../../models';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, RouterModule, ToastModule, LucideAngularModule,
-    GbpPipe, LoadingSpinnerComponent, ItemDrawerComponent
+    GbpPipe, LoadingSpinnerComponent, ItemDrawerComponent,
+    MarketplaceProjectPickerComponent
   ],
   providers: [MessageService],
   template: `
@@ -41,14 +45,14 @@ import { Item, Org, Project } from '../../../../models';
     <ng-container *ngIf="!loading && !item">
       <div class="bp-itempage-empty">
         <p>Item not found.</p>
-        <a routerLink="/suppliers">← Back to {{ catalogueLabel }}</a>
+        <a routerLink="/shop">← Back to {{ catalogueLabel }}</a>
       </div>
     </ng-container>
 
-    <!-- ITEM CONTENT -->
-    <!-- v1.36: hero now mirrors the navigation context (project / supplier
-         / marketplace) instead of showing the item. Back link + category
-         eyebrow + item name live inside the page body again. -->
+    <!-- ITEM CONTENT — v1.66cy: full-width gallery on top, then a two-card
+         layout (details + Ballpark Pricing) matching the client mockup. The
+         shell hero above shows the navigation context (project / supplier /
+         marketplace). -->
     <div class="bp-itempage" *ngIf="!loading && item">
 
       <!-- Back link -->
@@ -57,209 +61,79 @@ import { Item, Org, Project } from '../../../../models';
         Back
       </a>
 
-      <!-- Two-column layout -->
-      <div class="bp-itempage-layout">
-
-        <!-- ═══ LEFT: Image gallery ═══ -->
-        <div class="bp-itempage-gallery">
-          <div class="bp-itempage-hero" [class.bp-itempage-hero--empty]="!galleryImages.length">
-
-            <ng-container *ngIf="galleryImages.length; else heroPlaceholder">
-              <img [src]="galleryImages[currentImg]" alt="" />
-            </ng-container>
-            <ng-template #heroPlaceholder>
-              <div class="bp-itempage-hero-initial">{{ (item.name || '?').charAt(0) }}</div>
-            </ng-template>
-
-            <ng-container *ngIf="galleryImages.length > 1">
-              <button class="bp-itempage-nav bp-itempage-nav--prev" (click)="prevImg()" title="Previous">
-                <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
-              </button>
-              <button class="bp-itempage-nav bp-itempage-nav--next" (click)="nextImg()" title="Next">
-                <lucide-icon name="chevron-right" [size]="14"></lucide-icon>
-              </button>
-              <span class="bp-itempage-counter">{{ currentImg + 1 }} / {{ galleryImages.length }}</span>
-            </ng-container>
-          </div>
-
-          <div class="bp-itempage-thumbs" *ngIf="galleryImages.length > 1">
-            <button *ngFor="let url of galleryImages; let i = index"
-              class="bp-itempage-thumb"
-              [class.active]="i === currentImg"
-              (click)="selectImg(i)">
-              <img [src]="url" alt="" />
+      <!-- ═══ Gallery (full-width, standard rounding) ═══ -->
+      <div class="bp-itempage-gallery">
+        <div class="bp-itempage-hero" [class.bp-itempage-hero--empty]="!galleryImages.length">
+          <ng-container *ngIf="galleryImages.length; else heroPlaceholder">
+            <img [src]="galleryImages[currentImg]" alt="" />
+          </ng-container>
+          <ng-template #heroPlaceholder>
+            <div class="bp-itempage-hero-initial">{{ (item.name || '?').charAt(0) }}</div>
+          </ng-template>
+          <ng-container *ngIf="galleryImages.length > 1">
+            <button class="bp-itempage-nav bp-itempage-nav--prev" (click)="prevImg()" title="Previous">
+              <lucide-icon name="chevron-left" [size]="14"></lucide-icon>
             </button>
-          </div>
+            <button class="bp-itempage-nav bp-itempage-nav--next" (click)="nextImg()" title="Next">
+              <lucide-icon name="chevron-right" [size]="14"></lucide-icon>
+            </button>
+            <span class="bp-itempage-counter">{{ currentImg + 1 }} / {{ galleryImages.length }}</span>
+          </ng-container>
         </div>
-
-        <!-- ═══ RIGHT: Details ═══ -->
-        <!-- v1.36: category eyebrow + item name back in the right column.
-             The shell hero shows the navigation context (project /
-             supplier / marketplace) — not the item itself. -->
-        <div class="bp-itempage-details">
-
-          <div class="bp-itempage-cat" *ngIf="item.category_name">{{ item.category_name }}</div>
-          <h1 class="bp-itempage-name">{{ item.name }}</h1>
-
-          <span *ngIf="item.tier" class="bp-itempage-tier" [ngClass]="'bp-itempage-tier--' + item.tier">
-            ✦ {{ tierLabel(item.tier) }}
-          </span>
-
-          <!-- Supplier row -->
-          <div class="bp-itempage-supp" *ngIf="supplier">
-            <div class="bp-itempage-supp-logo">{{ supplierInitials() }}</div>
-            <span class="bp-itempage-supp-name">{{ supplier.name }}</span>
-            <span class="bp-itempage-supp-loc" *ngIf="supplier.city">· {{ supplier.city }}</span>
-            <a class="bp-itempage-supp-link" [routerLink]="['/suppliers', supplier.id]">View supplier →</a>
-          </div>
-
-          <!-- Price block -->
-          <div class="bp-itempage-price" *ngIf="item.base_price != null">
-            <div class="bp-itempage-price-row">
-              <span class="bp-itempage-price-main">{{ item.base_price | gbp }}</span>
-              <span class="bp-itempage-price-unit" *ngIf="item.unit">per {{ unitLabel(item.unit) }}</span>
-            </div>
-            <div class="bp-itempage-price-range" *ngIf="item.min_price != null && item.max_price != null">
-              Range: {{ item.min_price | gbp }} – {{ item.max_price | gbp }}
-            </div>
-            <div class="bp-itempage-price-detail" *ngIf="item.min_price != null || item.max_price != null">
-              <div class="bp-itempage-price-cell">
-                <div class="bp-itempage-price-label">Min</div>
-                <div class="bp-itempage-price-value">{{ item.min_price != null ? (item.min_price | gbp) : '—' }}</div>
-              </div>
-              <div class="bp-itempage-price-cell">
-                <div class="bp-itempage-price-label">Ballpark</div>
-                <div class="bp-itempage-price-value bp-itempage-price-value--accent">{{ item.base_price | gbp }}</div>
-              </div>
-              <div class="bp-itempage-price-cell">
-                <div class="bp-itempage-price-label">Max</div>
-                <div class="bp-itempage-price-value">{{ item.max_price != null ? (item.max_price | gbp) : '—' }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="bp-itempage-actions">
-            <button class="bp-itempage-btn bp-itempage-btn--primary" (click)="addToProject()">
-              <lucide-icon name="plus" [size]="14"></lucide-icon> Add to project
-            </button>
-            <button class="bp-itempage-btn bp-itempage-btn--secondary" (click)="toggleWishlist()"
-                    [class.is-active]="isFav">
-              <lucide-icon name="heart" [size]="14"></lucide-icon>
-              {{ isFav ? 'Wishlisted' : 'Wishlist' }}
-            </button>
-            <button *ngIf="canRequestQuote" class="bp-itempage-btn bp-itempage-btn--secondary"
-                    (click)="requestQuote()">
-              <lucide-icon name="mail" [size]="14"></lucide-icon> Request quote
-            </button>
-            <button class="bp-itempage-btn bp-itempage-btn--icon" (click)="openEdit()" title="Edit">
-              <lucide-icon name="square-pen" [size]="14"></lucide-icon>
-            </button>
-            <button class="bp-itempage-btn bp-itempage-btn--icon" (click)="copyLink()" title="Share">
-              <lucide-icon name="share-2" [size]="14"></lucide-icon>
-            </button>
-          </div>
-
-          <!-- Description -->
-          <div class="bp-itempage-section" *ngIf="item.description">
-            <div class="bp-itempage-section-label">Description</div>
-            <div class="bp-itempage-section-text" [innerHTML]="descriptionHtml"></div>
-          </div>
-
-          <!-- Specs table -->
-          <div class="bp-itempage-specs">
-            <div class="bp-itempage-spec-row">
-              <div class="bp-itempage-spec-label">Category</div>
-              <div class="bp-itempage-spec-value">{{ item.category_name || '—' }}</div>
-            </div>
-            <div class="bp-itempage-spec-row">
-              <div class="bp-itempage-spec-label">Subcategory</div>
-              <div class="bp-itempage-spec-value">{{ item.subcategory_name || '—' }}</div>
-            </div>
-            <div class="bp-itempage-spec-row">
-              <div class="bp-itempage-spec-label">Lead time</div>
-              <div class="bp-itempage-spec-value">{{ leadTimeLabel() }}</div>
-            </div>
-            <div class="bp-itempage-spec-row">
-              <div class="bp-itempage-spec-label">Unit</div>
-              <div class="bp-itempage-spec-value">{{ unitLabel(item.unit) || '—' }}</div>
-            </div>
-            <div class="bp-itempage-spec-row">
-              <div class="bp-itempage-spec-label">Time unit</div>
-              <div class="bp-itempage-spec-value">{{ timeUnitLabel() }}</div>
-            </div>
-            <div class="bp-itempage-spec-row" *ngIf="item.tier">
-              <div class="bp-itempage-spec-label">Tier</div>
-              <div class="bp-itempage-spec-value">
-                <span class="bp-itempage-tier bp-itempage-tier--small" [ngClass]="'bp-itempage-tier--' + item.tier">
-                  {{ tierLabel(item.tier) }}
-                </span>
-              </div>
-            </div>
-            <div class="bp-itempage-spec-row" *ngIf="item.external_url">
-              <div class="bp-itempage-spec-label">External link</div>
-              <div class="bp-itempage-spec-value">
-                <a [href]="item.external_url" target="_blank" rel="noopener">{{ shortUrl(item.external_url) }} →</a>
-              </div>
-            </div>
-          </div>
-
-          <!-- v1.45c — the legacy free-text "Tags" section was removed;
-               structured attribute tags below are the source of truth. -->
-
-          <!-- v1.45a — structured attribute tags, grouped by dimension -->
-          <div class="bp-itempage-section" *ngIf="attributeGroups.length">
-            <div class="bp-itempage-section-label">Attributes</div>
-            <div class="bp-itempage-attr-group" *ngFor="let g of attributeGroups">
-              <span class="bp-itempage-attr-dim">{{ g.dimension }}</span>
-              <div class="bp-itempage-tags">
-                <span *ngFor="let l of g.labels" class="bp-itempage-tag">{{ l }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Supplier card -->
-          <div class="bp-itempage-section" *ngIf="supplier">
-            <div class="bp-itempage-section-label">Supplier</div>
-            <a class="bp-itempage-supp-card" [routerLink]="['/suppliers', supplier.id]">
-              <div class="bp-itempage-supp-cover"
-                   [style.background-image]="supplier.cover_image_url ? 'url(' + supplier.cover_image_url + ')' : null">
-              </div>
-              <div class="bp-itempage-supp-body">
-                <div class="bp-itempage-supp-card-name">{{ supplier.name }}</div>
-                <div class="bp-itempage-supp-card-loc" *ngIf="supplier.city">
-                  <lucide-icon name="map-pin" [size]="11"></lucide-icon> {{ supplier.city }}
-                </div>
-                <div class="bp-itempage-supp-card-desc" *ngIf="supplier.description">{{ supplier.description }}</div>
-                <span class="bp-itempage-supp-card-link">View full catalogue →</span>
-              </div>
-            </a>
-          </div>
-
+        <div class="bp-itempage-thumbs" *ngIf="galleryImages.length > 1">
+          <button *ngFor="let url of galleryImages; let i = index"
+            class="bp-itempage-thumb"
+            [class.active]="i === currentImg"
+            (click)="selectImg(i)">
+            <img [src]="url" alt="" />
+          </button>
         </div>
       </div>
 
-      <!-- ═══ Related items ═══ -->
-      <div class="bp-itempage-related" *ngIf="related.length">
-        <div class="bp-itempage-related-title">More from {{ item.category_name }}</div>
-        <div class="bp-itempage-related-grid">
-          <a *ngFor="let r of related"
-             class="bp-itempage-related-card"
-             [routerLink]="['/items', r.id]"
-             [queryParams]="relatedQueryParams()">
-            <div class="bp-itempage-related-img"
-                 [style.background-image]="r.image_url ? 'url(' + r.image_url + ')' : null">
-              <div *ngIf="!r.image_url" class="bp-itempage-related-img-initial">{{ (r.name || '?').charAt(0) }}</div>
-            </div>
-            <div class="bp-itempage-related-body">
-              <div class="bp-itempage-related-name">{{ r.name }}</div>
-              <div>
-                <span class="bp-itempage-related-price">{{ r.base_price | gbp }}</span>
-                <span class="bp-itempage-related-unit" *ngIf="r.unit">{{ unitLabel(r.unit) }}</span>
-              </div>
-              <div class="bp-itempage-related-supp" *ngIf="supplierNameOf(r)">{{ supplierNameOf(r) }}</div>
-            </div>
-          </a>
+      <!-- ═══ Two-card content ═══ -->
+      <div class="bp-itempage-cards">
+
+        <!-- LEFT: details -->
+        <div class="bp-itempage-card">
+          <span class="bp-itempage-pill" *ngIf="item.category_name">{{ item.category_name }}</span>
+          <h1 class="bp-itempage-name">{{ item.name }}</h1>
+          <div class="bp-itempage-meta">
+            <span class="bp-itempage-meta-item" *ngIf="locationLabel">
+              <lucide-icon name="map-pin" [size]="14"></lucide-icon>{{ locationLabel }}
+            </span>
+            <span class="bp-itempage-meta-item" *ngIf="leadTimeLabel() !== '—'">
+              <lucide-icon name="clock" [size]="14"></lucide-icon>{{ leadTimeLabel() }}
+            </span>
+          </div>
+
+          <!-- About = the supplier (org) description -->
+          <ng-container *ngIf="supplier?.description">
+            <hr class="bp-itempage-rule" />
+            <h2 class="bp-itempage-h">About</h2>
+            <p class="bp-itempage-prose">{{ supplier?.description }}</p>
+          </ng-container>
+
+          <!-- Services — left unmapped for now (no item field yet). -->
+        </div>
+
+        <!-- RIGHT: Ballpark Pricing -->
+        <div class="bp-itempage-card bp-itempage-card--price">
+          <div class="bp-itempage-price-eyebrow">Ballpark Pricing</div>
+          <div class="bp-itempage-from" *ngIf="fromPrice != null">From {{ fromPrice | gbp:0:true }}</div>
+
+          <button class="bp-itempage-add" (click)="addToProject()">
+            <lucide-icon name="plus" [size]="16"></lucide-icon> Add to Project
+          </button>
+          <button class="bp-itempage-edit" *ngIf="isOwner" (click)="openEdit()">
+            <lucide-icon name="square-pen" [size]="14"></lucide-icon> Edit
+          </button>
+
+          <!-- What's included = the item's own description -->
+          <ng-container *ngIf="item.description">
+            <hr class="bp-itempage-rule" />
+            <div class="bp-itempage-included-label">What's included:</div>
+            <div class="bp-itempage-included" [innerHTML]="descriptionHtml"></div>
+          </ng-container>
         </div>
       </div>
     </div>
@@ -274,6 +148,12 @@ import { Item, Org, Project } from '../../../../models';
       (saved)="onItemSaved($event)"
       (cancelled)="showEditDrawer = false">
     </app-item-drawer>
+
+    <app-marketplace-project-picker
+      [(visible)]="pickerOpen"
+      [activeId]="projectId || null"
+      (picked)="onProjectPicked($event)">
+    </app-marketplace-project-picker>
 
     <p-toast></p-toast>
   `,
@@ -296,22 +176,15 @@ import { Item, Org, Project } from '../../../../models';
     }
     .bp-itempage-back:hover { color: var(--theme-accent); }
 
-    /* ── Layout ── */
-    .bp-itempage-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-    }
-
-    /* ── Gallery ── */
-    .bp-itempage-gallery { position: sticky; top: 20px; align-self: start; }
+    /* ── Gallery (full-width, standard rounding) ── */
+    .bp-itempage-gallery { margin-bottom: 22px; }
     .bp-itempage-hero {
-      width: 100%; aspect-ratio: 1;
-      border-radius: var(--radius-card);
+      width: 100%; height: 460px;
+      border-radius: var(--radius-card-lg);
       overflow: hidden;
       background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      margin-bottom: 10px;
+      border: var(--border-hairline);
+      margin-bottom: 12px;
       display: flex; align-items: center; justify-content: center;
       position: relative;
     }
@@ -322,7 +195,7 @@ import { Item, Org, Project } from '../../../../models';
     }
     .bp-itempage-nav {
       position: absolute; top: 50%; transform: translateY(-50%);
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 36px; height: 36px; border-radius: 50%;
       background: var(--color-surface);
       border: 0.5px solid var(--color-border);
       display: flex; align-items: center; justify-content: center;
@@ -330,271 +203,101 @@ import { Item, Org, Project } from '../../../../models';
       transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .bp-itempage-nav:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
-    .bp-itempage-nav--prev { left: 10px; }
-    .bp-itempage-nav--next { right: 10px; }
+    .bp-itempage-nav--prev { left: 14px; }
+    .bp-itempage-nav--next { right: 14px; }
     .bp-itempage-counter {
-      position: absolute; bottom: 10px; right: 10px;
+      position: absolute; bottom: 12px; right: 12px;
       background: rgba(0,0,0,0.6); color: #fff;
       font-size: 10px; padding: 2px 8px;
       border-radius: var(--radius-pill);
     }
-    .bp-itempage-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .bp-itempage-thumbs { display: flex; gap: 10px; flex-wrap: wrap; }
     .bp-itempage-thumb {
-      width: 72px; height: 72px; padding: 0;
-      border-radius: var(--radius-button); overflow: hidden;
+      width: 112px; height: 80px; padding: 0;
+      border-radius: var(--radius-card); overflow: hidden;
       cursor: pointer; border: 2px solid transparent;
       transition: border-color 0.15s;
       background: var(--color-surface); flex-shrink: 0;
     }
     .bp-itempage-thumb.active { border-color: var(--theme-accent); }
-    .bp-itempage-thumb:hover { border-color: var(--theme-accent); opacity: 0.7; }
+    .bp-itempage-thumb:hover { border-color: var(--theme-accent); }
     .bp-itempage-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    /* ── Details ── */
-    .bp-itempage-details { padding-top: 4px; min-width: 0; }
-    .bp-itempage-cat {
-      font-size: 10px; font-weight: 500; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--theme-accent);
-      margin-bottom: 4px;
+    /* ── Two-card content ── */
+    .bp-itempage-cards {
+      display: grid; grid-template-columns: 1.7fr 1fr; gap: 24px; align-items: start;
+    }
+    .bp-itempage-card {
+      background: var(--color-surface);
+      border: var(--border-hairline);
+      border-radius: var(--radius-card-lg);
+      box-shadow: var(--shadow-xs);
+      padding: 32px;
+    }
+    .bp-itempage-card--price { position: sticky; top: 20px; }
+
+    /* Category pill — soft accent chip (standard). */
+    .bp-itempage-pill {
+      display: inline-block; padding: 5px 14px; border-radius: var(--radius-pill);
+      background: var(--theme-soft); color: var(--theme-accent);
+      font-size: 12px; font-weight: 600; font-family: var(--font-body);
+      margin-bottom: 14px;
     }
     .bp-itempage-name {
-      font-family: var(--font-display); font-size: 26px;
-      font-weight: 400; line-height: 1.2; margin: 0 0 6px;
-      color: var(--color-text-primary);
+      font-family: var(--font-display); font-size: 38px; font-weight: 400;
+      line-height: 1.1; margin: 0 0 14px; color: var(--color-text-primary);
     }
+    .bp-itempage-meta {
+      display: flex; flex-wrap: wrap; gap: 18px;
+      font-size: 14px; color: var(--color-text-muted); font-family: var(--font-body);
+    }
+    .bp-itempage-meta-item { display: inline-flex; align-items: center; gap: 6px; }
+    .bp-itempage-rule { border: none; border-top: var(--border-hairline); margin: 26px 0; }
+    .bp-itempage-h {
+      font-family: var(--font-display); font-size: 22px; font-weight: 400;
+      margin: 0 0 12px; color: var(--color-text-primary);
+    }
+    .bp-itempage-prose { font-size: 15px; line-height: 1.7; color: var(--color-text-secondary); margin: 0; }
 
-    /* Tier badge */
-    .bp-itempage-tier {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 500;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      margin-bottom: 12px;
+    /* Pricing card */
+    .bp-itempage-price-eyebrow { font-size: 13px; color: var(--color-text-muted); margin-bottom: 8px; font-family: var(--font-body); }
+    .bp-itempage-from {
+      font-family: var(--font-body); font-weight: 400; font-size: 36px; line-height: 1; margin-bottom: 22px;
+      background: var(--grad-accent); -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
     }
-    .bp-itempage-tier--small { font-size: 10px; padding: 2px 8px; margin-bottom: 0; }
-    .bp-itempage-tier--basic   { background: #F3F4F6; color: #6B7280; }
-    .bp-itempage-tier--mid     { background: #EDE9FE; color: #5B21B6; }
-    .bp-itempage-tier--premium { background: #FEF3C7; color: #92400E; }
-
-    /* Supplier row */
-    .bp-itempage-supp {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 16px;
+    .bp-itempage-add {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px; border: none; border-radius: var(--radius-pill);
+      background: var(--grad-accent); color: #fff; cursor: pointer;
+      font-size: 15px; font-weight: 600; font-family: var(--font-body);
+      box-shadow: 0 2px 10px rgba(var(--theme-accent-rgb), 0.25);
+      transition: box-shadow 0.18s ease, transform 0.18s ease;
     }
-    .bp-itempage-supp-logo {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: var(--theme-bg); color: var(--theme-accent);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 500;
-      flex-shrink: 0;
+    .bp-itempage-add:hover { box-shadow: 0 6px 18px rgba(var(--theme-accent-rgb), 0.32); }
+    .bp-itempage-add:active { transform: translateY(1px); }
+    .bp-itempage-edit {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      margin-top: 10px; padding: 11px;
+      border: var(--border-hairline); background: var(--color-surface); color: var(--color-text-secondary);
+      border-radius: var(--radius-button); cursor: pointer;
+      font-size: 13px; font-weight: 500; font-family: var(--font-body);
+      transition: border-color 0.15s, color 0.15s;
     }
-    .bp-itempage-supp-name { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-primary); }
-    .bp-itempage-supp-loc { font-size: var(--text-xs); color: var(--color-text-muted); }
-    .bp-itempage-supp-link {
-      font-size: var(--text-xs); color: var(--theme-accent);
-      margin-left: auto; cursor: pointer; text-decoration: none;
-    }
-    .bp-itempage-supp-link:hover { text-decoration: underline; }
-
-    /* Price block */
-    .bp-itempage-price {
-      padding: 16px 18px;
-      background: var(--color-surface);
-      border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-card);
-      margin-bottom: 16px;
-    }
-    .bp-itempage-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-    .bp-itempage-price-main { font-family: var(--font-display); font-size: 28px; color: var(--color-text-primary); }
-    .bp-itempage-price-unit { font-size: var(--text-sm); color: var(--color-text-muted); }
-    .bp-itempage-price-range { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 10px; }
-    .bp-itempage-price-detail { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .bp-itempage-price-cell {
-      text-align: center; padding: 8px;
-      background: var(--theme-bg);
-      border-radius: 6px;
-    }
-    .bp-itempage-price-label {
-      font-size: 9px; color: var(--color-text-muted);
-      text-transform: uppercase; letter-spacing: 0.04em;
-      margin-bottom: 2px;
-    }
-    .bp-itempage-price-value { font-family: var(--font-display); font-size: 15px; color: var(--color-text-primary); }
-    .bp-itempage-price-value--accent { color: var(--theme-accent); }
-
-    /* Actions */
-    .bp-itempage-actions { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-    .bp-itempage-btn {
-      padding: 11px; font-size: var(--text-sm); font-weight: 500;
-      border-radius: var(--radius-button);
-      cursor: pointer; font-family: var(--font-body);
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      transition: all 0.15s;
-    }
-    .bp-itempage-btn--primary {
-      flex: 1; border: none;
-      background: var(--theme-accent); color: #fff;
-    }
-    .bp-itempage-btn--primary:hover { opacity: 0.9; }
-    .bp-itempage-btn--secondary {
-      flex: 1;
-      border: 0.5px solid var(--color-border);
-      background: var(--color-surface); color: var(--color-text-primary);
-    }
-    .bp-itempage-btn--secondary:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-    .bp-itempage-btn--secondary.is-active { color: var(--theme-accent); border-color: var(--theme-accent); }
-    .bp-itempage-btn--icon {
-      width: 42px; padding: 11px; flex-shrink: 0;
-      border: 0.5px solid var(--color-border);
-      background: var(--color-surface); color: var(--color-text-muted);
-    }
-    .bp-itempage-btn--icon:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
-
-    /* Sections */
-    .bp-itempage-section { margin-bottom: 20px; }
-    .bp-itempage-section-label {
-      font-size: 10px; font-weight: 500; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--theme-accent);
-      margin-bottom: 8px; padding-bottom: 6px;
-      border-bottom: 0.5px solid var(--color-border);
-    }
-    .bp-itempage-section-text {
-      font-size: var(--text-sm); line-height: 1.7;
-      color: var(--color-text-secondary);
-    }
-    .bp-itempage-section-text :first-child { margin-top: 0; }
-    .bp-itempage-section-text p { margin: 0 0 8px; }
-    .bp-itempage-section-text ul, .bp-itempage-section-text ol { margin: 0 0 8px 18px; }
-
-    /* Specs table */
-    .bp-itempage-specs {
-      border: 0.5px solid var(--color-border);
-      border-radius: 10px; overflow: hidden;
-      margin-bottom: 20px;
-    }
-    .bp-itempage-spec-row {
-      display: flex;
-      border-bottom: 0.5px solid var(--color-border);
-      font-size: var(--text-xs);
-    }
-    .bp-itempage-spec-row:last-child { border-bottom: none; }
-    .bp-itempage-spec-label {
-      width: 140px; padding: 8px 14px;
-      background: var(--theme-bg);
-      color: var(--color-text-muted);
-      font-weight: 500; flex-shrink: 0;
-    }
-    .bp-itempage-spec-value { padding: 8px 14px; flex: 1; color: var(--color-text-primary); }
-    .bp-itempage-spec-value a { color: var(--theme-accent); text-decoration: none; }
-    .bp-itempage-spec-value a:hover { text-decoration: underline; }
-
-    /* Tags */
-    .bp-itempage-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .bp-itempage-tag {
-      font-size: 10px; padding: 3px 8px;
-      border-radius: var(--radius-pill);
-      border: 0.5px solid var(--color-border);
-      background: var(--color-surface);
-      color: var(--color-text-muted);
-    }
-    /* v1.45a — structured attribute tags, grouped by dimension */
-    .bp-itempage-attr-group { margin-bottom: 10px; }
-    .bp-itempage-attr-group:last-child { margin-bottom: 0; }
-    .bp-itempage-attr-dim {
-      display: block;
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 0.04em; text-transform: uppercase;
-      color: var(--color-text-muted);
-      margin-bottom: 5px;
-    }
-    .bp-itempage-attr-group .bp-itempage-tag {
-      color: var(--theme-accent);
-      border-color: var(--theme-border);
-      background: var(--theme-bg);
-    }
-
-    /* Supplier card — v1.34b: constrained width + taller cover for a more
-       square card silhouette (matches the dashboard saved-suppliers shape). */
-    .bp-itempage-supp-card {
-      display: block; text-decoration: none;
-      max-width: 320px;
-      border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-card);
-      overflow: hidden; background: var(--color-surface);
-      transition: box-shadow 0.15s;
-    }
-    .bp-itempage-supp-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .bp-itempage-supp-cover {
-      height: 180px; background: var(--theme-bg);
-      background-size: cover; background-position: center;
-    }
-    .bp-itempage-supp-body { padding: 14px 16px; }
-    .bp-itempage-supp-card-name { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
-    .bp-itempage-supp-card-loc {
-      font-size: var(--text-xs); color: var(--color-text-muted);
-      margin-bottom: 8px; display: inline-flex; align-items: center; gap: 4px;
-    }
-    .bp-itempage-supp-card-desc {
-      font-size: var(--text-xs); color: var(--color-text-muted);
-      line-height: 1.5; margin-bottom: 10px;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .bp-itempage-supp-card-link {
-      font-size: var(--text-xs); color: var(--theme-accent);
-      font-weight: 500;
-    }
-
-    /* Related items */
-    .bp-itempage-related {
-      margin-top: 32px; padding-top: 20px;
-      border-top: 0.5px solid var(--color-border);
-    }
-    .bp-itempage-related-title {
-      font-family: var(--font-display); font-size: 18px;
-      color: var(--color-text-primary); margin-bottom: 14px;
-    }
-    .bp-itempage-related-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-    }
-    .bp-itempage-related-card {
-      display: block; text-decoration: none;
-      border: 0.5px solid var(--color-border);
-      border-radius: 10px; overflow: hidden;
-      background: var(--color-surface);
-      transition: box-shadow 0.15s, transform 0.15s;
-      color: var(--color-text-primary);
-    }
-    .bp-itempage-related-card:hover {
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      transform: translateY(-1px);
-    }
-    .bp-itempage-related-img {
-      height: 120px; background: var(--theme-bg);
-      background-size: cover; background-position: center;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .bp-itempage-related-img-initial {
-      font-family: var(--font-display); font-size: 32px;
-      color: var(--color-text-muted);
-    }
-    .bp-itempage-related-body { padding: 10px 12px; }
-    .bp-itempage-related-name {
-      font-size: var(--text-xs); font-weight: 500;
-      margin-bottom: 2px;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-      line-height: 1.3;
-    }
-    .bp-itempage-related-price { font-family: var(--font-display); font-size: 14px; color: var(--color-text-primary); }
-    .bp-itempage-related-unit { font-size: 10px; color: var(--color-text-muted); margin-left: 4px; }
-    .bp-itempage-related-supp { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
+    .bp-itempage-edit:hover { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .bp-itempage-included-label { font-size: 13px; color: var(--color-text-muted); margin-bottom: 12px; font-family: var(--font-body); }
+    .bp-itempage-included { font-size: 14px; line-height: 1.7; color: var(--color-text-secondary); }
+    .bp-itempage-included :first-child { margin-top: 0; }
+    .bp-itempage-included p { margin: 0 0 8px; }
+    .bp-itempage-included ul, .bp-itempage-included ol { margin: 0 0 8px 18px; }
+    .bp-itempage-included li { margin-bottom: 5px; }
 
     /* Responsive */
     @media (max-width: 768px) {
-      .bp-itempage-layout { grid-template-columns: 1fr; gap: 24px; }
-      .bp-itempage-gallery { position: static; }
-      .bp-itempage-related-grid { grid-template-columns: repeat(2, 1fr); }
+      .bp-itempage-cards { grid-template-columns: 1fr; gap: 16px; }
+      .bp-itempage-card--price { position: static; }
+      .bp-itempage-card { padding: 24px; }
+      .bp-itempage-hero { height: 300px; }
     }
   `]
 })
@@ -609,9 +312,14 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
   showEditDrawer = false;
   descriptionHtml: SafeHtml = '';
   catalogueLabel = 'catalogue';
-  /** v1.34: project context via ?projectId= query param. When present the
-      Add-to-project button targets that project. When absent we just toast. */
-  private projectId = '';
+  /** True when the viewer is the supplier that owns this item — gates Edit. */
+  isOwner = false;
+  /** Project picker state + a pending add queued until a project is chosen. */
+  pickerOpen = false;
+  private pendingAdd = false;
+  /** Active project for Add to Project — ?projectId= or the session project.
+      Public so the picker template can read it for the active tick. */
+  projectId = '';
   /** v1.36: navigation context driven by ?context= query.
       'project'    → render project hero (name + client/venue pills + tabs)
       'supplier'   → render shop front hero (supplier name + city)
@@ -637,6 +345,8 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     private configSvc: ConfigService,
     private shellCtx: ShellContextService,
     private outreach: OutreachService,
+    private personaSvc: PersonaService,
+    private marketProjectSvc: MarketplaceProjectService,
     private msg: MessageService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
@@ -644,7 +354,10 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const qp = this.route.snapshot.queryParams;
-    this.projectId = qp['projectId'] || '';
+    // Active project: explicit ?projectId= wins, else the session "shopping
+    // for" project (shared with the marketplaces) so Add to Project has a
+    // target without re-asking.
+    this.projectId = qp['projectId'] || this.marketProjectSvc.current?.id || '';
     this.supplierContextId = qp['supplierId'] || '';
     const ctx = qp['context'];
     this.context = (ctx === 'project' || ctx === 'supplier' || ctx === 'marketplace')
@@ -701,6 +414,11 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
       this.currentImg = 0;
       this.descriptionHtml = this.renderDescription(item.description);
       this.isFav = this.favSvc.isItemFavourited(item.id);
+      // Owner = the viewing supplier persona owns this item's org.
+      const myOrgId = this.personaSvc.isSupplier()
+        ? this.personaSvc.active?.supplierOrgId
+        : null;
+      this.isOwner = !!item.org_id && !!myOrgId && myOrgId === item.org_id;
 
       const supplier$ = item.org_id
         ? this.orgSvc.getById(item.org_id).pipe(catchError(() => of(null as Org | null)))
@@ -834,16 +552,41 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     return out;
   }
 
+  /** "From" price — the floor (min_price), falling back to the ballpark. */
+  get fromPrice(): number | null {
+    if (!this.item) return null;
+    return this.item.min_price ?? this.item.base_price ?? null;
+  }
+
+  /** Location line — the supplier's city. */
+  get locationLabel(): string {
+    return this.supplier?.city || '';
+  }
+
   addToProject() {
     if (!this.item) return;
     if (!this.projectId) {
-      this.msg.add({ severity: 'info', summary: 'Select a project first', detail: 'Open a project to add items.' });
+      // No project chosen yet — open the picker and add once one is picked.
+      this.pendingAdd = true;
+      this.pickerOpen = true;
+      this.cdr.markForCheck();
       return;
     }
     this.projectItemSvc.add(this.projectId, this.item.id, 'selected').subscribe({
       next: () => this.msg.add({ severity: 'success', summary: 'Added to project' }),
       error: () => this.msg.add({ severity: 'error', summary: 'Could not add item' })
     });
+  }
+
+  /** Project picked from the dialog — remember for the session, then flush a
+      pending add if the picker was opened by Add to Project. */
+  onProjectPicked(p: MarketplaceProject | null) {
+    this.marketProjectSvc.set(p);
+    this.projectId = p?.id || '';
+    const pending = this.pendingAdd;
+    this.pendingAdd = false;
+    if (p && pending) this.addToProject();
+    this.cdr.markForCheck();
   }
 
   toggleWishlist() {
@@ -946,7 +689,7 @@ export class ItemDetailPageComponent implements OnInit, OnDestroy {
     } else if (this.context === 'supplier' && this.supplierContextId) {
       this.router.navigate(['/suppliers', this.supplierContextId]);
     } else {
-      this.router.navigate(['/suppliers']);
+      this.router.navigate(['/shop']);
     }
   }
 

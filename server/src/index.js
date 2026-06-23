@@ -43,12 +43,32 @@ ensureBuckets().catch(err => console.error('[STORAGE] ensureBuckets error:', err
 
 const app = express();
 
-// CORS — environment-driven origins
+// Trust the first proxy hop (Railway's edge). If we ever sit behind multiple
+// proxies, set this to the exact hop count. Required for express-rate-limit's
+// per-IP buckets per WORKING_STANDARDS §"Auth surfaces require rate limiting"
+// — without it every user shares the proxy's IP (self-DoS).
+app.set('trust proxy', 1);
+
+// Security headers (pV2-AUDIT-03). Defaults are sensible for an API; the
+// SPA's HTML is served elsewhere (Vercel / ng serve) and owns its own CSP.
+// Also removes X-Powered-By: Express (version disclosure).
+app.use(require('helmet')({
+  contentSecurityPolicy: false, // we don't serve HTML; SPA host owns CSP
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // SPA on a different origin
+}));
+
+// CORS — environment-driven origins. credentials:true so the bp_session
+// cookie flows on cross-origin XHR from the SPA origins (pV2-02 auth).
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : ['http://localhost:4200'];
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use(require('cookie-parser')());
+// Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
+// pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.
+app.use(require('./middleware/user-context'));
 
 // Services
 const OrgService = require('./services/org.service');
@@ -124,7 +144,10 @@ app.get('/api/suppliers', async (req, res, next) => {
 
 // Convenience: get supplier catalogue items grouped by category
 app.get('/api/suppliers/:id/catalogue', async (req, res, next) => {
-  try { res.json(await OrgService.getCatalogue(req.params.id)); } catch (err) { next(err); }
+  // v1.68b — include_hidden=true relaxes the is_active filter for the owner's
+  // own /store so hidden items appear (with a Hidden badge). deleted_at rows
+  // stay excluded regardless.
+  try { res.json(await OrgService.getCatalogue(req.params.id, req.query.include_hidden === 'true')); } catch (err) { next(err); }
 });
 
 // PATCH item images
@@ -153,6 +176,18 @@ app.get('/api/clients/:id/projects', async (req, res, next) => {
 });
 
 // Mount routes
+// pV2-02 — auth surface (/auth/*, distinct from /api/*) + dev-only endpoints.
+// The JWT middleware is NOT applied to the v1 /api routes — v1 (port 4200)
+// has no session cookie and must keep working unchanged; see
+// middleware/authenticate.js scope note.
+app.use('/auth', require('./routes/auth'));
+app.use('/api/dev', require('./routes/dev'));
+// pV2-02b — onboarding (orgless authenticated users create their org here).
+// Same shape as /api/dev: registered BEFORE the gated v2 router because
+// requireActiveMembership must NOT apply — orgless is the whole point.
+app.use('/api/onboarding', require('./routes/onboarding'));
+// Public (no auth) — brand tokens for client-v2, applied pre-sign-in (pV2-01e).
+app.use('/api/brand', require('./routes/brand'));
 app.use('/api/statuses', require('./routes/statuses'));
 app.use('/api/orgs', require('./routes/orgs'));
 app.use('/api/users', require('./routes/users'));
@@ -172,6 +207,7 @@ app.use('/api/favourites', require('./routes/favourites'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/codelists', require('./routes/codelists'));
 app.use('/api/project-items', require('./routes/projectItems'));
+app.use('/api/config', require('./routes/config')); // p0021 — org_type page-settings config
 
 // v1.65cu (p0008) — Public supplier brief surface. No auth on this
 // prefix — access is gated by the unguessable per-message token in
@@ -180,15 +216,30 @@ app.use('/api/brief', require('./routes/brief'));
 
 // Marketing — public welcome page + guestlist signups
 app.use('/api', require('./routes/marketing'));         // /welcome/content, /guestlist/signup
-app.use('/api/admin', require('./routes/adminMarketing')); // admin-guarded
+// pV2-EA-02b — the admin marketing surface gates on the v2 session + the
+// ballpark-admin role (admin.cross_org_view), exactly like Pages/Categories/
+// Codelists. authenticate populates req.user; requireActiveMembership re-derives
+// the live role from the DB. Replaces the interim ADMIN_API_SECRET header gate.
+app.use(
+  '/api/admin',
+  require('./middleware/authenticate').authenticate,
+  require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
+  require('./routes/adminMarketing')
+);
 
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return res.json([]);
   try {
+    // pV2-MEDIA-01b: paginate (page + per_page) so the picker can "Load more"
+    // (Unsplash caps per_page at 30). Adds photoUrl for the mandatory
+    // attribution link. Returns a bare array (v1 image-upload-panel relies on
+    // that shape); the picker infers "more" from a full page.
     const query = encodeURIComponent(req.query.query || 'exhibition');
-    const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=9&orientation=landscape`;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage = Math.min(30, Math.max(1, parseInt(req.query.per_page, 10) || 24));
+    const url = `https://api.unsplash.com/search/photos?query=${query}&page=${page}&per_page=${perPage}&orientation=landscape`;
     const resp = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
     if (!resp.ok) return res.json([]);
     const data = await resp.json();
@@ -196,13 +247,53 @@ app.get('/api/unsplash/search', async (req, res) => {
       url: p.urls?.regular,
       thumb: p.urls?.small,
       description: p.alt_description || p.description || '',
-      photographer: p.user?.name || ''
+      photographer: p.user?.name || '',
+      photoUrl: p.links?.html || ''
     })));
   } catch (err) {
     console.error('[Unsplash]', err.message);
     res.json([]);
   }
 });
+
+// ── v2 GATED ROUTER (pV2-AUDIT-02 fix 1) ────────────────────────────────────
+// Every v2 feature endpoint mounts HERE and inherits authenticate +
+// requireActiveMembership() by DEFAULT (live user_orgs re-read per request —
+// suspension/demotion bites on the next call, never per-route opt-in). Per
+// WORKING_STANDARDS §"Shared security standards live as middleware".
+//
+// ORDERING IS LOAD-BEARING: this router is mounted at /api AFTER every v1
+// mount above, so v1 paths (used by client-angular on :4200, no JWT cookie)
+// match first and stay ungated. Unmatched /api/* now 401s here instead of
+// 404ing — acceptable. /auth/* stays outside (entry point — no membership
+// yet); /api/dev stays outside (the pre-auth login picker calls it; it has
+// its own NODE_ENV gate).
+{
+  const { authenticate } = require('./middleware/authenticate');
+  const { requireActiveMembership } = require('./middleware/require-active-membership');
+  const v2 = express.Router();
+  v2.use(authenticate, requireActiveMembership());
+  v2.use('/team', require('./routes/team'));
+  // pV2 Profile — the org's own profile (GET any member / PUT org admins).
+  v2.use('/organisation', require('./routes/organisation'));
+  // pV2-MARKET-00 — categories: browse rail (any member) + platform-admin
+  // curation (admin.cross_org_view). Items/suppliers join in pV2-06a.
+  // Favourites extracted from marketplace.js (cards-audit F-8) — mounted
+  // BEFORE /marketplace so the more-specific path matches first.
+  v2.use('/marketplace/favourites', require('./routes/marketplace-favourites'));
+  v2.use('/marketplace', require('./routes/marketplace'));
+  // pV2-CODELISTS-01 — reference codelists (reads any member; value
+  // curation platform admins; DELETE always 405 — locked rule 2).
+  v2.use('/codelists', require('./routes/codelists-v2'));
+  // pV2-PROJECTS-01 — the v2 projects surface, org-scoped (JWT org_id).
+  // INTERIM PATH `/projects-v2`: v1 owns the live ungated /api/projects
+  // (client-angular until pV2-11); reclaim the clean path at v1 retirement.
+  v2.use('/projects-v2', require('./routes/projects-v2'));
+  v2.use('/media', require('./routes/media')); // pV2-MEDIA-01 — gated image upload
+  // future v2 endpoints: v2.use('/home', ...) — they inherit the gate
+  // automatically by being mounted here.
+  app.use('/api', v2);
+}
 
 // Centralised error handler
 app.use((err, req, res, next) => {
