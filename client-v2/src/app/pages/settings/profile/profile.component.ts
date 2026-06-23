@@ -266,6 +266,11 @@ interface ProfileForm {
             } @else {
               <p class="bp-caption">Only organisation admins can view team members.</p>
             }
+            @if (canEdit()) {
+              <button type="button" class="bp-btn-grad mt-5" (click)="inviteTeamMember()">
+                <lucide-icon name="plus" [size]="15" /> Invite Team Member
+              </button>
+            }
           </app-edit-section>
 
           <app-edit-section
@@ -329,6 +334,11 @@ export class ProfileComponent {
     params: () => (this.canEdit() ? (this.auth.user()?.activeOrgId ?? undefined) : undefined),
     loader: () => firstValueFrom(this.teamSvc.list()),
   });
+
+  /** Invite a new member — opens the team-management page (the invite surface). */
+  protected inviteTeamMember(): void {
+    this.router.navigate(['/settings/team']).catch((err) => console.warn('[Profile] navigation failed', err));
+  }
 
   /** Display role: the member's job title, else their effective role. */
   protected memberRole(m: TeamMember): string {
