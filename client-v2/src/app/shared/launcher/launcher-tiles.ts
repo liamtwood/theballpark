@@ -69,6 +69,13 @@ export const BALLPARK_TILES: readonly LauncherTile[] = [
     href: '/settings/profile',
   },
   {
+    // pV2-EA-02 — waitlist signups + welcome content + admin notifications.
+    icon: 'rocket',
+    label: 'Early Access',
+    subtitle: 'Manage waitlist signups, welcome-page content and notifications.',
+    href: '/settings/early-access',
+  },
+  {
     icon: 'settings',
     label: 'Page Settings',
     subtitle: 'Edit page heroes and labels per customer role.',

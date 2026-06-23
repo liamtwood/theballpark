@@ -10,6 +10,8 @@ import {
   SignupRow,
   WelcomeSettings,
 } from '../../../core/admin/admin-marketing.service';
+import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
+import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.component';
 
 type Tab = 'signups' | 'content' | 'notifications';
 type Env = 'dev' | 'preview' | 'master' | 'unknown';
@@ -37,27 +39,25 @@ const ENV_CHIPS: { key: Env; label: string }[] = [
   selector: 'app-early-access',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
-  imports: [FormsModule, ToastModule, LucideAngularModule],
+  imports: [FormsModule, ToastModule, LucideAngularModule, PageHeroComponent, TabBandComponent],
   providers: [MessageService],
   template: `
     <p-toast position="bottom-right" styleClass="bp-toast" />
 
-    <div class="bp-ea-page">
-      <div class="bp-ea-head">
-        <div>
-          <h1 class="bp-ea-title">Early Access</h1>
-          <p class="bp-ea-sub">Waitlist signups, welcome-page copy, and admin notifications.</p>
-        </div>
+    <app-page-hero
+      [back]="{ label: 'Home', href: '/home' }"
+      [title]="'Early Access'"
+      [subtitle]="'Waitlist signups, welcome-page copy, and admin notifications.'"
+    >
+      <div hero-actions class="flex items-center gap-3">
         <a class="bp-ea-preview-link" href="/welcome" target="_blank" rel="noopener">
           <lucide-icon name="external-link" [size]="13" /> Preview welcome page
         </a>
+        <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
       </div>
+    </app-page-hero>
 
-      <div class="bp-ea-tabs" role="tablist">
-        <button class="bp-ea-tab" [class.active]="tab() === 'signups'" (click)="tab.set('signups')">Signups</button>
-        <button class="bp-ea-tab" [class.active]="tab() === 'content'" (click)="openContent()">Page content</button>
-        <button class="bp-ea-tab" [class.active]="tab() === 'notifications'" (click)="openNotifications()">Notifications</button>
-      </div>
+    <div class="bp-ea-page">
 
       <!-- ── SIGNUPS ─────────────────────────────────────────────── -->
       @if (tab() === 'signups') {
@@ -299,6 +299,20 @@ export class EarlyAccessComponent {
 
   protected readonly envChips = ENV_CHIPS;
   protected readonly tab = signal<Tab>('signups');
+
+  /** Hero tab-band menu (standard chrome, like marketplace Items|Suppliers). */
+  protected readonly tabs: TabBandTab[] = [
+    { key: 'signups', label: 'Signups' },
+    { key: 'content', label: 'Page content' },
+    { key: 'notifications', label: 'Notifications' },
+  ];
+
+  /** Tab-band dispatch — content/notifications lazy-load on first open. */
+  protected setTab(key: string): void {
+    if (key === 'content') void this.openContent();
+    else if (key === 'notifications') void this.openNotifications();
+    else this.tab.set('signups');
+  }
 
   // ── Signups (reactive list) ──────────────────────────────────────────
   protected readonly search = signal('');

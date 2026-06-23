@@ -95,8 +95,20 @@ Verified (dev): server — no session 401, **Beth (Ballpark org) 200, Sarah (age
 
 **Net:** this *pays down* TECH-DEBT-01 (the `/api/admin/*` secret gate is gone) instead of extending it. Beth / Meg / Liam reach Early Access by logging in with their `ballpark_admin` accounts — no separate password.
 
+## Iteration — v2.33e (2026-06-23) — standard hero + tab-band + Home tile
+**Triggered by QC:** Liam — put Early Access on the standard marketplace-style hero (with a tab-band menu like Items/Suppliers) and add a Home entry for ballpark admins.
+**Commit:** `<pending>`
+**Files:** `pages/settings/early-access/early-access.component.ts`, `shared/launcher/launcher-tiles.ts`, `environment.ts`.
+
+- Replaced the ported custom title-row + `.bp-ea-tabs` with **`<app-page-hero>`** (title "Early Access", subtitle, Back→Home) + **`<app-tab-band>`** in the hero-actions slot — tabs **Signups / Page content / Notifications** (same chrome as marketplace Items/Suppliers + supplier-detail Storefront/Store). The "Preview welcome page" link moved into hero-actions. `setTab()` dispatches the band's key (content/notifications still lazy-load on first open).
+- Added an **Early Access tile** to `BALLPARK_TILES` (rocket icon → `/settings/early-access`), so ballpark admins reach it from Home as well as the user-menu.
+
+Verified (dev, Beth): Home shows the Early Access tile (→ `/settings/early-access`); the page renders the hero + tab-band (3 tabs), old `.bp-ea-tabs` gone, tab-switch + lazy-load + preview link all working.
+
+**Minor:** the now-unused `.bp-ea-head/.bp-ea-title/.bp-ea-sub/.bp-ea-tabs/.bp-ea-tab` style rules are dead (scoped, inert) — trivial cleanup, left for the audit pass.
+
 ## QC notes
-(Liam fills this in — log in as a Ballpark-team user, open the user-menu → Early access, browse signups by environment, edit a slide, send a test admin email)
+(Liam fills this in — from Home → Early Access tile; confirm the hero/tab-band feels like marketplace; browse signups, edit a slide, send a test admin email)
 
 ## Chat audit
 (chat fills this in)
