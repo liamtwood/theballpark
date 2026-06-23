@@ -24,10 +24,19 @@ import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.
 import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.component';
 import { CatalogueService } from '../../../core/marketplace/catalogue.service';
 import { SupplierSubcategory } from '../../../shared/catalogue/catalogue.types';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TeamService, TeamMember } from '../../../core/team/team.service';
 import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
+/** The invite-team-member drawer form (pV2-STORE-01). */
+interface InviteForm {
+  email: string;
+  displayName: string;
+  jobTitle: string;
+  isAdmin: boolean;
+}
+
 interface ProfileForm {
   name: string;
   description: string;
@@ -66,6 +75,7 @@ interface ProfileForm {
     TabBandComponent,
     StorefrontPanelComponent,
     UserAvatarComponent,
+    ToggleSwitchModule,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -273,6 +283,28 @@ interface ProfileForm {
             }
           </app-edit-section>
 
+          <app-drawer [(open)]="inviteDrawer" title="Invite team member">
+            <div class="flex flex-col gap-5">
+              <app-edit-field label="Email" type="email" density="page" [editing]="true" [value]="inviteForm().email" (valueChange)="patchInvite({ email: $event })" />
+              <app-edit-field label="Display name" density="page" [editing]="true" [value]="inviteForm().displayName" (valueChange)="patchInvite({ displayName: $event })" />
+              <app-edit-field label="Job title" density="page" [editing]="true" [value]="inviteForm().jobTitle" (valueChange)="patchInvite({ jobTitle: $event })" />
+              <label class="flex items-center gap-2.5">
+                <span class="bp-field-label">Admin</span>
+                <p-toggleswitch
+                  [ngModel]="inviteForm().isAdmin"
+                  ariaLabel="Invite as admin"
+                  (onChange)="patchInvite({ isAdmin: $event.checked === true })"
+                />
+              </label>
+              <div class="mt-1 flex justify-end gap-2.5">
+                <button type="button" class="bp-btn-outline" [disabled]="inviting()" (click)="inviteDrawer.set(false)">Cancel</button>
+                <button type="button" class="bp-btn-grad" [disabled]="inviting()" (click)="sendInvite()">
+                  {{ inviting() ? 'Inviting…' : 'Send invite' }}
+                </button>
+              </div>
+            </div>
+          </app-drawer>
+
           <app-edit-section
             title="Finance"
             [editable]="canEdit()"
@@ -335,9 +367,42 @@ export class ProfileComponent {
     loader: () => firstValueFrom(this.teamSvc.list()),
   });
 
-  /** Invite a new member — opens the team-management page (the invite surface). */
+  // ── Invite team member (pV2-STORE-01) — inline drawer over TeamService. ──
+  protected readonly inviteDrawer = signal(false);
+  protected readonly inviting = signal(false);
+  protected readonly inviteForm = signal<InviteForm>({ email: '', displayName: '', jobTitle: '', isAdmin: false });
+
   protected inviteTeamMember(): void {
-    this.router.navigate(['/settings/team']).catch((err) => console.warn('[Profile] navigation failed', err));
+    this.inviteForm.set({ email: '', displayName: '', jobTitle: '', isAdmin: false });
+    this.inviteDrawer.set(true);
+  }
+  protected patchInvite(p: Partial<InviteForm>): void {
+    this.inviteForm.update((f) => ({ ...f, ...p }));
+  }
+  protected async sendInvite(): Promise<void> {
+    const f = this.inviteForm();
+    if (!f.email.trim()) {
+      this.toast.add({ severity: 'warn', summary: 'Email is required', life: 3000 });
+      return;
+    }
+    this.inviting.set(true);
+    try {
+      await firstValueFrom(
+        this.teamSvc.invite({
+          email: f.email.trim(),
+          displayName: f.displayName.trim() || undefined,
+          jobTitle: f.jobTitle.trim() || undefined,
+          isAdmin: f.isAdmin,
+        })
+      );
+      this.toast.add({ severity: 'success', summary: 'Invite sent.', life: 3000 });
+      this.inviteDrawer.set(false);
+      this.team.reload();
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't send invite — please try again.", detail: errorDetail(e), life: 5000 });
+    } finally {
+      this.inviting.set(false);
+    }
   }
 
   /** Display role: the member's job title, else their effective role. */
