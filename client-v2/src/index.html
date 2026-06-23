@@ -10,13 +10,30 @@
        bp_brand_config.font_pair (--bp-font). The static Playfair/Libre
        Franklin pair is gone; runtime loading of an admin-picked webfont
        lands in pV2-TYPE-02. -->
-  <!-- pV2-WELCOME port: the public /welcome marketing deck uses Fraunces
-       (serif) + Inter (slide-4). Loaded here as a <link> (not an inline
-       component @import) so Angular's font-inlining budget isn't tripped.
-       Scoped in effect to /welcome — no other surface references them. -->
+  <!-- pV2-WELCOME: the public /welcome marketing deck uses Sharpe (the
+       licensed display serif, purchased 2026-06-23 — self-hosted below) +
+       Inter (slide-4 sans, Google). Declared here (not in the component
+       @import) so Angular's font-inlining budget isn't tripped. Scoped in
+       effect to /welcome — no other surface references 'Sharpe'/'Inter'. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600;700;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap">
+  <style>
+    /* Licensed Sharpe (purchased 2026-06-23), self-hosted from public/fonts.
+       Sharpe ships Thin/Light/Medium/Bold/Black (100/300/500/700/900) — it has
+       no 400/600, so those nearest-match to 500/700 (standard CSS matching).
+       font-display:swap → Georgia fallback until Sharpe loads, no FOIT. */
+    @font-face { font-family: 'Sharpe'; font-style: normal; font-weight: 100; font-display: swap;
+      src: url('/fonts/sharpe/Sharpe-Thin.woff2') format('woff2'), url('/fonts/sharpe/Sharpe-Thin.woff') format('woff'); }
+    @font-face { font-family: 'Sharpe'; font-style: normal; font-weight: 300; font-display: swap;
+      src: url('/fonts/sharpe/Sharpe-Light.woff2') format('woff2'), url('/fonts/sharpe/Sharpe-Light.woff') format('woff'); }
+    @font-face { font-family: 'Sharpe'; font-style: normal; font-weight: 500; font-display: swap;
+      src: url('/fonts/sharpe/Sharpe-Medium.woff2') format('woff2'), url('/fonts/sharpe/Sharpe-Medium.woff') format('woff'); }
+    @font-face { font-family: 'Sharpe'; font-style: normal; font-weight: 700; font-display: swap;
+      src: url('/fonts/sharpe/Sharpe-Bold.woff2') format('woff2'), url('/fonts/sharpe/Sharpe-Bold.woff') format('woff'); }
+    @font-face { font-family: 'Sharpe'; font-style: normal; font-weight: 900; font-display: swap;
+      src: url('/fonts/sharpe/Sharpe-Black.woff2') format('woff2'), url('/fonts/sharpe/Sharpe-Black.woff') format('woff'); }
+  </style>
 </head>
 <body>
   <app-root></app-root>
