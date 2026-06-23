@@ -63,6 +63,10 @@ export interface ItemsQuery {
   priceMax?: number | null;
   tier?: ItemTier | null;
   supplier?: string | null;
+  /** Owner store filters (pV2-STORE-01) — server honours these only when the
+   *  caller owns `supplier`. status = approval_status; active = publish state. */
+  status?: string | null;
+  active?: string | null;
   offset?: number;
 }
 

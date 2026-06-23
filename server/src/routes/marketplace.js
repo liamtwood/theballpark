@@ -186,9 +186,23 @@ router.get('/items', async (req, res, next) => {
         details: z.flattenError(parsed.error).fieldErrors,
       });
     }
-    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier } = parsed.data;
-    const where = [`i.deleted_at IS NULL`, `i.is_active`, `i.approval_status = 'approved'`];
+    const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active } = parsed.data;
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
+    const where = [`i.deleted_at IS NULL`];
+    // pV2-STORE-01 — owner store visibility. The `status`/`active` filters are
+    // honoured ONLY when the caller owns the pinned supplier org; this is the
+    // single gate that lets a supplier see their own draft/pending/inactive
+    // items. Everyone else (incl. an owner browsing another store) gets the
+    // public marketplace filter: active + approved only.
+    const ownerScope = !!supplier && supplier === req.user.org_id;
+    if (ownerScope) {
+      if (status && status !== 'all') { vals.push(status); where.push(`i.approval_status = $${vals.length}`); }
+      if (active === 'active') where.push(`i.is_active`);
+      else if (active === 'inactive') where.push(`NOT i.is_active`);
+      // active 'all' / unset → both (the supplier sees their whole catalogue)
+    } else {
+      where.push(`i.is_active`, `i.approval_status = 'approved'`);
+    }
     if (cat) { vals.push(cat); where.push(`i.category_id = $${vals.length}`); }
     if (sub) { vals.push(sub); where.push(`i.subcategory_id = $${vals.length}`); }
     if (priceMin !== undefined) { vals.push(priceMin); where.push(`i.base_price >= $${vals.length}`); }

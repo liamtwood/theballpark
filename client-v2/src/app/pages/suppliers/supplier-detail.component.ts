@@ -85,6 +85,32 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
           <!-- The shared search/filter band (RP-06 extraction) — supplier
                select off (the store is already pinned to one). -->
           <app-catalogue-filter-band />
+
+          @if (isOwner()) {
+            <!-- pV2-STORE-01 — owner-only: see/manage your own catalogue across
+                 statuses + publish state (defaults to your unpublished work). -->
+            <div class="mb-4 flex flex-wrap items-center gap-5">
+              <label class="flex items-center gap-2">
+                <span class="bp-field-label">Status</span>
+                <select class="bp-store-select" [value]="store.statusFilter()" (change)="store.setStatusFilter($any($event.target).value)">
+                  <option value="all">All</option>
+                  <option value="draft">Draft</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label class="flex items-center gap-2">
+                <span class="bp-field-label">Active</span>
+                <select class="bp-store-select" [value]="store.activeFilter()" (change)="store.setActiveFilter($any($event.target).value)">
+                  <option value="inactive">Inactive</option>
+                  <option value="active">Active</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            </div>
+          }
+
           <app-catalogue-layout>
             <app-category-strip
               strip
@@ -127,6 +153,21 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
       <div class="bp-page-body"><p class="bp-body-small text-warn">Supplier not found.</p></div>
     } @else {
       <div class="bp-page-body"><p class="bp-body-small text-secondary">Loading…</p></div>
+    }
+  `,
+  styles: `
+    .bp-store-select {
+      border: 1px solid var(--color-border-hairline);
+      border-radius: var(--radius-input, 8px);
+      background: var(--color-surface);
+      color: var(--color-text);
+      padding: 6px 10px;
+      font-family: var(--bp-font);
+      font-size: var(--text-sm);
+    }
+    .bp-store-select:focus-visible {
+      outline: 2px solid var(--theme-accent);
+      outline-offset: 1px;
     }
   `,
 })

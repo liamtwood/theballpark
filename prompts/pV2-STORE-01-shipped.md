@@ -98,6 +98,18 @@ Verified: client build clean; 48/48 server tests.
 
 ⚠️ **Visibility note (re-opened):** with draft/pending now `is_active=false`, a saved item does **not** appear on the supplier's own storefront — so the next slices (owner-sees-own-drafts list + ballpark approve/reject) are needed to complete the round-trip. (Same MEDIUM concern documented above.)
 
+## Iteration — v2.33o/p (2026-06-23) — editor headers + owner store filters
+**Triggered by QC:** Liam — fix the column headers + add a Status section with date/time; add Status + Is-Active filters so a supplier can see their Draft/Pending/Approved items (default to inactive). "ok to pollute for now" → filters added into the shared marketplace flow, owner-gated.
+**Commit:** `<pending>`
+
+- **v2.33o** — editor headers fixed: **left = Add New Product / Edit Product**, **right = Image Approval Process**, with a **Status** section beneath it (codelist pill + the date/time the status was set — the seed for a status-over-time history).
+- **v2.33p — owner store filters.** On the supplier's OWN store (`/suppliers/:ownOrgId` Store tab) two selects appear: **Status** (All/Draft/Pending/Approved/Rejected) and **Active** (Inactive[default]/Active/All). They write `?status`/`?active`, flow through `MarketplaceStore` → `catalogue.items` → `GET /api/marketplace/items`.
+  - **Authorization (the careful bit):** the `status`/`active` params are honoured **only when `supplier === req.user.org_id`** (server-side `ownerScope`). Every other caller — including an owner browsing someone else's store, and the public `/marketplace` — is forced to `is_active AND approval_status='approved'`. No way to leak draft/hidden items.
+  - **Default = Inactive** so a supplier lands on their unpublished work first (Liam). On `/marketplace` the filters are null (public grid unchanged).
+  - ⚠️ **Pollution noted (tidy later):** the category-strip counts on the owner Store tab still come from the public approved-count query, so they can disagree with a draft/inactive-filtered grid. Per-card status pills not added yet. (Liam: "ok to pollute for now… tidy it up later.")
+
+Verified: client build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

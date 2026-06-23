@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, linkedSignal, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import {
   BrowseMode,
@@ -28,6 +29,7 @@ export class MarketplaceStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly auth = inject(AuthService);
 
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -69,10 +71,26 @@ export class MarketplaceStore {
     () => !!(this.priceBracket() || this.tier() || this.supplierId())
   );
 
+  /** Owner store (pV2-STORE-01) — the viewer's OWN pinned store. Only here do
+   *  the status/active filters apply; elsewhere they stay null (public grid). */
+  readonly isOwnerStore = computed(() => {
+    const id = this.pinnedSupplierId();
+    return !!id && this.auth.user()?.activeOrgId === id;
+  });
+  /** Approval-status filter (owner only): all|draft|pending|approved|rejected. */
+  readonly statusFilter = computed(() =>
+    this.isOwnerStore() ? this.query().get('status') || 'all' : null
+  );
+  /** Publish-state filter (owner only). Defaults to `inactive` so a supplier
+   *  lands on their unpublished work first (Liam: "default to not active"). */
+  readonly activeFilter = computed(() =>
+    this.isOwnerStore() ? this.query().get('active') || 'inactive' : null
+  );
+
   /** The filter signature — offset + accumulation reset on ANY change. */
   private readonly filterKey = computed(
     () =>
-      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}`
+      `${this.pinnedSupplierId() ?? ''}|${this.mode()}|${this.categoryId() ?? ''}|${this.subcategoryId() ?? ''}|${this.search()}|${this.priceBracket() ?? ''}|${this.tier() ?? ''}|${this.supplierId() ?? ''}|${this.statusFilter() ?? ''}|${this.activeFilter() ?? ''}`
   );
 
   /** Local page offset; snaps back to 0 when the filters change. */
@@ -130,6 +148,9 @@ export class MarketplaceStore {
         priceMax: bracket?.max ?? null,
         tier: this.tier(),
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
+        // Owner-only — null elsewhere, so the public grid is unaffected.
+        status: this.statusFilter() === 'all' ? null : this.statusFilter(),
+        active: this.activeFilter(),
         offset: this.offset(),
       };
     },
@@ -216,6 +237,13 @@ export class MarketplaceStore {
   }
   setSupplier(id: string | null): void {
     this.merge({ sup: id, item: null });
+  }
+  /** Owner store filters (pV2-STORE-01). `all`/default values clear the param. */
+  setStatusFilter(status: string | null): void {
+    this.merge({ status: status && status !== 'all' ? status : null, item: null });
+  }
+  setActiveFilter(active: string | null): void {
+    this.merge({ active: active && active !== 'inactive' ? active : null, item: null });
   }
   clearFilters(): void {
     this.merge({ price: null, tier: null, sup: null, item: null });
