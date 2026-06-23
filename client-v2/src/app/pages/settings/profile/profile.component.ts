@@ -18,6 +18,11 @@ import { OrgMediaComponent } from '../../../shared/org-media/org-media.component
 import { CompletenessCardComponent } from '../../../shared/completeness/completeness-card.component';
 import { CompletenessConfig } from '../../../shared/completeness/completeness.types';
 import { PageHeroComponent } from '../../../shell/page-hero/page-hero.component';
+import { Router } from '@angular/router';
+import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.component';
+import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.component';
+import { CatalogueService } from '../../../core/marketplace/catalogue.service';
+import { SupplierSubcategory } from '../../../shared/catalogue/catalogue.types';
 
 /** The editable form state (strings throughout — edit-field's surface). */
 interface ProfileForm {
@@ -53,12 +58,39 @@ interface ProfileForm {
     ImagePickerComponent,
     OrgMediaComponent,
     CompletenessCardComponent,
+    TabBandComponent,
+    StorefrontPanelComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
   template: `
     <app-page-hero [back]="{ label: 'Back', href: '/home' }" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
+    <!-- Profile (the editable view) + Shopfront (the consumer-facing view).
+         Suppliers only — agencies/ballpark have no public shopfront. -->
+    @if (isSupplier()) {
+      <div class="flex justify-center px-6 pt-4">
+        <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
+      </div>
+    }
+
+    @if (isSupplier() && tab() === 'shopfront') {
+      <div class="bp-page-body">
+        @if (shopfront.isLoading()) {
+          <p class="bp-body-small text-secondary">Loading…</p>
+        } @else if (shopfront.value(); as sup) {
+          <div class="bp-settings-body">
+            <app-storefront-panel
+              [supplier]="sup"
+              [subcategories]="shopfrontSubcats.value() ?? []"
+              (subcategorySelected)="openStoreSubcat($event)"
+            />
+          </div>
+        } @else {
+          <p class="bp-body-small text-warn">Couldn't load your shopfront.</p>
+        }
+      </div>
+    } @else {
     <div class="bp-page-body">
       @if (profile.isLoading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
@@ -168,6 +200,7 @@ interface ProfileForm {
         </div>
       }
     </div>
+    }
 
     <!-- MessageService supplies aria-live by severity (polite success/info,
          assertive error) — no explicit role needed (audit F-10). -->
@@ -180,6 +213,49 @@ export class ProfileComponent {
   private readonly toast = inject(MessageService);
   private readonly pageConfig = inject(PageConfigService);
   private readonly codelists = inject(CodelistService);
+  private readonly catalogue = inject(CatalogueService);
+  private readonly router = inject(Router);
+
+  // ── Profile / Shopfront tabs (pV2-STORE-01) ───────────────────────────────
+  // Profile = the editable view; Shopfront = the consumer-facing view (the same
+  // panel the marketplace renders). Suppliers only — others have no shopfront.
+  protected readonly isSupplier = computed(() => this.auth.user()?.activeOrgType === 'supplier');
+  protected readonly tab = signal<'profile' | 'shopfront'>('profile');
+  protected readonly tabs: TabBandTab[] = [
+    { key: 'profile', label: 'Profile' },
+    { key: 'shopfront', label: 'Shopfront' },
+  ];
+  protected setTab(key: string): void {
+    this.tab.set(key === 'shopfront' ? 'shopfront' : 'profile');
+  }
+
+  /** The owner's own marketplace storefront — loaded when a supplier opens the
+   *  Shopfront tab (skips for non-suppliers / before it's needed). */
+  protected readonly shopfront = resource({
+    params: () =>
+      this.isSupplier() && this.tab() === 'shopfront'
+        ? (this.auth.user()?.activeOrgId ?? undefined)
+        : undefined,
+    loader: ({ params }) => this.catalogue.supplierDetail(params),
+  });
+  protected readonly shopfrontSubcats = resource({
+    params: () =>
+      this.isSupplier() && this.tab() === 'shopfront'
+        ? (this.auth.user()?.activeOrgId ?? undefined)
+        : undefined,
+    loader: ({ params }) => this.catalogue.supplierSubcategories(params),
+  });
+
+  /** Shopfront subcat card → open that category in the owner's item store. */
+  protected openStoreSubcat(sub: SupplierSubcategory): void {
+    const id = this.auth.user()?.activeOrgId;
+    if (!id) return;
+    this.router
+      .navigate(['/suppliers', id], {
+        queryParams: { tab: 'store', cat: sub.parentId, sub: sub.isCatchAll ? null : sub.id },
+      })
+      .catch((err) => console.warn('[Profile] navigation failed', err));
+  }
 
   /** Codelist-fed selects (pV2-CODELISTS-02 — RP-04: no inline arrays).
    *  Country labels show the name; the stored value is the ISO-2 code. */

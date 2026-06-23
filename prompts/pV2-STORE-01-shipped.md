@@ -140,6 +140,15 @@ Verified: client build clean; 48/48 server tests.
 
 Verified: client build clean; 48/48 server tests.
 
+## Iteration — v2.33t (2026-06-23) — Shopfront moves to Profile; shop = items only
+**Triggered by QC:** Liam — Profile is the supplier's edit view, Shopfront is the flashy consumer view; the two belong together. The "shop" is only for managing items.
+
+- **Profile page** (`/settings/profile`) now has a **Profile | Shopfront** tab-band (suppliers only). Profile tab = the existing editable org form/media. **Shopfront** tab mounts the same `storefront-panel` the marketplace renders, previewing the owner's own org (loaded via `catalogue.supplierDetail(activeOrgId)`); subcat cards deep-link into the owner's item store.
+- **Owner's shop is items-only** — on `/suppliers/:id`, the Storefront tab + toggle now **hide for the owner** (`isOwner`), so "My Shop" opens straight into item management (Store). Back goes Home.
+- **Customers unaffected** — a non-owner browsing a supplier still sees the full Storefront + Store tabs.
+
+Verified: client build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

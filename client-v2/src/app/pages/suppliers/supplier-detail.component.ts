@@ -68,10 +68,14 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
         </div>
       </app-page-hero>
 
-      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC). -->
-      <div class="flex justify-center px-6 pt-4">
-        <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
-      </div>
+      <!-- Storefront / Store toggle — above the banner, centred (pV2-MEDIA-01e QC).
+           The OWNER's shop is items-only (pV2-STORE-01): their shopfront now
+           lives on /settings/profile, so the toggle hides and Store shows. -->
+      @if (!isOwner()) {
+        <div class="flex justify-center px-6 pt-4">
+          <app-tab-band [tabs]="tabs" [active]="tab()" (activeChange)="setTab($event)" />
+        </div>
+      }
 
       <div class="bp-page-body" [class.overflow-y-auto]="tab() === 'storefront'">
         @if (tab() === 'storefront') {
@@ -148,15 +152,20 @@ export class SupplierDetailComponent {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
-  protected readonly tab = computed(() => (this.query().get('tab') === 'store' ? 'store' : 'storefront'));
+  /** The owner has no Storefront tab — their shop is items-only, so force Store. */
+  protected readonly tab = computed(() =>
+    this.isOwner() || this.query().get('tab') === 'store' ? 'store' : 'storefront'
+  );
 
   /** Back walks the drill in reverse (QC): Store → Storefront (same route,
-   *  params cleared by the hero's plain routerLink) → Marketplace. */
-  protected readonly heroBack = computed(() =>
-    this.tab() === 'store'
+   *  params cleared by the hero's plain routerLink) → Marketplace. The owner
+   *  (no storefront tab) goes straight back Home. */
+  protected readonly heroBack = computed(() => {
+    if (this.isOwner()) return { label: 'Home', href: '/home' };
+    return this.tab() === 'store'
       ? { label: 'Storefront', href: `/suppliers/${this.store.pinnedSupplierId() ?? ''}` }
-      : { label: 'Marketplace', href: '/marketplace' }
-  );
+      : { label: 'Marketplace', href: '/marketplace' };
+  });
 
   /** Skips entirely until :id resolves — no empty-id fetch (audit C1). */
   protected readonly detail = resource({
