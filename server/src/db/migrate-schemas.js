@@ -1725,7 +1725,9 @@ const migrate = async () => {
         email       TEXT NOT NULL,
         -- Inferred from the Origin header at signup (marketing schema is
         -- single-instance across envs, so we tag where each row came from).
-        source_environment TEXT NOT NULL DEFAULT 'master',
+        -- Default 'unknown' — a row only becomes dev/preview/master when the
+        -- signup endpoint infers it (pre-EA-01 rows have no recorded origin).
+        source_environment TEXT NOT NULL DEFAULT 'unknown',
         ip_address  TEXT,
         user_agent  TEXT,
         notified_at TIMESTAMPTZ,
@@ -1752,7 +1754,7 @@ const migrate = async () => {
       ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS role;
       ALTER TABLE marketing.guestlist_signup DROP COLUMN IF EXISTS company;
       ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS last_name TEXT NOT NULL DEFAULT '';
-      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS source_environment TEXT NOT NULL DEFAULT 'master';
+      ALTER TABLE marketing.guestlist_signup ADD COLUMN IF NOT EXISTS source_environment TEXT NOT NULL DEFAULT 'unknown';
       -- Backfill: split the legacy single name on the first space. Single-word
       -- names keep an empty last_name. Idempotent — rows already split (last_name
       -- non-empty) are skipped; single-word rows re-run as a no-op.
