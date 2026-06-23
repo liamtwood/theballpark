@@ -17,6 +17,7 @@ import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edi
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
+import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
 
 interface ItemForm {
   name: string;
@@ -40,7 +41,7 @@ interface ItemForm {
   host: { class: 'block' },
   imports: [
     FormsModule, ToastModule, PageHeroComponent, EditFieldComponent,
-    ImageGalleryComponent, ImagePickerComponent, DrawerComponent,
+    ImageGalleryComponent, ImagePickerComponent, DrawerComponent, StatusPillComponent,
   ],
   providers: [MessageService],
   template: `
@@ -120,10 +121,12 @@ interface ItemForm {
           </div>
           </div>
 
-          <!-- RIGHT — Image Approval Process. -->
+          <!-- RIGHT — panel header, approval process + current status. -->
           <aside class="bp-card p-5 self-start">
-            <h3 class="bp-edit-section-title">Image Approval Process</h3>
-            <p class="bp-body-small mt-3 text-secondary">
+            <h3 class="bp-edit-section-title">{{ isEdit ? 'Edit Product' : 'Add New Product' }}</h3>
+
+            <h4 class="bp-field-label mt-4">Image Approval Process</h4>
+            <p class="bp-body-small mt-2 text-secondary">
               All images uploaded to Ballpark Marketplace must be reviewed and approved by the Ballpark team.
             </p>
             <p class="bp-body-small mt-3 text-secondary">
@@ -132,6 +135,11 @@ interface ItemForm {
             <p class="bp-body-small mt-3 text-secondary">
               If you need help preparing your images or listings, please contact the Ballpark team.
             </p>
+
+            <div class="mt-5 flex items-center gap-2">
+              <span class="bp-field-label">Status</span>
+              <app-status-pill list="item_approval_status" [code]="currentStatus()" />
+            </div>
           </aside>
         </div>
         </div>
@@ -211,6 +219,10 @@ export class ItemEditComponent {
   protected readonly saving = signal(false);
   protected readonly imageDrawer = signal(false);
   protected readonly imageTabs: PickerTab[] = ['upload', 'find'];
+
+  /** Current persisted approval status — drives the status pill. A new product
+   *  is a draft until first saved. */
+  protected readonly currentStatus = computed(() => this.itemRes.value()?.approval_status ?? 'draft');
 
   protected readonly heroTitle = computed(() => (this.isEdit ? 'Edit product' : 'Add product'));
   protected readonly heroSubtitle = computed(() =>
