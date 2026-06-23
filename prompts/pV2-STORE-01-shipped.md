@@ -149,6 +149,9 @@ Verified: client build clean; 48/48 server tests.
 
 Verified: client build clean.
 
+### v2.33u — Branding container, cover first
+Liam QC: on the Profile tab the media block moves to the **top** as the first section, wrapped in a titled **Branding** container (`app-edit-section title="Branding" [editable]="false"` — org-media keeps its own cover/logo/gallery editing). Cover image is now the first thing on the profile. Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

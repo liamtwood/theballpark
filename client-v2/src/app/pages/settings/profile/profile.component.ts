@@ -112,6 +112,55 @@ interface ProfileForm {
             }
           }
 
+          @if (profile.value(); as org) {
+            <!-- Branding — cover first, then logo + portfolio (pV2-STORE-01).
+                 The SAME media component the shopfront renders; edits ride
+                 canEdit. Titled container only (org-media owns its own editing,
+                 so the section's button row stays off). -->
+            <app-edit-section title="Branding" [editable]="false">
+              <div #mediaSection>
+                <app-org-media
+                  mode="edit"
+                  [canEdit]="canEdit()"
+                  [name]="org.name"
+                  [coverUrl]="org.coverImageUrl"
+                  [logoUrl]="org.logoUrl"
+                  [images]="org.images"
+                  (editCover)="coverDrawer.set(true)"
+                  (editLogo)="logoDrawer.set(true)"
+                  (imagesChange)="saveImages($event)"
+                  (primarySet)="setCover($event)"
+                />
+              </div>
+            </app-edit-section>
+
+            <app-drawer [(open)]="coverDrawer" title="Cover image">
+              <app-image-picker
+                entityType="profile"
+                [enabledTabs]="coverTabs"
+                [focalStep]="false"
+                [searchSeed]="org.name"
+                [currentImageUrl]="org.coverImageUrl"
+                previewAspect="4/3"
+                (chosen)="onPickCover($event)"
+                (removed)="onRemoveCover()"
+                (cancelled)="coverDrawer.set(false)"
+              />
+            </app-drawer>
+            <app-drawer [(open)]="logoDrawer" title="Logo">
+              <app-image-picker
+                entityType="profile"
+                [enabledTabs]="logoTabs"
+                [focalStep]="false"
+                [currentImageUrl]="org.logoUrl"
+                previewAspect="1/1"
+                (chosen)="onPickLogo($event)"
+                (removed)="onRemoveLogo()"
+                (cancelled)="logoDrawer.set(false)"
+              />
+            </app-drawer>
+          }
+
           <div #companySection>
           <app-edit-section
             title="Company Information"
@@ -152,51 +201,6 @@ interface ProfileForm {
             </div>
           </app-edit-section>
 
-          @if (profile.value(); as org) {
-            <!-- Branding + Gallery (pV2-MEDIA-01e) — the SAME component the
-                 supplier shopfront renders in view mode. Edit affordances
-                 here ride canEdit; the picker drawers below stay local. -->
-            <div #mediaSection>
-              <app-org-media
-                mode="edit"
-                [canEdit]="canEdit()"
-                [name]="org.name"
-                [coverUrl]="org.coverImageUrl"
-                [logoUrl]="org.logoUrl"
-                [images]="org.images"
-                (editCover)="coverDrawer.set(true)"
-                (editLogo)="logoDrawer.set(true)"
-                (imagesChange)="saveImages($event)"
-                (primarySet)="setCover($event)"
-              />
-            </div>
-
-            <app-drawer [(open)]="coverDrawer" title="Cover image">
-              <app-image-picker
-                entityType="profile"
-                [enabledTabs]="coverTabs"
-                [focalStep]="false"
-                [searchSeed]="org.name"
-                [currentImageUrl]="org.coverImageUrl"
-                previewAspect="4/3"
-                (chosen)="onPickCover($event)"
-                (removed)="onRemoveCover()"
-                (cancelled)="coverDrawer.set(false)"
-              />
-            </app-drawer>
-            <app-drawer [(open)]="logoDrawer" title="Logo">
-              <app-image-picker
-                entityType="profile"
-                [enabledTabs]="logoTabs"
-                [focalStep]="false"
-                [currentImageUrl]="org.logoUrl"
-                previewAspect="1/1"
-                (chosen)="onPickLogo($event)"
-                (removed)="onRemoveLogo()"
-                (cancelled)="logoDrawer.set(false)"
-              />
-            </app-drawer>
-          }
         </div>
       }
     </div>
