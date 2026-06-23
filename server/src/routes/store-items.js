@@ -35,8 +35,11 @@ router.post('/', async (req, res, next) => {
     }
     const item = await ItemService.create({
       ...parsed.data,
-      org_id: req.user.org_id, // sacred — session only, never the body
-      is_active: false,        // not visible until a ballpark admin approves
+      org_id: req.user.org_id,      // sacred — session only, never the body
+      // pV2-STORE-01 (Liam): active by default for now — products go live on
+      // save. The draft→submit→approve moderation flow returns in a later slice.
+      approval_status: 'approved',
+      is_active: true,
     });
     res.status(201).json(item);
   } catch (err) { next(err); }
@@ -51,8 +54,12 @@ router.put('/:id', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
     }
-    // Supplier edits go back through review — never re-publish from here.
-    const item = await ItemService.update(req.params.id, { ...parsed.data, is_active: false });
+    // Active by default for now — edits stay live (re-review returns later).
+    const item = await ItemService.update(req.params.id, {
+      ...parsed.data,
+      approval_status: 'approved',
+      is_active: true,
+    });
     res.json(item);
   } catch (err) { next(err); }
 });

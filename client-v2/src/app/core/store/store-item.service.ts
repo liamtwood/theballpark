@@ -14,6 +14,8 @@ export interface StoreItem {
   name: string;
   description: string | null;
   base_price: number | string | null;
+  /** Installed total (ballpark + install add-on). */
+  max_price: number | string | null;
   unit: string | null;
   lead_time_days: number | null;
   image_url: string | null;
@@ -23,19 +25,21 @@ export interface StoreItem {
   is_active: boolean;
 }
 
-/** What the editor sends on save (draft) / submit (pending). */
+/** What the editor sends on save. Status/visibility are set server-side
+ *  (active by default for now). */
 export interface StoreItemWrite {
   name: string;
   category_id: string;
   subcategory_id?: string | null;
   description?: string | null;
   base_price?: number | null;
+  /** Installed total (ballpark + install add-on) → stored in max_price. */
+  max_price?: number | null;
   unit?: string | null;
   lead_time_days?: number | null;
   image_url?: string | null;
   images?: GalleryImage[];
   tags?: string[];
-  approval_status: 'draft' | 'pending';
 }
 
 /** pV2-STORE-01 — supplier item editor client. Hits the gated

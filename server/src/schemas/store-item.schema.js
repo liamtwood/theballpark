@@ -21,9 +21,6 @@ const GalleryImageSchema = z.object({
     .optional(),
 });
 
-// Supplier-settable statuses only. 'approved'/'rejected' are ballpark-admin.
-const SupplierStatus = z.enum(['draft', 'pending']);
-
 const StoreItemCreateSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
@@ -31,12 +28,15 @@ const StoreItemCreateSchema = z
     subcategory_id: z.string().uuid().nullable().optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     base_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
+    // Installed total (ballpark + install add-on) — stored in max_price.
+    max_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
     unit: z.string().trim().max(40).nullable().optional(),
     lead_time_days: z.coerce.number().int().min(0).max(3650).nullable().optional(),
     image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
-    approval_status: SupplierStatus.default('draft'),
+    // approval_status / is_active are set server-side (active by default for
+    // now); the supplier does not send them.
   })
   .strip();
 

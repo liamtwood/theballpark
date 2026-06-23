@@ -75,8 +75,19 @@ deferred install/coverage/services fields are not built.
 **What:** Suppliers can submit (`pending`); there's no admin UI/endpoint yet to approve/reject. Next slice.
 **Severity:** LOW (planned phasing).
 
+## Iteration — v2.33j (2026-06-23) — active by default, install cost, layout
+**Triggered by QC:** Liam — active by default for now; add Installed Cost; one attribute per row; Image Approval Process panel.
+**Commit:** `<pending>`
+
+- **Active by default** — saved products go **live immediately** (`approval_status='approved'`, `is_active=true`) instead of draft/inactive. Resolves the draft-visibility gap (the supplier sees their item on the storefront right away). The draft→submit→approve moderation flow is deferred to a later slice; the form is now a single **"Save product"** button.
+- **Installed Cost (Optional)** — new field = the install add-on; stored as **`max_price` = ballpark cost + install** (no new column). A live "Installed: £X" line shows the total; edit recovers the add-on as `max_price − base_price`.
+- **Layout reworked** — two columns: LEFT = attributes one-per-row in order (Product Name, Category, Main Image, Gallery Images, Ballpark Cost, Installed Cost, Lead Time, Description); RIGHT = an **Image Approval Process** info panel.
+- Schema/route updated: `max_price` accepted; `approval_status` no longer supplier-sent (route forces approved+active).
+
+Verified: build clean; service create with base 1000 + max 1200 → approved + active, install add-on recovers to 200.
+
 ## QC notes
-(Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill + Save draft / Submit. Edit works on already-approved items via the rail pencil.)
+(Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → Save product. It should appear live on your storefront; the Edit pencil opens it again.)
 
 ## Chat audit
 (chat fills this in)

@@ -21,16 +21,18 @@ import { DrawerComponent } from '../../shared/drawer/drawer.component';
 interface ItemForm {
   name: string;
   category_id: string;
-  base_price: string;
+  base_price: string;     // "Ballpark cost"
+  installed_cost: string; // optional install add-on; stored as max_price = base + install
   lead_time_days: string;
   description: string;
 }
 
-/** pV2-STORE-01 — supplier Add/Edit product page. Mirrors /settings/profile:
- *  a Main Image (image-picker in a drawer) + a Gallery (image-gallery) + edit
- *  fields, with Save draft / Submit for approval. New products land as `draft`
- *  (or `pending` on submit), always is_active=false until a ballpark admin
- *  approves. Reached from the supplier's own storefront. */
+/** pV2-STORE-01 — supplier Add/Edit product page (profile-style: image picker +
+ *  gallery + edit-field rows). Attributes stack one-per-row on the left; an
+ *  Image Approval Process panel sits on the right. Saved products go live
+ *  immediately for now (active + approved) — the draft→submit→approve flow is
+ *  deferred. "Installed Cost" is the optional install add-on; we store the
+ *  installed total (ballpark + install) in max_price (no new column). */
 @Component({
   selector: 'app-item-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,65 +49,82 @@ interface ItemForm {
       @if (loading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else {
-        <div class="bp-settings-body">
-          <!-- Product details -->
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
+          <!-- LEFT — item attributes, one per row, in order. -->
           <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title">Product details</h3>
-            <div class="mt-3 bp-field-grid-2">
-              <app-edit-field label="Product name" density="page" [editing]="true" [value]="form().name" (valueChange)="patch({ name: $event })" />
-              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="true" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
-              <app-edit-field label="Ballpark cost (£)" type="number" density="page" [editing]="true" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
-              <app-edit-field label="Lead time (days)" type="number" density="page" [editing]="true" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
-            </div>
-            <div class="mt-4">
-              <label class="bp-field-label">Description</label>
-              <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" placeholder="Describe the product…"></textarea>
-            </div>
-          </div>
+            <div class="flex flex-col gap-5">
+              <app-edit-field label="Product Name" density="page" [editing]="true" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
-          <!-- Main image -->
-          <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title">Main image</h3>
-            <div class="mt-3 flex flex-col items-start gap-3">
-              <div class="bp-media-preview">
-                @if (imageUrl()) {
-                  <img [src]="imageUrl()" alt="" />
-                } @else {
-                  <span class="bp-caption">Click to upload main image</span>
+              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="true" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
+
+              <div>
+                <label class="bp-field-label">Main Image</label>
+                <div class="mt-2 flex flex-col items-start gap-3">
+                  <div class="bp-media-preview">
+                    @if (imageUrl()) {
+                      <img [src]="imageUrl()" alt="" />
+                    } @else {
+                      <span class="bp-caption">Click to upload main image</span>
+                    }
+                  </div>
+                  <button type="button" class="bp-btn-outline" (click)="imageDrawer.set(true)">
+                    {{ imageUrl() ? 'Change image' : 'Upload image' }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="bp-field-label">Gallery Images</label>
+                <div class="mt-2">
+                  <app-image-gallery
+                    entityType="item"
+                    [images]="images()"
+                    [primaryUrl]="imageUrl()"
+                    [searchSeed]="form().name"
+                    [editable]="true"
+                    (imagesChange)="images.set($event)"
+                    (primarySet)="onSetPrimary($event)"
+                  />
+                </div>
+              </div>
+
+              <app-edit-field label="Ballpark Cost (£)" type="number" density="page" [editing]="true" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+
+              <div>
+                <app-edit-field label="Installed Cost (Optional) (£)" type="number" density="page" [editing]="true" [value]="form().installed_cost" (valueChange)="patch({ installed_cost: $event })" />
+                @if (installedLabel()) {
+                  <p class="bp-caption mt-1">Installed: {{ installedLabel() }}</p>
                 }
               </div>
-              <button type="button" class="bp-btn-outline" (click)="imageDrawer.set(true)">
-                {{ imageUrl() ? 'Change image' : 'Upload image' }}
-              </button>
+
+              <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="true" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+
+              <div>
+                <label class="bp-field-label">Description</label>
+                <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" placeholder="Describe the product…"></textarea>
+              </div>
             </div>
           </div>
 
-          <!-- Gallery -->
-          <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title">Gallery images</h3>
-            <p class="bp-caption mt-1">Add up to 5 photos.</p>
-            <div class="mt-3">
-              <app-image-gallery
-                entityType="item"
-                [images]="images()"
-                [primaryUrl]="imageUrl()"
-                [searchSeed]="form().name"
-                [editable]="true"
-                (imagesChange)="images.set($event)"
-                (primarySet)="onSetPrimary($event)"
-              />
-            </div>
-          </div>
+          <!-- RIGHT — Image Approval Process. -->
+          <aside class="bp-card p-5 self-start">
+            <h3 class="bp-edit-section-title">Image Approval Process</h3>
+            <p class="bp-body-small mt-3 text-secondary">
+              All images uploaded to Ballpark Marketplace must be reviewed and approved by the Ballpark team.
+            </p>
+            <p class="bp-body-small mt-3 text-secondary">
+              This helps maintain a consistent and high-quality marketplace experience for all users.
+            </p>
+            <p class="bp-body-small mt-3 text-secondary">
+              If you need help preparing your images or listings, please contact the Ballpark team.
+            </p>
+          </aside>
+        </div>
 
-          <!-- Actions -->
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
-              {{ saving() ? 'Saving…' : 'Save draft' }}
-            </button>
-            <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
-              Submit for approval
-            </button>
-          </div>
+        <div class="mt-6 flex justify-end">
+          <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save()">
+            {{ saving() ? 'Saving…' : 'Save product' }}
+          </button>
         </div>
       }
     </div>
@@ -153,12 +172,11 @@ export class ItemEditComponent {
   private readonly store = inject(StoreItemService);
   private readonly toast = inject(MessageService);
 
-  /** Route :id — absent on /store/items/new. */
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
   protected readonly isEdit = !!this.itemId;
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', base_price: '', lead_time_days: '', description: '',
+    name: '', category_id: '', base_price: '', installed_cost: '', lead_time_days: '', description: '',
   });
   protected readonly imageUrl = signal<string | null>(null);
   protected readonly images = signal<GalleryImage[]>([]);
@@ -168,24 +186,39 @@ export class ItemEditComponent {
 
   protected readonly heroTitle = computed(() => (this.isEdit ? 'Edit product' : 'Add product'));
   protected readonly heroSubtitle = computed(() =>
-    this.isEdit ? 'Update your product, then save or resubmit.' : 'Add a product to your store.'
+    this.isEdit ? 'Update your product details.' : 'Add a product to your store.'
   );
 
-  /** Categories for the select (top-level browse categories). */
+  /** Installed total = ballpark cost + install add-on (the stored max_price). */
+  private readonly installedTotal = computed<number | null>(() => {
+    const f = this.form();
+    if (f.installed_cost === '') return null;
+    const base = Number(f.base_price) || 0;
+    const install = Number(f.installed_cost) || 0;
+    return base + install;
+  });
+  protected readonly installedLabel = computed(() => {
+    const t = this.installedTotal();
+    return t === null ? null : '£' + t.toLocaleString('en-GB');
+  });
+
   private readonly categoriesRes = this.api.getResource<CategoryInfo[]>('/api/marketplace/categories');
   protected readonly categoryOptions = computed<EditFieldOption[]>(
     () => (this.categoriesRes.value() ?? []).map((c) => ({ label: c.name, value: c.id }))
   );
 
-  /** Load the item when editing; blank for a new product. */
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
       const item = await firstValueFrom(this.store.get(params));
+      const base = item.base_price != null ? Number(item.base_price) : null;
+      const max = item.max_price != null ? Number(item.max_price) : null;
       this.form.set({
         name: item.name ?? '',
         category_id: item.category_id ?? '',
-        base_price: item.base_price != null ? String(item.base_price) : '',
+        base_price: base != null ? String(base) : '',
+        // Install add-on recovered from the stored installed total.
+        installed_cost: max != null ? String(Math.max(0, max - (base ?? 0))) : '',
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
         description: item.description ?? '',
       });
@@ -213,10 +246,10 @@ export class ItemEditComponent {
     this.imageUrl.set(img.url);
   }
 
-  protected async save(status: 'draft' | 'pending'): Promise<void> {
+  protected async save(): Promise<void> {
     const f = this.form();
     if (!f.name.trim()) {
-      this.toast.add({ severity: 'warn', summary: 'Product name is required', life: 3000 });
+      this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
       return;
     }
     if (!f.category_id) {
@@ -228,10 +261,11 @@ export class ItemEditComponent {
       category_id: f.category_id,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
+      // Installed total (ballpark + install) → max_price; null clears it.
+      max_price: this.installedTotal(),
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),
-      approval_status: status,
     };
     this.saving.set(true);
     try {
@@ -240,12 +274,7 @@ export class ItemEditComponent {
       } else {
         await firstValueFrom(this.store.create(body));
       }
-      this.toast.add({
-        severity: 'success',
-        summary: status === 'pending' ? 'Submitted for approval.' : 'Draft saved.',
-        life: 3000,
-      });
-      // Back to the supplier's own storefront.
+      this.toast.add({ severity: 'success', summary: 'Product saved.', life: 3000 });
       const orgId = this.auth.user()?.activeOrgId;
       void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
     } catch (e) {
