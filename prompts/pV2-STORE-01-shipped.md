@@ -158,6 +158,9 @@ Liam QC: each a separate section, in that order; About Us carries the descriptio
 - *Interpretation note:* I folded the company-info fields (name/address/contact/ref-prefix) under **About Us** alongside the description to match the 5-section list — say if you'd rather keep "Company Information" as its own section.
 Build clean; 48/48 server tests.
 
+### v2.33w — About Us split from Company Information
+Liam QC: About Us = description only, followed by Company Information (the fields). Now six sections: Completeness, Branding, **About Us** (own edit lifecycle, saves just `description`), **Company Information** (name/city/country/address/email/phone/ref-prefix), Gallery, Finance. Build clean.
+
 ### v2.33u — Branding container, cover first
 Liam QC: on the Profile tab the media block moves to the **top** as the first section, wrapped in a titled **Branding** container (`app-edit-section title="Branding" [editable]="false"` — org-media keeps its own cover/logo/gallery editing). Cover image is now the first thing on the profile. Build clean.
 

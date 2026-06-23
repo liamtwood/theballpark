@@ -161,9 +161,33 @@ interface ProfileForm {
             </app-drawer>
           }
 
-          <div #companySection>
+          <!-- About Us — the public description blurb (orgs.description, also
+               rendered on the shopfront). Its own section + edit lifecycle. -->
           <app-edit-section
             title="About Us"
+            [editable]="canEdit()"
+            [(editing)]="editingAbout"
+            [saving]="saving()"
+            (edit)="snapshot('about')"
+            (cancelled)="restore('about')"
+            (save)="save('about')"
+          >
+            @if (editingAbout()) {
+              <textarea
+                class="bp-profile-textarea"
+                rows="5"
+                [ngModel]="form().description"
+                (ngModelChange)="patch({ description: $event })"
+                placeholder="Tell customers about your company…"
+              ></textarea>
+            } @else {
+              <p class="bp-body whitespace-pre-line text-secondary">{{ form().description || '—' }}</p>
+            }
+          </app-edit-section>
+
+          <div #companySection>
+          <app-edit-section
+            title="Company Information"
             [editable]="canEdit()"
             [(editing)]="editingOrg"
             [saving]="saving()"
@@ -171,22 +195,6 @@ interface ProfileForm {
             (cancelled)="restore('org')"
             (save)="save('org')"
           >
-            <!-- Description — the public "About Us" blurb (orgs.description,
-                 also rendered on the shopfront). Full-width above the grid. -->
-            <div class="mb-5">
-              <label class="bp-field-label">Description</label>
-              @if (editingOrg()) {
-                <textarea
-                  class="bp-profile-textarea mt-1"
-                  rows="4"
-                  [ngModel]="form().description"
-                  (ngModelChange)="patch({ description: $event })"
-                  placeholder="Tell customers about your company…"
-                ></textarea>
-              } @else {
-                <p class="bp-body mt-1 whitespace-pre-line text-secondary">{{ form().description || '—' }}</p>
-              }
-            </div>
             <div class="bp-field-grid-2">
               <app-edit-field label="Organisation name" density="page" [editing]="editingOrg()" [value]="form().name" (valueChange)="patch({ name: $event })" />
               <app-edit-field label="City" density="page" [editing]="editingOrg()" [value]="form().city" (valueChange)="patch({ city: $event })" />
@@ -352,6 +360,7 @@ export class ProfileComponent {
   protected readonly form = signal<ProfileForm>(toForm(null));
   protected readonly refCounter = signal(0);
 
+  protected readonly editingAbout = signal(false);
   protected readonly editingOrg = signal(false);
   protected readonly editingFin = signal(false);
   protected readonly saving = signal(false);
@@ -400,7 +409,7 @@ export class ProfileComponent {
     ref?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  private snapshots: { org?: ProfileForm; fin?: ProfileForm } = {};
+  private snapshots: { about?: ProfileForm; org?: ProfileForm; fin?: ProfileForm } = {};
 
   // ── Branding (pV2-MEDIA-01d) — logo / cover / gallery; saves immediately. ──
   protected readonly coverDrawer = signal(false);
@@ -446,26 +455,26 @@ export class ProfileComponent {
     this.form.update((f) => ({ ...f, ...p }));
   }
 
-  protected snapshot(section: 'org' | 'fin'): void {
+  protected snapshot(section: 'about' | 'org' | 'fin'): void {
     this.snapshots[section] = { ...this.form() };
   }
 
-  protected restore(section: 'org' | 'fin'): void {
+  protected restore(section: 'about' | 'org' | 'fin'): void {
     const snap = this.snapshots[section];
     if (snap) this.form.set({ ...snap });
   }
 
-  protected async save(section: 'org' | 'fin'): Promise<void> {
+  protected async save(section: 'about' | 'org' | 'fin'): Promise<void> {
     this.saving.set(true);
     const f = this.form();
-    // Per-section payloads (audit 02-F-2): saving Company Information must
-    // not write possibly-stale Financial values back, and vice versa — the
-    // PUT is partial; only the edited section's fields travel.
+    // Per-section payloads (audit 02-F-2): each section's PUT carries only its
+    // own fields, so saving one never writes possibly-stale values from another.
     const patch =
-      section === 'org'
+      section === 'about'
+        ? { description: f.description.trim() }
+        : section === 'org'
         ? {
             name: f.name,
-            description: f.description.trim(),
             address: f.address,
             city: f.city,
             country: f.country,
@@ -485,7 +494,8 @@ export class ProfileComponent {
       const fresh = await firstValueFrom(this.orgs.update(patch));
       this.form.set(toForm(fresh));
       this.refCounter.set(fresh.refCounter);
-      if (section === 'org') this.editingOrg.set(false);
+      if (section === 'about') this.editingAbout.set(false);
+      else if (section === 'org') this.editingOrg.set(false);
       else this.editingFin.set(false);
       // Locked toast copy (DIALOGS.md standard messages).
       this.toast.add({ severity: 'success', summary: 'Saved.', life: 3000 });
