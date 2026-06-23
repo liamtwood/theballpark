@@ -49,6 +49,7 @@ interface ItemForm {
       @if (loading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
       } @else {
+        <div class="mx-auto w-full max-w-4xl">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
           <!-- LEFT — item attributes, one per row, in order. -->
           <div class="bp-card p-5">
@@ -125,6 +126,7 @@ interface ItemForm {
           <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save()">
             {{ saving() ? 'Saving…' : 'Save product' }}
           </button>
+        </div>
         </div>
       }
     </div>
