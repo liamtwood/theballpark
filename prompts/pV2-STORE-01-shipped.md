@@ -86,8 +86,20 @@ deferred install/coverage/services fields are not built.
 
 Verified: build clean; service create with base 1000 + max 1200 → approved + active, install add-on recovers to 200.
 
+## Iteration — v2.33k/l/m (2026-06-23) — centre, banner, draft/submit
+**Triggered by QC:** Liam — narrow + centre the page; main image as a wide banner; drop the redundant upload button; two save actions in the left column.
+**Commit:** `<pending>`
+
+- **v2.33k** — page wrapped in a centred `mx-auto max-w-4xl` container (matches the supplier storefront): narrower columns, centred.
+- **v2.33l** — Main Image rendered as a 16:7 full-width rounded **banner** (clickable to upload), like the supplier cover.
+- **v2.33m** — removed the redundant "Change/Upload image" button (the banner is the click target). Save actions **moved into the left column** beneath the attributes, now **two buttons: Save Draft** (white/outline) → `draft` and **Submit for Approval** (gradient) → `pending`. This **reverts the v2.33j "active by default"**: `is_active` is server-forced `false` again, so an item only goes live once a ballpark admin approves it. Schema/route accept supplier status `draft|pending`; the client sends `approval_status`.
+
+Verified: client build clean; 48/48 server tests.
+
+⚠️ **Visibility note (re-opened):** with draft/pending now `is_active=false`, a saved item does **not** appear on the supplier's own storefront — so the next slices (owner-sees-own-drafts list + ballpark approve/reject) are needed to complete the round-trip. (Same MEDIUM concern documented above.)
+
 ## QC notes
-(Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → Save product. It should appear live on your storefront; the Edit pencil opens it again.)
+(Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 
 ## Chat audit
 (chat fills this in)

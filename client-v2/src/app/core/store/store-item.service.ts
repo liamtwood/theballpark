@@ -25,8 +25,10 @@ export interface StoreItem {
   is_active: boolean;
 }
 
-/** What the editor sends on save. Status/visibility are set server-side
- *  (active by default for now). */
+/** What the editor sends on save. The supplier sets `approval_status` to either
+ *  `draft` (Save Draft) or `pending` (Submit for Approval); visibility
+ *  (`is_active`) stays server-controlled — an item only goes live once a
+ *  ballpark admin approves it. */
 export interface StoreItemWrite {
   name: string;
   category_id: string;
@@ -40,6 +42,7 @@ export interface StoreItemWrite {
   image_url?: string | null;
   images?: GalleryImage[];
   tags?: string[];
+  approval_status?: 'draft' | 'pending';
 }
 
 /** pV2-STORE-01 — supplier item editor client. Hits the gated

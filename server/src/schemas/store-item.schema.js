@@ -35,8 +35,10 @@ const StoreItemCreateSchema = z
     image_url: z.string().trim().max(1000).nullable().optional(),
     images: z.array(GalleryImageSchema).max(20).optional(),
     tags: z.array(z.string().trim().max(60)).max(30).optional(),
-    // approval_status / is_active are set server-side (active by default for
-    // now); the supplier does not send them.
+    // A supplier may only set draft (save) or pending (submit). approved/
+    // rejected are reserved for the ballpark admin route; is_active stays
+    // server-controlled (false until approval).
+    approval_status: z.enum(['draft', 'pending']).optional(),
   })
   .strip();
 

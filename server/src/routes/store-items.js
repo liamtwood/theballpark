@@ -36,10 +36,10 @@ router.post('/', async (req, res, next) => {
     const item = await ItemService.create({
       ...parsed.data,
       org_id: req.user.org_id,      // sacred — session only, never the body
-      // pV2-STORE-01 (Liam): active by default for now — products go live on
-      // save. The draft→submit→approve moderation flow returns in a later slice.
-      approval_status: 'approved',
-      is_active: true,
+      // Supplier-set status only (draft|pending; default draft). An item is not
+      // live until a ballpark admin approves it.
+      approval_status: parsed.data.approval_status || 'draft',
+      is_active: false,
     });
     res.status(201).json(item);
   } catch (err) { next(err); }
@@ -54,11 +54,12 @@ router.put('/:id', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
     }
-    // Active by default for now — edits stay live (re-review returns later).
+    // Editing re-enters the draft/pending flow; an item goes offline until a
+    // ballpark admin re-approves it.
     const item = await ItemService.update(req.params.id, {
       ...parsed.data,
-      approval_status: 'approved',
-      is_active: true,
+      approval_status: parsed.data.approval_status || 'draft',
+      is_active: false,
     });
     res.json(item);
   } catch (err) { next(err); }

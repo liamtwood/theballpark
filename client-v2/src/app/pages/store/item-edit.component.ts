@@ -28,11 +28,12 @@ interface ItemForm {
 }
 
 /** pV2-STORE-01 — supplier Add/Edit product page (profile-style: image picker +
- *  gallery + edit-field rows). Attributes stack one-per-row on the left; an
- *  Image Approval Process panel sits on the right. Saved products go live
- *  immediately for now (active + approved) — the draft→submit→approve flow is
- *  deferred. "Installed Cost" is the optional install add-on; we store the
- *  installed total (ballpark + install) in max_price (no new column). */
+ *  gallery + edit-field rows). Attributes stack one-per-row on the left, with
+ *  Save Draft / Submit for Approval beneath them; an Image Approval Process
+ *  panel sits on the right. Save Draft → `draft`; Submit for Approval →
+ *  `pending` (a ballpark admin then approves to publish). "Installed Cost" is
+ *  the optional install add-on; we store the installed total (ballpark +
+ *  install) in max_price (no new column). */
 @Component({
   selector: 'app-item-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,7 +52,8 @@ interface ItemForm {
       } @else {
         <div class="mx-auto w-full max-w-4xl">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
-          <!-- LEFT — item attributes, one per row, in order. -->
+          <!-- LEFT — item attributes (one per row) + save actions. -->
+          <div>
           <div class="bp-card p-5">
             <div class="flex flex-col gap-5">
               <app-edit-field label="Product Name" density="page" [editing]="true" [value]="form().name" (valueChange)="patch({ name: $event })" />
@@ -73,9 +75,6 @@ interface ItemForm {
                     <span class="bp-caption">Click to upload main image</span>
                   }
                 </div>
-                <button type="button" class="bp-btn-outline mt-3" (click)="imageDrawer.set(true)">
-                  {{ imageUrl() ? 'Change image' : 'Upload image' }}
-                </button>
               </div>
 
               <div>
@@ -111,6 +110,16 @@ interface ItemForm {
             </div>
           </div>
 
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
+              {{ saving() ? 'Saving…' : 'Save Draft' }}
+            </button>
+            <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
+              {{ saving() ? 'Saving…' : 'Submit for Approval' }}
+            </button>
+          </div>
+          </div>
+
           <!-- RIGHT — Image Approval Process. -->
           <aside class="bp-card p-5 self-start">
             <h3 class="bp-edit-section-title">Image Approval Process</h3>
@@ -124,12 +133,6 @@ interface ItemForm {
               If you need help preparing your images or listings, please contact the Ballpark team.
             </p>
           </aside>
-        </div>
-
-        <div class="mt-6 flex justify-end">
-          <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save()">
-            {{ saving() ? 'Saving…' : 'Save product' }}
-          </button>
         </div>
         </div>
       }
@@ -271,7 +274,7 @@ export class ItemEditComponent {
     this.imageUrl.set(img.url);
   }
 
-  protected async save(): Promise<void> {
+  protected async save(status: 'draft' | 'pending'): Promise<void> {
     const f = this.form();
     if (!f.name.trim()) {
       this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
@@ -291,6 +294,7 @@ export class ItemEditComponent {
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),
+      approval_status: status,
     };
     this.saving.set(true);
     try {
@@ -299,7 +303,11 @@ export class ItemEditComponent {
       } else {
         await firstValueFrom(this.store.create(body));
       }
-      this.toast.add({ severity: 'success', summary: 'Product saved.', life: 3000 });
+      this.toast.add({
+        severity: 'success',
+        summary: status === 'pending' ? 'Submitted for approval.' : 'Draft saved.',
+        life: 3000,
+      });
       const orgId = this.auth.user()?.activeOrgId;
       void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
     } catch (e) {
