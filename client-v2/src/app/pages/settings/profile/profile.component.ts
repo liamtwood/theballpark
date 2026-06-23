@@ -24,6 +24,8 @@ import { TabBandComponent, TabBandTab } from '../../../shared/tab-band/tab-band.
 import { StorefrontPanelComponent } from '../../suppliers/storefront-panel.component';
 import { CatalogueService } from '../../../core/marketplace/catalogue.service';
 import { SupplierSubcategory } from '../../../shared/catalogue/catalogue.types';
+import { TeamService, TeamMember } from '../../../core/team/team.service';
+import { UserAvatarComponent } from '../../../shared/user-avatar/user-avatar.component';
 
 /** The editable form state (strings throughout — edit-field's surface). */
 interface ProfileForm {
@@ -63,6 +65,7 @@ interface ProfileForm {
     CompletenessCardComponent,
     TabBandComponent,
     StorefrontPanelComponent,
+    UserAvatarComponent,
   ],
   providers: [MessageService],
   host: { class: 'block' },
@@ -185,6 +188,11 @@ interface ProfileForm {
             }
           </app-edit-section>
 
+          <!-- Social Links — placeholder (pV2-STORE-01). -->
+          <app-edit-section title="Social Links" [editable]="false">
+            <p class="bp-caption">Coming soon.</p>
+          </app-edit-section>
+
           <div #companySection>
           <app-edit-section
             title="Company Information"
@@ -226,6 +234,41 @@ interface ProfileForm {
               />
             </div>
           }
+
+          <!-- Placeholders (pV2-STORE-01) — real surfaces land later. -->
+          <app-edit-section title="Most Viewed Products This Month" [editable]="false">
+            <p class="bp-caption">Coming soon.</p>
+          </app-edit-section>
+          <app-edit-section title="Availability" [editable]="false">
+            <p class="bp-caption">Coming soon.</p>
+          </app-edit-section>
+          <app-edit-section title="Payment Information" [editable]="false">
+            <p class="bp-caption">Coming soon.</p>
+          </app-edit-section>
+
+          <!-- Team Members — everyone in this org (admin-gated read). -->
+          <app-edit-section title="Team Members" [editable]="false">
+            @if (team.value(); as members) {
+              <div class="flex flex-col gap-4">
+                @for (m of members; track m.userId ?? m.email) {
+                  <div class="flex items-center gap-3">
+                    <app-user-avatar [displayName]="m.displayName" [email]="m.email" [imageUrl]="m.avatarUrl" [size]="40" />
+                    <div class="min-w-0">
+                      <div class="truncate text-md font-semibold text-text">{{ m.displayName ?? m.email }}</div>
+                      <div class="truncate bp-body-small text-secondary">{{ memberRole(m) }}</div>
+                      @if (m.displayName) {
+                        <div class="truncate bp-caption">{{ m.email }}</div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (team.isLoading()) {
+              <p class="bp-caption">Loading…</p>
+            } @else {
+              <p class="bp-caption">Only organisation admins can view team members.</p>
+            }
+          </app-edit-section>
 
           <app-edit-section
             title="Finance"
@@ -280,6 +323,27 @@ export class ProfileComponent {
   private readonly codelists = inject(CodelistService);
   private readonly catalogue = inject(CatalogueService);
   private readonly router = inject(Router);
+  private readonly teamSvc = inject(TeamService);
+
+  /** Team Members — everyone in the org. /api/team is admin-gated, so this only
+   *  populates for admins; members see the placeholder note. */
+  protected readonly team = resource({
+    params: () => (this.canEdit() ? (this.auth.user()?.activeOrgId ?? undefined) : undefined),
+    loader: () => firstValueFrom(this.teamSvc.list()),
+  });
+
+  /** Display role: the member's job title, else their effective role + org. */
+  protected memberRole(m: TeamMember): string {
+    if (m.jobTitle) return m.jobTitle;
+    const t = this.auth.user()?.activeOrgType;
+    const role =
+      t === 'ballpark' ? 'ballpark_admin'
+      : t === 'agency' ? (m.isAdmin ? 'agency_admin' : 'agency_member')
+      : t === 'supplier' ? (m.isAdmin ? 'supplier_admin' : 'supplier_member')
+      : (m.isAdmin ? 'admin' : 'member');
+    const org = this.auth.user()?.activeOrgName;
+    return org ? `${role} · ${org}` : role;
+  }
 
   // ── Profile / Shopfront tabs (pV2-STORE-01) ───────────────────────────────
   // Profile = the editable view; Shopfront = the consumer-facing view (the same

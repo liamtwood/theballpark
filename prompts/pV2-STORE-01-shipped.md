@@ -158,6 +158,11 @@ Liam QC: each a separate section, in that order; About Us carries the descriptio
 - *Interpretation note:* I folded the company-info fields (name/address/contact/ref-prefix) under **About Us** alongside the description to match the 5-section list — say if you'd rather keep "Company Information" as its own section.
 Build clean; 48/48 server tests.
 
+### v2.33y — more profile sections (placeholders + Team Members)
+Liam QC: add **Social Links** after About Us ("coming soon"); after Gallery add **Most Viewed Products This Month**, **Availability**, **Payment Information** (all "coming soon"), then **Team Members** (real). Order now: Completeness, Branding, About Us, **Social Links**, Company Information, Gallery, **Most Viewed Products This Month**, **Availability**, **Payment Information**, **Team Members**, Finance.
+- Placeholders are titled `edit-section`s with a "Coming soon." caption.
+- **Team Members** lists everyone in the org via `TeamService.list()` (GET /api/team) as a read-only roster: avatar · name · role/title · email. Role line = `jobTitle` else effective role + org name (e.g. `supplier_admin · Ballpark's Supplier`). `/api/team` is admin-gated, so it populates for admins; members see a note. Build clean.
+
 ### v2.33w — About Us split from Company Information
 Liam QC: About Us = description only, followed by Company Information (the fields). Now six sections: Completeness, Branding, **About Us** (own edit lifecycle, saves just `description`), **Company Information** (name/city/country/address/email/phone/ref-prefix), Gallery, Finance. Build clean.
 
