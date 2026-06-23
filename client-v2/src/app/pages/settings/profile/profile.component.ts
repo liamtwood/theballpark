@@ -253,13 +253,11 @@ interface ProfileForm {
                 @for (m of members; track m.userId ?? m.email) {
                   <div class="flex items-center gap-3">
                     <app-user-avatar [displayName]="m.displayName" [email]="m.email" [imageUrl]="m.avatarUrl" [size]="40" />
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                       <div class="truncate text-md font-semibold text-text">{{ m.displayName ?? m.email }}</div>
                       <div class="truncate bp-body-small text-secondary">{{ memberRole(m) }}</div>
-                      @if (m.displayName) {
-                        <div class="truncate bp-caption">{{ m.email }}</div>
-                      }
                     </div>
+                    <div class="shrink-0 truncate bp-body-small text-secondary">{{ m.email }}</div>
                   </div>
                 }
               </div>
@@ -332,17 +330,14 @@ export class ProfileComponent {
     loader: () => firstValueFrom(this.teamSvc.list()),
   });
 
-  /** Display role: the member's job title, else their effective role + org. */
+  /** Display role: the member's job title, else their effective role. */
   protected memberRole(m: TeamMember): string {
     if (m.jobTitle) return m.jobTitle;
     const t = this.auth.user()?.activeOrgType;
-    const role =
-      t === 'ballpark' ? 'ballpark_admin'
+    return t === 'ballpark' ? 'ballpark_admin'
       : t === 'agency' ? (m.isAdmin ? 'agency_admin' : 'agency_member')
       : t === 'supplier' ? (m.isAdmin ? 'supplier_admin' : 'supplier_member')
       : (m.isAdmin ? 'admin' : 'member');
-    const org = this.auth.user()?.activeOrgName;
-    return org ? `${role} · ${org}` : role;
   }
 
   // ── Profile / Shopfront tabs (pV2-STORE-01) ───────────────────────────────
