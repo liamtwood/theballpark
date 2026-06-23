@@ -115,6 +115,21 @@ Liam QC: the owner filters must match the price/tier standard and sit beside the
 - Status + Active are now `app-edit-field type="select"` in `filter-band` (rendered only when `store.isOwnerStore()`), next to price/tier — the separate native-select bar + its style are gone.
 - Defaults relaxed to **Any Status** + **All** (was Inactive), so an owner sees their whole catalogue first, then narrows. Server gate unchanged (owner-only). Build clean.
 
+## Iteration — v2.33r (2026-06-23) — ballpark-admin moderation (approve/reject)
+**Triggered by QC:** Liam — add Marketplace to the admin Home defaulting Status=Pending; admins see the same item page as suppliers but with Approve/Reject; Reject → status rejected.
+**Commit:** `<pending>`
+
+- **Admin Home tile** — `Marketplace` added to `BALLPARK_TILES` → `/marketplace?status=pending` (the approval queue first).
+- **Admin marketplace visibility** — `marketplace.js` now relaxes the active+approved filter for `adminScope` (`req.user.role === 'ballpark_admin'`) as well as the owner, so admins see pending/all items **cross-org**. Public callers are unaffected.
+- **Filters for admins** — `MarketplaceStore.showStatusFilters = isOwnerStore || isBallparkAdmin`; the Status/Active selects (band) now appear for admins, and Status **defaults to Pending** for an admin who isn't on their own store.
+- **Review entry** — the rail item-preview shows a **Review** (circle-check) link → `/store/items/:id` for ballpark admins on items they don't own.
+- **Item page, moderation mode** — `item-edit` is now two modes on one definition. For a ballpark admin: fields render **read-only**, the banner/gallery are non-interactive, and the buttons become **Approve** (grad) / **Reject** (outline). It loads via the admin endpoint (the supplier GET is ownership-gated).
+- **Endpoint** — NEW `server/src/routes/admin-items.js` (mounted at `/api/admin`, `admin.cross_org_view`): `GET /items/:id` (cross-org read) + `PUT /items/:id/approval` `{ decision }` → approve = approved+active (publish), reject = rejected+hidden.
+
+**Authorization:** moderation routes sit behind the `admin.cross_org_view` gate; `req.user.role` is the live DB-derived role (not a JWT claim). Suppliers (no `admin.cross_org_view`) can't reach the admin endpoints; `isModerator` in the client is org-type `ballpark`.
+
+Verified: client build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

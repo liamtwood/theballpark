@@ -28,13 +28,13 @@ interface ItemForm {
   description: string;
 }
 
-/** pV2-STORE-01 — supplier Add/Edit product page (profile-style: image picker +
- *  gallery + edit-field rows). Attributes stack one-per-row on the left, with
- *  Save Draft / Submit for Approval beneath them; an Image Approval Process
- *  panel sits on the right. Save Draft → `draft`; Submit for Approval →
- *  `pending` (a ballpark admin then approves to publish). "Installed Cost" is
- *  the optional install add-on; we store the installed total (ballpark +
- *  install) in max_price (no new column). */
+/** pV2-STORE-01 — the product page, in two modes on ONE definition:
+ *   • SUPPLIER (own item): editable fields + Save Draft / Submit for Approval.
+ *   • BALLPARK ADMIN (moderation): the SAME page read-only, with Approve /
+ *     Reject. Approve → approved + active; Reject → rejected + hidden.
+ *  Attributes stack one-per-row on the left; an Image Approval Process panel +
+ *  Status sit on the right. "Installed Cost" is the optional install add-on,
+ *  stored as the installed total (ballpark + install) in max_price. */
 @Component({
   selector: 'app-item-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,7 +45,7 @@ interface ItemForm {
   ],
   providers: [MessageService],
   template: `
-    <app-page-hero [back]="{ label: 'Back to store', href: '/store' }" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
+    <app-page-hero [back]="heroBack()" [title]="heroTitle()" [subtitle]="heroSubtitle()" />
 
     <div class="bp-page-body">
       @if (loading()) {
@@ -56,25 +56,26 @@ interface ItemForm {
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
           <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title mb-4">{{ isEdit ? 'Edit Product' : 'Add New Product' }}</h3>
+            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
             <div class="flex flex-col gap-5">
-              <app-edit-field label="Product Name" density="page" [editing]="true" [value]="form().name" (valueChange)="patch({ name: $event })" />
+              <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
-              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="true" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
+              <app-edit-field label="Category" type="select" density="page" [filter]="true" [options]="categoryOptions()" [editing]="editing()" [value]="form().category_id" (valueChange)="patch({ category_id: $event })" />
 
               <div>
                 <label class="bp-field-label">Main Image</label>
                 <div
                   class="bp-item-banner mt-2"
-                  role="button"
-                  tabindex="0"
-                  (click)="imageDrawer.set(true)"
-                  (keydown.enter)="imageDrawer.set(true)"
+                  [class.bp-item-banner--readonly]="!editing()"
+                  [attr.role]="editing() ? 'button' : null"
+                  [attr.tabindex]="editing() ? 0 : null"
+                  (click)="editing() && imageDrawer.set(true)"
+                  (keydown.enter)="editing() && imageDrawer.set(true)"
                 >
                   @if (imageUrl()) {
                     <img [src]="imageUrl()" alt="" />
                   } @else {
-                    <span class="bp-caption">Click to upload main image</span>
+                    <span class="bp-caption">{{ editing() ? 'Click to upload main image' : 'No image' }}</span>
                   }
                 </div>
               </div>
@@ -87,39 +88,50 @@ interface ItemForm {
                     [images]="images()"
                     [primaryUrl]="imageUrl()"
                     [searchSeed]="form().name"
-                    [editable]="true"
+                    [editable]="editing()"
                     (imagesChange)="images.set($event)"
                     (primarySet)="onSetPrimary($event)"
                   />
                 </div>
               </div>
 
-              <app-edit-field label="Ballpark Cost (£)" type="number" density="page" [editing]="true" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+              <app-edit-field label="Ballpark Cost (£)" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
 
               <div>
-                <app-edit-field label="Installed Cost (Optional) (£)" type="number" density="page" [editing]="true" [value]="form().installed_cost" (valueChange)="patch({ installed_cost: $event })" />
+                <app-edit-field label="Installed Cost (Optional) (£)" type="number" density="page" [editing]="editing()" [value]="form().installed_cost" (valueChange)="patch({ installed_cost: $event })" />
                 @if (installedLabel()) {
                   <p class="bp-caption mt-1">Installed: {{ installedLabel() }}</p>
                 }
               </div>
 
-              <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="true" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
+              <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
 
               <div>
                 <label class="bp-field-label">Description</label>
-                <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" placeholder="Describe the product…"></textarea>
+                <textarea class="bp-store-textarea mt-1" rows="4" [ngModel]="form().description" (ngModelChange)="patch({ description: $event })" [readonly]="!editing()" placeholder="Describe the product…"></textarea>
               </div>
             </div>
           </div>
 
-          <div class="mt-4 flex flex-wrap gap-3">
-            <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
-              {{ saving() ? 'Saving…' : 'Save Draft' }}
-            </button>
-            <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
-              {{ saving() ? 'Saving…' : 'Submit for Approval' }}
-            </button>
-          </div>
+          @if (isModerator()) {
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button type="button" class="bp-btn-grad" [disabled]="deciding()" (click)="decide('approve')">
+                {{ deciding() ? 'Saving…' : 'Approve' }}
+              </button>
+              <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="decide('reject')">
+                {{ deciding() ? 'Saving…' : 'Reject' }}
+              </button>
+            </div>
+          } @else {
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
+                {{ saving() ? 'Saving…' : 'Save Draft' }}
+              </button>
+              <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
+                {{ saving() ? 'Saving…' : 'Submit for Approval' }}
+              </button>
+            </div>
+          }
           </div>
 
           <!-- RIGHT — Image Approval Process + status (history-ready). -->
@@ -180,6 +192,7 @@ interface ItemForm {
       justify-content: center;
       cursor: pointer;
     }
+    .bp-item-banner--readonly { cursor: default; }
     .bp-item-banner img {
       width: 100%;
       height: 100%;
@@ -215,6 +228,13 @@ export class ItemEditComponent {
   protected readonly itemId = this.route.snapshot.paramMap.get('id');
   protected readonly isEdit = !!this.itemId;
 
+  /** Moderation mode — a ballpark admin reviewing someone's item. The page is
+   *  read-only (Approve/Reject instead of Save). Suppliers never see this. */
+  protected readonly isModerator = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+  /** Fields are editable for the supplier; read-only for the moderator. */
+  protected readonly editing = computed(() => !this.isModerator());
+  protected readonly deciding = signal(false);
+
   protected readonly form = signal<ItemForm>({
     name: '', category_id: '', base_price: '', installed_cost: '', lead_time_days: '', description: '',
   });
@@ -241,9 +261,21 @@ export class ItemEditComponent {
     });
   });
 
-  protected readonly heroTitle = computed(() => (this.isEdit ? 'Edit product' : 'Add product'));
+  protected readonly heroTitle = computed(() =>
+    this.isModerator() ? 'Review product' : this.isEdit ? 'Edit product' : 'Add product'
+  );
   protected readonly heroSubtitle = computed(() =>
-    this.isEdit ? 'Update your product details.' : 'Add a product to your store.'
+    this.isModerator()
+      ? 'Approve or reject this submission.'
+      : this.isEdit
+        ? 'Update your product details.'
+        : 'Add a product to your store.'
+  );
+  /** Moderators came from the marketplace queue; suppliers from their store. */
+  protected readonly heroBack = computed(() =>
+    this.isModerator()
+      ? { label: 'Back to marketplace', href: '/marketplace' }
+      : { label: 'Back to store', href: '/store' }
   );
 
   /** Installed total = ballpark cost + install add-on (the stored max_price). */
@@ -267,7 +299,11 @@ export class ItemEditComponent {
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
-      const item = await firstValueFrom(this.store.get(params));
+      // Moderators read cross-org via the admin endpoint (the supplier GET is
+      // ownership-gated and would 403 them).
+      const item = await firstValueFrom(
+        this.isModerator() ? this.store.getForReview(params) : this.store.get(params)
+      );
       const base = item.base_price != null ? Number(item.base_price) : null;
       const max = item.max_price != null ? Number(item.max_price) : null;
       this.form.set({
@@ -343,6 +379,26 @@ export class ItemEditComponent {
       this.toast.add({ severity: 'error', summary: "Couldn't save — please try again.", detail: errorDetail(e), life: 5000 });
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Ballpark-admin moderation — approve (publish) or reject (hide), then back
+   *  to the approval queue. */
+  protected async decide(decision: 'approve' | 'reject'): Promise<void> {
+    if (!this.itemId) return;
+    this.deciding.set(true);
+    try {
+      await firstValueFrom(this.store.decide(this.itemId, decision));
+      this.toast.add({
+        severity: 'success',
+        summary: decision === 'approve' ? 'Item approved.' : 'Item rejected.',
+        life: 3000,
+      });
+      void this.router.navigate(['/marketplace'], { queryParams: { status: 'pending' } });
+    } catch (e) {
+      this.toast.add({ severity: 'error', summary: "Couldn't update — please try again.", detail: errorDetail(e), life: 5000 });
+    } finally {
+      this.deciding.set(false);
     }
   }
 }

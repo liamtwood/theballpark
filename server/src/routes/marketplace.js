@@ -189,13 +189,15 @@ router.get('/items', async (req, res, next) => {
     const { cat, sub, q, offset, priceMin, priceMax, tier, supplier, status, active } = parsed.data;
     const vals = [req.user.org_id]; // $1 — ownership flag, never from the client
     const where = [`i.deleted_at IS NULL`];
-    // pV2-STORE-01 — owner store visibility. The `status`/`active` filters are
-    // honoured ONLY when the caller owns the pinned supplier org; this is the
-    // single gate that lets a supplier see their own draft/pending/inactive
-    // items. Everyone else (incl. an owner browsing another store) gets the
+    // pV2-STORE-01 — non-public visibility. The `status`/`active` filters are
+    // honoured for two callers only: (1) the OWNER of the pinned supplier org
+    // — a supplier sees their own draft/pending/inactive items; (2) a BALLPARK
+    // ADMIN (admin.cross_org_view) — moderation sees any supplier's items
+    // cross-org. Everyone else (incl. an owner browsing another store) gets the
     // public marketplace filter: active + approved only.
     const ownerScope = !!supplier && supplier === req.user.org_id;
-    if (ownerScope) {
+    const adminScope = req.user.role === 'ballpark_admin';
+    if (ownerScope || adminScope) {
       if (status && status !== 'all') { vals.push(status); where.push(`i.approval_status = $${vals.length}`); }
       if (active === 'active') where.push(`i.is_active`);
       else if (active === 'inactive') where.push(`NOT i.is_active`);

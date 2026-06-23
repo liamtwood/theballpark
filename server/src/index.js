@@ -226,6 +226,14 @@ app.use(
   require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
   require('./routes/adminMarketing')
 );
+// pV2-STORE-01 — ballpark-admin item moderation (approve/reject). Same
+// admin.cross_org_view gate; mounted alongside adminMarketing.
+app.use(
+  '/api/admin',
+  require('./middleware/authenticate').authenticate,
+  require('./middleware/require-active-membership').requireActiveMembership('admin.cross_org_view'),
+  require('./routes/admin-items')
+);
 
 // Unsplash image search proxy
 app.get('/api/unsplash/search', async (req, res) => {

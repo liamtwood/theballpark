@@ -71,20 +71,27 @@ export class MarketplaceStore {
     () => !!(this.priceBracket() || this.tier() || this.supplierId())
   );
 
-  /** Owner store (pV2-STORE-01) — the viewer's OWN pinned store. Only here do
-   *  the status/active filters apply; elsewhere they stay null (public grid). */
+  /** Owner store (pV2-STORE-01) — the viewer's OWN pinned store. */
   readonly isOwnerStore = computed(() => {
     const id = this.pinnedSupplierId();
     return !!id && this.auth.user()?.activeOrgId === id;
   });
-  /** Approval-status filter (owner only): all|draft|pending|approved|rejected. */
-  readonly statusFilter = computed(() =>
-    this.isOwnerStore() ? this.query().get('status') || 'all' : null
-  );
-  /** Publish-state filter (owner only). Defaults to `all` — the supplier sees
-   *  their whole catalogue, then narrows to Active/Inactive. */
+  /** Ballpark admin — moderates the marketplace (sees pending/all cross-org). */
+  readonly isBallparkAdmin = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
+  /** The status/active filters show for the owner of a pinned store AND for
+   *  ballpark admins (moderation); elsewhere they stay null (public grid). */
+  readonly showStatusFilters = computed(() => this.isOwnerStore() || this.isBallparkAdmin());
+  /** Approval-status filter: all|draft|pending|approved|rejected. Admins (when
+   *  not on their own store) default to Pending — the approval queue. */
+  readonly statusFilter = computed(() => {
+    if (!this.showStatusFilters()) return null;
+    const fromUrl = this.query().get('status');
+    if (fromUrl) return fromUrl;
+    return this.isBallparkAdmin() && !this.isOwnerStore() ? 'pending' : 'all';
+  });
+  /** Publish-state filter. Defaults to `all` — the whole catalogue, then narrow. */
   readonly activeFilter = computed(() =>
-    this.isOwnerStore() ? this.query().get('active') || 'all' : null
+    this.showStatusFilters() ? this.query().get('active') || 'all' : null
   );
 
   /** The filter signature — offset + accumulation reset on ANY change. */

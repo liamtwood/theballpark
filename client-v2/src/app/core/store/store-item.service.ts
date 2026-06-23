@@ -64,4 +64,14 @@ export class StoreItemService {
   update(id: string, body: StoreItemWrite): Observable<StoreItem> {
     return this.api.put<StoreItem>(`/api/store/items/${id}`, body);
   }
+
+  /** Ballpark-admin moderation (pV2-STORE-01) — cross-org read of any item. */
+  getForReview(id: string): Observable<StoreItem> {
+    return this.api.get<StoreItem>(`/api/admin/items/${id}`);
+  }
+
+  /** Approve (→ approved + active) or reject (→ rejected + hidden) an item. */
+  decide(id: string, decision: 'approve' | 'reject'): Observable<StoreItem> {
+    return this.api.put<StoreItem>(`/api/admin/items/${id}/approval`, { decision });
+  }
 }

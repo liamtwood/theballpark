@@ -47,8 +47,8 @@ import { PRICE_BRACKETS } from './catalogue.types';
         [editing]="true"
         (valueChange)="store.setTier($event === 'any' ? null : $event)"
       />
-      @if (store.isOwnerStore()) {
-        <!-- pV2-STORE-01 — owner-only, same select standard as price/tier. -->
+      @if (store.showStatusFilters()) {
+        <!-- pV2-STORE-01 — owner + ballpark-admin, same select standard as price/tier. -->
         <app-edit-field
           label=""
           type="select"

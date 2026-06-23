@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 
 /** pV2-06b — the rail's ITEM mode: image, name, supplier, price + unit,
@@ -21,6 +22,11 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
           <!-- pV2-STORE-01 — owner edits their own item. -->
           <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product">
             <lucide-icon name="square-pen" [size]="14" />
+          </a>
+        } @else if (canModerate()) {
+          <!-- pV2-STORE-01 — ballpark admin reviews / approves the item. -->
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product">
+            <lucide-icon name="circle-check" [size]="14" />
           </a>
         }
         <button
@@ -75,8 +81,13 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
   `,
 })
 export class ItemPreviewComponent {
+  private readonly auth = inject(AuthService);
+
   readonly item = input.required<CatalogueItem>();
   /** Resolved category name (the store has the rail list — no fetch). */
   readonly categoryName = input<string | null>(null);
   readonly closed = output<void>();
+
+  /** Ballpark admins get a Review entry on items they don't own (moderation). */
+  protected readonly canModerate = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
 }
