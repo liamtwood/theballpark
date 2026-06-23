@@ -110,6 +110,11 @@ Verified: client build clean; 48/48 server tests.
 
 Verified: client build clean; 48/48 server tests.
 
+### v2.33q — filters moved into the band, defaults relaxed
+Liam QC: the owner filters must match the price/tier standard and sit beside them.
+- Status + Active are now `app-edit-field type="select"` in `filter-band` (rendered only when `store.isOwnerStore()`), next to price/tier — the separate native-select bar + its style are gone.
+- Defaults relaxed to **Any Status** + **All** (was Inactive), so an owner sees their whole catalogue first, then narrows. Server gate unchanged (owner-only). Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

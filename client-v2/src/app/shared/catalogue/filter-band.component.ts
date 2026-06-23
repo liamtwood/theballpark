@@ -47,6 +47,27 @@ import { PRICE_BRACKETS } from './catalogue.types';
         [editing]="true"
         (valueChange)="store.setTier($event === 'any' ? null : $event)"
       />
+      @if (store.isOwnerStore()) {
+        <!-- pV2-STORE-01 — owner-only, same select standard as price/tier. -->
+        <app-edit-field
+          label=""
+          type="select"
+          class="w-40"
+          [options]="statusOptions"
+          [value]="store.statusFilter() ?? 'all'"
+          [editing]="true"
+          (valueChange)="store.setStatusFilter($event)"
+        />
+        <app-edit-field
+          label=""
+          type="select"
+          class="w-32"
+          [options]="activeOptions"
+          [value]="store.activeFilter() ?? 'all'"
+          [editing]="true"
+          (valueChange)="store.setActiveFilter($event)"
+        />
+      }
       @if (showSupplier()) {
         <app-edit-field
           label=""
@@ -94,4 +115,19 @@ export class CatalogueFilterBandComponent {
     { label: 'Any supplier', value: 'any' },
     ...this.store.supplierOptions().map((s) => ({ label: `${s.name} (${s.count})`, value: s.id })),
   ]);
+
+  // pV2-STORE-01 — owner store filters (only rendered on the owner's own store).
+  protected readonly statusOptions: EditFieldOption[] = [
+    { label: 'Any Status', value: 'all' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Approved', value: 'approved' },
+    { label: 'Rejected', value: 'rejected' },
+  ];
+
+  protected readonly activeOptions: EditFieldOption[] = [
+    { label: 'All', value: 'all' },
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' },
+  ];
 }

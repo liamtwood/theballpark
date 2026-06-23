@@ -81,10 +81,10 @@ export class MarketplaceStore {
   readonly statusFilter = computed(() =>
     this.isOwnerStore() ? this.query().get('status') || 'all' : null
   );
-  /** Publish-state filter (owner only). Defaults to `inactive` so a supplier
-   *  lands on their unpublished work first (Liam: "default to not active"). */
+  /** Publish-state filter (owner only). Defaults to `all` — the supplier sees
+   *  their whole catalogue, then narrows to Active/Inactive. */
   readonly activeFilter = computed(() =>
-    this.isOwnerStore() ? this.query().get('active') || 'inactive' : null
+    this.isOwnerStore() ? this.query().get('active') || 'all' : null
   );
 
   /** The filter signature — offset + accumulation reset on ANY change. */
@@ -150,7 +150,7 @@ export class MarketplaceStore {
         supplier: this.pinnedSupplierId() ?? this.supplierId(),
         // Owner-only — null elsewhere, so the public grid is unaffected.
         status: this.statusFilter() === 'all' ? null : this.statusFilter(),
-        active: this.activeFilter(),
+        active: this.activeFilter() === 'all' ? null : this.activeFilter(),
         offset: this.offset(),
       };
     },
@@ -243,7 +243,7 @@ export class MarketplaceStore {
     this.merge({ status: status && status !== 'all' ? status : null, item: null });
   }
   setActiveFilter(active: string | null): void {
-    this.merge({ active: active && active !== 'inactive' ? active : null, item: null });
+    this.merge({ active: active && active !== 'all' ? active : null, item: null });
   }
   clearFilters(): void {
     this.merge({ price: null, tier: null, sup: null, item: null });
