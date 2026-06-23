@@ -94,6 +94,8 @@ const NEW_VALUES = {
     { code: 'other',      label: 'Other',          sort: 10, def: false },
   ],
   item_approval_status: [
+    // pV2-STORE-01 — supplier's pre-submit state. draft → (submit) → pending.
+    { code: 'draft',    label: 'Draft',    sort: 0, def: false, meta: { color: '--color-text-muted', color_soft: '--color-fill', icon: 'pencil-line', is_terminal: false, allowed_next_codes: ['pending'] } },
     { code: 'pending',  label: 'Pending',  sort: 1, def: true,  meta: { color: '--color-warn',    color_soft: '--color-warn-soft',    icon: 'clock',  is_terminal: false, allowed_next_codes: ['approved', 'rejected'] } },
     { code: 'approved', label: 'Approved', sort: 2, def: false, meta: { color: '--color-success', color_soft: '--color-success-soft', icon: 'check',  is_terminal: false, allowed_next_codes: ['rejected'] } },
     // No consumer writes 'rejected' yet — seeded INACTIVE per the prompt.

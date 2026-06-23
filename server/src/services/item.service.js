@@ -121,7 +121,11 @@ async function create(data) {
     unit, time_unit, base_price, min_price, max_price,
     lead_time_days, coverage_area, tier, tags,
     image_url, image_display, external_url,
-    derived_from_id, parent_item_id, attributes, images
+    derived_from_id, parent_item_id, attributes, images,
+    // pV2-STORE-01 — the supplier draft/submit flow sets these explicitly. When
+    // omitted (v1 callers) the column defaults stand in: 'approved' + true, so
+    // existing behaviour is unchanged.
+    approval_status, is_active
   } = data;
   // Keep image_url in sync with the hero image on the new array, so existing
   // cards / detail surfaces continue to render the same primary image
@@ -134,15 +138,17 @@ async function create(data) {
        unit, time_unit, base_price, min_price, max_price,
        lead_time_days, coverage_area, tier, tags,
        image_url, image_display, external_url,
-       derived_from_id, parent_item_id, attributes, images)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+       derived_from_id, parent_item_id, attributes, images,
+       approval_status, is_active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
      RETURNING *`,
     [org_id, category_id, subcategory_id || null, name, description,
      unit, time_unit || null, base_price, min_price, max_price,
      lead_time_days, coverage_area, tier, tags || [],
      finalImageUrl, image_display || 'cover', external_url || null,
      derived_from_id || null, parent_item_id || null, attributes || {},
-     JSON.stringify(images || [])]
+     JSON.stringify(images || []),
+     approval_status ?? 'approved', is_active ?? true]
   );
   return result.rows[0];
 }
@@ -161,7 +167,10 @@ const UPDATABLE_COLS = [
   // v1.68b — is_active is the publish/hide toggle (distinct from the
   // deleted_at soft-delete). The supplier store's eye/eye-off action
   // PUTs { is_active } through update() to hide/show an item.
-  'is_active'
+  'is_active',
+  // pV2-STORE-01 — draft/submit/approve flow. Callers gate which values they
+  // allow (supplier: draft|pending; ballpark admin: approved|rejected).
+  'approval_status'
 ];
 
 async function update(id, data) {

@@ -165,6 +165,18 @@ export const routes: Routes = [
           import('./pages/supplier/store-redirect.component').then((m) => m.StoreRedirectComponent),
       },
       {
+        // pV2-STORE-01 — supplier Add product (must precede :id).
+        path: 'store/items/new',
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
+      },
+      {
+        // pV2-STORE-01 — supplier Edit product.
+        path: 'store/items/:id',
+        loadComponent: () =>
+          import('./pages/store/item-edit.component').then((m) => m.ItemEditComponent),
+      },
+      {
         // Profile — the org's own profile + financial defaults (the v2 port
         // of v1's /settings/organisation; reference consumer of
         // edit-section + page-density edit-field).

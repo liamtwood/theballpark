@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 
@@ -10,19 +11,27 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
 @Component({
   selector: 'app-item-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule],
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
       <h3 class="text-md font-medium leading-snug text-text">{{ item().name }}</h3>
-      <button
-        type="button"
-        class="bp-itemprev-close"
-        aria-label="Close preview"
-        (click)="closed.emit()"
-      >
-        <lucide-icon name="x" [size]="14" />
-      </button>
+      <div class="flex items-center gap-2">
+        @if (item().ownedByActiveOrg) {
+          <!-- pV2-STORE-01 — owner edits their own item. -->
+          <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Edit product" aria-label="Edit product">
+            <lucide-icon name="square-pen" [size]="14" />
+          </a>
+        }
+        <button
+          type="button"
+          class="bp-itemprev-close"
+          aria-label="Close preview"
+          (click)="closed.emit()"
+        >
+          <lucide-icon name="x" [size]="14" />
+        </button>
+      </div>
     </div>
 
     @if (item().coverUrl) {

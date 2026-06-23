@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../core/auth/auth.service';
 import { CatalogueService } from '../../core/marketplace/catalogue.service';
 import { FavouritesStore } from '../../core/marketplace/favourites.store';
 import { MarketplaceStore } from '../marketplace/marketplace-store';
@@ -26,6 +27,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
   selector: 'app-supplier-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    RouterLink,
     LucideAngularModule,
     PageHeroComponent,
     TabBandComponent,
@@ -47,15 +49,22 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
     @if (detail.value(); as sup) {
       <app-page-hero [back]="heroBack()" [title]="sup.name" [subtitle]="sup.city ?? ''">
         <div hero-actions class="flex items-center gap-3">
-          <button
-            type="button"
-            class="bp-fav-btn !static"
-            [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
-            [attr.aria-label]="'Favourite ' + sup.name"
-            (click)="favs.toggle('supplier', sup.id)"
-          >
-            <lucide-icon name="heart" [size]="15" />
-          </button>
+          @if (isOwner()) {
+            <!-- pV2-STORE-01 — owner manages their own shop here. -->
+            <a routerLink="/store/items/new" class="bp-btn-grad">
+              <lucide-icon name="plus" [size]="15" /> Add product
+            </a>
+          } @else {
+            <button
+              type="button"
+              class="bp-fav-btn !static"
+              [class.bp-fav-btn--on]="favs.suppliers().has(sup.id)"
+              [attr.aria-label]="'Favourite ' + sup.name"
+              (click)="favs.toggle('supplier', sup.id)"
+            >
+              <lucide-icon name="heart" [size]="15" />
+            </button>
+          }
         </div>
       </app-page-hero>
 
@@ -125,6 +134,7 @@ export class SupplierDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly catalogue = inject(CatalogueService);
+  private readonly auth = inject(AuthService);
   protected readonly favs = inject(FavouritesStore);
   /** The SAME store class the marketplace provides — pinned via :id. */
   protected readonly store = inject(MarketplaceStore);
@@ -152,6 +162,13 @@ export class SupplierDetailComponent {
   protected readonly detail = resource({
     params: () => this.store.pinnedSupplierId() ?? undefined,
     loader: ({ params }) => this.catalogue.supplierDetail(params),
+  });
+
+  /** Owner mode (pV2-STORE-01) — the viewer's own-org storefront. Unlocks
+   *  "Add product" + per-item Edit; hides the favourite heart. */
+  protected readonly isOwner = computed(() => {
+    const id = this.store.pinnedSupplierId();
+    return !!id && this.auth.user()?.activeOrgId === id;
   });
 
   /** The storefront's subcat-card grid rows (pV2-CARDS-01 QC #5). */
