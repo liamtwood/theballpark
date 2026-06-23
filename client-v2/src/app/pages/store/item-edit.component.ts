@@ -114,6 +114,7 @@ interface ItemForm {
           </div>
 
           @if (isModerator()) {
+            <!-- View (read-only) — ballpark admins Approve/Reject; everyone Cancels. -->
             <div class="mt-4 flex flex-wrap gap-3">
               <button type="button" class="bp-btn-grad" [disabled]="deciding()" (click)="decide('approve')">
                 {{ deciding() ? 'Saving…' : 'Approve' }}
@@ -121,15 +122,25 @@ interface ItemForm {
               <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="decide('reject')">
                 {{ deciding() ? 'Saving…' : 'Reject' }}
               </button>
+              <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="cancel()">
+                Cancel
+              </button>
             </div>
           } @else {
             <div class="mt-4 flex flex-wrap gap-3">
               <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="save('draft')">
                 {{ saving() ? 'Saving…' : 'Save Draft' }}
               </button>
-              <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
-                {{ saving() ? 'Saving…' : 'Submit for Approval' }}
-              </button>
+              @if (currentStatus() === 'pending') {
+                <!-- Submitted — withdraw the request instead of re-submitting. -->
+                <button type="button" class="bp-btn-outline" [disabled]="saving()" (click)="cancelRequest()">
+                  {{ saving() ? 'Saving…' : 'Cancel approval request' }}
+                </button>
+              } @else {
+                <button type="button" class="bp-btn-grad" [disabled]="saving()" (click)="save('pending')">
+                  {{ saving() ? 'Saving…' : 'Submit for Approval' }}
+                </button>
+              }
             </div>
           }
           </div>
@@ -339,7 +350,22 @@ export class ItemEditComponent {
     this.imageUrl.set(img.url);
   }
 
-  protected async save(status: 'draft' | 'pending'): Promise<void> {
+  protected save(status: 'draft' | 'pending'): Promise<void> {
+    return this.persist(status, status === 'pending' ? 'Submitted for approval.' : 'Draft saved.');
+  }
+
+  /** Supplier withdraws a pending submission — reverts the item to draft so the
+   *  approval queue no longer holds it (the Submit button becomes this). */
+  protected cancelRequest(): Promise<void> {
+    return this.persist('draft', 'Approval request cancelled.');
+  }
+
+  /** Cancel out of the view (read-only) page — back where they came from. */
+  protected cancel(): void {
+    void this.router.navigateByUrl(this.heroBack().href);
+  }
+
+  private async persist(status: 'draft' | 'pending', successMsg: string): Promise<void> {
     const f = this.form();
     if (!f.name.trim()) {
       this.toast.add({ severity: 'warn', summary: 'Product Name is required', life: 3000 });
@@ -368,11 +394,7 @@ export class ItemEditComponent {
       } else {
         await firstValueFrom(this.store.create(body));
       }
-      this.toast.add({
-        severity: 'success',
-        summary: status === 'pending' ? 'Submitted for approval.' : 'Draft saved.',
-        life: 3000,
-      });
+      this.toast.add({ severity: 'success', summary: successMsg, life: 3000 });
       const orgId = this.auth.user()?.activeOrgId;
       void this.router.navigate(orgId ? ['/suppliers', orgId] : ['/store']);
     } catch (e) {

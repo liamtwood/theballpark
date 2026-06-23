@@ -169,6 +169,14 @@ Liam QC: About Us = description only, followed by Company Information (the field
 ### v2.33u — Branding container, cover first
 Liam QC: on the Profile tab the media block moves to the **top** as the first section, wrapped in a titled **Branding** container (`app-edit-section title="Branding" [editable]="false"` — org-media keeps its own cover/logo/gallery editing). Cover image is now the first thing on the profile. Build clean.
 
+## Iteration — v2.34c (2026-06-23) — view actions + cancel approval request
+**Triggered by QC:** Liam — item view page (read-only, same as edit) with Cancel / Approve / Reject (approve+reject = ballpark admins); a pending supplier item shows "Cancel approval request" instead of "Submit for Approval".
+
+- **Supplier, status = pending** → the **Submit for Approval** button is replaced by **Cancel approval request**, which reverts the item to `draft` (withdraws it from the queue). Reuses the supplier PUT (`approval_status: 'draft'`); no backend change.
+- **View (read-only) mode** (ballpark admin today) → action row is now **Approve · Reject · Cancel**. Cancel returns to where they came from (the marketplace queue). Approve/Reject unchanged.
+- Refactored `save()` into a shared `persist(status, msg)`; `cancelRequest()` and `save()` both route through it.
+- *Note:* a generic non-admin "viewer" can't open `/store/items/:id` yet (the GET is owner- or admin-scoped) — a public/agency read-only GET is a later slice. Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 
