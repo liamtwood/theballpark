@@ -60,18 +60,22 @@ interface ItemForm {
 
               <div>
                 <label class="bp-field-label">Main Image</label>
-                <div class="mt-2 flex flex-col items-start gap-3">
-                  <div class="bp-media-preview">
-                    @if (imageUrl()) {
-                      <img [src]="imageUrl()" alt="" />
-                    } @else {
-                      <span class="bp-caption">Click to upload main image</span>
-                    }
-                  </div>
-                  <button type="button" class="bp-btn-outline" (click)="imageDrawer.set(true)">
-                    {{ imageUrl() ? 'Change image' : 'Upload image' }}
-                  </button>
+                <div
+                  class="bp-item-banner mt-2"
+                  role="button"
+                  tabindex="0"
+                  (click)="imageDrawer.set(true)"
+                  (keydown.enter)="imageDrawer.set(true)"
+                >
+                  @if (imageUrl()) {
+                    <img [src]="imageUrl()" alt="" />
+                  } @else {
+                    <span class="bp-caption">Click to upload main image</span>
+                  }
                 </div>
+                <button type="button" class="bp-btn-outline mt-3" (click)="imageDrawer.set(true)">
+                  {{ imageUrl() ? 'Change image' : 'Upload image' }}
+                </button>
               </div>
 
               <div>
@@ -148,6 +152,25 @@ interface ItemForm {
     <p-toast position="bottom-right" styleClass="bp-toast" />
   `,
   styles: `
+    /* Main image as a wide cover banner — matches the supplier storefront. */
+    .bp-item-banner {
+      width: 100%;
+      aspect-ratio: 16 / 7;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      border: 1px solid var(--color-border-hairline);
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .bp-item-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
     .bp-store-textarea {
       width: 100%;
       border: 1px solid var(--color-border-hairline);
