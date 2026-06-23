@@ -23,6 +23,8 @@ export interface StoreItem {
   tags: string[];
   approval_status: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /** What the editor sends on save. The supplier sets `approval_status` to either

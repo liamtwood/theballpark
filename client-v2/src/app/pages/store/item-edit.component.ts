@@ -56,6 +56,7 @@ interface ItemForm {
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
           <div class="bp-card p-5">
+            <h3 class="bp-edit-section-title mb-4">{{ isEdit ? 'Edit Product' : 'Add New Product' }}</h3>
             <div class="flex flex-col gap-5">
               <app-edit-field label="Product Name" density="page" [editing]="true" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
@@ -121,12 +122,10 @@ interface ItemForm {
           </div>
           </div>
 
-          <!-- RIGHT — panel header, approval process + current status. -->
+          <!-- RIGHT — Image Approval Process + status (history-ready). -->
           <aside class="bp-card p-5 self-start">
-            <h3 class="bp-edit-section-title">{{ isEdit ? 'Edit Product' : 'Add New Product' }}</h3>
-
-            <h4 class="bp-field-label mt-4">Image Approval Process</h4>
-            <p class="bp-body-small mt-2 text-secondary">
+            <h3 class="bp-edit-section-title">Image Approval Process</h3>
+            <p class="bp-body-small mt-3 text-secondary">
               All images uploaded to Ballpark Marketplace must be reviewed and approved by the Ballpark team.
             </p>
             <p class="bp-body-small mt-3 text-secondary">
@@ -136,9 +135,14 @@ interface ItemForm {
               If you need help preparing your images or listings, please contact the Ballpark team.
             </p>
 
-            <div class="mt-5 flex items-center gap-2">
-              <span class="bp-field-label">Status</span>
+            <!-- Status — pill + when it was set. Reads as one row today; the
+                 layout is the seed for a status-over-time history. -->
+            <h3 class="bp-edit-section-title mt-6">Status</h3>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
               <app-status-pill list="item_approval_status" [code]="currentStatus()" />
+              @if (statusAt(); as at) {
+                <span class="bp-caption">{{ at }}</span>
+              }
             </div>
           </aside>
         </div>
@@ -223,6 +227,19 @@ export class ItemEditComponent {
   /** Current persisted approval status — drives the status pill. A new product
    *  is a draft until first saved. */
   protected readonly currentStatus = computed(() => this.itemRes.value()?.approval_status ?? 'draft');
+
+  /** When the current status was last set (best proxy = the row's updated_at,
+   *  else created_at). Null for an unsaved product. */
+  protected readonly statusAt = computed(() => {
+    const item = this.itemRes.value();
+    const iso = item?.updated_at ?? item?.created_at;
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  });
 
   protected readonly heroTitle = computed(() => (this.isEdit ? 'Edit product' : 'Add product'));
   protected readonly heroSubtitle = computed(() =>
