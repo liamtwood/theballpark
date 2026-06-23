@@ -130,6 +130,16 @@ Liam QC: the owner filters must match the price/tier standard and sit beside the
 
 Verified: client build clean; 48/48 server tests.
 
+## Iteration — v2.33s (2026-06-23) — card Edit button + inactive status pill
+**Triggered by QC:** Liam — items need an Edit button; inactive items should show their status as a pill in the marketplace.
+**Commit:** `<pending>`
+
+- `CatalogueItem` now carries `approvalStatus` + `isActive` (added to the `/api/marketplace/items` SELECT + mapping).
+- **Status pill** — the item card shows an `app-status-pill` (top-left overlay) for any item where `!isActive` (so owners see Draft/Pending/Rejected on their own store; admins see Pending in the queue). Active+approved cards are unchanged.
+- **Edit button** — owned items (`ownedByActiveOrg`) get a full-width **Edit** button on the card → `/store/items/:id` (stops propagation so it doesn't also select the card).
+
+Verified: client build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

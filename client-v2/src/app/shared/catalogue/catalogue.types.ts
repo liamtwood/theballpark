@@ -44,6 +44,10 @@ export interface CatalogueItem {
   /** Server-derived ownership flag (MARKETPLACE.md model) — unlocks
    *  edit/delete affordances in later arcs. Never computed client-side. */
   ownedByActiveOrg: boolean;
+  /** pV2-STORE-01 — moderation surfacing: the approval_status code (for the
+   *  status pill) and the publish flag. Inactive items show a status pill. */
+  approvalStatus: string;
+  isActive: boolean;
 }
 
 /** The shared paginated list envelope — stable contract regardless of

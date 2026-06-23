@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
+import { StatusPillComponent } from '../status-pill/status-pill.component';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -14,7 +16,7 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
 @Component({
   selector: 'app-item-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, LucideAngularModule, TooltipModule],
+  imports: [CurrencyPipe, RouterLink, LucideAngularModule, TooltipModule, StatusPillComponent],
   host: {
     class: 'bp-card bp-card--zoom cursor-pointer',
     '[class.bp-card--selected]': 'selected()',
@@ -39,6 +41,12 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
       <div class="bp-item-card__img bp-item-card__img--empty">
         <lucide-icon name="store" [size]="22" [strokeWidth]="1.5" />
       </div>
+    }
+    @if (!item().isActive) {
+      <!-- pV2-STORE-01 — inactive items (owner/admin view) carry their status. -->
+      <span class="absolute left-2.5 top-2.5 z-10">
+        <app-status-pill list="item_approval_status" [code]="item().approvalStatus" />
+      </span>
     }
     <button
       type="button"
@@ -89,6 +97,16 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
         <lucide-icon name="map-pin" [size]="13" [strokeWidth]="1.75" />
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
+      @if (item().ownedByActiveOrg) {
+        <!-- pV2-STORE-01 — owner edits their own item straight from the card. -->
+        <a
+          [routerLink]="['/store/items', item().id]"
+          class="bp-btn-outline mt-3 flex w-full items-center justify-center gap-1.5"
+          (click)="onEditClick($event)"
+        >
+          <lucide-icon name="square-pen" [size]="14" /> Edit
+        </a>
+      }
     </div>
   `,
 })
@@ -116,5 +134,10 @@ export class ItemCardComponent {
   protected onQuoteClick(e: Event): void {
     e.stopPropagation();
     this.quoteToggled.emit(this.item().id);
+  }
+
+  /** The card host selects on click; the Edit link must not also select. */
+  protected onEditClick(e: Event): void {
+    e.stopPropagation();
   }
 }
