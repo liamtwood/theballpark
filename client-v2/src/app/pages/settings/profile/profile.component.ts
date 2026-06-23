@@ -209,23 +209,22 @@ interface ProfileForm {
           </div>
 
           @if (profile.value(); as org) {
-            <!-- Gallery — the portfolio strip, its own section (pV2-STORE-01).
-                 org-media in portfolio mode; saves immediately like Branding. -->
-            <app-edit-section title="Gallery" [editable]="false">
-              <div #mediaSection>
-                <app-org-media
-                  mode="edit"
-                  show="portfolio"
-                  [canEdit]="canEdit()"
-                  [name]="org.name"
-                  [coverUrl]="org.coverImageUrl"
-                  [logoUrl]="org.logoUrl"
-                  [images]="org.images"
-                  (imagesChange)="saveImages($event)"
-                  (primarySet)="setCover($event)"
-                />
-              </div>
-            </app-edit-section>
+            <!-- Gallery — org-media's portfolio (edit) mode renders its OWN
+                 bp-card + "Gallery" title, so NO outer edit-section here (that
+                 produced a card-in-a-card). Saves immediately like Branding. -->
+            <div #mediaSection>
+              <app-org-media
+                mode="edit"
+                show="portfolio"
+                [canEdit]="canEdit()"
+                [name]="org.name"
+                [coverUrl]="org.coverImageUrl"
+                [logoUrl]="org.logoUrl"
+                [images]="org.images"
+                (imagesChange)="saveImages($event)"
+                (primarySet)="setCover($event)"
+              />
+            </div>
           }
 
           <app-edit-section
