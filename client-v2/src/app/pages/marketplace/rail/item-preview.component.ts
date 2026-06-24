@@ -16,7 +16,7 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
   host: { class: 'block' },
   template: `
     <div class="mb-3 flex items-start justify-between gap-2">
-      <h3 class="text-md font-medium leading-snug text-text">{{ item().name }}</h3>
+      <h3 class="bp-list-title">{{ item().name }}</h3>
       <div class="flex items-center gap-2">
         @if (item().ownedByActiveOrg) {
           <!-- pV2-STORE-01 — owner edits their own item. -->

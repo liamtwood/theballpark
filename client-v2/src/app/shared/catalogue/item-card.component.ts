@@ -88,7 +88,7 @@ import { AuthService } from '../../core/auth/auth.service';
     }
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
-      <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
+      <div class="bp-list-title truncate">{{ item().name }}</div>
       @if (item().subcategoryName || item().categoryName; as chip) {
         <span class="bp-tag-chip mt-1.5">{{ chip }}</span>
       }

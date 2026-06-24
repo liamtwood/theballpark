@@ -17,7 +17,7 @@ import { EditFieldComponent, EditFieldOption } from '../../shared/edit-field/edi
 import { ImageGalleryComponent } from '../../shared/image-gallery/image-gallery.component';
 import { ImagePickerComponent } from '../../shared/image-picker/image-picker.component';
 import { DrawerComponent } from '../../shared/drawer/drawer.component';
-import { StatusPillComponent } from '../../shared/status-pill/status-pill.component';
+import { ItemApprovalPanelComponent } from './item-approval-panel.component';
 
 interface ItemForm {
   name: string;
@@ -30,20 +30,18 @@ interface ItemForm {
   description: string;
 }
 
-/** pV2-STORE-01 — the product page, in two modes on ONE definition:
- *   • SUPPLIER (own item): editable fields + Save Draft / Submit for Approval.
- *   • BALLPARK ADMIN (moderation): the SAME page read-only, with Approve /
- *     Reject. Approve → approved + active; Reject → rejected + hidden.
- *  Attributes stack one-per-row on the left; an Image Approval Process panel +
- *  Status sit on the right. Pricing is base_price (Ballpark Cost) + install_cost
- *  (separate), with install_description (Included Services) and location_coverage. */
+/** pV2-STORE-01 — the product page, ONE definition in three modes: supplier
+ *  (editable + Save/Submit), ballpark admin (read-only + Approve/Reject), agent
+ *  (?view, read-only + Cancel). Attributes left, the Image Approval Process +
+ *  Status panel right (app-item-approval-panel). Pricing = base_price + separate
+ *  install_cost, plus install_description + location_coverage. */
 @Component({
   selector: 'app-item-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   imports: [
     FormsModule, ToastModule, PageHeroComponent, EditFieldComponent,
-    ImageGalleryComponent, ImagePickerComponent, DrawerComponent, StatusPillComponent,
+    ImageGalleryComponent, ImagePickerComponent, DrawerComponent, ItemApprovalPanelComponent,
   ],
   providers: [MessageService],
   template: `
@@ -163,29 +161,7 @@ interface ItemForm {
           }
           </div>
 
-          <!-- RIGHT — Image Approval Process + status (history-ready). -->
-          <aside class="bp-card p-5 self-start">
-            <h3 class="bp-edit-section-title">Image Approval Process</h3>
-            <p class="bp-body-small mt-3 text-secondary">
-              All images uploaded to Ballpark Marketplace must be reviewed and approved by the Ballpark team.
-            </p>
-            <p class="bp-body-small mt-3 text-secondary">
-              This helps maintain a consistent and high-quality marketplace experience for all users.
-            </p>
-            <p class="bp-body-small mt-3 text-secondary">
-              If you need help preparing your images or listings, please contact the Ballpark team.
-            </p>
-
-            <!-- Status — pill + when it was set. Reads as one row today; the
-                 layout is the seed for a status-over-time history. -->
-            <h3 class="bp-edit-section-title mt-6">Status</h3>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <app-status-pill list="item_approval_status" [code]="currentStatus()" />
-              @if (statusAt(); as at) {
-                <span class="bp-caption">{{ at }}</span>
-              }
-            </div>
-          </aside>
+          <app-item-approval-panel [status]="currentStatus()" [statusAt]="statusAt()" />
         </div>
         </div>
       }
@@ -206,44 +182,6 @@ interface ItemForm {
     </app-drawer>
 
     <p-toast position="bottom-right" styleClass="bp-toast" />
-  `,
-  styles: `
-    /* Main image as a wide cover banner — matches the supplier storefront. */
-    .bp-item-banner {
-      width: 100%;
-      aspect-ratio: 16 / 7;
-      border-radius: var(--radius-card);
-      overflow: hidden;
-      border: 1px solid var(--color-border-hairline);
-      background: var(--color-surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    .bp-item-banner--readonly { cursor: default; }
-    .bp-item-banner img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .bp-store-textarea {
-      width: 100%;
-      border: 1px solid var(--color-border-hairline);
-      border-radius: var(--radius-input, 8px);
-      background: var(--color-surface);
-      color: var(--color-text);
-      padding: 10px 12px;
-      font-family: var(--bp-font);
-      font-size: var(--text-base);
-      line-height: var(--leading-normal);
-      resize: vertical;
-    }
-    .bp-store-textarea:focus-visible {
-      outline: 2px solid var(--theme-accent);
-      outline-offset: 1px;
-    }
   `,
 })
 export class ItemEditComponent {

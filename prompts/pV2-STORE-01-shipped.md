@@ -247,6 +247,18 @@ Independent read-only end-of-module architect audit (general-purpose agent, grou
 
 Build clean; 48/48 server tests.
 
+## Audit close-out — v2.34t (2026-06-24)
+Liam's audit decisions actioned:
+- **F-1 applied** — ran `npm run db:migrate:schemas` (idempotent, all schemas); the seed now activates `item_approval_status.rejected`. Verified live: `draft/pending/approved/rejected` all `is_active=true` → the Rejected pill renders.
+- **F-2 done** — `/suppliers*` (4 endpoints) split out of `marketplace.js` → `routes/marketplace-suppliers.js` (190), mounted before `/marketplace` (`marketplace.js` 456 → **280**, under alarm). item-edit aside extracted → `<app-item-approval-panel>` (39); item-edit `.bp-*` styles moved to styles.css (clears 6 RP-05 flags); header comment condensed (454 → **399**, under the 400 alarm).
+- **TYPE-01 ×3** (chat audit) — item name (`item-card`), item name in preview (`item-preview`), team-member name (`profile`) → `.bp-list-title` role class. (org-media `var(--text-lg)` fallback was already removed in v2.34s.)
+- **F-8 stays deferred** (cosmetic; multi-currency not in scope).
+- AUDIT_LEDGER bloat watch updated.
+
+⚠️ **New finding while updating bloat watch:** `profile.component.ts` is **660 lines** — well over the 400 component alarm (ballooned through the Profile/Shopfront reorg + sections + Team Members + invite drawer). Logged in the ledger as **at-alarm**; needs its own extraction pass (placeholder sections / Team Members roster / invite drawer → children) before its next ship. Out of STORE-01 scope — flagged for Liam.
+
+Build clean; 48/48 server tests; `org-media` + `item-edit` now 0 style-guard violations.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

@@ -289,6 +289,9 @@ app.get('/api/unsplash/search', async (req, res) => {
   // Favourites extracted from marketplace.js (cards-audit F-8) — mounted
   // BEFORE /marketplace so the more-specific path matches first.
   v2.use('/marketplace/favourites', require('./routes/marketplace-favourites'));
+  // Suppliers endpoints extracted from marketplace.js (STORE-01 audit F-2);
+  // mounted BEFORE the main router so /suppliers* matches here first.
+  v2.use('/marketplace', require('./routes/marketplace-suppliers'));
   v2.use('/marketplace', require('./routes/marketplace'));
   // pV2-CODELISTS-01 — reference codelists (reads any member; value
   // curation platform admins; DELETE always 405 — locked rule 2).

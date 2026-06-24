@@ -265,7 +265,7 @@ interface ProfileForm {
                   <div class="flex items-center gap-3">
                     <app-user-avatar [displayName]="m.displayName" [email]="m.email" [imageUrl]="m.avatarUrl" [size]="40" />
                     <div class="min-w-0 flex-1">
-                      <div class="truncate text-md font-semibold text-text">{{ m.displayName ?? m.email }}</div>
+                      <div class="bp-list-title truncate">{{ m.displayName ?? m.email }}</div>
                       <div class="truncate bp-body-small text-secondary">{{ memberRole(m) }}</div>
                     </div>
                     <div class="shrink-0 truncate bp-body-small text-secondary">{{ m.email }}</div>
