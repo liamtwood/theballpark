@@ -215,6 +215,13 @@ Liam QC: approved a pending item; it came back **active** (should be approved + 
 ### v2.34m — fix stale grid after add/delete (cache bust)
 Liam QC: adding or deleting an item only showed after a full page refresh. Cause: `CatalogueService` memoises reads by URL; store writes never busted it, so `reloadItems()`/navigation returned the cached list. Fix: every `StoreItemService` mutation (create/update/setActive/duplicate/remove/decide) now `.pipe(tap(() => catalogue.invalidate()))` — the architecture's intended "writes invalidate" hook. Combined with the existing `reloadItems()` (card actions) and route re-mount (create), the grid updates without a refresh. Build clean.
 
+### v2.34n — approved items are edit-locked (duplicate to change)
+Liam QC: once Approved, an item can't be edited — only copied, deleted, and made active/inactive.
+- **Server** — `PUT /api/store/items/:id` returns 409 if the item is `approved` ("duplicate to make changes"). Copy / delete / active toggle are unaffected.
+- **Card** — the **Edit** button is hidden on approved items; Duplicate / Show-Hide / Trash remain.
+- **Item page** — an owner opening an approved item is **read-only** (fields locked, title "Product", subtitle "Approved — duplicate to make changes"), with a note + **Back to store** instead of Save/Submit. `editing` is now false for approved owners.
+- Workflow to change an approved item: **Duplicate** → edit the copy (draft) → Submit → approve → activate; delete the old one. Build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

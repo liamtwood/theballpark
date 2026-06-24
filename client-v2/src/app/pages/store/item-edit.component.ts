@@ -56,7 +56,7 @@ interface ItemForm {
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
           <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : isViewer() ? 'Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
+            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : (isViewer() || isApproved()) ? 'Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
             <div class="flex flex-col gap-5">
               <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
@@ -130,6 +130,12 @@ interface ItemForm {
             <!-- Pure viewer (e.g. an agent) — read-only, back out only. -->
             <div class="mt-4 flex flex-wrap gap-3">
               <button type="button" class="bp-btn-outline" (click)="cancel()">Cancel</button>
+            </div>
+          } @else if (isApproved()) {
+            <!-- Owner, approved — locked. Duplicate from the store to change it. -->
+            <p class="bp-caption">Approved items are locked. Duplicate it from your store to make changes.</p>
+            <div class="mt-3 flex flex-wrap gap-3">
+              <button type="button" class="bp-btn-outline" (click)="cancel()">Back to store</button>
             </div>
           } @else {
             <div class="mt-4 flex flex-wrap gap-3">
@@ -252,8 +258,11 @@ export class ItemEditComponent {
    *  so a supplier viewing someone else's item lands here too. Moderator wins. */
   private readonly viewParam = this.route.snapshot.queryParamMap.get('view') === '1';
   protected readonly isViewer = computed(() => this.viewParam && !this.isModerator());
-  /** Fields are editable only for the owning supplier (not moderator/viewer). */
-  protected readonly editing = computed(() => !this.isModerator() && !this.isViewer());
+  /** Fields are editable only for the owning supplier on a NON-approved item.
+   *  Approved items are locked (duplicate to change) → read-only. */
+  protected readonly editing = computed(
+    () => !this.isModerator() && !this.isViewer() && !this.isApproved()
+  );
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
@@ -268,6 +277,8 @@ export class ItemEditComponent {
   /** Current persisted approval status — drives the status pill. A new product
    *  is a draft until first saved. */
   protected readonly currentStatus = computed(() => this.itemRes.value()?.approval_status ?? 'draft');
+  /** Approved items are locked from editing (owner duplicates to change). */
+  protected readonly isApproved = computed(() => this.currentStatus() === 'approved');
 
   /** When the current status was last set (best proxy = the row's updated_at,
    *  else created_at). Null for an unsaved product. */
@@ -284,11 +295,12 @@ export class ItemEditComponent {
 
   protected readonly heroTitle = computed(() =>
     this.isModerator() ? 'Review product'
-    : this.isViewer() ? 'Product'
+    : this.isViewer() || this.isApproved() ? 'Product'
     : this.isEdit ? 'Edit product' : 'Add product'
   );
   protected readonly heroSubtitle = computed(() =>
     this.isModerator() ? 'Approve or reject this submission.'
+    : this.isApproved() ? 'Approved — duplicate to make changes.'
     : this.isViewer() ? 'Product details.'
     : this.isEdit ? 'Update your product details.'
     : 'Add a product to your store.'

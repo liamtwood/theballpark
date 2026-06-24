@@ -50,6 +50,11 @@ router.put('/:id', async (req, res, next) => {
     const existing = await ItemService.getById(req.params.id);
     if (!existing || existing.deleted_at) return res.status(404).json({ error: 'Not found' });
     if (existing.org_id !== req.user.org_id) return res.status(403).json({ error: 'Not your item' });
+    // Approved items are locked — editing would change what was approved. The
+    // supplier duplicates to make changes (the copy re-enters the draft flow).
+    if (existing.approval_status === 'approved') {
+      return res.status(409).json({ error: 'Approved items can’t be edited — duplicate to make changes' });
+    }
     const parsed = StoreItemUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid item' });
