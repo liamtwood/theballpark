@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom, Observable } from 'rxjs';
@@ -8,6 +8,7 @@ import { CatalogueItem, sizedImage } from './catalogue.types';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
 import { ConfirmService } from '../confirm/confirm.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -51,36 +52,40 @@ import { ConfirmService } from '../confirm/confirm.service';
         <app-status-pill list="item_approval_status" [code]="item().approvalStatus" />
       </span>
     }
-    <button
-      type="button"
-      class="bp-fav-btn"
-      [class.bp-fav-btn--on]="favourited()"
-      [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
-      tooltipStyleClass="bp-tooltip"
-      tooltipPosition="top"
-      (click)="onFavClick($event)"
-    >
-      <lucide-icon name="heart" [size]="15" />
-    </button>
-    <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
-         foot CTA (v2.20q). OWN state, independent of the heart (QC: one
-         click was lighting both). TRANSITIONAL: session-local draft mark
-         until pV2-06f lands the real quote flow. -->
-    <button
-      type="button"
-      class="bp-fav-btn bp-fav-btn--second"
-      [class.bp-fav-btn--on]="quoted()"
-      [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-      [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
-      tooltipStyleClass="bp-tooltip"
-      tooltipPosition="top"
-      (click)="onQuoteClick($event)"
-    >
-      <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
-           the gradient circle alone carries the added state. -->
-      <lucide-icon name="plus" [size]="15" />
-    </button>
+    <!-- Wishlist + Add-to-Quote are BUYER actions — agents only. Suppliers and
+         ballpark admins don't favourite/quote (they manage/moderate). -->
+    @if (isAgent()) {
+      <button
+        type="button"
+        class="bp-fav-btn"
+        [class.bp-fav-btn--on]="favourited()"
+        [attr.aria-label]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        [pTooltip]="favourited() ? 'Remove from Wishlist' : 'Add to Wishlist'"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
+        (click)="onFavClick($event)"
+      >
+        <lucide-icon name="heart" [size]="15" />
+      </button>
+      <!-- The customer-proposed "+" (v1 lineage) — replaced the gradient
+           foot CTA (v2.20q). OWN state, independent of the heart (QC: one
+           click was lighting both). TRANSITIONAL: session-local draft mark
+           until pV2-06f lands the real quote flow. -->
+      <button
+        type="button"
+        class="bp-fav-btn bp-fav-btn--second"
+        [class.bp-fav-btn--on]="quoted()"
+        [attr.aria-label]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+        [pTooltip]="quoted() ? 'Added to Quote' : 'Add to Quote'"
+        tooltipStyleClass="bp-tooltip"
+        tooltipPosition="top"
+        (click)="onQuoteClick($event)"
+      >
+        <!-- Always a plus (QC: the check read as a Nike swoosh at 15px) —
+             the gradient circle alone carries the added state. -->
+        <lucide-icon name="plus" [size]="15" />
+      </button>
+    }
 
     <div class="min-w-0 px-3.5 pb-3.5 pt-3">
       <div class="truncate text-md font-semibold text-text">{{ item().name }}</div>
@@ -163,6 +168,10 @@ export class ItemCardComponent {
   private readonly router = inject(Router);
   private readonly store = inject(StoreItemService);
   private readonly confirm = inject(ConfirmService);
+  private readonly auth = inject(AuthService);
+
+  /** Wishlist / Add-to-Quote are buyer actions — agency users only. */
+  protected readonly isAgent = computed(() => this.auth.user()?.activeOrgType === 'agency');
 
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
