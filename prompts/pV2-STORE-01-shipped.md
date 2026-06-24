@@ -183,6 +183,9 @@ Liam QC: an agent needs to see the item page.
 - **Viewer mode** — the item page opens read-only with a single **Cancel** when reached via `?view=1`. Ownership-agnostic (the entry point signals intent), so a supplier viewing someone else's item lands here too; moderator (ballpark) still wins. Loads via `getPublic()`.
 - **Entry point** — the rail item-preview now shows a **View** (external-link) affordance → `/store/items/:id?view=1` for anyone who isn't the owner or a ballpark admin (e.g. an agent). Build clean; 48/48 server tests.
 
+### v2.34e — open the item by clicking the card
+Liam QC: card view has no rail preview, so the ↗ was unreachable. Clicking an item **card** now opens its page directly (no icon added): owners → editor (no `?view`, works for their own drafts), everyone else → `?view=1` (the page resolves ballpark→moderate, agent→view). The +/heart keep their own click (stopPropagation). The rail ↗ stays for list/table views. Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

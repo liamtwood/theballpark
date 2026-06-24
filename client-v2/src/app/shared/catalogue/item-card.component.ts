@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
@@ -20,10 +20,10 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
   host: {
     class: 'bp-card bp-card--zoom cursor-pointer',
     '[class.bp-card--selected]': 'selected()',
-    '(click)': 'clicked.emit(item().id)',
+    '(click)': 'open()',
     tabindex: '0',
     role: 'button',
-    '(keydown.enter)': 'clicked.emit(item().id)',
+    '(keydown.enter)': 'open()',
   },
   template: `
     @if (item().coverUrl) {
@@ -111,6 +111,8 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
   `,
 })
 export class ItemCardComponent {
+  private readonly router = inject(Router);
+
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
   /** Above-the-fold cards load eagerly (LCP); the grid sets this. */
@@ -136,7 +138,19 @@ export class ItemCardComponent {
     this.quoteToggled.emit(this.item().id);
   }
 
-  /** The card host selects on click; the Edit link must not also select. */
+  /** Clicking the card opens the item page (pV2-STORE-01). Owners land on the
+   *  editor (works for their own drafts); everyone else opens the read-only
+   *  view (`?view=1`) — which the page resolves to moderate for ballpark admins
+   *  and view for agents. The Edit button below is the owner's explicit edit. */
+  protected open(): void {
+    const owned = this.item().ownedByActiveOrg;
+    void this.router.navigate(
+      ['/store/items', this.item().id],
+      owned ? {} : { queryParams: { view: 1 } }
+    );
+  }
+
+  /** The Edit link navigates itself — don't also trigger the card open. */
   protected onEditClick(e: Event): void {
     e.stopPropagation();
   }
