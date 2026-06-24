@@ -7,6 +7,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
 import { StoreItemService } from '../../core/store/store-item.service';
+import { ConfirmService } from '../confirm/confirm.service';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -156,6 +157,7 @@ import { StoreItemService } from '../../core/store/store-item.service';
 export class ItemCardComponent {
   private readonly router = inject(Router);
   private readonly store = inject(StoreItemService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
@@ -213,11 +215,16 @@ export class ItemCardComponent {
     e.stopPropagation();
     this.run(this.store.setActive(this.item().id, !this.item().isActive));
   }
-  protected onTrash(e: Event): void {
+  protected async onTrash(e: Event): Promise<void> {
     e.stopPropagation();
-    // Interim confirm (soft delete is recoverable in the DB). A styled
-    // dialog + a Trash view land later.
-    if (!confirm(`Move "${this.item().name}" to trash?`)) return;
+    if (this.busy()) return;
+    const ok = await this.confirm.ask({
+      title: `Delete “${this.item().name}”?`,
+      message: 'This removes it from your store.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return;
     this.run(this.store.remove(this.item().id));
   }
 

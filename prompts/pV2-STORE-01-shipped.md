@@ -195,6 +195,11 @@ Liam QC: card view has no rail preview, so the ↗ was unreachable. Clicking an 
 - Registered icons: Copy, Eye, EyeOff.
 - *Interim:* Trash uses a `confirm()` (soft delete is recoverable in the DB); a styled dialog + a Trash/recover view + success toasts are follow-ups. Build clean; 48/48 server tests.
 
+### v2.34h — standard confirmation dialog for delete
+Liam QC: delete must use our standard dialog (Cancel / Delete), not `confirm()`.
+- **NEW reusable infra** — `ConfirmService` (root) + `ConfirmDialogComponent` mounted **once** in the shell. `confirm.ask({ title, message, confirmLabel, cancelLabel, danger })` returns `Promise<boolean>`; the dialog is the DIALOGS.md `bp-modal--confirm` archetype (closable=false, ESC/backdrop = Cancel, `.bp-btn-danger` Confirm). One dialog app-wide — no per-card p-dialog.
+- **Card trash** now `await confirm.ask(... 'Delete' / 'Cancel')` before soft-deleting. Any future destructive action reuses the same service. Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 
