@@ -200,6 +200,9 @@ Liam QC: delete must use our standard dialog (Cancel / Delete), not `confirm()`.
 - **NEW reusable infra** — `ConfirmService` (root) + `ConfirmDialogComponent` mounted **once** in the shell. `confirm.ask({ title, message, confirmLabel, cancelLabel, danger })` returns `Promise<boolean>`; the dialog is the DIALOGS.md `bp-modal--confirm` archetype (closable=false, ESC/backdrop = Cancel, `.bp-btn-danger` Confirm). One dialog app-wide — no per-card p-dialog.
 - **Card trash** now `await confirm.ask(... 'Delete' / 'Cancel')` before soft-deleting. Any future destructive action reuses the same service. Build clean.
 
+### v2.34i — fix empty confirm dialog
+Liam QC: the dialog opened empty. Cause: the `<ng-template pTemplate="header/footer">` were wrapped in an outer `@if (svc.options())`, which hid them from PrimeNG Dialog's `ContentChildren(PrimeTemplate)` query → no header/footer rendered. Fix: keep the templates unconditional (matching the working `/style/dialogs` demo) and move the `@if` *inside* each template. Build clean. (Couldn't drive the logged-in flow in preview — login is now real Google OAuth — so re-QC.)
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

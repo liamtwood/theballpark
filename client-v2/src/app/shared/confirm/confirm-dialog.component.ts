@@ -21,8 +21,11 @@ import { ConfirmService } from './confirm.service';
       [modal]="true"
       [style]="{ width: '420px' }"
     >
-      @if (svc.options(); as o) {
-        <ng-template pTemplate="header">
+      <!-- Templates stay unconditional so PrimeNG's ContentChildren registers
+           them; the dynamic content is guarded inside (an outer @if hid them
+           from the query → empty dialog). -->
+      <ng-template pTemplate="header">
+        @if (svc.options(); as o) {
           <div>
             <div class="bp-modal__icon"><lucide-icon [name]="o.icon ?? 'trash-2'" [size]="20" /></div>
             <h2 class="bp-card-title">{{ o.title }}</h2>
@@ -30,8 +33,10 @@ import { ConfirmService } from './confirm.service';
               <p class="bp-body mt-2 text-secondary">{{ o.message }}</p>
             }
           </div>
-        </ng-template>
-        <ng-template pTemplate="footer">
+        }
+      </ng-template>
+      <ng-template pTemplate="footer">
+        @if (svc.options(); as o) {
           <button type="button" class="bp-btn-outline" (click)="svc.cancel()">{{ o.cancelLabel ?? 'Cancel' }}</button>
           <button
             type="button"
@@ -40,8 +45,8 @@ import { ConfirmService } from './confirm.service';
           >
             {{ o.confirmLabel ?? 'Confirm' }}
           </button>
-        </ng-template>
-      }
+        }
+      </ng-template>
     </p-dialog>
   `,
 })
