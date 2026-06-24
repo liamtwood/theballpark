@@ -52,6 +52,9 @@ interface ItemForm {
     <div class="bp-page-body">
       @if (loading()) {
         <p class="bp-body-small text-secondary">Loading…</p>
+      } @else if (itemRes.error()) {
+        <!-- Cross-org / missing id (the API 404/403s) — don't show a blank form. -->
+        <p class="bp-body-small text-warn">This item couldn’t be loaded — it may not exist or isn’t yours to view.</p>
       } @else {
         <div class="mx-auto w-full max-w-4xl">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
@@ -336,6 +339,10 @@ export class ItemEditComponent {
       // Pick the read path by mode: moderators read cross-org (admin endpoint),
       // viewers read the public approved item (marketplace endpoint), owners
       // read their own (ownership-gated supplier endpoint).
+      // NOTE: mode (isModerator/isViewer) is read here in the loader, NOT in
+      // `params` — it is intentionally NOT a reactive dep. Mode is stable for
+      // the page's lifetime (a role/org switch reloads the app; toggling ?view
+      // re-navigates), so the resource never needs to re-fetch on a mode change.
       const item = await firstValueFrom(
         this.isModerator() ? this.store.getForReview(params)
         : this.isViewer() ? this.store.getPublic(params)

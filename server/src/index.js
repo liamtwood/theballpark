@@ -64,7 +64,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : ['http://localhost:4200'];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // explicit cap (ENGINEERING Rule 10); gallery payloads sit well under
 app.use(require('cookie-parser')());
 // Audit attribution (Item 1): resolve the acting user into AsyncLocalStorage so
 // pool.js can SET LOCAL app.current_user_id on writes. Must run before routes.

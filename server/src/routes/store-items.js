@@ -21,8 +21,10 @@ router.use(requireActiveMembership('item.create'));
 router.get('/:id', async (req, res, next) => {
   try {
     const item = await ItemService.getById(req.params.id);
-    if (!item || item.deleted_at) return res.status(404).json({ error: 'Not found' });
-    if (item.org_id !== req.user.org_id) return res.status(403).json({ error: 'Not your item' });
+    // 404 (not 403) on a cross-org id — no existence oracle (ENGINEERING Rule 10).
+    if (!item || item.deleted_at || item.org_id !== req.user.org_id) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     res.json(item);
   } catch (err) { next(err); }
 });
@@ -48,8 +50,10 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const existing = await ItemService.getById(req.params.id);
-    if (!existing || existing.deleted_at) return res.status(404).json({ error: 'Not found' });
-    if (existing.org_id !== req.user.org_id) return res.status(403).json({ error: 'Not your item' });
+    // 404 (not 403) on a cross-org id — no existence oracle (ENGINEERING Rule 10).
+    if (!existing || existing.deleted_at || existing.org_id !== req.user.org_id) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     // Approved items are locked — editing would change what was approved. The
     // supplier duplicates to make changes (the copy re-enters the draft flow).
     if (existing.approval_status === 'approved') {
@@ -70,11 +74,14 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-/** Resolve the caller's OWN, non-deleted item or send 404/403. */
+/** Resolve the caller's OWN, non-deleted item, else send 404 and return null.
+ *  Cross-org ids 404 (not 403) — no existence oracle (ENGINEERING Rule 10). */
 async function ownItemOr(res, id, orgId) {
   const item = await ItemService.getById(id);
-  if (!item || item.deleted_at) { res.status(404).json({ error: 'Not found' }); return null; }
-  if (item.org_id !== orgId) { res.status(403).json({ error: 'Not your item' }); return null; }
+  if (!item || item.deleted_at || item.org_id !== orgId) {
+    res.status(404).json({ error: 'Not found' });
+    return null;
+  }
   return item;
 }
 

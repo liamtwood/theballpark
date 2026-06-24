@@ -4,9 +4,7 @@ import { ApiService } from '../api.service';
 import { CatalogueService } from '../marketplace/catalogue.service';
 import { GalleryImage } from '../media/media.types';
 
-/** The editable item row (pV2-STORE-01) — the full item as the editor sees it.
- *  Only fields the supplier edits today; deferred columns (install_cost,
- *  location_coverage, included_services) are not here yet. */
+/** The editable item row (pV2-STORE-01) — the full item as the editor sees it. */
 export interface StoreItem {
   id: string;
   org_id: string;

@@ -98,8 +98,10 @@ const NEW_VALUES = {
     { code: 'draft',    label: 'Draft',    sort: 0, def: false, meta: { color: '--color-text-muted', color_soft: '--color-fill', icon: 'pencil-line', is_terminal: false, allowed_next_codes: ['pending'] } },
     { code: 'pending',  label: 'Pending',  sort: 1, def: true,  meta: { color: '--color-warn',    color_soft: '--color-warn-soft',    icon: 'clock',  is_terminal: false, allowed_next_codes: ['approved', 'rejected'] } },
     { code: 'approved', label: 'Approved', sort: 2, def: false, meta: { color: '--color-success', color_soft: '--color-success-soft', icon: 'check',  is_terminal: false, allowed_next_codes: ['rejected'] } },
-    // No consumer writes 'rejected' yet — seeded INACTIVE per the prompt.
-    { code: 'rejected', label: 'Rejected', sort: 3, def: false, active: false, meta: { color: '--color-danger', color_soft: '--color-danger-soft', icon: 'x', is_terminal: true, allowed_next_codes: [] } },
+    // pV2-STORE-01: the admin moderation route writes 'rejected' now, so it must
+    // be ACTIVE or its status pill can't resolve (GET /values is active-only).
+    // Existing inactive rows are flipped by the UPDATE in seedCodelists().
+    { code: 'rejected', label: 'Rejected', sort: 3, def: false, meta: { color: '--color-danger', color_soft: '--color-danger-soft', icon: 'x', is_terminal: true, allowed_next_codes: [] } },
   ],
 };
 
@@ -147,6 +149,15 @@ async function seedCodelists(client) {
       );
     }
   }
+
+  // pV2-STORE-01 — the v1-seeded `item_approval_status.rejected` was INACTIVE
+  // (no writer at seed time); the admin moderation route writes it now, so its
+  // pill must resolve. ON CONFLICT DO NOTHING never updates an existing row, so
+  // flip it explicitly (idempotent).
+  await client.query(
+    `UPDATE shared.reference_codelist_values SET is_active = true
+       WHERE list_name = 'item_approval_status' AND code = 'rejected' AND is_active = false`
+  );
 
   // country — codes constant, labels via Intl (never hand-typed).
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });

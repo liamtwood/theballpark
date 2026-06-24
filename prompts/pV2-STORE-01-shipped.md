@@ -229,6 +229,24 @@ Liam: rename `max_price` → `install_cost`, remove `min_price`, add `currency` 
 - **Client** — `StoreItem`/`StoreItemWrite` carry the new fields. Editor: "Ballpark Cost" + "Install Cost (Optional)" (separate, currency-suffixed labels) + "Included Services" textarea + "Location Coverage"; the old base+install **total** mapping is gone (install cost is its own value).
 - *Note:* legacy seeds (`seed.js`, `seed-catalogue.js`, …) still INSERT `min_price`/`max_price` — they'd error if re-run; update before reuse. v1 client-angular reads `maxPrice`/`minPrice` (cosmetic) — will blank out, fine as v1 retires. Marketplace price display still hardcodes GBP — per-item currency surfacing is a follow-up. Build clean; 48/48 server tests.
 
+## Architect audit — v2.34r (2026-06-24)
+Independent read-only end-of-module architect audit (general-purpose agent, grounded in the angular-developer references + ENGINEERING.md/ARCHITECTURE.md + AUDIT_LEDGER risk patterns). Full report: [`docs/audits/2026-06-24-store-01-arc-architect-audit.md`](../docs/audits/2026-06-24-store-01-arc-architect-audit.md). Verdict: **ship-with-fixes** — auth correct, `org_id` never trusted, state machine coherent, **RP-06 genuinely closed**, migration idempotent. Triage:
+
+| F | Sev | Verdict | Action |
+|---|---|---|---|
+| F-1 | HIGH | **accept + fixed** | `rejected` codelist was seeded `is_active:false` but is now written by admin reject → pill couldn't resolve. Seed value flipped active + idempotent `UPDATE` added to `seedCodelists()`. **Live flip on the shared codelist still needs an explicit DB go (or a re-seed).** |
+| F-2 | MED | **accept — deferred** | `item-edit.component.ts` (454) + `marketplace.js` (456) over the alarm cap. Extraction (split `/suppliers*` out of marketplace.js; extract the item-edit aside) is its own refactor — logged as debt, do on next touch. |
+| F-3 | MED | **accept + fixed** | owner endpoints returned 403 (existence oracle) for cross-org ids → now 404 (Rule 10). `store-items.js` GET/PUT + `ownItemOr`. |
+| F-4 | LOW | **accept + fixed** | `resource()` loader reads mode signals non-reactively — safe (mode stable for page life); documented with a comment. |
+| F-5 | LOW | **accept — note** | item-card no longer purely presentational (injects Router/StoreItemService/ConfirmService/AuthService). Acceptable; the `(changed)` wiring is the check for a 4th consumer. |
+| F-6 | LOW | **accept + fixed** | stale "deferred" comments in `store-item.service.ts` + `store-item.schema.js` removed. |
+| F-7 | LOW | **accept + fixed** | `express.json({ limit: '1mb' })` set explicitly. |
+| F-8 | LOW | **defer** | currency symbol hardcoded (GBP/USD/EUR ternary) vs the `currency` codelist `symbol` — defer until multi-currency suppliers are in scope. |
+| F-9 | LOW | **accept + fixed** | `/store/items/:id` showed a blank form on 404/403 → added an `@else if (itemRes.error())` branch. |
+| — | — | **accept — note** | `duplicate()` hand-rolled transaction (Rule 1 prefers `withTransaction`) — documented; GUC correctly re-established for audit attribution; v1-inherited, not changed. |
+
+Build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

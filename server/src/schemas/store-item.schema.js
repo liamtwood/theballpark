@@ -1,8 +1,6 @@
 // pV2-STORE-01 — Zod schemas for the supplier-facing item editor
-// (POST/PUT /api/v2/store/items). org_id is NEVER taken from the body — it
-// comes from the session. Only EXISTING item columns are accepted here; the
-// install_cost / location_coverage / included_services fields are deferred
-// (no columns yet). approval_status is restricted to the values a SUPPLIER may
+// (POST/PUT /api/store/items). org_id is NEVER taken from the body — it comes
+// from the session. approval_status is restricted to the values a SUPPLIER may
 // set — 'draft' (save) or 'pending' (submit). Ballpark approve/reject lands on
 // a separate admin-gated route.
 
