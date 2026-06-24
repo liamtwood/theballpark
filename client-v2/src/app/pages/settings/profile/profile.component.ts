@@ -139,6 +139,7 @@ interface ProfileForm {
                 show="banner"
                 [canEdit]="canEdit()"
                 [name]="org.name"
+                [subtitle]="org.description ?? ''"
                 [coverUrl]="org.coverImageUrl"
                 [logoUrl]="org.logoUrl"
                 [images]="org.images"

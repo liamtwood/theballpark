@@ -554,6 +554,91 @@ body {
   min-height: 120px;
 }
 
+/* Org branding banner (pV2-MEDIA-01e / v2.34s) — cover + square logo + upload
+   affordances; rendered by <app-org-media> on /settings/profile (edit) and the
+   supplier storefront (view, cover-only). Moved here from the component per the
+   RP-05 one-definition rule. */
+.bp-org-banner {
+  position: relative;
+  /* Reserve room for the square logo straddling the cover's bottom edge. */
+  padding-bottom: 48px;
+}
+.bp-org-banner__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-surface);
+}
+/* Empty cover shows the soft brand gradient (canonical edit placeholder). */
+.bp-org-banner__cover--empty { background: var(--theme-soft); }
+.bp-org-banner__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.bp-org-banner__cover-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-input, 8px);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: 0 2px 8px var(--color-border-medium);
+  font-family: var(--bp-font);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.bp-org-banner__cover-btn:hover { background: var(--color-fill); }
+/* Square logo, straddling the cover's bottom-left corner. */
+.bp-org-banner__logo {
+  position: absolute;
+  left: 16px;
+  bottom: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-card, 14px);
+  background: var(--color-surface);
+  /* Surface ring lifts the square off the cover (matches the reference). */
+  border: 4px solid var(--color-surface);
+  box-shadow: 0 6px 18px var(--color-border-medium);
+}
+.bp-org-banner__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius-card, 14px) - 3px);
+  display: block;
+}
+/* Empty logo = the vivid brand-mark gradient. */
+.bp-org-banner__logo--empty { background: var(--bp-gradient); }
+.bp-org-banner__logo-btn {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: 0 2px 6px var(--color-border-medium);
+  cursor: pointer;
+}
+.bp-org-banner__logo-btn:hover { background: var(--color-fill); }
+
 /* Hero tab band (pV2-06d primitive) — marketplace Items|Suppliers,
    supplier-detail Storefront|Store, future project tabs. */
 .bp-tab-band {
