@@ -443,6 +443,39 @@ const migrate = async () => {
       ALTER TABLE preview.items DROP CONSTRAINT IF EXISTS items_org_name_unique_preview;
       ALTER TABLE master.items  DROP CONSTRAINT IF EXISTS items_org_name_unique_master;
 
+      -- pV2-STORE-01 (Liam): item pricing/detail model. Rename max_price →
+      -- install_cost (the installation cost), drop min_price, add currency
+      -- (defaults to the supplier's org currency on insert — see item.service),
+      -- install_description (UI label "Included Services") and location_coverage
+      -- (free text). The rename is guarded so the migration stays idempotent.
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE public.items RENAME COLUMN max_price TO install_cost; END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='preview' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='preview' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE preview.items RENAME COLUMN max_price TO install_cost; END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='master' AND table_name='items' AND column_name='max_price')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='master' AND table_name='items' AND column_name='install_cost')
+        THEN ALTER TABLE master.items RENAME COLUMN max_price TO install_cost; END IF;
+      END $$;
+
+      ALTER TABLE public.items  DROP COLUMN IF EXISTS min_price;
+      ALTER TABLE preview.items DROP COLUMN IF EXISTS min_price;
+      ALTER TABLE master.items  DROP COLUMN IF EXISTS min_price;
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS currency            VARCHAR(10);
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS install_description TEXT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS install_description TEXT;
+
+      ALTER TABLE public.items  ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+      ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+      ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS location_coverage   TEXT;
+
       -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
       -- Currency dropdown via shared.codelists list_name='currency').
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';

@@ -222,6 +222,13 @@ Liam QC: once Approved, an item can't be edited — only copied, deleted, and ma
 - **Item page** — an owner opening an approved item is **read-only** (fields locked, title "Product", subtitle "Approved — duplicate to make changes"), with a note + **Back to store** instead of Save/Submit. `editing` is now false for approved owners.
 - Workflow to change an approved item: **Duplicate** → edit the copy (draft) → Submit → approve → activate; delete the old one. Build clean; 48/48 server tests.
 
+### v2.34p — item data model: install_cost / currency / included services / coverage
+Liam: rename `max_price` → `install_cost`, remove `min_price`, add `currency` (default supplier currency), `install_description` (label "Included Services"), `location_coverage` (free text).
+- **Schema** (`migrate-schemas.js`, all 3 schemas, idempotent): guarded `RENAME max_price → install_cost`; `DROP min_price`; `ADD currency VARCHAR(10)`, `install_description TEXT`, `location_coverage TEXT`. **Needs applying** (`npm run db:migrate:schemas`).
+- **Server** — `item.service.create` writes the new cols; `currency` defaults via `COALESCE($currency, (SELECT default_currency FROM orgs WHERE id = org))`. `UPDATABLE_COLS` + `duplicate()` updated. Zod schema: `install_cost` / `install_description` / `location_coverage` / `currency` (drops `max_price`).
+- **Client** — `StoreItem`/`StoreItemWrite` carry the new fields. Editor: "Ballpark Cost" + "Install Cost (Optional)" (separate, currency-suffixed labels) + "Included Services" textarea + "Location Coverage"; the old base+install **total** mapping is gone (install cost is its own value).
+- *Note:* legacy seeds (`seed.js`, `seed-catalogue.js`, …) still INSERT `min_price`/`max_price` — they'd error if re-run; update before reuse. v1 client-angular reads `maxPrice`/`minPrice` (cosmetic) — will blank out, fine as v1 retires. Marketplace price display still hardcodes GBP — per-item currency surfacing is a follow-up. Build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

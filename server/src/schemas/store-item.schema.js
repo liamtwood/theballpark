@@ -28,8 +28,13 @@ const StoreItemCreateSchema = z
     subcategory_id: z.string().uuid().nullable().optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     base_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
-    // Installed total (ballpark + install add-on) — stored in max_price.
-    max_price: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
+    // pV2-STORE-01 (data model) — the installation cost (separate line).
+    install_cost: z.coerce.number().min(0).max(100_000_000).nullable().optional(),
+    // "Included Services" blurb + free-text location coverage.
+    install_description: z.string().trim().max(5000).nullable().optional(),
+    location_coverage: z.string().trim().max(2000).nullable().optional(),
+    // ISO-4217 (defaults to the supplier's org currency server-side if omitted).
+    currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
     unit: z.string().trim().max(40).nullable().optional(),
     lead_time_days: z.coerce.number().int().min(0).max(3650).nullable().optional(),
     image_url: z.string().trim().max(1000).nullable().optional(),

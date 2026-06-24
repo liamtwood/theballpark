@@ -15,8 +15,14 @@ export interface StoreItem {
   name: string;
   description: string | null;
   base_price: number | string | null;
-  /** Installed total (ballpark + install add-on). */
-  max_price: number | string | null;
+  /** The installation cost (separate line from base_price). */
+  install_cost: number | string | null;
+  /** "Included Services" — what the install covers. */
+  install_description: string | null;
+  /** Free-text location coverage. */
+  location_coverage: string | null;
+  /** ISO-4217 — defaults to the supplier's org currency. */
+  currency: string | null;
   unit: string | null;
   lead_time_days: number | null;
   image_url: string | null;
@@ -38,8 +44,12 @@ export interface StoreItemWrite {
   subcategory_id?: string | null;
   description?: string | null;
   base_price?: number | null;
-  /** Installed total (ballpark + install add-on) → stored in max_price. */
-  max_price?: number | null;
+  /** The installation cost (separate line from base_price). */
+  install_cost?: number | null;
+  install_description?: string | null;
+  location_coverage?: string | null;
+  /** ISO-4217 — server defaults to the supplier's org currency if omitted. */
+  currency?: string | null;
   unit?: string | null;
   lead_time_days?: number | null;
   image_url?: string | null;

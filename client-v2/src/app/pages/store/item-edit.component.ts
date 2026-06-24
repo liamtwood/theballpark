@@ -22,8 +22,10 @@ import { StatusPillComponent } from '../../shared/status-pill/status-pill.compon
 interface ItemForm {
   name: string;
   category_id: string;
-  base_price: string;     // "Ballpark cost"
-  installed_cost: string; // optional install add-on; stored as max_price = base + install
+  base_price: string;          // "Ballpark cost"
+  install_cost: string;        // installation cost (separate line)
+  install_description: string; // "Included Services"
+  location_coverage: string;   // free text
   lead_time_days: string;
   description: string;
 }
@@ -33,8 +35,8 @@ interface ItemForm {
  *   • BALLPARK ADMIN (moderation): the SAME page read-only, with Approve /
  *     Reject. Approve → approved + active; Reject → rejected + hidden.
  *  Attributes stack one-per-row on the left; an Image Approval Process panel +
- *  Status sit on the right. "Installed Cost" is the optional install add-on,
- *  stored as the installed total (ballpark + install) in max_price. */
+ *  Status sit on the right. Pricing is base_price (Ballpark Cost) + install_cost
+ *  (separate), with install_description (Included Services) and location_coverage. */
 @Component({
   selector: 'app-item-edit',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -95,14 +97,16 @@ interface ItemForm {
                 </div>
               </div>
 
-              <app-edit-field label="Ballpark Cost (£)" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+              <app-edit-field [label]="'Ballpark Cost' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().base_price" (valueChange)="patch({ base_price: $event })" />
+
+              <app-edit-field [label]="'Install Cost (Optional)' + currencySuffix()" type="number" density="page" [editing]="editing()" [value]="form().install_cost" (valueChange)="patch({ install_cost: $event })" />
 
               <div>
-                <app-edit-field label="Installed Cost (Optional) (£)" type="number" density="page" [editing]="editing()" [value]="form().installed_cost" (valueChange)="patch({ installed_cost: $event })" />
-                @if (installedLabel()) {
-                  <p class="bp-caption mt-1">Installed: {{ installedLabel() }}</p>
-                }
+                <label class="bp-field-label">Included Services</label>
+                <textarea class="bp-store-textarea mt-1" rows="3" [ngModel]="form().install_description" (ngModelChange)="patch({ install_description: $event })" [readonly]="!editing()" placeholder="What the install covers…"></textarea>
               </div>
+
+              <app-edit-field label="Location Coverage" density="page" [editing]="editing()" [value]="form().location_coverage" (valueChange)="patch({ location_coverage: $event })" placeholder="e.g. London &amp; South East" />
 
               <app-edit-field label="Lead Time (days)" type="number" density="page" [editing]="editing()" [value]="form().lead_time_days" (valueChange)="patch({ lead_time_days: $event })" />
 
@@ -266,7 +270,8 @@ export class ItemEditComponent {
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
-    name: '', category_id: '', base_price: '', installed_cost: '', lead_time_days: '', description: '',
+    name: '', category_id: '', base_price: '', install_cost: '',
+    install_description: '', location_coverage: '', lead_time_days: '', description: '',
   });
   protected readonly imageUrl = signal<string | null>(null);
   protected readonly images = signal<GalleryImage[]>([]);
@@ -312,17 +317,12 @@ export class ItemEditComponent {
       : { label: 'Back to store', href: '/store' }
   );
 
-  /** Installed total = ballpark cost + install add-on (the stored max_price). */
-  private readonly installedTotal = computed<number | null>(() => {
-    const f = this.form();
-    if (f.installed_cost === '') return null;
-    const base = Number(f.base_price) || 0;
-    const install = Number(f.installed_cost) || 0;
-    return base + install;
-  });
-  protected readonly installedLabel = computed(() => {
-    const t = this.installedTotal();
-    return t === null ? null : '£' + t.toLocaleString('en-GB');
+  /** Currency suffix for the cost labels — the item's currency (defaults to the
+   *  supplier's org currency server-side; GBP until a saved value loads). */
+  protected readonly currencySuffix = computed(() => {
+    const c = this.itemRes.value()?.currency ?? 'GBP';
+    const sym = c === 'GBP' ? '£' : c === 'USD' ? '$' : c === 'EUR' ? '€' : c;
+    return ` (${sym})`;
   });
 
   private readonly categoriesRes = this.api.getResource<CategoryInfo[]>('/api/marketplace/categories');
@@ -342,13 +342,14 @@ export class ItemEditComponent {
         : this.store.get(params)
       );
       const base = item.base_price != null ? Number(item.base_price) : null;
-      const max = item.max_price != null ? Number(item.max_price) : null;
+      const install = item.install_cost != null ? Number(item.install_cost) : null;
       this.form.set({
         name: item.name ?? '',
         category_id: item.category_id ?? '',
         base_price: base != null ? String(base) : '',
-        // Install add-on recovered from the stored installed total.
-        installed_cost: max != null ? String(Math.max(0, max - (base ?? 0))) : '',
+        install_cost: install != null ? String(install) : '',
+        install_description: item.install_description ?? '',
+        location_coverage: item.location_coverage ?? '',
         lead_time_days: item.lead_time_days != null ? String(item.lead_time_days) : '',
         description: item.description ?? '',
       });
@@ -406,8 +407,9 @@ export class ItemEditComponent {
       category_id: f.category_id,
       description: f.description.trim() || null,
       base_price: f.base_price === '' ? null : Number(f.base_price),
-      // Installed total (ballpark + install) → max_price; null clears it.
-      max_price: this.installedTotal(),
+      install_cost: f.install_cost === '' ? null : Number(f.install_cost),
+      install_description: f.install_description.trim() || null,
+      location_coverage: f.location_coverage.trim() || null,
       lead_time_days: f.lead_time_days === '' ? null : Number(f.lead_time_days),
       image_url: this.imageUrl(),
       images: this.images(),

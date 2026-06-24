@@ -118,14 +118,18 @@ function heroFromImages(images) {
 async function create(data) {
   const {
     org_id, category_id, subcategory_id, name, description,
-    unit, time_unit, base_price, min_price, max_price,
+    unit, time_unit, base_price, install_cost,
     lead_time_days, coverage_area, tier, tags,
     image_url, image_display, external_url,
     derived_from_id, parent_item_id, attributes, images,
     // pV2-STORE-01 — the supplier draft/submit flow sets these explicitly. When
     // omitted (v1 callers) the column defaults stand in: 'approved' + true, so
     // existing behaviour is unchanged.
-    approval_status, is_active
+    approval_status, is_active,
+    // pV2-STORE-01 (data model) — install_description = "Included Services";
+    // location_coverage = free text; currency defaults to the supplier's org
+    // currency when not supplied (the COALESCE below).
+    install_description, location_coverage, currency
   } = data;
   // Keep image_url in sync with the hero image on the new array, so existing
   // cards / detail surfaces continue to render the same primary image
@@ -135,20 +139,23 @@ async function create(data) {
   const result = await pool.query(
     `INSERT INTO items
       (org_id, category_id, subcategory_id, name, description,
-       unit, time_unit, base_price, min_price, max_price,
+       unit, time_unit, base_price, install_cost,
        lead_time_days, coverage_area, tier, tags,
        image_url, image_display, external_url,
        derived_from_id, parent_item_id, attributes, images,
-       approval_status, is_active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+       approval_status, is_active,
+       install_description, location_coverage, currency)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
+       COALESCE($25, (SELECT default_currency FROM orgs WHERE id = $1)))
      RETURNING *`,
     [org_id, category_id, subcategory_id || null, name, description,
-     unit, time_unit || null, base_price, min_price, max_price,
+     unit, time_unit || null, base_price, install_cost ?? null,
      lead_time_days, coverage_area, tier, tags || [],
      finalImageUrl, image_display || 'cover', external_url || null,
      derived_from_id || null, parent_item_id || null, attributes || {},
      JSON.stringify(images || []),
-     approval_status ?? 'approved', is_active ?? true]
+     approval_status ?? 'approved', is_active ?? true,
+     install_description ?? null, location_coverage ?? null, currency ?? null]
   );
   return result.rows[0];
 }
@@ -160,10 +167,13 @@ async function create(data) {
 // subcategory's parent_id matches the row's category_id.
 const UPDATABLE_COLS = [
   'org_id', 'category_id', 'subcategory_id', 'name', 'description',
-  'unit', 'time_unit', 'base_price', 'min_price', 'max_price',
+  'unit', 'time_unit', 'base_price', 'install_cost',
   'lead_time_days', 'coverage_area', 'tier', 'tags',
   'image_url', 'image_display', 'external_url',
   'derived_from_id', 'parent_item_id', 'attributes', 'images',
+  // pV2-STORE-01 (data model) — install cost / included services / coverage /
+  // currency.
+  'install_description', 'location_coverage', 'currency',
   // v1.68b — is_active is the publish/hide toggle (distinct from the
   // deleted_at soft-delete). The supplier store's eye/eye-off action
   // PUTs { is_active } through update() to hide/show an item.
@@ -244,18 +254,20 @@ async function duplicate(id) {
     const ins = await client.query(
       `INSERT INTO items
          (org_id, category_id, subcategory_id, name, description,
-          unit, time_unit, base_price, min_price, max_price,
+          unit, time_unit, base_price, install_cost,
           lead_time_days, coverage_area, tier, tags,
           image_url, image_display, external_url,
           derived_from_id, parent_item_id, attributes, images, is_active,
-          approval_status)
+          approval_status,
+          install_description, location_coverage, currency)
        SELECT
           org_id, category_id, subcategory_id, name || ' (copy)', description,
-          unit, time_unit, base_price, min_price, max_price,
+          unit, time_unit, base_price, install_cost,
           lead_time_days, coverage_area, tier, tags,
           image_url, image_display, external_url,
           derived_from_id, parent_item_id, attributes, images, false,
-          'draft'
+          'draft',
+          install_description, location_coverage, currency
        FROM items
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING *`,
