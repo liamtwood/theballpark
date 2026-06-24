@@ -212,6 +212,9 @@ Liam QC: clicking the eye must confirm via the standard dialog; activation is bl
 ### fix — approval no longer auto-activates
 Liam QC: approved a pending item; it came back **active** (should be approved + **inactive**, with the supplier choosing to activate). Cause: the admin approve endpoint set `is_active: approve` (true on approve). Fixed: `PUT /api/admin/items/:id/approval` now sets `is_active: false` on both approve and reject — approval sets status only; the supplier activates via the store (eye → "available for purchase"). 48/48 server tests.
 
+### v2.34m — fix stale grid after add/delete (cache bust)
+Liam QC: adding or deleting an item only showed after a full page refresh. Cause: `CatalogueService` memoises reads by URL; store writes never busted it, so `reloadItems()`/navigation returned the cached list. Fix: every `StoreItemService` mutation (create/update/setActive/duplicate/remove/decide) now `.pipe(tap(() => catalogue.invalidate()))` — the architecture's intended "writes invalidate" hook. Combined with the existing `reloadItems()` (card actions) and route re-mount (create), the grid updates without a refresh. Build clean.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

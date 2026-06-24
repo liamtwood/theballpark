@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ApiService } from '../api.service';
+import { CatalogueService } from '../marketplace/catalogue.service';
 import { GalleryImage } from '../media/media.types';
 
 /** The editable item row (pV2-STORE-01) — the full item as the editor sees it.
@@ -52,17 +53,23 @@ export interface StoreItemWrite {
 @Injectable({ providedIn: 'root' })
 export class StoreItemService {
   private readonly api = inject(ApiService);
+  private readonly catalogue = inject(CatalogueService);
+
+  /** Bust the marketplace read cache after any write, so the grid shows the
+   *  change on the next fetch (architecture §"writes invalidate"). Without
+   *  this, reload returns the URL-memoised stale list until a full refresh. */
+  private readonly bust = <T>() => tap<T>(() => this.catalogue.invalidate());
 
   get(id: string): Observable<StoreItem> {
     return this.api.get<StoreItem>(`/api/store/items/${id}`);
   }
 
   create(body: StoreItemWrite): Observable<StoreItem> {
-    return this.api.post<StoreItem>('/api/store/items', body);
+    return this.api.post<StoreItem>('/api/store/items', body).pipe(this.bust());
   }
 
   update(id: string, body: StoreItemWrite): Observable<StoreItem> {
-    return this.api.put<StoreItem>(`/api/store/items/${id}`, body);
+    return this.api.put<StoreItem>(`/api/store/items/${id}`, body).pipe(this.bust());
   }
 
   /** Ballpark-admin moderation (pV2-STORE-01) — cross-org read of any item. */
@@ -76,19 +83,19 @@ export class StoreItemService {
     return this.api.get<StoreItem>(`/api/marketplace/items/${id}`);
   }
 
-  /** Approve (→ approved + active) or reject (→ rejected + hidden) an item. */
+  /** Approve / reject — moderation (status only; supplier activates later). */
   decide(id: string, decision: 'approve' | 'reject'): Observable<StoreItem> {
-    return this.api.put<StoreItem>(`/api/admin/items/${id}/approval`, { decision });
+    return this.api.put<StoreItem>(`/api/admin/items/${id}/approval`, { decision }).pipe(this.bust());
   }
 
   /** Owner item management (pV2-STORE-01). */
   setActive(id: string, isActive: boolean): Observable<StoreItem> {
-    return this.api.patch<StoreItem>(`/api/store/items/${id}/active`, { is_active: isActive });
+    return this.api.patch<StoreItem>(`/api/store/items/${id}/active`, { is_active: isActive }).pipe(this.bust());
   }
   duplicate(id: string): Observable<StoreItem> {
-    return this.api.post<StoreItem>(`/api/store/items/${id}/duplicate`, {});
+    return this.api.post<StoreItem>(`/api/store/items/${id}/duplicate`, {}).pipe(this.bust());
   }
   remove(id: string): Observable<void> {
-    return this.api.delete<void>(`/api/store/items/${id}`);
+    return this.api.delete<void>(`/api/store/items/${id}`).pipe(this.bust());
   }
 }
