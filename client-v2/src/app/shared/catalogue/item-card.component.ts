@@ -122,7 +122,7 @@ import { ConfirmService } from '../confirm/confirm.service';
             [attr.aria-label]="item().isActive ? 'Mark inactive' : 'Mark active'"
             (click)="onToggleActive($event)"
           >
-            <lucide-icon [name]="item().isActive ? 'eye' : 'eye-off'" [size]="15" />
+            <lucide-icon [name]="item().isActive ? 'eye-off' : 'eye'" [size]="15" />
           </button>
           <button type="button" class="bp-item-card__act bp-item-card__act--danger" [disabled]="busy()" title="Move to trash" aria-label="Move to trash" (click)="onTrash($event)">
             <lucide-icon name="trash-2" [size]="15" />
