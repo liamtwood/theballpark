@@ -209,7 +209,15 @@ export class ItemCardComponent {
 
   protected onDuplicate(e: Event): void {
     e.stopPropagation();
-    this.run(this.store.duplicate(this.item().id));
+    if (this.busy()) return;
+    this.busy.set(true);
+    firstValueFrom(this.store.duplicate(this.item().id))
+      .then((copy) => {
+        // Open the new copy in the editor so the owner can tweak it + save.
+        void this.router.navigate(['/store/items', copy.id]);
+      })
+      .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
+      .finally(() => this.busy.set(false));
   }
   protected onToggleActive(e: Event): void {
     e.stopPropagation();
