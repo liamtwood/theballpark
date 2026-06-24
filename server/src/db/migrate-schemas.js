@@ -434,6 +434,15 @@ const migrate = async () => {
       ALTER TABLE preview.items ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
       ALTER TABLE master.items  ADD COLUMN IF NOT EXISTS images          JSONB DEFAULT '[]';
 
+      -- pV2-STORE-01 (Liam): drop the legacy per-org UNIQUE(org_id, name) on
+      -- items. The item identity is the UUID id (items_pkey) — name must NOT be
+      -- a uniqueness key. It was a table CONSTRAINT (index-backed), and covered
+      -- soft-deleted rows too, so a trashed item still reserved its name and
+      -- blocked re-create/duplicate.
+      ALTER TABLE public.items  DROP CONSTRAINT IF EXISTS items_org_name_unique_public;
+      ALTER TABLE preview.items DROP CONSTRAINT IF EXISTS items_org_name_unique_preview;
+      ALTER TABLE master.items  DROP CONSTRAINT IF EXISTS items_org_name_unique_master;
+
       -- v1.29: projects.currency — ISO-4217 code (drives Event drawer
       -- Currency dropdown via shared.codelists list_name='currency').
       ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS currency      VARCHAR(10) DEFAULT 'GBP';
