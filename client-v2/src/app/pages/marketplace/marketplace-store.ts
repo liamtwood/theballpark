@@ -245,9 +245,12 @@ export class MarketplaceStore {
   setSupplier(id: string | null): void {
     this.merge({ sup: id, item: null });
   }
-  /** Owner store filters (pV2-STORE-01). `all`/default values clear the param. */
+  /** Owner store filters (pV2-STORE-01). Clear the param only when the choice
+   *  equals the CONTEXT default — otherwise an admin (whose default is
+   *  `pending`) could never pick `all`: clearing would snap back to pending. */
   setStatusFilter(status: string | null): void {
-    this.merge({ status: status && status !== 'all' ? status : null, item: null });
+    const def = this.isBallparkAdmin() && !this.isOwnerStore() ? 'pending' : 'all';
+    this.merge({ status: status && status !== def ? status : null, item: null });
   }
   setActiveFilter(active: string | null): void {
     this.merge({ active: active && active !== 'all' ? active : null, item: null });
