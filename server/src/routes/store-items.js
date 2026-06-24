@@ -65,4 +65,45 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/** Resolve the caller's OWN, non-deleted item or send 404/403. */
+async function ownItemOr(res, id, orgId) {
+  const item = await ItemService.getById(id);
+  if (!item || item.deleted_at) { res.status(404).json({ error: 'Not found' }); return null; }
+  if (item.org_id !== orgId) { res.status(403).json({ error: 'Not your item' }); return null; }
+  return item;
+}
+
+// PATCH /api/store/items/:id/active — publish/hide toggle (is_active only;
+// approval_status untouched, unlike the edit PUT which re-enters review).
+router.patch('/:id/active', async (req, res, next) => {
+  try {
+    if (typeof req.body?.is_active !== 'boolean') {
+      return res.status(400).json({ error: 'is_active (boolean) is required' });
+    }
+    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
+    const item = await ItemService.update(req.params.id, { is_active: req.body.is_active });
+    res.json(item);
+  } catch (err) { next(err); }
+});
+
+// POST /api/store/items/:id/duplicate — clone the item (lands draft + hidden).
+router.post('/:id/duplicate', async (req, res, next) => {
+  try {
+    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
+    const copy = await ItemService.duplicate(req.params.id);
+    if (!copy) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(copy);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/store/items/:id — soft delete (deleted_at; hard delete is
+// trigger-forbidden). Recoverable in the DB.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    if (!(await ownItemOr(res, req.params.id, req.user.org_id))) return;
+    await ItemService.softDelete(req.params.id);
+    res.status(204).end();
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

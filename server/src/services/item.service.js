@@ -247,13 +247,15 @@ async function duplicate(id) {
           unit, time_unit, base_price, min_price, max_price,
           lead_time_days, coverage_area, tier, tags,
           image_url, image_display, external_url,
-          derived_from_id, parent_item_id, attributes, images, is_active)
+          derived_from_id, parent_item_id, attributes, images, is_active,
+          approval_status)
        SELECT
           org_id, category_id, subcategory_id, name || ' (copy)', description,
           unit, time_unit, base_price, min_price, max_price,
           lead_time_days, coverage_area, tier, tags,
           image_url, image_display, external_url,
-          derived_from_id, parent_item_id, attributes, images, false
+          derived_from_id, parent_item_id, attributes, images, false,
+          'draft'
        FROM items
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING *`,

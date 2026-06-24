@@ -80,4 +80,15 @@ export class StoreItemService {
   decide(id: string, decision: 'approve' | 'reject'): Observable<StoreItem> {
     return this.api.put<StoreItem>(`/api/admin/items/${id}/approval`, { decision });
   }
+
+  /** Owner item management (pV2-STORE-01). */
+  setActive(id: string, isActive: boolean): Observable<StoreItem> {
+    return this.api.patch<StoreItem>(`/api/store/items/${id}/active`, { is_active: isActive });
+  }
+  duplicate(id: string): Observable<StoreItem> {
+    return this.api.post<StoreItem>(`/api/store/items/${id}/duplicate`, {});
+  }
+  remove(id: string): Observable<void> {
+    return this.api.delete<void>(`/api/store/items/${id}`);
+  }
 }

@@ -101,6 +101,7 @@ import { RightRailComponent } from './rail/right-rail.component';
               (entitySelected)="onItemClicked($event)"
               (favouriteToggled)="favs.toggle('item', $event)"
               (quoteToggled)="favs.toggleQuoteDraft($event)"
+              (changed)="store.reloadItems()"
             />
             @if (store.hasMore()) {
               <div class="mt-6 flex justify-center">

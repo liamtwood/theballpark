@@ -258,6 +258,11 @@ export class MarketplaceStore {
   clearFilters(): void {
     this.merge({ price: null, tier: null, sup: null, item: null });
   }
+  /** Refetch the current items page (after an owner card mutation: duplicate,
+   *  show/hide, trash). Offset stays; page 0 replaces the accumulated list. */
+  reloadItems(): void {
+    this.itemsRes.reload();
+  }
   showMore(): void {
     // Next page starts where the accumulated list ends (per mode).
     this.offset.set(

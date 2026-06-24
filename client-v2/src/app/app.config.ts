@@ -41,6 +41,9 @@ import {
   Building2,
   Store,
   Trash2,
+  Copy,
+  Eye,
+  EyeOff,
   X,
   ListChecks,
   PencilLine,
@@ -158,6 +161,8 @@ export const appConfig: ApplicationConfig = {
         GripVertical, Star,
         // pV2-EA-02 — early-access admin
         ExternalLink, ChevronUp, Download,
+        // pV2-STORE-01 — owner item-card actions (duplicate / show-hide / trash)
+        Copy, Eye, EyeOff,
       })
     ),
     // Load /runtime-config.json BEFORE the app renders, so no feature ever sees

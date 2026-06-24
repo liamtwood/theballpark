@@ -113,6 +113,7 @@ import { TabBandComponent, TabBandTab } from '../../shared/tab-band/tab-band.com
                 (entitySelected)="toggleItem($event)"
                 (favouriteToggled)="favs.toggle('item', $event)"
                 (quoteToggled)="favs.toggleQuoteDraft($event)"
+                (changed)="store.reloadItems()"
               />
               @if (store.hasMore()) {
                 <div class="mt-6 flex justify-center">

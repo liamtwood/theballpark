@@ -186,6 +186,15 @@ Liam QC: an agent needs to see the item page.
 ### v2.34e — open the item by clicking the card
 Liam QC: card view has no rail preview, so the ↗ was unreachable. Clicking an item **card** now opens its page directly (no icon added): owners → editor (no `?view`, works for their own drafts), everyone else → `?view=1` (the page resolves ballpark→moderate, agent→view). The +/heart keep their own click (stopPropagation). The rail ↗ stays for list/table views. Build clean.
 
+## Iteration — v2.34g (2026-06-24) — owner item-card actions (duplicate / show-hide / trash)
+**Triggered by QC:** Liam — a supplier needs to delete (soft), toggle active (eye), and duplicate items, next to the card Edit button.
+
+- **Endpoints** (owner-gated, `store-items.js`): `PATCH /:id/active` ({is_active} — publish/hide, leaves approval_status alone), `POST /:id/duplicate` (clone), `DELETE /:id` (soft delete). Each re-checks `item.org_id === req.user.org_id` (404/403).
+- **Duplicate now lands draft** — `ItemService.duplicate` sets `approval_status='draft'` + `is_active=false`, so the copy re-enters the approval flow (verified: `… (copy)` → draft+inactive).
+- **Card actions** — owned item cards show **Edit · Duplicate (copy) · Show/Hide (eye/eye-off, reflects `isActive`) · Trash (trash-2)**. Each stops propagation (won't open the card); a `busy` signal blocks double-submits. The card emits `changed` → grid → host calls `store.reloadItems()` (refetch current page). Wired on all three grid hosts (marketplace, supplier store, project marketplace).
+- Registered icons: Copy, Eye, EyeOff.
+- *Interim:* Trash uses a `confirm()` (soft delete is recoverable in the DB); a styled dialog + a Trash/recover view + success toasts are follow-ups. Build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

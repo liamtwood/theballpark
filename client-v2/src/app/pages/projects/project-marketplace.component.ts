@@ -65,6 +65,7 @@ import { ProjectQuoteRailComponent } from './project-quote-rail.component';
             (entitySelected)="store.selectItem($event)"
             (favouriteToggled)="favs.toggle('item', $event)"
             (quoteToggled)="onQuoteToggle($event)"
+            (changed)="store.reloadItems()"
           />
           @if (store.hasMore()) {
             <div class="mt-6 flex justify-center">

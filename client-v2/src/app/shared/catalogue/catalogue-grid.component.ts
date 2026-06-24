@@ -27,6 +27,7 @@ import { CatalogueItem, ViewMode, sizedImage } from './catalogue.types';
               (clicked)="entitySelected.emit($event)"
               (favouriteToggled)="favouriteToggled.emit($event)"
               (quoteToggled)="quoteToggled.emit($event)"
+              (changed)="changed.emit()"
             />
           }
         </div>
@@ -95,6 +96,8 @@ export class CatalogueGridComponent {
   readonly entitySelected = output<string>();
   readonly favouriteToggled = output<string>();
   readonly quoteToggled = output<string>();
+  /** An owner item-card mutated (duplicate/active/trash) — host should refresh. */
+  readonly changed = output<void>();
 
   protected thumb(url: string | null): string | null {
     return sizedImage(url, 160);

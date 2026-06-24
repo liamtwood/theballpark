@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom, Observable } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { TooltipModule } from 'primeng/tooltip';
 import { CatalogueItem, sizedImage } from './catalogue.types';
 import { StatusPillComponent } from '../status-pill/status-pill.component';
+import { StoreItemService } from '../../core/store/store-item.service';
 
 /** pV2-CARDS-01 — the catalog item card per CARDS.md image 2 (Converted
  *  Railway Arch): image top, name, category `.bp-tag-chip`, prominent
@@ -98,20 +100,62 @@ import { StatusPillComponent } from '../status-pill/status-pill.component';
         <span class="bp-caption truncate">{{ item().supplierCity || item().supplierName }}</span>
       </div>
       @if (item().ownedByActiveOrg) {
-        <!-- pV2-STORE-01 — owner edits their own item straight from the card. -->
-        <a
-          [routerLink]="['/store/items', item().id]"
-          class="bp-btn-outline mt-3 flex w-full items-center justify-center gap-1.5"
-          (click)="onEditClick($event)"
-        >
-          <lucide-icon name="square-pen" [size]="14" /> Edit
-        </a>
+        <!-- pV2-STORE-01 — owner manages their own item from the card:
+             Edit, Duplicate, Show/Hide (is_active), Trash (soft delete). -->
+        <div class="mt-3 flex items-center gap-2">
+          <a
+            [routerLink]="['/store/items', item().id]"
+            class="bp-btn-outline flex flex-1 items-center justify-center gap-1.5"
+            (click)="onEditClick($event)"
+          >
+            <lucide-icon name="square-pen" [size]="14" /> Edit
+          </a>
+          <button type="button" class="bp-item-card__act" [disabled]="busy()" title="Duplicate" aria-label="Duplicate" (click)="onDuplicate($event)">
+            <lucide-icon name="copy" [size]="15" />
+          </button>
+          <button
+            type="button"
+            class="bp-item-card__act"
+            [disabled]="busy()"
+            [title]="item().isActive ? 'Hide (mark inactive)' : 'Show (mark active)'"
+            [attr.aria-label]="item().isActive ? 'Mark inactive' : 'Mark active'"
+            (click)="onToggleActive($event)"
+          >
+            <lucide-icon [name]="item().isActive ? 'eye' : 'eye-off'" [size]="15" />
+          </button>
+          <button type="button" class="bp-item-card__act bp-item-card__act--danger" [disabled]="busy()" title="Move to trash" aria-label="Move to trash" (click)="onTrash($event)">
+            <lucide-icon name="trash-2" [size]="15" />
+          </button>
+        </div>
       }
     </div>
+  `,
+  styles: `
+    .bp-item-card__act {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      flex: none;
+      border: 1px solid var(--color-border-hairline);
+      border-radius: var(--radius-input, 8px);
+      background: var(--color-surface);
+      color: var(--color-text-secondary, var(--color-text));
+      cursor: pointer;
+    }
+    .bp-item-card__act:hover { background: var(--color-fill); }
+    .bp-item-card__act:disabled { opacity: 0.5; cursor: default; }
+    .bp-item-card__act--danger:hover {
+      background: var(--color-danger-soft, var(--color-fill));
+      color: var(--color-danger, var(--color-text));
+      border-color: var(--color-danger, var(--color-border-hairline));
+    }
   `,
 })
 export class ItemCardComponent {
   private readonly router = inject(Router);
+  private readonly store = inject(StoreItemService);
 
   readonly item = input.required<CatalogueItem>();
   readonly selected = input<boolean>(false);
@@ -153,5 +197,36 @@ export class ItemCardComponent {
   /** The Edit link navigates itself — don't also trigger the card open. */
   protected onEditClick(e: Event): void {
     e.stopPropagation();
+  }
+
+  // ── Owner item management (pV2-STORE-01) ──────────────────────────────────
+  /** Emitted after a mutation so the host grid can refresh its list. */
+  readonly changed = output<void>();
+  /** Guards against double-submits while a mutation is in flight. */
+  protected readonly busy = signal(false);
+
+  protected onDuplicate(e: Event): void {
+    e.stopPropagation();
+    this.run(this.store.duplicate(this.item().id));
+  }
+  protected onToggleActive(e: Event): void {
+    e.stopPropagation();
+    this.run(this.store.setActive(this.item().id, !this.item().isActive));
+  }
+  protected onTrash(e: Event): void {
+    e.stopPropagation();
+    // Interim confirm (soft delete is recoverable in the DB). A styled
+    // dialog + a Trash view land later.
+    if (!confirm(`Move "${this.item().name}" to trash?`)) return;
+    this.run(this.store.remove(this.item().id));
+  }
+
+  private run(op: Observable<unknown>): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    firstValueFrom(op)
+      .then(() => this.changed.emit())
+      .catch(() => { /* host keeps the row; a toast lands with the dialog work */ })
+      .finally(() => this.busy.set(false));
   }
 }
