@@ -177,6 +177,12 @@ Liam QC: on the Profile tab the media block moves to the **top** as the first se
 - Refactored `save()` into a shared `persist(status, msg)`; `cancelRequest()` and `save()` both route through it.
 - *Note:* a generic non-admin "viewer" can't open `/store/items/:id` yet (the GET is owner- or admin-scoped) — a public/agency read-only GET is a later slice. Build clean.
 
+### v2.34d — agent (read-only) item view
+Liam QC: an agent needs to see the item page.
+- **Public item GET** — `GET /api/marketplace/items/:id` (any active member) returns the raw item row for **approved + active** items only (drafts/pending/rejected/hidden → 404). Owners still use `/store/items/:id`, admins `/admin/items/:id`.
+- **Viewer mode** — the item page opens read-only with a single **Cancel** when reached via `?view=1`. Ownership-agnostic (the entry point signals intent), so a supplier viewing someone else's item lands here too; moderator (ballpark) still wins. Loads via `getPublic()`.
+- **Entry point** — the rail item-preview now shows a **View** (external-link) affordance → `/store/items/:id?view=1` for anyone who isn't the owner or a ballpark admin (e.g. an agent). Build clean; 48/48 server tests.
+
 ## QC notes
 (Liam — log in as a supplier (e.g. ryan@rocketfood.example) → My Shop → "+ Add product" → fill it in → **Save Draft** or **Submit for Approval**. Note: the item stays hidden from the storefront until a ballpark admin approves it — owner-sees-drafts + approve UI come next.)
 

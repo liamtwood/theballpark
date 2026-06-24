@@ -70,6 +70,12 @@ export class StoreItemService {
     return this.api.get<StoreItem>(`/api/admin/items/${id}`);
   }
 
+  /** Public read-only view (pV2-STORE-01) — any active member; approved + active
+   *  items only (e.g. an agent viewing a product). */
+  getPublic(id: string): Observable<StoreItem> {
+    return this.api.get<StoreItem>(`/api/marketplace/items/${id}`);
+  }
+
   /** Approve (→ approved + active) or reject (→ rejected + hidden) an item. */
   decide(id: string, decision: 'approve' | 'reject'): Observable<StoreItem> {
     return this.api.put<StoreItem>(`/api/admin/items/${id}/approval`, { decision });

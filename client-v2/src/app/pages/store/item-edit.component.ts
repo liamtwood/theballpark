@@ -56,7 +56,7 @@ interface ItemForm {
           <!-- LEFT — item attributes (one per row) + save actions. -->
           <div>
           <div class="bp-card p-5">
-            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
+            <h3 class="bp-edit-section-title mb-4">{{ isModerator() ? 'Review Product' : isViewer() ? 'Product' : (isEdit ? 'Edit Product' : 'Add New Product') }}</h3>
             <div class="flex flex-col gap-5">
               <app-edit-field label="Product Name" density="page" [editing]="editing()" [value]="form().name" (valueChange)="patch({ name: $event })" />
 
@@ -125,6 +125,11 @@ interface ItemForm {
               <button type="button" class="bp-btn-outline" [disabled]="deciding()" (click)="cancel()">
                 Cancel
               </button>
+            </div>
+          } @else if (isViewer()) {
+            <!-- Pure viewer (e.g. an agent) — read-only, back out only. -->
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button type="button" class="bp-btn-outline" (click)="cancel()">Cancel</button>
             </div>
           } @else {
             <div class="mt-4 flex flex-wrap gap-3">
@@ -242,8 +247,13 @@ export class ItemEditComponent {
   /** Moderation mode — a ballpark admin reviewing someone's item. The page is
    *  read-only (Approve/Reject instead of Save). Suppliers never see this. */
   protected readonly isModerator = computed(() => this.auth.user()?.activeOrgType === 'ballpark');
-  /** Fields are editable for the supplier; read-only for the moderator. */
-  protected readonly editing = computed(() => !this.isModerator());
+  /** Pure view (read-only, Cancel only) — opened with ?view=1 (e.g. an agent
+   *  from the marketplace). Ownership-agnostic: the entry point signals intent,
+   *  so a supplier viewing someone else's item lands here too. Moderator wins. */
+  private readonly viewParam = this.route.snapshot.queryParamMap.get('view') === '1';
+  protected readonly isViewer = computed(() => this.viewParam && !this.isModerator());
+  /** Fields are editable only for the owning supplier (not moderator/viewer). */
+  protected readonly editing = computed(() => !this.isModerator() && !this.isViewer());
   protected readonly deciding = signal(false);
 
   protected readonly form = signal<ItemForm>({
@@ -273,18 +283,19 @@ export class ItemEditComponent {
   });
 
   protected readonly heroTitle = computed(() =>
-    this.isModerator() ? 'Review product' : this.isEdit ? 'Edit product' : 'Add product'
+    this.isModerator() ? 'Review product'
+    : this.isViewer() ? 'Product'
+    : this.isEdit ? 'Edit product' : 'Add product'
   );
   protected readonly heroSubtitle = computed(() =>
-    this.isModerator()
-      ? 'Approve or reject this submission.'
-      : this.isEdit
-        ? 'Update your product details.'
-        : 'Add a product to your store.'
+    this.isModerator() ? 'Approve or reject this submission.'
+    : this.isViewer() ? 'Product details.'
+    : this.isEdit ? 'Update your product details.'
+    : 'Add a product to your store.'
   );
-  /** Moderators came from the marketplace queue; suppliers from their store. */
+  /** Moderators + viewers came from the marketplace; suppliers from their store. */
   protected readonly heroBack = computed(() =>
-    this.isModerator()
+    this.isModerator() || this.isViewer()
       ? { label: 'Back to marketplace', href: '/marketplace' }
       : { label: 'Back to store', href: '/store' }
   );
@@ -310,10 +321,13 @@ export class ItemEditComponent {
   protected readonly itemRes = resource({
     params: () => this.itemId ?? undefined,
     loader: async ({ params }) => {
-      // Moderators read cross-org via the admin endpoint (the supplier GET is
-      // ownership-gated and would 403 them).
+      // Pick the read path by mode: moderators read cross-org (admin endpoint),
+      // viewers read the public approved item (marketplace endpoint), owners
+      // read their own (ownership-gated supplier endpoint).
       const item = await firstValueFrom(
-        this.isModerator() ? this.store.getForReview(params) : this.store.get(params)
+        this.isModerator() ? this.store.getForReview(params)
+        : this.isViewer() ? this.store.getPublic(params)
+        : this.store.get(params)
       );
       const base = item.base_price != null ? Number(item.base_price) : null;
       const max = item.max_price != null ? Number(item.max_price) : null;

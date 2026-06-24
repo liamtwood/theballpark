@@ -255,6 +255,26 @@ router.get('/items', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/** GET /api/marketplace/items/:id — a single PUBLIC item, for the read-only
+ *  view page (any active member, e.g. an agent). Visibility is the public
+ *  marketplace rule: approved + active only — drafts/pending/rejected/hidden
+ *  items 404 here (owners use /store/items/:id, admins /admin/items/:id).
+ *  Returns the raw row (StoreItem shape) the item page already consumes. */
+router.get('/items/:id', async (req, res, next) => {
+  try {
+    const r = await pool.query(
+      `SELECT i.*, c.name AS category_name
+         FROM items i
+         LEFT JOIN categories c ON c.id = i.category_id
+        WHERE i.id = $1 AND i.deleted_at IS NULL
+          AND i.is_active AND i.approval_status = 'approved'`,
+      [req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json(r.rows[0]);
+  } catch (err) { next(err); }
+});
+
 /** GET /api/marketplace/suppliers/options — lightweight supplier list for
  *  the filter dropdown (id, name, active-item count). The full suppliers
  *  browse (cards + envelope) lands in pV2-06d. */

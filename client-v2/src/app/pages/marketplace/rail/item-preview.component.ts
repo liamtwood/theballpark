@@ -28,6 +28,11 @@ import { CatalogueItem } from '../../../shared/catalogue/catalogue.types';
           <a [routerLink]="['/store/items', item().id]" class="bp-itemprev-close" title="Review product" aria-label="Review product">
             <lucide-icon name="circle-check" [size]="14" />
           </a>
+        } @else {
+          <!-- pV2-STORE-01 — anyone else (e.g. an agent) opens the read-only view. -->
+          <a [routerLink]="['/store/items', item().id]" [queryParams]="{ view: 1 }" class="bp-itemprev-close" title="View product" aria-label="View product">
+            <lucide-icon name="external-link" [size]="14" />
+          </a>
         }
         <button
           type="button"
