@@ -177,14 +177,14 @@ someday," they are load-bearing-until-X and a liability past X.
 | `client-v2/src/app/pages/settings/codelists/codelists-settings.component.ts` | ~~248~~ → 216 → **254** | 250 (component) | Resolved at v2.19b (value-row extraction, 248 → 216), drifted back over warning at v2.21b (toast outcome wiring → 254; dialogs audit F-6). Just over warning. Next growth → extract a values-grid subcomponent or a shared toast-message helper. |
 | `client-v2/src/app/pages/settings/pages/pages-settings.component.ts` | 223 | 250 (component) | At warning (grew 162 → 223 in CODELISTS-02 sweep — codelist resources + computeds). Watch next touch; if title/subtitle for other pages multiply, extract a per-role-block component. |
 | `client-v2/src/app/shared/edit-field/edit-field.component.ts` | 204 | 250 (component) | Stable in warning band. Architect's F-7 (CODELISTS-02 audit) restated: extract type-specific bodies (text / select / number) when next touched. |
-| `client-v2/src/app/pages/settings/profile/profile.component.ts` | ~~218~~ → **660** | 250 warn / 400 **alarm** | **OVER ALARM** (v2.34s). Ballooned through the Profile/Shopfront reorg: Branding + About Us + Company Info + Gallery + Social Links/Most Viewed/Availability/Payment placeholders + Team Members + invite drawer. Needs its own extraction pass — pull the placeholder sections, the Team Members roster, and the invite drawer into child components. **MUST extract before the next ship that lands on this file.** |
+| `client-v2/src/app/pages/settings/profile/profile.component.ts` | ~~218~~ → ~~660~~ → **274** | 250 warn / 400 alarm | **Resolved** v2.34u — extracted `ProfileEditService` (the org form/save/media state machine, 194), `<app-profile-team-section>` (142), `<app-profile-shopfront>` (59); shell now binds to the service + mounts the children. Under alarm; just over warn (template is the section layout). |
 | `client-v2/src/app/pages/store/item-edit.component.ts` | ~~454~~ → **399** | 250 warn / 400 alarm | **Resolved** v2.34t (STORE-01 audit F-2): extracted `<app-item-approval-panel>` (39) + moved `.bp-*` styles to styles.css. Now just under alarm — watch on next touch. |
 | `server/src/routes/marketplace.js` | ~~456~~ → **280** | 200 warn / 300 alarm | **Resolved** v2.34t (F-2): `/suppliers*` (4 endpoints) split to `marketplace-suppliers.js` (190). Under alarm. |
 | `client-v2/src/app/shared/catalogue/item-card.component.ts` | 286 | 250 warn / 400 alarm | Warning band (97 → 286 across STORE-01 — owner actions + confirm flows). Watch; if a 4th action lands, extract the action row. |
 | `client-v2/src/app/pages/marketplace/marketplace-store.ts` | 280 | 250 warn / 400 alarm | Warning band (owner/admin filters added). Watch. |
 | `server/src/services/item.service.js` | 293 | 200 warn / 350 alarm | Warning band (data-model + duplicate). Watch. |
 
-**At Alarm:** `profile.component.ts` (660) — needs an extraction pass before its next ship.
+**At Alarm:** none. (`profile.component.ts` resolved at v2.34u — 660 → 274.)
 
 ## Bonus — styles.css
 
